@@ -192,7 +192,7 @@ config_table_type config_table[] =
    
 { ADVERTISE_GROUP,        F, "[Advertise]",   CONFIG_GROUP, "" },
 { ADVERTISE_FILE1,        T, "File1",         CONFIG_STR,   "ad1.avi" },
-{ ADVERTISE_URL1,         T, "Url1",          CONFIG_STR,   "http://openmeridian.org" },
+{ ADVERTISE_URL1,         T, "Url1",          CONFIG_STR,   "https://www.meridiannext.com/" },
 { ADVERTISE_FILE2,        T, "File2",         CONFIG_STR,   "ad2.avi" },
 { ADVERTISE_URL2,         T, "Url2",          CONFIG_STR,   "http://openmeridian.org/forums" },
 

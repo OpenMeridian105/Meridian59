@@ -34,10 +34,10 @@ exit /b 0
 echo Copying live graphics from !m59path! to client folder.
 rem The error check after this is currently redundant, but kept in case
 rem further copying code is added.
-robocopy "!m59path!\resource" ".\run\localclient\resource" *.bsf *.bgf *.wav *.mp3 /R:0 /MT /XO > postbuild.log
+robocopy "!m59path!\resource" ".\run\localclient\resource" *.bsf *.bgf *.wav *.ogg /R:0 /MT /XO > postbuild.log
 if %ERRORLEVEL% GTR 7 goto:eof
 rem These extensions aren't used.
-rem robocopy "!m59path!\resource" ".\run\localclient\resource" *.mid *.xmi /R:0 /MT /XO > nul
+rem robocopy "!m59path!\resource" ".\run\localclient\resource" *.mid *.xmi *.mp3 /R:0 /MT /XO > nul
 rem if %ERRORLEVEL% GTR 7 goto:eof
 goto:eof
 

@@ -47,7 +47,7 @@ PRs that frequently ignore these rules won't be considered.
 0. Try to keep code width under 80 characters if possible.
 0. Opening braces on if/while/for statements should be placed on the next line
 on their own, as should closing braces.
-0. Don't use typedefed names for variables.
+0. Don't use typedef names for variables.
 0. Add comment headers for non-obvious functions, and comment any non-obvious
 code statements.
 
@@ -166,12 +166,14 @@ expected type of the variable (i for integer, o for object etc.). This
 lower-case letter should be the second letter of every property and classvar.
 0. Message names should be camelcase (MessageName); variables should also
 follow this convention after the identifying letters (piPropertyName).
-0. Avoid overly long message and parameter names that force calls to span
-multiple lines.
+0. Avoid overly long message, parameter and resource names that force statements
+to span multiple lines.
 0. All constants should be uppercase, and use underscores to separate words.
 0. Constants should be used instead of hardcoded numbers in code. If a constant
 is used in more than one file, or will be in the future, it should be defined
 in the constants file, blakston.khd.
+0. Avoid using hard-coded strings in code where possible; these should be
+placed in the resources section so translations can be used by the clients.
 0. All language-translated resources should go in a separate file, with the
 .lkod extension. Resources in the .lkod file must have an English translation
 defined in the .kod file.

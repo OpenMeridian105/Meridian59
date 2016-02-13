@@ -7,11 +7,9 @@ use Pithub;
 use Data::Dumper;
 use Env;
 
-my $outdir="D:/patchfiles";
 my @changelists;
 my $build;
 my $buildid;
-my $lastbranch;
 my $stacked = 0;
 my $pullsobject = Pithub::PullRequests->new;
 my $output;
@@ -28,8 +26,7 @@ GetOptions ("change=s" => \@changelists,
 			"update=s" => \$update,
 			"finalize=s" => \$finalize,
 			"buildid=s" => \$buildid,
-			"branch=s" => \$parentbranch,
-			"branch=s" => \$lastbranch);
+			"branch=s" => \$parentbranch);
 			
 print "AUTOBUILD: Options: Updating pre-existing branches\n" if ($update);
 print "AUTOBUILD: Options: Stacked Build ENABLED\n" if ($stacked);
@@ -86,8 +83,8 @@ foreach my $changelist (@changelists)
 	
 	if ($stacked)
 	{
-	  print "AUTOBUILD: Creating stacked branch $localbranch based from $lastbranch\n";
-	  $output =`git checkout -b $localbranch $lastbranch 2>&1`;
+	  print "AUTOBUILD: Creating stacked branch $localbranch based from $build-complete\n";
+	  $output =`git checkout -b $localbranch $build-complete 2>&1`;
 	  print $output . "\n";
 	}
 	else
@@ -172,7 +169,6 @@ foreach my $changelist (@changelists)
 		else
 		{
 			#we update the stack of previous merges only if successful, this prevents the rest of the merges from trying against a failed merge.
-			$lastbranch = $localbranch if ($stacked);
 			my $statuses = Pithub::Repos::Statuses->new(prepare_request => sub 
 	                                                     {
 														   my ($request) = @_;
@@ -200,6 +196,9 @@ foreach my $changelist (@changelists)
 			print $output . "\n";
 			print "AUTOBUILD: merging $localbranch into $build-complete\n";
 			$output = `git merge $localbranch`;
+			print $output . "\n";
+			print "AUTOBUILD: deleting finished branch $localbranch\n";
+			$output = `git branch -D $localbranch`;
 			print $output . "\n";
 		}
 		

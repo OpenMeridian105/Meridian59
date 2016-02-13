@@ -321,6 +321,8 @@ function CopySaveGame
       $ServerSource = "$ProdServerPath"
       $ServerDest = "$OutputServerPath"
 
+      Remove-Item "$ServerDest\savegame\*"
+
       $SaveFile = (Get-Content $ServerSource$SaveLocation)[12]
       $SaveExt = $SaveFile.Replace("LASTSAVE ", ".")
 
@@ -386,7 +388,10 @@ function CopyResources
 
 function CompressAll
 {
-   Remove-Item $OutputPackagePath$LatestZip
+   if (Test-Path $OutputPackagePath$LatestZip)
+   {
+      Remove-Item $OutputPackagePath$LatestZip
+   }
 
    Get-ChildItem -Recurse $OutputPackagePath |
    Write-Zip -OutputPath $OutputPackagePath$LatestZip -IncludeEmptyDirectories -EntryPathRoot $OutputPackagePath
@@ -434,7 +439,7 @@ function KillServerAction
       {
          $Writer.WriteLine($Command)
          $Writer.Flush()
-         Start-Sleep -Milliseconds (5000)
+         Start-Sleep -Milliseconds (4000)
       }
    }
 }
@@ -491,7 +496,7 @@ function ReloadServer
       {
          $Writer.WriteLine($Command)
          $Writer.Flush()
-         Start-Sleep -Milliseconds (8000)
+         Start-Sleep -Milliseconds (1000)
       }
    }
 }

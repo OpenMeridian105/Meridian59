@@ -1710,7 +1710,7 @@ messages:
             param2, param3, param4, param5, param6, param7, type5, type7,
             war_string1, war_string2, oBook, oMaster, oKillingBlow;
 
-      % Notify the event engine
+      // Notify the event engine
       Send(EVENTENGINE_OBJECT,@UserKilled,#who=what,#killer=killer);
 
       if IsClass(what,&Guest)
@@ -1728,12 +1728,13 @@ messages:
       }
       else
       {
-          oKillingBlow = system_unknown_resource;
+         oKillingBlow = system_unknown_resource;
       }
 
-      if isClass(what,&User) AND isClass(killer,&User)
+      if IsClass(what,&User)
+         AND IsClass(killer,&User)
       {
-         % Could be a war kill.  Check for it.
+         // Could be a war kill.  Check for it.
          Send(Send(SYS,@GetWarEvent),@RecordWarKill,#who=killer,#victim=what);
 
          Send(poNecromancerBalance,@IncrementPKCounter);
@@ -1747,31 +1748,26 @@ messages:
             Send(poNecromancerBalance,@IncrementHKCounter);
          }
 
-         %pvp flag set to TRUE
-         RecordStat(STAT_PLAYERDEATH, Send(what,@GetTrueName), Send(killer,@GetTrueName), Send(oRoom,@GetName), oKillingBlow, TRUE);    
+          // PvP flag set to TRUE.
+         RecordStat(STAT_PLAYERDEATH,Send(what,@GetTrueName),
+               Send(killer,@GetTrueName),Send(oRoom,@GetName),
+               oKillingBlow,TRUE);
       }
       else
       {
-         RecordStat(STAT_PLAYERDEATH,Send(what,@GetTrueName), Send(killer,@GetName), Send(oRoom,@GetName), oKillingBlow, FALSE);
+         RecordStat(STAT_PLAYERDEATH,Send(what,@GetTrueName),
+               Send(killer,@GetName),Send(oRoom,@GetName),
+               oKillingBlow,FALSE);
       }
 
       Send(Send(self,@FindRoomByNum,#num=RID_TOS_GRAVEYARD),@PlayerKilled,
-           #who=what,#killer=killer);
+            #who=what,#killer=killer);
 
-      % Nil out all our parameters we use.
-      param2 = $;
-      param3 = $;
-      param4 = $;
-      param5 = $;
-      param6 = $;
-      param7 = $;
-
-      % Resource types for the parameters.
+      // Resource types for the parameters.
       type5 = STANDARD_RESOURCE;
       type7 = STANDARD_RESOURCE;
 
-      % Default parameters.
-      rMessage = $;
+      // Default parameters.
       param2 = Send(killer,@GetIndef);
       param3 = Send(killer,@GetName);
 
@@ -1800,122 +1796,121 @@ messages:
          % Eliminate param3 that was set by default
          param3 = $;
       }
+      else if Send(what,@FindUsing,#class=&Token)
+      {
+         // Notify of a token death.
+         rMessage = system_user_killed_token;
+      }
       else
       {
-         if Send(what,@FindUsing,#class=&Token)
+         // Outlaw or murderer was killed?
+         if Send(what,@CheckPlayerFlag,#flag=PFLAG_OUTLAW)
          {
-            % Notify of a token death.
-            rMessage = system_user_killed_token;
+            rMessage = system_user_killed_outlaw;
+            // Parameters set by default
          }
-         else
+
+         if Send(what,@CheckPlayerFlag,#flag=PFLAG_MURDERER)
          {
-            % Outlaw or murderer was killed?
-            if Send(what,@CheckPlayerFlag,#flag=PFLAG_OUTLAW)
+            rMessage = system_user_killed_pker;
+            // Parameters set by default
+         }
+
+         if IsClass(killer,&User)
+         {
+            // Was this a soldier war death?
+            oSoldierShield = Send(what,@FindUsing,#class=&SoldierShield);
+
+            if oSoldierShield <> $
+               AND Send(oSoldierShield,@IsEnemyAttack,#what=killer)
             {
-               rMessage = system_user_killed_outlaw;
-               % Parameters set by default
+               rMessage = system_user_killed_shield;
+               // Parameters set by default
             }
 
-            if Send(what,@CheckPlayerFlag,#flag=PFLAG_MURDERER)
+            // A guild war?
+            oGuild = Send(what,@GetGuild);
+            oKillerGuild = Send(killer,@GetGuild);
+
+            if oGuild <> $
+               AND Send(oGuild,@IsMutualEnemy,#otherguild=oKillerGuild)
             {
-               rMessage = system_user_killed_pker;
-               % Parameters set by default
+               rMessage = system_user_killed_guild;
+               param2 = Send(oGuild,@GetDef);
+               param3 = Send(oGuild,@GetName);
+               param4 = Send(killer,@GetIndef);
+               param5 = Send(killer,@GetTrueName);
+               param6 = Send(oKillerGuild,@GetDef);
+               param7 = Send(oKillerGuild,@GetName);
+               type5 = STRING_RESOURCE;
+               type7 = STRING_RESOURCE;
+
+               // Post this death to the Guild War Standings book in
+               // Guildmasters.  NOTE: doesn't check subject length.
+
+               ClearTempString();
+               AppendTempString(param5);
+               AppendTempString(guildwar_kill_title1);
+               AppendTempString(Send(what,@GetTrueName));
+               war_string1 = SetString($,GetTempString());
+
+               ClearTempString();
+               AppendTempString(guildwar_kill_body1);
+               AppendTempString(Send(what,@GetTrueName));
+               AppendTempString(guildwar_kill_body2);
+               AppendTempString(param3);
+               AppendTempString(guildwar_kill_body3);
+               AppendTempString(param5);
+               AppendTempString(guildwar_kill_body2);
+               AppendTempString(param7);
+               AppendTempString(guildwar_kill_body4);
+               war_string2 = SetString($,GetTempString());
+
+               oBook = Send(SYS,@FindNewsByNum,#num=NID_GUILD_NEWS);
+               oMaster = Send(Send(SYS,@FindRoomByNum, #num=RID_GMHALL),@GetMaster);
+               Send(oBook,@PostNews,#what=oMaster,#title=war_string1,
+                     #body=war_string2);
             }
 
-            if IsClass(killer,&User)
+            // Notify who killed whom during frenzies.
+            if Send(self,@GetChaosNight)
             {
-               % Was this a soldier war death?
-               oSoldierShield = Send(what,@FindUsing,#class=&SoldierShield);
+               rMessage = system_user_killed;
+               // Get True name instead of normal name for Frenzy action.
+               param3 = Send(killer,@GetTrueName);
+            }
 
-               if oSoldierShield <> $
-                  AND Send(oSoldierShield,@IsEnemyAttack,#what=killer)
-               {
-                  rMessage = system_user_killed_shield;
-                  % Parameters set by default
-               }
+            // If we have no other message, and killer is a murderer, and
+            //  attack wasn't made in a safe death location, then give the
+            //  mysterious murder message!
+            if rMessage = $
+               AND Send(killer,@CheckPlayerFlag,#flag=PFLAG_MURDERER)
+               AND NOT Send(Send(what,@GetOwner),@SafePlayerAttack)
+            {
+               rMessage = system_user_killed_by_pker;
+               poLastMurderer = killer;
 
-               % A guild war?
-               oGuild = Send(what,@GetGuild);
-               oKillerGuild = Send(killer,@GetGuild);
-
-               if oGuild <> $
-                  AND Send(oGuild,@IsMutualEnemy,#otherguild=oKillerGuild)
-               {
-                  rMessage = system_user_killed_guild;
-                  param2 = Send(oGuild,@GetDef);
-                  param3 = Send(oGuild,@GetName);
-                  param4 = Send(killer,@GetIndef);
-                  param5 = Send(killer,@GetTrueName);
-                  param6 = Send(oKillerGuild,@GetDef);
-                  param7 = Send(oKillerGuild,@GetName);
-                  type5 = STRING_RESOURCE;
-                  type7 = STRING_RESOURCE;
-                  
-                  % Post this death to the Guild War Standings book in Guildmasters.
-                  
-                  ClearTempString();
-                  AppendTempString(param5);
-                  AppendTempString(guildwar_kill_title1);
-                  AppendTempString(Send(what,@GetTrueName));
-                  war_string1 = CreateString();
-                  setString(war_string1,GetTempString());
-                  
-                  ClearTempString();
-                  AppendTempString(guildwar_kill_body1);
-                  AppendTempString(Send(what,@GetTrueName));
-                  AppendTempString(guildwar_kill_body2);
-                  AppendTempString(param3);
-                  AppendTempString(guildwar_kill_body3);
-                  AppendTempString(param5);
-                  AppendTempString(guildwar_kill_body2);
-                  AppendTempString(param7);
-                  AppendTempString(guildwar_kill_body4);
-                  war_string2 = CreateString();
-                  setString(war_string2,GetTempString());
-                  
-                  oBook = Send(SYS,@FindNewsByNum,#num=NID_GUILD_NEWS);
-                  oMaster = Send(Send(SYS,@FindRoomByNum, #num=RID_GMHALL),@GetMaster);
-                  Send(oBook,@PostNews,#what=oMaster,#title=war_string1,#body=war_string2);
-               }
-
-               % Notify who killed whom during frenzies.
-               if Send(self,@GetChaosNight)
-               {
-                  rMessage = system_user_killed;
-                  % Get True name instead of normal name for Frenzy action.
-                  param3 = Send(killer,@GetTrueName);
-               }
-
-               % If we have no other message, and killer is a murderer, and
-               %  attack wasn't made in a safe death location, then give the
-               %  mysterious murder message!
-               if rMessage = $
-                  AND Send(killer,@CheckPlayerFlag,#flag=PFLAG_MURDERER)
-                  AND NOT Send(Send(what,@GetOwner),@SafePlayerAttack)
-               {
-                  rMessage = system_user_killed_by_pker;
-                  poLastMurderer = killer;
-
-                  % Nil out the values set by default.
-                  param2 = $;
-                  param3 = $;
-               }
+               // Nil out the values set by default.
+               param2 = $;
+               param3 = $;
             }
          }
       }
 
-      % Set a default message.
+      // Set a default message.
       if rMessage = $
       {
          rMessage = system_user_killed;
       }
 
-      % Send the proper message to all logged on, if we get a message.
+      // Send the proper message to all logged on, if we get a message.
       foreach i in plUsers_logged_on
       {
-         Send(i,@MsgSendUser,#message_rsc=rMessage,#parm1=Send(what,@GetTrueName),#type1=STRING_RESOURCE,
-              #parm2=param2,#parm3=param3,#parm4=param4,#parm5=param5,#parm6=param6,
-              #parm7=param7,#type3=STRING_RESOURCE,#type5=type5,#type7=type7);
+         Send(i,@MsgSendUser,#message_rsc=rMessage,
+               #parm1=Send(what,@GetTrueName),#type1=STRING_RESOURCE,
+               #parm2=param2,#parm3=param3,#parm4=param4,#parm5=param5,
+               #parm6=param6,#parm7=param7,#type3=STRING_RESOURCE,
+               #type5=type5,#type7=type7);
          Send(i,@WaveSendUser,#wave_rsc=system_message_sound,#what=self);
       }
 

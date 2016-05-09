@@ -1225,6 +1225,27 @@ messages:
       return Send(self,@CheckRoomFlag,#flag=ROOM_SAFE_DEATH);
    }
 
+   SetGuildPKOnly(value=TRUE)
+   {
+      if (piRoom_Flags & ROOM_SAFE_DEATH)
+         OR (piRoom_Flags & ROOM_NO_COMBAT)
+         OR (piRoom_flags & ROOM_NO_PK)
+      {
+         return;
+      }
+
+      if (value)
+      {
+         piRoom_Flags = piRoom_Flags | ROOM_GUILD_PK_ONLY;
+      }
+      else
+      {
+         Send(self,@SetRoomFlagToDefault,#flag=ROOM_GUILD_PK_ONLY);
+      }
+
+      return;
+   }
+
    GetPermanentFlags()
    {
       return viPermanent_flags;

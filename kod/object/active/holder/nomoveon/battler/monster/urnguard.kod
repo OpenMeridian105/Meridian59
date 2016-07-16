@@ -1,0 +1,282 @@
+% Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+% All rights reserved.
+%
+% This software is distributed under a license that is described in
+% the LICENSE file that accompanies it.
+%
+% Meridian is a registered trademark.
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+UrnGuard is Monster
+
+constants:
+
+   include blakston.khd
+
+resources:
+
+   UrnGuard_koc_name_rsc = "unchaleocon"
+   UrnGuard_name_rsc = "Guardian of the Urn"
+   UrnGuard_icon_rsc = skelbody.bgf
+   UrnGuard_desc_rsc = \
+      "Towering in size what one could only picture to be the animate corspe of"
+      " a giant.  This created was created by very powerful dark magic, and with a "
+      "purpose..."
+
+   UrnGuard_dead_icon_rsc = urnGX.bgf
+   UrnGuard_dead_name_rsc = "pile of bones"
+
+   UrnGuard_sound_miss = skl2_atkm.wav
+   UrnGuard_sound_death = skl2_dth.wav
+   UrnGuard_sound_aware = skl2_awr.wav
+
+classvars:
+
+   vrKocName = UrnGuard_koc_name_rsc
+   vrName = UrnGuard_name_rsc
+   vrIcon = UrnGuard_icon_rsc
+   vrDesc = UrnGuard_desc_rsc
+   vrDead_icon = UrnGuard_dead_icon_rsc
+   vrDead_name = UrnGuard_dead_name_rsc
+   
+   viCashmin = 40000
+   viCashmax = 50000
+   viTreasure_type = TID_TOUGH
+   viSpeed = SPEED_FAST
+   viAttack_type = ATCK_WEAP_THRUST
+   viAttributes = 0
+   viLevel = 350
+   viDifficulty = 10
+   viVisionDistance = 40
+   viKarma = -100
+   vbIsUndead = TRUE
+   viDefault_behavior = AI_FIGHT_HYPERAGGRESSIVE | AI_FIGHT_SWITCHALOT \
+                       | AI_FIGHT_WIZARD_KILLER
+
+   vrSound_miss = UrnGuard_sound_miss
+   vrSound_aware = UrnGuard_sound_aware
+   vrSound_death = UrnGuard_sound_death
+
+   UrnGuard_first_stage = \
+      "The Guardian slams his sword to the ground and summons forth some zombies!"
+   UrnGuard_second_stage = \
+      "The Guardian slams his sword to the ground and summons forth some tusked skeletons!"
+   UrnGuard_third_stage = \
+      "The Guardian slams his sword to the ground and summons forth some daemon skeletons!"
+   UrnGuard_fourth_stage = \
+      "The Guardian slams his sword to the ground and summons forth a dark angel!"
+
+properties:
+
+   piAnimation = ANIM_NONE
+   plAttackers = $
+
+   piReputationGroup = REP_UNDEAD
+
+
+   piBlindAttackChance = 15       % Chance to attack with blind
+   piBlindCounterChance = 7       % Chance to counter a spell or arrow with blind
+   piBlindDurationMin = 7000  % milliseconds
+   piBlindDurationMax = 15000  % milliseconds
+
+   % These are the booleans to determine whether a summoning stage
+   % has been completed in the new boss battle
+   pbFirstStage = FALSE
+   pbSecondStage = FALSE
+   pbThirdStage = FALSE
+   pbFourthStage = FALSE
+   
+   % List that holds any summoned monsters that exist
+   plCurrentSummons =$
+
+   % If we are in our invincible state (summoning) this will be true
+   pbInvincible = FALSE
+
+messages:
+
+   Constructed()
+   {
+      Send(self,@SetResistances);
+
+      plReputationEnemies = [REP_FAROL];
+
+      propagate;
+   }
+
+   SetResistances()
+   {
+      plResistances = [ [ATCK_WEAP_PIERCE, 70 ],
+                        [ATCK_WEAP_THRUST, 20 ],
+                        [-ATCK_SPELL_UNHOLY, 70 ],
+                        [-ATCK_SPELL_SHOCK, 70 ],
+                        [-ATCK_SPELL_COLD, 70 ],
+                        [-ATCK_SPELL_FIRE, -10 ],
+                        [-ATCK_SPELL_HOLY, -10 ],
+                        [ATCK_WEAP_BLUDGEON, -10 ]
+                      ];
+
+      return;
+   }
+
+
+   AssessDamage(what=$,damage=$,atype=0,aspell=0,bonus=0)
+   "This is called when something causes damage to us"
+   {
+      local cMonster, i, iHPLevel;
+
+      % We shouldn't keep taking damage if invincible
+      if pbInvincible
+      {
+         Send(self,@ClearBehavior);
+         piBehavior = AI_NPC;
+         Send(poOwner,@SomethingChanged,#what=self);
+      }
+
+      % We also determine whether we should raise minions here
+      iHPLevel = piHit_points*5 / piMax_hit_points;
+
+      if iHPLevel >= 4
+      {
+         % Do nothing
+      }
+      else
+      {
+         if iHPLevel = 3
+            AND NOT pbFirstStage
+         {
+            % Summon zombies
+            pbFirstStage = TRUE;
+            Send(poOwner,@SomeoneSaid,#what=self,#string=UrnGuard_first_stage,#type=SAY_MESSAGE);
+            cMonster = &Zombie;
+            Send(self,@MonsterSummonStage,#lTargets=plAttackers,#cMonster=cMonster);
+         }
+         else
+         {
+            if iHPLevel = 2
+               AND NOT pbSecondStage
+            {
+               % Summon tusked skeletons
+               pbSecondStage = TRUE;
+               Send(poOwner,@SomeoneSaid,#what=self,#string=UrnGuard_second_stage,#type=SAY_MESSAGE);
+               cMonster = &TuskedSkeleton;
+               Send(self,@MonsterSummonStage,#lTargets=plAttackers,#cMonster=cMonster);
+            }
+            else
+            {
+               if iHPLevel = 1
+                  AND NOT pbThirdStage
+               {
+                  % Summon daemon skeletons
+                  pbThirdStage = TRUE;
+                  Send(poOwner,@SomeoneSaid,#what=self,#string=UrnGuard_third_stage,#type=SAY_MESSAGE);
+                  cMonster = &DaemonSkeleton;
+                  Send(self,@MonsterSummonStage,#lTargets=plAttackers,#cMonster=cMonster);
+               }
+               else
+               {
+                  if iHPLevel = 0
+                     AND NOT pbFourthStage
+                  {
+                     % Summon a dark angel
+                     pbFourthStage = TRUE;
+                     Send(poOwner,@SomeoneSaid,#what=self,#string=UrnGuard_fourth_stage,#type=SAY_MESSAGE);
+                     Send(self,@FinalSummonStage,#oTarget=what);
+                  }
+               }
+            }
+         }
+      }
+
+      foreach i in plAttackers
+      {
+         if i = what
+         {
+            propagate;
+         }
+      }
+
+      if IsClass(what,&Player)
+      {
+         plAttackers = Cons(what,plAttackers);
+      }
+
+      propagate;
+   }
+
+   % Used for defense messages
+   GetParryAbility(stroke_obj=$)
+   {
+      if stroke_obj <> $ AND NOT Send(stroke_obj,@CanParry)
+      {
+         return 0;
+      }
+
+      return (viDifficulty*10)/2;
+   }
+
+   MonsterAttack(what = $)
+   {
+      Send(self,@DoSlash);
+
+      return;
+   }
+
+   DoSlash()
+   {
+      piAnimation = ANIM_ATTACK;
+      Send(poOwner,@SomethingChanged,#what=self);
+      piAnimation = ANIM_NONE;
+
+      return;
+   }
+
+   SendMoveAnimation()
+   {
+      if piColor_Translation <> 0
+      {
+         AddPacket(1,ANIMATE_TRANSLATION, 1,piColor_Translation);
+      }
+
+      AddPacket(1,ANIMATE_CYCLE, 4,100, 2,2, 2,7);
+
+      return;
+   }
+
+   SendAnimation()
+   {
+      if piColor_Translation <> 0
+      {
+         AddPacket(1,ANIMATE_TRANSLATION, 1,piColor_Translation);
+      }
+
+      if piAnimation = ANIM_ATTACK
+      {
+         AddPacket(1,ANIMATE_ONCE, 4,100, 2,8, 2,13, 2,1);
+      }
+      else
+      {
+         AddPacket(1,ANIMATE_NONE,2,1);
+      }
+
+      return;
+   }
+
+   CreateDeadBody(killer=$)
+   {
+      local oBody;
+
+      oBody = $;
+      if vrDead_icon <> $
+      {
+         oBody = Create(&DeadBody,
+                        #victim=self,
+                        #killer=killer,
+                        #drawfx=viDead_drawfx);
+      }
+
+      return oBody;
+   }
+
+end
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

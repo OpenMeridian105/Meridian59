@@ -396,8 +396,8 @@ HRESULT D3DRenderInit(HWND hWnd)
    /***************************************************************************/
    /*                       INITIAL RENDERSTATE                               */
    /***************************************************************************/
-   
-   // Keep AA disabled for now, until fixed
+
+   // Anti-aliasing
    if (config.aaMode > 0)
       hr = IDirect3DDevice9_SetRenderState(gpD3DDevice, D3DRS_MULTISAMPLEANTIALIAS, TRUE);
    else
@@ -1118,6 +1118,10 @@ void D3DRenderBegin(room_type *room, Draw3DParams *params)
 
       /******************** INVISIBLE OBJECTS *****************************/
 
+      // Turn AA off for invis effect.
+      if (config.aaMode > 0)
+         hr = IDirect3DDevice9_SetRenderState(gpD3DDevice, D3DRS_MULTISAMPLEANTIALIAS, FALSE);
+
       D3DRenderFramebufferTextureCreate(gpBackBufferTexFull, gpBackBufferTex[0], 256, 256);
 
       IDirect3DDevice9_SetTransform(gpD3DDevice, D3DTS_VIEW, &view);
@@ -1135,6 +1139,10 @@ void D3DRenderBegin(room_type *room, Draw3DParams *params)
       D3DCacheFill(&gObjectCacheSystem, &gObjectPool, 2);
       D3DCacheFlush(&gObjectCacheSystem, &gObjectPool, 2, D3DPT_TRIANGLESTRIP);
 
+      // Turn AA back on if needed.
+      if (config.aaMode > 0)
+         hr = IDirect3DDevice9_SetRenderState(gpD3DDevice, D3DRS_MULTISAMPLEANTIALIAS, TRUE);
+
       /********************** PLAYER-OVERLAYS ****************************/
 
       // get player node
@@ -1143,6 +1151,10 @@ void D3DRenderBegin(room_type *room, Draw3DParams *params)
       // player is invisible
       if (pRNode->obj.drawingtype == DRAWFX_INVISIBLE)
       {
+         // Turn AA off for invis overlays.
+         if (config.aaMode > 0)
+            hr = IDirect3DDevice9_SetRenderState(gpD3DDevice, D3DRS_MULTISAMPLEANTIALIAS, FALSE);
+
          IDirect3DDevice9_SetVertexShader(gpD3DDevice, NULL);
          IDirect3DDevice9_SetVertexDeclaration(gpD3DDevice, decl2dc);
 
@@ -1151,6 +1163,10 @@ void D3DRenderBegin(room_type *room, Draw3DParams *params)
          D3DRenderPlayerOverlaysDraw(&gObjectPool, room, params);
          D3DCacheFill(&gObjectCacheSystem, &gObjectPool, 2);
          D3DCacheFlush(&gObjectCacheSystem, &gObjectPool, 2, D3DPT_TRIANGLESTRIP);
+
+         // Turn AA back on if needed.
+         if (config.aaMode > 0)
+            hr = IDirect3DDevice9_SetRenderState(gpD3DDevice, D3DRS_MULTISAMPLEANTIALIAS, TRUE);
       }
       else
       {
@@ -1251,11 +1267,14 @@ void D3DRenderBegin(room_type *room, Draw3DParams *params)
    /***************************************************************************/
    /*                         EFFECTS: BLUR/WAVER                             */
    /***************************************************************************/
-   
+
    // test blur
    if (effects.blur || effects.waver)
-//   if (1)
    {
+      // Turn AA off for blur/waver effects.
+      if (config.aaMode > 0)
+         hr = IDirect3DDevice9_SetRenderState(gpD3DDevice, D3DRS_MULTISAMPLEANTIALIAS, FALSE);
+
       d3d_render_packet_new   *pPacket;
       d3d_render_chunk_new   *pChunk;
       int                  i, t;
@@ -1335,6 +1354,10 @@ void D3DRenderBegin(room_type *room, Draw3DParams *params)
       D3DCacheFlush(&gEffectCacheSystem, &gEffectPool, 1, D3DPT_TRIANGLESTRIP);
 
       IDirect3DDevice9_SetRenderState(gpD3DDevice, D3DRS_ZENABLE, TRUE);
+
+      // Turn AA back on if necessary.
+      if (config.aaMode > 0)
+         hr = IDirect3DDevice9_SetRenderState(gpD3DDevice, D3DRS_MULTISAMPLEANTIALIAS, TRUE);
    }
 
    /***************************************************************************/

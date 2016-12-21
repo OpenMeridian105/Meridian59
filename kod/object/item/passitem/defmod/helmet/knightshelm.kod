@@ -1,0 +1,142 @@
+// Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+// All rights reserved.
+//
+// This software is distributed under a license that is described in
+// the LICENSE file that accompanies it.
+//
+// Meridian is a registered trademark.
+
+
+///////////////////////////////////////////////////////////////////////////////
+KnightsHelm is Helmet
+
+constants:
+
+   include blakston.khd
+
+resources:
+
+   KnightsHelm_name_rsc = "knight's helm"
+   KnightsHelm_icon_male_rsc = khelm.bgf
+   KnightsHelm_icon_female_rsc = khelmb.bgf
+   KnightsHelm_desc_rsc = \
+      "Crafted from solid steel plates, this helm offers far more protection"
+      " than a padded helmet."
+
+classvars:
+
+   vrName = KnightsHelm_name_rsc
+   vrDesc = KnightsHelm_desc_rsc
+   vrIcon = KnightsHelm_icon_male_rsc
+
+   viHits_init_min = 250
+   viHits_init_max = 300
+
+   viValue_average = 100
+   viWeight = 70
+   viBulk = 30
+
+   viUse_type = ITEM_USE_HEAD
+   viUse_amount = 1
+   viSpell_modifier = -15
+
+   viGround_group = 3
+   viInventory_group = 2
+   viBroken_group = 4
+
+   viDefense_base = 50
+   viDamage_base = 3
+
+   vrMaleIcon = KnightsHelm_icon_male_rsc
+   vrFemaleIcon = KnightsHelm_icon_female_rsc
+
+properties:
+
+messages:
+
+   ReqUseSomething(what = $)
+   {
+      if IsClass(what,&DefenseModifier)
+         AND Send(what,@GetItemUseType) & ITEM_USE_HEAD
+      {
+         if Send(poOwner,@TryUnuseItem,#what=self)
+         {
+            propagate;
+         }
+         else
+         {
+            return FALSE;
+         }
+      }
+
+      propagate;
+   }
+
+   ReqUse()
+   {
+      local i;
+      
+      if IsClass(poOwner,&Player)
+      {
+         foreach i in Send(poOwner,@GetPlayerUsing)
+         {
+            if IsClass(i,&DefenseModifier)
+               AND Send(i,@GetItemUseType) & ITEM_USE_HEAD
+            {
+               Send(poOwner,@TryUnuseItem,#what=i);
+            }
+         }
+      }
+
+      propagate;
+   }
+
+   NewUsed()
+   {
+      Send(poOwner,@RemoveHair,#what=self);
+
+      propagate;
+   }
+
+   NewUnused()
+   {
+      Send(poOwner,@ResetHair,#what=self);
+
+      propagate;
+   }
+
+   GetNumberOverlays()
+   {
+      return 1;
+   }
+
+   GetOverlayHotspot(animation = $)
+   {
+      return HS_HELM;
+   }
+
+   SendOverlayAnimation(animation = $)
+   {
+      if (piItem_flags & ITEM_PALETTE_MASK) <> 0
+      {
+         AddPacket(1,ANIMATE_TRANSLATION, 1,piItem_flags & ITEM_PALETTE_MASK,
+                   1,ANIMATE_NONE, 2,1);
+      }
+      else
+      {
+         AddPacket(1,ANIMATE_TRANSLATION, 1,0, 1,ANIMATE_NONE, 2,1);
+      }
+
+      return;
+   }
+
+   GetResistanceModifiers()
+   {
+      return [ [ATCK_WEAP_SLASH,5],
+             [-ATCK_SPELL_FIRE,-10],
+             [-ATCK_SPELL_SHOCK,-10]
+             ];
+   }
+
+end
+///////////////////////////////////////////////////////////////////////////////

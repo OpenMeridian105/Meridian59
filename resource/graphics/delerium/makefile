@@ -11,7 +11,8 @@ OUTDIRSUB = ..\$(OUTDIR)
 BGFS = grd02703.bgf grd02704.bgf grd61017.bgf arrowqt.bgf
 
 DIRS = appletree arms eastereggs greybunny icenova jixatextures \
-       necroshield raza staticons kocatanroom spectate telofruit
+       necroshield raza staticons kocatanroom spectate telofruit \
+       valegraphics
        #flagpole
 
 all:

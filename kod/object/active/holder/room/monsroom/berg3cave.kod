@@ -1,0 +1,93 @@
+// Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+// All rights reserved.
+//
+// This software is distributed under a license that is described in
+// the LICENSE file that accompanies it.
+//
+// Meridian is a registered trademark.
+
+
+////////////////////////////////////////////////////////////////////////////////
+Berg3Cave is MonsterRoom
+
+constants:
+
+   include blakston.khd
+
+resources:
+
+   include berg3cave.lkod
+
+   room_berg3cave = berg3_cave.roo
+   room_name_berg3cave = "Hidden Cave of Berg"
+
+   berg3cave_music = orc1.ogg
+
+classvars:
+
+   vrName = room_name_berg3cave
+
+   viTeleport_row = 9
+   viTeleport_col = 20
+      
+   viWeatherZone = WEATHER_ZONE_BERG
+
+properties:
+
+   viTerrain_type = TERRAIN_CAVES
+
+   prRoom = room_berg3cave
+   piRoom_num = RID_BERG_3_CAVE
+   prMusic = berg3cave_music
+   
+   piBaseLight = LIGHT_MIN
+   piOutside_factor = 8
+
+   piDirectional_percent = DIRECTIONAL_PERCENT_OUTDOORS
+
+   pbSnowGroundTexture = TRUE
+
+   piGen_percent = 70
+
+   piInit_count_min = 2
+   piInit_count_max = 3
+
+   piMonster_count_max = 4
+
+messages:
+
+   CreateStandardExits()
+   {
+      plEdge_Exits = $;
+
+      plEdge_Exits = Cons([ LEAVE_SOUTH, RID_BERG_3, 3, 19, ROTATE_NONE ], plEdge_exits);  
+      plEdge_Exits = Cons([ LEAVE_WEST, RID_BERG_4, 27, 44, ROTATE_NONE ], plEdge_exits);
+      plEdge_Exits = Cons([ LEAVE_EAST, RID_BERG_6, 23, 2, ROTATE_NONE ], plEdge_exits);
+
+      propagate;
+   }
+
+   Constructed()
+   {
+      plMonsters = [ [&DuskRat, 100] ];
+
+      plGenerators = [ [12, 11], [10, 24], [6, 32], [19, 18] ];
+
+      propagate;
+   }
+   
+   CreateStandardObjects()
+   {
+
+      Send(self,@NewHold,#what=Create(&DynamicLight,#iColor=LIGHT_FIRE,#iIntensity=60),
+         #new_row=11,#new_col=2,#fine_row=36,#fine_col=0);
+      Send(self,@NewHold,#what=Create(&DynamicLight,#iColor=LIGHT_FIRE,#iIntensity=60),
+         #new_row=3,#new_col=38,#fine_row=12,#fine_col=0);
+      Send(self,@NewHold,#what=Create(&DynamicLight,#iColor=LIGHT_FIRE,#iIntensity=60),
+         #new_row=21,#new_col=15,#fine_row=56,#fine_col=44);
+
+      propagate;
+   }
+
+end
+////////////////////////////////////////////////////////////////////////////////

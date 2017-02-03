@@ -1,0 +1,116 @@
+// Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+// All rights reserved.
+//
+// This software is distributed under a license that is described in
+// the LICENSE file that accompanies it.
+//
+// Meridian is a registered trademark.
+
+
+////////////////////////////////////////////////////////////////////////////////
+Berg4 is MonsterRoom
+
+constants:
+
+   include blakston.khd
+
+resources:
+
+   include berg4.lkod
+
+   room_berg4 = berg4.roo
+   room_name_berg4 = "Outskirts of Berg"
+
+   berg4_music = walk4.ogg
+
+classvars:
+
+   vrName = room_name_berg4
+
+   viTeleport_row = 27
+   viTeleport_col = 29
+   
+   viFlag_row = 27
+   viFlag_col = 28
+      
+   viWeatherZone = WEATHER_ZONE_BERG
+
+properties:
+
+   viTerrain_type = TERRAIN_ROAD | TERRAIN_HILLS
+
+   prRoom = room_berg4
+   piRoom_num = RID_BERG_4
+   prMusic = berg4_music
+   
+   piBaseLight = LIGHT_NICE
+   piOutside_factor = 8
+
+   piDirectional_percent = DIRECTIONAL_PERCENT_OUTDOORS
+
+   pbSnowGroundTexture = TRUE
+
+   piGen_percent = 70
+
+   piInit_count_min = 4
+   piInit_count_max = 5
+
+   piMonster_count_max = 7
+   
+messages:
+
+   CreateStandardExits()
+   {
+      plEdge_Exits = $;
+
+      plEdge_Exits = Cons([ LEAVE_NORTH, RID_BERG_JALA, 23, 8, ROTATE_NONE, COL_IS_LESS_THAN,16 ], plEdge_exits);  
+      plEdge_Exits = Cons([ LEAVE_NORTH, RID_BERG_JALA, 23, 22, ROTATE_NONE, COL_IS_GREATER_THAN, 17 ], plEdge_exits);
+ 
+      plEdge_Exits = Cons([ LEAVE_EAST, RID_BERG_3_CAVE, 12, 2, ROTATE_NONE ], plEdge_exits);
+  
+      plEdge_Exits = Cons([ LEAVE_WEST, RID_BERG_MG, 2, 19, ROTATE_NONE ], plEdge_exits);  
+
+      propagate;
+   }
+   
+   Constructed()
+   {   plMonsters = [ [&Troll, 100] ];
+
+       plGenerators = [ [13, 4], [19, 19], [25, 26], [27, 41], [23, 11],
+                    [8, 21], [29, 30], [31, 13], [31, 23] ];
+
+       propagate;
+   }
+   
+   CreateStandardObjects()
+   {
+
+      // Trees
+      Send(self,@NewHold,#what=Create(&Tree),
+         #new_row=2,#new_col=25,#fine_row=48,#fine_col=32,#angle=ANGLE_EAST);
+      Send(self,@NewHold,#what=Create(&Tree),
+         #new_row=18,#new_col=16,#fine_row=16,#fine_col=32,#angle=ANGLE_EAST);
+      Send(self,@NewHold,#what=Create(&Tree),
+         #new_row=23,#new_col=27,#fine_row=32,#fine_col=32,#angle=ANGLE_EAST);
+      Send(self,@NewHold,#what=Create(&Tree),
+         #new_row=26,#new_col=34,#fine_row=32,#fine_col=32,#angle=ANGLE_EAST);
+      Send(self,@NewHold,#what=Create(&Tree),
+         #new_row=30,#new_col=30,#fine_row=32,#fine_col=32,#angle=ANGLE_EAST);
+
+      Send(self,@NewHold,#what=Create(&Tree), 
+         #new_row=29,#new_col=19,#fine_row=0,#fine_col=48,#angle=ANGLE_EAST);
+      Send(self,@NewHold,#what=Create(&Tree),
+         #new_row=30,#new_col=10,#fine_row=48,#fine_col=0,#angle=ANGLE_EAST);
+      Send(self,@NewHold,#what=Create(&Tree),
+         #new_row=23,#new_col=13,#fine_row=48,#fine_col=32,#angle=ANGLE_EAST);
+      Send(self,@NewHold,#what=Create(&Tree),
+         #new_row=23,#new_col=7,#fine_row=56,#fine_col=32,#angle=ANGLE_EAST);
+      Send(self,@NewHold,#what=Create(&Tree),
+         #new_row=18,#new_col=2,#fine_row=40,#fine_col=48,#angle=ANGLE_EAST);
+
+      propagate;
+   }
+   
+   
+end
+////////////////////////////////////////////////////////////////////////////////

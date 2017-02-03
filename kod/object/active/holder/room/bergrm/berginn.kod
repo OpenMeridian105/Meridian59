@@ -1,0 +1,132 @@
+// Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+// All rights reserved.
+//
+// This software is distributed under a license that is described in
+// the LICENSE file that accompanies it.
+//
+// Meridian is a registered trademark.
+
+
+////////////////////////////////////////////////////////////////////////////////
+BergInn is BergRoom
+
+constants:
+
+   include blakston.khd
+
+resources:
+
+   include berginn.lkod
+
+   room_berginn = berginn.roo
+   room_name_berginn = "The Inn of Berg"
+
+   berginn_music = bar2.ogg
+   
+   news_berg_inn = "General News"
+   news_berg_inn_desc = "Find out what's going on around Meridian."
+
+classvars:
+
+   vrName = room_name_berginn
+
+   viTeleport_row = 3
+   viTeleport_col = 3
+   
+properties:
+
+   viTerrain_Type = TERRAIN_CITY | TERRAIN_SHOP
+   viPermanent_flags = ROOM_NO_COMBAT | ROOM_SANCTUARY | ROOM_HOMETOWN | ROOM_SAFELOGOFF
+
+   prRoom = room_berginn
+   piRoom_num = RID_BERG_INN
+
+   piBaseLight = LIGHT_MIN
+   piOutside_factor = 3
+
+   prMusic = berginn_music
+   
+
+messages:
+
+   CreateStandardExits()
+   {
+      plExits = $;
+
+      /// TO TOWN
+      plExits = Cons([ 5, 14, RID_BERG_CITY, 10, 11, ROTATE_NONE ],plExits);
+      plExits = Cons([ 6, 14, RID_BERG_CITY, 10, 11, ROTATE_NONE ],plExits);
+      plExits = Cons([ 5, 15, RID_BERG_CITY, 10, 11, ROTATE_NONE ],plExits);
+      plExits = Cons([ 6, 15, RID_BERG_CITY, 10, 11, ROTATE_NONE ],plExits);
+      plExits = Cons([ 5, 13, RID_BERG_CITY, 10, 11, ROTATE_NONE ],plExits);
+      plExits = Cons([ 6, 13, RID_BERG_CITY, 10, 11, ROTATE_NONE ],plExits);
+
+      propagate;
+   }
+
+   CreateStandardObjects()
+   {
+
+      local oNews;
+
+      oNews = Create(&Newslink,#nid=NID_TOS_HALL,
+                        #name=news_berg_inn,#desc=news_berg_inn_desc);
+      Send(self,@NewHold,#what=oNews,#new_row=5,#new_col=1,
+            #fine_row=10,#fine_col=56);
+
+      oNews = Send(SYS,@FindNewsByNum,#num=NID_ADVENTURE);
+      if oNews = $
+      {
+         oNews = Create(&NewsAdventure,#nid=NID_ADVENTURE);
+      }
+  
+      // Decoration
+
+
+      Send(self,@NewHold,#what=Create(&Stool),
+            #new_row=5,#new_col=4,#fine_row=24,#fine_col=0);
+      Send(self,@NewHold,#what=Create(&Stool),
+            #new_row=5,#new_col=4,#fine_row=24,#fine_col=48);
+      Send(self,@NewHold,#what=Create(&Stool),
+            #new_row=5,#new_col=5,#fine_row=24,#fine_col=32);
+      Send(self,@NewHold,#what=Create(&Stool),
+            #new_row=5,#new_col=6,#fine_row=24,#fine_col=16);
+      Send(self,@NewHold,#what=Create(&Stool),
+            #new_row=5,#new_col=6,#fine_row=24,#fine_col=56);
+
+      Send(self,@NewHold,#what=Create(&DynamicLight,#iColor=LIGHT_FIRE,#iIntensity=50),
+         #new_row=3,#new_col=14,#fine_row=54,#fine_col=6);
+      Send(self,@NewHold,#what=Create(&DynamicLight,#iColor=LIGHT_FIRE,#iIntensity=50),
+         #new_row=6,#new_col=14,#fine_row=46,#fine_col=4);
+      Send(self,@NewHold,#what=Create(&DynamicLight,#iColor=LIGHT_FIRE,#iIntensity=50),
+         #new_row=1,#new_col=3,#fine_row=48,#fine_col=32);
+      Send(self,@NewHold,#what=Create(&DynamicLight,#iColor=LIGHT_FIRE,#iIntensity=50),
+         #new_row=2,#new_col=10,#fine_row=48,#fine_col=0);
+      Send(self,@NewHold,#what=Create(&DynamicLight,#iColor=LIGHT_FIRE,#iIntensity=50),
+         #new_row=7,#new_col=10,#fine_row=16,#fine_col=0);
+      Send(self,@NewHold,#what=Create(&DynamicLight,#iColor=LIGHT_FIRE,#iIntensity=50),
+         #new_row=7,#new_col=10,#fine_row=16,#fine_col=0);
+      Send(self,@NewHold,#what=Create(&DynamicLight,#iColor=LIGHT_FIRE,#iIntensity=80),
+         #new_row=6,#new_col=5,#fine_row=56,#fine_col=32);
+
+      Send(self,@NewHold,#what=Create(&OrnamentalObject,#type=OO_BARREL2),
+           #new_row=7,#new_col=4,#fine_row=48,#fine_col=40,#new_angle=ANGLE_EAST);
+      Send(self,@NewHold,#what=Create(&OrnamentalObject,#type=OO_BARREL2),
+           #new_row=7,#new_col=5,#fine_row=56,#fine_col=8,#new_angle=ANGLE_EAST);
+      Send(self,@NewHold,#what=Create(&OrnamentalObject,#type=OO_BARREL),
+           #new_row=3,#new_col=13,#fine_row=0,#fine_col=16,#new_angle=ANGLE_EAST);
+      Send(self,@NewHold,#what=Create(&OrnamentalObject,#type=OO_BARREL),
+           #new_row=3,#new_col=13,#fine_row=8,#fine_col=48,#new_angle=ANGLE_EAST);
+  
+      Send(self,@NewHold,#what=Create(&Table),
+           #new_row=2,#new_col=4,#fine_row=56,#fine_col=16,#angle=ANGLE_EAST); 
+      Send(self,@NewHold,#what=Create(&Table),
+           #new_row=3,#new_col=7,#fine_row=0,#fine_col=0,#angle=ANGLE_EAST);
+      Send(self,@NewHold,#what=Create(&Table),
+           #new_row=6,#new_col=13,#fine_row=48,#fine_col=00,#angle=ANGLE_EAST);
+   
+      propagate;
+   }
+
+end
+////////////////////////////////////////////////////////////////////////////////

@@ -20,7 +20,11 @@ BOFS =  badland1.bof a5.bof a6.bof c4.bof c6.bof castle1b.bof d4.bof d5.bof \
         marcryp1.bof marcryp2.bof marcry3a.bof castle2b.bof castle2c.bof \
         throne2.bof survivalroom.bof castle1d.bof tossecret.bof farolwest.bof \
         razaforest.bof oldtown.bof d6e6.bof d6e6ulake.bof necarea6.bof \
-        nechallway.bof ratcave1.bof ratcave2.bof ratcave3.bof
+        nechallway.bof ratcave1.bof ratcave2.bof ratcave3.bof bergmg.bof \
+        berg1.bof berg2.bof berg3.bof berg3cave.bof berg4.bof berg5.bof \
+        berg6.bof berg7.bof berg8.bof j3_1.bof j3_2.bof dvalley1.bof \
+        dvalley2.bof dvalley3.bof dvalley4.bof dvalley5.bof
+
 
 #       g7.bof h8.bof i2.bof i4.bof i5.bof \
 #       j4.bof j5.bof j6.bof j7.bof j8.bof j9.bof k3.bof \

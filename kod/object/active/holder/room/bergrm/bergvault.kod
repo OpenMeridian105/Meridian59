@@ -1,0 +1,86 @@
+// Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+// All rights reserved.
+//
+// This software is distributed under a license that is described in
+// the LICENSE file that accompanies it.
+//
+// Meridian is a registered trademark.
+
+
+////////////////////////////////////////////////////////////////////////////////
+BergVault is BergRoom
+
+constants:
+
+   include blakston.khd
+
+resources:
+
+   include bergvault.lkod
+
+   room_bergvault = bergvault.roo
+   room_name_bergvault = "The Vault of Berg"
+
+   bergvault_music = smithy.ogg
+
+classvars:
+
+   vrName = room_name_bergvault
+
+   viTeleport_row = 4
+   viTeleport_col = 6
+
+properties:
+
+   viPermanent_flags = ROOM_NO_COMBAT
+   viTerrain_Type = TERRAIN_CITY | TERRAIN_SHOP
+
+   prRoom = room_bergvault
+   piRoom_num = RID_BERG_VAULT
+
+   piBaseLight = LIGHT_NICE
+   piOutside_factor = 3
+
+   prMusic = bergvault_music
+
+messages:
+
+   CreateStandardExits()
+   {
+      plExits = $;
+
+      /// TO TOWN
+      plExits = Cons([ 1, 6, RID_BERG_CITY, 42, 70, ROTATE_NONE ],plExits);
+      plExits = Cons([ 2, 6, RID_BERG_CITY, 42, 70, ROTATE_NONE ],plExits);
+      plExits = Cons([ 1, 5, RID_BERG_CITY, 42, 70, ROTATE_NONE ],plExits);
+      plExits = Cons([ 2, 5, RID_BERG_CITY, 42, 70, ROTATE_NONE ],plExits);
+
+      propagate;
+   }
+
+   CreateStandardObjects()
+   {
+
+      // Decoration
+
+      Send(self,@NewHold,#what=Create(&Firepit,#iSoundRadius=5),
+            #new_row=3,#new_col=2,#fine_row=28,#fine_col=14);
+
+      Send(self,@NewHold,#what=Create(&Stool),
+            #new_row=5,#new_col=5,#fine_row=8,#fine_col=32);
+      Send(self,@NewHold,#what=Create(&Stool),
+            #new_row=5,#new_col=6,#fine_row=8,#fine_col=32);
+      Send(self,@NewHold,#what=Create(&Stool),
+            #new_row=5,#new_col=7,#fine_row=8,#fine_col=32);
+
+      Send(self,@NewHold,#what=Create(&QuillPen),
+           #new_row=5,#new_col=4,#fine_row=44,#fine_col=48);
+
+      Send(self,@NewHold,#what=Create(&Candelabra),
+            #new_row=5,#new_col=8,#fine_row=44,#fine_col=16);
+
+      propagate;
+   }
+
+end
+////////////////////////////////////////////////////////////////////////////////

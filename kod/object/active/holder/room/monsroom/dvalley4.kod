@@ -1,0 +1,147 @@
+// Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+// All rights reserved.
+//
+// This software is distributed under a license that is described in
+// the LICENSE file that accompanies it.
+//
+// Meridian is a registered trademark.
+
+
+////////////////////////////////////////////////////////////////////////////////
+DValley4 is MonsterRoom
+
+constants:
+
+   include blakston.khd
+
+resources:
+
+   include dvalley4.lkod
+
+   room_dvalley4 = dvalley4.roo
+   room_name_dvalley4 = "Death Valley"
+
+   dvalley4_music = castle.ogg
+   
+   dvalley4_heat_on = \
+      "Faren earth magic fills the room heating all armor to a molten state."
+
+classvars:
+
+   vrName = room_name_dvalley4
+
+   viTeleport_row = 16
+   viTeleport_col = 20
+   
+   viWeatherZone = WEATHER_ZONE_DVALLEY
+
+properties:
+
+   viTerrain_type = TERRAIN_ROAD | TERRAIN_HILLS
+
+   prRoom = room_dvalley4
+   piRoom_num = RID_DVALLEY_4
+   prMusic = dvalley4_music
+   
+   piBaseLight = LIGHT_NICE
+   piOutside_factor = 8
+
+   piDirectional_percent = DIRECTIONAL_PERCENT_OUTDOORS
+
+   pbSnowGroundTexture = TRUE
+
+   piGen_percent = 70
+
+   piInit_count_min = 2
+   piInit_count_max = 3
+
+   piMonster_count_max = 3
+
+messages:
+
+   CreateStandardExits()
+   {
+      plEdge_Exits = $;
+
+      plEdge_Exits = Cons([ LEAVE_SOUTH, RID_DVALLEY_3, 2, 13, ROTATE_NONE ], plEdge_exits);  
+      plEdge_Exits = Cons([ LEAVE_EAST, RID_DVALLEY_5, 11, 2, ROTATE_NONE ], plEdge_exits); 
+
+      propagate;
+   }
+   
+   Constructed()
+   {
+      plMonsters = [ [&Minotaur, 100] ];
+
+      plGenerators = [ [21, 12], [17, 22], [10, 21] ];
+
+      Post(self,@DoHeat);
+ 
+      propagate;
+   }
+   
+   DoHeat()
+   {
+      local oHeat;
+
+      if NOT Send(SYS,@IsPKAllowed)
+      {
+         return;
+      }
+
+      // Don't cast it if no users present.
+      if NOT pbUser_in_room
+      {
+         return;
+      }
+
+      oHeat = Send(SYS,@FindSpellByNum,#num=SID_HEAT);
+      
+      if Send(self,@IsEnchanted,#what=oHeat)
+      {
+         return;
+      }
+
+      // global effects of the enchantment
+      Send(self,@SomeoneSaid,#type=SAY_MESSAGE,#string=dvalley4_heat_on,#what=self);
+      Send(self,@RoomStartEnchantment,#what=oHeat,#state=[150,self]);
+
+      return;
+   }
+   
+      TryCreateMonster()
+   {
+      // When we try to create a monster, then make sure Heats is up.
+      Send(self,@DoHeat);
+
+      propagate;
+   }
+   
+   CreateStandardObjects()
+   {
+      Send(self,@NewHold,#what=Create(&Skull),
+           #new_row=20,#new_col=15,#fine_row=24,#fine_col=16,#angle=ANGLE_EAST);      
+      Send(self,@NewHold,#what=Create(&OrnamentalObject,#type=OO_HALFSKULL),
+           #new_row=20,#new_col=9,#fine_row=48,#fine_col=56,#angle=ANGLE_EAST);
+      Send(self,@NewHold,#what=Create(&Skull),
+           #new_row=16,#new_col=18,#fine_row=32,#fine_col=0,#angle=ANGLE_EAST);      
+      Send(self,@NewHold,#what=Create(&OrnamentalObject,#type=OO_HALFSKULL),
+           #new_row=6,#new_col=15,#fine_row=32,#fine_col=16,#angle=ANGLE_EAST);
+      Send(self,@NewHold,#what=Create(&Skull),
+           #new_row=13,#new_col=22,#fine_row=16,#fine_col=32,#angle=ANGLE_EAST);
+      Send(self,@NewHold,#what=Create(&OrnamentalObject,#type=OO_HALFSKULL),
+           #new_row=19,#new_col=29,#fine_row=48,#fine_col=48,#angle=ANGLE_EAST);
+   
+      Send(self,@NewHold,#what=Create(&OrnamentalObject,#type=OO_HALFSKULL),
+           #new_row=8,#new_col=22,#fine_row=32,#fine_col=32,#angle=ANGLE_EAST);
+
+      Send(self,@NewHold,#what=Create(&SmokeColumn),
+            #new_row=8,#new_col=13,#fine_row=38,#fine_col=35);
+      Send(self,@NewHold,#what=Create(&SmokeColumn),
+            #new_row=20,#new_col=9,#fine_row=33,#fine_col=1);
+
+      propagate;
+   }
+
+end
+////////////////////////////////////////////////////////////////////////////////

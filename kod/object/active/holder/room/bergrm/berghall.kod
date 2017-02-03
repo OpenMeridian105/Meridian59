@@ -1,0 +1,101 @@
+// Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+// All rights reserved.
+//
+// This software is distributed under a license that is described in
+// the LICENSE file that accompanies it.
+//
+// Meridian is a registered trademark.
+
+
+////////////////////////////////////////////////////////////////////////////////
+BergHall is BergRoom
+
+constants:
+
+   include blakston.khd
+
+resources:
+
+   include berghall.lkod
+
+   room_berghall = berghall.roo
+   room_name_berghall = "The Adventurer's Hall of Berg"
+
+   berghall_music = main.ogg
+   
+   news_berg_hall = "Designers' News"
+   news_berg_hall_desc = "Check here for information from the game administrators."
+
+classvars:
+
+   vrName = room_name_berghall
+
+   viTeleport_row = 3
+   viTeleport_col = 3
+   
+properties:
+
+   viTerrain_Type = TERRAIN_CITY | TERRAIN_SHOP
+   viPermanent_flags = ROOM_NO_COMBAT | ROOM_SANCTUARY | ROOM_HOMETOWN | ROOM_SAFELOGOFF
+
+   prRoom = room_berghall
+   piRoom_num = RID_BERG_HALL
+
+   piBaseLight = LIGHT_NICE
+   piOutside_factor = 3
+
+   prMusic = berghall_music
+   
+
+messages:
+
+   CreateStandardExits()
+   {
+      plExits = $;
+
+      /// TO TOWN
+      plExits = Cons([ 5, 4, RID_BERG_CITY, 29, 62, ROTATE_NONE ],plExits);
+      plExits = Cons([ 5, 5, RID_BERG_CITY, 29, 62, ROTATE_NONE ],plExits);
+      plExits = Cons([ 3, 8, RID_BERG_CITY, 26, 65, ROTATE_NONE ],plExits);
+      plExits = Cons([ 3, 7, RID_BERG_CITY, 26, 65, ROTATE_NONE ],plExits);
+
+      propagate;
+   }
+
+   CreateStandardObjects()
+   {
+
+      local oNews;
+
+      // Create god globe.
+      oNews = Create(&NewsLink,#nid=NID_ANNOUNCEMENTS,
+                        #name=news_berg_hall,#desc=news_berg_hall_desc);
+      Send(self,@NewHold,#what=oNews,#new_row=2,#new_col=6,
+            #fine_row=40,#fine_col=48);
+  
+      // Decoration
+
+
+      Send(self,@NewHold,#what=Create(&Stool),
+            #new_row=3,#new_col=2,#fine_row=24,#fine_col=16);
+      Send(self,@NewHold,#what=Create(&Stool),
+            #new_row=2,#new_col=3,#fine_row=40,#fine_col=32);
+
+      Send(self,@NewHold,#what=Create(&DynamicLight,#iColor=LIGHT_FIRE,#iIntensity=30),
+         #new_row=1,#new_col=2,#fine_row=40,#fine_col=32);
+      Send(self,@NewHold,#what=Create(&DynamicLight,#iColor=LIGHT_FIRE,#iIntensity=30),
+         #new_row=1,#new_col=5,#fine_row=40,#fine_col=24);
+
+      Send(self,@NewHold,#what=Create(&OrnamentalObject,#type=OO_BARREL),
+           #new_row=2,#new_col=7,#fine_row=8,#fine_col=40,#new_angle=ANGLE_EAST);
+      Send(self,@NewHold,#what=Create(&OrnamentalObject,#type=OO_BARREL),
+           #new_row=1,#new_col=8,#fine_row=48,#fine_col=24,#new_angle=ANGLE_EAST);
+   
+      Send(self,@NewHold,#what=Create(&Table),
+           #new_row=2,#new_col=2,#fine_row=40,#fine_col=40,#angle=ANGLE_EAST); 
+  
+      propagate;
+   }
+
+end
+////////////////////////////////////////////////////////////////////////////////

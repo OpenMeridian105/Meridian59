@@ -82,7 +82,7 @@ messages:
 
    CanPayCosts(who = $, lTargets = $, bItemCast = FALSE)
    {
-      local oTarget, i, lEnchantment, bHasEnchantment, oSpell;
+      local oTarget, i, lDebuffs, bHasDebuff;
 
       // If it's only self cast, spoof self as target for following code
       if NOT pbCan_Cast_on_others
@@ -109,27 +109,40 @@ messages:
          return FALSE;
       }
 
-      // The target must have an enchantment
-      lEnchantment = Send(oTarget,@GetEnchantmentList);
-      bHasEnchantment = IsClass(who,&DM);
-
-      if lEnchantment <> $
+      // The target must have a debuff.
+      bHasDebuff = FALSE;
+      lDebuffs = Send(oTarget,@GetEnchantmentList);
+      if lDebuffs <> $ 
       {
-         foreach i in lEnchantment
+         foreach i in lDebuffs
          {
-            oSpell = Nth(i,2);
-            if Send(oSpell,@IsPersonalEnchantment)
-               AND Send(oSpell,@CanBeRemovedByPlayer)
-               AND Send(oSpell,@IsHarmful)
+            if IsClass(Nth(i,2),&Debuff)
             {
-               bHasEnchantment = TRUE;
-
+               bHasDebuff = TRUE;
                break;
             }
          }
       }
 
-      if NOT bHasEnchantment
+      // Only checking over time effects if we have to.
+      if NOT bHasDebuff
+      {
+         lDebuffs = Send(oTarget,@GetOverTimeEffects);
+
+         if lDebuffs <> $
+         {
+            foreach i in lDebuffs
+            {
+               if IsClass(Nth(i,5),&Debuff)
+               {
+                  bHasDebuff = TRUE;
+                  break;
+               }
+            }
+         }
+      }
+
+      if NOT bHasDebuff
       {
          Send(who,@MsgSendUser,#message_rsc=purify_not_enchanted,
                #parm1=Send(oTarget,@GetDef),#parm2=Send(oTarget,@GetName));
@@ -162,6 +175,7 @@ messages:
       }
 
       oTarget = First(lTargets);
+
       if oTarget <> who
       {
          Send(who,@MsgSendUser,#message_rsc=spell_cast_on_target,
@@ -188,16 +202,16 @@ messages:
          }
       }
 
-      Send(self,@DoPurify,#who=oTarget,#iChance=iSpellPower);
+      Send(self,@DoPurify,#who=oTarget,#iSpellPower=iSpellPower);
 
       propagate;
    }
 
-   DoPurify(who=$, iChance=$)
+   DoPurify(who=$, iSpellPower=$)
    "Remove negative enchantments on who with a given chance to remove each one."
    {
-      local iNumEnchantments, lEnchantments, iModifiedChance, oEnchantment,
-            oSpell, lList, bRemovedSomething;
+      local iNumEnchantments, lDebuffs, iChance, oEffect,
+            lList, oSpell, bRemovedSomething;
 
       if who = $
       {
@@ -205,10 +219,11 @@ messages:
       }
 
       // Chance of $ means that we want to remove it all.
-      if iChance = $
+      if iSpellPower = $
       {
          Send(who,@RemoveAllPersonalEnchantments);
-         
+         Send(who,@DeleteOverTimeEffect,#clear=TRUE);
+
          return TRUE;
       }
 
@@ -216,42 +231,50 @@ messages:
 
       lList = Send(who,@GetEnchantmentList);
 
-      foreach oEnchantment in lList
+      if lList <> $
       {
-         oSpell = Nth(oEnchantment,2);
-
-         if Send(oSpell,@IsPersonalEnchantment)
-            AND Send(oSpell,@CanBeRemovedByPlayer)
-            AND Send(oSpell,@IsHarmful)
+         foreach oEffect in lList
          {
-            lEnchantments = Cons(oSpell,lEnchantments);
+            oSpell = Nth(oEffect,2);
+
+            if IsClass(oSpell,&Debuff)
+            {
+               lDebuffs = Cons(oSpell,lDebuffs);
+            }
          }
       }
 
-      iNumEnchantments = Length(lEnchantments);
+      lList = Send(who,@GetOverTimeEffects);
 
-      // Anti-clumpy code: If there is at least two enchantments in the room and the chance to
-      //  dispell is greater than 60//, then auto-remove one enchantment.
-      if iNumEnchantments >= MIN_ENCHANTMENTS_FOR_AUTOREMOVE
-         AND iChance >= MIN_CHANCE_FOR_AUTOREMOVE
+      if lList <> $
       {
-         oEnchantment = Nth(lEnchantments,Random(1,iNumEnchantments));
-         Send(who,@RemoveEnchantment,#what=oEnchantment);
-         lEnchantments = DelListElem(lEnchantments,oEnchantment);
-         iNumEnchantments = iNumEnchantments - 1;
-         bRemovedSomething = TRUE;
+         foreach oEffect in lList
+         {
+            oSpell = Nth(oEffect,5);
+
+            if IsClass(oSpell,&Debuff)
+            {
+               lDebuffs = Cons(oSpell,lDebuffs);
+            }
+         }
       }
 
-      foreach oEnchantment in lEnchantments
-      {
-         iModifiedChance = iChance;
+      iChance = Length(lDebuffs) * 20 + iSpellPower;
 
-         if iChance = $ OR iModifiedChance > Random(1,100)
+      foreach oSpell in lDebuffs
+      {
+         if iChance > Random(1,100) AND NOT IsClass(oSpell,&Poison)
          {
-            Send(who,@RemoveEnchantment,#what=oEnchantment);
+            Send(who,@RemoveEnchantment,#what=oSpell);
+            Send(who,@DeleteOverTimeEffect,#what=oSpell,#removal=1);
             bRemovedSomething = TRUE;
          }
+
+         iChance -= (125 - iSpellPower);
       }
+
+      oSpell = Send(SYS,@FindSpellByNum,#num=SID_CURE_POISON);
+      Send(oSpell,@DoCurePoison,#who=who,#iSpellPower=bound(iChance,0,99));
 
       return bRemovedSomething;
    }

@@ -50,8 +50,8 @@ classvars:
    viMana = 8
    viSpellExertion = 1
 
-   viManaDrain = 1       // Drain is amount used every so often
-   
+   viManaDrain = 1000            // Mana drained per second (10^3)
+
    viChance_To_Increase = 20
    viMeditate_ratio = 20
    vrSucceed_wav = Eavesdrop_sound
@@ -93,21 +93,9 @@ messages:
 
    StartPeriodicEnchantment(who=$,state=$,iSpellPower=0)
    {
-      // If caster runs out of mana or loses trance, spell ends.
-      if Send(who,@GetMana) < viManaDrain * 2
-      {
-         Send(who,@StartEnchantment,#what=self,#time=First(state),
-               #state=state,#addicon=FALSE,#lastcall=TRUE,
-               #iSpellPower=iSpellPower);
-      }
-      else
-      {
-         Send(who,@StartEnchantment,#what=self,#time=First(state),
-               #state=state,#addicon=FALSE,#lastcall=TRUE,
-               #iSpellPower=iSpellPower);
-      }
-
-      Send(who,@LoseMana,#amount=viManaDrain);
+      Send(who,@StartEnchantment,#what=self,#time=First(state),
+            #state=state,#addicon=FALSE,#lastcall=FALSE,
+            #iSpellPower=iSpellPower);
 
       return;
    }
@@ -115,19 +103,6 @@ messages:
    EndEnchantment(who=$,state=0)
    {
       Send(Nth(state,2),@Delete);
-
-      propagate;
-   }
-
-   BreakTrance(who=$,state=$,event=$,what=$)
-   {
-      if event = EVENT_CAST AND what = self
-      {
-         propagate;
-      }
-
-      Send(Nth(state,2),@Delete);
-      Send(who,@RemoveEnchantment,#what=self,#state=state);
 
       propagate;
    }

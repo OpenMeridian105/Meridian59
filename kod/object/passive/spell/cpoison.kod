@@ -68,7 +68,7 @@ messages:
 
    CanPayCosts(who = $, lTargets = $)
    {
-      local oTarget, i, oPoison;
+      local oTarget;
 
       // Can cast spell if the 1 target item is a user.
       if Length(lTargets) <> 1
@@ -86,8 +86,7 @@ messages:
       }
 
       // Make sure target is indeed poisoned.
-      oPoison = Send(SYS,@FindSpellByNum,#num=SID_POISON);
-      if NOT Send(oTarget,@IsEnchanted,#what=oPoison)
+      if NOT Send(oTarget,@HasOverTimeEffect,#num=SID_POISON)
       {
          if IsClass(who,&User)
          {
@@ -103,56 +102,54 @@ messages:
 
    CastSpell(who = $, lTargets = $, iSpellpower = $)
    {
-      local oTarget, oPoison, lPEnchant, iRandom, iLossRate, iLossRateAfter,
-            iDuration;
+      local i, iState, iNewState, oTarget, iStrength;
 
       oTarget = First(lTargets);
 
-      // Make sure target is indeed poisoned.
-      oPoison = Send(SYS,@FindSpellByNum,#num=SID_POISON);
-      if NOT Send(oTarget,@IsEnchanted,#what=oPoison)
-      {
-         return;
-      }
+      Send(who,@MsgSendUser,#message_rsc=spell_cast_on_target,
+           #parm1=Send(self,@GetName),#parm2=Send(oTarget,@GetDef),
+           #parm3=Send(oTarget,@GetName));
 
       Send(oTarget,@MsgSendUser,#message_rsc=curepoison_on);
-      Send(who,@MsgSendUser,#message_rsc=spell_cast_on_target,
-            #parm1=Send(self,@GetName),#parm2=Send(oTarget,@GetDef),
-            #parm3=Send(oTarget,@GetName));
 
-      // Take the first item, could return a list of poison enchantments.
-      // Format of individual enchantment info: [ timer, spell object, state ]
-      lPEnchant = First(Send(oTarget,@GetEnchantmentsByClass,#enchClass=&Poison));
-
-      iLossRate = Nth(lPEnchant,3);
-      iLossRateAfter = iLossrate - ((iLossRate * iSpellpower) / 100);
-
-      iRandom = Random(1,100);
-
-      // It has an iSpellPower percent chance to be removed
-      // Also removed if the loss rate is already really low
-      // Also removed if the remaining lossrate is really low
-      if iRandom < iSpellpower
-         OR iLossRate <= 100
-         OR iLossRateAfter < iLossRate/10
-         OR iLossRateAfter < 100
-      {
-         Send(oTarget,@RemoveEnchantment,#what=oPoison);
-      }
-      else
-      {
-         // Remove the old enchantment and put a new one on with the new strength.
-         iDuration = GetTimeRemaining(First(lPEnchant));
-         Send(oTarget,@RemoveEnchantment,#what=oPoison,#Report=FALSE);
-         Send(otarget,@StartEnchantment,#what=oPoison,#state=iLossRateAfter,
-               #time=iDuration,#report=FALSE);
-
-         //Tell the player we've added back only part of the poison.
-         Send(oTarget,@AddPoison,#strength=iLossRateAfter,#bVigorLoss=FALSE);
-         Send(oTarget,@MsgSendUser,#message_rsc=curepoison_abates);
-      }
+      Send(self,@DoCurePoison,#who=oTarget,#iSpellPower=iSpellpower);
 
       propagate;
+   }
+
+   DoCurePoison(who=$,iSpellPower=0)
+   {
+      local i, iState, iNewState, iStrength;
+
+      foreach i in Send(who,@GetOverTimeEffects)
+      {
+         if IsClass(Nth(i,5),&Poison) AND iSpellPower > 0
+         {
+            iState = Nth(i,4);
+            iNewState = iState - iSpellPower;
+            if iNewState < 0
+            {
+               iSpellPower = -iNewState;
+               iNewState = 0;
+            }
+            else
+            {
+               iSpellPower = 0;
+            }
+
+            iStrength = Nth(i,3)*iNewState/iState;
+
+            Send(who,@SetOverTimeEffect,#effect=i,#strength=iStrength,#state=iNewState);
+
+            // If there is some poison left and it's legit, report it.
+            if iStrength <> 0 AND Nth(i,7) = 1
+            {
+               send(who,@MsgSendUser,#message_rsc=curepoison_abates);
+            }
+         }
+      }
+
+      return;
    }
 
    GetPotionClass()

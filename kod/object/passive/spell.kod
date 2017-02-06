@@ -145,6 +145,12 @@ resources:
    cannot_cast_on_phased_out = \
       "You can't cast anything on %s while %s is phased out of existence!"
 
+   over_time_effect_wearing_off = \
+      "The sudden feeling passes."
+
+   over_time_effect_starting = \
+      "Suddenly, you feel a little different."
+
 classvars:
 
    vrName = spell_name_rsc
@@ -164,6 +170,10 @@ classvars:
    viSpell_level = 1
 
    viMana = 1
+   // Amount drained every second in 10^(-3) mana.
+   viManaDrain = 0
+
+   viTickDuration = 1000
 
    viChance_To_Increase = 20
 
@@ -1433,6 +1443,13 @@ messages:
    {
       local oTarget, oRoom;
 
+      // Add a mana drain if applicable.
+      if IsClass(who,&Battler) AND viManaDrain > 0
+      {
+         Send(who,@StartOverTimeEffect,#strength=-viManaDrain,
+            #what=self,#who=who,#removable=2,#showicon=FALSE,#type=1);
+      }
+
       if IsClass(who,&DM)
       {
          ClearTempString();
@@ -2143,9 +2160,121 @@ messages:
       return;
    }
 
-   BreakTrance()
+   BreakTrance(who=$,state=$,event=$,what=$,location=$)
    {
+      local oRoom, bRecheck;
+
+      if event = EVENT_OOM AND viManaDrain = 0
+      {
+         return FALSE;
+      }
+
+      if viManaDrain > 0
+      {
+         // Stop drain effect!
+         Send(who,@DeleteOverTimeEffect,#what=self,#who=who,#removal=2);
+      }
+
+      if IsClass(self,&Silence)
+      {
+         if event = EVENT_ATTACK
+         {
+            return FALSE;
+         }
+
+         if location = $
+         {
+            oRoom = Send(who,@GetOwner);
+         }
+         else
+         {
+            oRoom = location;
+         }
+
+         Send(oRoom,@RemoveEnchantment,#what=self);
+
+         return TRUE;
+      }
+
+      if IsClass(self,&RadiusEnchantment)
+      {
+         // The spell keeps going if you get damaged, move, cast, use an item,
+         // or make an attack. Players must rest to end most radius spells.
+         if event = EVENT_DAMAGE
+            OR event = EVENT_ATTACK
+            OR event = EVENT_RUN
+            OR event = EVENT_DISRUPT
+            OR event = EVENT_CAST
+            OR event = EVENT_USE
+         {
+            return FALSE;
+         }
+
+         oRoom = Send(who,@GetOwner);
+
+         // Only cancel a maintained RE if it is offensive & caster is
+         // entering a non-combat room.
+         if (event = EVENT_NEWOWNER OR event = EVENT_REQNEWOWNER)
+         {
+            if oRoom <> $
+               AND NOT (viHarmful AND Send(oRoom,@CheckRoomFlag,#flag=ROOM_NO_COMBAT))
+            {
+               return FALSE;
+            }
+         }
+
+         bRecheck = (event = EVENT_REST);
+
+         Send(who,@RemoveRadiusEnchantment,#what=self,#state=state,#recheck=bRecheck);
+
+         return TRUE;
+      }
+
+      if IsClass(self,&Fade)
+      {
+         Send(who,@ClearTranceFlag);
+         Send(who,@MsgSendUser,#message_rsc=fade_broke_trance);
+         Send(who,@RemoveEnchantment,#what=self,#state=state);
+      }
+
+      if IsClass(self,&ManaFocus)
+      {
+         if event = EVENT_CAST AND IsClass(what,&AttackSpell)
+         {
+            return FALSE;
+         }
+
+         Send(who,@RemoveEnchantment,#what=self,#state=state);
+      }
+
+      if IsClass(self,&MultiCastSpell)
+      {
+         if NOT IsClass(First(state),&Prism)
+         {
+            return FALSE;
+         }
+
+         Send(First(state),@CasterBrokeTrance,#who=who);
+         Send(who,@RemoveEnchantment,#what=self,#state=state);
+      }
+
+      if IsClass(self,&Eavesdrop)
+      {
+         if event = EVENT_CAST AND what = self
+         {
+            return TRUE;
+         }
+
+         Send(Nth(state,2),@Delete);
+         Send(who,@RemoveEnchantment,#what=self,#state=state);
+      }
+
       return TRUE;
+   }
+
+   GetManaDrain()
+   {
+      return viManaDrain;
    }
 
    // Called when enchantment did not go full term
@@ -2632,6 +2761,18 @@ messages:
    IsAffectedByRadiusEnchantment()
    {
       return FALSE;
+   }
+
+   OverTimeEffectWearingOff(who=$,overtimeeffect=$,report=TRUE)
+   "Just a dummy catching over time effects without message."
+   {
+      return;
+   }
+
+   OverTimeEffectStarting(who=$,overtimeeffect=$,report=TRUE)
+   "Just a dummy catching over time effects without message."
+   {
+      return;
    }
 
 end

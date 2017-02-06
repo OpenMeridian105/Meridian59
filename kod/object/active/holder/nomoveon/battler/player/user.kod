@@ -56,10 +56,6 @@ constants:
    // How many packets incoming per second do we allow?
    INCOMING_PACKET_THROTTLE = 25
 
-   // What's the lower threshold for being able to run?  Below this, we can't
-   //  run.
-   VIGOR_RUN_THRESHOLD = 10
-
    // Speedhack/cheating detection:
    // What's the maximum number of times we should log a violation?
    MAX_LOGGED_THRESHOLD = 50
@@ -551,6 +547,9 @@ properties:
    // keep track of how much this player triggers flood protection
    piFloodCount = 0
 
+   // Checks for actual changes before drawing. Removes flicker.
+   plDraw = $
+
 messages:
 
    Constructor(name = $,icon = $)
@@ -805,6 +804,10 @@ messages:
       pbLogged_on = TRUE;
 
       piLastLoginTime = GetTime();
+
+      // Reset draw list to make sure we load our vitals.
+      plDraw = [-1,-1,-1];
+
       // Gotta load interface early!
       Send(self,@UserLoadModule,#module=user_interface_module);
 
@@ -8648,13 +8651,14 @@ messages:
 
    DrawHealth()
    {
-      if pbLogged_on
+      if pbLogged_on AND First(plDraw) - piHealth
       {
          AddPacket(1,BP_STAT,1,1);
          Send(self,@SendStatHealth);
          SendPacket(poSession);
+         SetFirst(plDraw,piHealth);
       }
-      
+
       return;
    }
 
@@ -8668,11 +8672,12 @@ messages:
 
    DrawMana()
    {
-      if pbLogged_on
+      if pbLogged_on AND Nth(plDraw,2) - piMana
       {
          AddPacket(1,BP_STAT,1,1);
          Send(self,@SendStatMana);
          SendPacket(poSession);
+         SetNth(plDraw,2,piMana);
       }
 
       return;
@@ -8682,6 +8687,28 @@ messages:
    {
       AddPacket(1,2, 4,user_stat_mana, 1,STAT_VALUE, 1,STAT_INTEGER,
                 4,piMana, 4,0, 4,100, 4,piMax_mana);
+
+      return;
+   }
+
+   DrawVigor()
+   {
+      if pbLogged_on AND Nth(plDraw,3) - piVigor
+      {
+         AddPacket(1,BP_STAT, 1,1);
+         Send(self,@SendStatVigor);
+         SendPacket(poSession);
+         SetNth(plDraw,3,piVigor);
+      }
+
+      return;
+   }
+
+   SendStatVigor()
+   {
+      AddPacket(1,3,4,user_stat_vigor,1,STAT_VALUE,1,STAT_INTEGER,
+         4,Send(self,@GetVigor),4,0,4,200,4,Send(self,@GetVigorRestThreshold,
+         #base=FALSE)/10000);
 
       return;
    }
@@ -9235,26 +9262,6 @@ messages:
 
       AddPacket(1,27, 4,user_stat_unbound_energy, 1,STAT_VALUE, 1,STAT_INTEGER,
                 4,iPoints, 4,0, 4,Send(SETTINGS_OBJECT,@GetUnboundMax), 4,iPoints);
-
-      return;
-   }
-
-   DrawVigor()
-   {
-      if pbLogged_on
-      {
-         AddPacket(1,BP_STAT, 1,1);
-         Send(self,@SendStatVigor);
-         SendPacket(poSession);
-      }
-
-      return;
-   }
-
-   SendStatVigor()
-   {
-      AddPacket(1,3, 4,user_stat_vigor, 1,STAT_VALUE, 1,STAT_INTEGER,
-                4,piVigor, 4,0, 4,200, 4,piVigor_rest_threshold);
 
       return;
    }

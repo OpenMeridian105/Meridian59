@@ -14,6 +14,11 @@ constants:
 
    include blakston.khd
 
+   POISON_CHANCE = 18
+   POISON_DURATION = 180000   //// in milliseconds
+   POISON_HEALTHLOSS = 350    //// in health points * 10^-3 / second
+   POISON_VIGORLOSS = 1000    //// in vigor points * 10^-0 / second
+
 resources:
 
    include scorpion.lkod
@@ -65,10 +70,6 @@ classvars:
 
 properties:
 
-   piPoison_Chance = 18
-   piPoison_Duration = 180000
-   piPoison_Loss_Rate = 3500
-   
    piAnimation = ANIM_NONE
 
 messages:
@@ -114,11 +115,11 @@ messages:
    {
       local oSpell;
 
-      if Random(1,piPoison_Chance) = 1
+      if Random(1,POISON_CHANCE) = 1
       {
          oSpell = Send(SYS,@FindSpellByNum,#num=SID_POISON);
-         Send(oSpell,@MakePoisoned,#who=what,
-               #lossrate=piPoison_Loss_Rate,#duration=piPoison_Duration);
+         Send(oSpell,@MakePoisoned,#source=self,#who=what,
+               #healthloss=POISON_HEALTHLOSS,#vigorloss=POISON_VIGORLOSS,#duration=POISON_DURATION);
 
          if who <> $
          {

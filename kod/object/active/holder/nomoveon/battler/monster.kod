@@ -105,6 +105,7 @@ resources:
    Lm_third_damage_level = "~B~r%s%s is seriously wounded."
    Lm_fourth_damage_level = "~B~r%s%s is weak, and near death."
    Lm_party_killed_monster = "~B%s%s has valiantly slain %s%s!"
+   Lm_party_monster_died_to_dot = "%s%s has succumbed to %s injuries!"
 
    Lm_monster_healing = \
       "%s%s falls back to recover for a moment, then returns to the fight."
@@ -317,6 +318,7 @@ classvars:
    vrThird_damage_level = Lm_third_damage_level
    vrFourth_damage_level = Lm_fourth_damage_level
    vrParty_killed_monster = Lm_party_killed_monster
+   vrParty_monster_died_to_dot = Lm_party_monster_died_to_dot
 
    vrTeach_message = monster_iteach
    vrTeach_nothing = monster_teachnothing
@@ -360,12 +362,6 @@ properties:
    ptRandom = $
    ptSpasm = $
 
-   // IMPORTANT NOTE: For higher accuracy, a battler's current health 
-   //(and only current health) is inflated by a factor of 100. Doing so 
-   // avoids truncation errors but is not revealed to users in any way.
-   piHit_points = 1
-   piMax_hit_points = 1
-
    // Who we are dealing with.
    poCustomer = $
 
@@ -402,9 +398,11 @@ properties:
    // Timer to expire turning.
    ptUnturn = $
    piHatred = 0
-   // Emulates agility and aim for monsters based on difficulty.
+   // Emulates combat stats for monsters based on difficulty.
    piAgility = 25
    piAim = 25
+   piMight = 25
+   piStamina = 25
 
    piEnch_flags = 0
 
@@ -474,11 +472,11 @@ messages:
    Constructor(template=FALSE, color=0, piSurvivalLevel=0, iBrain = 0)
    "Simple enough, we create a monster. If they are questworthy, we note it."
    {
-      local iStatPoints, iMin, iMax;
+      local iStatPoints, iRandom, iTotal, iDiff, lTemp, lStats, i;
 
-      piMax_Hit_points = Send(Self,@Fuzzy,#num=Send(self,@GetMaxHitPoints))
+      piMax_Health = Send(Self,@Fuzzy,#num=Send(self,@GetMaxHitPoints))
                          + piSurvivalLevel*viDifficulty;
-      piHit_points = piMax_hit_points*100;
+      piHealth = piMax_Health*100;
       piMana = piMax_mana;
       piAttackRange = viAttackRange;
       piSpellChance = viSpellChance;
@@ -529,28 +527,71 @@ messages:
 
       piMood = 0;
 
-      iStatPoints = Bound((viDifficulty + 1) * 10,20,100);
+      // Creating random stats. Currently 4 stats, if you want to add more,
+      // change i to a different number and assign accordingly below.
+      lStats = $;
+      lTemp = $;
+      i = 4;
+      iStatPoints = Bound(viDifficulty + 1,1,10) * 5 * i;
+      iTotal = 0;
+      iDiff = 0;
 
-      if iStatPoints - 1 > 50
+      // Create a stat list with random entries between 1 and 50
+      while i > 0
       {
-         iMax = 50;
-      }
-      else
-      {
-         iMax = iStatpoints - 1;
-      }
-
-      if iStatPoints - 50 < 1
-      {
-         iMin = 1;
-      }
-      else
-      {
-         iMin = iStatpoints - 50;
+         iRandom = Random(1,50);
+         lStats = Cons(iRandom,lStats);
+         iTotal += iRandom;
+         i -= 1;
       }
 
-      piAgility = Random(iMin,iMax);
-      piAim = iStatPoints - piAgility;
+      // Scale stats so they approach the desired stat total.
+      // Crop stats that exceed 50 points. Sum up extra points.
+      foreach i in lStats
+      {
+         i = i * iStatPoints / iTotal;
+         if i > 50
+         {
+            iDiff += i-50;
+            i = 50;
+         }
+
+         lTemp = Cons(i,lTemp);
+      }
+
+      lStats = $;
+
+      // Distribute leftover points across needy stats.
+      foreach i in lTemp
+      {
+         if i < 50
+         {
+            i += iDiff;
+            iDiff = bound(i - 50,0,$);
+            if iDiff > 0
+            {
+               i = 50;
+            }
+         }
+
+         lStats = Cons(i,lStats);
+      }
+
+      lTemp = $;
+
+      // Below: Assign values to stats with a lil shake up.
+      while Length(lStats) > 0
+      {
+         iRandom = Random(1,Length(lStats));
+         lTemp = Cons(Nth(lStats,iRandom),lTemp);
+         lStats = DelListElem(lStats,Nth(lStats,iRandom));
+      }
+
+      piAgility = Nth(lTemp,1);
+      piAim = Nth(lTemp,2);
+      piMight = Nth(lTemp,3);
+      piStamina = Nth(lTemp,4);
+
 
       if piSurvivalLevel > 0
       {
@@ -565,6 +606,11 @@ messages:
       {
          piColor_translation = color;
       }
+
+      // Start timers...
+      Send(self,@NewHealth);
+      Send(self,@NewMana);
+      Send(self,@NewVigor);
 
       propagate;
    }
@@ -746,12 +792,6 @@ messages:
                  }
              }
          }
-      }
-
-      if ptMana <> $
-      {
-         DeleteTimer(ptMana);
-         ptMana = $;
       }
 
       plSpellBook = $;
@@ -1508,9 +1548,12 @@ messages:
          piState = piState & ESTATE_CCLK_MASK;
       }
 
-      // Carry out attack
-      Send(self,@TryAttack,#what=poTarget,#stroke_obj=self);
-      
+      // Carry out attack if we have the vigor for it.
+      if Send(self,@AddExertion,#amount = 5000,#Check = TRUE)
+      {
+         Send(self,@TryAttack,#what=poTarget,#stroke_obj=self);
+      }
+
       // Sanity check, in rare occurrences mob dies before this can execute 
       if poBrain <> $
       {
@@ -1519,7 +1562,7 @@ messages:
 
       return;
    }
- 
+
    ChaseTimer( timer = $ )
    "We're in Hot pursuit, so either we keep chasing, or we attack."
    "Note that even if we can't move, we can be 'chasing'...."
@@ -1562,12 +1605,6 @@ messages:
          return;
       }
 
-      // Perhaps we heal this chase moment.
-      if piHit_points < piMax_hit_points*100 AND Random(0,18) < 2
-      {
-         Send(self,@HealHitPoint);
-      }
-      
       bCast = FALSE;
       if Send(self,@MonsterCanCastSpell)
       {
@@ -1611,12 +1648,6 @@ messages:
          Send(self,@EnterStateLimbo);
 
          return;
-      }
-
-      // Perhaps we heal this movement tick.
-      if piHit_points < piMax_hit_points*100 AND Random(1,8) = 1
-      {
-         Send(self,@HealHitPoint);
       }
 
       // Okay, ask our brain how to move
@@ -1712,6 +1743,11 @@ messages:
       return piBehavior;
    }
 
+   GetAim()
+   {
+      return piAim;
+   }
+
    AddMonsterAim(points=0)
    {
       local iOrigAim;
@@ -1723,6 +1759,11 @@ messages:
       return piAim - iOrigAim;
    }
 
+   GetAgility()
+   {
+      return piAgility;
+   }
+
    AddMonsterAgility(points=0)
    {
       local iOrigAgil;
@@ -1732,6 +1773,38 @@ messages:
       piAgility = Bound(piAgility,1,50);
 
       return piAgility - iOrigAgil;
+   }
+
+   GetMight()
+   {
+      return piMight;
+   }
+
+   AddMonsterMight(points=0)
+   {
+      local iOrigMight;
+
+      iOrigMight = piMight;
+      piMight = piMight + points;
+      piMight = Bound(piMight,1,50);
+
+      return piMight - iOrigMight;
+   }
+
+   GetStamina()
+   {
+      return piStamina;
+   }
+
+   AddMonsterStamina(points=0)
+   {
+      local iOrigStamina;
+
+      iOrigStamina = piStamina;
+      piStamina = piStamina + points;
+      piStamina = Bound(piStamina,1,50);
+
+      return piStamina - iOrigStamina;
    }
 
    StartPalsy()
@@ -1821,7 +1894,7 @@ messages:
 
       // The bigger/tougher I am, the less likely I'm interested in milling
       //  around.
-      if Random(1,140) < piHit_points/100
+      if Random(1,140) < piHealth/100
          AND NOT override
       {
          return;
@@ -1901,7 +1974,7 @@ messages:
                Send(poOwner,@SomethingMoved,#what=self,
                      #new_row=iNew_row,#new_col=iNew_col,
                      #fine_row=iNew_finerow,#fine_col=iNew_finecol,
-                     #speed=(0x80|viSpeed),#non_monsters_only=TRUE);
+                     #speed=(0x80|Send(self,@GetSpeed)),#non_monsters_only=TRUE);
             }
          }
       }
@@ -2218,7 +2291,10 @@ messages:
       {
          iDamage = iDamage * 3 / 4 ;
       }
-      
+
+      // Scale damage with monster might.
+      iDamage = iDamage * (50+piMight)/75;
+
       return Bound(iDamage,0,$);
    }
 
@@ -2285,7 +2361,7 @@ messages:
       }
 
       // Set a predamage mark... we'll compare to it to see if threshold crossed.
-      iPercentClass = piHit_points/(piMax_hit_points*20);
+      iPercentClass = piHealth/(piMax_Health*20);
 
       // Make sure we don't deal negative damage.
       iDamage = Bound(iDamage,0,$);
@@ -2297,14 +2373,14 @@ messages:
          piHatred = piHatred + 1;
       }
 
-      piHit_points = piHit_points - iDamage;
-      
+      piHealth = piHealth - iDamage;
+
       if poOwner = $
       {
          return 0;
       }
       
-      if piHit_points <= 0 
+      if piHealth <= 0 
       {
          foreach i in Send(poOwner,@GetHolderActive)
          {
@@ -2323,8 +2399,10 @@ messages:
          return $;
       }
 
+      Send(self,@NewHealth);
+
       // Check to see if we crossed a threshold due to the damage.
-      if iPercentClass <> (piHit_points / (piMax_hit_points * 20))
+      if iPercentClass <> (piHealth / (piMax_Health * 20))
       {
          Send(self,@HitPointThresholdDamage);
       }
@@ -2762,7 +2840,7 @@ messages:
                  #new_finerow=iFineRow,#new_finecol=iFineCol,
                  #face_target=face_target,#face_away=face_away);
 		
-            Send(poOwner,@SomethingMoved,#what=self,#speed=viSpeed,
+            Send(poOwner,@SomethingMoved,#what=self,#speed=Send(self,@GetSpeed),
                  #new_row=iRow,#new_col=iCol,
                  #fine_row=iFineRow,#fine_col=iFineCol,
                  #non_monsters_only=TRUE);
@@ -4740,7 +4818,7 @@ messages:
          amount = amount * 100;
       }
 
-      piHit_points = Bound(piHit_points+amount,1,piMax_hit_points*100);
+      piHealth = Bound(piHealth+amount,1,piMax_Health*100);
 
       return;
    }
@@ -4753,25 +4831,6 @@ messages:
       piMax_Mana = piMax_mana + amount;
 
       return (piMax_mana - iPrev_max);
-   }
-
-   CalculateManaTime()
-   "Calculate # of milliseconds until monster will gain a mana point."
-   {
-      local iTime, oSpell;
-
-      // Old system had monsters regenerating 1 mana point per second.
-      // Do the same here for now.
-      if piMana > piMax_mana
-      {
-         iTime = BOOST_DECAY_TIME;
-      }
-      else
-      {
-         iTime =  1000;
-      }
-
-      return iTime;
    }
 
    MonsterCanCastSpell()
@@ -4889,7 +4948,7 @@ messages:
    {
       local i, iThreshold, rDamage_report, each_obj;
 
-      iThreshold = piHit_points / (piMax_hit_points * 20);
+      iThreshold = piHealth / (piMax_Health * 20);
 
       if iThreshold >= 4
       {
@@ -4920,43 +4979,6 @@ messages:
          {
             Post(each_obj,@MsgSendUser,#what=self,#message_rsc=rDamage_report,
                   #parm1=Send(self,@GetCapDef),#parm2=Send(self,@GetName));
-         }
-      }
-
-      return;
-   }
-
-   HitPointThresholdHeal()
-   {
-      return;
-   }
-
-   HealHitPoint()
-   {
-      local iPercentClass, i, each_obj;
-
-      if piHit_points >= piMax_Hit_points * 100
-      {
-         return;
-      }
-
-      // We set a mark to see if the healing changes our threshold
-      iPercentClass = piHit_points / (piMax_Hit_points * 20);
-      piHit_points = piHit_points + 100;
-      if iPercentClass <> (piHit_points / (piMax_Hit_points * 20))
-      {
-         Send(self,@HitPointThresholdHeal);
-
-         foreach i in Send(poOwner,@GetHolderActive)
-         {
-            each_obj = First(i);
-            if IsClass(each_obj,&User)
-               AND Send(each_obj,@GetKillTarget) = self
-            {
-               Post(each_obj,@MsgSendUser,#what=self,
-                     #message_rsc=vrMonster_healing,
-                     #parm1=Send(self,@GetCapDef),#parm2=Send(self,@GetName));
-            }
          }
       }
 
@@ -5007,7 +5029,7 @@ messages:
 
       if iHitPoint_Percent = $
       {
-         iHit_Percent = piHit_points / piMax_hit_points;
+         iHit_Percent = piHealth / piMax_Health;
       }
       else
       {
@@ -5075,7 +5097,7 @@ messages:
    
    ReturnMaxHitPoints()
    {
-      return piMax_hit_points;
+      return piMax_Health;
    }
 
    GainMaxHealth(amount = 0)
@@ -5083,22 +5105,22 @@ messages:
    {
       local iPrev_max;
 
-      iPrev_max = piMax_hit_points;
-      piMax_hit_points = Bound(piMax_hit_points + amount, 1, $);
+      iPrev_max = piMax_Health;
+      piMax_Health = Bound(piMax_Health + amount, 1, $);
 
-      return piMax_hit_points - iPrev_max;
+      return piMax_Health - iPrev_max;
    }
 
    GetMaxHealth()
    "Some objects will call this instead of the monster-specific message."
    {
-      return piMax_hit_points;
+      return piMax_Health;
    }
 
    SetMaxHitPoints(amount=$)
    {
-      piMax_hit_points = amount;
-      piHit_points = amount*100;
+      piMax_Health = amount;
+      piHealth = amount*100;
 
       return;
    }
@@ -5106,12 +5128,12 @@ messages:
    // Returns the number of remaining hit points.
    GetHealth()
    {
-      return piHit_points/100;
+      return piHealth/100;
    }
 
    GetExactHealth()
    {
-      return piHit_points;
+      return piHealth;
    }
 
    IsFullTalk()
@@ -5300,10 +5322,20 @@ messages:
       return;
    }
 
+   GetSpeed()
+   {
+      if piVigor < VIGOR_RUN_THRESHOLD
+      {
+         return viSpeed/2;
+      }
+
+      return viSpeed;
+   }
+
    GetAttackTime()
    {
       return Send(self,@Fuzzy,#num=MOB_ATTACK_TIMER_WAIT)
-             + 3500-70*(3*viDifficulty+viSpeed);
+             + 3500-70*(3*viDifficulty+Send(self,@GetSpeed));
    }
 
    GetMoveTime()
@@ -5327,10 +5359,10 @@ messages:
       // avoid division by zero, if objects teleport
       // objects with viSpeed = 0 don't need seamless movements in the client
       // so we just assume it is enough to teleport them once a second
-      if viSpeed > 0
+      if Send(self,@GetSpeed) > 0
       {
          // see formula above  
-         iTime = 10000 / (viSpeed * 4);
+         iTime = 10000 / (Send(self,@GetSpeed) * 4);
 
          // finally we reduce the timer a bit (right now it's exact at ms)
          // why? the client should get a new position before the last destination
@@ -6722,7 +6754,7 @@ messages:
       
       // If wimpy is set at 50, monster will flee once his health is at 49// of
       //  max.
-      if (piHit_points/ piMax_Hit_points) < viWimpy
+      if (piHealth/ piMax_Health) < viWimpy
       {
          return TRUE;
       }
@@ -7150,7 +7182,7 @@ messages:
       }
 
       GodLog(Send(self,@GetTrueName)," level: ",viLevel,", karma: ",viKarma,
-         ", speed: ",viSpeed, GetTempString());
+         ", speed: ",Send(self,@GetSpeed), GetTempString());
 
       return;
    }
@@ -7189,6 +7221,65 @@ messages:
       }
 
       GodLog("NPC: ",Send(self,@GetName),", Map: ",Send(poOwner,@GetName));
+
+      return;
+   }
+
+   ZeroHealth()
+   "Uh oh! Are we in trouble?"
+   {
+      // You sure are, evil monster! Time to die!
+      Send(self,@DeathOverTime);
+
+      return;
+   }
+
+   DeathOverTime()
+   "Monster is dying to damage over time."
+   {
+      local iStrength, use_weapon, what, i, each_obj;
+
+      // The strength of the DoT. We are looking at
+      // negative values here.
+      iStrength = 0;
+
+      // The source of the dot.
+      what = $;
+      use_weapon = $;
+
+      // Let's check 'what' pained the monster most.
+      foreach i in Send(self,@GetOverTimeEffects)
+      {
+         if Nth(i,3) < iStrength
+         {
+            what = Nth(i,6);
+            use_weapon = Nth(i,5);
+            iStrength = Nth(i,3);
+         }
+      }
+
+      foreach i in Send(poOwner,@GetHolderActive)
+      {
+         each_obj = First(i);
+         if IsClass(each_obj,&User)
+            AND each_obj <> what
+            AND Send(each_obj,@GetKillTarget) = self
+         {
+            Post(each_obj,@MsgSendUser,#what=self,
+                 #message_rsc=vrParty_monster_died_to_dot,
+                 #parm1=Send(self,@GetCapDef),#parm2=Send(self,@GetName),
+                 #parm3=Send(self,@GetHisHer));
+         }
+      }
+
+      if what <> $
+      {
+         Send(what,@KilledSomething,#what=self,#use_weapon=use_weapon);
+      }
+      else
+      {
+         Send(self,@KilledSomething,#what=self,#use_weapon=use_weapon);
+      }
 
       return;
    }

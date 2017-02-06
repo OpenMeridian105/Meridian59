@@ -71,9 +71,9 @@ classvars:
    viSchool = SS_JALA
    viNeedInstrument = FALSE
 
-   viMana = 5
-   viManaDrain = 3
-   viDrainTime = 5000
+   viMana = 5                   // Initial mana cost of the spell.
+   viManaDrain = 600            // Mana drained per second (10^3)
+   viRegenerationEffect = FALSE // If true, will call UpdateRates() in battler.
    viPostCast_time = 1
    viBaseRange = 5 * FINENESS
 
@@ -237,7 +237,7 @@ messages:
 
    CastSpell(who=$,iSpellPower=0,lTargets=$,bItemCast=FALSE)
    {
-      local oTarget, i, each_obj, lType, lState, iDuration, iRange, lOldState;
+      local oTarget, i, each_obj, lType, lState, iRange, lOldState;
 
       lType = [self,viDefensive,viOffensive,viResistanceType];
 
@@ -304,12 +304,10 @@ messages:
 
       // who is the caster, target is the target (sometimes the same as who).
       iRange = Send(self,@CalculateRange,#who=who,#iSpellPower=iSpellPower);
-      iDuration = Send(self,@GetDuration,#iSpellPower=iSpellPower);
-      lState = [ who, oTarget, iRange, iDuration,
-                  Send(self,@GetStateValue,#iSpellpower=iSpellpower,#who=who,
-                        #target=oTarget)];
+      lState = [ who, oTarget, iRange, viTickDuration,Send(self,@GetStateValue,
+               #iSpellpower=iSpellpower,#who=who,#target=oTarget)];
 
-      Send(oTarget,@StartEnchantment,#what=self,#state=lState,#time=iDuration,
+      Send(oTarget,@StartEnchantment,#what=self,#state=lState,#time=viTickDuration,
             #lastcall=Send(self,@GetLastCall),#addicon=Send(self,@GetAddicon),
             #who=who,#ltype=lType,#bItemCast=bItemCast,#iSpellpower=iSpellpower,
             #bRadiusEnchant=TRUE);
@@ -329,41 +327,11 @@ messages:
    StartPeriodicEnchantment(who=$,state=$,iSpellPower=0)
    "Drain mana, heal targets in range etc."
    {
-      local iDuration, iAbility, oSpell, oCaster, i, each_obj;
+      local iDuration, oCaster, i, each_obj;
 
       // Pre-calculated
       iDuration = Send(self,@GetStateDuration,#state=state);
       oCaster = Send(self,@GetCaster,#state=state);
-      if IsClass(who,&Battler)
-         AND oCaster = who
-      {
-         if Send(who,@GetMana) >= viManaDrain
-         {
-            Send(who,@LoseMana,#amount=viManaDrain);
-         }
-         else
-         {
-            iAbility = Send(who,@GetSpellAbility,#spell_num=SID_CRYSTALIZE_MANA);
-            if iAbility > 0
-               AND NOT Send(who,@IsCrystalizeManaSurging)
-            {
-               oSpell = Send(SYS,@FindSpellByNum,#num=SID_CRYSTALIZE_MANA);
-               Send(oSpell,@DoManaSurge,#who=who,#triggered=TRUE);
-               if Send(who,@GetMana) >= viManaDrain
-               {
-                  Send(who,@LoseMana,#amount=viManaDrain);
-               }
-            }
-            else
-            {
-               Send(who,@StartEnchantment,#what=self,#time=iDuration,
-                     #who=oCaster,#state=state,#addicon=FALSE,#lastcall=TRUE,
-                     #bRadiusEnchant=TRUE,#iSpellPower=iSpellPower);
-
-               return;
-            }
-         }
-      }
 
       Send(who,@StartEnchantment,#what=self,#time=iDuration,#who=oCaster,
             #state=state,#addicon=FALSE,#lastcall=FALSE,#bRadiusEnchant=TRUE,
@@ -378,6 +346,11 @@ messages:
             AND Send(each_obj,@IsEnchantedRadius,#what=self,#state=state))
          {
             Send(self,@PeriodicEffect,#who=each_obj,#state=state);
+         }
+
+         if viRegenerationEffect and IsClass(who,&Battler)
+         {
+            Send(who,@UpdateRates);
          }
       }
 
@@ -783,45 +756,6 @@ messages:
 
       return;
    }
-
-   BreakTrance(who = $, event = $, state = $)
-   {
-      local oRoom, bRecheck;
-
-      // The spell keeps going if you get damaged, move, cast, use an item,
-      // or make an attack. Players must rest to end most radius spells.
-      if event = EVENT_DAMAGE
-         OR event = EVENT_ATTACK
-         OR event = EVENT_RUN
-         OR event = EVENT_DISRUPT
-         OR event = EVENT_CAST
-         OR event = EVENT_USE
-      {
-         return FALSE;
-      }
-
-      oRoom = Send(who,@GetOwner);
-
-      // Only cancel Persist spells if they are offensive & caster is
-      // entering a non-combat room
-      if (event = EVENT_NEWOWNER
-         OR event = EVENT_REQNEWOWNER)
-      {
-         if oRoom <> $
-            AND NOT (viHarmful
-               AND Send(oRoom,@CheckRoomFlag,#flag=ROOM_NO_COMBAT))
-         {
-            return FALSE;
-         }
-      }
-
-      bRecheck = (event = EVENT_REST);
-
-      Send(who,@RemoveRadiusEnchantment,#what=self,#state=state,
-            #recheck=bRecheck);
-
-      propagate;
-   }
 #endregion Unenchant Targets
 
 #region State Accessors
@@ -901,11 +835,6 @@ messages:
    GetLightIntensity()
    {
       return viBaseLightIntensity;
-   }
-
-   GetDuration(iSpellPower=0)
-   {
-      return viDrainTime + iSpellPower;
    }
 
 #region Modifiers
@@ -1023,6 +952,18 @@ messages:
       propagate;
    }
 #endregion Description
+
+   OverTimeEffectStarting()
+   "REs naturally cause mana drain. No need to report anything."
+   {
+      return;
+   }
+
+   OverTimeEffectWearingOff()
+   "REs naturally cause mana drain. No need to report anything."
+   {
+      return;
+   }
 
 end
 ////////////////////////////////////////////////////////////////////////////////

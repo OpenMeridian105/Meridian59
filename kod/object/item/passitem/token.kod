@@ -18,7 +18,6 @@ Token is PassiveItem
 constants:
 
    include blakston.khd
-   TOKEN_FATIGUE_TIME=10000
    LAZY_RESET_TIME=180000
 
 resources:
@@ -72,7 +71,8 @@ classvars:
    viUse_type = ITEM_USE_HAND
    viUse_Amount = 2
 
-   viVigorDrop = 120000
+   // Vigor drainer per second in 10^-4.
+   viVigorDrain = 9000
    viInitialTimeval = 10000
 
    viItem_type = ITEMTYPE_TOKEN
@@ -93,8 +93,7 @@ messages:
    Constructor()
    {
       poOwner = $;
-      ptGenerationTimer = CreateTimer(self,@TokenGenerationTimer,
-                                 viInitialTimeval);
+      ptGenerationTimer = CreateTimer(self,@TokenGenerationTimer,viInitialTimeval);
 
       propagate;
    }
@@ -104,12 +103,6 @@ messages:
       if pbIn_use
       {
          Send(self,@NewUnused);
-      }
-
-      if ptTortureTimer <> $
-      {
-         DeleteTimer(ptTortureTimer);
-         ptTortureTimer = $;
       }
 
       if ptLazyTimer <> $
@@ -150,12 +143,6 @@ messages:
       {
          DeleteTimer(ptLazyTimer);
          ptLazyTimer = $;
-      }
-
-      if ptTortureTimer <> $
-      {
-         DeleteTimer(ptTortureTimer);
-         ptTortureTimer = $;
       }
 
       if what = $
@@ -245,32 +232,17 @@ messages:
    NewUsed(what = $)
    "When the token is carried, the wearer's rest threshold goes down"
    {
-      local iVigorRestThreshold;
-
       pbIn_use = TRUE;
 
       if Send(poOwner,@PlayerIsImmortal)
       {
-         piVigorRestThresholdChange = 0;
-
          propagate;
       }
 
-      iVigorRestThreshold = Send(poOwner, @GetVigorRestThreshold);
-
-      // This is to ensure both that the player's rest threshold does
-      // not drop below 10 as well as to make sure we don't make it
-      // above maximum when the token is dropped (see player.kod for why).
-
-      piVigorRestThresholdChange = iVigorRestThreshold - 10;
-
       Send(poOwner,@MsgSendUser,#message_rsc=token_used_desc_rsc);
-      
-      Send(poOwner,@SetVigorRestThreshold,
-            #amount=iVigorRestThreshold-piVigorRestThresholdChange);
-      Send(poOwner,@AddExertion,#amount=viVigorDrop/2+Random(0,viVigorDrop/2));
 
-      ptTortureTimer = CreateTimer(self,@TortureHolder,TOKEN_FATIGUE_TIME);
+      // Start vigor drain and curse.
+      Send(poOwner,@StartOverTimeEffect,#type=2,#strength=-viVigorDrain,#who=self,#removable=2,#curse=2);
 
       // Cancels rescue and elusion when a player picks up a token.
       Send(poOwner,@BreakTrance);
@@ -282,31 +254,6 @@ messages:
       }
 
       propagate;
-   }
-
-   TortureHolder()
-   {
-      if NOT pbIn_use
-      {
-         return;
-      }
-
-      if ptTortureTimer<>$
-      {
-         ptTortureTimer=$;
-      }
-
-      if Send(poOwner,@PlayerIsImmortal)
-      {
-         return;
-      }
-
-      Send(poOwner,@MsgSendUser,#message_rsc=token_use_rsc);
-      Send(poOwner,@AddExertion,#amount=viVigorDrop/2+Random(0,viVigorDrop/2));
-
-      ptTortureTimer = CreateTimer(self,@TortureHolder,TOKEN_FATIGUE_TIME);
-
-      return;
    }
 
    OfferRejected()
@@ -329,21 +276,13 @@ messages:
 
       pbIn_use = FALSE;
 
-      iVigorRestThreshold = Send(poOwner, @GetVigorRestThreshold);
-      if ptTortureTimer<>$
-      {
-         DeleteTimer(ptTortureTimer);
-         ptTortureTimer=$;
-      }
-
       if NOT Send(poOwner,@PlayerIsImmortal)
       {
          Send(poOwner,@MsgSendUser,#message_rsc=token_unuse_rsc);
       }
 
-      Send(poOwner,@SetVigorRestThreshold,
-            #amount=iVigorRestThreshold+piVigorRestThresholdChange);
-      piVigorRestThresholdChange = 200;
+      // Remove vigor drain and curse.
+      Send(poOwner,@DeleteOverTimeEffect,#who=self,#removal=2);
 
       if where <> $
       {

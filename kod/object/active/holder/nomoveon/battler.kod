@@ -191,14 +191,45 @@ properties:
    // List of enchantments.
    // Each element is [ timer, object of spell, [optional state] ].
    plEnchantments = $
+   plOverTimeEffects = $
+
+   // Default health values.
+   piHealth = 2000
+   piMax_Health = 20
+   ptHealth = $
+   // The current health regeneration rate. 1000 > 1 hp per sec.
+   piHealth_Rate = 0
+   // Some effects may stop our regeneration.
+   pbHealthCurse = FALSE
+   // Keeps track of the polarity of our regen. Increases accuracy.
+   pbHealth = TRUE
 
    // Default mana values.
    piMana = 20
    piMax_Mana = 20
-
-   // Mana regen timer.
    ptMana = $
-   
+   // The current mana regeneration rate. 1000 > 1 hp per sec.
+   piMana_Rate = 0
+   // Some effects may stop our regeneration.
+   pbManaCurse = FALSE
+   // Keeps track of the polarity of our regen. Increases accuracy.
+   pbMana = TRUE
+
+   // Default vigor values.
+   piVigor = 1000000
+   piMax_Vigor = 2000000
+   piVigor_rest_threshold = 800000
+   ptVigor = $
+   // The current vigor regeneration rate. 1000 > 1 hp per sec.
+   piVigor_Rate = 0
+   // Some effects may stop our regeneration.
+   pbVigorCurse = FALSE
+   // Keeps track of the polarity of our regen. Increases accuracy.
+   pbVigor = TRUE
+
+   // Keeps track of resting.
+   pbResting = FALSE
+
    // Reputation hashtable for monster territory/influence system
    phReputation = $
 
@@ -264,6 +295,39 @@ messages:
             plHurtMeRecently = DelListElem(plHurtMeRecently,i);
          }
       }
+
+      // Delete our resource timers.
+      if ptHealth <> $
+      {
+         DeleteTimer(ptHealth);
+         ptHealth = $;
+      }
+
+      if ptMana <> $
+      {
+         DeleteTimer(ptMana);
+         ptMana = $;
+      }
+
+      if ptVigor <> $
+      {
+         DeleteTimer(ptVigor);
+         ptVigor = $;
+      }
+
+      foreach i in plOverTimeEffects
+      {
+         if First(i) <> $
+         {
+            if IsTimer(First(i))
+            {
+               DeleteTimer(First(i));
+               SetFirst(i,$);
+            }
+         }
+      }
+
+      plOverTimeEffects = $;
 
       propagate;
    }
@@ -581,8 +645,249 @@ messages:
       return 0;
    }
 
-   //// Mana related stuff common to players and mobs.
+   //// Resource related stuff common to players and mobs.
+   // Health related code.
+   GetHealth()
+   {
+      return piHealth/100;
+   }
 
+   GetExactHealth()
+   {
+      return piHealth;
+   }
+
+   SetHealth(amount=$)
+   {
+      if amount <> $
+      {
+         piHealth = bound(amount*100,0,$);
+      }
+
+      Send(self,@DrawHealth);
+
+      return;
+   }
+
+   SetExactHealth(amount=$)
+   {
+      if amount <> $
+      {
+         piHealth = bound(amount,0,$);
+      }
+      
+      return;
+   }
+
+   // Check if target is currently suffering from a health curse.
+   // Curses stop natural regeneration of the specified resource.
+   GetHealthCurse()
+   {
+      return pbHealthCurse;
+   }
+
+   NewHealth()
+   {
+      local iTime;
+
+      iTime = Send(self,@CalculateHealthTime);
+
+      // Let's make sure we aren't negative. That'd be absurd!
+      // Also, don't allow temporary HPs beyond 2xMaxHealth.
+      piHealth = bound(piHealth,0,200*piMax_Health);
+
+      // iTime can only be negative or positive, never zero.
+      if iTime <> $
+      {
+         // iTime is positive, that means Health is below max.
+         if iTime > 0
+         {
+            if ptHealth = $
+            {
+               ptHealth = CreateTimer(self,@HealthRegen,iTime);
+            }
+            else
+            {
+               // We reset the current timer if:
+               // a) The rate swings (+ to - or vice versa).
+               // b) Time left on the timer exceeds updated time.
+               if NOT pbHealth
+                  OR iTime < GetTimeRemaining(ptHealth)
+               {
+                  pbHealth = TRUE;
+                  DeleteTimer(ptHealth);
+                  ptHealth = CreateTimer(self,@HealthRegen,iTime);
+               }
+            }
+         }
+         else
+         {
+            iTime = -iTime;
+
+            if ptHealth = $
+            {
+               ptHealth = CreateTimer(self,@HealthDecay,iTime);
+            }
+            else
+            {
+               // We reset the current timer if:
+               // a) The rate swings (+ to - or vice versa).
+               // b) Time left on the timer exceeds updated time.
+               if pbHealth
+                  OR iTime < GetTimeRemaining(ptHealth)
+               {
+                  pbHealth = FALSE;
+                  DeleteTimer(ptHealth);
+                  ptHealth = CreateTimer(self,@HealthDecay,iTime);
+               }
+            }
+         }
+      }
+
+      Send(self,@DrawHealth);
+
+      return;
+   }
+
+   CalculateHealthPerTick()
+   {
+      local iHealthPerTick, iBoost, i;
+
+      // Health regeneration starts out as 1 percent of our health
+      // pool per second at max vigor.
+      iHealthPerTick = (piVigor/10000) * piMax_health / 20;
+
+      // Faction bonus of up to 30%.
+      if IsClass(self,&Player)
+      {
+         iHealthPerTick *= Send(Send(SYS,@GetParliament),@GetFactionRegenBonus,#who=self)+100;
+         iHealthPerTick /= 100;
+      }
+
+      // Second wind will give us a progressive boost to regeneration
+      // the lower we go. Boost is based on missing Health below 50%.
+      iBoost = Send(self,@GetSkillAbility,#Skill_num=SKID_SECOND_WIND);
+      if iBoost > 0 AND piHealth < piMax_health * 25
+      {
+         iBoost = iBoost * (piMax_health * 25 - piHealth)/(piMax_health * 25);
+         iBoost = bound(iBoost,25,100);
+         iHealthPerTick = iHealthPerTick * iBoost / 25;
+      }
+
+      // Resting helps us recover health.
+      if pbResting
+      {
+         iHealthPerTick = iHealthPerTick * 2;
+      }
+
+      // A curse will stop our natural regeneration.
+      if pbHealthCurse
+      {
+         iHealthPerTick = bound(iHealthPerTick,$,0);
+      }
+
+      // Factor in restorate.
+      foreach i in plRadiusEnchantments
+      {
+         // Check the battler's REs for restorate.
+         if IsClass(Nth(i,2),&Restorate)
+         {
+            // Get the RE's state.
+            iHealthPerTick += Nth(Nth(i,3),5);
+            break;
+         }
+      }
+
+      // Additional effects may cause our health to regenerate or decay.
+      iHealthPerTick += piHealth_Rate;
+
+      // Disable regeneration when sitting at or above max health.
+      if piHealth >= 100*piMax_Health
+      {
+         iHealthPerTick = bound(iHealthPerTick,$,0);
+      }
+
+      // Add a decay of 1 point per 5 seconds if sitting above the max.
+      if piHealth > 100*piMax_Health
+      {
+         iHealthPerTick -= 200;
+      }
+
+      // Stop any decay if we are already sitting at 0 health.
+      if piHealth = 0
+      {
+         iHealthPerTick = bound(iHealthPerTick,0,$);
+      }
+
+      return iHealthPerTick;
+   }
+
+   CalculateHealthTime()
+   "Calculate # of milliseconds until user will gain a health point."
+   {
+      local iHealthPerTick, iTime;
+
+      iHealthPerTick = Send(Self,@CalculateHealthPerTick);
+
+      // Let's set reasonable limits for how small the minimum health gained per tick can be.
+      // If it is greater than 0.01 per second, let's calculate the time it takes to gain one hp.
+      if abs(iHealthPerTick) > 10
+      {
+         iTime = 1000000 / iHealthPerTick;
+      }
+      // If it is smaller, return a nil, so that NewHealth knows not to start a timer.
+      else
+      {
+         iTime = $;
+      }
+
+      return iTime;
+   }
+
+   HealthRegen()
+   {
+      ptHealth = $;
+
+      if Send(self,@IsInCannotInteractMode)
+      {
+         return;
+      }
+
+      piHealth = bound(piHealth + 100,$,piMax_health*100);
+      Send(self,@NewHealth);
+
+      return;
+   }
+
+   HealthDecay()
+   {
+      ptHealth = $;
+
+      if Send(self,@IsInCannotInteractMode)
+      {
+         return;
+      }
+
+      piHealth = bound(piHealth - 100,0,$);
+
+      // We've run out of health. Check what happens now.
+      if piHealth < 1
+      {
+         Send(self,@ZeroHealth);
+      }
+
+      Send(self,@NewHealth);
+
+      return;
+   }
+
+   ZeroHealth()
+   "Uh oh! Are we in trouble?"
+   {
+      return;
+   }
+
+   // Mana related code.
    GetMaxMana()
    {
       return piMax_mana;
@@ -669,27 +974,814 @@ messages:
       return iManaGained;
    }
 
+   // Check if target is currently suffering from a mana curse.
+   // Curses stop natural regeneration of the specified resource.
+   GetManaCurse()
+   {
+      return pbManaCurse;
+   }
+
    NewMana()
    {
-      if piMana < 0
+      local iTime;
+
+      iTime = Send(self,@CalculateManaTime);
+
+      // Let's make sure we aren't negative. That'd be absurd!
+      // Also, don't allow temporary mana beyond 2xMaxMana.
+      piMana = bound(piMana,0,2*piMax_Mana);
+
+      // iTime can only be negative or positive, never zero.
+      if iTime <> $
       {
-         piMana = 0;
+         // iTime is positive, that means Mana is below max.
+         if iTime > 0
+         {
+            if ptMana = $
+            {
+               ptMana = CreateTimer(self,@ManaRegen,iTime);
+            }
+            else
+            {
+               // We reset the current timer if:
+               // a) The rate swings (+ to - or vice versa).
+               // b) Time left on the timer exceeds updated time.
+               if NOT pbMana
+                  OR iTime < GetTimeRemaining(ptMana)
+               {
+                  pbMana = TRUE;
+                  DeleteTimer(ptMana);
+                  ptMana = CreateTimer(self,@ManaRegen,iTime);
+               }
+            }
+         }
+         else
+         {
+            iTime = -iTime;
+
+            if ptMana = $
+            {
+               ptMana = CreateTimer(self,@ManaDecay,iTime);
+            }
+            else
+            {
+               // We reset the current timer if:
+               // a) The rate swings (+ to - or vice versa).
+               // b) Time left on the timer exceeds updated time.
+               if pbMana
+                  OR iTime < GetTimeRemaining(ptMana)
+               {
+                  pbMana = FALSE;
+                  DeleteTimer(ptMana);
+                  ptMana = CreateTimer(self,@ManaDecay,iTime);
+               }
+            }
+         }
       }
 
-      if piMana <> piMax_mana AND ptMana = $
+      Send(self,@DrawMana);
+
+      return;
+   }
+
+   CalculateManaPerTick()
+   {
+      local iManaPerTick, i;
+
+      // Mana regeneration starts out as 1 percent of our mana pool
+      // per second at 200 vigor.
+      iManaPerTick = (piVigor/10000) * piMax_Mana / 20;
+
+      // Faction bonus of up to 30%.
+      if IsClass(self,&Player)
       {
-         ptMana = CreateTimer(self,@ManaTimer,Send(self,@CalculateManaTime));
+         iManaPerTick *= (Send(Send(SYS,@GetParliament),@GetFactionRegenBonus,
+            #who=self,#hpregen=FALSE)+100);
+         iManaPerTick /= 100;
       }
 
-      if piMana = piMax_mana AND ptMana <> $
+      // Resting helps us recover mana.
+      if pbResting
       {
-         DeleteTimer(ptMana);
-         ptMana = $;
+         iManaPerTick = iManaPerTick * 2;
       }
 
-      if IsClass(self,&User)
+      // A curse will stop our natural regeneration.
+      if pbManaCurse
       {
-         Send(self,@DrawMana);
+         iManaPerTick = bound(iManaPerTick,$,0);
+      }
+
+      // Factor in rejuvenate.
+      foreach i in plRadiusEnchantments
+      {
+         // Check the battler's REs for rejuvenate.
+         if IsClass(Nth(i,2),&Rejuvenate)
+         {
+            // Get the RE's state.
+            iManaPerTick += Nth(Nth(i,3),5);
+            break;
+         }
+      }
+
+      // Additional effects may cause our mana to regenerate or decay.
+      iManaPerTick += piMana_Rate;
+
+      // Disable regeneration when sitting at or above max mana.
+      // A curse has the same effect at all levels.
+      if piMana >= piMax_Mana
+      {
+         iManaPerTick = bound(iManaPerTick,$,0);
+      }
+
+      // Add a decay of 1 point per 5 seconds if sitting above the max.
+      if piMana > piMax_Mana
+      {
+         iManaPerTick -= 200;
+      }
+
+      // Stop any decay if we are already sitting at 0 mana.
+      if piMana = 0
+      {
+         iManaPerTick = bound(iManaPerTick,0,$);
+      }
+
+      return iManaPerTick;
+   }
+   
+   CalculateManaTime()
+   "Calculate # of milliseconds until user will gain a Mana point."
+   {
+      local iManaPerTick, iTime;
+
+      iManaPerTick = Send(Self,@CalculateManaPerTick);
+
+      // Let's set reasonable limits for how small the minimum Mana gained per tick can be.
+      // If it is greater than 0.01 per second, let's calculate the time it takes to gain one hp.
+      if abs(iManaPerTick) > 10
+      {
+         iTime = 1000000 / iManaPerTick;
+      }
+      // If it is smaller, return a nil, so that NewMana knows not to start a timer.
+      else
+      {
+         iTime = $;
+      }
+   
+      return iTime;
+   }
+
+   ManaRegen()
+   {
+      ptMana = $;
+
+      if Send(self,@IsInCannotInteractMode)
+      {
+         return;
+      }
+
+      piMana = bound(piMana + 1,$,piMax_mana);
+      Send(self,@NewMana);
+
+      return;
+   }
+
+   ManaDecay()
+   {
+      local iAbility, oSpell;
+
+      ptMana = $;
+
+      if Send(self,@IsInCannotInteractMode)
+      {
+         return;
+      }
+
+      piMana -= 1;
+
+      // Give crystallize mana a chance to kick in.
+      iAbility = Send(self,@GetSpellAbility,#spell_num=SID_CRYSTALIZE_MANA);
+      if piMana < 1 AND iAbility > 0
+         AND NOT Send(self,@IsCrystalizeManaSurging)
+      {
+         oSpell = Send(SYS,@FindSpellByNum,#num=SID_CRYSTALIZE_MANA);
+         Send(oSpell,@DoManaSurge,#who=self,#triggered=TRUE);
+      }
+
+      // We've run out of mana. Check what happens now.
+      if piMana < 1
+      {
+         Send(self,@ZeroMana);
+      }
+
+      piMana = bound(piMana,0,$);
+
+      Send(self,@NewMana);
+
+      return;
+   }
+
+   ZeroMana()
+   "Uh oh! Are we in trouble?"
+   {
+      // Cancel any maintained spells that drain mana.
+      Send(self,@CancelMaintainedSpells);
+
+      return;
+   }
+
+   // Vigor related code.
+   GetVigor()
+   "Just like health, vigor uses higher precision (10000:1)."
+   {
+      return piVigor/10000;
+   }
+
+   GetExactVigor()
+   {
+      return piVigor;
+   }
+
+   SetVigor(amount=$)
+   {
+      if amount <> $
+      {
+         piVigor = bound(amount*10000,0,$);
+      }
+
+      Send(self,@DrawVigor);
+
+      return;
+   }
+
+   SetExactVigor(amount=$)
+   {
+      if amount <> $
+      {
+         piVigor = bound(amount,0,$);
+      }
+      
+      return;
+   }
+
+   GetVigorRestThreshold(base=TRUE)
+   {
+      if base
+      {
+         return piVigor_rest_threshold;
+      }
+
+      return piVigor_rest_threshold
+         + Send(self,@GetSkillAbility,#Skill_num=SKID_SECOND_WIND)
+         * 2000;
+   }
+
+   SetVigorRestThreshold(amount = 0)
+   {
+      piVigor_rest_threshold = Bound(amount,100000,800000);
+
+      if IsClass(self,&Player)
+      {
+         Send(self,@DrawVigor);
+      }
+
+      return;
+   }
+
+   // Check if target is currently suffering from a vigor curse.
+   // Curses stop natural regeneration of the specified resource.
+   GetVigorCurse()
+   {
+      return pbVigorCurse;
+   }
+
+   NewVigor()
+   {
+      local iTime;
+
+      iTime = Send(self,@CalculateVigorTime);
+
+      // Let's make sure we aren't negative. That'd be absurd!
+      // Also, don't allow temporary vigor beyond 2xMaxVigor.
+      piVigor = bound(piVigor,0,2*piMax_Vigor);
+
+      // iTime can only be negative or positive, never zero.
+      if iTime <> $
+      {
+         // iTime is positive, that means vigor is below max.
+         if iTime > 0
+         {
+            if ptVigor = $
+            {
+               ptVigor = CreateTimer(self,@VigorRegen,iTime);
+            }
+            else
+            {
+               // We reset the current timer if:
+               // a) The rate swings (+ to - or vice versa).
+               // b) Time left on the timer exceeds updated time.
+               if NOT pbVigor
+                  OR iTime < GetTimeRemaining(ptVigor)
+               {
+                  pbVigor = TRUE;
+                  DeleteTimer(ptVigor);
+                  ptVigor = CreateTimer(self,@VigorRegen,iTime);
+               }
+            }
+         }
+         else
+         {
+            iTime = -iTime;
+
+            if ptVigor = $
+            {
+               ptVigor = CreateTimer(self,@VigorDecay,iTime);
+            }
+            else
+            {
+               // We reset the current timer if:
+               // a) The rate swings (+ to - or vice versa).
+               // b) Time left on the timer exceeds updated time.
+               if pbVigor
+                  OR iTime < GetTimeRemaining(ptVigor)
+               {
+                  pbVigor = FALSE;
+                  DeleteTimer(ptVigor);
+                  ptVigor = CreateTimer(self,@VigorDecay,iTime);
+               }
+            }
+         }
+      }
+
+      Send(self,@DrawVigor);
+
+      return;
+   }
+
+   CalculateVigorPerTick()
+   {
+      local iVigorPerTick, iBoost, iLimit, i;
+
+      // Natural regeneration threshold of 80 points of vigor. Second Wind
+      // may boost the limit to 100.
+      iBoost = Send(self,@GetSkillAbility,#Skill_num=SKID_SECOND_WIND);
+      iLimit = Send(self,@GetVigorRestThreshold,#base=FALSE);
+
+      // Vigor naturally regenerates at a rate of 2 point per 10 seconds
+      // at 50 points of stamina as long as we are below the threshold.
+      // Natural regeneration stops once the threshold is crossed.
+      if piVigor < iLimit
+      {
+         iVigorPerTick = 1000 + 20*Send(self,@GetStamina);
+         // Second wind will give us a progressive boost to regeneration
+         // the lower we go. Boost is based on missing Vigor below threshold.
+         if iBoost
+         {
+            iBoost = iBoost * (iLimit - piVigor)/iLimit;
+            iBoost = bound(iBoost/10,1,10);
+            iVigorPerTick = iVigorPerTick * iBoost;
+         }
+
+         // Resting boosts our vigor regeneration significantly.
+         if pbResting
+         {
+            iVigorPerTick = iVigorPerTick * 5;
+         }
+
+         // Staying in cozy inns gives us an additional boost.
+         if poOwner <> $
+         {
+            if Send(poOwner,@CheckRoomFlag,#flag=ROOM_SANCTUARY)
+            {
+               iVigorPerTick = iVigorPerTick * 2;
+            }
+
+            if Send(poOwner,@CheckRoomFlag,#flag=ROOM_TRIPLE_HEAL)
+            {
+               iVigorPerTick = iVigorPerTick * 3;
+            }
+         }
+
+         // A curse will stop our natural regeneration.
+         if pbVigorCurse
+         {
+            iVigorPerTick = bound(iVigorPerTick,$,0);
+         }
+
+         // Factor in invigorate.
+         foreach i in plRadiusEnchantments
+         {
+            // Check the battler's REs for invigorate.
+            if IsClass(Nth(i,2),&Invigorate)
+            {
+               // Get the RE's state.
+               iVigorPerTick += Nth(Nth(i,3),5);
+               break;
+            }
+         }
+      }
+      else
+      {
+         iVigorPerTick = 0;
+      }
+
+      // Additional effects may cause our vigor to grow or decay.
+      iVigorPerTick += piVigor_Rate;
+
+      // Disable regeneration when sitting at or above max vigor.
+      if piVigor >= piMax_Vigor
+      {
+         iVigorPerTick = bound(iVigorPerTick,$,0);
+      }
+
+      // Add a decay of 1 point per 5 seconds if sitting above the max.
+      if piVigor > piMax_Vigor
+      {
+         iVigorPerTick -= 2000;
+      }
+
+      // Stop any decay if we are already sitting at 0 vigor.
+      if piVigor = 0
+      {
+         iVigorPerTick = bound(iVigorPerTick,0,$);
+      }
+
+      return iVigorPerTick;
+   }
+
+   CalculateVigorTime()
+   "Calculate # of milliseconds until user will gain a Vigor point."
+   {
+      local iVigorPerTick, iTime;
+
+      iVigorPerTick = Send(Self,@CalculateVigorPerTick);
+
+      // Let's set reasonable limits for how small the minimum Vigor gained per tick can be.
+      // If it is greater than 0.01 per second, let's calculate the time it takes to gain one hp.
+      if abs(iVigorPerTick) > 100
+      {
+         iTime = 10000000 / iVigorPerTick;
+      }
+
+      // If it is smaller, return a nil, so that NewVigor knows not to start a timer.
+      else
+      {
+         iTime = $;
+      }
+   
+      return iTime;
+   }
+
+   VigorRegen()
+   {
+      ptVigor = $;
+
+      if Send(self,@IsInCannotInteractMode)
+      {
+         return;
+      }
+
+      piVigor = bound(piVigor + 10000,$,piMax_Vigor);
+
+      // Grant a chance to improve Second Wind if regenerating below threshold.
+      if NOT pbResting AND random(0,50) = 50
+         AND Send(self,@GetSkillAbility,#Skill_num=SKID_SECOND_WIND) > 0
+      {
+         Send(Send(sys,@FindSkillByNum,#num=SKID_SECOND_WIND),@ImproveAbility,#who=self);
+      }
+
+      Send(self,@NewVigor);
+
+      return;
+   }
+
+   VigorDecay()
+   {
+      ptVigor = $;
+
+      if Send(self,@IsInCannotInteractMode)
+      {
+         return;
+      }
+
+      piVigor = bound(piVigor - 10000,0,$);
+
+      // We've run out of vigor. Check what happens now.
+      if piVigor < 1
+      {
+         Send(self,@ZeroVigor);
+      }
+
+      Send(self,@NewVigor);
+
+      return;
+   }
+
+   ZeroVigor()
+   "Uh oh! Are we in trouble?"
+   {
+      return;
+   }
+
+   AddExertion(amount = 0, SetToThreshold = FALSE, Check = FALSE)
+   {
+      local iReduction;
+
+      if amount > 0 AND IsClass(self,&Player)
+      {
+         // Parliament adjustment for exertion reduction.  Remove a percentage from
+         // the amount added.
+         iReduction = Send(Send(SYS,@GetParliament),@GetFactionVigorBonus,#who=self);
+         amount = (amount * (100 - iReduction))/100;
+      }
+
+      // Checking if we have enough vigor for the action, if we do, deduct the cost
+      // and return true. If we don't, return false.
+      if Check AND amount > piVigor
+      {
+         return FALSE;
+      }
+
+      if SetToThreshold AND piVigor < Send(self,@GetVigorRestThreshold,#base=FALSE)
+      {
+         piVigor = Send(self,@GetVigorRestThreshold,#base=FALSE);
+      }
+      else
+      {
+         piVigor = bound(piVigor - amount,0,piMax_Vigor);
+      }
+
+         Send(self,@NewVigor);
+
+      return TRUE;
+   }
+
+   DrawHealth()
+   "Just a dummy for non players."
+   {
+      return;
+   }
+
+   DrawMana()
+   "Just a dummy for non players."
+   {
+      return;
+   }
+
+   DrawVigor()
+   "Just a dummy for non players."
+   {
+      return;
+   }
+
+   IsInCannotInteractMode()
+   "Just a dummy for non players."
+   {
+      return FALSE;
+   }
+
+   //// The following messages handle DoTs and HoTs.
+   // Instead of recalculating rates on ever NewHealth,
+   // NewMana and NewVigor, we only do that whenever an
+   // over time effect is added, removed or modified.
+   // Since the properties are reset with each check,
+   // we remove the risk of being left with a permanent
+   // rate shift.
+   UpdateRates()
+   {
+      local i, iType, iStrength, iCurse;
+
+      piHealth_Rate = 0;
+      piMana_Rate = 0;
+      piVigor_Rate = 0;
+      pbHealthCurse = FALSE;
+      pbManaCurse = FALSE;
+      pbVigorCurse = FALSE;
+
+      foreach i in plOverTimeEffects
+      {
+         iType = Nth(i,2);
+         iStrength = Nth(i,3);
+         iCurse = Nth(i,9);
+
+         switch(iType)
+         {
+            case 0:
+               piHealth_Rate += iStrength;
+               break;
+
+            case 1:
+               piMana_Rate += iStrength;
+               break;
+
+            case 2:
+               piVigor_Rate += iStrength;
+               break;
+         }
+
+         if iCurse <> $
+         {
+            switch(iCurse)
+            {
+               case 0:
+                  pbHealthCurse = TRUE;
+                  break;
+
+               case 1:
+                  pbManaCurse = TRUE;
+                  break;
+
+               case 2:
+                  pbVigorCurse = TRUE;
+                  break;
+            }
+         }
+      }
+
+      Send(self,@NewHealth);
+      Send(self,@NewMana);
+      Send(self,@NewVigor);
+
+      return;
+   }
+
+   // This allows us to modify the strength of existing over time effects.
+   SetOverTimeEffect(effect=$,strength=$,state=$)
+   {
+      // This should never be called without an effect.
+      if effect <> $
+      {
+         // Set our values appropriately.
+         setnth(effect,3,strength);
+         setnth(effect,4,state);
+
+         // No more effect. Prepare for deletion.
+         if state = 0
+         {
+            Send(self,@DeleteOverTimeEffect);
+         }
+         // Rates are already updated when the effect is deleted.
+         // No need to do it twice.
+         else
+         {
+            Send(self,@UpdateRates);
+         }
+      }
+
+      return;
+   }
+
+   // Checks if the battler is affected by a specific over time effect.
+   // If a caster is specified, will only return true if cast by caster.
+   // Effect can either by fed directly or as ID.
+   HasOverTimeEffect(who=$,what=$,num=0)
+   {
+      local oEffect, i;
+
+      if num = 0
+      {
+         oEffect = what;
+      }
+      else
+      {
+         if num < 400
+         {
+            oEffect = Send(sys,@FindSpellByNum,#num=num);
+         }
+         else
+         {
+            oEffect = Send(sys,@FindSkillByNum,#num=num);
+         }
+      }
+
+      foreach i in plOverTimeEffects
+      {
+         if Nth(i,5) = oEffect AND (who = $ OR who = Nth(i,6))
+         {
+            return TRUE;
+         }
+      }
+
+      return FALSE;
+   }
+
+   // Returns the list of over time effects that are
+   // currently affecting the battler.
+   GetOverTimeEffects()
+   {
+      return plOverTimeEffects;
+   }
+
+   // Adds a new over time effect to the battler.
+   // Notes:
+   // 'duration' specifies the length of the timer that is being created. A duration
+   // of $ translates to an infinite duration, which, among other uses, handles
+   // maintenance of mana draining spells.
+   // 'type' decides what resource is affected: 0 => health, 1 => mana, 2 => vigor
+   // If no type is specified, the message will start a health effect.
+   // 'strength' determines how much resource is gained/lost each second with a
+   // precision of milliunits. Negative numbers translate to a loss.
+   // 'state' is important for removal. A removal may lower the state of an OTE
+   // which will, in turn, lower its strength. A state of 0 will result in deletion.
+   // 'what' is the spell that causes the effect. It is not a requirement for a OTE,
+   // but will allow an OTE effect to be tracked through its associated spell.
+   // 'who' is the source of the OTE. This is mostly useful for distinguishing between
+   // OTEs of the same type but from different sources.
+   // 'removable' stores the means by which an effect can be removed. 0 means that the
+   // effect is not intended to be removed by traditional means. 1 means it can be
+   // removed by spells. 2 indicates internal removal (such as a maintained spell).
+   // 'showicon' keeps track of whether an effect comes with an associated icon.
+   // 'curse' means that the effect stops natural resource regeneration. $ means no
+   // curse, 0 is a health curse, 1 a mana curse and 2 a vigor curse.
+   // Template: Send(who,@StartOverTimeEffect,#duration=,#type=,#strength=,#state=,#what=,#who=,#removable=,#showicon=,#curse=);
+   StartOverTimeEffect(duration=$,type=0,strength=0,state=100,what=0,who=0,removable=TRUE,showicon=TRUE,curse=$)
+   {
+      local tTimer, lEffect;
+
+      if duration <> $
+      {
+         tTimer = CreateTimer(self,@DeleteOverTimeEffect,duration);
+      }
+      else
+      {
+         tTimer = duration;
+      }
+      lEffect = [tTimer,type,strength,state,what,who,removable,showicon,curse];
+
+      plOverTimeEffects = cons(lEffect,plOverTimeEffects);
+
+      if what <> 0
+      {
+         if IsClass(self,&Player) AND showicon
+         {
+            Send(self,@ShowAddEnchantment,#what=what,#type=ENCHANTMENT_PLAYER);
+         }
+         // Optional effects caused by the onset of the over time effect.
+         Send(what,@OverTimeEffectStarting,#who=self,#overtimeeffect=lEffect);
+      }
+
+      Send(self,@UpdateRates);
+
+      return;
+   }
+
+   // Deletes over time effects. Further explanation on conditions below.
+   DeleteOverTimeEffect(what=$,who=$,timer=0,clear=FALSE,removal=TRUE,curse=FALSE)
+   {
+      local i, oSpell, oCaster, bRemoved;
+
+      bRemoved = FALSE;
+
+      foreach i in plOverTimeEffects
+      {
+         oSpell = Nth(i,5);
+         oCaster = Nth(i,6);
+
+            // Case 1: Expires naturally due to timer running out.
+         if timer = First(i)
+            // Case 2: Removed by admin.
+            OR (clear AND Nth(i,3) < 0)
+            // Case 3: Removed because effect state equals 0.
+            OR Nth(i,4) = 0
+            // Case 4: Removed because spell was specified and removal type matches.
+            // Types being 0 (not intended to be removed by traditional means),
+            // 1 (removable by cures) or 2 (removable by internal mechanics only).
+            // Either the caster wasn't specified or it matches.
+            OR (what = oSpell AND (who = $ OR who = oCaster) AND Nth(i,7) = removal)
+            // Case 5: Removed because caster was specified and removal type matches.
+            // No specific spell was specified. Allows removal of effects caused
+            // by a specific caster, even if the effects' states aren't relevant.
+            OR (what = $ AND who = oCaster AND Nth(i,7) = removal)
+            // Case 6: Removed because a curse has been lifted.
+            OR (curse AND Nth(i,9) <> $ AND Nth(i,7) = removal)
+         {
+            if oSpell <> 0
+            {
+               if Nth(i,8)
+               {
+                  Send(self,@ShowRemoveEnchantment,#what=oSpell,#type=ENCHANTMENT_PLAYER);
+               }
+               Send(oSpell,@OverTimeEffectWearingOff,#who=self,#overtimeeffect=i);
+            }
+
+            if timer = 0
+            {
+               if First(i) <> $
+               {
+                  if IsTimer(First(i))
+                  {
+                     DeleteTimer(First(i));
+                  }
+               }
+            }
+
+            plOverTimeEffects = DelListElem(plOverTimeEffects,i);
+            bRemoved = TRUE;
+         }
+      }
+      if bRemoved
+      {
+         Send(self,@UpdateRates);
       }
 
       return;
@@ -728,12 +1820,16 @@ messages:
          + Send(SETTINGS_OBJECT,@GetBaseRating);
       iChanceToHit = iOffense * Send(SETTINGS_OBJECT,@GetEqualChanceToHit) / iDefense;
       iChanceToHit = bound(iChanceToHit,125,2000);
-      if iChanceToHit >= random(1,1000)
+      if iChanceToHit >= random(1,1000) OR Send(what,@IsResting)
       {
          // We hit!
          iDamage = Send(self,@GetDamage,#what=what,#stroke_obj=stroke_obj);
+         if Send(what,@IsResting)
+         {
+            iDamage *= 2;
+         }
          iScalefactor = 1000;
-         
+
          // Scale damage with chance to hit beyond 100 percent.
          if iChanceToHit > 1000 AND Send(SETTINGS_OBJECT,@GetDamageScaling)
          {
@@ -1983,6 +3079,44 @@ messages:
    IsDrainImmune()
    {
       return FALSE;
+   }
+
+   GetSkillAbility()
+   "Just a dummy. Might want to extend this to monsters at some point."
+   {
+      return 0;
+   }
+
+   GetSpellAbility()
+   "Just a dummy. Might want to extend this to monsters at some point."
+   {
+      return 0;
+   }
+
+   CancelMaintainedSpells()
+   {
+      local i;
+
+      foreach i in plControlledMinions
+      {
+         if IsClass(i,&Reflection)
+         {
+            Send(i,@Delete);
+         }
+      }
+
+      return;
+   }
+
+   IsCrystalizeManaSurging()
+   "Just a dummy. Might want to extend this to monsters at some point."
+   {
+      return FALSE;
+   }
+
+   IsResting()
+   {
+      return pbResting;
    }
 
 end

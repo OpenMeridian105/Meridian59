@@ -55,13 +55,13 @@ classvars:
    viSpell_level = 1
 
    viMana = 5           // Mana is amount used upon inititiation
-   viManaDrain = 1      // Drain is amount used every viDrainTime milliseconds
-   viDrainTime = 5000   // Drain some mana every viDrainTime milliseconds
+   viManaDrain = 200    // Mana drained per second (10^3)
 
    viSpellExertion = 1
    viChance_To_Increase = 20
    viMeditate_ratio = 15
 
+   viRegenerationEffect = TRUE
    viAffectsEveryone = TRUE
 
 properties:
@@ -77,20 +77,10 @@ messages:
       return;
    }
 
-   GetDuration(iSpellPower=0)
+   GetStateValue(iSpellPower=$)
+   "Spell-specific state data."
    {
-      return 200000 / (iSpellPower+1);
-   }
-
-   PeriodicEffect(who = $)
-   {
-      if (who <> $
-         AND IsClass(who,&User))
-      {
-         Send(who,@RestAddExertion,#amount=-2000);
-      }
-
-      return;
+      return iSpellPower*10;
    }
 
 end

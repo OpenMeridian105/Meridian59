@@ -59,9 +59,6 @@ constants:
    // Effective vigor debit per attack (X 10e-4)
    ATTACK_EXERTION = 5000
 
-   // Number of ms required to gain one vigor point
-   REST_TIME = 2500          
-
    // Number of ms to lose one boosted health or mana point.
    BOOST_DECAY_TIME = 30000 
 
@@ -86,9 +83,6 @@ constants:
 
    BASE_NEED = 105
 
-   // If vigor gets this low, see if second wind skill kicks in.
-   SECONDWIND_THRESHOLD = 25
-   
    // How steep is the curve for learning new levels of spells?
    //  A higher number means a greater slope (less points at low levels)
    POINTS_SLOPE = 7                 
@@ -106,7 +100,7 @@ constants:
    ATTACKED_PLAYER_WAIT = 15 * 60
 
    // Damage is capped at piBase_Max_Health divided by this number.  Reduces
-   //  newbie slaughter.
+   //  newbie slnaughter.
    MAX_HEALTH_DAMAGE_FRACTION = 3
 
    // Damage is overall capped to this number.  Gives a slight edge to people
@@ -790,8 +784,6 @@ resources:
    death_rift_stayed_too_long = \
       "Having lingered too long while still alive, you find "
       "yourself ejected back into reality!"
-   second_wind_finished = \
-      "You feel more relaxed as your second wind dissipates."
 
    player_monster_attack_string = "monster attack"
    player_no_weapon_string = "no weapon"
@@ -849,8 +841,6 @@ classvars:
    // Our actual max is this plus a bonus for might.
    viBulk_hold_max = 1700
    viWeight_hold_max = 1700
-
-   viMax_vigor = 200
 
 properties:
 
@@ -942,14 +932,14 @@ properties:
 
    //// Variable character values.
 
+   // All battlers use the same properties now, so
+   // piHealth and piMax_Health have been moved to battler.
+   // The same is true for mana and vigor.
    // The player sees piMax_Health in their client.
    // piBase_Max_Health is their base without any modifiers
    // IMPORTANT NOTE: For higher accuracy, a battler's current health 
    //(and only current health) is inflated by a factor of 100. Doing so 
    // avoids truncation errors but is not revealed to users in any way.
-   piHealth = 2000
-   piMax_Health = 20
-
    // piBase_Max_Health can now go above 150, and is equivalent to
    // "player level". Max HP is determined by GetBaseMaxHealth, which
    // is bound to the game's max HP and should be called when this
@@ -961,19 +951,11 @@ properties:
    // would equal piBase_Max_Health.
    piBase_Max_Health = 20
 
-   piMax_Mana = 20
-   piMana = 20
-
    // piKarma is measured in hundredths of karma units
    piKarma = 0
 
    // Percent stomach is full.
    piStomach = 0
-
-   // Governs health and mana replacement rates
-   piVigor = 100
-   // Accumulates small vigor debits from attacks, etc.
-   piExertion = 0
 
    // This replaces a timer
    piTimeLastStomachUpdate = 0
@@ -982,14 +964,8 @@ properties:
    plUsing = $
 
    // Timers 
-   ptHealth = $
    ptAdvancement = $
-   ptRest = $
    ptUnboundEnergy = $
-
-   // Poison info
-   ptPoison = $
-   piPoisonStrength = 0
 
    // List of objects adding overlays to us.
    plOverlays = $
@@ -1030,8 +1006,6 @@ properties:
    plLoadout_list = $
 
    piGender = GENDER_MALE
-
-   piVigor_rest_threshold = 80
 
    // The user's string description, typed when created (and editable in game).
    psPlayerDescription = $
@@ -1091,9 +1065,6 @@ properties:
 
    // Temp safe timer for giving players a period of safety after a death
    ptTempSafe = $
-   
-   // This keeps the duration of our Second Wind skill's "downtime"
-   ptSecondWind = $
 
    // Measures how long we have to wait before we're rescued.
    ptRescue = $
@@ -1169,36 +1140,10 @@ messages:
          ptUnboundEnergy = $;
       }
 
-      if ptHealth <> $
-      {
-         DeleteTimer(ptHealth);
-         ptHealth = $;
-      }
-
-      if ptMana <> $
-      {
-         DeleteTimer(ptMana);
-         ptMana = $;
-      }
-
-      if ptPoison <> $
-      {
-         DeleteTimer(ptPoison);
-         ptPoison = $;
-      }
-
       if ptAdvancement <> $
       {
          DeleteTimer(ptAdvancement);
          ptAdvancement = $;
-      }
-
-      if ptSecondWind <> $
-      {
-         DeleteTimer(ptSecondWind);
-         ptSecondWind = $;
-         Send(self,@ShowRemoveEnchantment,#what=Send(SYS,@FindSkillByNum,
-               #num=SKID_SECOND_WIND),#type=ENCHANTMENT_PLAYER);
       }
 
       if ptTempSafe <> $
@@ -1470,197 +1415,6 @@ messages:
       piLast_restart_time = time;
 
       return piLast_restart_time;
-   }
-
-   //// Vigor
-
-   NewVigor()
-   "Ensures vigor stays in bounds.  Also checks for second wind skill. "
-   "NOTE: Do not modify vigor below SECONDWIND_THRESHOLD if you do not "
-   "want the skill to kick in. Vigor display will be driven from here."
-   {
-      if piVigor < SECONDWIND_THRESHOLD
-         AND ptSecondWind = $
-         AND pbLogged_on
-         AND Send(self,@GetSkillAbility,#Skill_num=SKID_SECOND_WIND) > 0
-         AND Send(Send(SYS,@FindSkillByNum,#num=SKID_SECOND_WIND),
-                  @DoSkill,#who=self)
-      {
-         Send(self,@StartSecondWind);
-      }
-
-      piVigor = bound(piVigor,1,viMax_vigor);
-      Send(self,@DrawVigor);
-
-      return;
-   }
-
-   StartSecondWind()
-   {
-      local oWind, iTime;
-
-      if Send(self,@GetSkillAbility,#Skill_num=SKID_SECOND_WIND) = 0
-      {
-         return FALSE;
-      }
-
-      oWind = Send(SYS,@FindSkillByNum,#num=SKID_SECOND_WIND);
-      iTime = Send(oWind,@GetWaitTime,#who=self);
-      ptSecondWind = CreateTimer(self,@EndSecondWindTimer,iTime);
-      Send(self,@SetVigorRestThreshold,#amount=10);
-
-      return TRUE;
-   }
-
-   EndSecondWindTimer()
-   {
-      ptSecondWind = $;
-      Send(self,@EndSecondWind);
-
-      return;
-   }
-
-   EndSecondWind()
-   {
-      local iAmount;
-
-      if ptSecondWind <> $
-      {
-         DeleteTimer(ptSecondWind);
-         ptSecondWind = $;
-      }
-
-      // This prevents repeated triggering of the second wind skill.
-      if piVigor < SECONDWIND_THRESHOLD
-      {
-         piVigor = SECONDWIND_THRESHOLD;
-      }
-
-      iAmount = 80 + ((Send(self,@GetSkillAbility,
-                        #Skill_num=SKID_SECOND_WIND) + 1) / 5);
-      Send(self,@SetVigorRestThreshold,#amount=iAmount);
-      Send(self,@NewVigor);
-      Send(self,@MsgSendUser,#message_rsc=second_wind_finished);
-      Send(self,@ShowRemoveEnchantment,#what=Send(SYS,@FindSkillByNum,
-            #num=SKID_SECOND_WIND),#type=ENCHANTMENT_PLAYER);
-
-      return;
-   }
-
-   GetSecondWindTimer()
-   {
-      return ptSecondWind;
-   }
-
-   GetVigorRestThreshold()
-   {
-      return piVigor_rest_threshold;
-   }
-
-   SetVigorRestThreshold(amount = 0)
-   {
-      piVigor_rest_threshold = amount;
-
-      // Don't go above rest threshold if we're still waiting for Second Wind.
-      if ptSecondWind <> $
-      {
-         piVigor_rest_threshold = 10;
-      }
-
-      piVigor_rest_threshold = Bound(piVigor_rest_threshold,10,80 +
-               ((Send(self,@GetSkillAbility,#skill_num=SKID_SECOND_WIND)+1)/5));
-
-      Send(self,@DrawVigor);
-
-      return;
-   }
-
-   AddExertion(amount = 0, SetToThreshold = FALSE)
-   {
-      local iExertionAdded, iPercentReduced, iVigorLost;
-
-      // If we cannot gain vigor due to Second Wind, return out if trying
-      // to take away exertion
-      if ptSecondWind <> $ AND amount < 0
-      {
-         return;
-      }
-
-      iExertionAdded = amount;
-
-      if iExertionAdded > 0
-      {
-         // Parliament adjustment for exertion reduction.  Remove a // from
-         // the amount added.
-         iPercentReduced = Send(Send(SYS,@GetParliament),@GetFactionVigorBonus,#who=self);
-         iExertionAdded = (iExertionAdded * (100 - iPercentReduced))/100;
-      }
-
-      piExertion = piExertion + iExertionAdded;
-
-      if abs(piExertion) > MIN_VIGOR_CHANGE OR SetToThreshold
-      {
-         if SetToThreshold AND piVigor < piVigor_rest_threshold
-         {
-            piVigor = piVigor_Rest_threshold;
-            piExertion = 0;
-         }
-         else
-         {
-            iVigorLost = piExertion / 10000;
-            piVigor = piVigor - iVigorLost;
-            piExertion = piExertion - (iVigorLost * 10000);
-         }
-
-         Send(self,@NewVigor);
-      }
-
-      return;
-   }
-
-   RestAddExertion(amount = 0)
-   "Gives inns a bonus as resting places."
-   {
-      local iAmount;
-
-      // If we cannot gain vigor (probably due to Second Wind), return
-      // out if trying to take away exertion
-      if ((ptSecondWind <> $) AND (amount < 0))
-         OR Send(self,@IsInCannotInteractMode)
-      {
-         return;
-      }
-
-      if piVigor > piVigor_rest_threshold
-      {
-         return;
-      }
-
-      iAmount = Amount;
-      if Send(poOwner,@CheckRoomFlag,#flag=ROOM_SANCTUARY) AND amount < 0
-      {
-         iAmount = 2 * Amount;
-      }
-
-      if Send(poOwner,@CheckRoomFlag,#flag=ROOM_TRIPLE_HEAL) AND amount < 0
-      {
-         iAmount = 3 * Amount;
-      }
-
-      piExertion = piExertion + iAmount;
-      if abs(piExertion) > MIN_VIGOR_CHANGE
-      {    
-         piVigor = piVigor - piExertion / 10000;
-         if piVigor > piVigor_rest_threshold
-         {
-            piVigor = piVigor_rest_threshold;
-         }
-
-         piExertion = 0;
-         Send(self,@NewVigor);
-      }
-
-      return;
    }
 
    UpdateStomach()
@@ -2325,9 +2079,7 @@ messages:
 
       // Restart Unbound Energy, Health and Mana timers
       Send(self,@NewUnboundEnergy);
-      Send(self,@NewHealth);
-      Send(self,@NewMana);
-
+      Send(self,@UpdateRates);
       Send(self,@SendUserAllWindowOverlays);
 
       oObj = Send(SYS,@GetParliament);
@@ -2380,11 +2132,6 @@ messages:
          }
          // 5 sec delay so flashing on/off doesn't regen time.
          ptPhaseRegenTimer = CreateTimer(self,@RegenPhaseTime,5000);
-      }
-
-      if piPoisonStrength > 0
-      {
-         ptPoison = CreateTimer(self,@PoisonTimer,10000);
       }
 
       // Send(self,@RefigureSchoolsLists,#informlore=TRUE);
@@ -2490,6 +2237,12 @@ messages:
       {
          DeleteTimer(ptMana);
          ptMana = $;
+      }
+
+      if ptVigor <> $
+      {
+         DeleteTimer(ptVigor);
+         ptVigor = $;
       }
 
       if ptReward_timer <> $
@@ -2900,9 +2653,6 @@ messages:
       poKill_target = $;
       piKarma = 0;
 
-      piVigor = 100;
-      piVigor_rest_threshold = 80;
-      piExertion = 0;
       // percent stomach is full
       piStomach = 0;
       piTimeLastStomachUpdate = 0;
@@ -3239,25 +2989,6 @@ messages:
       return;
    }
 
-   HealthTimer()
-   {
-      local iDifference;
-      
-      iDifference = bound(piMax_Health*100 - piHealth,-100,100);
-      ptHealth = $;
-
-      if iDifference > 0
-      {
-         Send(self,@GainHealth,#amount=iDifference,#precision=TRUE);
-      }
-      else
-      {
-         Send(self,@LoseHealth,#amount=-iDifference,#decay=TRUE,#precision=TRUE);
-      }
-
-      return;
-   }
-
    EnchantmentTimer(timer = $)
    {
       local i, j, oEnchanter, oSpell;
@@ -3565,8 +3296,30 @@ messages:
                      Send(Nth(i,2),@GetName), " timer value ",iTime);
                }
 
-               SetNth(i,1,iTime);
+               SetFirst(i,iTime);
             }
+         }
+      }
+
+      foreach i in plOverTimeEffects
+      {
+         if First(i) <> $
+         {
+            // Convert timer to integer if we have a timer.
+            if IsTimer(First(i))
+            {
+               iTime = GetTimeRemaining(First(i));
+               DeleteTimer(First(i));
+            }
+            else
+            {
+               // We should really have had a timer at this stage. Since
+               // we haven't, let's assume that the timer has already been
+               // converted to an integer. Leave it.
+               iTime = First(i);
+            }
+
+            SetFirst(i,iTime);
          }
       }
 
@@ -3626,6 +3379,34 @@ messages:
             }
 
             Send(Nth(i,2),@RestartEnchantmentEffect,#who=self,#state=state);
+         }
+      }
+
+      foreach i in plOverTimeEffects
+      {
+         iTime = First(i);
+
+         // Nil means that the over time effect has infinite duration. Skip.
+         if iTime <> $
+         {
+            // Well. That is odd. Oh well, let's clean up and get out.
+            if IsTimer(iTime) 
+            {
+               DeleteTimer(iTime);
+               iTime = $;
+               plOverTimeEffects = DelListElem(plOverTimeEffects,i);
+            }
+            // Also odd: Should have been deleted already. We know the drill.
+            else if iTime < 1
+            {
+               plOverTimeEffects = DelListElem(plOverTimeEffects,i);
+            }
+            // That's better. We got a reasonable integer that we can turn into
+            // a timer. Create the timer and save it in list initial position.
+            else
+            {
+               SetFirst(i,CreateTimer(self,@DeleteOverTimeEffect,iTime));
+            }
          }
       }
 
@@ -3841,11 +3622,6 @@ messages:
          }
       }
 
-      if ptSecondWind <> $
-      {
-         Send(self,@ShowAddEnchantment,#what=Send(SYS,@FindSkillByNum,
-            #num=SKID_SECOND_WIND),#type=ENCHANTMENT_PLAYER);
-      }
       if ptCrystalizeManaSurgeTimer <> $
       {
          Send(self,@ShowAddEnchantment,#what=Send(SYS,@FindSpellByNum,
@@ -5949,14 +5725,14 @@ messages:
       // If we killed someone or something, we did damage.
       Send(self,@SetPlayerFlag,#flag=PFLAG_DID_DAMAGE,#value=TRUE);
 
-         // Stop minions ruining our karma, they are kind of bloodthirsty
-         // and tend to kill indiscriminately (especially mobs)
-         bReflection = FALSE;
-         if use_weapon <> $
-            AND IsClass(use_weapon,&Monster)
-         {
-            bReflection = TRUE;
-         }
+      // Stop minions ruining our karma, they are kind of bloodthirsty
+      // and tend to kill indiscriminately (especially mobs)
+      bReflection = FALSE;
+      if use_weapon <> $
+         AND IsClass(use_weapon,&Monster)
+      {
+         bReflection = TRUE;
+      }
 
       // Send text message - a stroke may want to provide it's own.
       if NOT Send(what,@SayDyingWords,#what=self)
@@ -6758,60 +6534,6 @@ messages:
       return -1;
    }
 
-   CalculateHealthTime()
-   "Calculate # of milliseconds until user will gain a health point"
-   {
-      local iTime, iMaxHealth, lRadiusState;
-
-      // Faster regen with higher vigor
-      iTime = ((200-piVigor)*(200-piVigor))/6 + 1000;
-
-      iTime = ((125-Send(self,@GetStamina)) * iTime)/100;
-      iMaxHealth = bound(piMax_health,40,100);
-      iTime = (iTime *100)/iMaxHealth;
-
-      iTime = iTime - Send(Send(SYS,@GetParliament),@GetFactionRegenBonus,
-                           #who=self,#hpregen=TRUE);
-
-      return bound(iTime,1000,60000);
-   }
-
-   CalculateManaTime()
-   "Calculate # of milliseconds until user will gain a mana point"
-   {
-      local iTime, oSpell, iSpellPower;
-
-      if piMana > piMax_mana
-      {
-         iTime = BOOST_DECAY_TIME;
-      }
-      else
-      {
-         iTime = BASE_REGEN_TIME + (25-Send(self,@GetMysticism))*1000;
-         iTime = iTime * 200 / bound(piVigor,1,$);
-         iTime = iTime/ bound(piMax_Mana,1,$);
-
-         iTime = iTime - Send(Send(SYS,@GetParliament),@GetFactionRegenBonus,
-                              #who=self,#hpregen=FALSE);
-
-         iTime = Bound(iTime,1000,60000);
-
-         // Mana Focus will adjust mana regen time based on its spellpower.
-         // Flag check for speed.
-         if piFlags & PFLAG_MANA_FOCUS
-         {
-            oSpell = Send(SYS,@FindSpellByNum,#Num=SID_MANA_FOCUS);
-            // Spellpower is returned directly from this.
-            iSpellPower = Send(self,@GetEnchantedState,#what=oSpell);
-            // Mana Focus bounds this to 500-60000 ms.
-            iTime = Send(oSpell,@AdjustManaTime,#iSpellPower=iSpellPower,
-                           #time=iTime);
-         }
-      }
-
-      return iTime;
-   }
-
    ReqEatSomething(filling = 0, what = $)
    {
       // This is the only place we need piStomach to be correct
@@ -6988,42 +6710,6 @@ messages:
       }
 
       Send(self,@DrawUnboundEnergy);
-
-      return;
-   }
-
-   NewHealth()
-   {
-      local iMaxHealth;
-
-      if piHealth < 0
-      {
-         piHealth = 0;
-      }
-
-      iMaxHealth = Send(self,@GetBaseMaxHealth);
-      // Keep health from going above natural max if affected by Mark of Dishonor.
-      if piHealth > iMaxHealth * 100
-         AND Send(self,@IsEnchanted,#byClass=&MarkOfDishonor)
-      {
-         piHealth = iMaxHealth * 100;
-      }
-
-      if ptHealth = $
-      {
-         if piHealth <> piMax_health*100
-            AND piHealth > 0
-         {
-            ptHealth = CreateTimer(self,@HealthTimer,Send(self,@CalculateHealthTime));
-         }
-      }
-      else if piHealth = piMax_health * 100
-      {
-         DeleteTimer(ptHealth);
-         ptHealth = $;
-      }
-
-      Send(self,@DrawHealth);
 
       return;
    }
@@ -7488,38 +7174,6 @@ messages:
       return plSkills;
    }
 
-   GetHealth()
-   {
-      return piHealth/100;
-   }
-
-   GetExactHealth()
-   {
-      return piHealth;
-   }
-
-   SetHealth(amount=$)
-   {
-      if amount <> $
-      {
-         piHealth = bound(amount*100,0,$);
-      }
-
-      Send(self,@DrawHealth);
-
-      return;
-   }
-
-   SetExactHealth(amount=$)
-   {
-      if amount <> $
-      {
-         piHealth = bound(amount,0,$);
-      }
-      
-      return;
-   }
-
    GetMight()
    {
       return bound((piMight + piMightMod),1,MAXIMUM_STAT);
@@ -7589,11 +7243,6 @@ messages:
    "Returns karma in natural units"
    {
       return piKarma/100;
-   }
-
-   GetVigor()
-   {
-      return piVigor;
    }
 
    AddKarma(amount = 0)
@@ -8653,16 +8302,6 @@ messages:
          Debug("Trying to delete a skill the system doesn't recognize.");
 
          return FALSE;
-      }
-
-      // If we remove Second Wind, we need to adjust the player's
-      // resting vigor threshold.
-      if num = SKID_SECOND_WIND
-      {
-         iVigorChange = (Send(self,@GetSkillAbility,
-                              #Skill_num=SKID_SECOND_WIND) + 1) / 5;
-         Post(self,@SetVigorRestThreshold,
-               #amount=piVigor_rest_threshold - iVigorChange);
       }
 
       foreach i in plSkills
@@ -9747,14 +9386,14 @@ messages:
          // It's a frenzy!  Give us a leg up.
          piHealth = 80*piMax_Health;
          piMana = 4*(piMax_Mana/5);
-         piVigor = 200;
+         piVigor = 2000000;
       }
       else
       {
          // We're not in a frenzy.  Give us the bare minimums.
          piMana = 1;
          piHealth = 1;
-         piVigor = Bound(piVigor/4,15,50);
+         piVigor = Bound(piVigor/4,150000,500000);
       }
 
       Send(self,@NewHealth);
@@ -10077,7 +9716,7 @@ messages:
          }
       }
 
-      if ptRest <> $
+      if pbResting
       {
          Send(self,@MsgSendUser,#message_rsc=player_cant_dance_resting);
 
@@ -11474,70 +11113,6 @@ messages:
       return player_was_hit;
    }
 
-   AddPoison(strength = 0, bVigorLoss = TRUE)
-   {
-      if ptPoison = $
-      {
-         ptPoison = CreateTimer(self,@PoisonTimer,10000);
-      }
-
-      piPoisonStrength = piPoisonStrength + strength;
-
-      if bVigorLoss
-      {
-         piVigor = piVigor - 20;
-         Send(self,@NewVigor);
-      }
-
-      return;
-   }
-
-   RemovePoison(strength = 0)
-   {
-      piPoisonStrength = piPoisonStrength - strength;
-
-      return;
-   }
-
-   PoisonTimer()
-   {
-      ptPoison = $;
-
-      // For safety's sake
-      if piPoisonStrength <= 0
-      {
-         piPoisonStrength = 0;
-
-         return;
-      }
-
-      if poOwner <> $
-      {
-         ptPoison = CreateTimer(self,@PoisonTimer,10000);
-      }
-
-      if poOwner = $
-         OR Send(self,@IsInCannotInteractMode)
-      {
-         return;
-      }
-
-      if NOT Send(poOwner,@SafePlayerAttack)
-         OR Send(poOwner,@IsValidTarget,#who=self)
-      {
-         // Poison only hurts you in the arena if you are a combatant.
-         piHealth = piHealth - piPoisonStrength / 10;
-         if piHealth < 1
-         {
-            piHealth = 1;
-         }
-
-         Send(self,@NewHealth);
-      }
-
-      return;
-   }
-
    AddMight(points = 0, bAbsolute = TRUE)
    "Returns signed change to might (negative means decrease)"
    "If bAbsolute = TRUE, ignore the bounds check and add the amount anyway."
@@ -11669,56 +11244,20 @@ messages:
 
    StartResting()
    {
-      if ptRest <> $
-      {
-         return;
-      }
-
       Send(self,@BreakTrance,#event=EVENT_REST);
-      ptRest = CreateTimer(self,@RestTimer,Send(self,@GetRestTime));
+      pbResting = TRUE;
       Send(self,@ResetPlayerFlagList);
-
-      return;
-   }
-
-   IsResting()
-   "If there is no rest timer, the player is not resting."
-   {
-      return ptRest <> $;
-   }
-
-   GetRestTime()
-   {
-      local iTime;
-
-      iTime = 1000 + (30* (51-Send(self,@GetStamina)));
-
-      return iTime;
-   }
-
-   RestTimer()
-   {
-      ptRest = $;
-
-      if piVigor < piVigor_rest_threshold
-      {
-         Send(self,@RestAddExertion,#amount=-10000);
-      }
-
-      ptRest = CreateTimer(self,@RestTimer,Send(self,@GetRestTime));
+      Send(self,@UpdateRates);
 
       return;
    }
 
    StopResting()
    {
-      if ptRest <> $
-      {
-         DeleteTimer(ptRest);
-         ptRest = $;
-      }
 
+      pbResting = FALSE;
       Send(self,@ResetPlayerFlagList);
+      Send(self,@UpdateRates);
 
       return;
    }
@@ -11979,15 +11518,6 @@ messages:
       Send(self,@RemoveAllEnchantments);
       Send(self,@RecalcBulkAndWeight);
       Send(self,@ResetPlayerFlagList);
-
-      if ptSecondWind <> $
-      {
-         DeleteTimer(ptSecondWind);
-         ptSecondWind = $;
-         Send(self,@MsgSendUser,#message_rsc=second_wind_finished);
-         Send(self,@ShowRemoveEnchantment,#what=Send(SYS,@FindSkillByNum,
-               #num=SKID_SECOND_WIND),#type=ENCHANTMENT_PLAYER);
-      }
 
       iAmount = 80 + ((Send(self,@GetSkillAbility,
                            #Skill_num=SKID_SECOND_WIND) + 1) / 5);
@@ -15226,6 +14756,31 @@ messages:
       }
 
       propagate;
+   }
+
+   // Ends maintained spells, most likely because we ran out of mana.
+   CancelMaintainedSpells()
+   {
+     Send(self,@BreakTrance,#event=EVENT_OOM);
+
+     propagate;
+   }
+
+   ZeroVigor()
+   "Uh oh! Are we in trouble?"
+   {
+      local i;
+
+      // Unequip ring of lethargy.
+      foreach i in plUsing
+      {
+         if IsClass(i,&RingofLethargy)
+         {
+            Send(self,@UnuseItem,#what=i);
+         }
+      }
+
+      return;
    }
 
 end

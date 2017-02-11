@@ -1,0 +1,190 @@
+// Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+// All rights reserved.
+//
+// This software is distributed under a license that is described in
+// the LICENSE file that accompanies it.
+//
+// Meridian is a registered trademark.
+
+
+///////////////////////////////////////////////////////////////////////////////////
+Necropolis6 is MonsterRoom
+
+constants:
+
+   include blakston.khd
+   include protocol.khd
+   
+   GIANT_ROW = 6
+   GIANT_COL = 11
+   
+   HOUR_MILLI = 900000
+
+// FENCE SECTORS   
+//   FENCE_1 = 3
+//   FENCE_2 = 4
+//   FENCE_3 = 5
+
+resources:
+
+   include necarea6.lkod
+
+   room_name_Necropolis6 = "Decaying City of Brax II"
+   room_Necropolis6 = necarea6.roo
+   Necropolis6_music = nec02.ogg
+
+   Necropolis6_loop = necloop4.ogg
+
+   Necropolis6_no_rift = "Casting shadow rift here would be pointless."
+   
+   fence_open_sound = doordown.ogg
+   fence_close_sound = doorrsup.ogg
+
+classvars:
+
+   vrName = room_name_Necropolis6
+
+   viTeleport_row = 27
+   viTeleport_col = 11
+
+   viTerrain_type = TERRAIN_NECROPOLIS
+
+properties:
+
+   prRoom = room_Necropolis6
+   piRoom_num = RID_NECROAREA6
+
+   piBaseLight = LIGHT_MIN
+   piOutside_factor = 0
+
+   piGen_time = 25000
+   piGen_percent = 80
+
+   piInit_count_min = 7
+   piInit_count_max = 9
+
+   piMonster_count_max = 25
+
+   prMusic = Necropolis6_music
+   
+   ptGiant_gen = $
+
+messages:
+
+   CreateStandardExits()
+   {
+
+      plExits = $;
+
+      // To NECROAREA 3
+      plExits = Cons([ 32, 10, RID_NECROAREA3, 2, 19, ROTATE_NONE ],plExits);
+      plExits = Cons([ 32, 11, RID_NECROAREA3, 2, 19, ROTATE_NONE ],plExits);
+      plExits = Cons([ 32, 12, RID_NECROAREA3, 2, 19, ROTATE_NONE ],plExits);
+
+      // To INSIDE
+      plExits = Cons([ 22, 10, RID_NECROAREA6, 20, 11, ROTATE_NONE ],plExits);
+      plExits = Cons([ 22, 11, RID_NECROAREA6, 20, 11, ROTATE_NONE ],plExits);
+      plExits = Cons([ 22, 12, RID_NECROAREA6, 20, 11, ROTATE_NONE ],plExits);
+  
+      plExits = Cons([ 21, 10, RID_NECROAREA6, 22, 11, ROTATE_NONE ],plExits);
+      plExits = Cons([ 21, 11, RID_NECROAREA6, 22, 11, ROTATE_NONE ],plExits);
+      plExits = Cons([ 21, 12, RID_NECROAREA6, 22, 11, ROTATE_NONE ],plExits);
+
+      propagate;
+   }
+
+
+   ReqSpellCast(who = $, oSpell = $, lItems = $)
+   {
+      if IsClass(oSpell,&DeathsDoor)
+      {
+         Send(who,@MsgSendUser,#message_rsc=Necropolis6_no_rift);            
+
+         return FALSE;
+      }
+
+      propagate;
+   }
+
+   
+   Constructed()
+   {
+      plMonsters = [ [&DaemonSkeleton, 70], [&TuskedSkeleton, 30] ];
+      plGenerators = [ [10,9], [10,14], [13,14], [15,9], [17,9], [17,14] ]; 
+
+      plLooping_sounds = [[ Necropolis4_loop, 0, 0, 200, 100 ]];
+
+      Send(self,@GiantGenTimer);
+  
+      propagate;
+  
+   }
+   
+   
+   GiantGenTimer()
+   {
+      local i,bFound,each_obj;
+
+      ptGiant_gen = $;
+
+      bFound = FALSE;
+      foreach i in plActive
+      {
+         each_obj = Send(self,@HolderExtractObject,#data=i);
+         if IsClass(each_obj,&GiantDaemonSkeleton)
+         {
+            bFound = TRUE;
+         }
+      }
+
+      if not bFound
+      {
+         Send(self,@NewHold,#what=Create(&GiantDaemonSkeleton),#new_row=GIANT_ROW,#new_col=GIANT_COL);
+      }
+      
+      ptGiant_gen = CreateTimer(self,@GiantGenTimer,1*HOUR_MILLI);
+
+      return;
+   }
+  
+  
+   CreateStandardObjects()
+   {
+      Send(self,@NewHold,#what=Create(&OrnamentalObject,#type=OO_NECSLIME),
+         #new_row=18,#new_col=8,#fine_row=56,#fine_col=0,#angle=ANGLE_EAST);
+      Send(self,@NewHold,#what=Create(&OrnamentalObject,#type=OO_NECSLIME),
+         #new_row=5,#new_col=14,#fine_row=0,#fine_col=48,#angle=ANGLE_EAST);
+      Send(self,@NewHold,#what=Create(&OrnamentalObject,#type=OO_NECSLIME),
+         #new_row=20,#new_col=16,#fine_row=56,#fine_col=8,#angle=ANGLE_EAST);
+
+      Send(self,@NewHold,#what=Create(&Skull),
+         #new_row=19,#new_col=8,#fine_row=8,#fine_col=40,#angle=ANGLE_EAST);      
+      Send(self,@NewHold,#what=Create(&OrnamentalObject,#type=OO_HALFSKULL),
+         #new_row=19,#new_col=9,#fine_row=0,#fine_col=8,#angle=ANGLE_EAST);
+      Send(self,@NewHold,#what=Create(&Skull),
+         #new_row=15,#new_col=12,#fine_row=48,#fine_col=8,#angle=ANGLE_EAST);      
+      Send(self,@NewHold,#what=Create(&OrnamentalObject,#type=OO_HALFSKULL),
+         #new_row=16,#new_col=11,#fine_row=24,#fine_col=0,#angle=ANGLE_EAST);
+      Send(self,@NewHold,#what=Create(&Skull),
+         #new_row=12,#new_col=13,#fine_row=8,#fine_col=0,#angle=ANGLE_EAST);      
+      Send(self,@NewHold,#what=Create(&OrnamentalObject,#type=OO_HALFSKULL),
+         #new_row=11,#new_col=11,#fine_row=16,#fine_col=40,#angle=ANGLE_EAST);
+      Send(self,@NewHold,#what=Create(&Skull),
+         #new_row=7,#new_col=10,#fine_row=48,#fine_col=16,#angle=ANGLE_EAST);      
+      Send(self,@NewHold,#what=Create(&OrnamentalObject,#type=OO_HALFSKULL),
+         #new_row=7,#new_col=13,#fine_row=56,#fine_col=0,#angle=ANGLE_EAST);
+      Send(self,@NewHold,#what=Create(&Skull),
+         #new_row=6,#new_col=10,#fine_row=24,#fine_col=0,#angle=ANGLE_EAST);      
+      Send(self,@NewHold,#what=Create(&OrnamentalObject,#type=OO_HALFSKULL),
+         #new_row=5,#new_col=12,#fine_row=24,#fine_col=24,#angle=ANGLE_EAST);
+
+      Send(self,@NewHold,#what=Create(&OrnamentalObject,#type=OO_NECTREE4),
+         #new_row=27,#new_col=9,#fine_row=0,#fine_col=48,#angle=ANGLE_EAST);
+      Send(self,@NewHold,#what=Create(&GlowTree),
+         #new_row=22,#new_col=13,#fine_row=48,#fine_col=48,#angle=ANGLE_EAST);	
+  
+      propagate;
+   }
+
+end
+////////////////////////////////////////////////////////////////////////////////

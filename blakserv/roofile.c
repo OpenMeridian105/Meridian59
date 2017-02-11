@@ -67,6 +67,8 @@
 /*                                   These are not defined in header                                          */
 /**************************************************************************************************************/
 
+BspNode* nodestack[MAXTREEDEPTH];
+
 __forceinline float BSPGetSectorHeightFloorWithDepth(const SectorNode* Sector, const V2* P)
 {
    const float height = SECTORHEIGHTFLOOR(Sector, P);
@@ -400,8 +402,189 @@ bool BSPLineOfSightTree(const BspNode* Node, const V3* S, const V3* E)
    }
 }
 
-bool BSPCanMoveInRoomTree(const BspNode* Node, const V2* S, const V2* E, Wall** BlockWall)
+bool BSPCanMoveInRoomWhile(const room_type* Room, const V2* S, const V2* E, Wall** BlockWall)
 {
+   // points on top element
+   int stackIdx = 0;
+   
+   // start with rootnode
+   nodestack[0] = Room->TreeNodes;
+
+   // loop until no more stack items (nodes to process)
+   while (stackIdx >= 0 && stackIdx < MAXTREEDEPTH)
+   {
+      // get next node to process from stack
+      const BspNode* node = nodestack[stackIdx];
+
+      // reached a leaf or nullchild, movements not blocked by leafs
+      // remove the node from the nodestack and decrement index
+      if (!node || node->Type != BspInternalType)
+      {
+         stackIdx--;
+         continue;
+      }
+
+      /****************************************************************/
+
+      // get signed distances from splitter to both endpoints of move
+      const float distS = DISTANCETOSPLITTERSIGNED(&node->u.internal, S);
+      const float distE = DISTANCETOSPLITTERSIGNED(&node->u.internal, E);
+
+      /****************************************************************/
+
+      // both endpoints far away enough on positive (right) side
+      // --> climb down only right subtree
+      if ((distS > WALLMINDISTANCE) & (distE > WALLMINDISTANCE))
+      {
+         // replace current node on stack with child and continue with it
+         nodestack[stackIdx] = node->u.internal.RightChild;
+         continue;
+      }
+
+      // both endpoints far away enough on negative (left) side
+      // --> climb down only left subtree
+      else if ((distS < -WALLMINDISTANCE) & (distE < -WALLMINDISTANCE))
+      {
+         // replace current node on stack with child and continue with it
+         nodestack[stackIdx] = node->u.internal.LeftChild;
+         continue;
+      }
+
+      // endpoints are on different sides, or one/both on infinite line or potentially too close
+      // --> check walls of splitter first and then possibly climb down both subtrees
+      else
+      {
+         Side* sideS;
+         SectorNode* sectorS;
+         Side* sideE;
+         SectorNode* sectorE;
+
+         // CASE 1) The move line actually crosses this infinite splitter.
+         // This case handles long movelines where S and E can be far away from each other and
+         // just checking the distance of E to the line would fail.
+         // q contains the intersection point
+         if (((distS > 0.0f) && (distE < 0.0f)) ||
+             ((distS < 0.0f) && (distE > 0.0f)))
+         {
+            // intersect finite move-line SE with infinite splitter line
+            // q stores possible intersection point
+            V2 q;
+            if (BSPIntersectLineSplitter(node, S, E, &q))
+            {
+               // iterate finite segments (walls) in this splitter
+               Wall* wall = node->u.internal.FirstWall;
+               while (wall)
+               {
+                  // infinite intersection point must also be in bbox of wall
+                  // otherwise no intersect
+                  if (!ISINBOX(&wall->P1, &wall->P2, &q))
+                  {
+                     wall = wall->NextWallInPlane;
+                     continue;
+                  }
+
+                  // set from and to sector / side
+                  if (distS > 0.0f)
+                  {
+                     sideS = wall->RightSide;
+                     sectorS = wall->RightSector;
+                  }
+                  else
+                  {
+                     sideS = wall->LeftSide;
+                     sectorS = wall->LeftSector;
+                  }
+
+                  if (distE > 0.0f)
+                  {
+                     sideE = wall->RightSide;
+                     sectorE = wall->RightSector;
+                  }
+                  else
+                  {
+                     sideE = wall->LeftSide;
+                     sectorE = wall->LeftSector;
+                  }
+
+                  // check the transition data for this wall, use intersection point q
+                  if (!BSPCanMoveInRoomTreeInternal(sectorS, sectorE, sideS, sideE, &q))
+                  {
+                     *BlockWall = wall;
+                     return false;
+                  }
+
+                  wall = wall->NextWallInPlane;
+               }
+            }
+         }
+
+         // CASE 2) The move line does not cross the infinite splitter, both move endpoints are on the same side.
+         // This handles short moves where walls are not intersected, but the endpoint may be too close
+         else
+         {
+            // check only getting closer
+            if (fabs(distE) <= fabs(distS))
+            {
+               // iterate finite segments (walls) in this splitter
+               Wall* wall = node->u.internal.FirstWall;
+               while (wall)
+               {
+                  // get min. squared distance from move endpoint to line segment
+                  float dist2 = MinSquaredDistanceToLineSegment(E, &wall->P1, &wall->P2);
+
+                  // skip if far enough away
+                  if (dist2 > WALLMINDISTANCE2)
+                  {
+                     wall = wall->NextWallInPlane;
+                     continue;
+                  }
+
+                  // set from and to sector / side
+                  // for case 2 (too close) these are based on (S),
+                  // and (E) is assumed to be on the other side.
+                  if (distS >= 0.0f)
+                  {
+                     sideS = wall->RightSide;
+                     sectorS = wall->RightSector;
+                     sideE = wall->LeftSide;
+                     sectorE = wall->LeftSector;
+                  }
+                  else
+                  {
+                     sideS = wall->LeftSide;
+                     sectorS = wall->LeftSector;
+                     sideE = wall->RightSide;
+                     sectorE = wall->RightSector;
+                  }
+
+                  // check the transition data for this wall, use E for intersectpoint
+                  if (!BSPCanMoveInRoomTreeInternal(sectorS, sectorE, sideS, sideE, E))
+                  {
+                     *BlockWall = wall;
+                     return false;
+                  }
+
+                  wall = wall->NextWallInPlane;
+               }
+            }
+         }
+
+         /****************************************************************/
+
+         // replace the processed node with right child and increment index
+         nodestack[stackIdx] = node->u.internal.RightChild;
+         stackIdx++;
+
+         // also add left child
+         nodestack[stackIdx] = node->u.internal.LeftChild;
+      }
+   }
+
+   return true;
+}
+
+bool BSPCanMoveInRoomTree(const BspNode* Node, const V2* S, const V2* E, Wall** BlockWall)
+{	
    // reached a leaf or nullchild, movements not blocked by leafs
    if (!Node || Node->Type != BspInternalType)
       return true;
@@ -733,7 +916,7 @@ bool BSPCanMoveInRoom(room_type* Room, V2* S, V2* E, int ObjectID, bool moveOuts
    }
 
    // first check against room geometry
-   bool roomok = (moveOutsideBSP || BSPCanMoveInRoomTree(&Room->TreeNodes[0], S, E, BlockWall));
+   bool roomok = (moveOutsideBSP || BSPCanMoveInRoomWhile(Room, S, E, BlockWall));
 
    // already found a collision in room
    if (!roomok)

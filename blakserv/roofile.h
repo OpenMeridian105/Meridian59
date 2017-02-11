@@ -43,6 +43,7 @@
 #define OBJMINDISTANCE        768.0f                                 // 3 highres rows/cols, old value from kod
 #define OBJMINDISTANCE2       (OBJMINDISTANCE * OBJMINDISTANCE)
 #define LOSEXTEND             64.0f
+#define MAXTREEDEPTH          8192
 
 
 // Calculation to convert KOD angles to radians.

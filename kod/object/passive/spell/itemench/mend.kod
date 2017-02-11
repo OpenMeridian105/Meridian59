@@ -24,7 +24,9 @@ resources:
       "Erases the wear of battle from a piece of equipment, restoring it to "
       "near new condition.  "
       "Requires an orc tooth and a sapphire to cast."
-
+   mend_extradesc_rsc = \
+      "\n\nIf you mend an item while immortal, the item will be "
+      "returned to its original condition."
    mend_not_weaponry = "You try to focus on %s%s, but nothing happens!"
    mend_beyond_hope = "%s%s is beyond salvage."
    mend_full_healed = "%s%s is already in perfect condition."
@@ -37,6 +39,7 @@ classvars:
    vrName = mend_name_rsc
    vrIcon = mend_icon_rsc
    vrDesc = mend_desc_rsc
+   vrExtraDesc = mend_extradesc_rsc
 
    viSpell_num = SID_MEND
    viSchool = SS_KRAANAN
@@ -124,20 +127,32 @@ messages:
       {
          // Immortals heal items back up to full.
          iMultiplier = 100;
+         iAmount = Send(oTarget,@GetInitHits);
       }
       else
       {
-         // Multiplier is a number from 75// to 95//.
-         iMultiplier = 75 + iSpellpower/5;
-         iMultiplier = bound(iMultiplier,75,95);
+         // Multiplier is a number from 75% to 95%.
+         iMultiplier = 75 + iSpellpower / 5;
+         iMultiplier = Bound(iMultiplier,75,95);
       }
 
-      iAmount = (iAmount*iMultiplier)/100;
+      iAmount = (iAmount * iMultiplier) / 100;
 
       Send(oTarget,@SetMaxHits,#number=iAmount);
       Send(oTarget,@SetHits,#number=iAmount);
       Send(who,@MsgSendUser,#message_rsc=mend_working,
-              #parm1=Send(oTarget,@GetDef),#parm2=Send(oTarget,@GetName));
+            #parm1=Send(oTarget,@GetDef),#parm2=Send(oTarget,@GetName));
+
+      propagate;
+   }
+
+   GetExtraDesc(who=$)
+   {
+      if (who <> $
+         AND IsClass(who,&DM))
+      {
+         return vrExtraDesc;
+      }
 
       propagate;
    }

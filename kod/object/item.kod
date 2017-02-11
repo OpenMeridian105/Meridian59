@@ -128,7 +128,12 @@ classvars:
 properties:
 
    viObject_flags = OF_GETTABLE
+
+   // Item hits set initially. Shouldn't change afterwards.
    piHits_init = 0
+   // Maximum hits for the item. Can change via low spellpower mends etc.
+   piHits_max = 0
+   // Current hits for the item. Item breaks when this reaches 0.
    piHits = 0
 
    plItem_attributes = $
@@ -141,6 +146,7 @@ messages:
       local iHits_average, oItemAtt;
 
       piHits_init = Random(viHits_init_min,viHits_init_max);
+      piHits_max = piHits_init;
       piHits = piHits_init;
       if corpse <> $
       {
@@ -834,15 +840,15 @@ messages:
       local iHit_Percent, rItem_condition;
 
       if vbShow_Condition
-         AND piHits_init > 0
+         AND piHits_max > 0
       {
          rItem_condition = vrCondition_exc;
-         iHit_Percent = (100 * piHits) / piHits_init;
+         iHit_Percent = (100 * piHits) / piHits_max;
          if iHit_Percent > 90
          {
-            // If item is worse than what can be found in the wild, describe it
-            //  as being "patched".
-            if piHits_init >= viHits_init_min
+            // If the item max hits is lower than the initial hits, describe it
+            // as being "patched".
+            if piHits_max >= piHits_init
             {
                rItem_condition = vrCondition_exc;
             }
@@ -869,7 +875,7 @@ messages:
          }
 
          AddPacket(4,item_cond_master, 4,vrPoss_Article, 4,Send(self,@GetName),
-                   4,rItem_condition,4,piHits,4,piHits_init);
+                   4,rItem_condition,4,piHits,4,piHits_max);
       }
       else
       {
@@ -936,16 +942,16 @@ messages:
       //    Y = viHits_init_max (max_hits before casting 'mend')
       //    X = viAverage_value
       //
-      // Translated:  An item whose piInit_hits is 80// of viHits_init_max
+      // Translated:  An item whose piHits_max is 80% of viHits_init_max
       //              and whose piHits is equal to that amount has a value equal
-      //              to 64// of its standard value.
+      //              to 64% of its standard value.
 
-      iPercent = (100*piHits_init*piHits)/(viHits_init_max*viHits_init_max);
+      iPercent = (100 * piHits_max * piHits) / (viHits_init_max * viHits_init_max);
       iValue = Send(self,@GetInitValue);
-      
-      iFinal = (iValue * iPercent)/100;
-      iFinal = bound(iFinal,10,iValue);      
-      
+
+      iFinal = (iValue * iPercent) / 100;
+      iFinal = Bound(iFinal,10,iValue);
+
       foreach i in plItem_Attributes
       {
          iNum = Send(self,@GetNumFromCompound,#compound=First(i));
@@ -957,9 +963,16 @@ messages:
       return iFinal;
    }
 
-   GetMaxHits()
+   GetInitHits()
+   "The item's initial max hits.  Keep track of it separately "
+   "as max hits may change."
    {
       return piHits_init;
+   }
+
+   GetMaxHits()
+   {
+      return piHits_max;
    }
 
    GetHits()
@@ -974,9 +987,9 @@ messages:
          return;
       }
 
-      piHits_init = number;
+      piHits_max = number;
 
-      return;   
+      return;
    }
 
    SetHits(number = $)
@@ -987,6 +1000,17 @@ messages:
       }
 
       piHits = number;
+
+      return;
+   }
+
+   FixMaxHits()
+   {
+      if (piHits_init > 0
+         AND piHits_max = 0)
+      {
+         piHits_max = piHits_init;
+      }
 
       return;
    }

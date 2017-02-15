@@ -14,10 +14,13 @@ constants:
 
    include blakston.khd
 
-   GIANT_ROW = 6
-   GIANT_COL = 11
+   GIANT_ROW = 8
+   GIANT_COL = 22
+   GIANT_FINEROW = 16
+   GIANT_FINECOL = 16
 
-   HOUR_MILLI = 900000
+   // 1 minute for testing
+   HOUR_MILLI = 60000
 
    // Gate sector IDs
    GATE_1 = 1
@@ -39,8 +42,8 @@ resources:
 
    Necropolis6_loop = necloop4.ogg
 
-   fence_open_sound = doordown.ogg
-   fence_close_sound = doorrsup.ogg
+   Necropolis6_open_sound = doordown.ogg
+   Necropolis6_close_sound = doorrsup.ogg
 
    Necropolis6_no_earthquake = \
       "This place looks far to unstable to risk an earthquake.  "
@@ -89,17 +92,16 @@ messages:
    #region Create/Delete
    Constructed()
    {
+      // No inherent spawn.
       plMonsters = $;
-      // First area - [19, 9], [19, 13], [17, 10], [13, 10], [6, 10]
-      // Second area - [9, 14], [16, 15], [17, 21], [18, 32], [14, 29], [14, 25]
-      // Third area - [7, 29], [8, 25], [7, 31]
-      // Boss - [8,16,  22,16]
       plGenerators = $;
+
+      // Coordinates for daemon skeletons.
       plSpawnOne = [ [19, 9], [19, 13], [17, 10], [13, 10], [6, 10] ];
       plSpawnTwo = [ [9, 14], [16, 15], [17, 21], [18, 32], [14, 29], [14, 25] ];
       plSpawnThree = [ [7, 29], [8, 25], [7, 31] ];
 
-      plLooping_sounds = [[ Necropolis4_loop, 0, 0, 200, 100 ]];
+      plLooping_sounds = [[ Necropolis6_loop, 0, 0, 200, 100 ]];
 
       Send(self,@GiantGenTimer);
 
@@ -129,6 +131,7 @@ messages:
 
    CreateStandardObjects()
    {
+      // TODO: fix locations.
       Send(self,@NewHold,#what=Create(&OrnamentalObject,#type=OO_NECSLIME),
          #new_row=18,#new_col=8,#fine_row=56,#fine_col=0,#angle=ANGLE_EAST);
       Send(self,@NewHold,#what=Create(&OrnamentalObject,#type=OO_NECSLIME),
@@ -180,8 +183,104 @@ messages:
    FirstUserEntered()
    {
       Send(self,@CreateSkeletons);
+      Send(self,@LowerAllGates);
 
       propagate;
+   }
+
+   DestroyDisposable()
+   "Don't empty the room if we have a logoff ghost here."
+   {
+      local i, each_obj;
+
+      foreach i in plActive
+      {
+         each_obj = First(i);
+         if (IsClass(each_obj,&LogoffGhost))
+         {
+            return;
+         }
+      }
+
+      propagate;
+   }
+
+   SomethingKilled(what = $, victim = $)
+   {
+      local cClass, i;
+
+      cClass = GetClass(victim);
+
+      if (cClass = &GiantDaemonSkeleton)
+      {
+         // Must also have killed all the skeletons
+         if (Send(self,@CountSkeletonsInSectorID,#iNum=AREA_3) = 0)
+         {
+            Send(self,@RaiseGate,#iNum=GATE_3);
+         }
+      }
+      else if (cClass = &DaemonSkeleton)
+      {
+         switch(Send(victim,@GetSectorIDAtObject))
+         {
+         case AREA_1:
+            if (Send(self,@CountSkeletonsInSectorID,#iNum=AREA_1) = 1)
+            {
+               Send(self,@RaiseGate,#iNum=GATE_1);
+            }
+            break;
+         case AREA_2:
+            if (Send(self,@CountSkeletonsInSectorID,#iNum=AREA_2) = 1)
+            {
+               Send(self,@RaiseGate,#iNum=GATE_2);
+            }
+            break;
+         case AREA_3:
+            if (Send(self,@CountSkeletonsInSectorID,#iNum=AREA_3) = 1)
+            {
+               // Must also have killed the giant skeleton.
+               foreach i in plActive
+               {
+                  if IsClass(First(i),&GiantDaemonSkeleton)
+                  {
+                     // Can't open gate.
+                     propagate;
+                  }
+               }
+               Send(self,@RaiseGate,#iNum=GATE_3);
+            }
+            break;
+         }
+      }
+
+      propagate;
+   }
+
+   CountSkeletonsInSectorID(iNum=AREA_1)
+   {
+      local i, each_obj, iCount;
+
+      if (iNum < AREA_1
+         OR iNum > AREA_3)
+      {
+         Debug("Invalid sector ID sent to CountHoldingInSectorID: ",iNum);
+
+         return 0;
+      }
+
+      iCount = 0;
+
+      foreach i in plActive
+      {
+         each_obj = First(i);
+         if (IsClass(each_obj,&DaemonSkeleton)
+            AND Send(each_obj,@GetSectorIDAtObject) = iNum)
+         {
+            ++iCount;
+         }
+      }
+
+      return iCount;
    }
 
    CreateSkeletons()
@@ -240,6 +339,7 @@ messages:
       if (iNum >= GATE_1
          AND iNum <= GATE_3)
       {
+         Send(self,@SomethingWaveRoom,#wave_rsc=Necropolis6_open_sound);
          Send(self,@SetSector,#sector=iNum,#animation=ANIMATE_CEILING_LIFT,
                #height=504,#speed=20);
       }
@@ -252,9 +352,23 @@ messages:
       if (iNum >= GATE_1
          AND iNum <= GATE_3)
       {
+         Send(self,@SomethingWaveRoom,#wave_rsc=Necropolis6_close_sound);
          Send(self,@SetSector,#sector=iNum,#animation=ANIMATE_CEILING_LIFT,
                #height=360,#speed=60);
       }
+
+      return;
+   }
+
+   LowerAllGates()
+   "Lowers all gates quickly, no sound."
+   {
+      Send(self,@SetSector,#sector=GATE_1,#animation=ANIMATE_CEILING_LIFT,
+               #height=360,#speed=200);
+      Send(self,@SetSector,#sector=GATE_2,#animation=ANIMATE_CEILING_LIFT,
+               #height=360,#speed=200);
+      Send(self,@SetSector,#sector=GATE_3,#animation=ANIMATE_CEILING_LIFT,
+               #height=360,#speed=200);
 
       return;
    }
@@ -278,10 +392,11 @@ messages:
       if NOT bFound
       {
          Send(self,@NewHold,#what=Create(&GiantDaemonSkeleton),
-               #new_row=GIANT_ROW,#new_col=GIANT_COL);
+               #new_row=GIANT_ROW,#new_col=GIANT_COL,
+               #fine_row=GIANT_FINEROW,#fine_col=GIANT_FINECOL);
       }
 
-      ptGiant_gen = CreateTimer(self,@GiantGenTimer,1*HOUR_MILLI);
+      ptGiant_gen = CreateTimer(self,@GiantGenTimer,HOUR_MILLI);
 
       return;
    }

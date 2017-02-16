@@ -71,15 +71,22 @@ messages:
    {
       local oRoom, iBaseLight;
 
-      oRoom = Send(who,@GetOwner);
+      if (IsClass(who,&Room))
+      {
+         oRoom = who;
+      }
+      else
+      {
+         oRoom = Send(who,@GetOwner);
+      }
 
       // global effects of the enchantment
       Send(oRoom,@SomeoneSaid,#type=SAY_MESSAGE,#string=darkness_on,#what=self);
       Send(oRoom,@RoomStartEnchantment,#what=self,#state=[-(iSpellPower+25),who],
-           #time=send(self,@GetDuration,#iSpellPower=iSpellPower));
-      
+           #time=Send(self,@GetDuration,#iSpellPower=iSpellPower));
+
       Send(oRoom,@AddBaseLight,#amount=-(iSpellPower+25));
-               
+
       propagate;
    }
 

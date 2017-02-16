@@ -79,7 +79,14 @@ messages:
    {
       local oRoom;
 
-      oRoom = Send(who,@GetOwner);
+      if (IsClass(who,&Room))
+      {
+         oRoom = who;
+      }
+      else
+      {
+         oRoom = Send(who,@GetOwner);
+      }
 
       // Global effects of the enchantment.
       Send(oRoom,@SomeoneSaid,#type=SAY_MESSAGE,#string=winds_on,#what=self);
@@ -163,7 +170,9 @@ messages:
       oCaster = Nth(state,2);
 
       if ((who = self AND NOT vbRoomEnchHitCaster)
-         OR NOT Send(oCaster,@AllowBattlerAttack,#victim=who,#stroke_obj=self))
+         OR (IsClass(oCaster,&Battler)
+            AND NOT Send(oCaster,@AllowBattlerAttack,#victim=who,
+                        #stroke_obj=self)))
       {
          return FALSE;
       }
@@ -179,7 +188,9 @@ messages:
       oCaster = Nth(state,2);
 
       if ((who = self AND NOT vbRoomEnchHitCaster)
-         OR NOT Send(oCaster,@AllowBattlerAttack,#victim=who,#stroke_obj=self))
+         OR (IsClass(oCaster,&Battler)
+            AND NOT Send(oCaster,@AllowBattlerAttack,#victim=who,
+                        #stroke_obj=self)))
       {
          return FALSE;
       }

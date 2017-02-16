@@ -86,7 +86,15 @@ messages:
    {
       local oRoom, oWho, i, iPower;
 
-      oRoom = Send(who,@GetOwner);
+      if (IsClass(who,&Room))
+      {
+         oRoom = who;
+      }
+      else
+      {
+         oRoom = Send(who,@GetOwner);
+      }
+
       Send(oRoom,@SomeoneSaid,#type=SAY_MESSAGE,#string=sandstorm_on,#what=self);
 
       iPower = Bound(iSpellPower,0,99);
@@ -234,7 +242,9 @@ messages:
       oCaster = Nth(state,2);
 
       if ((who = self AND NOT vbRoomEnchHitCaster)
-         OR NOT Send(oCaster,@AllowBattlerAttack,#victim=who,#stroke_obj=self))
+         OR (IsClass(oCaster,&Battler)
+            AND NOT Send(oCaster,@AllowBattlerAttack,#victim=who,
+                        #stroke_obj=self)))
       {
          return FALSE;
       }
@@ -250,7 +260,9 @@ messages:
       oCaster = Nth(state,2);
 
       if ((who = self AND NOT vbRoomEnchHitCaster)
-         OR NOT Send(oCaster,@AllowBattlerAttack,#victim=who,#stroke_obj=self))
+         OR (IsClass(oCaster,&Battler)
+            AND NOT Send(oCaster,@AllowBattlerAttack,#victim=who,
+                        #stroke_obj=self)))
       {
          return FALSE;
       }

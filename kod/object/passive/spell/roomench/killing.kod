@@ -56,7 +56,7 @@ classvars:
    viMeditate_ratio = 30
 
 properties:
-  
+
 messages:
 
    ResetReagents()
@@ -72,7 +72,14 @@ messages:
    {
       local oRoom;
 
-      oRoom = Send(who,@GetOwner);
+      if (IsClass(who,&Room))
+      {
+         oRoom = who;
+      }
+      else
+      {
+         oRoom = Send(who,@GetOwner);
+      }
 
       // Global effects of the enchantment.
       Send(oRoom,@SomeoneSaid,#type=SAY_MESSAGE,#string=killingfields_on,#what=self);
@@ -104,7 +111,8 @@ messages:
    EndSpell(where = $,state = $)
    "Called when spell expires."
    {
-      Send(where,@SomeoneSaid,#type=SAY_MESSAGE,#string=killingfields_off,#what=self);
+      Send(where,@SomeoneSaid,#type=SAY_MESSAGE,#string=killingfields_off,
+            #what=self);
       Send(where,@UnenchantAllOccupants,#what=self,#state=state);
 
       return;

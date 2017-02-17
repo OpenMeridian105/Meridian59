@@ -35,7 +35,8 @@ classvars:
    vrDesc = cnmuseumguard_desc_rsc
 
    viAttributes = \
-      MOB_NOFIGHT | MOB_NOMOVE | MOB_LISTEN | MOB_RANDOM | MOB_NOQUEST | MOB_SELLER
+      MOB_NOFIGHT | MOB_NOMOVE | MOB_LISTEN | MOB_RANDOM | MOB_SELLER \
+      | MOB_RECEIVE | MOB_BUYER
    viOccupation = MOB_ROLE_GUARD
 
 properties:
@@ -53,10 +54,17 @@ messages:
       propagate;
    }
 
+   ObjectDesired(what=$)
+   {
+      // Only buys back the scrolls.
+      return IsClass(what,&MuseumScroll);
+   }
+
    SetForSale()
    {
-      plFor_sale = [ 
+      plFor_sale = [
          [
+            Create(&MuseumScroll),
             Create(&WineGoblet),
             Create(&Mug)
          ],

@@ -1,0 +1,113 @@
+// Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+// All rights reserved.
+//
+// This software is distributed under a license that is described in
+// the LICENSE file that accompanies it.
+//
+// Meridian is a registered trademark.
+
+
+////////////////////////////////////////////////////////////////////////////////
+MuseumPortal is Portal
+
+constants:
+
+   include blakston.khd
+
+   // What do we adjust?
+   COL_ADJUST = 3
+
+resources:
+
+   include museumport.lkod
+
+   museumportal_no_scroll = \
+      "A wave of energy forces you away from the portal.  Perhaps you should "
+      "see if the museum guard has anything that will let you pass through it."
+   museumportal_enter = \
+      "You step into the portal and are whisked away to %s!"
+
+classvars:
+
+   viMoveOn_type = MOVEON_TELEPORTER
+
+properties:
+
+messages:
+
+   CalculatePortalArea()
+   "Pre-calculate the area around the portal in which a user can be teleported."
+   {
+      local iRow, iCol, iRowDec, iColDec;
+
+      iRow = Send(self,@GetRow);
+      iCol = Send(self,@GetCol);
+
+      if (iRow = $
+         OR iCol = $)
+      {
+         Debug("Portal ",self," in room ",Send(poOwner,@GetName),
+               " trying to calculate position with $ row/col!");
+
+         return;
+      }
+
+      iRowDec = iRow * 100 + Send(self,@GetFineRow) * 15625 / 10000;
+      iColDec = iCol * 100 + Send(self,@GetFineCol) * 15625 / 10000;
+
+      plTeleportArea = [iRowDec - 95, iRowDec + 95, iColDec - 105, iColDec + 125];
+
+      return;
+   }
+
+   TeleportSomething(what=$)
+   "Called when something walks on top of us."
+   {
+      local oUser, oRoom;
+
+      if (IsClass(what,&Monster))
+      {
+         oUser = Send(what,@GetMaster);
+         if (oUser = $)
+         {
+            propagate;
+         }
+      }
+      else
+      {
+         oUser = what;
+      }
+
+      if (IsClass(oUser,&User))
+      {
+         if NOT (Send(oUser,@PossessesA,#class=&MuseumScroll))
+         {
+            if (what = oUser)
+            {
+               Send(oUser,@MsgSendUser,#message_rsc=museumportal_no_scroll);
+            }
+            Send(SYS,@UtilGoNearSquare,#what=what,#where=poOwner,
+                  #new_row=Send(self,@GetRow),
+                  #new_col=Send(self,@GetCol) + COL_ADJUST,
+                  #new_angle=ANGLE_WEST);
+
+            return;
+         }
+         else if (what = oUser)
+         {
+            oRoom = Send(SYS,@FindRoomByNum,#num=piDest_room);
+            if (oRoom <> $)
+            {
+               // Assume they made it through the portal, UtilGoNearSquare
+               // should not fail.
+               Send(what,@MsgSendUser,#message_rsc=museumportal_enter,
+                  #parm1=Send(oRoom,@GetName));
+            }
+         }
+      }
+
+      propagate;
+   }
+
+end
+////////////////////////////////////////////////////////////////////////////////

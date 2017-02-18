@@ -60,7 +60,7 @@
 #define MIN_NOMOVEON (FINENESS / 4)   // Closest we can get to a nomoveon object
 #define MIN_HOTPLATE_DIST (FINENESS ) // Closest we can get to a hotplate before notification
 
-#define TELEPORT_DELAY 5000           // # of milliseconds to wait for server to teleport us
+#define TELEPORT_DELAY 1500           // # of milliseconds to wait for server to teleport us
 
 #define MIN_SIDE_MOVE (MOVEUNITS / 4)
 

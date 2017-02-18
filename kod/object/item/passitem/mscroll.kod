@@ -1,0 +1,248 @@
+// Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+// All rights reserved.
+//
+// This software is distributed under a license that is described in
+// the LICENSE file that accompanies it.
+//
+// Meridian is a registered trademark.
+
+
+////////////////////////////////////////////////////////////////////////////////
+MuseumScroll is PassiveItem
+
+constants:
+
+   include blakston.khd
+
+resources:
+
+   include mscroll.lkod
+
+   museumscroll_name_rsc = "scroll of teleportation"
+   museumscroll_icon_rsc = scrollms.bgf
+   museumscroll_desc_rsc = \
+      "This ornate, pristine scroll is written in a language you are unable "
+      "to decipher.  As you stare longer, you begin to feel a slight "
+      "vibration and the words seem to glow."
+
+   museumscroll_no_trade = \
+      "You find yourself unable to part with the scroll.  Maybe Mychel "
+      "would help remove it from your possession?"
+   museumscroll_teleport = \
+      "Your scroll begins to glow, and with a flash of white light you "
+      "feel yourself being pulled through space."
+   museumscroll_no_teleport = \
+      "Your scroll begins to glow, but quickly fades back to normal."
+   museumscroll_crumbles = \
+      "Your scroll of teleportation crumbles into dust!"
+   museumscroll_time_header_rsc = \
+      "\n\nYour scroll of teleportaion will disintegrate in %r%r%r%r%r%r%r."
+
+classvars:
+
+   vrName = museumscroll_name_rsc
+   vrIcon = museumscroll_icon_rsc
+   vrDesc = museumscroll_desc_rsc
+
+   viUse_type = ITEM_SINGLE_USE
+
+   viBulk = 20
+   viWeight = 20
+   viHits_init_min = 1
+   viHits_init_max = 1
+   viValue_average = 2500 // Set so that Museum guard sells for 4k
+
+   viScrollDestroyTime = 1200000 // 20 minutes.
+
+properties:
+
+   ptDestroy = $
+
+messages:
+
+   ReqNewOwner(what = $)
+   {
+      if (poOwner = $
+         OR what = $)
+      {
+         return TRUE;
+      }
+
+      if (IsClass(what,&CorNothMuseumGuard))
+      {
+         return TRUE;
+      }
+
+      if (IsClass(poOwner,&User))
+      {
+         Send(poOwner,@MsgSendUser,#message_rsc=museumscroll_no_trade);
+      }
+
+      return FALSE;
+   }
+
+   NewOwner(what = $)
+   {
+      if ptDestroy <> $
+      {
+         DeleteTimer(ptDestroy);
+         ptDestroy = $;
+      }
+
+      if IsClass(what,&User)
+      {
+         ptDestroy = CreateTimer(self,@Destroy,viScrollDestroyTime);
+      }
+
+      propagate;
+   }
+
+   Destroy()
+   {
+      ptDestroy = $;
+
+      Send(self,@Delete);
+
+      return;
+   }
+
+   Delete()
+   {
+      if ptDestroy <> $
+      {
+         DeleteTimer(ptDestroy);
+         ptDestroy = $;
+      }
+
+      // Deleting, give a different TP message.
+      Send(self,@TeleportToMuseum,#bDelete=TRUE);
+
+      propagate;
+   }
+
+   ReqNewApply(what = $, apply_on = $)
+   {
+      // Prevent use if you can't fight (not a get out of death free card).
+      if (IsClass(what,&User))
+         AND Send(what,@CheckPlayerFlag,#flag=PFLAG_NO_FIGHT)
+      {
+         return FALSE;
+      }
+
+      return TRUE;
+   }
+
+   NewApplied(what = $, apply_on = $)
+   {
+      Send(self,@TeleportToMuseum);
+
+      return;
+   }
+
+   TeleportToMuseum(bDelete=FALSE)
+   "Teleports poOwner to Cor Noth museum."
+   {
+      local oRoom, oOwner, i, each_obj;
+
+      oRoom = Send(SYS,@FindRoomByNum,#num=RID_COR_MUSEUM);
+      if (oRoom = $
+         OR poOwner = $
+         OR NOT IsClass(poOwner,&User))
+      {
+         return;
+      }
+
+      // Handle logged-off players here.
+      if NOT Send(poOwner,@IsLoggedOn)
+      {
+         // Nothing to do if they aren't in a historic room.
+         oOwner = Send(SYS,@FindRoomByNum,#num=Send(poOwner,@GetSaveRoom));
+         if (Send(oOwner,@GetRegion) <> RID_HISTORIC)
+         {
+            return;
+         }
+
+         // Remove any logoff ghost they might have generated.
+         foreach i in Send(oOwner,@GetHolderActive)
+         {
+            each_obj = First(i);
+            if (IsClass(each_obj,&LogoffGhost)
+               AND Send(each_obj,@GetGhostedPlayer) = poOwner)
+            {
+               Send(each_obj,@Delete);
+
+               break;
+            }
+         }
+
+         // Set save location to museum.
+         Send(poOwner,@SetSaveLocation,#rid=RID_COR_MUSEUM,
+               #row=Send(oRoom,@GetTeleportRow),
+               #col=Send(oRoom,@GetTeleportCol));
+
+         return;
+      }
+
+      if (Send(Send(poOwner,@GetOwner),@GetRegion) <> RID_HISTORIC)
+      {
+         if (bDelete)
+         {
+            Send(poOwner,@MsgSendUser,#message_rsc=museumscroll_crumbles);
+         }
+         else
+         {
+            Send(poOwner,@MsgSendUser,#message_rsc=museumscroll_no_teleport);
+         }
+
+         return;
+      }
+
+      Send(poOwner,@EffectSendUserDuration,#effect=EFFECT_WHITEOUT,#duration=500);
+      Send(poOwner,@MsgSendUser,#message_rsc=museumscroll_teleport);
+      if (bDelete)
+      {
+         Send(poOwner,@MsgSendUser,#message_rsc=museumscroll_crumbles);
+      }
+      Post(oRoom,@Teleport,#what=poOwner);
+
+      return;
+   }
+
+   AppendDesc()
+   {
+      if ptDestroy <> $
+      {
+         Send(self,@SendTimeRemaining,#iTime=GetTimeRemaining(ptDestroy) / 1000);
+      }
+      else
+      {
+         AddPacket(4,system_blank_resource);
+      }
+
+      return;
+   }
+
+   SendTimeRemainingHeader(parm1=$)
+   {
+      AddPacket(4,museumscroll_time_header_rsc);
+
+      return;
+   }
+
+   CanSwap()
+   {
+      return FALSE;
+   }
+
+   DropOnDeath()
+   {
+      return FALSE;
+   }
+
+   CanBeStoredInVault()
+   {
+      return FALSE;
+   }
+
+end
+////////////////////////////////////////////////////////////////////////////////

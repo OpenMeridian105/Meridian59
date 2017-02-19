@@ -582,7 +582,8 @@ static void AddObjects(room_type *room)
       d->draw.overlays = NULL;
       d->draw.draw     = True;
       d->draw.flags    = 0;
-      d->draw.drawingtype  = DRAWFX_DRAW_PLAIN;
+      d->draw.drawingtype  = ((proj->flags & PROJ_FLAG_TRANSPARENT50) == PROJ_FLAG_TRANSPARENT50)
+                              ? DRAWFX_TRANSLUCENT50 : DRAWFX_DRAW_PLAIN;
       d->draw.minimapflags  = 0;
       d->draw.namecolor = 0;
       d->draw.objecttype = OT_NONE;

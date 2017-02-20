@@ -1,4 +1,4 @@
-# Makefile for Morbus' graphics. This makefile doesn't build .bbg files
+# Makefile for Taran's graphics. This makefile doesn't build .bbg files
 # but will copy .bgfs from any directory listed here.
 
 TOPDIR=..\..\..
@@ -8,7 +8,7 @@ SOURCEDIR = .
 OUTDIR = $(CLIENTRUNDIR)\resource
 OUTDIRSUB = ..\$(OUTDIR)
 
-DIRS = holyblaze martyrsgrace wdshield
+DIRS =
 
 all:
    @-for %i in (*.bgf) do @$(CP) %i $(OUTDIR) >nul

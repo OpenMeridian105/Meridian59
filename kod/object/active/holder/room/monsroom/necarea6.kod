@@ -32,11 +32,30 @@ constants:
    AREA_2 = 5
    AREA_3 = 6
 
+   // Door info.
+   DOOR_OPEN_SPEED  = 20
+   DOOR_CLOSE_SPEED = 60
+   DOOR_CLOSE_FAST_SPEED = 200
+   DOOR_HEIGHT_FLOOR = 360
+   DOOR_HEIGHT_CEILING = 504
+
+   // Gates one and two stay open for 30 seconds.
+   DOOR_CLOSE_TIMER = 30000
+   // Gate three stays open for 60 seconds.
+   DOOR_CLOSE_TIMER_LAST = 60000
+
+   // Special blink coords for area 2 and 3.
+   BLINK2_ROW = 17
+   BLINK2_COL = 25
+
+   BLINK3_ROW = 6
+   BLINK3_COL = 30
+
 resources:
 
    include necarea6.lkod
 
-   room_name_Necropolis6 = "Decaying City of Brax II"
+   room_name_Necropolis6 = "Lair of the Necromancer"
    room_Necropolis6 = necarea6.roo
    Necropolis6_music = nec02.ogg
 
@@ -46,11 +65,15 @@ resources:
    Necropolis6_close_sound = doorrsup.ogg
 
    Necropolis6_no_earthquake = \
-      "This place looks far to unstable to risk an earthquake.  "
+      "This place looks far too unstable to risk an earthquake.  "
       "You wisely decide to halt your casting."
    Necropolis6_shalspell_blocked = \
       "You begin the incantation for your spell, but the dark magic "
       "present here seems to sap all power from your words."
+   Necropolis6_necro_spawn = \
+      "~kThe necromancer whispers, \"~r~IYour efforts are futile, the war "
+      "will come to your lands no matter how much you fight.  Die, and join "
+      "us instead!~k~I\""
 
 classvars:
 
@@ -79,13 +102,20 @@ properties:
 
    prMusic = Necropolis6_music
 
-   ptGiant_gen = $
+   ptAreaThree = $
 
    // Handle our own mob generation.
    pbGenerateMonsters = FALSE
    plSpawnOne = $
    plSpawnTwo = $
    plSpawnThree = $
+
+   ptGateOne = $
+   ptGateTwo = $
+   ptGateThree = $
+
+    // Spawns this % of the time.
+   piNecroSpawnRate = 50
 
 messages:
 
@@ -98,12 +128,10 @@ messages:
 
       // Coordinates for daemon skeletons.
       plSpawnOne = [ [19, 9], [19, 13], [17, 10], [13, 10], [6, 10] ];
-      plSpawnTwo = [ [9, 14], [16, 15], [17, 21], [18, 32], [14, 29], [14, 25] ];
+      plSpawnTwo = [ [16, 15], [17, 21], [18, 32], [14, 29], [14, 25] ];
       plSpawnThree = [ [7, 29], [8, 25], [7, 31] ];
 
       plLooping_sounds = [[ Necropolis6_loop, 0, 0, 200, 100 ]];
-
-      Send(self,@GiantGenTimer);
 
       propagate;
    }
@@ -170,20 +198,135 @@ messages:
 
    Delete()
    {
-      if (ptGiant_gen <> $)
+      if (ptAreaThree <> $)
       {
-         DeleteTimer(ptGiant_gen);
-         ptGiant_gen = $;
+         DeleteTimer(ptAreaThree);
+         ptAreaThree = $;
+      }
+
+      if (ptGateOne <> $)
+      {
+         DeleteTimer(ptGateOne);
+         ptGateOne = $;
+      }
+
+      if (ptGateTwo <> $)
+      {
+         DeleteTimer(ptGateTwo);
+         ptGateTwo = $;
+      }
+
+      if (ptGateThree <> $)
+      {
+         DeleteTimer(ptGateThree);
+         ptGateThree = $;
       }
 
       propagate;
    }
    #endregion Create/Delete
 
-   FirstUserEntered()
+   // Overrides to handle what happens when a user logs on/enters in a
+   // particular area, or tries to teleport using blink, or kills something.
+   #region Room Overrides
+   NewHoldObject(what = $, new_pos = $)
+   "If a user drops into one of the zones, make sure there are skeletons "
+   "present or a gate open for them to exit."
    {
-      Send(self,@CreateSkeletons);
-      Send(self,@LowerAllGates);
+      local iSectorID;
+
+      if (what = $
+         OR new_pos = $
+         OR NOT IsClass(what,&User))
+      {
+         propagate;
+      }
+
+      iSectorID = Send(self,@GetSectorIDAtLocation,#row=Nth(new_pos,2),
+                        #col=Nth(new_pos,3),#fine_row=Nth(new_pos,4),
+                        #fine_col=Nth(new_pos,5));
+
+      // Post so it happens after fully logging in, if user logs into
+      // area 2 or 3.
+      Post(self,@UserEntryCheck,#who=what,#iSectorID=iSectorID);
+
+      propagate;
+   }
+
+   SomethingPhasedIn(what=$)
+   {
+      Send(self,@UserEntryCheck,#who=what,
+            #iSectorID=Send(what,@GetSectorIDAtObject));
+
+      propagate;
+   }
+
+   SomethingSpectatedIn(what=$)
+   {
+      Send(self,@UserEntryCheck,#who=what,
+            #iSectorID=Send(what,@GetSectorIDAtObject));
+
+      propagate;
+   }
+
+   UserEntryCheck(iSectorID = 0, who = $)
+   "User 'who' entered room at 'iSectorID' by logging in, phasing in or being "
+   "unspectated.  Check if they should be moved, or if mobs should be made."
+   {
+      if (who = $)
+      {
+         return;
+      }
+
+      if (iSectorID = AREA_2)
+      {
+         if (ptGateTwo = $
+            AND NOT Send(self,@IsSkeletonInSectorID,#iNum=iSectorID))
+         {
+            Send(self,@Teleport,#what=who,#foyer=TRUE);
+         }
+      }
+      else if (iSectorID = AREA_3)
+      {
+         if (ptGateThree = $
+            AND NOT Send(self,@IsSkeletonInSectorID,#iNum=iSectorID))
+         {
+            Send(self,@Teleport,#what=who,#foyer=TRUE);
+         }
+      }
+      else
+      {
+         // Make sure skeletons exist in first area.
+         Send(self,@CreateSkeletons,#bArea=AREA_1);
+      }
+
+      return;
+   }
+
+   Teleport(what=$,foyer=FALSE)
+   "Admin supported.  Handle users in area 2 or 3, or let Room handle it."
+   {
+      if (foyer)
+      {
+         propagate;
+      }
+
+      if Send(what,@GetOwner) = self
+      {
+         switch (Send(what,@GetSectorIDAtObject))
+         {
+         case AREA_2:
+            Send(SYS,@UtilGoNearSquare,#what=what,#where=self,
+                  #new_row=BLINK2_ROW,#new_col=BLINK2_COL);
+
+            return;
+         case AREA_3:
+            Send(SYS,@UtilGoNearSquare,#what=what,#where=self,
+                  #new_row=BLINK3_ROW,#new_col=BLINK3_COL);
+
+            return;
+         }
+      }
 
       propagate;
    }
@@ -211,15 +354,9 @@ messages:
 
       cClass = GetClass(victim);
 
-      if (cClass = &GiantDaemonSkeleton)
-      {
-         // Must also have killed all the skeletons
-         if (Send(self,@CountSkeletonsInSectorID,#iNum=AREA_3) = 0)
-         {
-            Send(self,@RaiseGate,#iNum=GATE_3);
-         }
-      }
-      else if (cClass = &DaemonSkeleton)
+      if ((cClass = &DaemonSkeleton
+         OR cClass = &GiantDaemonSkeleton)
+         AND NOT Send(victim,@IsIllusion))
       {
          switch(Send(victim,@GetSectorIDAtObject))
          {
@@ -236,27 +373,32 @@ messages:
             }
             break;
          case AREA_3:
-            if (Send(self,@CountSkeletonsInSectorID,#iNum=AREA_3) = 1)
+            if (Send(self,@CountSkeletonsInSectorID,#iNum=AREA_3) = 1
+               AND Send(self,@FindHoldingActive,#class=&Necromancer) = $)
             {
-               // Must also have killed the giant skeleton.
-               foreach i in plActive
+               if (Random(1,100) <= piNecroSpawnRate)
                {
-                  if IsClass(First(i),&GiantDaemonSkeleton)
-                  {
-                     // Can't open gate.
-                     propagate;
-                  }
+                  Send(self,@SpawnNecromancer);
                }
-               Send(self,@RaiseGate,#iNum=GATE_3);
+               else
+               {
+                  Send(self,@RaiseGate,#iNum=GATE_3);
+               }
             }
             break;
          }
       }
+      else if (cClass = &Necromancer)
+      {
+         Send(self,@RaiseGate,#iNum=GATE_3);
+      }
 
       propagate;
    }
+   #endregion Room Overrides
 
    CountSkeletonsInSectorID(iNum=AREA_1)
+   "Includes giant daemon skeleton, but not necromancer."
    {
       local i, each_obj, iCount;
 
@@ -273,7 +415,9 @@ messages:
       foreach i in plActive
       {
          each_obj = First(i);
-         if (IsClass(each_obj,&DaemonSkeleton)
+         if ((IsClass(each_obj,&DaemonSkeleton)
+               OR IsClass(each_obj,&GiantDaemonSkeleton))
+            AND NOT Send(each_obj,@IsIllusion) // No animated mobs etc.
             AND Send(each_obj,@GetSectorIDAtObject) = iNum)
          {
             ++iCount;
@@ -283,19 +427,100 @@ messages:
       return iCount;
    }
 
-   CreateSkeletons()
+   IsSkeletonInSectorID(iNum=0)
+   "Includes giant daemon skeleton and necromancer."
    {
-      local i, each_obj, bAreaOne, bAreaTwo, bAreaThree;
+      local i, each_obj, cClass;
+
+      if (iNum < AREA_1
+         OR iNum > AREA_3)
+      {
+         Debug("Invalid sector ID sent to IsSkeletonInSectorID: ",iNum);
+
+         return FALSE;
+      }
+
+      foreach i in plActive
+      {
+         each_obj = First(i);
+         cClass = GetClass(each_obj);
+         if ((cClass = &DaemonSkeleton
+               OR cClass = &GiantDaemonSkeleton
+               OR cClass = &Necromancer)
+            AND NOT Send(each_obj,@IsIllusion) // No animated mobs etc.
+            AND Send(each_obj,@GetSectorIDAtObject) = iNum)
+         {
+            return TRUE;
+         }
+      }
+
+      return FALSE;
+   }
+
+   CreateSkeletons(bArea=0)
+   {
+      local i;
+
+      // Must be a valid spawn area.
+      if (bArea < AREA_1
+         OR bArea > AREA_3)
+      {
+         return;
+      }
+
+      // Determine if we have skeletons in this area already.
+      if (Send(self,@IsSkeletonInSectorID,#iNum=bArea))
+      {
+         return;
+      }
+
+      // Spawn in this area.
+      switch (bArea)
+      {
+      case AREA_1:
+         foreach i in plSpawnOne
+         {
+            Send(self,@NewHold,#what=Create(&DaemonSkeleton),
+               #new_row=First(i),#new_col=Nth(i,2));
+         }
+         return;
+      case AREA_2:
+         foreach i in plSpawnTwo
+         {
+            Send(self,@NewHold,#what=Create(&DaemonSkeleton),
+               #new_row=First(i),#new_col=Nth(i,2));
+         }
+         return;
+      case AREA_3:
+         foreach i in plSpawnThree
+         {
+            Send(self,@NewHold,#what=Create(&DaemonSkeleton),
+               #new_row=First(i),#new_col=Nth(i,2));
+         }
+         Send(self,@NewHold,#what=Create(&GiantDaemonSkeleton),
+               #new_row=GIANT_ROW,#new_col=GIANT_COL,
+               #fine_row=GIANT_FINEROW,#fine_col=GIANT_FINECOL);
+         return;
+      }
+
+      return;
+   }
+
+   CreateAllSkeletons()
+   {
+      local i, cClass, each_obj, bAreaOne, bAreaTwo, bAreaThree, bGiantSkel;
 
       bAreaOne = FALSE;
       bAreaTwo = FALSE;
       bAreaThree = FALSE;
+      bGiantSkel = FALSE;
 
       // Determine if we have skeletons
       foreach i in plActive
       {
          each_obj = First(i);
-         if (IsClass(each_obj,&DaemonSkeleton))
+         cClass = GetClass(each_obj);
+         if (cClass = &DaemonSkeleton)
          {
             switch (Send(each_obj,@GetSectorIDAtObject))
             {
@@ -303,6 +528,10 @@ messages:
                case AREA_2: bAreaTwo = TRUE; break;
                case AREA_3: bAreaThree = TRUE; break;
             }
+         }
+         else if (cClass = &GiantDaemonSkeleton)
+         {
+            bGiantSkel = TRUE;
          }
       }
 
@@ -330,32 +559,151 @@ messages:
                #new_row=First(i),#new_col=Nth(i,2));
          }
       }
+      if (NOT bGiantSkel)
+      {
+         Send(self,@NewHold,#what=Create(&GiantDaemonSkeleton),
+               #new_row=GIANT_ROW,#new_col=GIANT_COL,
+               #fine_row=GIANT_FINEROW,#fine_col=GIANT_FINECOL);
+      }
 
       return;
    }
 
+   SpawnNecromancer()
+   {
+      Send(self,@NewHold,#what=Create(&Necromancer),
+            #new_row=GIANT_ROW,#new_col=GIANT_COL,
+            #fine_row=GIANT_FINEROW,#fine_col=GIANT_FINECOL);
+      Send(self,@SomeoneSaid,#type=SAY_MESSAGE,#string=Necropolis6_necro_spawn,
+            #what=self);
+
+      return;
+   }
+
+   #region Open/close gates
    RaiseGate(iNum=0)
    {
-      if (iNum >= GATE_1
-         AND iNum <= GATE_3)
+      // Must be valid gate.
+      if (iNum < GATE_1
+         OR iNum > GATE_3)
       {
-         Send(self,@SomethingWaveRoom,#wave_rsc=Necropolis6_open_sound);
-         Send(self,@SetSector,#sector=iNum,#animation=ANIMATE_CEILING_LIFT,
-               #height=504,#speed=20);
+         return;
       }
+
+      if (iNum = GATE_1)
+      {
+         if (ptGateOne <> $)
+         {
+            return;
+         }
+         // Make skeletons in area two.
+         Send(self,@CreateSkeletons,#bArea=AREA_2);
+         ptGateOne = CreateTimer(self,@CloseGateOne,DOOR_CLOSE_TIMER);
+      }
+      else if (iNum = GATE_2)
+      {
+         if (ptGateTwo <> $)
+         {
+            return;
+         }
+         // Make skeletons in area three.
+         Send(self,@CreateSkeletons,#bArea=AREA_3);
+         ptGateTwo = CreateTimer(self,@CloseGateTwo,DOOR_CLOSE_TIMER);
+      }
+      else if (iNum = GATE_3)
+      {
+         if (ptGateThree <> $)
+         {
+            return;
+         }
+         ptGateThree = CreateTimer(self,@CloseGateThree,DOOR_CLOSE_TIMER_LAST);
+      }
+
+      Send(self,@SomethingWaveRoom,#wave_rsc=Necropolis6_open_sound);
+      Send(self,@SetSector,#sector=iNum,#animation=ANIMATE_CEILING_LIFT,
+            #height=DOOR_HEIGHT_CEILING,#speed=DOOR_OPEN_SPEED);
+
+      return;
+   }
+
+   CloseGateOne(timer = $)
+   {
+      if (ptGateOne <> $
+         AND ptGateOne <> timer)
+      {
+         DeleteTimer(ptGateOne);
+      }
+      ptGateOne = $;
+
+      Send(self,@LowerGate,#iNum=GATE_1);
+
+      return;
+   }
+
+   CloseGateTwo(timer = $)
+   {
+      if (ptGateTwo <> $
+         AND ptGateTwo <> timer)
+      {
+         DeleteTimer(ptGateTwo);
+      }
+      ptGateTwo = $;
+
+      Send(self,@LowerGate,#iNum=GATE_2);
+
+      return;
+   }
+
+   CloseGateThree(timer = $)
+   {
+      if (ptGateThree <> $
+         AND ptGateThree <> timer)
+      {
+         DeleteTimer(ptGateThree);
+      }
+      ptGateThree = $;
+
+      Send(self,@LowerGate,#iNum=GATE_3);
+
+      // Create skeletons in area one, start the dungeon again.
+      Send(self,@CreateSkeletons,#bArea=AREA_1);
 
       return;
    }
 
    LowerGate(iNum=0)
    {
-      if (iNum >= GATE_1
-         AND iNum <= GATE_3)
+      local i, each_obj;
+
+      if (iNum < GATE_1
+         OR iNum > GATE_3)
       {
-         Send(self,@SomethingWaveRoom,#wave_rsc=Necropolis6_close_sound);
-         Send(self,@SetSector,#sector=iNum,#animation=ANIMATE_CEILING_LIFT,
-               #height=360,#speed=60);
+         return;
       }
+
+      if (iNum = GATE_2
+         AND Send(self,@IsAnyUserInSectorID,#iNum=AREA_2))
+      {
+         // Don't leave users in area 2 with no skeletons.
+         Send(self,@CreateSkeletons,#bArea=AREA_2);
+      }
+      else if (iNum = GATE_3)
+      {
+         // Teleport users out of area 3 so we can reset the room.
+         foreach i in plActive
+         {
+            each_obj = First(i);
+            if (IsClass(each_obj,&User)
+               AND Send(each_obj,@GetSectorIDAtObject) = AREA_3)
+            {
+               Send(self,@Teleport,#what=each_obj,#foyer=TRUE);
+            }
+         }
+      }
+
+      Send(self,@SomethingWaveRoom,#wave_rsc=Necropolis6_close_sound);
+      Send(self,@SetSector,#sector=iNum,#animation=ANIMATE_CEILING_LIFT,
+            #height=DOOR_HEIGHT_FLOOR,#speed=DOOR_CLOSE_SPEED);
 
       return;
    }
@@ -364,42 +712,15 @@ messages:
    "Lowers all gates quickly, no sound."
    {
       Send(self,@SetSector,#sector=GATE_1,#animation=ANIMATE_CEILING_LIFT,
-               #height=360,#speed=200);
+               #height=DOOR_HEIGHT_FLOOR,#speed=DOOR_CLOSE_FAST_SPEED);
       Send(self,@SetSector,#sector=GATE_2,#animation=ANIMATE_CEILING_LIFT,
-               #height=360,#speed=200);
+               #height=DOOR_HEIGHT_FLOOR,#speed=DOOR_CLOSE_FAST_SPEED);
       Send(self,@SetSector,#sector=GATE_3,#animation=ANIMATE_CEILING_LIFT,
-               #height=360,#speed=200);
+               #height=DOOR_HEIGHT_FLOOR,#speed=DOOR_CLOSE_FAST_SPEED);
 
       return;
    }
-
-   GiantGenTimer()
-   {
-      local i, bFound, each_obj;
-
-      ptGiant_gen = $;
-
-      bFound = FALSE;
-      foreach i in plActive
-      {
-         each_obj = First(i);
-         if IsClass(each_obj,&GiantDaemonSkeleton)
-         {
-            bFound = TRUE;
-         }
-      }
-
-      if NOT bFound
-      {
-         Send(self,@NewHold,#what=Create(&GiantDaemonSkeleton),
-               #new_row=GIANT_ROW,#new_col=GIANT_COL,
-               #fine_row=GIANT_FINEROW,#fine_col=GIANT_FINECOL);
-      }
-
-      ptGiant_gen = CreateTimer(self,@GiantGenTimer,HOUR_MILLI);
-
-      return;
-   }
+   #endregion Open/close gates
 
    ReqSpellCast(who = $, oSpell = $, lItems = $)
    {

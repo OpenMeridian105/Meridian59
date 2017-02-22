@@ -2863,6 +2863,28 @@ messages:
       propagate;
    }
 
+   IsAnyUserInSectorID(iNum=0)
+   "Returns TRUE if any user is present in the sector ID given.  Does not "
+   "count invisible DMs."
+   {
+      local i, each_obj;
+
+      foreach i in plActive
+      {
+         each_obj = First(i);
+
+         if (IsClass(each_obj,&User)
+            AND NOT (IsClass(each_obj,&DM)
+               AND Send(each_obj,@IsDMStealthed))
+            AND Send(each_obj,@GetSectorIDAtObject) = iNum)
+         {
+            return TRUE;
+         }
+      }
+
+      return FALSE;
+   }
+
    IsUserInArea(who=$,iRow=$,iCol=$,iFineRow=$,iFineCol=$,lArea=$)
    "This returns TRUE if the user is in the given area. Can pass either the "
    "user themselves, or their coordinates to check against the given list."

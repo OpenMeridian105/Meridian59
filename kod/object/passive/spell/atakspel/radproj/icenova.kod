@@ -49,6 +49,9 @@ classvars:
    vrDesc = icenova_desc_rsc
    vrIcon = icenova_icon_rsc
 
+   vrAttackFirst = icenova_first_rsc
+   vrAttackThird = icenova_third_rsc
+
    viSpell_num = SID_ICE_NOVA
    viSchool = SS_FAREN
    viSpell_level = 5
@@ -96,48 +99,6 @@ messages:
    SendProjectileAnimation()
    {
       AddPacket(1, ANIMATE_CYCLE, 4, 40, 2, 2, 2, 2);  // 40ms between animations
-
-      return;
-   }
-
-   CastSpell(who=$,lTargets=$,iSpellPower=0,bItemCast=FALSE)
-   {
-      // This is an area damage spell, so add room messages
-      // showing the spell being cast.
-      Send(self,@DoIceNova,#who=who,#bItemCast=bItemCast);
-
-      propagate;
-   }
-
-   DoIceNova(who=$,bItemCast=FALSE)
-   {
-      local i, oRoom, each_obj;
-
-      if (who = $)
-      {
-         return;
-      }
-
-      oRoom = Send(who,@GetOwner);
-
-      // Send a message to all in room of spellcasters actions
-      foreach i in Send(oRoom,@GetHolderActive)
-      {
-         each_obj = First(i);
-
-         if IsClass(each_obj,&User)
-         {
-            if each_obj = who
-            {
-               Send(each_obj,@MsgSendUser,#message_rsc=icenova_first_rsc);
-            }
-            else
-            {
-               Send(each_obj,@MsgSendUser,#message_rsc=icenova_third_rsc,
-                     #parm1=Send(who,@GetCapDef),#parm2=Send(who,@GetName));
-            }
-         }
-      }
 
       return;
    }

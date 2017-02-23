@@ -49,6 +49,9 @@ classvars:
    vrDesc = firestorm_desc_rsc
    vrIcon = firestorm_icon_rsc
 
+   vrAttackFirst = firestorm_first_rsc
+   vrAttackThird = firestorm_third_rsc
+
    viSpell_num = SID_FIRE_STORM
    viSchool = SS_FAREN
    viSpell_level = 6
@@ -103,52 +106,6 @@ messages:
    SendProjectileAnimation()
    {
       AddPacket(1, ANIMATE_CYCLE, 4,40, 2,1, 2,2);  // 40ms between animations
-
-      return;
-   }
-
-   CastSpell(who=$,lTargets=$,iSpellPower=0,bItemCast=FALSE)
-   {
-      // This is an area damage spell, so add room messages
-      // showing the spell being cast.
-      Send(self,@DoFireStorm,#who=who,#bItemCast=bItemCast);
-
-      propagate;
-   }
-
-   DoFireStorm(who=$,bItemCast=FALSE)
-   {
-      local i, oRoom, lActive, each_obj;
-
-      if who <> $
-      {
-         oRoom = Send(who,@GetOwner);
-      }
-      else
-      {
-         return;
-      }
-
-      lActive = Send(oRoom,@GetHolderActive);
-
-      // Send a message to all in room of spellcasters actions
-      foreach i in lActive
-      {
-         each_obj = Send(oRoom,@HolderExtractObject,#data=i);
-
-         if isClass(each_obj,&Player)
-         {
-            if each_obj = who
-            {
-               Send(each_obj,@MsgSendUser,#message_rsc=firestorm_first_rsc);
-            }
-            else
-            {
-               Send(each_obj,@MsgSendUser,#message_rsc=firestorm_third_rsc,
-                     #parm1=Send(who,@GetCapDef),#parm2=Send(who,@GetName));
-            }
-         }
-      }
 
       return;
    }

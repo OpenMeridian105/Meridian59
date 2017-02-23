@@ -1,0 +1,96 @@
+// Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+// All rights reserved.
+//
+// This software is distributed under a license that is described in
+// the LICENSE file that accompanies it.
+//
+// Meridian is a registered trademark.
+
+
+////////////////////////////////////////////////////////////////////////////////
+SpiritBlast is RadiusProjectile
+
+constants:
+
+   include blakston.khd
+
+resources:
+
+   include spiritblast.lkod
+
+   spblast_name_rsc = "spirit blast"
+   spblast_icon_rsc = ispblast.bgf
+   spblast_projectile_rsc = spblast.bgf
+   spblast_desc_rsc = \
+      "The unholy power of Qor is channeled to draw spirits from their "
+      "resting places to terrorize any nearby enemies.  Requires two "
+      "dark angel feathers."
+
+   spblast_first_rsc = \
+      "You call upon the unholy power of Qor and unleash a wave of spirits!"
+   spblast_third_rsc = \
+      "%s%s calls upon the unholy power of Qor and unleashes a wave of spirits!"
+
+   spblast_sound = qspblast.ogg
+
+classvars:
+
+   vrName = spblast_name_rsc
+   vrDesc = spblast_desc_rsc
+   vrIcon = spblast_icon_rsc
+
+   vrAttackFirst = spblast_first_rsc
+   vrAttackThird = spblast_third_rsc
+
+   viSpell_num = SID_SPIRIT_BLAST
+   viSchool = SS_QOR
+   viSpell_level = 6
+   viMana = 20
+
+   viChance_to_increase = 15
+   viMeditate_ratio = 75
+   vrSucceed_wav = spblast_sound
+
+   viAttack_spell = ATCK_SPELL_ALL + ATCK_SPELL_UNHOLY
+   viOutlaw = TRUE
+   viHarmful = TRUE
+   viNoNewbieOffense = TRUE
+
+   viProjectileFlag = PROJ_FLAG_LIGHT_SOURCE | PROJ_FLAG_TRANSPARENT50
+   // Projectile lighting information.
+   viProjectileLightFlags = LIGHT_FLAG_ON | LIGHT_FLAG_DYNAMIC
+   viProjectileLightIntensity = 10
+   // Dark, creepy color.
+   viProjectileLightColor = LIGHT_DYELLOW
+
+   vrProjectile_icon = spblast_projectile_rsc
+   vbIsAreaEffect = TRUE
+
+properties:
+
+   piSpeed = 7
+
+   piDamageMin = 11
+   piDamageMax = 18
+
+   piNumber = 15
+
+messages:
+
+   ResetReagents()
+   {
+      plReagents = $;
+      plReagents = Cons([&DarkAngelFeather,2],plReagents);
+
+      return;
+   }
+
+   SendProjectileAnimation()
+   {
+      AddPacket(1, ANIMATE_CYCLE, 4, 40, 2, 2, 2, 2);  // 40ms between animations
+
+      return;
+   }
+
+end
+////////////////////////////////////////////////////////////////////////////////

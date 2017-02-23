@@ -61,7 +61,7 @@ resources:
    item_stats_offense = "%i offense rating bonus\n"
    item_stats_armor = "%i armor\n"
    item_stats_defense = "%i defense rating bonus\n"
-   item_stats_melee = "%i melee damage bonus\n"
+   item_stats_melee = "%r%i melee damage bonus\n"
    item_stats_min_dmg = "%i-"
    item_stats_base_dmg = "%r%i base damage\n"
    item_stats_owner_dmg = "%r%i damage in owner's hands\n"
@@ -263,17 +263,24 @@ messages:
          AddPacket(4,system_blank_resource);
       }
 
-      if Send(self,@GetMeleeDamageBonus) <> 0
+      iMinDamage = Send(self,@GetMinMeleeDamageBonus);
+      if iMinDamage <> 0
       {
-         if bFoundProperties
+         if NOT bFoundProperties
          {
-            AddPacket(4,item_stats_melee, 4,Send(self,@GetMeleeDamageBonus));
+            AddPacket(4,system_rsc_template_12, 4,special_properties_header);
+            bFoundProperties = TRUE;
+         }
+         // Reuse this variable.
+         iMinDamageOwner = Send(self,@GetMaxMeleeDamageBonus);
+         if iMinDamage <> iMinDamageOwner
+         {
+            AddPacket(4,item_stats_melee, 4,item_stats_min_dmg,
+                      4,iMinDamage, 4,iMinDamageOwner);
          }
          else
          {
-            AddPacket(4,system_rsc_template_12, 4,special_properties_header,
-                      4,item_stats_melee, 4,Send(self,@GetMeleeDamageBonus));
-            bFoundProperties = TRUE;
+            AddPacket(4,item_stats_melee, 4,system_blank_resource, 4,iMinDamage);
          }
       }
       else if bFoundProperties
@@ -706,7 +713,12 @@ messages:
       return 0;
    }
 
-   GetMeleeDamageBonus()
+   GetMinMeleeDamageBonus()
+   {
+      return 0;
+   }
+
+   GetMaxMeleeDamageBonus()
    {
       return 0;
    }

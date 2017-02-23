@@ -1,0 +1,83 @@
+// Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+// All rights reserved.
+//
+// This software is distributed under a license that is described in
+// the LICENSE file that accompanies it.
+//
+// Meridian is a registered trademark.
+
+
+/////////////////////////////////////////////////////////////////////////////////
+NecropolisHallway is MonsterRoom
+
+constants:
+
+   include blakston.khd
+
+resources:
+
+   room_name_NecropolisHallway = "An excavated hallway"
+   room_NecropolisHallway = nechallway.roo
+   NecropolisHallway_music = nec02.ogg
+
+   NecropolisHallway_loop = necloop4.ogg
+
+classvars:
+
+   vrName = room_name_NecropolisHallway
+
+   viTeleport_row = 3
+   viTeleport_col = 6
+
+   viTerrain_type = TERRAIN_NECROPOLIS
+
+properties:
+
+   prRoom = room_NecropolisHallway
+   piRoom_num = RID_NECHALLWAY
+
+   piBaseLight = LIGHT_MIN
+   piOutside_factor = 0
+
+   piGen_time = 25000
+   piGen_percent = 100
+
+   piInit_count_min = 1
+   piInit_count_max = 3
+
+   piMonster_count_max = 25
+
+   prMusic = NecropolisHallway_music
+
+messages:
+
+   Constructed()
+   {
+      plMonsters = [ [&DaemonSkeleton, 100] ];
+      plGenerators = [ [ 13, 8 ], [ 15, 12 ], [ 8, 7 ] ];
+      plLooping_sounds = [[ NecropolisHallway_loop, 0, 0, 200, 100 ]];
+
+      propagate;
+   }
+
+   CreateStandardExits()
+   {
+      plEdge_exits = $;
+      plEdge_Exits = Cons([LEAVE_SOUTH, RID_NECROAREA3, 1, 19, ROTATE_NONE],
+                           plEdge_exits);
+
+      plExits = $;
+
+      // To dungeon
+      plExits = Cons([ 2, 7, RID_NECROAREA6, 31, 11, ROTATE_NONE ],plExits);
+
+      propagate;
+   }
+
+   CreateStandardObjects()
+   {
+      propagate;
+   }
+
+end
+////////////////////////////////////////////////////////////////////////////////

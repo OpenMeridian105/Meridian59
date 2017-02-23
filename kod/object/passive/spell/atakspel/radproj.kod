@@ -21,6 +21,9 @@ resources:
 
 classvars:
 
+   vrAttackFirst = $
+   vrAttackThird = $
+
    vrRadius_Icon = $
    vrProjectile_icon = $
    vbIsRangedAttack = TRUE
@@ -91,12 +94,28 @@ messages:
 
    CastSpell(who=$)
    {
-      local oOwner;
+      local i, each_obj, oRoom;
 
-      oOwner = Send(who,@GetOwner);
+      oRoom = Send(who,@GetOwner);
+
+      // Send a message to all in room of spellcasters actions.
+      foreach i in Send(oRoom,@GetHolderActive)
+      {
+         each_obj = First(i);
+
+         if (each_obj = who)
+         {
+            Send(each_obj,@MsgSendUser,#message_rsc=vrAttackFirst);
+         }
+         else if (IsClass(each_obj,&User))
+         {
+            Send(each_obj,@MsgSendUser,#message_rsc=vrAttackThird,
+                  #parm1=Send(who,@GetCapDef),#parm2=Send(who,@GetName));
+         }
+      }
 
       // Show projectiles.
-      Send(oOwner,@SomethingShotRadius,#who=who,#projectile=self,
+      Send(oRoom,@SomethingShotRadius,#who=who,#projectile=self,
             #flags=viProjectileFlag,#range=piRange/FINENESS,
             #number=piNumber,#iLightIntensity=viProjectileLightIntensity,
             #iLightColor=viProjectileLightColor,#speed=piSpeed);

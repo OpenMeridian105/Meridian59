@@ -7196,12 +7196,14 @@ void D3DRenderProjectilesDrawNew(d3d_render_pool_new *pPool, room_type *room, Dr
       pChunk->indices[2] = 0;
       pChunk->indices[3] = 3;
 
+      unsigned char alpha = ((pProjectile->flags & PROJ_FLAG_TRANSPARENT50) == PROJ_FLAG_TRANSPARENT50)
+         ? D3DRENDER_TRANS50 : COLOR_MAX;
       for (int i = 0; i < 4; i++)
       {
          pChunk->bgra[i].b = COLOR_MAX;
          pChunk->bgra[i].g = COLOR_MAX;
          pChunk->bgra[i].r = COLOR_MAX;
-         pChunk->bgra[i].a = COLOR_MAX;
+         pChunk->bgra[i].a = alpha;
       }
 
       gNumObjects++;

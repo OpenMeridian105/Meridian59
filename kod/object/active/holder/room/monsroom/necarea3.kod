@@ -13,7 +13,6 @@ Necropolis3 is MonsterRoom
 constants:
 
    include blakston.khd
-   include protocol.khd
 
 resources:
 
@@ -24,15 +23,13 @@ resources:
    Necropolis3_music = nec02.ogg
 
    Necropolis3_locked_gate = \
-      "The gate has no visible means of opening, and the spikes atop it serve as a "
-      "sufficient deterrent to climbing over it."
-
+      "The gate has no visible means of opening, and the spikes atop it serve "
+      "as a sufficient deterrent to climbing over it."
    Necropolis3_locked_door = \
       "The massive stone door won't budge, no matter how hard you push it."
+   Necropolis3_no_rift = "Casting shadow rift here would be pointless."
 
    Necropolis3_loop = necloop4.ogg
-
-   Necropolis3_no_rift = "Casting shadow rift here would be pointless."
 
 classvars:
 
@@ -65,44 +62,31 @@ messages:
 
    Constructed()
    {
-	// chris--for CanMonsterMoveInRoom testing
-	//local i,j;
       plMonsters = [ [&NarthylWorm, 60], [&TuskedSkeleton, 40] ];
       plGenerators = [ [9,15], [14,24], [22,20], [17,15], [8,19], [14,30], [15,28] ];
 
       plLooping_sounds = [[ Necropolis3_loop, 0, 0, 200, 100 ]];
 
-//      i=0;
-//      while i < 50
-//	{
-//      if (CanMonsterMoveInRoom(prmRoom, i, i, i+2, i+1))
-//{
-//	debug("yes");
-//}
-//else
-//	{
-//	debug("no");
-//	}    
-//i = i+1;
-//}
       propagate;
    }
 
    CreateStandardExits()
    {
       plEdge_exits = $;
-     
+
       // To Ancient Graveyard of Brax
-      plEdge_Exits = Cons([LEAVE_WEST, RID_NECROAREA2, 24, 36, ROTATE_NONE], plEdge_exits);
-      
+      plEdge_Exits = Cons([LEAVE_WEST, RID_NECROAREA2, 24, 36, ROTATE_NONE],
+                           plEdge_exits);
+
+      // To hallway
+      plEdge_Exits = Cons([LEAVE_NORTH, RID_NECHALLWAY, 17, 23, ROTATE_NONE],
+                           plEdge_exits);
+
       // To Goad's Arena
-      plEdge_Exits = Cons([LEAVE_SOUTH, RID_BRAX_ARENA, 2, 11, ROTATE_NONE], plEdge_exits);
+      plEdge_Exits = Cons([LEAVE_SOUTH, RID_BRAX_ARENA, 2, 11, ROTATE_NONE],
+                           plEdge_exits);
 
       plExits = $;
-
-      // Locked gate to the north
-      plExits = Cons([ 5, 20, ROOM_LOCKED_DOOR, Necropolis3_locked_gate ],plExits);
-      plExits = Cons([ 5, 21, ROOM_LOCKED_DOOR, Necropolis3_locked_gate ],plExits);
 
       // Southwest abandoned building
       plExits = Cons([ 19, 12, ROOM_LOCKED_DOOR, Necropolis3_locked_door ],plExits);
@@ -131,11 +115,10 @@ messages:
       propagate;
    }
 
-   
    CreateStandardObjects()
    {
       Send(self,@NewHold,#what=Create(&Skull),
-           #new_row=6,#new_col=21,#fine_row=0,#fine_col=0,#angle=ANGLE_EAST);      
+           #new_row=6,#new_col=21,#fine_row=0,#fine_col=0,#angle=ANGLE_EAST);
       Send(self,@NewHold,#what=Create(&OrnamentalObject,#type=OO_HALFSKULL),
            #new_row=17,#new_col=15,#fine_row=0,#fine_col=16,#angle=ANGLE_EAST);
 
@@ -154,8 +137,7 @@ messages:
 
 
       // Lighting
-
-      send(self,@NewHold,#what=Create(&DynamicLight,#iColor=LIGHT_BLOOD,#iIntensity=50),
+      Send(self,@NewHold,#what=Create(&DynamicLight,#iColor=LIGHT_BLOOD,#iIntensity=50),
            #new_row=14,#new_col=20,#fine_row=0,#fine_col=0);
 
       propagate;
@@ -165,14 +147,13 @@ messages:
    {
       if IsClass(oSpell,&DeathsDoor)
       {
-	      Send(who,@MsgSendUser,#message_rsc=Necropolis3_no_rift);            
+         Send(who,@MsgSendUser,#message_rsc=Necropolis3_no_rift);
 
          return FALSE;
       }
 
       propagate;
    }
-
 
 end
 ////////////////////////////////////////////////////////////////////////////////

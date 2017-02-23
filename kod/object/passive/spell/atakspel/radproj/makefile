@@ -5,6 +5,6 @@
 !include $(TOPDIR)\common.mak
 
 DEPEND = ..\radproj.bof
-BOFS = icenova.bof firestorm.bof
+BOFS = icenova.bof firestorm.bof spiritblast.bof
 
 !include $(KODDIR)\kod.mak

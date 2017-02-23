@@ -3,7 +3,7 @@
 TOPDIR=..
 !include $(TOPDIR)\common.mak
 
-DIRS = graphics rooms particles
+DIRS = audio graphics rooms particles
          #textures
 
 CLEANDIRS = graphics

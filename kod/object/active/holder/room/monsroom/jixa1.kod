@@ -1,0 +1,98 @@
+// Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+// All rights reserved.
+//
+// This software is distributed under a license that is described in
+// the LICENSE file that accompanies it.
+//
+// Meridian is a registered trademark.
+
+
+////////////////////////////////////////////////////////////////////////////////
+Jixa1 is MonsterRoom
+
+constants:
+
+   include blakston.khd
+
+resources:
+
+   include jixa1.lkod
+
+   room_ji1 = ji1.roo
+   room_name_ji1 = "Outskirts of Jixa 1"
+
+   ji1_music = walk1.ogg
+
+classvars:
+
+   vrName = room_name_ji1
+
+   viTeleport_row = 21
+   viTeleport_col = 14
+   
+   viWeatherZone = WEATHER_ZONE_JIXA
+
+properties:
+
+   viTerrain_type = TERRAIN_FOREST | TERRAIN_ROAD | TERRAIN_HILLS
+
+   prRoom = room_ji1
+   piRoom_num = RID_JIXA_1
+   prMusic = ji1_music
+   
+   piBaseLight = LIGHT_NICE
+   piOutside_factor = 8
+
+   piDirectional_percent = DIRECTIONAL_PERCENT_OUTDOORS
+
+   pbSnowGroundTexture = TRUE
+
+   piGen_percent = 70
+
+   piInit_count_min = 4
+   piInit_count_max = 5
+
+   piMonster_count_max = 5
+
+messages:
+
+   CreateStandardExits()
+   {
+      plEdge_Exits = $;
+
+      plEdge_Exits = Cons([ LEAVE_EAST, RID_JIXA_2, 8, 2, ROTATE_NONE ], plEdge_exits);
+      plEdge_Exits = Cons([ LEAVE_WEST, RID_H5, 31, 38, ROTATE_NONE ], plEdge_exits);
+
+      propagate;
+   }
+   
+   Constructed()
+   {   
+       plMonsters = [ [&Chupacabra, 100] ];
+
+       plGenerators = [ [7, 9], [16, 11], [8, 18], [21, 17], [20, 5], [27, 19] ];
+
+       propagate;
+   }
+   
+   CreateStandardObjects()
+   {
+   
+      Send(self,@NewHold,#what=Create(&OrnamentalObject,#type=OO_RAZA_TREE1),#new_row=5,#new_col=10,
+         #fine_row=0,#fine_col=0,#new_angle=ANGLE_EAST);
+      Send(self,@NewHold,#what=Create(&OrnamentalObject,#type=OO_RAZA_TREE1),#new_row=11,#new_col=19,
+         #fine_row=0,#fine_col=0,#new_angle=ANGLE_EAST);
+      Send(self,@NewHold,#what=Create(&OrnamentalObject,#type=OO_RAZA_TREE1),#new_row=17,#new_col=18,
+         #fine_row=0,#fine_col=0,#new_angle=ANGLE_EAST);
+      Send(self,@NewHold,#what=Create(&OrnamentalObject,#type=OO_RAZA_TREE1),#new_row=13,#new_col=7,
+         #fine_row=0,#fine_col=0,#new_angle=ANGLE_EAST);
+      Send(self,@NewHold,#what=Create(&OrnamentalObject,#type=OO_RAZA_TREE1),#new_row=32,#new_col=26,
+         #fine_row=0,#fine_col=0,#new_angle=ANGLE_EAST);
+      Send(self,@NewHold,#what=Create(&OrnamentalObject,#type=OO_RAZA_TREE1),#new_row=18,#new_col=5,
+         #fine_row=0,#fine_col=0,#new_angle=ANGLE_EAST);
+
+      propagate;
+   }
+
+end
+////////////////////////////////////////////////////////////////////////////////

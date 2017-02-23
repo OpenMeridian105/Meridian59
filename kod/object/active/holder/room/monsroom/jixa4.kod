@@ -1,0 +1,84 @@
+// Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+// All rights reserved.
+//
+// This software is distributed under a license that is described in
+// the LICENSE file that accompanies it.
+//
+// Meridian is a registered trademark.
+
+
+////////////////////////////////////////////////////////////////////////////////
+Jixa4 is MonsterRoom
+
+constants:
+
+   include blakston.khd
+
+resources:
+
+   include jixa4.lkod
+
+   room_ji4 = ji4.roo
+   room_name_ji4 = "Outskirts of Jixa 4"
+
+   ji4_music = walk1.ogg
+
+classvars:
+
+   vrName = room_name_ji4
+
+   viTeleport_row = 15
+   viTeleport_col = 19
+   
+   viWeatherZone = WEATHER_ZONE_JIXA
+
+properties:
+
+   viTerrain_type = TERRAIN_FOREST | TERRAIN_ROAD | TERRAIN_HILLS
+
+   prRoom = room_ji4
+   piRoom_num = RID_JIXA_4
+   prMusic = ji4_music
+   
+   piBaseLight = LIGHT_NICE
+   piOutside_factor = 8
+
+   piDirectional_percent = DIRECTIONAL_PERCENT_OUTDOORS
+
+   pbSnowGroundTexture = TRUE
+
+   piGen_percent = 70
+
+   piInit_count_min = 3
+   piInit_count_max = 5
+
+   piMonster_count_max = 5
+
+messages:
+
+   CreateStandardExits()
+   {
+      plEdge_Exits = $;
+
+      plEdge_Exits = Cons([ LEAVE_NORTH, RID_JIXA, 28, 18, ROTATE_NONE ], plEdge_exits);
+      plEdge_Exits = Cons([ LEAVE_EAST, RID_BERG_5, 9, 35, ROTATE_180 ], plEdge_exits);
+
+      propagate;
+   }
+   
+   Constructed()
+   {   
+       plMonsters = [ [&GiantRat, 60], [&Centipede, 40] ];
+
+       plGenerators = [ [6, 11], [9, 23], [18, 13], [24, 10], [26, 22] ];
+
+       propagate;
+   }
+   
+   CreateStandardObjects()
+   {
+      propagate;
+   }
+
+end
+////////////////////////////////////////////////////////////////////////////////

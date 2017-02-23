@@ -14,6 +14,8 @@ constants:
 
    include blakston.khd
 
+   DAEMON_LIGHT = 20
+
 resources:
 
    include dhelm.lkod
@@ -27,13 +29,15 @@ resources:
       "thick of battle, it bestows its wearer with an aura of confidence and "
       "authority that can only be found in those that have stared death in the "
       "face countless times and never failed to bash its ugly skull in."
+
    dHelm_use_rsc = \
       "As you don the helmet, visions of blood and slaughter cloud your mind "
       "and a chilling smile creeps onto your lips.  You shall cut them down "
       "where they stand and there is no escaping your wrath..."
+
    dHelm_unuse_rsc = \
       "The bloody visions fade and the world appears in its normal colors "
-      "once more. You can't help feeling a little disappointed."
+      "once more.  You can't help feeling a little disappointed."
 
    dHelm_use_wav_rsc = bezerker_ring.ogg
 
@@ -79,6 +83,11 @@ messages:
    {
       Send(poOwner,@RemoveHair,#what=self);
       Send(poOwner,@MsgSendUser,#message_rsc=dHelm_use_rsc);
+
+      Send(poOwner,@SetFlickerFlag);
+      Send(poOwner,@LoseLight,#amount=DAEMON_LIGHT);
+      Send(poOwner,@SomethingChanged,#what=self);
+
       Send(poOwner,@AddAttackModifier,#what=self);
 
       propagate;
@@ -88,6 +97,11 @@ messages:
    {
       Send(poOwner,@ResetHair,#what=self);
       Send(poOwner,@MsgSendUser,#message_rsc=dHelm_unuse_rsc);
+
+      Send(poOwner,@RecalcFlickerFlag);
+      Send(poOwner,@GainLight,#amount=DAEMON_LIGHT);
+      Send(poOwner,@SomethingChanged,#what=self);
+
       Send(poOwner,@RemoveAttackModifier,#what=self);
 
       propagate;
@@ -155,6 +169,11 @@ messages:
    GetMaxMeleeDamageBonus()
    {
       return 4;
+   }
+
+   GetLightEffect()
+   {
+      return DAEMON_LIGHT;
    }
 
 end

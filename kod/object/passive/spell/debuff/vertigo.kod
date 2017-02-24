@@ -88,7 +88,7 @@ messages:
 
    DoSpell(what=$,oTarget=$,iDuration=0,iSpellPower=$)
    {
-      local iAmount,iAgil,iStr,iAim;
+      local iAmount,iAgil,iMight,iAim;
 
       iAmount = Send(self,@GetAmount,#iSpellPower=iSpellPower);
 
@@ -103,19 +103,20 @@ messages:
                #duration=iDuration);
 
          iAgil = Send(oTarget,@AddAgility,#points=-iAmount);
-         iStr = Send(oTarget,@AddMight,#points=-iAmount);
+         iMight = Send(oTarget,@AddMight,#points=-iAmount);
          iAim = Send(oTarget,@AddAim,#points=-iAmount);
 
          Send(oTarget,@StartEnchantment,#what=self,#time=iDuration,
-               #state=[-iAgil,-iStr,-iAim]);
+               #state=[-iAgil,-iMight,-iAim]);
       }
       else
       {
          iAgil = Send(oTarget,@AddMonsterAgility,#points=-iAmount);
+         iMight = Send(oTarget,@AddMonsterMight,#points=-iAmount);
          iAim = Send(oTarget,@AddMonsterAim,#points=-iAmount);
 
          Send(oTarget,@StartEnchantment,#what=self,#time=iDuration,
-               #state=[-iAgil,-iAim]);
+               #state=[-iAgil,-iMight,-iAim]);
       }
 
       propagate;

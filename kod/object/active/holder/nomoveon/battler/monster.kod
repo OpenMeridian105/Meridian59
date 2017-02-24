@@ -31,6 +31,9 @@ constants:
    // Number of ms to lose one boosted health or mana point.
    BOOST_DECAY_TIME = 30000 
 
+   // Monsters can exceed a player's stats. By how much?
+   MONSTER_STAT_CAP = 500 
+
 resources:
 
    include monster.lkod
@@ -304,6 +307,19 @@ classvars:
 
    viWimpy = 0
 
+   // Some monsters classes may inherently have higher (or lower) stats.
+   viBonusAgility = 0
+   viBonusAim = 0
+   viBonusMight = 0
+   viBonusStamina = 0
+   viBonusIntellect = 0
+   viBonusMysticism = 0
+
+   // Some monster classes may inherently have more (or less) resources.
+   viBonusHealth = 0
+   viBonusMana = 0
+   viBonusVigor = 0
+
    // If true, items that are sold actually come out of the monster's
    //inventory. If false, the items in the inventory are inexhaustible
    // templates, and copies are sold.
@@ -408,6 +424,8 @@ properties:
    piAim = 25
    piMight = 25
    piStamina = 25
+   piIntellect = 25
+   piMysticism = 25
 
    piEnch_flags = 0
 
@@ -479,64 +497,14 @@ messages:
    {
       local iStatPoints, iRandom, iTotal, iDiff, lTemp, lStats, i;
 
-      piMax_Health = Send(Self,@Fuzzy,#num=Send(self,@GetMaxHitPoints))
-                         + piSurvivalLevel*viDifficulty;
-      piHealth = piMax_Health*100;
-      piMana = piMax_mana;
-      piAttackRange = viAttackRange;
-      piSpellChance = viSpellChance;
-      piVisionDistance = viVisionDistance + piSurvivalLevel;
-      piBoostedLevel = piSurvivalLevel;
-
-      if Send(self,@MobIsSeller)
-      {
-         Send(Self,@SetForSale);
-      }
-
-      if Send(self,@MobIsCondSeller)
-      {
-         Send(Self,@InitCondSale);
-      }
-
-      if (viDefault_behavior & AI_NPC) = AI_NPC
-      {
-         Send(Send(SYS,@GetLibrary),@AddNPC,#who=self);
-      }
-
-      if viOccupation <> 0
-         AND NOT template
-      {
-         // template set to TRUE means this monster is in the System
-         // monster template list, so we shouldn't add it.
-         Send(Send(SYS,@GetLibrary),@AddToOccupationList,#who=self);
-      }
-
-      Send(self,@TryAddToLibrary);
-
-      if (iBrain > 0 AND iBrain <= BRAIN_MAX_NUM)
-      {
-         poBrain = Send(SYS,@FindBrainByNum,#num=iBrain);
-      }
-      else
-      {
-         poBrain = Send(SYS,@FindBrainByNum,#num=viBrain_type);
-      }
-      
-      piState = piState & ESTATE_ZERO_MASK;
-      Send(poBrain,@MobConstructor,#mob=self);
-
-      piEnch_flags = 0;
-
-      Send(self,@ClearActiveQuests);
-      Send(self,@ResetBehaviorFlags);
-
-      piMood = 0;
-
-      // Creating random stats. Currently 4 stats, if you want to add more,
+      // First things first: Create stats.
+      // Creating random stats. Currently 6 stats, if you want to add more,
       // change i to a different number and assign accordingly below.
       lStats = $;
       lTemp = $;
-      i = 4;
+      i = 6;
+      // The total amount of stat points distributed. A couple points may
+      // by lost to truncation in the process, but (carelevel << carethreshold)
       iStatPoints = Bound(viDifficulty + 1,1,10) * 5 * i;
       iTotal = 0;
       iDiff = 0;
@@ -585,6 +553,7 @@ messages:
       lTemp = $;
 
       // Below: Assign values to stats with a lil shake up.
+      // Also add any bonus values if applicable.
       while Length(lStats) > 0
       {
          iRandom = Random(1,Length(lStats));
@@ -592,11 +561,75 @@ messages:
          lStats = DelListElem(lStats,Nth(lStats,iRandom));
       }
 
-      piAgility = Nth(lTemp,1);
-      piAim = Nth(lTemp,2);
-      piMight = Nth(lTemp,3);
-      piStamina = Nth(lTemp,4);
+      piAgility = bound(Nth(lTemp,1)+viBonusAgility,1,MONSTER_STAT_CAP);
+      piAim = bound(Nth(lTemp,2)+viBonusAim,1,MONSTER_STAT_CAP);
+      piMight = bound(Nth(lTemp,3)+viBonusMight,1,MONSTER_STAT_CAP);
+      piStamina = bound(Nth(lTemp,4)+viBonusStamina,1,MONSTER_STAT_CAP);
+      piIntellect = bound(Nth(lTemp,5)+viBonusIntellect,1,MONSTER_STAT_CAP);
+      piMysticism = bound(Nth(lTemp,6)+viBonusMysticism,1,MONSTER_STAT_CAP);
 
+      // Set the monsters resources based on the stats we just created.
+      // Health
+      piMax_Health = viLevel * bound(80 + piStamina,$,120) / 100 + piSurvivalLevel * viDifficulty + viBonusHealth;
+      piHealth = piMax_Health*100;
+
+      // Mana
+      piMax_Mana = piMysticism*2 + viBonusMana;
+      piMana = piMax_Mana;
+
+      // Vigor
+      piMax_Vigor = piStamina*40000 + viBonusVigor;
+      piVigor_rest_threshold = piStamina*16000 + viBonusVigor/2;
+      piVigor = random(piVigor_rest_threshold,piMax_Vigor);
+
+      piAttackRange = viAttackRange;
+      piSpellChance = viSpellChance + piIntellect/2;
+      piVisionDistance = viVisionDistance + piSurvivalLevel + piIntellect/5;
+      piBoostedLevel = piSurvivalLevel;
+
+      if Send(self,@MobIsSeller)
+      {
+         Send(Self,@SetForSale);
+      }
+
+      if Send(self,@MobIsCondSeller)
+      {
+         Send(Self,@InitCondSale);
+      }
+
+      if (viDefault_behavior & AI_NPC) = AI_NPC
+      {
+         Send(Send(SYS,@GetLibrary),@AddNPC,#who=self);
+      }
+
+      if viOccupation <> 0
+         AND NOT template
+      {
+         // template set to TRUE means this monster is in the System
+         // monster template list, so we shouldn't add it.
+         Send(Send(SYS,@GetLibrary),@AddToOccupationList,#who=self);
+      }
+
+      Send(self,@TryAddToLibrary);
+
+      if (iBrain > 0 AND iBrain <= BRAIN_MAX_NUM)
+      {
+         poBrain = Send(SYS,@FindBrainByNum,#num=iBrain);
+      }
+      else
+      {
+         poBrain = Send(SYS,@FindBrainByNum,#num=viBrain_type);
+      }
+      
+      piState = piState & ESTATE_ZERO_MASK;
+      Send(poBrain,@MobConstructor,#mob=self);
+
+      piEnch_flags = 0;
+
+      Send(self,@ClearActiveQuests);
+      Send(self,@ResetBehaviorFlags);
+
+      piMood = 0;
 
       if piSurvivalLevel > 0
       {
@@ -1759,7 +1792,7 @@ messages:
 
       iOrigAim = piAim;
       piAim = piAim + points;
-      piAim = Bound(piAim,1,50);
+      piAim = Bound(piAim,1,MONSTER_STAT_CAP);
 
       return piAim - iOrigAim;
    }
@@ -1775,7 +1808,7 @@ messages:
 
       iOrigAgil = piAgility;
       piAgility = piAgility + points;
-      piAgility = Bound(piAgility,1,50);
+      piAgility = Bound(piAgility,1,MONSTER_STAT_CAP);
 
       return piAgility - iOrigAgil;
    }
@@ -1791,7 +1824,7 @@ messages:
 
       iOrigMight = piMight;
       piMight = piMight + points;
-      piMight = Bound(piMight,1,50);
+      piMight = Bound(piMight,1,MONSTER_STAT_CAP);
 
       return piMight - iOrigMight;
    }
@@ -1807,9 +1840,41 @@ messages:
 
       iOrigStamina = piStamina;
       piStamina = piStamina + points;
-      piStamina = Bound(piStamina,1,50);
+      piStamina = Bound(piStamina,1,MONSTER_STAT_CAP);
 
       return piStamina - iOrigStamina;
+   }
+
+   GetIntellect()
+   {
+      return piIntellect;
+   }
+
+   AddMonsterIntellect(points=0)
+   {
+      local iOrigIntellect;
+
+      iOrigIntellect = piIntellect;
+      piIntellect = piIntellect + points;
+      piIntellect = Bound(piIntellect,1,MONSTER_STAT_CAP);
+
+      return piIntellect - iOrigIntellect;
+   }
+
+   GetMysticism()
+   {
+      return piMysticism;
+   }
+
+   AddMonsterMysticism(points=0)
+   {
+      local iOrigMysticism;
+
+      iOrigMysticism = piMysticism;
+      piMysticism = piMysticism + points;
+      piMysticism = Bound(piMysticism,1,MONSTER_STAT_CAP);
+
+      return piMysticism - iOrigMysticism;
    }
 
    StartPalsy()
@@ -5178,24 +5243,6 @@ messages:
       return;
    }
 
-   GetMaxHitPoints()
-   "Right now this returns the level. It is used to create the hp at "
-   "construction, and to heal the monster, as well as for indicating "
-   "its current damage."
-   {
-      if viLevel < 40
-      {
-         return viLevel;
-      }
-
-      return ((120 * viLevel) / 100);
-   }
-   
-   ReturnMaxHitPoints()
-   {
-      return piMax_Health;
-   }
-
    GainMaxHealth(amount = 0)
    "Equivalent to the message in Player, but without starting a timer."
    {
@@ -5207,29 +5254,12 @@ messages:
       return piMax_Health - iPrev_max;
    }
 
-   GetMaxHealth()
-   "Some objects will call this instead of the monster-specific message."
-   {
-      return piMax_Health;
-   }
-
    SetMaxHitPoints(amount=$)
    {
       piMax_Health = amount;
       piHealth = amount*100;
 
       return;
-   }
-
-   // Returns the number of remaining hit points.
-   GetHealth()
-   {
-      return piHealth/100;
-   }
-
-   GetExactHealth()
-   {
-      return piHealth;
    }
 
    IsFullTalk()

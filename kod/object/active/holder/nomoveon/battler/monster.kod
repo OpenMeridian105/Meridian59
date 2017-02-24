@@ -2419,6 +2419,34 @@ messages:
       return iDamage;
    }
 
+   HealthDecay()
+   "Make damage thresholds available to dots as well."
+   {
+      local iPercentClass;
+
+      ptHealth = $;
+
+      // Set a predamage mark... we'll compare to it to see if threshold crossed.
+      iPercentClass = piHealth/(piMax_Health*20);
+
+      piHealth = bound(piHealth - 100,0,$);
+
+      // We've run out of health. Check what happens now.
+      if piHealth < 1
+      {
+         Send(self,@ZeroHealth);
+      }
+      // Still alive, check if we crossed a threshold due to decay.
+      else if iPercentClass <> (piHealth / (piMax_Health * 20))
+      {
+         Send(self,@HitPointThresholdDamage);
+      }
+
+      Send(self,@NewHealth);
+
+      return;
+   }
+
    // Allows monsters to have armor not related to specific equipped items. 
    // Based on piArmor.
    ArmorCheck(what=$,damage=0,atype=0,aspell=0,bonus=0)
@@ -7243,9 +7271,11 @@ messages:
       // negative values here.
       iStrength = 0;
 
-      // The source of the dot.
-      what = $;
-      use_weapon = $;
+      // The source of the dot as well as the associated spell.
+      // If no source/spell have been associated with the dot,
+      // 0 - not nil - is passed.
+      what = 0;
+      use_weapon = 0;
 
       // Let's check 'what' pained the monster most.
       foreach i in Send(self,@GetOverTimeEffects)
@@ -7258,6 +7288,18 @@ messages:
          }
       }
 
+      // Convert 0 to regular nil for further processing.
+      // To-do: Check for more elegant solution.
+      if use_weapon = 0
+      {
+         use_weapon = $;
+      }
+
+      if what = 0
+      {
+         what = $;
+      }
+
       foreach i in Send(poOwner,@GetHolderActive)
       {
          each_obj = First(i);
@@ -7265,7 +7307,7 @@ messages:
             AND each_obj <> what
             AND Send(each_obj,@GetKillTarget) = self
          {
-            Post(each_obj,@MsgSendUser,#what=self,
+            Send(each_obj,@MsgSendUser,#what=self,
                  #message_rsc=vrParty_monster_died_to_dot,
                  #parm1=Send(self,@GetCapDef),#parm2=Send(self,@GetName),
                  #parm3=Send(self,@GetHisHer));

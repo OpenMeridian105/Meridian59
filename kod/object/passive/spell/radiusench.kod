@@ -132,8 +132,7 @@ messages:
       // Could be cancelling the current enchantment, if cast with
       // no targets or cast on self.
       if (vbCanCancelEnchantment
-         AND (oTarget = $
-            OR oTarget = who))
+         AND (oTarget = $ OR oTarget = who))
       {
          foreach i in Send(who,@GetRadiusEnchantments)
          {
@@ -142,8 +141,7 @@ messages:
                lState = Nth(i,3);
                if First(lState) = who
                {
-                  Send(self,@BreakTrance,#who=who,#state=lState,
-                        #event=EVENT_STEER);
+                  Send(self,@BreakTrance,#who=who,#state=lState,#event=EVENT_STEER);
 
                   return FALSE;
                }
@@ -963,6 +961,14 @@ messages:
    "REs naturally cause mana drain. No need to report anything."
    {
       return;
+   }
+
+   TranceEnding(who=$,state=$,bRecheck=FALSE)
+   "Allow maintained spells to do something when their trance breaks."
+   {
+      Send(who,@RemoveRadiusEnchantment,#what=self,#state=state,#recheck=bRecheck);
+
+      propagate;
    }
 
 end

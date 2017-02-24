@@ -1720,6 +1720,16 @@ messages:
          Send(what,@OverTimeEffectStarting,#who=self,#overtimeeffect=lEffect);
       }
 
+      // If 'who' cast a damage over time, set their flags accordingly.
+      if who <> 0
+      {
+         if IsClass(who,&Player) AND strength < 0 AND NOT type
+         {
+            Send(who,@SetPlayerFlag,#flag=PFLAG_DID_DAMAGE,#value=TRUE);
+            Send(who,@SetKillTarget,#target=self);
+         }
+      }
+
       Send(self,@UpdateRates);
 
       return;

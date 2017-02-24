@@ -2169,31 +2169,9 @@ messages:
          return FALSE;
       }
 
-      if viManaDrain > 0
+      if IsClass(self,&Silence) AND event = EVENT_ATTACK
       {
-         // Stop drain effect!
-         Send(who,@DeleteOverTimeEffect,#what=self,#who=who,#removal=2);
-      }
-
-      if IsClass(self,&Silence)
-      {
-         if event = EVENT_ATTACK
-         {
-            return FALSE;
-         }
-
-         if location = $
-         {
-            oRoom = Send(who,@GetOwner);
-         }
-         else
-         {
-            oRoom = location;
-         }
-
-         Send(oRoom,@RemoveEnchantment,#what=self);
-
-         return TRUE;
+         return FALSE;
       }
 
       if IsClass(self,&RadiusEnchantment)
@@ -2224,52 +2202,38 @@ messages:
          }
 
          bRecheck = (event = EVENT_REST);
+      }
 
-         Send(who,@RemoveRadiusEnchantment,#what=self,#state=state,#recheck=bRecheck);
+      if IsClass(self,&ManaFocus) AND event = EVENT_CAST AND IsClass(what,&AttackSpell)
+      {
+         return FALSE;
+      }
 
+      if IsClass(self,&MultiCastSpell) AND NOT IsClass(First(state),&Prism)
+      {
+         return FALSE;
+      }
+
+      if IsClass(self,&Eavesdrop) AND event = EVENT_CAST AND what = self
+      {
          return TRUE;
       }
 
-      if IsClass(self,&Fade)
-      {
-         Send(who,@ClearTranceFlag);
-         Send(who,@MsgSendUser,#message_rsc=fade_broke_trance);
-         Send(who,@RemoveEnchantment,#what=self,#state=state);
-      }
-
-      if IsClass(self,&ManaFocus)
-      {
-         if event = EVENT_CAST AND IsClass(what,&AttackSpell)
-         {
-            return FALSE;
-         }
-
-         Send(who,@RemoveEnchantment,#what=self,#state=state);
-      }
-
-      if IsClass(self,&MultiCastSpell)
-      {
-         if NOT IsClass(First(state),&Prism)
-         {
-            return FALSE;
-         }
-
-         Send(First(state),@CasterBrokeTrance,#who=who);
-         Send(who,@RemoveEnchantment,#what=self,#state=state);
-      }
-
-      if IsClass(self,&Eavesdrop)
-      {
-         if event = EVENT_CAST AND what = self
-         {
-            return TRUE;
-         }
-
-         Send(Nth(state,2),@Delete);
-         Send(who,@RemoveEnchantment,#what=self,#state=state);
-      }
+      Send(self,@TranceEnding,#who=who,#state=state,#bRecheck=bRecheck);
 
       return TRUE;
+   }
+
+   TranceEnding(who=$)
+   "Allow maintained spells to do something when their trance breaks."
+   {
+      if viManaDrain > 0
+      {
+         // Stop drain effect!
+         Send(who,@DeleteOverTimeEffect,#what=self,#who=who,#removal=2);
+      }
+
+      return;
    }
 
    GetManaDrain()

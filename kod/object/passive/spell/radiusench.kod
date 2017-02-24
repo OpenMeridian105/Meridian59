@@ -534,10 +534,14 @@ messages:
          return FALSE;
       }
 
-      if (IsClass(who,&User)
-         AND Send(who,@IsInCannotInteractMode))
+      if (IsClass(who,&User))
       {
-         return FALSE;
+         if (Send(who,@IsInCannotInteractMode)
+            OR (IsClass(who,&DM)
+               AND Send(who,@IsDMStealthed)))
+         {
+            return FALSE;
+         }
       }
 
       oCaster = Send(self,@GetCaster,#state=state);

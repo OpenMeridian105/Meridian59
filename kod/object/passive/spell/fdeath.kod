@@ -314,14 +314,24 @@ messages:
 
    //// Stuff we handle to be a defense modifier.
 
-   ModifyDefensePower(who = $, what = $, defense_power = 0, state = $)
+   ModifyDefensePower(who = $, what = $, defense_power = 0)
    {
-      if (state = $)
+      local lState, iSpellpower;
+
+      lState = Send(who,@GetEnchantedState,#what=self);
+
+      if lState <> $
       {
+         iSpellpower = Nth(lState,2);
+      }
+      else
+      {
+         Send(self,@EndEnchantment,#who=who,#state=lState);
+
          return defense_power;
       }
 
-      return (defense_power + (3 * Nth(state,2)));
+      return (defense_power + (3 * iSpellpower));
    }
 
    ModifyDefenseDamage(who = $, what = $, damage = $)

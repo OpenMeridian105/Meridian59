@@ -104,12 +104,13 @@ resources:
    Lm_second_damage_level = "~B~r%s%s is clearly injured."
    Lm_third_damage_level = "~B~r%s%s is seriously wounded."
    Lm_fourth_damage_level = "~B~r%s%s is weak, and near death."
+   Lm_first_heal_level = "~B~t%s%s has recoverd a little and looks pretty healthy once more."
+   Lm_second_heal_level = "~B~t%s%s has recoverd a little but still shows signs of being slightly wounded."
+   Lm_third_heal_level = "~B~t%s%s has recoverd a little but still suffers from clearly visible wounds."
+   Lm_fourth_heal_level = "~B~t%s%s has recoverd a little but still suffers from serious injuries."
    Lm_party_killed_monster = "~B%s%s has valiantly slain %s%s!"
    Lm_party_monster_died_to_dot = "%s%s has succumbed to %s injuries!"
 
-   Lm_monster_healing = \
-      "%s%s falls back to recover for a moment, then returns to the fight."
-   
    monster_desc_level = "This monster will take you to %i hitpoints."
    Lm_condition_healthy = "%s\n\n%r"
    Lm_condition_good = \
@@ -317,6 +318,10 @@ classvars:
    vrSecond_damage_level = Lm_second_damage_level
    vrThird_damage_level = Lm_third_damage_level
    vrFourth_damage_level = Lm_fourth_damage_level
+   vrFirst_heal_level = Lm_first_heal_level
+   vrSecond_heal_level = Lm_second_heal_level
+   vrThird_heal_level = Lm_third_heal_level
+   vrFourth_heal_level = Lm_fourth_heal_level
    vrParty_killed_monster = Lm_party_killed_monster
    vrParty_monster_died_to_dot = Lm_party_monster_died_to_dot
 
@@ -2419,6 +2424,28 @@ messages:
       return iDamage;
    }
 
+   HealthRegen()
+   "Make damage thresholds available for hots/regeneration."
+   {
+      local iPercentClass;
+      ptHealth = $;
+
+      // Check health before gaining a health point.
+      iPercentClass = piHealth/(piMax_Health*20);
+
+      piHealth = bound(piHealth + 100,$,piMax_health*100);
+
+      // Check if we crossed a threshold due to decay.
+      if iPercentClass <> (piHealth / (piMax_Health * 20))
+      {
+         Send(self,@HitPointThresholdHeal);
+      }
+
+      Send(self,@NewHealth);
+
+      return;
+   }
+
    HealthDecay()
    "Make damage thresholds available to dots as well."
    {
@@ -2426,7 +2453,7 @@ messages:
 
       ptHealth = $;
 
-      // Set a predamage mark... we'll compare to it to see if threshold crossed.
+      // Check health before losing a health point.
       iPercentClass = piHealth/(piMax_Health*20);
 
       piHealth = bound(piHealth - 100,0,$);
@@ -5006,6 +5033,47 @@ messages:
             AND Send(each_obj,@GetKillTarget) = self
          {
             Post(each_obj,@MsgSendUser,#what=self,#message_rsc=rDamage_report,
+                  #parm1=Send(self,@GetCapDef),#parm2=Send(self,@GetName));
+         }
+      }
+
+      return;
+   }
+
+   HitPointThresholdHeal()
+   {
+      local i, iThreshold, rHeal_report, each_obj;
+
+      iThreshold = piHealth / (piMax_Health * 20);
+
+      if iThreshold >= 5
+      {
+         return;
+      }
+      else if iThreshold = 4
+      {
+         rHeal_report = vrFirst_heal_level;
+      }
+      else if iThreshold = 3
+      {
+         rHeal_report = vrSecond_heal_level;
+      }
+      else if iThreshold = 2
+      {
+         rHeal_report = vrThird_heal_level;
+      }
+      else
+      {
+         rHeal_report = vrFourth_heal_level;
+      }
+
+      foreach i in Send(poOwner,@GetHolderActive)
+      {
+         each_obj = First(i);
+         if IsClass(each_obj,&User)
+            AND Send(each_obj,@GetKillTarget) = self
+         {
+            Post(each_obj,@MsgSendUser,#what=self,#message_rsc=rHeal_report,
                   #parm1=Send(self,@GetCapDef),#parm2=Send(self,@GetName));
          }
       }

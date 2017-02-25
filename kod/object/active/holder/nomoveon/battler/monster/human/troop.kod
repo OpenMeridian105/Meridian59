@@ -228,24 +228,27 @@ messages:
    {
       local iFaction;
 
-      iFaction = Send(target,@GetFaction);
-
-      // Players or mobs could be same faction.
-      if (iFaction = viFaction)
+      if IsClass(target,&Battler)
       {
-         return TRUE;
-      }
+         iFaction = Send(target,@GetFaction);
 
-      if IsClass(target,&User)
-      {
-         // Players not of same faction.
-         if (NOT regroup) AND (iFaction = FACTION_NEUTRAL)
+         // Players or mobs could be same faction.
+         if (iFaction = viFaction)
          {
             return TRUE;
          }
 
-         // Other players aren't allies.
-         return FALSE;
+         if IsClass(target,&User)
+         {
+            // Players not of same faction.
+            if (NOT regroup) AND (iFaction = FACTION_NEUTRAL)
+            {
+               return TRUE;
+            }
+
+            // Other players aren't allies.
+            return FALSE;
+         }
       }
 
       propagate;

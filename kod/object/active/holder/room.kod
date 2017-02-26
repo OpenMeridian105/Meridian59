@@ -442,6 +442,68 @@ messages:
       return;
    }
 
+   TestRoomExits()
+   {
+      local i, iRoom, oRoom, iQflags, iRflags, iHeightF, iHeightFWD, iHeightC,
+            iServerID;
+
+      iQflags = LIQ_GET_SECTORINFO;
+
+      foreach i in plEdge_exits
+      {
+         oRoom = Send(SYS,@FindRoomByNum,#num=Nth(i,2));
+         if (oRoom = $)
+         {
+            Debug("Room ",Send(self,@GetName)," has invalid room in edge exit list!");
+
+            continue;
+         }
+
+         if (GetLocationInfoBSP(Send(oRoom,@GetRoomData), iQflags,
+                  Nth(i,3),Nth(i,4),FINENESS_HALF,FINENESS_HALF,
+                  *iRflags, *iHeightF, *iHeightFWD, *iHeightC, *iServerID))
+         {
+            if (NOT (iRflags & LIR_SECTOR_INSIDE)
+               OR NOT (iRflags & LIR_SECTOR_HASFTEX))
+            {
+               Debug("Invalid edge exit going from ",Send(self,@GetName), " to ",
+                     Send(oRoom,@GetName));
+            }
+         }
+      }
+
+      foreach i in plExits
+      {
+         iRoom = Nth(i,3);
+         if (iRoom = ROOM_LOCKED_DOOR)
+         {
+            continue;
+         }
+
+         oRoom = Send(SYS,@FindRoomByNum,#num=iRoom);
+         if (oRoom = $)
+         {
+            Debug("Room ",Send(self,@GetName)," has invalid room in exit list!");
+
+            continue;
+         }
+
+         if (GetLocationInfoBSP(Send(oRoom,@GetRoomData), iQflags,
+                  Nth(i,4),Nth(i,5),FINENESS_HALF,FINENESS_HALF,
+                  *iRflags, *iHeightF, *iHeightFWD, *iHeightC, *iServerID))
+         {
+            if (NOT (iRflags & LIR_SECTOR_INSIDE)
+               OR NOT (iRflags & LIR_SECTOR_HASFTEX))
+            {
+               Debug("Invalid exit going from ",Send(self,@GetName), " to ",
+                     Send(oRoom,@GetName));
+            }
+         }
+      }
+
+      return;
+   }
+
    Recreate()
    {
       local cClass, lUsers, oNewRoom, i;

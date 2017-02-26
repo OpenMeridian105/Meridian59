@@ -193,9 +193,13 @@ properties:
    plEnchantments = $
    plOverTimeEffects = $
 
+   // Default resource values.
+   // Current health, mana and vigor are stored in centiunits (10^-2)
+   // for increased accuracy. Max values are stored as usual.
+
    // Default health values.
    piHealth = 2000
-   piMax_Health = 20
+   piMax_health = 20
    ptHealth = $
    // The current health regeneration rate. 1000 > 1 hp per sec.
    piHealth_Rate = 0
@@ -205,8 +209,8 @@ properties:
    pbHealth = TRUE
 
    // Default mana values.
-   piMana = 20
-   piMax_Mana = 20
+   piMana = 1500
+   piMax_mana = 15
    ptMana = $
    // The current mana regeneration rate. 1000 > 1 hp per sec.
    piMana_Rate = 0
@@ -216,9 +220,9 @@ properties:
    pbMana = TRUE
 
    // Default vigor values.
-   piVigor = 1000000
-   piMax_Vigor = 2000000
-   piVigor_rest_threshold = 800000
+   piVigor = 10000
+   piMax_vigor = 200
+   piVigor_rest_threshold = 80
    ptVigor = $
    // The current vigor regeneration rate. 1000 > 1 hp per sec.
    piVigor_Rate = 0
@@ -229,6 +233,9 @@ properties:
 
    // Keeps track of resting.
    pbResting = FALSE
+
+   // Originially found on player. Moved to battler 2017/02/26
+   piFlags = 0
 
    // Reputation hashtable for monster territory/influence system
    phReputation = $
@@ -662,6 +669,85 @@ messages:
       return piHealth;
    }
 
+   LoseHealth(amount = 0, precision = FALSE)
+   {
+      if Send(self,@IsInCannotInteractMode)
+      {
+         Send(self,@NewHealth);
+
+         return 0;
+      }
+
+      if NOT precision
+      {
+         amount *= 100;
+      }
+
+      if piHealth - amount < 0
+      {
+         amount = piHealth;
+         piHealth = 0;
+      }
+      else
+      {
+         piHealth -= amount;
+      }
+
+      if piFlags & PFLAG_TRANCE
+      {
+         Send(self,@BreakTrance,#event=EVENT_DAMAGE);
+      }
+
+      Send(self,@NewHealth);
+
+      if precision
+      {
+         return amount;
+      }
+
+      return amount / 100;
+   }
+
+   GainHealth(amount=0, precision = FALSE, bCapped=TRUE)
+   "If uncapped, still respects the hardcap."
+   {
+      if Send(self,@IsInCannotInteractMode)
+      {
+         Send(self,@NewHealth);
+
+         return 0;
+      }
+
+      if NOT precision
+      {
+         amount *= 100;
+      }
+
+      if bCapped AND piHealth + amount > 100 * piMax_health
+      {
+         amount = 100 * piMax_health - piHealth;
+         piHealth = 100 * piMax_health;
+      }
+      else if piHealth + amount > 100 * MAX_CALCULATED_HEALTH
+      {
+         amount = 100 * MAX_CALCULATED_HEALTH - piHealth;
+         piHealth = 100 * MAX_CALCULATED_HEALTH;
+      }
+      else
+      {
+         piHealth += amount;
+      }
+
+      Send(self,@NewHealth);
+
+      if precision
+      {
+         return amount;
+      }
+
+      return amount / 100;
+   }
+
    SetHealth(amount=$)
    {
       if amount <> $
@@ -680,7 +766,9 @@ messages:
       {
          piHealth = bound(amount,0,$);
       }
-      
+
+      Send(self,@DrawHealth);
+
       return;
    }
 
@@ -698,8 +786,8 @@ messages:
       iTime = Send(self,@CalculateHealthTime);
 
       // Let's make sure we aren't negative. That'd be absurd!
-      // Also, don't allow temporary HPs beyond 2xMaxHealth.
-      piHealth = bound(piHealth,0,200*piMax_Health);
+      // Also, don't allow temporary HPs beyond the hardcap.
+      piHealth = bound(piHealth,0,100*MAX_CALCULATED_HEALTH);
 
       // iTime can only be negative or positive, never zero.
       if iTime <> $
@@ -760,7 +848,7 @@ messages:
 
       // Health regeneration starts out as 1 percent of our health
       // pool per second at max vigor.
-      iHealthPerTick = (piVigor/10000) * piMax_health / 20;
+      iHealthPerTick = (piVigor/100) * piMax_health / 20;
 
       // Faction bonus of up to 30%.
       if IsClass(self,&Player)
@@ -807,13 +895,13 @@ messages:
       iHealthPerTick += piHealth_Rate;
 
       // Disable regeneration when sitting at or above max health.
-      if piHealth >= 100*piMax_Health
+      if piHealth >= 100*piMax_health
       {
          iHealthPerTick = bound(iHealthPerTick,$,0);
       }
 
       // Add a decay of 1 point per 5 seconds if sitting above the max.
-      if piHealth > 100*piMax_Health
+      if piHealth > 100*piMax_health
       {
          iHealthPerTick -= 200;
       }
@@ -900,83 +988,110 @@ messages:
 
    GetMana()
    {
+      return piMana/100;
+   }
+
+   GetExactMana()
+   {
       return piMana;
    }
 
-   ManaTimer()
+   SetMana(amount=$)
    {
-      ptMana = $;
+      if amount <> $
+      {
+         piMana = bound(amount*100,0,$);
+      }
 
-      if piMana < piMax_mana
-      {
-         Send(self,@GainMana,#amount=1);
-      }
-      else
-      {
-         Send(self,@LoseMana,#amount=1);
-      }
+      Send(self,@DrawMana);
 
       return;
    }
 
-   LoseMana(amount = 0)
+   SetExactMana(amount=$)
    {
-      local iManaLost;
+      if amount <> $
+      {
+         piMana = bound(amount,0,$);
+      }
 
-      if IsClass(self,&User)
-         AND Send(self,@IsInCannotInteractMode)
+      Send(self,@DrawMana);
+
+      return;
+   }
+
+   LoseMana(amount = 0, precision = FALSE)
+   {
+      if Send(self,@IsInCannotInteractMode)
       {
          Send(self,@NewMana);
 
          return 0;
       }
 
-      piMana = piMana - amount;
-      if piMana < 0
+      if NOT precision
       {
-         iManaLost = amount - abs(piMana);
+         amount *= 100;
+      }
+
+      if piMana - amount < 0
+      {
+         amount = piMana;
+         piMana = 0;
       }
       else
       {
-         iManaLost = amount;
+         piMana -= amount;
       }
 
       Send(self,@NewMana);
 
-      return iManaLost;
+      if precision
+      {
+         return amount;
+      }
+
+      return amount / 100;
    }
 
-   GainMana(amount=0, bCapped=FALSE, bRespectMax=FALSE)
+   GainMana(amount=0, precision = FALSE, bCapped=TRUE)
+   "If uncapped, still respects the hardcap."
    {
-      local iManaGained;
-
-      iManaGained = amount;
-
-      if IsClass(self,&User)
-         AND Send(self,@IsInCannotInteractMode)
+      if Send(self,@IsInCannotInteractMode)
       {
          Send(self,@NewMana);
 
          return 0;
       }
 
-      if bRespectMax
-         AND piMana + amount > piMax_mana
+      if NOT precision
       {
-         return 0;
+         amount *= 100;
       }
 
-      piMana = piMana + amount;
-
-      if bCapped AND piMana > piMax_Mana
+      if bCapped AND piMana + amount > 100 * piMax_mana
       {
-         iManaGained = amount - (piMana - piMax_Mana);
-         piMana = piMax_Mana;
+         amount = 100 * piMax_mana - piMana;
+         piMana = 100 * piMax_mana;
+      }
+      else if piMana + amount > 100 * MAX_CALCULATED_MANA
+      {
+         amount = 100 * MAX_CALCULATED_MANA - piMana;
+         piMana = 100 * MAX_CALCULATED_MANA;
+      }
+      else
+      {
+         piMana += amount;
       }
 
       Send(self,@NewMana);
 
-      return iManaGained;
+      if precision
+      {
+         return amount;
+      }
+
+      return amount / 100;
    }
 
    // Check if target is currently suffering from a mana curse.
@@ -993,8 +1108,8 @@ messages:
       iTime = Send(self,@CalculateManaTime);
 
       // Let's make sure we aren't negative. That'd be absurd!
-      // Also, don't allow temporary mana beyond 2xMaxMana.
-      piMana = bound(piMana,0,2*piMax_Mana);
+      // Also, don't allow temporary mana beyond the hardcap.
+      piMana = bound(piMana,0,100*MAX_CALCULATED_MANA);
 
       // iTime can only be negative or positive, never zero.
       if iTime <> $
@@ -1055,7 +1170,7 @@ messages:
 
       // Mana regeneration starts out as 1 percent of our mana pool
       // per second at 200 vigor.
-      iManaPerTick = (piVigor/10000) * piMax_Mana / 20;
+      iManaPerTick = (piVigor/100) * piMax_mana / 20;
 
       // Faction bonus of up to 30%.
       if IsClass(self,&Player)
@@ -1093,14 +1208,13 @@ messages:
       iManaPerTick += piMana_Rate;
 
       // Disable regeneration when sitting at or above max mana.
-      // A curse has the same effect at all levels.
-      if piMana >= piMax_Mana
+      if piMana >= 100 * piMax_mana
       {
          iManaPerTick = bound(iManaPerTick,$,0);
       }
 
       // Add a decay of 1 point per 5 seconds if sitting above the max.
-      if piMana > piMax_Mana
+      if piMana > 100 * piMax_mana
       {
          iManaPerTick -= 200;
       }
@@ -1145,7 +1259,7 @@ messages:
          return;
       }
 
-      piMana = bound(piMana + 1,$,piMax_mana);
+      piMana = bound(piMana + 100,$,100 * piMax_mana);
       Send(self,@NewMana);
 
       return;
@@ -1162,7 +1276,7 @@ messages:
          return;
       }
 
-      piMana -= 1;
+      piMana -= 100;
 
       // Give crystallize mana a chance to kick in.
       iAbility = Send(self,@GetSpellAbility,#spell_num=SID_CRYSTALIZE_MANA);
@@ -1197,9 +1311,8 @@ messages:
 
    // Vigor related code.
    GetVigor()
-   "Just like health, vigor uses higher precision (10000:1)."
    {
-      return piVigor/10000;
+      return piVigor/100;
    }
 
    GetExactVigor()
@@ -1207,11 +1320,106 @@ messages:
       return piVigor;
    }
 
+   LoseVigor(amount = 0, precision = FALSE)
+   {
+      if Send(self,@IsInCannotInteractMode)
+      {
+         Send(self,@NewVigor);
+
+         return 0;
+      }
+
+      if NOT precision
+      {
+         amount *= 100;
+      }
+
+      // Faction discount of up to 30% for players.
+      if IsClass(self,&Player)
+      {
+         amount = Send(Send(SYS,@GetParliament),@ModifyVigorCost,#who=self,#amount=amount);
+      }
+
+      if piVigor - amount < 0
+      {
+         amount = piVigor;
+         piVigor = 0;
+      }
+      else
+      {
+         piVigor -= amount;
+      }
+
+      Send(self,@NewVigor);
+
+      if precision
+      {
+         return amount;
+      }
+
+      return amount / 100;
+   }
+
+   GainVigor(amount=0, precision = FALSE, bCapped=TRUE)
+   "If uncapped, still respects the hardcap."
+   {
+      if Send(self,@IsInCannotInteractMode)
+      {
+         Send(self,@NewVigor);
+
+         return 0;
+      }
+
+      if NOT precision
+      {
+         amount *= 100;
+      }
+
+      if bCapped AND piVigor + amount > 100 * piMax_vigor
+      {
+         amount = 100 * piMax_vigor - piVigor;
+         piVigor = 100 * piMax_vigor;
+      }
+      else if piVigor + amount > 100 * MAX_CALCULATED_VIGOR
+      {
+         amount = 100 * MAX_CALCULATED_VIGOR - piVigor;
+         piVigor = 100 * MAX_CALCULATED_VIGOR;
+      }
+      else
+      {
+         piVigor += amount;
+      }
+
+      Send(self,@NewVigor);
+
+      if precision
+      {
+         return amount;
+      }
+
+      return amount / 100;
+   }
+
+   HasVigor(amount = 0, precision = FALSE)
+   {
+      if NOT precision
+      {
+         amount *= 100;
+      }
+
+      if piVigor >= amount
+      {
+         return TRUE;
+      }
+
+      return FALSE;
+   }
+
    SetVigor(amount=$)
    {
       if amount <> $
       {
-         piVigor = bound(amount*10000,0,$);
+         piVigor = bound(amount*100,0,$);
       }
 
       Send(self,@DrawVigor);
@@ -1225,7 +1433,9 @@ messages:
       {
          piVigor = bound(amount,0,$);
       }
-      
+
+      Send(self,@DrawVigor);
+
       return;
    }
 
@@ -1238,12 +1448,12 @@ messages:
 
       return piVigor_rest_threshold
          + Send(self,@GetSkillAbility,#Skill_num=SKID_SECOND_WIND)
-         * 2000;
+         * 20 / 100;
    }
 
    SetVigorRestThreshold(amount = 0)
    {
-      piVigor_rest_threshold = Bound(amount,100000,800000);
+      piVigor_rest_threshold = Bound(amount,1000,8000);
 
       if IsClass(self,&Player)
       {
@@ -1268,7 +1478,7 @@ messages:
 
       // Let's make sure we aren't negative. That'd be absurd!
       // Also, don't allow temporary vigor beyond 2xMaxVigor.
-      piVigor = bound(piVigor,0,2*piMax_Vigor);
+      piVigor = bound(piVigor,0,100 * MAX_CALCULATED_VIGOR);
 
       // iTime can only be negative or positive, never zero.
       if iTime <> $
@@ -1330,14 +1540,14 @@ messages:
       // Natural regeneration threshold of 80 points of vigor. Second Wind
       // may boost the limit to 100.
       iBoost = Send(self,@GetSkillAbility,#Skill_num=SKID_SECOND_WIND);
-      iLimit = Send(self,@GetVigorRestThreshold,#base=FALSE);
+      iLimit = Send(self,@GetVigorRestThreshold,#base=FALSE)*100;
 
       // Vigor naturally regenerates at a rate of 2 point per 10 seconds
       // at 50 points of stamina as long as we are below the threshold.
       // Natural regeneration stops once the threshold is crossed.
       if piVigor < iLimit
       {
-         iVigorPerTick = 1000 + 20*Send(self,@GetStamina);
+         iVigorPerTick = 100 + 2 * Send(self,@GetStamina);
          // Second wind will give us a progressive boost to regeneration
          // the lower we go. Boost is based on missing Vigor below threshold.
          if iBoost
@@ -1394,15 +1604,15 @@ messages:
       iVigorPerTick += piVigor_Rate;
 
       // Disable regeneration when sitting at or above max vigor.
-      if piVigor >= piMax_Vigor
+      if piVigor >= 100 * piMax_vigor
       {
          iVigorPerTick = bound(iVigorPerTick,$,0);
       }
 
       // Add a decay of 1 point per 5 seconds if sitting above the max.
-      if piVigor > piMax_Vigor
+      if piVigor > 100 * piMax_vigor
       {
-         iVigorPerTick -= 2000;
+         iVigorPerTick -= 200;
       }
 
       // Stop any decay if we are already sitting at 0 vigor.
@@ -1422,10 +1632,10 @@ messages:
       iVigorPerTick = Send(Self,@CalculateVigorPerTick);
 
       // Let's set reasonable limits for how small the minimum Vigor gained per tick can be.
-      // If it is greater than 0.01 per second, let's calculate the time it takes to gain one hp.
-      if abs(iVigorPerTick) > 100
+      // If it is greater than 0.01 per second, let's calculate the time it takes to gain one point.
+      if abs(iVigorPerTick) > 10
       {
-         iTime = 10000000 / iVigorPerTick;
+         iTime = 1000000 / iVigorPerTick;
       }
 
       // If it is smaller, return a nil, so that NewVigor knows not to start a timer.
@@ -1446,7 +1656,7 @@ messages:
          return;
       }
 
-      piVigor = bound(piVigor + 10000,$,piMax_Vigor);
+      piVigor = bound(piVigor + 100,$,100 * piMax_vigor);
 
       // Grant a chance to improve Second Wind if regenerating below threshold.
       if NOT pbResting AND random(0,50) = 50
@@ -1469,7 +1679,7 @@ messages:
          return;
       }
 
-      piVigor = bound(piVigor - 10000,0,$);
+      piVigor = bound(piVigor - 100,0,$);
 
       // We've run out of vigor. Check what happens now.
       if piVigor < 1
@@ -1486,39 +1696,6 @@ messages:
    "Uh oh! Are we in trouble?"
    {
       return;
-   }
-
-   AddExertion(amount = 0, SetToThreshold = FALSE, Check = FALSE)
-   {
-      local iReduction;
-
-      if amount > 0 AND IsClass(self,&Player)
-      {
-         // Parliament adjustment for exertion reduction.  Remove a percentage from
-         // the amount added.
-         iReduction = Send(Send(SYS,@GetParliament),@GetFactionVigorBonus,#who=self);
-         amount = (amount * (100 - iReduction))/100;
-      }
-
-      // Checking if we have enough vigor for the action, if we do, deduct the cost
-      // and return true. If we don't, return false.
-      if Check AND amount > piVigor
-      {
-         return FALSE;
-      }
-
-      if SetToThreshold AND piVigor < Send(self,@GetVigorRestThreshold,#base=FALSE)
-      {
-         piVigor = Send(self,@GetVigorRestThreshold,#base=FALSE);
-      }
-      else
-      {
-         piVigor = bound(piVigor - amount,0,piMax_Vigor);
-      }
-
-         Send(self,@NewVigor);
-
-      return TRUE;
    }
 
    DrawHealth()

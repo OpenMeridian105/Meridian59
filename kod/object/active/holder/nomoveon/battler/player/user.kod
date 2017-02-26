@@ -4175,7 +4175,7 @@ messages:
       {
          // Reduce speed value to old value, 5/6ths current value, then
          // square it.
-         iExertion = (speed * 3)/5;
+         iExertion = (speed * 3)/50;
          iExertion *= iExertion;
          iExertion *= EXERTION_PER_MOVE;
 
@@ -4190,7 +4190,7 @@ messages:
             }
          }
 
-         Send(self,@AddExertion,#amount=iExertion);
+         Send(self,@LoseVigor,#precision=TRUE,#amount=iExertion);
 
          // Save vigor drain tick
          piLastVigorDrainTime = iCurrentTime;
@@ -8686,7 +8686,7 @@ messages:
    SendStatMana()
    {
       AddPacket(1,2, 4,user_stat_mana, 1,STAT_VALUE, 1,STAT_INTEGER,
-                4,piMana, 4,0, 4,100, 4,piMax_mana);
+                4,Send(self,@GetMana), 4,0, 4,100, 4,piMax_mana);
 
       return;
    }
@@ -8707,8 +8707,7 @@ messages:
    SendStatVigor()
    {
       AddPacket(1,3,4,user_stat_vigor,1,STAT_VALUE,1,STAT_INTEGER,
-         4,Send(self,@GetVigor),4,0,4,200,4,Send(self,@GetVigorRestThreshold,
-         #base=FALSE)/10000);
+         4,Send(self,@GetVigor),4,0,4,200,4,Send(self,@GetVigorRestThreshold,#base=FALSE));
 
       return;
    }

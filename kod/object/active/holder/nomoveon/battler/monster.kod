@@ -570,17 +570,17 @@ messages:
 
       // Set the monsters resources based on the stats we just created.
       // Health
-      piMax_Health = viLevel * bound(80 + piStamina,$,120) / 100 + piSurvivalLevel * viDifficulty + viBonusHealth;
-      piHealth = piMax_Health*100;
+      piMax_health = viLevel * bound(80 + piStamina,$,120) / 100 + piSurvivalLevel * viDifficulty + viBonusHealth;
+      piHealth = piMax_health*100;
 
       // Mana
-      piMax_Mana = piMysticism*2 + viBonusMana;
-      piMana = piMax_Mana;
+      piMax_mana = piMysticism*2 + viBonusMana;
+      piMana = piMax_mana*100;
 
       // Vigor
-      piMax_Vigor = piStamina*40000 + viBonusVigor;
-      piVigor_rest_threshold = piStamina*16000 + viBonusVigor/2;
-      piVigor = random(piVigor_rest_threshold,piMax_Vigor);
+      piMax_vigor = piStamina*400 + viBonusVigor;
+      piVigor_rest_threshold = piStamina*160 + viBonusVigor/2;
+      piVigor = random(piVigor_rest_threshold,piMax_vigor);
 
       piAttackRange = viAttackRange;
       piSpellChance = viSpellChance + piIntellect/2;
@@ -1587,9 +1587,10 @@ messages:
       }
 
       // Carry out attack if we have the vigor for it.
-      if Send(self,@AddExertion,#amount = 5000,#Check = TRUE)
+      if pivigor >= 50
       {
          Send(self,@TryAttack,#what=poTarget,#stroke_obj=self);
+         Send(self,@LoseVigor,#precision=TRUE,#amount = 50);
       }
 
       // Sanity check, in rare occurrences mob dies before this can execute 
@@ -2431,7 +2432,7 @@ messages:
       }
 
       // Set a predamage mark... we'll compare to it to see if threshold crossed.
-      iPercentClass = piHealth/(piMax_Health*20);
+      iPercentClass = piHealth/(piMax_health*20);
 
       // Make sure we don't deal negative damage.
       iDamage = Bound(iDamage,0,$);
@@ -2472,7 +2473,7 @@ messages:
       Send(self,@NewHealth);
 
       // Check to see if we crossed a threshold due to the damage.
-      if iPercentClass <> (piHealth / (piMax_Health * 20))
+      if iPercentClass <> (piHealth / (piMax_health * 20))
       {
          Send(self,@HitPointThresholdDamage);
       }
@@ -2496,12 +2497,12 @@ messages:
       ptHealth = $;
 
       // Check health before gaining a health point.
-      iPercentClass = piHealth/(piMax_Health*20);
+      iPercentClass = piHealth/(piMax_health*20);
 
       piHealth = bound(piHealth + 100,$,piMax_health*100);
 
       // Check if we crossed a threshold due to decay.
-      if iPercentClass <> (piHealth / (piMax_Health * 20))
+      if iPercentClass <> (piHealth / (piMax_health * 20))
       {
          Send(self,@HitPointThresholdHeal);
       }
@@ -2519,7 +2520,7 @@ messages:
       ptHealth = $;
 
       // Check health before losing a health point.
-      iPercentClass = piHealth/(piMax_Health*20);
+      iPercentClass = piHealth/(piMax_health*20);
 
       piHealth = bound(piHealth - 100,0,$);
 
@@ -2529,7 +2530,7 @@ messages:
          Send(self,@ZeroHealth);
       }
       // Still alive, check if we crossed a threshold due to decay.
-      else if iPercentClass <> (piHealth / (piMax_Health * 20))
+      else if iPercentClass <> (piHealth / (piMax_health * 20))
       {
          Send(self,@HitPointThresholdDamage);
       }
@@ -4925,30 +4926,12 @@ messages:
       return viOccupation;
    }
 
-   GainHealthNormal(amount = $, precision = FALSE)
-   "for when holy touch is cast on a good monster"
-   {
-      if amount = $
-      {
-         return;
-      }
-
-      if NOT precision
-      {
-         amount = amount * 100;
-      }
-
-      piHealth = Bound(piHealth+amount,1,piMax_Health*100);
-
-      return;
-   }
-
    NewMaxMana(amount=0)
    {
       local iPrev_max;
 
       iPrev_max = piMax_mana;
-      piMax_Mana = piMax_mana + amount;
+      piMax_mana = piMax_mana + amount;
 
       return (piMax_mana - iPrev_max);
    }
@@ -5068,7 +5051,7 @@ messages:
    {
       local i, iThreshold, rDamage_report, each_obj;
 
-      iThreshold = piHealth / (piMax_Health * 20);
+      iThreshold = piHealth / (piMax_health * 20);
 
       if iThreshold >= 4
       {
@@ -5109,7 +5092,7 @@ messages:
    {
       local i, iThreshold, rHeal_report, each_obj;
 
-      iThreshold = piHealth / (piMax_Health * 20);
+      iThreshold = piHealth / (piMax_health * 20);
 
       if iThreshold >= 5
       {
@@ -5190,7 +5173,7 @@ messages:
 
       if iHitPoint_Percent = $
       {
-         iHit_Percent = piHealth / piMax_Health;
+         iHit_Percent = piHealth / piMax_health;
       }
       else
       {
@@ -5248,15 +5231,15 @@ messages:
    {
       local iPrev_max;
 
-      iPrev_max = piMax_Health;
-      piMax_Health = Bound(piMax_Health + amount, 1, $);
+      iPrev_max = piMax_health;
+      piMax_health = Bound(piMax_health + amount, 1, $);
 
-      return piMax_Health - iPrev_max;
+      return piMax_health - iPrev_max;
    }
 
    SetMaxHitPoints(amount=$)
    {
-      piMax_Health = amount;
+      piMax_health = amount;
       piHealth = amount*100;
 
       return;
@@ -6880,7 +6863,7 @@ messages:
       
       // If wimpy is set at 50, monster will flee once his health is at 49// of
       //  max.
-      if (piHealth/ piMax_Health) < viWimpy
+      if (piHealth/ piMax_health) < viWimpy
       {
          return TRUE;
       }

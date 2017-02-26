@@ -554,6 +554,72 @@ messages:
       propagate;
    }
 
+   LoseHealth()
+   {
+      if pbImmortal
+      {
+         return 0;
+      }
+
+      propagate;
+   }
+
+   HealthDecay()
+   {
+      ptHealth = $;
+
+      if pbImmortal
+      {
+         return;
+      }
+
+      return;
+   }
+
+   LoseMana()
+   {
+      if pbImmortal
+      {
+         return 0;
+      }
+
+      propagate;
+   }
+
+   ManaDecay()
+   {
+      ptMana = $;
+
+      if pbImmortal
+      {
+         return;
+      }
+
+      return;
+   }
+
+   LoseVigor()
+   {
+      if pbImmortal
+      {
+         return 0;
+      }
+
+      propagate;
+   }
+
+   VigorDecay()
+   {
+      ptVigor = $;
+
+      if pbImmortal
+      {
+         return;
+      }
+
+      return;
+   }
+
 #region DM Flags
 
    SetDMFlag(flag=0, bValue=FALSE)
@@ -1260,10 +1326,10 @@ messages:
          piMysticismMod = 20;
          piAimMod = 20;
 
-         piVigor = 2000000;
+         piVigor = 20000;
          Send(self,@GainBaseMaxHealth,#amount=150-piBase_max_health);
          Send(self,@ResetXPToLevel);
-         Send(self,@NewMaxMana,#amount=200-piMax_mana);
+         Send(self,@ConnectManaNode,#boost=TRUE);
 
          if Send(self,@CheckLog)
          {
@@ -1272,7 +1338,7 @@ messages:
          }
 
          Send(self,@GainHealth,#amount=piMax_health*100-piHealth,#precision=TRUE);
-         Send(self,@GainMana,#amount=piMax_mana-piMana);
+         Send(self,@GainMana,#amount=piMax_mana*100-piMana);
          Send(self,@EvaluatePKStatus);
          Send(self,@PlayerIsIntriguing);
          Send(self,@NewVigor);
@@ -2412,17 +2478,6 @@ messages:
       Send(self,@MsgSendUser,#message_rsc=dm_pk_disable);
 
       return;
-   }
-
-   AddExertion(amount=0,SetToThreshold=FALSE)
-   {
-      if pbImmortal
-      {
-         // Don't add exertion if we're immortal.
-         return;
-      }
-
-      propagate;
    }
 
    SpellCast(who=$,oSpell=$,lItems=$)

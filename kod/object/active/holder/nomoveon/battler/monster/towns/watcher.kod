@@ -1300,7 +1300,7 @@ messages:
          if (IsClass(i,&User))
          {
             index = (Send(i,@GetMaxHealth)+15) - Send(i,@GetHealth);
-            Send(i,@GainHealth,#amount=Bound(index,0,15));
+            Send(i,@GainHealth,#bCapped=FALSE,#amount=Bound(index,0,15));
             index = (Send(i,@GetMaxMana)+25) - Send(i,@GetMana);
             Send(i,@GainMana,#amount=Bound(index,0,25));
          }
@@ -1979,7 +1979,7 @@ messages:
 
             if Send(what,@GetHealth) < Send(what,@GetMaxHealth)
             {
-               Send(what,@GainHealthNormal,#amount=200);
+               Send(what,@GainHealth,#amount=200);
             }
 
             if Send(what,@GetMana) < Send(what,@GetMaxMana)
@@ -1988,7 +1988,7 @@ messages:
                Send(what,@GainMana,#amount=iAmount);
             }
 
-            Send(what,@AddExertion,#amount=-2000000);
+            Send(what,@GainVigor,#precision=TRUE,#amount=20000);
          }
          else
          {
@@ -1999,8 +1999,8 @@ messages:
                {
                   Send(what,@LoseHealth,#amount=Send(what,@GetHealth)-Nth(i,2));
                   Send(what,@GainMana,#amount=Nth(i,3)-Send(what,@GetMana));
-                  iAmount = -10000*(Nth(i,2)-Send(what,@GetVigor));
-                  Send(what,@AddExertion,#amount=iAmount);
+                  iAmount = 100*(Nth(i,2)-Send(what,@GetVigor));
+                  Send(what,@GainVigor,#precision=TRUE,#amount=iAmount);
                   plUserStats = DelListElem(plUserStats,i);
                }
             }

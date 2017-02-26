@@ -141,17 +141,17 @@ messages:
       }
 
       // Convert vigor to Exertion
-      iEpAmount = iEpAmount * 10000;
+      iEpAmount = iEpAmount * 100;
       Send(who,@MsgSendUser,#message_rsc=Relay_caster_msg_rsc,
            #parm1=Send(oTarget,@GetDef),#parm2=Send(oTarget,@GetName));
 
       // Positive means we decrease Vigor
-      Send(who,@AddExertion,#amount=iEpAmount);
+      Send(who,@LoseVigor,#precision=TRUE,#amount=iEpAmount);
       Send(oTarget,@MsgSendUser,#message_rsc=Relay_cast_rsc);
 
       // Negative means we increase vigor, and give a 25// bonus.
-      iEpAmount = (-5 * iEpAmount)/4;
-      Send(oTarget,@AddExertion,#amount=iEpAmount);
+      iEpAmount = 5 * iEpAmount / 4;
+      Send(oTarget,@GainVigor,#precision=TRUE,#amount=iEpAmount);
 
       propagate;
    }

@@ -247,8 +247,6 @@ resources:
       "recent encounter to make any use of the subtle energies dispersing "
       "before your eyes."
 
-   player_health_gain_maxed = "Your health cannot increase any further."
-
    player_cant_hit_optout = \
       "You have opted not to participate in player versus player combat."
    player_cant_hit_optout_minion = \
@@ -870,8 +868,7 @@ properties:
    // hours of online time.
    ptReward_timer = $
 
-   // Flags for various character attributes.
-   piFlags = 0
+   // Flags for various character attributes. piFlags itself moved to battler.
    piFlags2 = 0
    piFlags3 = 0
 
@@ -933,9 +930,9 @@ properties:
    //// Variable character values.
 
    // All battlers use the same properties now, so
-   // piHealth and piMax_Health have been moved to battler.
+   // piHealth and piMax_health have been moved to battler.
    // The same is true for mana and vigor.
-   // The player sees piMax_Health in their client.
+   // The player sees piMax_health in their client.
    // piBase_Max_Health is their base without any modifiers
    // IMPORTANT NOTE: For higher accuracy, a battler's current health 
    //(and only current health) is inflated by a factor of 100. Doing so 
@@ -1430,16 +1427,6 @@ messages:
       return;
    }
 
-   HasVigor(amount = $)
-   {
-      if piVigor > amount
-      {
-         return TRUE;
-      }
-
-      return FALSE;
-   }
-
    StartRescueTimer(time=5000)
    "Starts a timer which will rescue the player after time ms."
    {
@@ -1615,7 +1602,7 @@ messages:
       {
          // Since piHealth is internally inflated by a factor of 100, this 
          // returns the percentage correctly.
-         HitPoint_Percent = piHealth / piMax_Health;
+         HitPoint_Percent = piHealth / piMax_health;
          Send(poIllusion_set,@IllusionShowDesc,#who=self,
                #iHitPoint_Percent=HitPoint_Percent);
 
@@ -2443,8 +2430,8 @@ messages:
                pibase_max_health);
       }
 
-      piMax_mana = Send(self, @GetInitialMaxMana);
-      piMana = piMax_mana;
+      Send(self,@ComputeMaxMana);
+      piMana = 100 * piMax_mana;
 
       // need to determine male/female
       if gender = GENDER_MALE
@@ -2647,8 +2634,8 @@ messages:
       // Setup some stats
       piBase_max_health = 20;
       piMax_health = piBase_max_health;
-      piMax_mana = Send(self, @GetInitialMaxMana);
-      piMana = piMax_mana;
+      Send(self,@ComputeMaxMana);
+      piMana = 100 * piMax_mana;
 
       poKill_target = $;
       piKarma = 0;
@@ -2945,7 +2932,7 @@ messages:
 
       // Bound twice - once for max HP this player can get, once for
       // max HP allowable by the game.
-      return Bound(Bound(piBase_max_health,MIN_HP,100 + iStamina),MIN_HP,MAX_HP);
+      return Bound(Bound(piBase_max_health,MIN_HEALTH,100 + iStamina),MIN_HEALTH,MAX_HEALTH);
    }
 
    GetUncappedBaseMaxHealth()
@@ -6553,7 +6540,7 @@ messages:
 
    EatSomething(nutrition = 0, filling = 0)
    {
-      Send(self,@AddExertion,#amount=-10000 * nutrition);
+      Send(self,@GainVigor,#precision=TRUE,#amount=100 * nutrition);
       piStomach += filling;
 
       return;
@@ -6573,101 +6560,6 @@ messages:
       Send(self,@NewUnboundEnergy);
 
       return;
-   }
-
-   LoseHealth(amount = $, decay = FALSE, precision = FALSE)
-   "decay = TRUE if you lose a HP over time because you are boosted over max "
-   "by some sort of vamp effect. If this is true, you shouldn't break a trance."
-   {
-      if NOT precision
-      {
-         amount *= 100;
-      }
-
-      if Send(self,@IsInCannotInteractMode)
-      {
-         return;
-      }
-
-      if piFlags & PFLAG_TRANCE AND NOT decay
-      {
-         Send(self,@BreakTrance,#event=EVENT_DAMAGE);
-      }
-
-      piHealth = piHealth - amount;
-      Send(self,@NewHealth);
-
-      return;
-   }
-
-   GainHealth(amount = $, precision = FALSE)
-   "Some attempt here to quell the vamp touch bugs"
-   {
-      if NOT precision
-      {
-         amount *= 100;
-      }
-
-      if NOT Send(self,@IsInCannotInteractMode)
-      {
-         if (200*piMax_health) < (piHealth+amount)
-         {
-            Send(self,@MsgSendUser,#message_rsc=player_health_gain_maxed);
-            piHealth = 200 * piMax_health;
-         }
-         else
-         {
-            piHealth += amount;
-         }
-      }
-
-      Send(self,@NewHealth);
-
-      return;
-   }
-
-   GainHealthNormal(amount = $, precision = FALSE)
-   "Don't add beyond piMax_health"
-   {
-      local iOldhealth;
-
-      if amount = $
-      {
-         Debug("Player ",Send(self,@GetTrueName)," had GainHealthNormal called",
-               " with amount = $! Precision was ",precision);
-
-         return;
-      }
-
-      if NOT precision
-      {
-         amount *= 100;
-      }
-
-      iOldhealth = piHealth;
-
-      if amount < 0
-      {
-         return;
-      }
-
-      if piHealth > piMax_health*100
-      {
-         return 0;
-      }
-
-      if NOT Send(self,@IsInCannotInteractMode)
-      {
-         pihealth += amount;
-         if piHealth > piMax_health * 100
-         {
-            piHealth = piMax_health * 100;
-         }
-      }
-
-      Send(self,@NewHealth);
-
-      return (piHealth - iOldhealth);
    }
 
    NewUnboundEnergy(bDelay = FALSE)
@@ -6777,7 +6669,7 @@ messages:
       local iPrev_max;
 
       iPrev_max = piMax_health;
-      piMax_health = Bound(piMax_health + amount, MIN_HP, $);
+      piMax_health = Bound(piMax_health + amount, MIN_HEALTH, $);
 
       //  no longer reset health to max - will need to test for abusability
       //     the motivation for this originated in using a circlet with health > max_health,
@@ -6810,11 +6702,6 @@ messages:
       Send(self,@NewHealth); // in case need heal timer
 
       return piMax_health - iPrev_max;
-   }
-
-   GetInitialMaxMana()
-   {
-      return 15 + Send(self,@GetMysticism)/5;
    }
 
    StripNodeList(number=$)
@@ -6947,54 +6834,67 @@ messages:
       return;
    }
 
-   NewMaxMana(amount=0,node_num=-1)
-   "This is called from the mana node.  Unlike newMaxHealth, the amount is "
-   "checked here.  Returns actual amount changed"
+   ConnectManaNode(node_num=0,all=FALSE,boost=FALSE)
    {
-      local iPrev_max;
-
-      iPrev_max = piMax_mana;
-      if amount > 0 AND node_num <> -1
+      if all
       {
-         piNodelist = piNodelist | node_num;
+         piNodelist = 8191;
       }
 
-      if amount < 0 AND node_num <> -1
+      if boost
       {
-         if piNodelist & node_num
-         {
-            piNodelist = piNodelist & ~node_num;
-         }
-         else
-         {
-            Debug("BAD: missing node_num from nodelist in mana adjust.",self);
-         }
+         piNodelist = 65535;
       }
 
-      piMax_Mana = piMax_mana+amount;
+      piNodelist |= node_num;
+
+      Send(self,@ComputeMaxMana);
+
+      return;
+   }
+
+   SeverManaNode(node_num=0,all=FALSE)
+   {
+      if all
+      {
+         piNodelist = 0;
+      }
+
+      piNodelist &= ~node_num;
+
+      Send(self,@ComputeMaxMana);
+
+      return;
+   }
+
+   NewMaxMana(amount=0)
+   {
+      if piMax_mana + amount > MAX_CALCULATED_MANA
+      {
+         amount = MAX_CALCULATED_MANA - piMax_mana;
+         piMax_mana = MAX_CALCULATED_MANA;
+      }
+      else if piMax_mana + amount < MIN_MANA
+      {
+         amount = piMax_mana - MIN_MANA;
+         piMax_mana = MIN_MANA;
+      }
+      else
+      {
+         piMax_mana += amount;
+      }
+
       Post(self,@ComputeMaxMana);
 
-      return (piMax_mana - iPrev_max);
+      return amount;
    }
 
    ComputeMaxMana()
    {
-      local index, iNodeList, oNode, i, oCrystalizeMana, iCrystalizeManaAbility;
+      local i, iMagic, oCrystalizeMana, iCrystalizeManaAbility;
 
-      index = 1;
-      iNodelist = piNodelist;
-      piMax_mana = Send(self, @GetInitialMaxMana);
-
-      while iNodeList > 0 AND index <= NODE_MAX_VALUE
-      {
-         if (iNodeList & index)
-         {
-            oNode = Send(SYS,@FindNodeByNum,#num=index);
-            piMax_mana = piMax_mana + Send(oNode,@GetManaAdjust,#who=self);
-            iNodelist = iNodelist & ~index;
-         }
-         index = index*2;
-      }
+      iMagic = Send(self,@GetMysticism);
+      piMax_mana = (150 + (2* iMagic) + (Send(self,@NumManaNodes) * (30 + iMagic)))/10;
 
       // Account for any items that may affect max mana
       foreach i in plUsing
@@ -7009,8 +6909,7 @@ messages:
       {
          if Send(Nth(i,2),@AffectsMaxMana)
          {
-            piMax_mana = piMax_mana + Send(Nth(i,2),@GetManaBonus,
-                                          #state=Nth(i,3));
+            piMax_mana = piMax_mana + Send(Nth(i,2),@GetManaBonus,#state=Nth(i,3));
          }
       }
 
@@ -7018,8 +6917,7 @@ messages:
       iCrystalizeManaAbility = Send(self,@GetSpellAbility,
                                     #spell_num=SID_CRYSTALIZE_MANA);
 
-      if oCrystalizeMana <> $
-         AND iCrystalizeManaAbility <> 0
+      if oCrystalizeMana <> $ AND iCrystalizeManaAbility <> 0
       {
          piMax_mana = piMax_mana + Send(oCrystalizeMana,@GetManaBonus,
                                        #spell_ability=iCrystalizeManaAbility);
@@ -7027,7 +6925,7 @@ messages:
 
       if Send(self,@IsCrystalizeManaSurging)
       {
-         piMax_mana = Send(self, @GetInitialMaxMana);
+         piMax_mana = 15 + (iMagic / 5);
       }
 
       Send(self,@NewMana);
@@ -7047,9 +6945,13 @@ messages:
          if piNodelist & i
          {
             ++n;
+            if i = 512
+            {
+               ++n;
+            }
          }
 
-         i = 2 * i;
+         i *= 2;
       }
 
       return n;
@@ -8549,7 +8451,7 @@ messages:
       if IsClass(what,&User)
       {
          // Set a reasonable upper bound to handle event characters.
-         monster_level = Bound(Send(what,@GetBaseMaxHealth),MIN_HP,1000);
+         monster_level = Bound(Send(what,@GetBaseMaxHealth),MIN_HEALTH,1000);
       }
       else
       {
@@ -8842,7 +8744,7 @@ messages:
 
             // Boost the player to max health, and give them 200 vigor.
             Send(self,@MsgSendUser,#message_rsc=player_improve_health_invigorate);
-            piHealth = piMax_Health * 100;
+            piHealth = piMax_health * 100;
             Send(self,@DrawHealth);
             Send(self,@EatSomething,#nutrition=200);
             Post(self,@DrawOffense);
@@ -8863,7 +8765,7 @@ messages:
          iMaxHealth = Send(self,@GetBaseMaxHealth);
 
          if (iMaxHealth >= 100 + iStamina
-            OR iMaxHealth >= MAX_HP)
+            OR iMaxHealth >= MAX_HEALTH)
          {
             Send(self,@AddTrainingPoints,#points=iMaxHealth * 3,#bCap=FALSE);
          }
@@ -9379,16 +9281,16 @@ messages:
       if Send(SYS,@GetChaosNight)
       {
          // It's a frenzy!  Give us a leg up.
-         piHealth = 80*piMax_Health;
-         piMana = 4*(piMax_Mana/5);
-         piVigor = 2000000;
+         piHealth = 80 * piMax_health;
+         piMana = 80 * piMax_mana;
+         piVigor = 20000;
       }
       else
       {
          // We're not in a frenzy.  Give us the bare minimums.
          piMana = 1;
          piHealth = 1;
-         piVigor = Bound(piVigor/4,150000,500000);
+         piVigor = Bound(piVigor/4,1500,5000);
       }
 
       Send(self,@NewHealth);
@@ -9417,7 +9319,7 @@ messages:
          Send(self,@MsgSendUser,#message_rsc=player_death_mail_notice);
 
          // Give them half their mana to broadcast for help with.
-         piMana = (piMax_mana / 2) + 2;
+         piMana = piMax_mana * 50 + 200;
          Send(self,@NewMana);
       }
 

@@ -53,7 +53,8 @@ void D3DParticleAddToRenderer(d3d_render_pool_new *pPool, Draw3DParams *params,
  */
 void D3DParticleSystemShutdown(void)
 {
-   IDirect3DDevice9_Release(gParticleSystemSnow.pTexture);
+   if (gParticleSystemSnow.pTexture != NULL)
+      IDirect3DDevice9_Release(gParticleSystemSnow.pTexture);
    gParticleSystemSnow.pTexture = NULL;
 }
 

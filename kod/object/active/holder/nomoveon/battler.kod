@@ -23,6 +23,11 @@ constants:
    DAMAGE_THRESHOLD_WOUND = 500
    DAMAGE_THRESHOLD_DAMAGE = 1500
 
+   // This tick factor modifies responsiveness of resource regeneration for
+   // players. The factor is a percentage of the original and will scale
+   // tick duration and the amount of resource gained/lost accordingly.
+   TICK_FACTOR_PLAYER = 25
+
 resources:
 
    include battler.lkod
@@ -653,6 +658,16 @@ messages:
    }
 
    //// Resource related stuff common to players and mobs.
+
+   // This message is used to modify responsiveness of resource
+   // regeneration for players. Tick duration and restored resource
+   // amount are scaled by a percentage.
+   GetTickFactor(i=$)
+   "Code for players. Monsters are handled in monster.kod."
+   {
+      return i * TICK_FACTOR_PLAYER / 100;
+   }
+
    // Health related code.
    GetMaxHealth()
    {
@@ -931,10 +946,10 @@ messages:
       // If it is smaller, return a nil, so that NewHealth knows not to start a timer.
       else
       {
-         iTime = $;
+         return $;
       }
 
-      return iTime;
+      return Send(self,@GetTickFactor,#i=iTime);
    }
 
    HealthRegen()
@@ -946,7 +961,7 @@ messages:
          return;
       }
 
-      piHealth = bound(piHealth + 100,$,piMax_health*100);
+      piHealth = bound(piHealth + Send(self,@GetTickFactor,#i=100),$,piMax_health*100);
       Send(self,@NewHealth);
 
       return;
@@ -961,7 +976,7 @@ messages:
          return;
       }
 
-      piHealth = bound(piHealth - 100,0,$);
+      piHealth = bound(piHealth - Send(self,@GetTickFactor,#i=100),0,$);
 
       // We've run out of health. Check what happens now.
       if piHealth < 1
@@ -1244,10 +1259,10 @@ messages:
       // If it is smaller, return a nil, so that NewMana knows not to start a timer.
       else
       {
-         iTime = $;
+         return $;
       }
-   
-      return iTime;
+
+      return Send(self,@GetTickFactor,#i=iTime);
    }
 
    ManaRegen()
@@ -1259,7 +1274,7 @@ messages:
          return;
       }
 
-      piMana = bound(piMana + 100,$,100 * piMax_mana);
+      piMana = bound(piMana + Send(self,@GetTickFactor,#i=100),$,100 * piMax_mana);
       Send(self,@NewMana);
 
       return;
@@ -1276,7 +1291,7 @@ messages:
          return;
       }
 
-      piMana -= 100;
+      piMana -= Send(self,@GetTickFactor,#i=100);
 
       // Give crystallize mana a chance to kick in.
       iAbility = Send(self,@GetSpellAbility,#spell_num=SID_CRYSTALIZE_MANA);
@@ -1637,14 +1652,13 @@ messages:
       {
          iTime = 1000000 / iVigorPerTick;
       }
-
       // If it is smaller, return a nil, so that NewVigor knows not to start a timer.
       else
       {
-         iTime = $;
+         return $;
       }
-   
-      return iTime;
+
+      return Send(self,@GetTickFactor,#i=iTime);
    }
 
    VigorRegen()
@@ -1656,7 +1670,7 @@ messages:
          return;
       }
 
-      piVigor = bound(piVigor + 100,$,100 * piMax_vigor);
+      piVigor = bound(piVigor + Send(self,@GetTickFactor,#i=100),$,100 * piMax_vigor);
 
       // Grant a chance to improve Second Wind if regenerating below threshold.
       if NOT pbResting AND random(0,50) = 50
@@ -1679,7 +1693,7 @@ messages:
          return;
       }
 
-      piVigor = bound(piVigor - 100,0,$);
+      piVigor = bound(piVigor - Send(self,@GetTickFactor,#i=100),0,$);
 
       // We've run out of vigor. Check what happens now.
       if piVigor < 1

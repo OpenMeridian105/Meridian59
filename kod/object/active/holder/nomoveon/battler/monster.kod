@@ -34,6 +34,11 @@ constants:
    // Monsters can exceed a player's stats. By how much?
    MONSTER_STAT_CAP = 500 
 
+   // This tick factor modifies responsiveness of resource regeneration for
+   // monsters. The factor is a percentage of the original and will scale
+   // tick duration and the amount of resource gained/lost accordingly.
+   TICK_FACTOR_MONSTER = 500
+
 resources:
 
    include monster.lkod
@@ -2499,7 +2504,7 @@ messages:
       // Check health before gaining a health point.
       iPercentClass = piHealth/(piMax_health*20);
 
-      piHealth = bound(piHealth + 100,$,piMax_health*100);
+      piHealth = bound(piHealth + Send(self,@GetTickFactor,#i=100),$,piMax_health*100);
 
       // Check if we crossed a threshold due to decay.
       if iPercentClass <> (piHealth / (piMax_health * 20))
@@ -2522,7 +2527,7 @@ messages:
       // Check health before losing a health point.
       iPercentClass = piHealth/(piMax_health*20);
 
-      piHealth = bound(piHealth - 100,0,$);
+      piHealth = bound(piHealth - Send(self,@GetTickFactor,#i=100),0,$);
 
       // We've run out of health. Check what happens now.
       if piHealth < 1
@@ -7405,6 +7410,15 @@ messages:
       }
 
       return;
+   }
+
+   // This message is used to modify responsiveness of resource
+   // regeneration for monsters. Tick duration and restored resource
+   // amount are scaled by a percentage.
+   GetTickFactor(i=$)
+   "Time ticks differently for monsters."
+   {
+      return i * TICK_FACTOR_MONSTER / 100;
    }
 
 end

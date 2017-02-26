@@ -16,7 +16,6 @@ BGFS = rmcombat.bgf \
 DIRS = \
    snowman \
    qormastree \
-   "rat king" \
    "qormas gifts" \
    qormas_textures \
    "rat soldier" \

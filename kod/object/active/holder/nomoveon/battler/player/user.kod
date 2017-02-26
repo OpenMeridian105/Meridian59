@@ -23,7 +23,7 @@ constants:
    SHOW_ENCHANTMENT = 4
    SHOW_CHANGE = 5
 
-   EXERTION_PER_MOVE = 2
+   EXERTION_PER_MOVE = 20
 
    GOOD_COLOR = 82
    BAD_COLOR =  83
@@ -3958,7 +3958,7 @@ messages:
       // 1.2 Get sectorinfo of destination
       //
       iQflags = LIQ_GET_SECTORINFO;
-			
+
       if NOT GetLocationInfoBSP(
                       Send(poOwner,@GetRoomData), iQflags, 
                       new_row, new_col, fine_row, fine_col,
@@ -3968,7 +3968,7 @@ messages:
          iRflags = 0;
       }
 
-	  //
+      //
       // 2. Do not allow any moves if player is marked as not allowed to move or 
       //    if destination is outside of the map.
       //
@@ -4190,7 +4190,8 @@ messages:
             }
          }
 
-         Send(self,@LoseVigor,#precision=TRUE,#amount=iExertion);
+         // Convert vigor loss into a drain instead to allow smooth diplay. Spoof system as caster.
+         Send(self,@StartOverTimeEffect,#type=2,#duration=1000,#strength=-iExertion,#who=SYS,#removable=2);
 
          // Save vigor drain tick
          piLastVigorDrainTime = iCurrentTime;
@@ -8651,7 +8652,7 @@ messages:
 
    DrawHealth()
    {
-      if pbLogged_on AND First(plDraw) - piHealth
+      if pbLogged_on AND First(plDraw)/100 - piHealth/100
       {
          AddPacket(1,BP_STAT,1,1);
          Send(self,@SendStatHealth);
@@ -8672,7 +8673,7 @@ messages:
 
    DrawMana()
    {
-      if pbLogged_on AND Nth(plDraw,2) - piMana
+      if pbLogged_on AND Nth(plDraw,2)/100 - piMana/100
       {
          AddPacket(1,BP_STAT,1,1);
          Send(self,@SendStatMana);
@@ -8693,7 +8694,7 @@ messages:
 
    DrawVigor()
    {
-      if pbLogged_on AND Nth(plDraw,3) - piVigor
+      if pbLogged_on AND Nth(plDraw,3)/100 - piVigor/100
       {
          AddPacket(1,BP_STAT, 1,1);
          Send(self,@SendStatVigor);

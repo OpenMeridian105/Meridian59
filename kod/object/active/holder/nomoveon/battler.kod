@@ -1550,46 +1550,60 @@ messages:
 
    CalculateVigorPerTick()
    {
-      local iVigorPerTick, iBoost, iLimit, i;
+      local iVigorPerTick, iStamina, iBoost, iSecond, iLimit, i;
 
       // Natural regeneration threshold of 80 points of vigor. Second Wind
       // may boost the limit to 100.
-      iBoost = Send(self,@GetSkillAbility,#Skill_num=SKID_SECOND_WIND);
+      iSecond = Send(self,@GetSkillAbility,#Skill_num=SKID_SECOND_WIND);
       iLimit = Send(self,@GetVigorRestThreshold,#base=FALSE)*100;
+      iStamina = Send(self,@GetStamina);
 
       // Vigor naturally regenerates at a rate of 2 point per 10 seconds
       // at 50 points of stamina as long as we are below the threshold.
       // Natural regeneration stops once the threshold is crossed.
       if piVigor < iLimit
       {
-         iVigorPerTick = 100 + 2 * Send(self,@GetStamina);
-         // Second wind will give us a progressive boost to regeneration
-         // the lower we go. Boost is based on missing Vigor below threshold.
-         if iBoost
-         {
-            iBoost = iBoost * (iLimit - piVigor)/iLimit;
-            iBoost = bound(iBoost/10,1,10);
-            iVigorPerTick = iVigorPerTick * iBoost;
-         }
+         // Unlike health and mana. We don't regenerate vigor unless we
+         // rest or have a beneficial effect (invigorate/second wind).
+         iVigorPerTick = 0;
 
-         // Resting boosts our vigor regeneration significantly.
+         // Resting is the most traditional way of replenishing vigor.
+         // Rate is based on stamina (up to a point per second).
          if pbResting
          {
-            iVigorPerTick = iVigorPerTick * 5;
+            iVigorPerTick = 500 + 10 * iStamina;
+
+            // Resting in safe rooms and cozy inns gives us an additional boost.
+            if poOwner <> $
+            {
+               if Send(poOwner,@CheckRoomFlag,#flag=ROOM_SANCTUARY)
+               {
+                  iVigorPerTick = iVigorPerTick * 2;
+               }
+
+               if Send(poOwner,@CheckRoomFlag,#flag=ROOM_TRIPLE_HEAL)
+               {
+                  iVigorPerTick = iVigorPerTick * 3;
+               }
+            }
          }
 
-         // Staying in cozy inns gives us an additional boost.
-         if poOwner <> $
+         // Second will allows us to recover vigor even without resting.
+         // At max stamina and SW ability, we gain 1 point every 5 secs.
+         // The recovery rate will increase dramatically with vigor
+         // dropping to critical levels up to a maximum rate of 5 points
+         // per second.
+         if iSecond
          {
-            if Send(poOwner,@CheckRoomFlag,#flag=ROOM_SANCTUARY)
-            {
-               iVigorPerTick = iVigorPerTick * 2;
-            }
-
-            if Send(poOwner,@CheckRoomFlag,#flag=ROOM_TRIPLE_HEAL)
-            {
-               iVigorPerTick = iVigorPerTick * 3;
-            }
+            iBoost = 50 * (iLimit - piVigor) / iLimit;
+            iBoost *= iBoost;
+            // iBoost is a factor between 0 and 2500 at this stage, scaling
+            // quadratically with missing vigor below threshold.
+            // Set a lower limit of 100 and multiply by our default rate,
+            // which is based on Stamina and second wind ability.
+            // Finally, divide by 100 at the end to avoid truncation errors.
+            iBoost = bound(iBoost,100,2500) * (2 * iStamina + iSecond + 1) / 100;
+            iVigorPerTick += iBoost;
          }
 
          // A curse will stop our natural regeneration.

@@ -8,7 +8,7 @@
 
 
 ////////////////////////////////////////////////////////////////////////////////
-Factions is Monster
+Factions is NonPlayerCharacter
 
 constants:
 
@@ -18,11 +18,6 @@ classvars:
 
    viDefinite = ARTICLE_NONE
    viIndefinite = ARTICLE_NONE
-
-   // Mob doesn't move and cannot be attacked.
-   viDefault_behavior = AI_NPC | AI_NOMOVE
-
-   viObject_flags = OF_ATTACKABLE | OF_DISPLAY_NAME | OF_NPC
 
    viSpeed = SPEED_SLOW
    viQuestID = 0
@@ -35,8 +30,6 @@ classvars:
    viMyFC = 32
 
 properties:
-
-   piNameColor = NC_NPC
 
 messages:
 
@@ -69,34 +62,6 @@ messages:
    {
       // Don't want them holding anything, so just delete it.
       Send(what,@Delete);
-
-      return;
-   }
-
-   CanMorphTo()
-   {
-      return FALSE;
-   }
-
-   EnterStateWait()
-   {
-      // They shouldn't have acquired a target, but to be sure...
-      if poTarget <> $
-         AND Send(poTarget,@GetOwner) = poOwner
-         AND IsClass(poTarget,&user)
-      {
-         Send(poTarget,@SubtractFromMonsterChasers,
-               #level=Send(self,@GetLevel));
-      }
-
-      poTarget = $;
-      piHatred = 0;
-
-      // Leave them in the waiting state.
-      Send(self,@SetState,#bit=STATE_WAIT);
-      Send(self,@ClearBehavior);
-
-      // We no longer set a move timer for NPCs.
 
       return;
    }

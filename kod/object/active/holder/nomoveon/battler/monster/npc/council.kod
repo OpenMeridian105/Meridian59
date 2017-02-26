@@ -8,7 +8,7 @@
 
 
 ////////////////////////////////////////////////////////////////////////////////
-Council is Monster
+Council is NonPlayerCharacter
 
 constants:
 
@@ -41,11 +41,6 @@ classvars:
    vrIcon = Councilor_icon_rsc
    viAttributes = MOB_LISTEN | MOB_RANDOM | MOB_RECEIVE
 
-   viObject_flags = OF_ATTACKABLE | OF_DISPLAY_NAME | OF_NPC
-
-   // Mob doesn't move and cannot be attacked.
-   viDefault_behavior = AI_NPC | AI_NOMOVE
-
    viDefinite = ARTICLE_NONE
    viIndefinite = ARTICLE_NONE
 
@@ -60,7 +55,6 @@ classvars:
 properties:
 
    piStateBump = 1
-   piNameColor = NC_NPC
 
 messages:
 
@@ -129,34 +123,6 @@ messages:
       Send(room,@teleport,#what=self);
       Send(room,@SomethingMoved,#what=self,#new_row=viMyRow,#new_col=viMyCol);
       Send(room,@SomethingTurned,#what=self,#new_angle=viMyAngle);
-
-      return;
-   }
-
-   CanMorphTo()
-   {
-      return FALSE;
-   }
-
-   EnterStateWait()
-   {
-      // They shouldn't have acquired a target, but to be sure...
-      if poTarget <> $
-         AND Send(poTarget,@GetOwner) = poOwner
-         AND IsClass(poTarget,&user)
-      {
-         Send(poTarget,@SubtractFromMonsterChasers,
-               #level=Send(self,@GetLevel));
-      }
-
-      poTarget = $;
-      piHatred = 0;
-
-      // Leave them in the waiting state.
-      Send(self,@SetState,#bit=STATE_WAIT);
-      Send(self,@ClearBehavior);
-
-      // We no longer set a move timer for NPCs.
 
       return;
    }

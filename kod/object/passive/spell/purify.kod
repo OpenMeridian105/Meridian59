@@ -252,7 +252,8 @@ messages:
          {
             oSpell = Nth(oEffect,5);
 
-            if IsClass(oSpell,&Debuff)
+            // Poison is handled afterwards.
+            if IsClass(oSpell,&Debuff) AND NOT IsClass(oSpell,&Poison)
             {
                lDebuffs = Cons(oSpell,lDebuffs);
             }
@@ -263,7 +264,7 @@ messages:
 
       foreach oSpell in lDebuffs
       {
-         if iChance > Random(1,100) AND NOT IsClass(oSpell,&Poison)
+         if iChance > Random(1,100)
          {
             Send(who,@RemoveEnchantment,#what=oSpell);
             Send(who,@DeleteOverTimeEffect,#what=oSpell,#removal=1);

@@ -1,0 +1,106 @@
+// Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+// All rights reserved.
+//
+// This software is distributed under a license that is described in
+// the LICENSE file that accompanies it.
+//
+// Meridian is a registered trademark.
+
+
+////////////////////////////////////////////////////////////////////////////////
+MGToseast is MonsterRoom
+
+constants:
+
+   include blakston.khd
+
+resources:
+
+   include toseast_mg.lkod
+
+   room_toseastmg = toseast_mg.roo
+   room_name_toseastmg = "Eastern Main gate to the city of Tos"
+   toseastmg_music = walk1.ogg
+
+classvars:
+
+   vrName = room_name_toseastmg
+
+   viTeleport_row = 19
+   viTeleport_col = 22
+
+   viTerrain_type = TERRAIN_FOREST | TERRAIN_ROAD | TERRAIN_FIELDS
+
+   viPermanent_Flags = ROOM_GUILD_PK_ONLY
+
+   viFlag_row = 32
+   viFlag_col = 21
+
+   viWeatherZone = WEATHER_ZONE_TOS
+
+properties:
+
+   prRoom = room_toseastmg
+   prMusic = toseastmg_music
+   piRoom_num = RID_TOSEAST_MG
+
+   piBaseLight = LIGHT_NICE
+   piOutside_factor = 8
+
+   piDirectional_percent = DIRECTIONAL_PERCENT_OUTDOORS
+
+   pbSnowGroundTexture = TRUE
+
+   piGen_time = 20000
+   piGen_percent = 80
+
+   piInit_count_min = 5
+   piInit_count_max = 7
+
+   piMonster_count_max = 12
+
+
+messages:
+
+   Constructed()
+   {
+      plMonsters = [ [&GiantRat, 70], [&Centipede, 30] ];
+      plGenerators = [ [31, 16], [40, 21], [43, 32], [32, 34], [26, 25], 
+              [15, 28], [21, 12], [18, 22], [5, 12], [8, 21],
+              [3, 27], [13, 32] ];
+      propagate;
+   }
+
+   CreateStandardExits()
+   {
+      plExits = $;
+      plExits = Cons([ 32, 7, RID_TOS_EAST, 39, 54, ROTATE_NONE ],plExits);
+      plExits = Cons([ 33, 7, RID_TOS_EAST, 39, 54, ROTATE_NONE ],plExits);
+
+      plEdge_Exits = $;
+      plEdge_Exits = Cons([LEAVE_NORTH, RID_TOSEAST_MG, 2, 16, ROTATE_NONE], plEdge_exits);
+      plEdge_Exits = Cons([LEAVE_WEST, RID_I6, 7, 49, ROTATE_NONE], plEdge_exits);
+ 
+      propagate;
+   }
+   
+//   CreateStandardObjects()
+//   {
+//      Send(self,@NewHold,#what=Create(&Tree),
+//           #new_row=41,#new_col=11,#fine_row=0,#fine_col=32,#new_angle=ANGLE_EAST);
+//      Send(self,@NewHold,#what=Create(&Tree),
+//           #new_row=47,#new_col=22,#fine_row=0,#fine_col=0,#new_angle=ANGLE_EAST);
+//      Send(self,@NewHold,#what=Create(&Tree),
+//           #new_row=42,#new_col=31,#fine_row=0,#fine_col=32,#new_angle=ANGLE_EAST);
+//      Send(self,@NewHold,#what=Create(&Tree),
+//           #new_row=11,#new_col=28,#fine_row=0,#fine_col=32,#new_angle=ANGLE_EAST);
+//      Send(self,@NewHold,#what=Create(&Tree),
+//           #new_row=5,#new_col=10,#fine_row=32,#fine_col=0,#new_angle=ANGLE_EAST);
+//      Send(self,@NewHold,#what=Create(&Tree),
+//           #new_row=3,#new_col=20,#fine_row=0,#fine_col=32,#new_angle=ANGLE_EAST);
+//
+//     propagate;
+//   }
+
+end
+////////////////////////////////////////////////////////////////////////////////

@@ -28,6 +28,9 @@ constants:
    // tick duration and the amount of resource gained/lost accordingly.
    TICK_FACTOR_PLAYER = 25
 
+   // The amount of milivigor consumed per moved unit.
+   EXERTION_PER_MOVE = 20
+
 resources:
 
    include battler.lkod
@@ -239,8 +242,11 @@ properties:
    // Keeps track of resting.
    pbResting = FALSE
 
-   // Originially found on player. Moved to battler 2017/02/26
+   // Originially found in player. Moved to battler 2017/02/26.
+   // Flags for various character attributes.
    piFlags = 0
+   piFlags2 = 0
+   piFlags3 = 0
 
    // Reputation hashtable for monster territory/influence system
    phReputation = $
@@ -251,6 +257,10 @@ properties:
    plHurtMeRecently = $
    // 20 seconds default for players, 60 for monsters
    piHurtMeTime = 20000
+
+   // The ms tick we received last position update from battler.
+   piLastMoveUpdateTime = 0
+   piSpeed = 0
 
 messages:
 
@@ -802,7 +812,7 @@ messages:
 
       // Let's make sure we aren't negative. That'd be absurd!
       // Also, don't allow temporary HPs beyond the hardcap.
-      piHealth = bound(piHealth,0,100*MAX_CALCULATED_HEALTH);
+      piHealth = bound(piHealth,0,200*piMax_health);
 
       // iTime can only be negative or positive, never zero.
       if iTime <> $
@@ -1124,7 +1134,7 @@ messages:
 
       // Let's make sure we aren't negative. That'd be absurd!
       // Also, don't allow temporary mana beyond the hardcap.
-      piMana = bound(piMana,0,100*MAX_CALCULATED_MANA);
+      piMana = bound(piMana,0,200 * piMax_mana);
 
       // iTime can only be negative or positive, never zero.
       if iTime <> $
@@ -1493,7 +1503,7 @@ messages:
 
       // Let's make sure we aren't negative. That'd be absurd!
       // Also, don't allow temporary vigor beyond 2xMaxVigor.
-      piVigor = bound(piVigor,0,100 * MAX_CALCULATED_VIGOR);
+      piVigor = bound(piVigor,0,200 * piMax_vigor);
 
       // iTime can only be negative or positive, never zero.
       if iTime <> $
@@ -1550,87 +1560,108 @@ messages:
 
    CalculateVigorPerTick()
    {
-      local iVigorPerTick, iStamina, iBoost, iSecond, iLimit, i;
+      local iVigorPerTick, iHaste, iStamina, iBonus, iSecond, iLimit, i;
 
-      // Natural regeneration threshold of 80 points of vigor. Second Wind
-      // may boost the limit to 100.
-      iSecond = Send(self,@GetSkillAbility,#Skill_num=SKID_SECOND_WIND);
-      iLimit = Send(self,@GetVigorRestThreshold,#base=FALSE)*100;
+      // Unlike health and mana. We don't regenerate vigor unless we
+      // rest or have a beneficial effect (invigorate/second wind).
+      iVigorPerTick = 0;
+
+      // Running is straining and drains our vigor slowly.
+      // Check if we've been running lately.
+      if GetTickCount() - piLastMoveUpdateTime < 1000
+      {
+         iVigorPerTick -= EXERTION_PER_MOVE * 9 * piSpeed / 2500;
+
+         // If we are hasted, our vigor drain will be reduced.
+         if (piFlags2 & PFLAG2_HASTED)
+         {
+            iHaste = Send(self,@GetEnchantedState,#what=Send(SYS,@FindSpellByNum,#num=SID_HASTE));
+
+            if iHaste <> $
+            {
+               iVigorPerTick = (iVigorPerTick * (100 - iHaste)) / 100;
+            }
+         }
+      }
+
       iStamina = Send(self,@GetStamina);
 
-      // Vigor naturally regenerates at a rate of 2 point per 10 seconds
-      // at 50 points of stamina as long as we are below the threshold.
+      // Resting is the most traditional way of replenishing vigor.
+      // Rate is based on stamina (up to a point per second).
+      if pbResting
+      {
+         iBonus = 500 + 10 * iStamina;
+
+         // Resting in safe rooms and cozy inns gives us an additional boost.
+         if poOwner <> $
+         {
+            if Send(poOwner,@CheckRoomFlag,#flag=ROOM_SANCTUARY)
+            {
+               iBonus *= 2;
+            }
+
+            if Send(poOwner,@CheckRoomFlag,#flag=ROOM_TRIPLE_HEAL)
+            {
+               iBonus *= 3;
+            }
+         }
+
+         iVigorPerTick += iBonus;
+      }
+
+      // Second will allows us to recover vigor even without resting.
+      // At max stamina and SW ability, we gain 1 point every 5 secs.
+      // The recovery rate will increase dramatically with vigor
+      // dropping to critical levels up to a maximum rate of 5 points
+      // per second.
+      iSecond = Send(self,@GetSkillAbility,#Skill_num=SKID_SECOND_WIND);
+      iLimit = Send(self,@GetVigorRestThreshold,#base=FALSE)*100;
+
+      if iSecond
+      {
+         iBonus = 50 * (iLimit - piVigor) / iLimit;
+         iBonus *= iBonus;
+         iBonus = bound(iBonus,100,2500) * (2 * iStamina + iSecond + 1) / 100;
+
+         iVigorPerTick += iBonus;
+      }
+
+      // A curse will stop our natural regeneration.
+      if pbVigorCurse
+      {
+         iVigorPerTick = bound(iVigorPerTick,$,0);
+      }
+
+      // Factor in invigorate.
+      foreach i in plRadiusEnchantments
+      {
+         // Check the battler's REs for invigorate.
+         if IsClass(Nth(i,2),&Invigorate)
+         {
+            // Get the RE's state.
+            iVigorPerTick += Nth(Nth(i,3),5);
+            break;
+         }
+      }
+
+      // Factor in decay before bounding so that natural regen may
+      // counteract decay even when sitting at the limit
+      if piVigor_Rate < 0
+      {
+         iVigorPerTick += piVigor_Rate;
+      }
+
       // Natural regeneration stops once the threshold is crossed.
-      if piVigor < iLimit
+      if piVigor >= iLimit
       {
-         // Unlike health and mana. We don't regenerate vigor unless we
-         // rest or have a beneficial effect (invigorate/second wind).
-         iVigorPerTick = 0;
-
-         // Resting is the most traditional way of replenishing vigor.
-         // Rate is based on stamina (up to a point per second).
-         if pbResting
-         {
-            iVigorPerTick = 500 + 10 * iStamina;
-
-            // Resting in safe rooms and cozy inns gives us an additional boost.
-            if poOwner <> $
-            {
-               if Send(poOwner,@CheckRoomFlag,#flag=ROOM_SANCTUARY)
-               {
-                  iVigorPerTick = iVigorPerTick * 2;
-               }
-
-               if Send(poOwner,@CheckRoomFlag,#flag=ROOM_TRIPLE_HEAL)
-               {
-                  iVigorPerTick = iVigorPerTick * 3;
-               }
-            }
-         }
-
-         // Second will allows us to recover vigor even without resting.
-         // At max stamina and SW ability, we gain 1 point every 5 secs.
-         // The recovery rate will increase dramatically with vigor
-         // dropping to critical levels up to a maximum rate of 5 points
-         // per second.
-         if iSecond
-         {
-            iBoost = 50 * (iLimit - piVigor) / iLimit;
-            iBoost *= iBoost;
-            // iBoost is a factor between 0 and 2500 at this stage, scaling
-            // quadratically with missing vigor below threshold.
-            // Set a lower limit of 100 and multiply by our default rate,
-            // which is based on Stamina and second wind ability.
-            // Finally, divide by 100 at the end to avoid truncation errors.
-            iBoost = bound(iBoost,100,2500) * (2 * iStamina + iSecond + 1) / 100;
-            iVigorPerTick += iBoost;
-         }
-
-         // A curse will stop our natural regeneration.
-         if pbVigorCurse
-         {
-            iVigorPerTick = bound(iVigorPerTick,$,0);
-         }
-
-         // Factor in invigorate.
-         foreach i in plRadiusEnchantments
-         {
-            // Check the battler's REs for invigorate.
-            if IsClass(Nth(i,2),&Invigorate)
-            {
-               // Get the RE's state.
-               iVigorPerTick += Nth(Nth(i,3),5);
-               break;
-            }
-         }
-      }
-      else
-      {
-         iVigorPerTick = 0;
+         iVigorPerTick = bound(iVigorPerTick,$,0);
       }
 
-      // Additional effects may cause our vigor to grow or decay.
-      iVigorPerTick += piVigor_Rate;
+      // Additional effects may cause our vigor to grow beyond the limit.
+      if piVigor_Rate > 0
+      {
+         iVigorPerTick += piVigor_Rate;
+      }
 
       // Disable regeneration when sitting at or above max vigor.
       if piVigor >= 100 * piMax_vigor

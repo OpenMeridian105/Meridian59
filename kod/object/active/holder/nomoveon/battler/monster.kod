@@ -2000,7 +2000,7 @@ messages:
    //// Combat messages
 
    AllowBattlerAttack(victim=$,stroke_obj=$,report=TRUE,minion=FALSE,
-                      oRoomOverride=$)
+                      actual=TRUE,oRoomOverride=$)
     "Can this monster attack the victim? "
    {
       local oRoom, bWasBad, lMinions;
@@ -2053,7 +2053,7 @@ messages:
 
       // Make sure room allows the attack.
       if NOT Send(oRoom,@ReqSomethingAttack,#what=self,#victim=victim,
-                  #stroke_obj=stroke_obj)
+                  #stroke_obj=stroke_obj,#actual=actual)
       {
          // Check if room has special combat effects.
          return FALSE;
@@ -2083,7 +2083,7 @@ messages:
          // Check the attack here. If it fails, Player's AllowBatterAttack
          // handles the message sent to the player.
          if NOT Send(poMaster,@AllowBattlerAttack,#victim=victim,
-                     #report=report,#stroke_obj=self)
+                     #actual=actual,#report=report,#stroke_obj=self)
          {
             return FALSE;
          }
@@ -2097,6 +2097,7 @@ messages:
 
          // If they weren't bad and become bad, let them know.
          if report
+            AND actual
             AND NOT bWasBad
             AND (Send(poMaster,@CheckPlayerFlag,#flag=PFLAG_OUTLAW)
                OR Send(poMaster,@CheckPlayerFlag,#flag=PFLAG_MURDERER))

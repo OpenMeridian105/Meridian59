@@ -80,19 +80,6 @@ messages:
       return;
    }
 
-   BreakTrance(who=$,state=$,event=0,what=$)
-   {
-      /// Attack Spells (fireballs and lightning bolts) must not break this trance
-      if event = EVENT_CAST
-         AND IsClass(what,&AttackSpell)
-      {
-         return;
-      }
-
-      Send(who,@RemoveEnchantment,#what=self);
-      return;
-   }
-
    AdjustManaTime(time=0, iSpellPower=0)
    "Reduces time passed in so that mana regens faster.  Returns reduced time."
    {
@@ -120,6 +107,14 @@ messages:
                 4,Send(who,@GetEnchantedState,#what=self));
       
       return;
+   }
+
+   TranceEnding(who=$,state=$)
+   "Allow maintained spells to do something when their trance breaks."
+   {
+      Send(who,@RemoveEnchantment,#what=self,#state=state);
+
+      propagate;
    }
 
 end

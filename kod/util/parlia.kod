@@ -1078,7 +1078,7 @@ messages:
    }
 
 ////////////////////////////////////////////////////////////////////////////////
-//////	Effects Part for Faction Powers
+//////   Effects Part for Faction Powers
 ////////////////////////////////////////////////////////////////////////////////
 
    GetFactionSpellPowerBonus(who=$,theSpell=$)
@@ -1208,7 +1208,7 @@ messages:
       if NOT Send(who,@PlayerIsIntriguing)
       {
          return 50;
-      }			  
+      }
     
       iBonus = Send(self,@CalcFactionBonus,#base=100,#faction=iFaction);
 
@@ -1327,14 +1327,19 @@ messages:
       local iBonus, iFaction;
 
       // Rationale behind the numbers:
-      // This number is subtracted from regeneration time (measured in miliseconds).
-      // Non-intriguing mortals get a small bonus of 200.
-      // Maximum normal power is 700.
+      // This number is a percentage boost to regeneration.
+      // Non-intriguing mortals get a small bonus of 5%.
+      // Maximum normal power is 30%.
 
       if who = $
       {
          debug("bad who!");
          return FALSE;
+      }
+
+      if NOT IsClass(who,&Player)
+      {
+         return 0;
       }
 
       iBonus = 0;
@@ -1350,10 +1355,10 @@ messages:
       // Player is under 40
       if not Send(who,@PlayerIsIntriguing)
       {
-         return 200;
+         return 5;
       }
     
-      iBonus = Send(self,@CalcFactionBonus,#base=700,#faction=iFaction);
+      iBonus = Send(self,@CalcFactionBonus,#base=30,#faction=iFaction);
 
       if Random(0,100) = 0 AND iFaction <> FACTION_NEUTRAL
       {
@@ -1420,7 +1425,7 @@ messages:
       return iBonus;
    }
 
-   GetFactionVigorBonus(who=$)
+   ModifyVigorCost(who=$,amount=0)
    {
       local iBonus, iFaction;
 
@@ -1432,21 +1437,24 @@ messages:
       if who = $
       {
          debug("bad who!");
-         return FALSE;
+         return amount;
       }
 
-      iBonus = 0;
+      if NOT IsClass(who,&Player)
+      {
+         return amount;
+      }
 
       iFaction = send(who,@GetFaction);
       if (iFaction = FACTION_PRINCESS) OR (iFaction = FACTION_REBEL)
       {
-         return 0;
+         return amount;
       }
 
-      // Player is under 40
+      // Players under 40 HPs get a 5% reduction.
       if not Send(who,@PlayerIsIntriguing)
       {
-         return 5;
+         return amount * 95 / 100;
       }
 
       iBonus = Send(self,@CalcFactionBonus,#base=30,#faction=iFaction);
@@ -1465,7 +1473,7 @@ messages:
          }
       }
 
-      return iBonus;
+      return amount * (100 - iBonus) / 100;
    }
 
    BetaPotionsEnabled()

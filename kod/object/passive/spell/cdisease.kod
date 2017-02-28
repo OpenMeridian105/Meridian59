@@ -30,6 +30,7 @@ resources:
       "Requires two herbs and two elderberries to cast."
    curedisease_on = "The power of Shal'ille burns the disease from your body."
    curedisease_abates = "You feel the disease grow weaker."
+   curedisease_unnecessary = "%s%s is not suffering from any diseases."
 
 classvars:
 
@@ -67,7 +68,7 @@ messages:
 
    CanPayCosts(who=$,lTargets=$)
    {
-      local i, oTarget;
+      local i, oTarget, lDebuffs, bHasDebuff;
 
       // Can cast spell if the 1 target item is a user.
       if Length(lTargets) <> 1
@@ -77,10 +78,50 @@ messages:
 
       oTarget = First(lTargets);
       if NOT IsClass(oTarget,&User)
-         OR NOT Send(oTarget,@IsEnchanted,#byClass=&Disease)
       {
          Send(who,@MsgSendUser,#message_rsc=spell_bad_target,#parm1=vrName,
                #parm2=Send(oTarget,@GetDef),#parm3=Send(oTarget,@GetName));
+
+         return FALSE;
+      }
+
+      // The target must have a disease.
+      bHasDebuff = FALSE;
+      lDebuffs = Send(oTarget,@GetEnchantmentList);
+      if lDebuffs <> $ 
+      {
+         foreach i in lDebuffs
+         {
+            if IsClass(Nth(i,2),&Disease)
+            {
+               bHasDebuff = TRUE;
+               break;
+            }
+         }
+      }
+
+      // Only checking over time effects if we have to.
+      if NOT bHasDebuff
+      {
+         lDebuffs = Send(oTarget,@GetOverTimeEffects);
+
+         if lDebuffs <> $
+         {
+            foreach i in lDebuffs
+            {
+               if IsClass(Nth(i,5),&Disease)
+               {
+                  bHasDebuff = TRUE;
+                  break;
+               }
+            }
+         }
+      }
+
+      if NOT bHasDebuff
+      {
+         Send(who,@MsgSendUser,#message_rsc=curedisease_unnecessary,
+               #parm1=Send(oTarget,@GetDef),#parm2=Send(oTarget,@GetName));
 
          return FALSE;
       }
@@ -90,15 +131,16 @@ messages:
 
    CastSpell(who=$,lTargets=$,iSpellpower=0)
    {
-      local oTarget, oDisease, iRandom, iOrigStatLoss, iNewStatLoss, lState;
+      local oSpell, oTarget, oDisease, iRandom, iOrigStatLoss, iNewStatLoss, lState;
 
       iRandom = Random(1,100);
       oTarget = First(lTargets);
 
-      Send(oTarget,@MsgSendUser,#message_rsc=curedisease_on);
       Send(who,@MsgSendUser,#message_rsc=spell_cast_on_target,
             #parm1=Send(self,@GetName),#parm2=Send(oTarget,@GetDef),
             #parm3=Send(oTarget,@GetName));
+
+      Send(oTarget,@MsgSendUser,#message_rsc=curedisease_on);
 
       if iRandom < iSpellpower
       {
@@ -149,6 +191,9 @@ messages:
             }
          }
       }
+
+      oSpell = Send(SYS,@FindSpellByNum,#num=SID_CURE_POISON);
+      Send(oSpell,@DoCurePoison,#who=oTarget,#iSpellPower=iSpellpower);
 
       propagate;
    }

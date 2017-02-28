@@ -17,8 +17,9 @@ constants:
    POISON_CHANCE = 15
    // 30 seconds duration
    POISON_DURATION = 30000
-   // in health points * 10^-4 / second
-   POISON_LOSSRATE = 2500
+   // in health points * 10^-3 / second
+   POISON_HEALTHLOSS = 250
+   POISON_VIGORLOSS = 500    //// in vigor points * 10^-4 / second
 
 resources:
 
@@ -132,8 +133,8 @@ messages:
       if Random(1,POISON_CHANCE) = 1
       {
          oSpell = Send(SYS,@FindSpellByNum,#num=SID_POISON);
-         Send(oSpell,@MakePoisoned,#who=what,#lossrate=POISON_LOSSRATE,
-               #duration=POISON_DURATION);
+         Send(oSpell,@MakePoisoned,#source=self,#who=what,#healthloss=POISON_HEALTHLOSS,
+               #vigorloss=POISON_VIGORLOSS,#duration=POISON_DURATION);
 
          if who <> $
          {

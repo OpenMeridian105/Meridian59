@@ -70,19 +70,14 @@ messages:
       return SID_POISON;
    }
 
-   MakePoisoned(who=$,lossrate=0,duration=0)
-   "Lossrate is in units of 10^-4 health points per second."
+   MakePoisoned(who=$,source=$,healthloss=0,manaloss=0,vigorloss=0,duration=0,state=$)
+   "healthloss is in units of 10^-4 health points per second."
    "Duration is in milliseconds."
    {
       local i, oSpell;
 
-      if not isClass(who,&Player)
-      {
-         return;
-      }
-
       oSpell = Send(SYS,@FindSpellByNum,#num=SID_RESIST_POISON);
-      if Send(who,@IsEnchanted,#what=oSpell)
+      if Send(who,@IsEnchanted,#what=oSpell) AND IsClass(who,&Player)
       {
          // Give players a decent chance to improve the spell!
          foreach i in Send(who,@GetPassiveImprovementList)
@@ -100,42 +95,60 @@ messages:
          }
       }
 
-      Send(who,@AddPoison,#strength=lossrate);
-      Send(who,@StartEnchantment,#what=self,#time=duration,#state=lossrate);
-      Send(who,@MsgSendUser,#message_rsc=poison_start);
-      Send(who,@WaveSendUser,#wave_rsc=poison_sound);
+      i = Random(50,100);
 
-      return;
-   }
-
-   EndEnchantment(who=$,state=0,report=TRUE)
-   {
-      Send(who,@RemovePoison,#strength=state);
-      if report
+      if healthloss > 0
       {
-         Send(who,@MsgSendUser,#message_rsc=poison_stop);
+         if state = $
+         {
+            state = i * healthloss / 2000;
+         }
+
+         Send(who,@StartOverTimeEffect,#strength=-healthloss,#duration=duration,#what=self,#who=source,#type=TYPE_HEALTH,#state=state);
+      }
+
+      if manaloss > 0
+      {
+         if state = $
+         {
+            state = i * manaloss / 2000;
+         }
+
+         Send(who,@StartOverTimeEffect,#strength=-manaloss,#duration=duration,#what=self,#who=source,#type=TYPE_MANA,#state=state);
+      }
+
+      // Vigor somewhat runs along. It doesn't create an icon and won't report being cleared or dropping off.
+      if vigorloss > 0
+      {
+         if state = $
+         {
+            state = i * vigorloss / 2000;
+         }
+
+         Send(who,@StartOverTimeEffect,#strength=-vigorloss,#duration=duration,#what=self,#who=source,#type=TYPE_VIGOR,
+            #showicon=FALSE,#removable=REMOVE_INTERNAL,#state=state);
+      }
+
+      if IsClass(who,&Player)
+      {
+         Send(who,@MsgSendUser,#message_rsc=poison_start);
+         Send(who,@WaveSendUser,#wave_rsc=poison_sound);
       }
 
       return;
    }
 
-   IsPersonalEnchantment()
+   OverTimeEffectWearingOff(who=$,overtimeeffect=$)
    {
-      // Purify will get rid of sickness.
-      return TRUE;
-   }
+      if overtimeeffect <> $
+      {
+         if Nth(overtimeeffect,7) = 1
+         {
+            Send(who,@MsgSendUser,#message_rsc=poison_stop);
+         }
+      }
 
-   IsHarmful()
-   {
-      // Purge won't get rid of sickness
-      return TRUE;
-   }
-
-   CanBeRemovedByPlayer()
-   "Returns if a spell can be removed by normal Purge/Purify"
-   {
-      // Most sicknesses can be purged or purified.
-      return TRUE;
+      return;
    }
 
 end

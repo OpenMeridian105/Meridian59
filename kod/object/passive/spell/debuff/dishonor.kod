@@ -25,8 +25,8 @@ resources:
    MarkOfDishonor_icon_rsc = imarkdis.bgf
    MarkOfDishonor_desc_rsc = \
       "Allows caster to cast Shal'ille's displeasure upon a target.  Will "
-      "prevent target's life force from exceeding the body's maximum.  For "
-      "evil targets, Shal'ille will cause a loss of vigor.  "
+      "prevent target's life force from replenishing by natural means.  For "
+      "evil targets, Shal'ille will see to further punishment.  "
       "Requires an emerald to cast."
 
    MarkOfDishonor_sound = smarkdis.ogg
@@ -67,10 +67,6 @@ classvars:
 
 properties:
 
-   piBaseDuration = 120000
-   piSpellPowerModifier = 1800
-   piDeviation = 10
-
 messages:
 
    ResetReagents()
@@ -96,86 +92,41 @@ messages:
 
    DoSpell(what=$,oTarget=$,iDuration=0,iSpellPower=0)
    {
-      local iKarma, iVigorRestThreshold, iVigorRestThresholdChange;
+      local iKarma;
+
+      // Put a DoT based on their karma and stop their health regeneration.
+      iKarma = bound(Send(oTarget,@GetKarma),-100,0);
+      Send(oTarget,@StartOverTimeEffect,#strength=(iSpellPower*iKarma/5),#duration=iDuration,
+         #what=self,#who=what,#curse=TYPE_HEALTH);
 
       if IsClass(oTarget,&Player)
       {
-         iKarma = Send(oTarget,@GetKarma);
-         iVigorRestThresholdChange = 0;
-
-         // Shal'ille only takes vigor from evil people.
-         if iKarma < 0
-         {
-            iVigorRestThreshold = Send(oTarget,@GetVigorRestThreshold);
-            iVigorRestThresholdChange = iKarma * (iVigorRestThreshold -
-                                      DISHONOR_LOWEST_VIGOR_REST_THRESHOLD)
-                                      / MAX_EVIL;
-
-            // Make sure we aren't going to lower target's VigorRestThreshold
-            // below 10, otherwise we could end up increasing the player's
-            // VigorRestThreshold (see player.kod for reason why)
-            if (iVigorRestThreshold - iVigorRestThresholdChange) < 10
-            {
-               iVigorRestThresholdChange = iVigorRestThreshold - 10;
-            }
-
-            Send(oTarget,@AddExertion,#amount=200000);
-            Send(oTarget,@SetVigorRestThreshold,
-                  #amount=iVigorRestThreshold-iVigorRestThresholdChange);
-         }
-
-         Send(oTarget,@StartEnchantment,#what=self,#time=iDuration,
-               #state=iVigorRestThresholdChange);
          Send(oTarget,@MsgSendUser,#message_rsc=MarkOfDishonor_start);
-         Send(what,@MsgSendUser,#message_rsc=MarkOfDishonor_success,
-               #parm1=Send(oTarget,@GetDef),#parm2=Send(oTarget,@GetName));
-
-         // Make sure hps aren't over maximum.  Post this so enchantment is finished.
-         Post(oTarget,@NewHealth);
       }
       else
       {
-            // EnterStateWait will make the monster stop aggro players and put
-            // them on wait-state waiting to aggro again
-            // Duration against monsters is 1/6 that against players
-            iDuration = iDuration/6;
-            Send(oTarget,@EnterStateWait,#delay=iDuration);
-            Send(oTarget,@StartEnchantment,#what=self,#time=iDuration);
-            Send(what,@MsgSendUser,#message_rsc=MarkOfDishonor_success,
-                  #parm1=Send(oTarget,@GetDef),#parm2=Send(oTarget,@GetName));
+         // EnterStateWait will make the monster stop aggro players and put
+         // them on wait-state waiting to aggro again
+         // Duration against monsters is 1/6 that against players
+         Send(oTarget,@EnterStateWait,#delay=iDuration);
       }
+
+      Send(what,@MsgSendUser,#message_rsc=MarkOfDishonor_success,
+         #parm1=Send(oTarget,@GetDef),#parm2=Send(oTarget,@GetName));
 
       propagate;
    }
 
    GetDuration(iSpellPower=0)
    {
-      local iDuration;
-
-      // Duration calculation now uses class properties, modifiable in game
-      // By default, base duration 2 min, total time 2-5 min using 1800x
-      // spellpower multiplier, with the final duration 90-100// max
-
-      iDuration = (piBaseDuration + (iSpellPower+1)*piSpellPowerModifier);
-      iDuration = Random(iDuration*(100-piDeviation)/100,iDuration);
-
-      return iDuration;
+      return 15000 + iSpellPower*150;
    }
 
-   EndEnchantment(who=$,state=0,report=TRUE)
+   OverTimeEffectWearingOff(who=$,overtimeeffect=$,report=TRUE)
    {
-      local iVigorRestThreshold;
-
-      // If we end enchantment on a player, reset VigorRestThreshold
-      if isClass(who,&Player)
+      if report
       {
-         iVigorRestThreshold = Send(who,@GetVigorRestThreshold);
-         Send(who,@SetVigorRestThreshold,#amount=iVigorRestThreshold+state);
-
-         if report
-         {
-            Send(who,@MsgSendUser,#message_rsc=MarkOfDishonor_stop);
-         }
+         Send(who,@MsgSendUser,#message_rsc=MarkOfDishonor_stop);
       }
 
       return;

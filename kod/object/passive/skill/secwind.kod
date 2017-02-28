@@ -23,15 +23,11 @@ resources:
    SecondWind_icon_rsc = isecwind.bgf
    SecondWind_desc_rsc = \
       "Second wind will give a mighty adventurer the vigor to do strenuous "
-      "activity even when exhausted.  When near exhaustion, this skill will "
-      "give a boost to vigor.  It is useless to rest or eat food to regain "
-      "stamina for a while after gaining a second wind."
+      "activity even when exhausted, greatly boosting his ability to recover "
+      "vigor and health in times of need."
 
    SecondWind_skill_intro = \
       "Weaponcraft Lv. 4: The ability to press on even when exhausted."
-
-   SecondWind_success = "You catch your second wind!"
-   SecondWind_sound = wscndwnd.ogg
 
 classvars:
 
@@ -47,7 +43,7 @@ classvars:
    viSkill_num = SKID_SECOND_WIND
    viSchool = SKS_FENCING
    viSkill_Level = 4
-   viChance_to_Increase = 50
+   viChance_to_Increase = 100
    viMeditate_ratio = 50
 
    viSkillExertion = 0
@@ -65,119 +61,6 @@ messages:
    "Varies from skill to skill and spell to spell."
    {
       return Send(who,@GetStamina);
-   }
-
-   SkillFailed(who=$)
-   {
-      // Override base class behavior to do nothing.  Base class sends a
-      // spammy message if we fail.
-      return;
-   }
-
-   DoSkill(who=$)
-   {
-      local iVigor;
-
-      if who = $
-      {
-         Debug("DoSkill called with bad who.");
-
-         return FALSE;
-      }
-
-      if NOT (Send(self,@CanPayCosts,#who=who)
-            AND Send(self,@PayCosts,#who=who))
-      {
-         return FALSE;
-      }
-
-      Send(who,@MsgSendUser,#message_rsc=SecondWind_success);
-      Send(who,@WaveSendUser,#wave_rsc=SecondWind_sound);
-      iVigor = 40 + (Send(self,@GetRequisiteStat,#who=who)/2)
-                  + Send(who,@GetSkillAbility,#Skill_num=viSkill_num);
-      // Reverse sign so we're taking away exertion.
-      iVigor = -iVigor;
-      Send(who,@AddExertion,#amount=10000*iVigor);
-      Send(who,@ShowAddEnchantment,#what=self,#type=ENCHANTMENT_PLAYER);
-
-      propagate;
-   }
-
-   GetWaitTime(who=$)
-   {
-      local iStamina, iWaitTime;
-
-      if who = $
-      {
-         Debug("GetWaitTime called with bad who.");
-
-         return FALSE;
-      }
-
-      iStamina = Send(self,@GetRequisiteStat,#who=who);
-      iWaitTime = ((100-iStamina) * Send(who,@GetSkillAbility,#Skill_num=viSkill_num)/100) + iStamina;
-      // 5 to 10 minutes wait time before you can leap into the action again.
-      iWaitTime = (600 - (iWaitTime*3)) * 1000;
-
-      return iWaitTime;
-   }
-
-   GetInitialChance(who = $)
-   "This is the initial chance to advance."
-   {
-      // No easy-cheezing it.  No advancement if you have an "easy" way
-      // to trigger the skill.  This includes tokens, cursed rings, or
-      // (token) deaths.
-      if Send(who,@PossessesA,#class=&Token)
-         OR Send(who,@PossessesA,#class=&RingOfLethargy)
-         OR Send(send(who,@GetOwner),@GetRoomNum) = RID_UNDERWORLD
-      {
-         // No initial chance to succeed; that is, you will always fail to advance.
-         return 0;
-      }
-
-      propagate;
-   }
-
-   ShowEnchantmentIcon(type = $)
-   {
-      return viShow_enchantment_icon & 0x02;
-   }
-
-   SendTimeDesc(who=$)
-   {
-      local iDuration, iTimer;
-
-      iTimer = Send(who,@GetSecondWindTimer);
-      if iTimer = $
-      {
-         propagate;
-      }
-
-      if IsTimer(iTimer)
-      {
-         iDuration = GetTimeRemaining(iTimer);
-      }
-      else
-      {
-         // Should be an integer.
-         iDuration = iTimer;
-      }
-
-      // If we somehow ended up with $, set iDuration to 0. This isn't
-      // likely to happen, but check anyway.
-      if iDuration = $
-      {
-         iDuration = 0;
-      }
-
-      iDuration = iDuration / 1000;
-
-      // This message picks the appropriate resources for the duration given,
-      // and sends them to the user.
-      Send(self,@SendTimeRemaining,#iTime=iDuration);
-
-      return;
    }
 
 end

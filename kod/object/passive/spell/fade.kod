@@ -123,16 +123,6 @@ messages:
       return;
    }
 
-   BreakTrance( who = $, state = $ )
-   {
-      /// clean up trance
-      Send(who,@ClearTranceFlag);
-      Send(who,@RemoveEnchantment,#what=self);
-      Send(who,@MsgSendUser,#message_rsc=fade_broke_trance);
-      
-      return;
-   }
-
    OfferToNewCharacters()
    {
       // It's a PKing only spell.  Denied.
@@ -144,6 +134,15 @@ messages:
       return TRUE;
    }
 
+   TranceEnding(who=$,state=$)
+   "Allow maintained spells to do something when their trance breaks."
+   {
+      Send(who,@ClearTranceFlag);
+      Send(who,@MsgSendUser,#message_rsc=fade_broke_trance);
+      Send(who,@RemoveEnchantment,#what=self,#state=state);
+
+      propagate;
+   }
 
 end
 ////////////////////////////////////////////////////////////////////////////////

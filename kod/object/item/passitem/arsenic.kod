@@ -14,6 +14,11 @@ constants:
 
    include blakston.khd
 
+   // * 10^-3 hp / sec (half that of a spider bite)
+   POISON_HEALTHLOSS = 300
+   POISON_VIGORLOSS = 300
+   POISON_DURATION = 60000
+
 resources:
 
    include arsenic.lkod
@@ -35,9 +40,6 @@ classvars:
 
    viUse_type = ITEM_SINGLE_USE
    viItem_type = ITEMTYPE_POTION
-
-   viLossRate = 3000                    // 0.3 health points/sec
-   viDuration = 60000                   // one real minute
 
    viBulk = 20
    viWeight = 20
@@ -73,7 +75,7 @@ messages:
       }
 
       oPoison = Send(SYS,@FindSpellByNum,#num=SID_POISON);
-      Send(oPoison,@MakePoisoned,#who=apply_on,#lossrate=viLossRate,#duration=viDuration);
+      Send(oPoison,@MakePoisoned,#source=apply_on,#who=apply_on,#healthloss=POISON_HEALTHLOSS,#vigorloss=POISON_VIGORLOSS,#duration=POISON_DURATION);
       piHits = piHits - 1;
       Send(self,@Delete);
       

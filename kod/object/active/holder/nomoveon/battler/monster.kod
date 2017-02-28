@@ -31,6 +31,14 @@ constants:
    // Number of ms to lose one boosted health or mana point.
    BOOST_DECAY_TIME = 30000 
 
+   // Monsters can exceed a player's stats. By how much?
+   MONSTER_STAT_CAP = 500 
+
+   // This tick factor modifies responsiveness of resource regeneration for
+   // monsters. The factor is a percentage of the original and will scale
+   // tick duration and the amount of resource gained/lost accordingly.
+   TICK_FACTOR_MONSTER = 500
+
 resources:
 
    include monster.lkod
@@ -104,11 +112,15 @@ resources:
    Lm_second_damage_level = "~B~r%s%s is clearly injured."
    Lm_third_damage_level = "~B~r%s%s is seriously wounded."
    Lm_fourth_damage_level = "~B~r%s%s is weak, and near death."
+   Lm_first_heal_level = "~B~t%s%s has recoverd a little and looks pretty healthy once more."
+   Lm_second_heal_level = "~B~t%s%s has recoverd a little but still shows signs of being slightly wounded."
+   Lm_third_heal_level = "~B~t%s%s has recoverd a little but still suffers from clearly visible wounds."
+   Lm_fourth_heal_level = "~B~t%s%s has recoverd a little but still suffers from serious injuries."
    Lm_party_killed_monster = "~B%s%s has valiantly slain %s%s!"
+   Lm_party_monster_died_to_dot = "%s%s has succumbed to %s injuries!"
 
-   Lm_monster_healing = \
-      "%s%s falls back to recover for a moment, then returns to the fight."
-   
+   Lm_monster_winded = "~I~r%s%s needs a moment to catch %s breath!"
+
    monster_desc_level = "This monster will take you to %i hitpoints."
    Lm_condition_healthy = "%s\n\n%r"
    Lm_condition_good = \
@@ -302,6 +314,19 @@ classvars:
 
    viWimpy = 0
 
+   // Some monsters classes may inherently have higher (or lower) stats.
+   viBonusAgility = 0
+   viBonusAim = 0
+   viBonusMight = 0
+   viBonusStamina = 0
+   viBonusIntellect = 0
+   viBonusMysticism = 0
+
+   // Some monster classes may inherently have more (or less) resources.
+   viBonusHealth = 0
+   viBonusMana = 0
+   viBonusVigor = 0
+
    // If true, items that are sold actually come out of the monster's
    //inventory. If false, the items in the inventory are inexhaustible
    // templates, and copies are sold.
@@ -316,7 +341,12 @@ classvars:
    vrSecond_damage_level = Lm_second_damage_level
    vrThird_damage_level = Lm_third_damage_level
    vrFourth_damage_level = Lm_fourth_damage_level
+   vrFirst_heal_level = Lm_first_heal_level
+   vrSecond_heal_level = Lm_second_heal_level
+   vrThird_heal_level = Lm_third_heal_level
+   vrFourth_heal_level = Lm_fourth_heal_level
    vrParty_killed_monster = Lm_party_killed_monster
+   vrParty_monster_died_to_dot = Lm_party_monster_died_to_dot
 
    vrTeach_message = monster_iteach
    vrTeach_nothing = monster_teachnothing
@@ -327,7 +357,6 @@ classvars:
    vrTeach_quest_needed = monster_teach_quest_needed
    vrNothing_for_sale = Lm_nothing_for_sale
    vrMrcnt_too_costly = Lm_mrcnt_too_costly
-   vrMonster_healing = Lm_monster_healing
    vrMinion_trouble = minion_trouble
 
    // Obsolete, but still included here for safety's sake.
@@ -359,12 +388,6 @@ properties:
    ptCancelOffer = $
    ptRandom = $
    ptSpasm = $
-
-   // IMPORTANT NOTE: For higher accuracy, a battler's current health 
-   //(and only current health) is inflated by a factor of 100. Doing so 
-   // avoids truncation errors but is not revealed to users in any way.
-   piHit_points = 1
-   piMax_hit_points = 1
 
    // Who we are dealing with.
    poCustomer = $
@@ -402,9 +425,13 @@ properties:
    // Timer to expire turning.
    ptUnturn = $
    piHatred = 0
-   // Emulates agility and aim for monsters based on difficulty.
+   // Emulates combat stats for monsters based on difficulty.
    piAgility = 25
    piAim = 25
+   piMight = 25
+   piStamina = 25
+   piIntellect = 25
+   piMysticism = 25
 
    piEnch_flags = 0
 
@@ -474,15 +501,96 @@ messages:
    Constructor(template=FALSE, color=0, piSurvivalLevel=0, iBrain = 0)
    "Simple enough, we create a monster. If they are questworthy, we note it."
    {
-      local iStatPoints, iMin, iMax;
+      local iStatPoints, iRandom, iTotal, iDiff, lTemp, lStats, i;
 
-      piMax_Hit_points = Send(Self,@Fuzzy,#num=Send(self,@GetMaxHitPoints))
-                         + piSurvivalLevel*viDifficulty;
-      piHit_points = piMax_hit_points*100;
-      piMana = piMax_mana;
-      piAttackRange = viAttackRange;
-      piSpellChance = viSpellChance;
-      piVisionDistance = viVisionDistance + piSurvivalLevel;
+      // First things first: Create stats.
+      // Creating random stats. Currently 6 stats, if you want to add more,
+      // change i to a different number and assign accordingly below.
+      lStats = $;
+      lTemp = $;
+      i = 6;
+      // The total amount of stat points distributed. A couple points may
+      // by lost to truncation in the process, but (carelevel << carethreshold)
+      iStatPoints = Bound(viDifficulty + 1,1,10) * 5 * i;
+      iTotal = 0;
+      iDiff = 0;
+
+      // Create a stat list with random entries between 1 and 50
+      while i > 0
+      {
+         iRandom = Random(1,50);
+         lStats = Cons(iRandom,lStats);
+         iTotal += iRandom;
+         i -= 1;
+      }
+
+      // Scale stats so they approach the desired stat total.
+      // Crop stats that exceed 50 points. Sum up extra points.
+      foreach i in lStats
+      {
+         i = i * iStatPoints / iTotal;
+         if i > 50
+         {
+            iDiff += i-50;
+            i = 50;
+         }
+
+         lTemp = Cons(i,lTemp);
+      }
+
+      lStats = $;
+
+      // Distribute leftover points across needy stats.
+      foreach i in lTemp
+      {
+         if i < 50
+         {
+            i += iDiff;
+            iDiff = bound(i - 50,0,$);
+            if iDiff > 0
+            {
+               i = 50;
+            }
+         }
+
+         lStats = Cons(i,lStats);
+      }
+
+      lTemp = $;
+
+      // Below: Assign values to stats with a lil shake up.
+      // Also add any bonus values if applicable.
+      while Length(lStats) > 0
+      {
+         iRandom = Random(1,Length(lStats));
+         lTemp = Cons(Nth(lStats,iRandom),lTemp);
+         lStats = DelListElem(lStats,Nth(lStats,iRandom));
+      }
+
+      piAgility = bound(Nth(lTemp,1)+viBonusAgility,1,MONSTER_STAT_CAP);
+      piAim = bound(Nth(lTemp,2)+viBonusAim,1,MONSTER_STAT_CAP);
+      piMight = bound(Nth(lTemp,3)+viBonusMight,1,MONSTER_STAT_CAP);
+      piStamina = bound(Nth(lTemp,4)+viBonusStamina,1,MONSTER_STAT_CAP);
+      piIntellect = bound(Nth(lTemp,5)+viBonusIntellect,1,MONSTER_STAT_CAP);
+      piMysticism = bound(Nth(lTemp,6)+viBonusMysticism,1,MONSTER_STAT_CAP);
+
+      // Set the monsters resources based on the stats we just created.
+      // Health
+      piMax_health = viLevel * bound(80 + piStamina,$,120) / 100 + piSurvivalLevel * viDifficulty + viBonusHealth;
+      piHealth = piMax_health*100;
+
+      // Mana
+      piMax_mana = piMysticism*2 + viBonusMana;
+      piMana = piMax_mana*100;
+
+      // Vigor
+      piMax_vigor = 100 + piStamina*2 + viBonusVigor;
+      piVigor_rest_threshold = 40 + piStamina*4/5 + viBonusVigor/2;
+      piVigor = random(piVigor_rest_threshold,piMax_vigor)*100;
+
+      piAttackRange = viAttackRange + bound(piAim - 25,-25,25);
+      piSpellChance = viSpellChance + piIntellect/2;
+      piVisionDistance = viVisionDistance + piSurvivalLevel + (piIntellect + piAim) / 10;
       piBoostedLevel = piSurvivalLevel;
 
       if Send(self,@MobIsSeller)
@@ -529,29 +637,6 @@ messages:
 
       piMood = 0;
 
-      iStatPoints = Bound((viDifficulty + 1) * 10,20,100);
-
-      if iStatPoints - 1 > 50
-      {
-         iMax = 50;
-      }
-      else
-      {
-         iMax = iStatpoints - 1;
-      }
-
-      if iStatPoints - 50 < 1
-      {
-         iMin = 1;
-      }
-      else
-      {
-         iMin = iStatpoints - 50;
-      }
-
-      piAgility = Random(iMin,iMax);
-      piAim = iStatPoints - piAgility;
-
       if piSurvivalLevel > 0
       {
          piOffense = Send(self,@GetOffense) + piSurvivalLevel*viDifficulty;
@@ -565,6 +650,9 @@ messages:
       {
          piColor_translation = color;
       }
+
+      // Start timers...
+      Send(self,@NewVigor);
 
       propagate;
    }
@@ -748,12 +836,6 @@ messages:
          }
       }
 
-      if ptMana <> $
-      {
-         DeleteTimer(ptMana);
-         ptMana = $;
-      }
-
       plSpellBook = $;
 
       poMaster = $;
@@ -912,7 +994,6 @@ messages:
    EnterStateLimbo()
    {
       Send(self,@ClearBehavior);
-      
       if poTarget <> $
          AND Send(poTarget,@GetOwner) = poOwner
          AND isClass(poTarget,&User)
@@ -988,7 +1069,7 @@ messages:
    }
 
    EnterStateAttack(target = $, actnow=TRUE)
-   {     
+   {
       Send(self,@SetState,#bit=STATE_ATTACK);
       Send(self,@ClearBehavior);
       if actnow
@@ -1003,7 +1084,7 @@ messages:
       return;
    }
 
-   EnterStateChase( target = $, actnow = TRUE )
+   EnterStateChase( target = $, actnow = TRUE, delay = 0)
    {
       if poTarget <> target AND vrSound_aware <> $
       {
@@ -1020,7 +1101,7 @@ messages:
       }
       else
       {
-         ptBehavior = CreateTimer(self,@ChaseTimer,Send(self,@GetMoveTime));
+         ptBehavior = CreateTimer(self,@ChaseTimer,Send(self,@GetMoveTime)+delay);
       }
 
       return;
@@ -1508,9 +1589,8 @@ messages:
          piState = piState & ESTATE_CCLK_MASK;
       }
 
-      // Carry out attack
       Send(self,@TryAttack,#what=poTarget,#stroke_obj=self);
-      
+
       // Sanity check, in rare occurrences mob dies before this can execute 
       if poBrain <> $
       {
@@ -1519,13 +1599,20 @@ messages:
 
       return;
    }
- 
+
    ChaseTimer( timer = $ )
    "We're in Hot pursuit, so either we keep chasing, or we attack."
    "Note that even if we can't move, we can be 'chasing'...."
    {
       local i,oVictim,iVision,each_obj,iCount, bCast;
       oVictim = poTarget;
+
+      if piSpeed > 0
+      {
+         // Remember that we moved for vigor drain.
+         piLastMoveUpdateTime = GetTickCount();
+         Send(self,@NewVigor);
+      }
 
       Send(self,@ClearBehavior,#timer=timer);
 
@@ -1562,12 +1649,6 @@ messages:
          return;
       }
 
-      // Perhaps we heal this chase moment.
-      if piHit_points < piMax_hit_points*100 AND Random(0,18) < 2
-      {
-         Send(self,@HealHitPoint);
-      }
-      
       bCast = FALSE;
       if Send(self,@MonsterCanCastSpell)
       {
@@ -1611,12 +1692,6 @@ messages:
          Send(self,@EnterStateLimbo);
 
          return;
-      }
-
-      // Perhaps we heal this movement tick.
-      if piHit_points < piMax_hit_points*100 AND Random(1,8) = 1
-      {
-         Send(self,@HealHitPoint);
       }
 
       // Okay, ask our brain how to move
@@ -1712,15 +1787,25 @@ messages:
       return piBehavior;
    }
 
+   GetAim()
+   {
+      return piAim;
+   }
+
    AddMonsterAim(points=0)
    {
       local iOrigAim;
 
       iOrigAim = piAim;
       piAim = piAim + points;
-      piAim = Bound(piAim,1,50);
+      piAim = Bound(piAim,1,MONSTER_STAT_CAP);
 
       return piAim - iOrigAim;
+   }
+
+   GetAgility()
+   {
+      return piAgility;
    }
 
    AddMonsterAgility(points=0)
@@ -1729,9 +1814,73 @@ messages:
 
       iOrigAgil = piAgility;
       piAgility = piAgility + points;
-      piAgility = Bound(piAgility,1,50);
+      piAgility = Bound(piAgility,1,MONSTER_STAT_CAP);
 
       return piAgility - iOrigAgil;
+   }
+
+   GetMight()
+   {
+      return piMight;
+   }
+
+   AddMonsterMight(points=0)
+   {
+      local iOrigMight;
+
+      iOrigMight = piMight;
+      piMight = piMight + points;
+      piMight = Bound(piMight,1,MONSTER_STAT_CAP);
+
+      return piMight - iOrigMight;
+   }
+
+   GetStamina()
+   {
+      return piStamina;
+   }
+
+   AddMonsterStamina(points=0)
+   {
+      local iOrigStamina;
+
+      iOrigStamina = piStamina;
+      piStamina = piStamina + points;
+      piStamina = Bound(piStamina,1,MONSTER_STAT_CAP);
+
+      return piStamina - iOrigStamina;
+   }
+
+   GetIntellect()
+   {
+      return piIntellect;
+   }
+
+   AddMonsterIntellect(points=0)
+   {
+      local iOrigIntellect;
+
+      iOrigIntellect = piIntellect;
+      piIntellect = piIntellect + points;
+      piIntellect = Bound(piIntellect,1,MONSTER_STAT_CAP);
+
+      return piIntellect - iOrigIntellect;
+   }
+
+   GetMysticism()
+   {
+      return piMysticism;
+   }
+
+   AddMonsterMysticism(points=0)
+   {
+      local iOrigMysticism;
+
+      iOrigMysticism = piMysticism;
+      piMysticism = piMysticism + points;
+      piMysticism = Bound(piMysticism,1,MONSTER_STAT_CAP);
+
+      return piMysticism - iOrigMysticism;
    }
 
    StartPalsy()
@@ -1821,7 +1970,7 @@ messages:
 
       // The bigger/tougher I am, the less likely I'm interested in milling
       //  around.
-      if Random(1,140) < piHit_points/100
+      if Random(1,140) < piHealth/100
          AND NOT override
       {
          return;
@@ -1901,7 +2050,7 @@ messages:
                Send(poOwner,@SomethingMoved,#what=self,
                      #new_row=iNew_row,#new_col=iNew_col,
                      #fine_row=iNew_finerow,#fine_col=iNew_finecol,
-                     #speed=(0x80|viSpeed),#non_monsters_only=TRUE);
+                     #speed=(0x80|piSpeed),#non_monsters_only=TRUE);
             }
          }
       }
@@ -2135,6 +2284,10 @@ messages:
       // Do any special attack routines we might have.
       Send(self,@MonsterAttack,#what=what);
 
+      // Drain vigor. If the attack brings us to or below zero, monster
+      // will rest for a bit.
+      Send(self,@LoseVigor,#precision=TRUE,#amount = 50);
+
       propagate;
    }
 
@@ -2218,7 +2371,10 @@ messages:
       {
          iDamage = iDamage * 3 / 4 ;
       }
-      
+
+      // Scale damage with monster might.
+      iDamage = iDamage * (50+piMight)/75;
+
       return Bound(iDamage,0,$);
    }
 
@@ -2285,7 +2441,7 @@ messages:
       }
 
       // Set a predamage mark... we'll compare to it to see if threshold crossed.
-      iPercentClass = piHit_points/(piMax_hit_points*20);
+      iPercentClass = piHealth/(piMax_health*20);
 
       // Make sure we don't deal negative damage.
       iDamage = Bound(iDamage,0,$);
@@ -2297,14 +2453,14 @@ messages:
          piHatred = piHatred + 1;
       }
 
-      piHit_points = piHit_points - iDamage;
-      
+      piHealth = piHealth - iDamage;
+
       if poOwner = $
       {
          return 0;
       }
       
-      if piHit_points <= 0 
+      if piHealth <= 0 
       {
          foreach i in Send(poOwner,@GetHolderActive)
          {
@@ -2323,8 +2479,10 @@ messages:
          return $;
       }
 
+      Send(self,@NewHealth);
+
       // Check to see if we crossed a threshold due to the damage.
-      if iPercentClass <> (piHit_points / (piMax_hit_points * 20))
+      if iPercentClass <> (piHealth / (piMax_health * 20))
       {
          Send(self,@HitPointThresholdDamage);
       }
@@ -2339,6 +2497,56 @@ messages:
       Send(self,@AddHurtMeRecently,#who=what,#amount=iDamage);
 
       return iDamage;
+   }
+
+   HealthRegen()
+   "Make damage thresholds available for hots/regeneration."
+   {
+      local iPercentClass;
+      ptHealth = $;
+
+      // Check health before gaining a health point.
+      iPercentClass = piHealth/(piMax_health*20);
+
+      piHealth = bound(piHealth + Send(self,@GetTickFactor,#i=100),$,piMax_health*100);
+
+      // Check if we crossed a threshold due to decay.
+      if iPercentClass <> (piHealth / (piMax_health * 20))
+      {
+         Send(self,@HitPointThresholdHeal);
+      }
+
+      Send(self,@NewHealth);
+
+      return;
+   }
+
+   HealthDecay()
+   "Make damage thresholds available to dots as well."
+   {
+      local iPercentClass;
+
+      ptHealth = $;
+
+      // Check health before losing a health point.
+      iPercentClass = piHealth/(piMax_health*20);
+
+      piHealth = bound(piHealth - Send(self,@GetTickFactor,#i=100),0,$);
+
+      // We've run out of health. Check what happens now.
+      if piHealth < 1
+      {
+         Send(self,@ZeroHealth);
+      }
+      // Still alive, check if we crossed a threshold due to decay.
+      else if iPercentClass <> (piHealth / (piMax_health * 20))
+      {
+         Send(self,@HitPointThresholdDamage);
+      }
+
+      Send(self,@NewHealth);
+
+      return;
    }
 
    // Allows monsters to have armor not related to specific equipped items. 
@@ -2753,7 +2961,7 @@ messages:
          piState = iState;
 
          // debug("step",iRow,iCol,iFineRow,iFineCol);
-	  
+
          if (NOT (piBehavior & AI_MOVE_WALKTHROUGH_WALLS))
              OR Send(self,@ReqMonsterMove,#new_row=iRow,#new_col=iCol,
                      #new_finerow=iFineRow,#new_finecol=iFineCol)
@@ -2761,8 +2969,8 @@ messages:
             Send(self,@MonsterOrient,#new_row=iRow,#new_col=iCol,
                  #new_finerow=iFineRow,#new_finecol=iFineCol,
                  #face_target=face_target,#face_away=face_away);
-		
-            Send(poOwner,@SomethingMoved,#what=self,#speed=viSpeed,
+
+            Send(poOwner,@SomethingMoved,#what=self,#speed=piSpeed,
                  #new_row=iRow,#new_col=iCol,
                  #fine_row=iFineRow,#fine_col=iFineCol,
                  #non_monsters_only=TRUE);
@@ -2772,7 +2980,7 @@ messages:
                  #new_finerow=iFineRow,#new_finecol=iFineCol,
                  #face_target=face_target,#face_away=face_away);
 
-         return TRUE;		
+         return TRUE;
          }
       }
 
@@ -4727,51 +4935,14 @@ messages:
       return viOccupation;
    }
 
-   GainHealthNormal(amount = $, precision = FALSE)
-   "for when holy touch is cast on a good monster"
-   {
-      if amount = $
-      {
-         return;
-      }
-
-      if NOT precision
-      {
-         amount = amount * 100;
-      }
-
-      piHit_points = Bound(piHit_points+amount,1,piMax_hit_points*100);
-
-      return;
-   }
-
    NewMaxMana(amount=0)
    {
       local iPrev_max;
 
       iPrev_max = piMax_mana;
-      piMax_Mana = piMax_mana + amount;
+      piMax_mana = piMax_mana + amount;
 
       return (piMax_mana - iPrev_max);
-   }
-
-   CalculateManaTime()
-   "Calculate # of milliseconds until monster will gain a mana point."
-   {
-      local iTime, oSpell;
-
-      // Old system had monsters regenerating 1 mana point per second.
-      // Do the same here for now.
-      if piMana > piMax_mana
-      {
-         iTime = BOOST_DECAY_TIME;
-      }
-      else
-      {
-         iTime =  1000;
-      }
-
-      return iTime;
    }
 
    MonsterCanCastSpell()
@@ -4869,6 +5040,10 @@ messages:
                   #iSpellPower=piSpellPower);
          }
 
+         // Drain vigor. If the spell brings us to or below zero, monster
+         // will rest for a bit.
+         Send(self,@LoseVigor,#amount=Send(oSpell,@GetExertion));
+
          return TRUE;
       }
 
@@ -4889,7 +5064,7 @@ messages:
    {
       local i, iThreshold, rDamage_report, each_obj;
 
-      iThreshold = piHit_points / (piMax_hit_points * 20);
+      iThreshold = piHealth / (piMax_health * 20);
 
       if iThreshold >= 4
       {
@@ -4928,35 +5103,39 @@ messages:
 
    HitPointThresholdHeal()
    {
-      return;
-   }
+      local i, iThreshold, rHeal_report, each_obj;
 
-   HealHitPoint()
-   {
-      local iPercentClass, i, each_obj;
+      iThreshold = piHealth / (piMax_health * 20);
 
-      if piHit_points >= piMax_Hit_points * 100
+      if iThreshold >= 5
       {
          return;
       }
-
-      // We set a mark to see if the healing changes our threshold
-      iPercentClass = piHit_points / (piMax_Hit_points * 20);
-      piHit_points = piHit_points + 100;
-      if iPercentClass <> (piHit_points / (piMax_Hit_points * 20))
+      else if iThreshold = 4
       {
-         Send(self,@HitPointThresholdHeal);
+         rHeal_report = vrFirst_heal_level;
+      }
+      else if iThreshold = 3
+      {
+         rHeal_report = vrSecond_heal_level;
+      }
+      else if iThreshold = 2
+      {
+         rHeal_report = vrThird_heal_level;
+      }
+      else
+      {
+         rHeal_report = vrFourth_heal_level;
+      }
 
-         foreach i in Send(poOwner,@GetHolderActive)
+      foreach i in Send(poOwner,@GetHolderActive)
+      {
+         each_obj = First(i);
+         if IsClass(each_obj,&User)
+            AND Send(each_obj,@GetKillTarget) = self
          {
-            each_obj = First(i);
-            if IsClass(each_obj,&User)
-               AND Send(each_obj,@GetKillTarget) = self
-            {
-               Post(each_obj,@MsgSendUser,#what=self,
-                     #message_rsc=vrMonster_healing,
-                     #parm1=Send(self,@GetCapDef),#parm2=Send(self,@GetName));
-            }
+            Post(each_obj,@MsgSendUser,#what=self,#message_rsc=rHeal_report,
+                  #parm1=Send(self,@GetCapDef),#parm2=Send(self,@GetName));
          }
       }
 
@@ -5007,7 +5186,7 @@ messages:
 
       if iHitPoint_Percent = $
       {
-         iHit_Percent = piHit_points / piMax_hit_points;
+         iHit_Percent = piHealth / piMax_health;
       }
       else
       {
@@ -5060,58 +5239,23 @@ messages:
       return;
    }
 
-   GetMaxHitPoints()
-   "Right now this returns the level. It is used to create the hp at "
-   "construction, and to heal the monster, as well as for indicating "
-   "its current damage."
-   {
-      if viLevel < 40
-      {
-         return viLevel;
-      }
-
-      return ((120 * viLevel) / 100);
-   }
-   
-   ReturnMaxHitPoints()
-   {
-      return piMax_hit_points;
-   }
-
    GainMaxHealth(amount = 0)
    "Equivalent to the message in Player, but without starting a timer."
    {
       local iPrev_max;
 
-      iPrev_max = piMax_hit_points;
-      piMax_hit_points = Bound(piMax_hit_points + amount, 1, $);
+      iPrev_max = piMax_health;
+      piMax_health = Bound(piMax_health + amount, 1, $);
 
-      return piMax_hit_points - iPrev_max;
-   }
-
-   GetMaxHealth()
-   "Some objects will call this instead of the monster-specific message."
-   {
-      return piMax_hit_points;
+      return piMax_health - iPrev_max;
    }
 
    SetMaxHitPoints(amount=$)
    {
-      piMax_hit_points = amount;
-      piHit_points = amount*100;
+      piMax_health = amount;
+      piHealth = amount*100;
 
       return;
-   }
-
-   // Returns the number of remaining hit points.
-   GetHealth()
-   {
-      return piHit_points/100;
-   }
-
-   GetExactHealth()
-   {
-      return piHit_points;
    }
 
    IsFullTalk()
@@ -5300,15 +5444,41 @@ messages:
       return;
    }
 
+   GetSpeed()
+   {
+      if piVigor < VIGOR_RUN_THRESHOLD
+      {
+         return viSpeed/2;
+      }
+
+      return viSpeed;
+   }
+
    GetAttackTime()
    {
       return Send(self,@Fuzzy,#num=MOB_ATTACK_TIMER_WAIT)
-             + 3500-70*(3*viDifficulty+viSpeed);
+             + 3500-70*(3*viDifficulty+piSpeed);
    }
 
    GetMoveTime()
    {
       local iTime;
+
+      // Set our current speed based on classvar and agility.
+      piSpeed = bound(viSpeed + (piAgility/10) - 2,0,30);
+
+      // If our monster is able to move in general, then low
+      // agility can't immobilize it.
+      if viSpeed
+      {
+         piSpeed = bound(piSpeed,2,$);
+      }
+
+      // Out of breath, can't run.
+      if piVigor < VIGOR_RUN_THRESHOLD
+      {
+         piSpeed /= 2;
+      }
 
       // Unit of viSpeed is: #gridsquares per 10 seconds (per 10000 ms)
       // viSpeed is pre-defined by monster
@@ -5319,18 +5489,18 @@ messages:
       // 1024 super-fine squares = 1 square
       // 256 super-fine squares = 1 highres square = 16 finesquare = stepwidth
       // -------------------------------------------------------
-      // 4 * 1024 	= 4096 super-fine squares per 10000 ms
+      // 4 * 1024    = 4096 super-fine squares per 10000 ms
       // 4096 / 256  = 16 (Monster has to make 16 steps per 10000ms)
       // 10000 / 16  = 625 (steps must be made in 625ms intervals)
-      // T = 10000 / ((viSpeed * 1024) / 256)  
+      // T = 10000 / ((viSpeed * 1024) / 256)
 
       // avoid division by zero, if objects teleport
       // objects with viSpeed = 0 don't need seamless movements in the client
       // so we just assume it is enough to teleport them once a second
-      if viSpeed > 0
+      if piSpeed > 0
       {
          // see formula above  
-         iTime = 10000 / (viSpeed * 4);
+         iTime = 10000 / (piSpeed * 4);
 
          // finally we reduce the timer a bit (right now it's exact at ms)
          // why? the client should get a new position before the last destination
@@ -5338,8 +5508,8 @@ messages:
          // bit late in transmission. the client has a dynamic playout which 
          // will compensate this.
          iTime = iTime - 5;
-		 
-		 // make sure timer interval does not get negative
+
+         // make sure timer interval does not get negative
          // and also not like "run all the time"
          iTime = bound(iTime, 10, 10000);
       }
@@ -6722,7 +6892,7 @@ messages:
       
       // If wimpy is set at 50, monster will flee once his health is at 49// of
       //  max.
-      if (piHit_points/ piMax_Hit_points) < viWimpy
+      if (piHealth/ piMax_health) < viWimpy
       {
          return TRUE;
       }
@@ -7150,7 +7320,7 @@ messages:
       }
 
       GodLog(Send(self,@GetTrueName)," level: ",viLevel,", karma: ",viKarma,
-         ", speed: ",viSpeed, GetTempString());
+         ", speed: ",piSpeed, GetTempString());
 
       return;
    }
@@ -7191,6 +7361,98 @@ messages:
       GodLog("NPC: ",Send(self,@GetName),", Map: ",Send(poOwner,@GetName));
 
       return;
+   }
+
+   ZeroHealth()
+   "Uh oh! Are we in trouble?"
+   {
+      // You sure are, evil monster! Time to die!
+      Send(self,@DeathOverTime);
+
+      return;
+   }
+
+   DeathOverTime()
+   "Monster is dying to damage over time."
+   {
+      local iStrength, use_weapon, what, i, each_obj;
+
+      // The strength of the DoT. We are looking at
+      // negative values here.
+      iStrength = 0;
+
+      // The source of the dot as well as the associated spell.
+      // If no source/spell have been associated with the dot,
+      // 0 - not nil - is passed.
+      what = 0;
+      use_weapon = 0;
+
+      // Let's check 'what' pained the monster most.
+      foreach i in Send(self,@GetOverTimeEffects)
+      {
+         if Nth(i,3) < iStrength
+         {
+            what = Nth(i,6);
+            use_weapon = Nth(i,5);
+            iStrength = Nth(i,3);
+         }
+      }
+
+      // Convert 0 to regular nil for further processing.
+      // To-do: Check for more elegant solution.
+      if use_weapon = 0
+      {
+         use_weapon = $;
+      }
+
+      if what = 0
+      {
+         what = $;
+      }
+
+      foreach i in Send(poOwner,@GetHolderActive)
+      {
+         each_obj = First(i);
+         if IsClass(each_obj,&User)
+            AND each_obj <> what
+            AND Send(each_obj,@GetKillTarget) = self
+         {
+            Send(each_obj,@MsgSendUser,#what=self,
+                 #message_rsc=vrParty_monster_died_to_dot,
+                 #parm1=Send(self,@GetCapDef),#parm2=Send(self,@GetName),
+                 #parm3=Send(self,@GetHisHer));
+         }
+      }
+
+      if what <> $
+      {
+         Send(what,@KilledSomething,#what=self,#use_weapon=use_weapon);
+      }
+      else
+      {
+         Send(self,@KilledSomething,#what=self,#use_weapon=use_weapon);
+      }
+
+      return;
+   }
+
+   ZeroVigor()
+   "Uh oh! Are we in trouble?"
+   {
+      Send(self,@EnterStateChase,#target=poTarget,#actnow=FALSE,#delay=bound(10000-100*piStamina,5000,10000));
+      Send(self,@GainVigor,#amount=piVigor_rest_threshold);
+      Post(poOwner,@SomeoneSaid,#what=self,#string=Lm_monster_winded,#type=SAY_MESSAGE,
+           #parm1=Send(self,@GetCapDef),#parm2=Send(self,@GetName),#parm3=Send(self,@GetHisHer));
+      return;
+   }
+
+   // This message is used to modify responsiveness of resource
+   // regeneration for monsters. Tick duration and restored resource
+   // amount are scaled by a percentage.
+   GetTickFactor(i=$)
+   "Time ticks differently for monsters."
+   {
+      return i * TICK_FACTOR_MONSTER / 100;
    }
 
 end

@@ -14,10 +14,10 @@ constants:
 
    include blakston.khd
 
-   // * 10^-4 hp / sec (half that of a spider bite)
-   POISON_LOSSRATE = 1250
-   // In ms.
-   POISON_DURATION = 60000 
+   // * 10^-3 hp / sec (half that of a spider bite)
+   POISON_HEALTHLOSS = 125
+   POISON_VIGORLOSS = 100
+   POISON_DURATION = 60000
 
 resources:
 
@@ -124,8 +124,9 @@ messages:
          if Random(1,100) <= viPoisonPercent
          {
             oSpell = Send(SYS,@FindSpellByNum,#num=SID_POISON);
-            Send(oSpell,@MakePoisoned,#who=apply_on,
-                 #lossrate=(POISON_LOSSRATE*Random(8,12)/10),
+            Send(oSpell,@MakePoisoned,#source=apply_on,#who=apply_on,
+                 #healthloss=(POISON_HEALTHLOSS*Random(8,12)/10),
+                 #vigorloss=(POISON_VIGORLOSS*Random(8,12)/10),
                  #duration=(POISON_DURATION*Random(8,12)/10));
          }
 

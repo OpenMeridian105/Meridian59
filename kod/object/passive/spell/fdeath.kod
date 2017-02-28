@@ -38,8 +38,7 @@ classvars:
    vrDesc = feigndeath_desc_rsc
 
    viMana = 5          // Mana is amount used upon inititiation
-   viManaDrain = 5     // Drain is amount used every viDrainTime milliseconds
-   viDrainTime = 5000    // Drain some mana every viDrainTime milliseconds
+   viManaDrain = 1000            // Mana drained per second (10^3)
    viSpell_num = SID_FEIGN_DEATH
    viSpellExertion = 1
    viChance_To_Increase = 40
@@ -110,7 +109,7 @@ messages:
       }
 
       Send(who,@SetPlayerIllusion,#what=self);
-      Send(who,@StartEnchantment,#what=self,#time=viDrainTime,
+      Send(who,@StartEnchantment,#what=self,#time=viTickDuration,
            #state=[oBody,iSpellPower],#addicon=TRUE,#lastcall=FALSE);
 
       if NOT Send(who,@PlayerIsImmortal)
@@ -275,31 +274,11 @@ messages:
       return;
    }
 
-   BreakTrance(who = $, state = $)
-   {
-      // If caster runs out of mana or loses trance, spell ends.
-      Send(who,@RemoveEnchantment,#what=self,#state=state);
-
-      propagate;
-   }
-
    StartPeriodicEnchantment(who = $, state = $, iSpellPower = 0)
    {
-      // If caster runs out of mana or loses trance, spell ends.
-      if Send(who,@GetMana) < viManaDrain * 2
-      {
-         Send(who,@StartEnchantment,#what=self,#time=viDrainTime,
-               #state=state,#addicon=FALSE,#lastcall=TRUE,
-               #iSpellPower=iSpellPower);
-      }
-      else
-      {
-         Send(who,@StartEnchantment,#what=self,#time=viDrainTime,
-               #state=state,#addicon=FALSE,#lastcall=FALSE,
-               #iSpellPower=iSpellPower);
-      }
-
-      Send(who,@LoseMana,#amount=viManaDrain);
+      Send(who,@StartEnchantment,#what=self,#time=viTickDuration,
+            #state=state,#addicon=FALSE,#lastcall=FALSE,
+            #iSpellPower=iSpellPower);
 
       return;
    }
@@ -527,6 +506,14 @@ messages:
    GetPotionClass()
    {
       return &FeignDeathPotion;
+   }
+
+   TranceEnding(who=$,state=$)
+   "Allow maintained spells to do something when their trance breaks."
+   {
+      Send(who,@RemoveEnchantment,#what=self,#state=state);
+
+      propagate;
    }
 
 end

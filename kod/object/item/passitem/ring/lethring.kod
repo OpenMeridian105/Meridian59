@@ -55,8 +55,8 @@ classvars:
    
    viValue_average = 70
 
-   viVigorDrop = 400000
-   
+   viVigorDrop = 4000
+
    // Peach inset when identified
    viRevealedColor = PT_ITEM_XLAT_BLUE_TO_SKIN2
    
@@ -66,8 +66,6 @@ classvars:
 properties:
 
    pbIn_use = FALSE
-
-   piVigorRestThresholdChange = 20
 
 messages:
 
@@ -84,7 +82,7 @@ messages:
    }
 
    NewUsed(what = $)
-   "When the ring is worn, the wearer's rest threshold goes down"
+   "Ring stops natural vigor regeneration and slowly drains vigor when worn."
    {
       local iVigorRestThreshold;
 
@@ -95,20 +93,10 @@ messages:
          propagate;
       }
 
-      iVigorRestThreshold = Send(poOwner, @GetVigorRestThreshold);
-
-      // This is to ensure both that the player's rest threshold does not drop below
-      // 10 as well as to make sure we don't make it above maximum when the ring comes
-      // off  (see player.kod for why)
-      if (iVigorRestThreshold - piVigorRestThresholdChange < 10)
-      {
-         piVigorRestThresholdChange = iVigorRestThreshold - 10;
-      }
-
       Send(poOwner,@MsgSendUser,#message_rsc=ringoflethargy_use_rsc);
-      Send(poOwner,@SetVigorRestThreshold,
-            #amount=iVigorRestThreshold - piVigorRestThresholdChange);
 
+      Send(poOwner,@StartOverTimeEffect,#type=TYPE_VIGOR,#strength=-100,#who=self,
+         #removable=REMOVE_INTERNAL,#curse=TYPE_VIGOR);
       propagate;
    }
 
@@ -148,7 +136,7 @@ messages:
    TortureOwner()
    {
       Send(poOwner,@MsgSendUser,#message_rsc=ringoflethargy_try_unuse_rsc);
-      Send(poOwner,@AddExertion,#amount=viVigorDrop);
+      Send(poOwner,@LoseVigor,#precision=TRUE,#amount=viVigorDrop);
 
       return;
    }
@@ -156,9 +144,6 @@ messages:
    NewUnused(what = $)
    "Called when the curse is broken"
    {
-      local iVigorRestThreshold;
-
-      iVigorRestThreshold = Send(poOwner,@GetVigorRestThreshold);
       pbIn_use = FALSE;
 
       if Send(poOwner,@PlayerIsImmortal)
@@ -167,11 +152,7 @@ messages:
       }
 
       Send(poOwner,@MsgSendUser,#message_rsc=ringoflethargy_unuse_rsc);
-      Send(poOwner,@SetVigorRestThreshold,
-            #amount=iVigorRestThreshold + piVigorRestThresholdChange);
-
-      // Reset the vigor change in case it was adjusted earlier.
-      piVigorRestThresholdChange = 20;
+      Send(poOwner,@DeleteOverTimeEffect,#who=self,#removal=REMOVE_INTERNAL);
 
       propagate;
    }

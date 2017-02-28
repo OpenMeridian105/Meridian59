@@ -16,8 +16,7 @@ constants:
 
    include blakston.khd
 
-   MANA_DRAIN_DELAY = 8000
-   MANA_DRAIN_AMOUNT = 1
+   MANA_DRAIN = 125
 
 resources:
 
@@ -75,7 +74,6 @@ classvars:
 
 properties:
 
-   ptManaDrain
    vrName = reflection_name_rsc
    piDrawfx = 4
    vrIcon = reflection_male_icon_rsc
@@ -94,15 +92,24 @@ messages:
 
    Constructor(iSpellPower=1,oMaster=$)
    {
+      local oSpell;
+
       if oMaster <> $
       {
          poMaster = oMaster;
       }
 
       piSpellpower = iSpellpower;
-      ptManaDrain = CreateTimer(self,@ManaDrainTimer,MANA_DRAIN_DELAY);
       poArrow = Create(&Arrow);
       piDamagePercent = viDamagePercent;
+
+      oSpell = Send(SYS,@FindSpellByNum,#num=SID_REFLECTION);
+
+      if IsClass(oMaster,&Battler)
+      {
+         Send(oMaster,@StartOverTimeEffect,#strength=-MANA_DRAIN,
+            #what=oSpell,#who=self,#removable=REMOVE_INTERNAL,#showicon=TRUE,#type=TYPE_MANA);
+      }
 
       propagate;
    }
@@ -341,45 +348,17 @@ messages:
       return;
    }
 
-   ManaDrainTimer()
-   {
-      ptManaDrain = $;
-
-      if poOriginal = $
-      {
-         return;
-      }
-
-      // Ignore mana drain for non-players.
-      if IsClass(poOriginal,&Monster)
-      {
-         return;
-      }
-
-      if NOT Send(poOriginal,@IsLoggedOn)
-      {
-         Send(self,@Delete);
-
-         return;
-      }
-
-      if Send(poOriginal,@GetMana) < MANA_DRAIN_AMOUNT
-      {
-         Send(self,@Delete);
-
-         return;
-      }
-
-      Send(poOriginal,@LoseMana,#amount=MANA_DRAIN_AMOUNT);
-      Send(self,@GetOriginalInfo);
-      Send(poOwner,@SomethingChanged,#what=self);
-      ptManaDrain = CreateTimer(self,@ManaDrainTimer,MANA_DRAIN_DELAY);
-
-      return;
-   }
-
    Delete(bSystem = FALSE)
    {
+      local oSpell;
+
+      oSpell = Send(SYS,@FindSpellByNum,#num=SID_REFLECTION);
+
+      if IsClass(poMaster,&Battler)
+      {
+         Send(poMaster,@DeleteOverTimeEffect,#what=oSpell,#who=self,#removal=REMOVE_INTERNAL);
+      }
+
       // System clears this list already.
       if (NOT bSystem)
       {
@@ -393,12 +372,6 @@ messages:
          Send(poOwner,@SomeoneSaid,#type=SAY_MESSAGE,#string=reflection_delete,
               #what=self,#parm1=Send(self,@GetCapDef),
               #parm2=Send(self,@GetName,#cap=FALSE));
-      }
-
-      if ptManaDrain <> $
-      {
-         DeleteTimer(ptManaDrain);
-         ptManaDrain = $;
       }
 
       if ptSomethingChanged <> $
@@ -668,9 +641,9 @@ messages:
       }
 
       poOriginal = who;
-      piMax_Hit_Points = piSpellpower / 3;
-      piMax_hit_points = Bound(piMax_hit_points,15,40);
-      piHit_Points = piMax_Hit_Points*100;
+      piMax_Health = piSpellpower / 3;
+      piMax_Health = Bound(piMax_Health,15,40);
+      piHealth = piMax_Health*100;
 
       Send(self,@GetOriginalInfo);
 

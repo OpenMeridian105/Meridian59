@@ -38,9 +38,7 @@ classvars:
 
    // Mana is amount used upon inititiation
    viMana = 10
-   // viManaDrain is amount used every viDrainTime milliseconds
-   viManaDrain = 7
-   viDrainTime = 1000
+   viManaDrain = 7000            // Mana drained per second (10^3)
 
    viCast_time = 2000
 
@@ -108,41 +106,15 @@ messages:
       return 0;
    }
 
-   BreakTrance(who = $, state = $)
-   {
-      // If caster runs out of mana or loses trance, spell ends.
-      if IsClass(First(state),&Prism)
-      {
-         Send(First(state),@CasterBrokeTrance,#who=who);
-         Send(who,@RemoveEnchantment,#what=self,#state=state);
-
-         propagate;
-      }
-
-      return;
-   }
-
    StartPeriodicEnchantment(who = $, state = $,iSpellPower=0)
    "Sends enchantment message to room like CastSpell for most room enchantments, "
    "but silent, and done as often as necessary"
     {
       local iAmount;
-      
-      // If caster runs out of mana or loses trance, spell ends.
-      if Send(who,@GetMana) < viManaDrain * 2
-      {
-         Send(who,@StartEnchantment,#what=self,#time=viDrainTime,
-              #state=state,#addicon=FALSE,#lastcall=TRUE,
-              #iSpellPower=iSpellPower);
-      }
-      else
-      {      
-         Send(who,@StartEnchantment,#what=self,#time=viDrainTime,
-              #state=state,#addicon=FALSE,#lastcall=FALSE,
-              #iSpellPower=iSpellPower);
-      }
 
-      Send(who,@LoseMana,#amount=viManaDrain);
+      Send(who,@StartEnchantment,#what=self,#time=viTickDuration,
+           #state=state,#addicon=FALSE,#lastcall=FALSE,
+           #iSpellPower=iSpellPower);
 
       // Each caster contributes from 1 - 4 spellpoints per second.
       iAmount = Send(self,@GetSpellPower,#who=who) + 1;
@@ -220,7 +192,7 @@ messages:
          return;
       }
 
-      Send(who,@StartEnchantment,#what=self,#state=[oPrism],#time=viDrainTime,
+      Send(who,@StartEnchantment,#what=self,#state=[oPrism],#time=viTickDuration,
            #iSpellPower=iSpellPower,#lastcall=FALSE);
 
       Send(oPrism,@SpellCast,#what=self,#who=who,#lTargets=lTargets);
@@ -248,6 +220,15 @@ messages:
    SpellBannedInArena()
    {
       return TRUE;
+   }
+
+   TranceEnding(who=$,state=$)
+   "Allow maintained spells to do something when their trance breaks."
+   {
+      Send(First(state),@CasterBrokeTrance,#who=who);
+      Send(who,@RemoveEnchantment,#what=self,#state=state);
+
+      propagate;
    }
 
 end

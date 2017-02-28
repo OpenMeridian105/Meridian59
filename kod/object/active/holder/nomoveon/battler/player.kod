@@ -3600,6 +3600,15 @@ messages:
          }
       }
 
+      // Just send the ones we are the source for, Room handles all others.
+      foreach i in plOverTimeEffects
+      {
+         if Nth(i,8)
+         {
+            Send(self,@ShowAddEnchantment,#what=Nth(i,5),#type=ENCHANTMENT_PLAYER);
+         }
+      }
+
       if ptCrystalizeManaSurgeTimer <> $
       {
          Send(self,@ShowAddEnchantment,#what=Send(SYS,@FindSpellByNum,
@@ -8150,6 +8159,13 @@ messages:
       plSkills = Cons(Send(self,@EncodeSkill,#num=num,
                      #iability=iBoundAbility),plSkills);
 
+      // Special case: Second Wind is so essential to resource generation that we
+      // want to keep it as a property in battler to cut down on message calls.
+      if num = SKID_SECOND_WIND
+      {
+         Send(self,@SetSecondWind,#i=iBoundAbility);
+      }
+
       if Send(self,@CheckLog)
       {
          Debug("LOG:  ",vrName," added skill ",Send(oSkill,@GetName));
@@ -9289,8 +9305,6 @@ messages:
          piVigor = Bound(piVigor/4,1500,5000);
       }
 
-      Send(self,@NewHealth);
-      Send(self,@NewMana);
       Send(self,@NewVigor);
 
       // Refresh the client with what's really going on.
@@ -11399,7 +11413,7 @@ messages:
 
    RecalibratePlayer()
    {
-      local i, bSoldier, iAmount;
+      local i, bSoldier;
 
       bSoldier = FALSE;
       if Send(self,@FindUsing,#class=&SoldierShield) <> $
@@ -11411,11 +11425,7 @@ messages:
       Send(self,@RemoveAllEnchantments);
       Send(self,@RecalcBulkAndWeight);
       Send(self,@ResetPlayerFlagList);
-
-      iAmount = 80 + ((Send(self,@GetSkillAbility,
-                           #Skill_num=SKID_SECOND_WIND) + 1) / 5);
-      Send(self,@SetVigorRestThreshold,#amount=iAmount);
-
+      Send(self,@SetVigorRestThreshold,#amount=8000);
       Send(self,@EndCrystalizeManaSurge);
 
       // All attack modifiers should be a room enchantment, a personal
@@ -11522,6 +11532,16 @@ messages:
 
       // Reset death costs to 0.
       piDeathCost = 0;
+
+      // Set our second wind ability.
+      piWind = Send(self,@GetSkillAbility,#skill_num=SKID_SECOND_WIND);
+
+      // Set our resources to max.
+      piHealth = 100* piMax_health;
+      piMana = 100* piMax_mana;
+      piVigor = 100* piMax_vigor;
+
+      Send(self,@UpdateRates);
 
       Send(self,@RemoveAttackingEvilTwin);
 

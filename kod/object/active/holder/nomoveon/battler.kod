@@ -262,6 +262,10 @@ properties:
    piLastMoveUpdateTime = 0
    piSpeed = 0
 
+   // Second wind ability has a major effect on resource generation and is
+   // querried frequently. Save it as a property instead.
+   piWind = 0
+
 messages:
 
    // The first lump of code here deals with resistances and immunities/etc.
@@ -753,10 +757,10 @@ messages:
          amount = 100 * piMax_health - piHealth;
          piHealth = 100 * piMax_health;
       }
-      else if piHealth + amount > 100 * MAX_CALCULATED_HEALTH
+      else if piHealth + amount > 200 * piMax_health
       {
-         amount = 100 * MAX_CALCULATED_HEALTH - piHealth;
-         piHealth = 100 * MAX_CALCULATED_HEALTH;
+         amount = 200 * piMax_health - piHealth;
+         piHealth = 200 * piMax_health;
       }
       else
       {
@@ -884,10 +888,9 @@ messages:
 
       // Second wind will give us a progressive boost to regeneration
       // the lower we go. Boost is based on missing Health below 50%.
-      iBoost = Send(self,@GetSkillAbility,#Skill_num=SKID_SECOND_WIND);
-      if iBoost > 0 AND piHealth < piMax_health * 25
+      if piWind > 0 AND piHealth < piMax_health * 25
       {
-         iBoost = iBoost * (piMax_health * 25 - piHealth)/(piMax_health * 25);
+         iBoost = piWind * (piMax_health * 25 - piHealth)/(piMax_health * 25);
          iBoost = bound(iBoost,25,100);
          iHealthPerTick = iHealthPerTick * iBoost / 25;
       }
@@ -1099,10 +1102,10 @@ messages:
          amount = 100 * piMax_mana - piMana;
          piMana = 100 * piMax_mana;
       }
-      else if piMana + amount > 100 * MAX_CALCULATED_MANA
+      else if piMana + amount > 200 * piMax_mana
       {
-         amount = 100 * MAX_CALCULATED_MANA - piMana;
-         piMana = 100 * MAX_CALCULATED_MANA;
+         amount = 200 * piMax_mana - piMana;
+         piMana = 200 * piMax_mana;
       }
       else
       {
@@ -1369,6 +1372,7 @@ messages:
       {
          amount = piVigor;
          piVigor = 0;
+         Send(self,@ZeroVigor);
       }
       else
       {
@@ -1405,10 +1409,10 @@ messages:
          amount = 100 * piMax_vigor - piVigor;
          piVigor = 100 * piMax_vigor;
       }
-      else if piVigor + amount > 100 * MAX_CALCULATED_VIGOR
+      else if piVigor + amount > 200 * piMax_vigor
       {
-         amount = 100 * MAX_CALCULATED_VIGOR - piVigor;
-         piVigor = 100 * MAX_CALCULATED_VIGOR;
+         amount = 200 * piMax_vigor - piVigor;
+         piVigor = 200 * piMax_vigor;
       }
       else
       {
@@ -1471,14 +1475,12 @@ messages:
          return piVigor_rest_threshold;
       }
 
-      return piVigor_rest_threshold
-         + (Send(self,@GetSkillAbility,#Skill_num=SKID_SECOND_WIND)+1)
-         * 20 / 100;
+      return piVigor_rest_threshold + (piWind + 1) * 20 / 100;
    }
 
    SetVigorRestThreshold(amount = 0)
    {
-      piVigor_rest_threshold = Bound(amount,1000,8000);
+      piVigor_rest_threshold = Bound(amount,10,80);
 
       if IsClass(self,&Player)
       {
@@ -1555,122 +1557,152 @@ messages:
 
       Send(self,@DrawVigor);
 
+      // A change in vigor may cause a change in health and mana rates.
+      Post(self,@NewHealth);
+      Post(self,@NewMana);
+
       return;
    }
 
    CalculateVigorPerTick()
    {
-      local iVigorPerTick, iHaste, iStamina, iBonus, iSecond, iLimit, i;
+      local iNatural, iExertion, iVigorPerTick, iHaste, iStamina, iBonus,
+            iLimit, i, iVigor;
+
+      // Natural regeneration only takes effect up to this value.
+      iLimit = piVigor_rest_threshold + (piWind + 1)/5;
+      iVigor = piVigor / 100;
 
       // Unlike health and mana. We don't regenerate vigor unless we
       // rest or have a beneficial effect (invigorate/second wind).
       iVigorPerTick = 0;
+      iNatural = 0;
+      iExertion = 0;
 
-      // Running is straining and drains our vigor slowly.
-      // Check if we've been running lately.
-      if GetTickCount() - piLastMoveUpdateTime < 1000
+      // Natural regeneration through resting and second wind only occurs
+      // if we aren't suffering from a vigor curse.
+      if NOT pbVigorCurse
       {
-         iVigorPerTick -= EXERTION_PER_MOVE * 9 * piSpeed / 2500;
+         iStamina = Send(self,@GetStamina);
 
-         // If we are hasted, our vigor drain will be reduced.
-         if (piFlags2 & PFLAG2_HASTED)
+         // Resting is the most traditional way of replenishing vigor.
+         // Rate is based on stamina (up to a point per second).
+         if pbResting
          {
-            iHaste = Send(self,@GetEnchantedState,#what=Send(SYS,@FindSpellByNum,#num=SID_HASTE));
+            iBonus = 500 + 10 * iStamina;
 
-            if iHaste <> $
+            // Resting in safe rooms and cozy inns gives us an additional boost.
+            if poOwner <> $
             {
-               iVigorPerTick = (iVigorPerTick * (100 - iHaste)) / 100;
+               if Send(poOwner,@CheckRoomFlag,#flag=ROOM_SANCTUARY)
+               {
+                  iBonus *= 2;
+               }
+
+               if Send(poOwner,@CheckRoomFlag,#flag=ROOM_TRIPLE_HEAL)
+               {
+                  iBonus *= 3;
+               }
             }
+
+            iNatural += iBonus;
+         }
+
+         // Second wind allows us to recover vigor even without resting.
+         // At max stamina and SW ability, we gain 1 point every 5 secs.
+         // The recovery rate will increase dramatically with vigor
+         // dropping to critical levels up to a maximum rate of 5 points
+         // per second.
+         if piWind
+         {
+            iBonus = 50 * (iLimit - iVigor) / iLimit;
+            iBonus *= iBonus;
+            iBonus = bound(iBonus,100,2500) * (2 * iStamina + piWind + 1) / 100;
+
+            iNatural += iBonus;
          }
       }
 
-      iStamina = Send(self,@GetStamina);
-
-      // Resting is the most traditional way of replenishing vigor.
-      // Rate is based on stamina (up to a point per second).
-      if pbResting
-      {
-         iBonus = 500 + 10 * iStamina;
-
-         // Resting in safe rooms and cozy inns gives us an additional boost.
-         if poOwner <> $
-         {
-            if Send(poOwner,@CheckRoomFlag,#flag=ROOM_SANCTUARY)
-            {
-               iBonus *= 2;
-            }
-
-            if Send(poOwner,@CheckRoomFlag,#flag=ROOM_TRIPLE_HEAL)
-            {
-               iBonus *= 3;
-            }
-         }
-
-         iVigorPerTick += iBonus;
-      }
-
-      // Second will allows us to recover vigor even without resting.
-      // At max stamina and SW ability, we gain 1 point every 5 secs.
-      // The recovery rate will increase dramatically with vigor
-      // dropping to critical levels up to a maximum rate of 5 points
-      // per second.
-      iSecond = Send(self,@GetSkillAbility,#Skill_num=SKID_SECOND_WIND);
-      iLimit = Send(self,@GetVigorRestThreshold,#base=FALSE)*100;
-
-      if iSecond
-      {
-         iBonus = 50 * (iLimit - piVigor) / iLimit;
-         iBonus *= iBonus;
-         iBonus = bound(iBonus,100,2500) * (2 * iStamina + iSecond + 1) / 100;
-
-         iVigorPerTick += iBonus;
-      }
-
-      // A curse will stop our natural regeneration.
-      if pbVigorCurse
-      {
-         iVigorPerTick = bound(iVigorPerTick,$,0);
-      }
-
-      // Factor in invigorate.
+      // Factor in invigorate. Invigorate will not be inhibited by a vigor
+      // curse, but only works up to the rest threshold. That's why we
+      // add it to our natural regeneration.
       foreach i in plRadiusEnchantments
       {
          // Check the battler's REs for invigorate.
          if IsClass(Nth(i,2),&Invigorate)
          {
             // Get the RE's state.
-            iVigorPerTick += Nth(Nth(i,3),5);
+            iNatural += Nth(Nth(i,3),5);
             break;
          }
       }
 
-      // Factor in decay before bounding so that natural regen may
-      // counteract decay even when sitting at the limit
-      if piVigor_Rate < 0
+      // Running is straining and drains our vigor slowly.
+      // Check if we've been running lately.
+      if GetTickCount() - piLastMoveUpdateTime < 1000
       {
-         iVigorPerTick += piVigor_Rate;
+         // Exertion has to be handled separately for non-players.
+         if IsClass(self,&Player)
+         {
+            iExertion = EXERTION_PER_MOVE * 9 * piSpeed / 2500;
+
+            // If we are hasted, our vigor drain will be reduced.
+            if (piFlags2 & PFLAG2_HASTED)
+            {
+               iHaste = Send(self,@GetEnchantedState,#what=Send(SYS,@FindSpellByNum,#num=SID_HASTE));
+
+               if iHaste <> $
+               {
+                  iExertion = (iExertion * (100 - iHaste)) / 100;
+               }
+            }
+         }
+         else
+         {
+            iExertion = 500;
+         }
       }
 
-      // Natural regeneration stops once the threshold is crossed.
-      if piVigor >= iLimit
+      // Vigor below limit, proceed as normal.
+      if iVigor < iLimit
       {
-         iVigorPerTick = bound(iVigorPerTick,$,0);
-      }
-
-      // Additional effects may cause our vigor to grow beyond the limit.
-      if piVigor_Rate > 0
-      {
+         iVigorPerTick = iNatural;
+         iVigorPerTick -= iExertion;
          iVigorPerTick += piVigor_Rate;
+      }
+      // Vigor at limit. Make sure our natural regeneration stops,
+      // but allow it to counteract drains.
+      else if iVigor = iLimit
+      {
+         // External effects help us. Let's not mix them with natural
+         // regen which only counteracts drains, but add later.
+         if piVigor_Rate > 0
+         {
+            iVigorPerTick = bound(iNatural-iExertion,$,0);
+            iVigorPerTick += piVigor_Rate;
+         }
+         // External effects hinder us. Bunch them up with exertion
+         // and see how much of it natural regen can counter. As
+         // before, natural regen can only offset, never surpass drain.
+         else
+         {
+            iVigorPerTick = bound(iNatural-iExertion+piVigor_Rate,$,0);
+         }
+      }
+      // We are above the limit, forget natural regeneration entirely.
+      else
+      {
+         iVigorPerTick = piVigor_Rate - iExertion;
       }
 
       // Disable regeneration when sitting at or above max vigor.
-      if piVigor >= 100 * piMax_vigor
+      if iVigor >= piMax_vigor
       {
          iVigorPerTick = bound(iVigorPerTick,$,0);
       }
 
       // Add a decay of 1 point per 5 seconds if sitting above the max.
-      if piVigor > 100 * piMax_vigor
+      if iVigor > piMax_vigor
       {
          iVigorPerTick -= 200;
       }
@@ -1708,6 +1740,8 @@ messages:
 
    VigorRegen()
    {
+      local iLimit, iPenalty;
+
       ptVigor = $;
 
       if Send(self,@IsInCannotInteractMode)
@@ -1718,10 +1752,19 @@ messages:
       piVigor = bound(piVigor + Send(self,@GetTickFactor,#i=100),$,100 * piMax_vigor);
 
       // Grant a chance to improve Second Wind if regenerating below threshold.
-      if NOT pbResting AND random(0,50) = 50
-         AND Send(self,@GetSkillAbility,#Skill_num=SKID_SECOND_WIND) > 0
+      // No improvement if we don't have the skill or are regenerating from rest.
+      if piWind AND NOT pbResting
       {
-         Send(Send(sys,@FindSkillByNum,#num=SKID_SECOND_WIND),@ImproveAbility,#who=self);
+         // Since regeneration speeds up progressively with low vigor, factor that in.
+         iLimit = 100 * piVigor_rest_threshold + 20 * (piWind + 1);
+         iPenalty = 50 * (iLimit - piVigor) / iLimit;
+         iPenalty *= iPenalty;
+         iPenalty = bound(iPenalty / 100,1,25);
+
+         if piVigor < iLimit AND random(0,30*iPenalty) = 0
+         {
+            Send(Send(sys,@FindSkillByNum,#num=SKID_SECOND_WIND),@ImproveAbility,#who=self);
+         }
       }
 
       Send(self,@NewVigor);
@@ -1839,8 +1882,6 @@ messages:
          }
       }
 
-      Send(self,@NewHealth);
-      Send(self,@NewMana);
       Send(self,@NewVigor);
 
       return;
@@ -1935,7 +1976,7 @@ messages:
    // 'curse' means that the effect stops natural resource regeneration. $ means no
    // curse, 0 is a health curse, 1 a mana curse and 2 a vigor curse.
    // Template: Send(who,@StartOverTimeEffect,#duration=,#type=,#strength=,#state=,#what=,#who=,#removable=,#showicon=,#curse=);
-   StartOverTimeEffect(duration=$,type=0,strength=0,state=100,what=0,who=0,removable=TRUE,showicon=TRUE,curse=$)
+   StartOverTimeEffect(duration=$,type=TYPE_HEALTH,strength=0,state=100,what=0,who=0,removable=REMOVE_PLAYER,showicon=TRUE,curse=$)
    {
       local tTimer, lEffect;
 
@@ -1977,7 +2018,7 @@ messages:
    }
 
    // Deletes over time effects. Further explanation on conditions below.
-   DeleteOverTimeEffect(what=$,who=$,timer=0,clear=FALSE,removal=TRUE,curse=FALSE)
+   DeleteOverTimeEffect(what=$,who=$,timer=0,clear=FALSE,removal=REMOVE_PLAYER,curse=FALSE)
    {
       local i, oSpell, oCaster, bRemoved;
 
@@ -3368,6 +3409,18 @@ messages:
    IsResting()
    {
       return pbResting;
+   }
+
+   SetSecondWind(i=$)
+   {
+      if i <> $
+      {
+         piWind = i;
+      }
+
+      Send(self,@NewVigor);
+
+      return;
    }
 
 end

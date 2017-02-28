@@ -31,8 +31,6 @@ resources:
       "The token is very heavy, and you feel your vigor drain "
       "away as you hold it."
 
-   token_use_rsc = \
-      "You feel drained and out of breath from carrying the token."
    token_unuse_rsc = \
       "You are relieved to feel your vigor begin returning as you "
       "let go of the token."
@@ -241,7 +239,8 @@ messages:
       Send(poOwner,@MsgSendUser,#message_rsc=token_used_desc_rsc);
 
       // Start vigor drain and curse.
-      Send(poOwner,@StartOverTimeEffect,#type=2,#strength=-viVigorDrain,#who=self,#removable=2,#curse=2);
+      Send(poOwner,@StartOverTimeEffect,#type=TYPE_VIGOR,#strength=-viVigorDrain,
+         #who=self,#removable=REMOVE_INTERNAL,#curse=TYPE_VIGOR);
 
       // Cancels rescue and elusion when a player picks up a token.
       Send(poOwner,@BreakTrance);
@@ -281,7 +280,7 @@ messages:
       }
 
       // Remove vigor drain and curse.
-      Send(poOwner,@DeleteOverTimeEffect,#who=self,#removal=2);
+      Send(poOwner,@DeleteOverTimeEffect,#who=self,#removal=REMOVE_INTERNAL);
 
       if where <> $
       {

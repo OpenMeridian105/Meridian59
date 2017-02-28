@@ -119,6 +119,8 @@ resources:
    Lm_party_killed_monster = "~B%s%s has valiantly slain %s%s!"
    Lm_party_monster_died_to_dot = "%s%s has succumbed to %s injuries!"
 
+   Lm_monster_winded = "~I~r%s%s needs a moment to catch %s breath!"
+
    monster_desc_level = "This monster will take you to %i hitpoints."
    Lm_condition_healthy = "%s\n\n%r"
    Lm_condition_good = \
@@ -7437,8 +7439,10 @@ messages:
    ZeroVigor()
    "Uh oh! Are we in trouble?"
    {
-      Send(self,@EnterStateChase,#target=poTarget,#actnow=FALSE,#delay=bound(10000-50*piStamina,1000,$));
+      Send(self,@EnterStateChase,#target=poTarget,#actnow=FALSE,#delay=bound(10000-100*piStamina,5000,10000));
       Send(self,@GainVigor,#amount=piVigor_rest_threshold);
+      Post(poOwner,@SomeoneSaid,#what=self,#string=Lm_monster_winded,#type=SAY_MESSAGE,
+           #parm1=Send(self,@GetCapDef),#parm2=Send(self,@GetName),#parm3=Send(self,@GetHisHer));
       return;
    }
 

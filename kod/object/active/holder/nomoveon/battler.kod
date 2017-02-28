@@ -1368,7 +1368,7 @@ messages:
          amount = Send(Send(SYS,@GetParliament),@ModifyVigorCost,#who=self,#amount=amount);
       }
 
-      if piVigor - amount < 0
+      if piVigor > 0 AND amount >= piVigor
       {
          amount = piVigor;
          piVigor = 0;
@@ -2116,10 +2116,6 @@ messages:
       {
          // We hit!
          iDamage = Send(self,@GetDamage,#what=what,#stroke_obj=stroke_obj);
-         if Send(what,@IsResting)
-         {
-            iDamage *= 2;
-         }
          iScalefactor = 1000;
 
          // Scale damage with chance to hit beyond 100 percent.
@@ -3411,11 +3407,16 @@ messages:
       return pbResting;
    }
 
-   SetSecondWind(i=$)
+   SetSecondWind(i=$,bReset=FALSE)
    {
       if i <> $
       {
          piWind = i;
+      }
+
+      if bReset
+      {
+         piWind = Send(self,@GetSkillAbility,#skill_num=SKID_SECOND_WIND);
       }
 
       Send(self,@NewVigor);

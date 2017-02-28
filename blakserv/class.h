@@ -58,7 +58,8 @@ typedef struct class_struct
    struct class_struct *next; /* for open hash table linked list */
 } class_node;
 
-/* two functions from message.c that need class_node */
+/* Three functions from message.c that need class_node. */
+message_node *GetMessageByIDFast(class_node *c, int message_id, class_node **found_class);
 message_node *GetMessageByID(int class_id,int message_id,class_node **found_class);
 message_node *GetMessageByName(int class_id,char *message_name,class_node **found_class);
 

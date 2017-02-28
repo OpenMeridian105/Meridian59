@@ -488,7 +488,7 @@ int SendBlakodMessage(int object_id,int message_id,int num_parms,parm_node parms
       return NIL;
    }
 
-   m = GetMessageByID(c->class_id,message_id,&c);
+   m = GetMessageByIDFast(c, message_id, &c);
 
    if (m == NULL)
    {

@@ -157,6 +157,36 @@ void SetEachClassMessagesPropagate(class_node *c)
    }
 }
 
+// Assumptions: called by SendBlakodMessage after class check performed.
+// c and found_class hold valid data and don't need to be re-checked.
+// TODO: possible to only send class_node once and return the original value
+// if we don't get a valid message?
+message_node *GetMessageByIDFast(class_node *c, int message_id, class_node **found_class)
+{
+   message_node *m;
+
+   do
+   {
+      if (c->num_messages)
+      {
+         m = c->messages[GetMessageHashNum(message_id)];
+
+         while (m != NULL)
+         {
+            if (m->message_id == message_id)
+            {
+               *found_class = c;
+               return m;
+            }
+            m = m->next;
+         }
+      }
+      c = c->super_ptr;
+   } while (c != NULL);
+
+   return NULL;
+}
+
 message_node *GetMessageByID(int class_id, int message_id, class_node **found_class)
 {
    class_node *c;

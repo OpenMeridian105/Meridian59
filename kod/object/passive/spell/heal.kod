@@ -26,6 +26,10 @@ resources:
       "~g~B%i~B~n hitpoints."
    heal_cast_on_other = "You heal %s%s for ~g~B%i~B~n hitpoints."
    heal_unnecessary_rsc = "%s%s is perfectly healthy."
+   heal_slow_bleeding_rsc = "Shal'ille's holy magic has slowed the bleeding."
+   heal_slow_bleeding_other_rsc = "Shal'ille's holy magic has slowed %s%s's bleeding."
+   heal_stem_bleeding_rsc = "Shal'ille's holy magic has stemmed the bleeding."
+   heal_stem_bleeding_other_rsc = "Shal'ille's holy magic has stemmed %s%s's bleeding."
 
 classvars:
 
@@ -75,6 +79,7 @@ messages:
       }
 
       if Send(oTarget,@GetHealth) >= Send(oTarget,@GetMaxHealth)
+      AND NOT Send(oTarget,@HasOverTimeEffect,#num=SID_BLEED)
       {
          if NOT bItemCast
          {
@@ -91,7 +96,7 @@ messages:
 
    CastSpell(who = $, lTargets = $, iSpellPower = 0)
    {
-      local iHeal, oTarget;
+      local i, iHeal, iDamage, iStrength, iTime, oTarget;
 
       // Skip standard heal code if it's an area effect.
       if vbIsAreaEffect
@@ -111,13 +116,114 @@ messages:
       iHeal = Send(self,@GetHealAmount,#oTarget=oTarget,
                      #iSpellPower=iSpellPower);
 
-      iHeal = Send(oTarget,@GainHealth,#amount=iHeal,#precision=TRUE);
-
       // A little boost for casting on newbies, even if you're the newbie!
       if NOT Send(oTarget,@CheckPlayerFlag,#flag=PFLAG_PKILL_ENABLE)
       {
          iHeal = iHeal + Random(200,500);
       }
+
+      // Try to cure bleed effects first.
+      if Send(oTarget,@HasOverTimeEffect,#num=SID_BLEED)
+      {
+         // Heals remove 2 points of over time damage for every point of heal.
+         iHeal *= 2;
+
+         foreach i in Send(oTarget,@GetOverTimeEffects)
+         {
+            if IsClass(Nth(i,5),&Bleed)
+            {
+               iTime = GetTimeRemaining(First(i));
+               iStrength = Nth(i,3);
+               // The remaining damage to be dealt is a function of the bleed's 
+               //strength and its remaining duration. With the given precision,
+               // we can easily run into the max integer cap. Let's avoid that.
+               // Also keep in mind that iStrength is negative at this point.
+               iDamage = (-iStrength/100) * (iTime/100) - iHeal;
+
+               // Record how much healing we have left. If iHeal is negative,
+               // we weren't strong enough to remove the bleed effect.
+               iHeal = -iDamage;
+
+               // The heal was strong enough to remove the entire bleed effect.
+               // Set it for termination.
+               if iDamage <= 0
+               {
+                  Send(oTarget,@SetOverTimeEffect,#effect=i,#strength=0,#state=0);
+               }
+               // More complicated: Our heal wasn't strong enough to remove the
+               // entire bleed effect. We check how much bleed damage is left and
+               // set our strength, so that that exact amount of damage will be
+               // dealt over the remainder of the time. We set the state to be
+               // reflect the percentage of the original strength.
+               else
+               {
+                  // Don't forget to make sure iStrength is negative.
+                  iStrength = (-iDamage * 100) / (iTime / 100);
+                  Send(oTarget,@SetOverTimeEffect,#effect=i,#strength=iStrength,
+                     #state=100*iStrength/Nth(i,3));
+
+                  // We're spent. No point in going any further.
+                  break;
+               }
+            }
+         }
+
+         // Option 1: We spent all our healing on removing bleed effects.
+         // Tell target and caster what we did and quit.
+         if iHeal < 0
+         {
+            if who <> oTarget
+            {
+               Send(who,@MsgSendUser,#message_rsc=heal_slow_bleeding_other_rsc,
+                  #parm1=Send(oTarget,@GetDef),#parm2=Send(oTarget,@GetName));
+            }
+
+            Send(oTarget,@MsgSendUser,#message_rsc=heal_slow_bleeding_rsc);
+
+            propagate;
+         }
+         // Option 2: We managed to remove all bleed effects, but we don't
+         // have anything left to go on. Say so and get out.
+         else if iHeal < 2
+         {
+            if who <> oTarget
+            {
+               Send(who,@MsgSendUser,#message_rsc=heal_stem_bleeding_other_rsc,
+                  #parm1=Send(oTarget,@GetDef),#parm2=Send(oTarget,@GetName));
+            }
+
+            Send(oTarget,@MsgSendUser,#message_rsc=heal_stem_bleeding_rsc);
+
+            propagate;
+         }
+         // Option 3: Got healing left which means that we removed each
+         // and every bleed effect our target may have had. Tell them.
+         else
+         {
+            if who <> oTarget
+            {
+               Send(who,@MsgSendUser,#message_rsc=heal_stem_bleeding_other_rsc,
+                  #parm1=Send(oTarget,@GetDef),#parm2=Send(oTarget,@GetName));
+            }
+
+            Send(oTarget,@MsgSendUser,#message_rsc=heal_stem_bleeding_rsc);
+
+            // Option 3a: We got some more healing to share, but our
+            // target doesn't need it. Get out.
+            if Send(oTarget,@GetHealth) >= Send(oTarget,@GetMaxHealth)
+            {
+               propagate;
+            }
+            // Option 3b: Got healing left, target needs it. Proceed as
+            // normal but readjust our healing pool.
+            else
+            {
+               iHeal /= 2;
+            }
+         }
+      }
+
+      iHeal = Send(oTarget,@GainHealth,#amount=iHeal,#precision=TRUE);
 
       if who <> oTarget
       {

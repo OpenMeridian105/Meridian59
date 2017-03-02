@@ -1,0 +1,70 @@
+// Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+// All rights reserved.
+//
+// This software is distributed under a license that is described in
+// the LICENSE file that accompanies it.
+//
+// Meridian is a registered trademark.
+
+
+/////////////////////////////////////////////////////////////////////////////////
+Fatigue is Drain
+
+constants:
+
+   include blakston.khd
+
+resources:
+
+   include fatigue.lkod
+
+   fatigue_on = "~k~IFatigue seems to be getting to you."
+   fatigue_off  = "~k~IYou get over your fatigue."
+   fatigue_icon = ifatigue.bgf
+   fatigue_name = "fatigue"
+
+   fatigue_desc = \
+   "You are suffering from a spell of fatigue, slowly draining "
+   "your vigor and your desire to slaughter your foes."
+
+classvars:
+
+   vrIcon = fatigue_icon
+   viShow_enchantment_icon = 0x02
+   vrName = fatigue_name
+   vrDesc = fatigue_desc
+
+   vrEnchantment_On = fatigue_on
+   vrEnchantment_Off = fatigue_off
+
+   viSpell_num = SID_FATIGUE
+   viSchool = SS_FAREN
+
+properties:
+
+messages:
+
+   StartFatigue(who=$,source=0,strength=0,duration=0)
+   "Vigorloss is in units of 10^-3 vigor points per second."
+   "Duration is in milliseconds."
+   {
+      local iFlash;
+
+      Send(who,@StartOverTimeEffect,#strength=-strength,#duration=duration,#what=self,
+         #who=source,#state=100,#type=TYPE_VIGOR,#removable=REMOVE_INTERNAL);
+
+      if IsClass(who,&Player)
+      {
+         Send(who,@MsgSendUser,#message_rsc=vrEnchantment_On);
+
+         // Visual indication of drain effect.
+         iFlash = bound(strength/2,100,2000);
+         Send(who,@EffectSendUserDurationAndXlat,#effect=EFFECT_FLASHXLAT,
+               #duration=iFlash,#xlat=65);
+      }
+
+      return;
+   }
+
+end
+////////////////////////////////////////////////////////////////////////////////

@@ -18,9 +18,9 @@ resources:
 
    include poison.lkod
 
-   poison_start = "Fresh poison courses through your veins like fire."
-   poison_stop  = "The poison abates somewhat."
-   poison_icon = iposoned.bgf
+   poison_on = "Fresh poison courses through your veins like fire."
+   poison_off  = "The poison abates somewhat."
+   poison_icon = ipoison.bgf
    poison_name = "poison"
 
    poison_kraanan = \
@@ -39,8 +39,9 @@ classvars:
    vrName = poison_name
    vrDesc = poison_desc
 
-   vrEnchantment_On = poison_start
-   vrEnchantment_Off = poison_stop
+   vrEnchantment_On = poison_on
+   vrEnchantment_Off = poison_off
+   vrSucceed_wav = poison_sound
 
    viSpell_num = SID_POISON
    viSchool = SS_QOR
@@ -48,30 +49,28 @@ classvars:
    viMana = 10
    viSpell_Exertion = 4
 
-   viFlash = FLASH_BAD
-
-   vrSucceed_wav = poison_sound
+   viFlash = FLASH_NONE
 
    viMeditate_ratio = 0
 
    vbDisease = TRUE
 
-   // Players can't actually cast poison directly
    viOutlaw = FALSE
 
 properties:
 
-   pbAccessible = FALSE
-
 messages:
 
-   GetSpellNum()
+   ShowDesc()
+   "Just the description, please..."
    {
-      return SID_POISON;
+      AddPacket(4,vrDesc);
+
+      return;
    }
 
-   MakePoisoned(who=$,source=$,healthloss=0,manaloss=0,vigorloss=0,duration=0,state=$)
-   "healthloss is in units of 10^-4 health points per second."
+   StartPoison(who=$,source=0,healthloss=0,manaloss=0,vigorloss=0,duration=0,state=$)
+   "Healthloss is in units of 10^-3 health points per second."
    "Duration is in milliseconds."
    {
       local i, oSpell;
@@ -131,21 +130,12 @@ messages:
 
       if IsClass(who,&Player)
       {
-         Send(who,@MsgSendUser,#message_rsc=poison_start);
-         Send(who,@WaveSendUser,#wave_rsc=poison_sound);
-      }
-
-      return;
-   }
-
-   OverTimeEffectWearingOff(who=$,overtimeeffect=$)
-   {
-      if overtimeeffect <> $
-      {
-         if Nth(overtimeeffect,7) = 1
-         {
-            Send(who,@MsgSendUser,#message_rsc=poison_stop);
-         }
+         Send(who,@MsgSendUser,#message_rsc=vrEnchantment_On);
+         Send(who,@WaveSendUser,#wave_rsc=vrSucceed_wav);
+         duration = healthloss + manaloss + vigorloss;
+         duration = bound(duration/2,100,2000);
+         Send(who,@EffectSendUserDurationAndXlat,#effect=EFFECT_FLASHXLAT,
+               #duration=duration,#xlat=86);
       }
 
       return;

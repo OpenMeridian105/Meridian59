@@ -326,6 +326,7 @@ classvars:
    viBonusHealth = 0
    viBonusMana = 0
    viBonusVigor = 0
+   viBonusArmor = 0
 
    // If true, items that are sold actually come out of the monster's
    //inventory. If false, the items in the inventory are inexhaustible
@@ -2550,10 +2551,10 @@ messages:
    }
 
    // Allows monsters to have armor not related to specific equipped items. 
-   // Based on piArmor.
+   // Based on piArmor and viBonusArmor.
    ArmorCheck(what=$,damage=0,atype=0,aspell=0,bonus=0)
    {
-      local iDamageReduce, oAttribute;
+      local iArmor, oAttribute;
 
       foreach oAttribute in plObject_attributes
       {
@@ -2561,13 +2562,13 @@ messages:
             #damage=damage,#atype=atype,#aspell=aspell);
       }
 
-      iDamageReduce = 0;
-      if piArmor <> 0
-      {
-         iDamageReduce = random(piArmor*33,piArmor*100);
-         iDamageReduce = bound(iDamageReduce,0,(damage-100));
-      }
+      // piArmor may be adjusted situationally (e.g. survival room)
+      iArmor = piArmor + viBonusArmor;
 
+      // Randomization simulates hits of differently armored body parts.
+      iArmor = bound(random(iArmor*33,iArmor*100),0,damage);
+
+      // Armor is only fully effective against physical attacks.
       if aspell <> 0
       {
          // Reduce damage if part of the damage is spell
@@ -2575,16 +2576,17 @@ messages:
          {
             // Only 2/3 of the damage reduction if we're doing both weapon
             // and spell damage types.
-            iDamageReduce = iDamageReduce * 2 / 3;
+            iArmor *= 2;
+            iArmor /= 3;
          }
          else
          {
             // If we're doing pure spell damage, we get no reduction.
-            iDamageReduce = 0;
+            iArmor = 0;
          }
       }
       
-      return damage - iDamageReduce;
+      return damage - iArmor;
    }
 
    AssessHit(what = $, stroke_obj = $, damage = $)

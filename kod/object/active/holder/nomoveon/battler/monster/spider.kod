@@ -13,10 +13,6 @@ Spider is Monster
 constants:
 
    include blakston.khd
-   POISON_CHANCE = 30
-   POISON_DURATION = 180000   //// in milliseconds
-   POISON_HEALTHLOSS = 250    //// in health points * 10^-3 / second
-   POISON_VIGORLOSS = 100    //// in vigor points * 10^-3 / second
 
 resources:
 
@@ -28,8 +24,6 @@ resources:
    spider_desc_rsc = \
       "This strangely delicate creature moves with stealth and strikes "
       "with deadly precision."
-   spider_illusion_poisoned = \
-      "%s%s reels as poison from your attack courses through %s veins."
 
    spider_dead_icon_rsc = spiderX.bgf
    spider_dead_name_rsc = "dead spider"
@@ -46,6 +40,13 @@ classvars:
    vrDesc = spider_desc_rsc
    vrDead_icon = spider_dead_icon_rsc
    vrDead_name = spider_dead_name_rsc
+
+   // This monster poisons enemies...
+   viPoisonChance = 3
+   viPoisonStrength = 1000
+   viPoisonDuration = 180000
+   viPoisonHealth = 25
+   viPoisonVigor = 10
 
    viTreasure_type = TID_MEDIUM_TOUGH
    viSpeed = SPEED_AVERAGE
@@ -127,27 +128,6 @@ messages:
       }
 
       propagate;
-   }
-
-   HitSideEffect(what = $, who = $)
-   {
-      local oSpell;
-
-      if Random(1,POISON_CHANCE) = 1
-      {
-         oSpell = Send(SYS,@FindSpellByNum,#num=SID_POISON);
-         Send(oSpell,@StartPoison,#source=self,#who=what,
-               #healthloss=POISON_HEALTHLOSS,#vigorloss=POISON_VIGORLOSS,#duration=POISON_DURATION);
-
-         if who <> $
-         {
-            Send(who,@MsgSendUser,#message_rsc=spider_illusion_poisoned,
-                  #parm1=Send(what,@GetDef),#parm2=Send(what,@GetName),
-                  #parm3=Send(what,@GetHisHer));
-         }
-      }
-
-      return;
    }
 
    IsAlly(target = $)

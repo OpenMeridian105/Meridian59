@@ -14,13 +14,6 @@ constants:
 
    include blakston.khd
 
-   POISON_CHANCE = 15
-   // 30 seconds duration
-   POISON_DURATION = 30000
-   // in health points * 10^-3 / second
-   POISON_HEALTHLOSS = 250
-   POISON_VIGORLOSS = 500    //// in vigor points * 10^-4 / second
-
 resources:
 
    include spdrquen.lkod
@@ -31,8 +24,6 @@ resources:
    spiderqueen_desc_rsc = \
       "The huge egg sac of the queen spider makes her slow and heavy, but "
       "dark intelligence shines in her many red eyes."
-   qspider_illusion_poisoned = \
-      "%s%s reels as poison from your attack courses through %s veins."
 
    spiderqueen_dead_icon_rsc = spdrquX.bgf
    spiderqueen_dead_name_rsc = "dead queen spider"
@@ -50,6 +41,13 @@ classvars:
    vrDesc = spiderqueen_desc_rsc
    vrDead_icon = spiderqueen_dead_icon_rsc
    vrDead_name = spiderqueen_dead_name_rsc
+
+   // This monster poisons enemies...
+   viPoisonChance = 7
+   viPoisonStrength = 1000
+   viPoisonDuration = 30000
+   viPoisonHealth = 25
+   viPoisonVigor = 50
 
    viTreasure_type = TID_SPIDER_QUEEN
    viSpeed = SPEED_NONE
@@ -128,38 +126,24 @@ messages:
 
    HitSideEffect(what = $, who = $)
    {
-      local oSpell, oSpell2;
-
-      if Random(1,POISON_CHANCE) = 1
-      {
-         oSpell = Send(SYS,@FindSpellByNum,#num=SID_POISON);
-         Send(oSpell,@StartPoison,#source=self,#who=what,#healthloss=POISON_HEALTHLOSS,
-               #vigorloss=POISON_VIGORLOSS,#duration=POISON_DURATION);
-
-         if who <> $
-         {
-            Send(who,@MsgSendUser,#message_rsc=qspider_illusion_poisoned,
-                  #parm1=Send(what,@GetDef),#parm2=Send(what,@GetName),
-                  #parm3=Send(what,@GetHisHer));
-         }
-      }
+      local oSpell;
 
       if Random(1,4) = 1
       {
-         oSpell2 = Send(SYS,@FindSpellByNum,#num=SID_SPIDER_WEB);
+         oSpell = Send(SYS,@FindSpellByNum,#num=SID_SPIDER_WEB);
          if who <> $
          {
-            Send(oSpell2,@CastSpell,#who=who,#lTargets=[what],#ispellpower=30,
+            Send(oSpell,@CastSpell,#who=who,#lTargets=[what],#ispellpower=30,
                   #bItemCast=TRUE);
          }
          else
          {
-            Send(oSpell2,@CastSpell,#who=self,
+            Send(oSpell,@CastSpell,#who=self,
                   #lTargets=[poTarget],#ispellpower=100);
          }
       }
 
-      return;
+      propagate;
    }
 
    IsAlly(target = $)

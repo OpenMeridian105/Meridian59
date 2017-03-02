@@ -248,6 +248,16 @@ resources:
    monster_faction_heretic = "Cult of the Three"
    monster_faction_undead = "Minions of Death"
 
+   monster_illusion_poison = \
+      "~k~I%s%s reels as poison from your attack courses through %s veins.%s"
+   monster_illusion_bleed = \
+      "~k~I%s%s groans as you leave a bleeding gash on %s side, dealing ~r%i~k damage."
+   monster_illusion_siphon = \
+      "~k~I%s%s looks distressed as as your attack siphons mana from %s soul.%s"
+   monster_illusion_fatigue = \
+      "~k~I%s%s gasps for air as your attack takes %s breath away.%s"
+   monster_illusion_damage_blank = ""
+
 classvars:
 
    vrKocName = monster_koc_name
@@ -326,6 +336,32 @@ classvars:
    viBonusHealth = 0
    viBonusMana = 0
    viBonusVigor = 0
+
+   // Some monster classes may cause drain effects or poison their enemy.
+   viPoisonChance = 0
+   viPoisonStrength = $
+   viPoisonDuration = $
+   viPoisonVisualEffect = $
+   viPoisonVisualEffectDuration = 0
+   vrPoisonVisualEffectMessage = $
+   // Percentage of poison strength affecting each resource.
+   viPoisonHealth = 100
+   viPoisonMana = 0
+   viPoisonVigor = 0
+   viBleedChance = 0
+   viBleedStrength = $
+   viBleedDuration = $
+   viSiphonChance = 0
+   viSiphonStrength = $
+   viSiphonDuration = $
+   viFatigueChance = 0
+   viFatigueStrength = $
+   viFatigueDuration = $
+
+   vrIllusionPoison = monster_illusion_poison
+   vrIllusionBleed = monster_illusion_bleed
+   vrIllusionSiphon = monster_illusion_siphon
+   vrIllusionFatigue = monster_illusion_fatigue
 
    // If true, items that are sold actually come out of the monster's
    //inventory. If false, the items in the inventory are inexhaustible
@@ -2633,7 +2669,7 @@ messages:
    // This function handles damage done, etc.
    DidDamage(what = $, amount = 0)
    {
-      Send(self,@HitSideEffect,#what=what);
+      Send(self,@HitSideEffect,#what=what,#amount=amount);
 
       return;
    }
@@ -3740,10 +3776,217 @@ messages:
       return;
    }
 
-   HitSideEffect(what=$)
+   // A monster's attack may cause side effects.
+   HitSideEffect(what=$,who=$,amount=0)
    "Called after every non-fatal monster hit"
    {
+      local oEffect, iStrength, iDuration;
+
+      // Who should be nil at this point, unless a player is assuming the form of a monster.
+      if who = $
+      {
+         who = self;
+      }
+
+      // Check for various effects.
+      // Poison: Frequency scales with intellect, strength with intellect, duration with mysticism.
+      if viPoisonChance > 0 and random(1,100) <= bound(viPoisonChance*(50+piIntellect)/75,0,100)
+      {
+         oEffect = Send(SYS,@FindSpellByNum,#num=SID_POISON);
+         iStrength = Send(self,@GetPoisonStrength,#amount=amount);
+         iStrength = iStrength * (50+piIntellect)/75;
+         iDuration = Send(self,@GetPoisonDuration,#amount=amount);
+         iDuration = iDuration * (50+piMysticism)/75;
+         Send(oEffect,@StartPoison,#who=what,#source=who,#duration=iDuration,
+            #healthloss=iStrength*viPoisonHealth/100,#manaloss=iStrength*viPoisonMana/100,
+            #vigorloss=iStrength*viPoisonVigor/100);
+         Send(self,@IllusionHitEffectMessage,#who=who,#what=what,#effect=$,#num=SID_POISON);
+         Send(self,@PoisonVisualEffect,#what=what);
+      }
+
+      // Bleed: Frequency scales with aim, strength with aim, duration with might.
+      if viBleedChance > 0 and random(1,100) <= bound(viBleedChance*(50+piAim)/75,0,100)
+      {
+         oEffect = Send(SYS,@FindSpellByNum,#num=SID_BLEED);
+         iStrength = Send(self,@GetBleedStrength,#amount=amount);
+         iStrength = iStrength * (50+piAim)/75;
+         iDuration = Send(self,@GetBleedDuration,#amount=amount);
+         iDuration = iDuration * (50+piMight)/75;
+         Send(oEffect,@StartBleed,#who=what,#source=who,
+            #strength=iStrength,#duration=iDuration);
+         Send(self,@IllusionHitEffectMessage,#who=who,#what=what,
+            #amount=(iStrength/100)*(iDuration/100)/100,#num=SID_BLEED);
+      }
+
+      // Siphon: Frequency scales with mysticism, strength with mysticism, duration with intellect.
+      if viSiphonChance > 0 and random(1,100) <= bound(viSiphonChance*(50+piMysticism)/75,0,100)
+      {
+         oEffect = Send(SYS,@FindSpellByNum,#num=SID_SIPHON);
+         iStrength = Send(self,@GetSiphonStrength,#amount=amount);
+         iStrength = iStrength * (50+piMysticism)/75;
+         iDuration = Send(self,@GetSiphonDuration,#amount=amount);
+         iDuration = iDuration * (50+piIntellect)/75;
+         Send(oEffect,@StartSiphon,#who=what,#source=who,
+            #strength=iStrength,#duration=iDuration);
+         Send(self,@IllusionHitEffectMessage,#who=who,#what=what,#num=SID_SIPHON);
+      }
+
+      // Fatigue: Frequency scales with might, strength with might, duration with aim.
+      if viFatigueChance > 0 and random(1,100) <= bound(viFatigueChance*(50+piMight)/75,0,100)
+      {
+         oEffect = Send(SYS,@FindSpellByNum,#num=SID_FATIGUE);
+         iStrength = Send(self,@GetFatigueStrength,#amount=amount);
+         iStrength = iStrength * (50+piMight)/75;
+         iDuration = Send(self,@GetFatigueDuration,#amount=amount);
+         iDuration = iDuration * (50+piAim)/75;
+         Send(oEffect,@StartFatigue,#who=what,#source=who,
+            #strength=iStrength,#duration=iDuration);
+         Send(self,@IllusionHitEffectMessage,#who=who,#what=what,#num=SID_FATIGUE);
+      }
+
       return;
+   }
+
+   IllusionHitEffectMessage(who=$,what=$,effect=$,amount=0,num=$)
+   {
+      local rMessage,rAmount;
+
+      if IsClass(who,&Player)
+      {
+         rMessage = $;
+         rAmount = monster_illusion_damage_blank;
+
+         if num = SID_POISON
+         {
+            rMessage = vrIllusionPoison;
+         }
+         if num = SID_BLEED
+         {
+            rMessage = vrIllusionBleed;
+            rAmount = amount;
+         }
+         if num = SID_SIPHON
+         {
+            rMessage = vrIllusionSiphon;
+         }
+         if num = SID_FATIGUE
+         {
+            rMessage = vrIllusionFatigue;
+         }
+
+         if rMessage <> $
+         {
+            Send(who,@MsgSendUser,#message_rsc=rMessage,
+               #parm1=Send(what,@GetCapDef),#parm2=Send(what,@GetName),
+               #parm3=Send(what,@GetHisHer),#parm4=rAmount);
+         }
+      }
+
+      return;
+   }
+
+   GetPoisonStrength(amount=$)
+   {
+      if viPoisonStrength <> $
+      {
+         return viPoisonStrength;
+      }
+
+      // Return a rate of 10% mob damage dealt per second.
+      return Send(self,@GetDamage);
+   }
+
+   GetPoisonDuration(amount=$)
+   {
+      if viPoisonDuration <> $
+      {
+         return viPoisonDuration;
+      }
+
+      // Default duration of 10 seconds.
+      return 10000;
+   }
+
+   PoisonVisualEffect(what=$)
+   {
+      if viPoisonVisualEffect <> $ AND IsClass(what,&Player)
+      {
+         Send(what,@EffectSendUserDuration,#effect=viPoisonVisualEffect,
+            #duration=viPoisonVisualEffectDuration);
+
+         if vrPoisonVisualEffectMessage <> $
+         {
+            Send(what,@MsgSendUser,#message_rsc=vrPoisonVisualEffectMessage);
+         }
+      }
+
+      return;
+   }
+
+   GetBleedStrength(amount=$)
+   {
+      if viBleedStrength <> $
+      {
+         return viBleedStrength;
+      }
+
+      // Return a rate of 10% mob damage dealt per second.
+      return Send(self,@GetDamage);
+   }
+
+   GetBleedDuration(amount=$)
+   {
+      if viBleedDuration <> $
+      {
+         return viBleedDuration;
+      }
+
+      // Default duration of 10 seconds.
+      return 10000;
+   }
+
+   GetSiphonStrength(amount=$)
+   {
+      if viSiphonStrength <> $
+      {
+         return viSiphonStrength;
+      }
+
+      // Return a rate of 10% mob damage dealt per second.
+      return Send(self,@GetDamage);
+   }
+
+   GetSiphonDuration(amount=$)
+   {
+      if viSiphonDuration <> $
+      {
+         return viSiphonDuration;
+      }
+
+      // Default duration of 10 seconds.
+      return 10000;
+   }
+
+   GetFatigueStrength(amount=$)
+   {
+      if viFatigueStrength <> $
+      {
+         return viFatigueStrength;
+      }
+
+      // Return a rate of 10% mob damage dealt per second.
+      return Send(self,@GetDamage);
+   }
+
+   GetFatigueDuration(amount=$)
+   {
+      if viFatigueDuration <> $
+      {
+         return viFatigueDuration;
+      }
+
+      // Default duration of 10 seconds.
+      return 10000;
    }
 
    KilledSomething(what=$,use_weapon=$)

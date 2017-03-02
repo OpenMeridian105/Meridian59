@@ -363,6 +363,12 @@ classvars:
    vrIllusionSiphon = monster_illusion_siphon
    vrIllusionFatigue = monster_illusion_fatigue
 
+   // Some monsters are immune to certain drain effects.
+   vbCanPoison = TRUE
+   vbCanBleed = TRUE
+   vbCanSiphon = TRUE
+   vbCanFatigue = TRUE
+
    // If true, items that are sold actually come out of the monster's
    //inventory. If false, the items in the inventory are inexhaustible
    // templates, and copies are sold.
@@ -3790,7 +3796,9 @@ messages:
 
       // Check for various effects.
       // Poison: Frequency scales with intellect, strength with intellect, duration with mysticism.
-      if viPoisonChance > 0 and random(1,100) <= bound(viPoisonChance*(50+piIntellect)/75,0,100)
+      if viPoisonChance > 0
+      AND random(1,100) <= bound(viPoisonChance*(50+piIntellect)/75,0,100)
+      AND Send(what,@CanPoison)
       {
          oEffect = Send(SYS,@FindSpellByNum,#num=SID_POISON);
          iStrength = Send(self,@GetPoisonStrength,#amount=amount);
@@ -3805,7 +3813,9 @@ messages:
       }
 
       // Bleed: Frequency scales with aim, strength with aim, duration with might.
-      if viBleedChance > 0 and random(1,100) <= bound(viBleedChance*(50+piAim)/75,0,100)
+      if viBleedChance > 0
+      AND random(1,100) <= bound(viBleedChance*(50+piAim)/75,0,100)
+      AND Send(what,@CanBleed)
       {
          oEffect = Send(SYS,@FindSpellByNum,#num=SID_BLEED);
          iStrength = Send(self,@GetBleedStrength,#amount=amount);
@@ -3819,7 +3829,9 @@ messages:
       }
 
       // Siphon: Frequency scales with mysticism, strength with mysticism, duration with intellect.
-      if viSiphonChance > 0 and random(1,100) <= bound(viSiphonChance*(50+piMysticism)/75,0,100)
+      if viSiphonChance > 0
+      AND random(1,100) <= bound(viSiphonChance*(50+piMysticism)/75,0,100)
+      AND Send(what,@CanSiphon)
       {
          oEffect = Send(SYS,@FindSpellByNum,#num=SID_SIPHON);
          iStrength = Send(self,@GetSiphonStrength,#amount=amount);
@@ -3832,7 +3844,9 @@ messages:
       }
 
       // Fatigue: Frequency scales with might, strength with might, duration with aim.
-      if viFatigueChance > 0 and random(1,100) <= bound(viFatigueChance*(50+piMight)/75,0,100)
+      if viFatigueChance > 0
+      AND random(1,100) <= bound(viFatigueChance*(50+piMight)/75,0,100)
+      AND Send(what,@CanFatigue)
       {
          oEffect = Send(SYS,@FindSpellByNum,#num=SID_FATIGUE);
          iStrength = Send(self,@GetFatigueStrength,#amount=amount);
@@ -7696,6 +7710,26 @@ messages:
    "Time ticks differently for monsters."
    {
       return i * TICK_FACTOR_MONSTER / 100;
+   }
+
+   CanPoison()
+   {
+      return vbCanPoison;
+   }
+
+   CanBleed()
+   {
+      return vbCanBleed;
+   }
+
+   CanSiphon()
+   {
+      return vbCanSiphon;
+   }
+
+   CanFatigue()
+   {
+      return vbCanFatigue;
    }
 
 end

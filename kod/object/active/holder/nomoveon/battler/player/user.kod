@@ -5262,6 +5262,17 @@ messages:
                return;
             }
          }
+
+         // Run additional checks if user drank a beta potion
+         if Send(self,@CheckPlayerFlag,#flag=PFLAG2_BETA_POTION,#flagset=2)
+         {
+            // If UserSayBetaPotion handles the string, don't keep checking.
+            if Send(self,@UserSayBetaPotion,#string=string)
+            {
+               return;
+            }
+         }
+
       }
 
       if NOT Send(poOwner,@RoomReqCommunication,#type=type,#string=string,
@@ -5422,6 +5433,62 @@ messages:
       return FALSE;
    }
 
+   UserSayBetaPotion(string = $)
+   {
+      local iSchool, iLevel, iLearnPoints, iMaxLearnPoints;
+
+      if string <> $
+      {
+         iSchool = 0;
+         iLevel = 0;
+         iLearnPoints = 0;
+
+         iSchool = Send(Send(SYS,@GetLore),@CheckSchoolString,#string=string);
+         iLevel = Send(Send(SYS,@GetLore),@CheckLevelString,#string=string);
+
+         if iSchool <> 0 AND iLevel <> 0
+         {
+            // 10 is used for Weaponcraft
+            if iSchool = SKS_FENCING
+            {
+               Send(self,@GivePlayerAllSkills,
+                  #school=iSchool,#level=iLevel,#iability=99,#upto=TRUE);
+            }
+            else if iSchool = SS_SHALILLE 
+               AND Send(self,@GetNumSpellsInSchool,#school=SS_QOR) 
+            {
+               // Can't add Shal'ille when already has Qor.
+               return FALSE;
+            }
+            else if iSchool = SS_QOR 
+               AND Send(self,@GetNumSpellsInSchool,#school=SS_SHALILLE) 
+            {
+               // Can't add Qor when already has Shal'ille.
+               return FALSE;
+            }
+            
+            Send(self,@GivePlayerAllSpells,
+               #school=iSchool,#level=iLevel,#iability=99,#upto=TRUE);
+
+            iMaxLearnPoints = Send(SETTINGS_OBJECT, @GetMaxLearnPoints) +
+               (Send(self,@GetRawIntellect) * 2) / 5;
+            iLearnPoints = Send(self,@GetTotalLearnPoints,#except=0);
+            Post(self,@MsgSendUser,#message_rsc=player_Debug_learnpoints,
+               #parm1=iLearnPoints,#parm2=iMaxLearnPoints);
+
+            // iLearnPoints should always equal iMaxLearnPoints, 
+            // only time it can go over if it is a DM using the potion
+            if iLearnPoints >= iMaxLearnPoints
+            {
+               Send(self,@SetPlayerFlag,
+                  #flag=PFLAG2_BETA_POTION,#value=FALSE,#flagset=2);
+               return TRUE;
+            }
+         }
+      }
+      return;
+   }
+   
    UserSayInventory(string = $)
    {
       local i, lSortInfo, oTemplateItem, n, bFound;

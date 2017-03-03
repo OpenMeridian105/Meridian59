@@ -1,0 +1,71 @@
+// Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+// All rights reserved.
+//
+// This software is distributed under a license that is described in
+// the LICENSE file that accompanies it.
+//
+// Meridian is a registered trademark.
+
+
+/////////////////////////////////////////////////////////////////////////////////
+Siphon is Drain
+
+constants:
+
+   include blakston.khd
+
+resources:
+
+   include siphon.lkod
+
+   siphon_on = "~k~IYou feel your mental energies being siphoned."
+   siphon_off  = "~k~IThe siphon stops."
+   siphon_icon = isiphon.bgf
+   siphon_name = "siphon"
+
+   siphon_desc = \
+   "Your arcane powers are waning with ever passing moment as if siphoned by "
+   "an unseen force.  It looks like your spoon bending days may have come to "
+   "an end."
+
+classvars:
+
+   vrIcon = siphon_icon
+   viShow_enchantment_icon = 0x02
+   vrName = siphon_name
+   vrDesc = siphon_desc
+
+   vrEnchantment_On = siphon_on
+   vrEnchantment_Off = siphon_off
+
+   viSpell_num = SID_SIPHON
+   viSchool = SS_RIIJA
+
+properties:
+
+messages:
+
+   StartSiphon(who=$,source=0,strength=0,duration=0)
+   "Mana loss is in units of 10^-3 mana points per second."
+   "Duration is in milliseconds."
+   {
+      local iFlash;
+
+      Send(who,@StartOverTimeEffect,#strength=-strength,#duration=duration,#what=self,
+         #who=source,#state=100,#type=TYPE_MANA,#removable=REMOVE_INTERNAL);
+
+      if IsClass(who,&Player)
+      {
+         Send(who,@MsgSendUser,#message_rsc=vrEnchantment_On);
+
+         // Visual indication of drain effect.
+         iFlash = bound(strength/2,100,2000);
+         Send(who,@EffectSendUserDurationAndXlat,#effect=EFFECT_FLASHXLAT,
+               #duration=iFlash,#xlat=82);
+      }
+
+      return;
+   }
+
+end
+////////////////////////////////////////////////////////////////////////////////

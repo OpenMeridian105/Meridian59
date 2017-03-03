@@ -14,11 +14,6 @@ constants:
 
    include blakston.khd
 
-   POISON_CHANCE = 6
-   POISON_DURATION = 30000   //// in milliseconds
-   POISON_HEALTHLOSS = 1000    //// in health points * 10^-3 / second
-   POISON_VIGORLOSS = 500    //// in vigor points * 10^-4 / second
-
 resources:
 
    include duskrat.lkod
@@ -37,8 +32,6 @@ resources:
    duskrat_poisoned_add_rsc = \
       "As the poison travels to your head, you begin "
       "to feel a little light-headed.  The room spins around you."
-   duskrat_illusion_poisoned = \
-      "%s%s reels as poison from your attack courses through %s veins."
 
    duskrat_dead_icon_rsc = ratX.bgf
    duskrat_dead_name_rsc = "dead dusk rat"
@@ -57,6 +50,13 @@ classvars:
    vrDead_icon = duskrat_dead_icon_rsc
    vrDead_name = duskrat_dead_name_rsc
    viDead_drawfx = DRAWFX_BLACK
+
+   // This monster poisons enemies...
+   viPoisonChance = 17
+   viPoisonStrength = 1000
+   viPoisonDuration = 30000
+   viPoisonHealth = 100
+   viPoisonVigor = 50
 
    viTreasure_type = TID_RAT
 
@@ -79,6 +79,10 @@ classvars:
    vrSound_miss = duskrat_sound_miss
    vrSound_aware = duskrat_sound_aware
    vrSound_death = duskrat_sound_death
+
+   viPoisonVisualEffect = EFFECT_WAVER
+   viPoisonVisualEffectDuration = 10000
+   vrPoisonVisualEffectMessage = duskrat_poisoned_add_rsc
 
 properties:
 
@@ -155,34 +159,6 @@ messages:
       }
 
       propagate;
-   }
-
-   HitSideEffect(what=$,who=$)
-   {
-      local oSpell;
-
-      if Random(1,POISON_CHANCE) = 1
-      {
-         oSpell = Send(SYS,@FindSpellByNum,#num=SID_POISON);
-         Send(oSpell,@MakePoisoned,#source=self,#who=what,
-               #healthloss=POISON_HEALTHLOSS,#vigorloss=POISON_VIGORLOSS,#duration=POISON_DURATION);
-
-         if IsClass(what,&Player)
-         {
-            Send(what,@EffectSendUserDuration,#effect=EFFECT_WAVER,
-                  #duration=10000);
-            Send(what,@MsgSendUser,#message_rsc=duskrat_poisoned_add_rsc);
-         }
-         
-         if who <> $
-         {
-            Send(who,@MsgSendUser,#message_rsc=duskrat_illusion_poisoned,
-                  #parm1=Send(what,@GetDef),#parm2=Send(what,@GetName),
-                  #parm3=Send(what,@GetHisHer));
-         }
-      }
-
-      return;
    }
 
    IsAlly(target=$)

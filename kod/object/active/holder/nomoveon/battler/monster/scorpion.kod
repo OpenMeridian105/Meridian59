@@ -14,11 +14,6 @@ constants:
 
    include blakston.khd
 
-   POISON_CHANCE = 18
-   POISON_DURATION = 180000   //// in milliseconds
-   POISON_HEALTHLOSS = 350    //// in health points * 10^-3 / second
-   POISON_VIGORLOSS = 100    //// in vigor points * 10^-0 / second
-
 resources:
 
    include scorpion.lkod
@@ -30,8 +25,6 @@ resources:
       "The scorpion's deadly stinger rises high in the air "
       "and its hard plated body protects it from all but the "
       "strongest attacks."
-   scorpion_illusion_poisoned = \
-      "%s%s reels as poison from your attack courses through %s veins."
 
    scorpion_dead_icon_rsc = scorpX.bgf
    scorpion_dead_name_rsc = "dead scorpion"
@@ -49,6 +42,13 @@ classvars:
    vrDesc = scorpion_desc_rsc
    vrDead_icon = scorpion_dead_icon_rsc
    vrDead_name = scorpion_dead_name_rsc
+
+   // This monster poisons enemies...
+   viPoisonChance = 6
+   viPoisonStrength = 1000
+   viPoisonDuration = 180000
+   viPoisonHealth = 35
+   viPoisonVigor = 10
 
    viTreasure_type = TID_MEDIUM_TOUGH
    viSpeed = SPEED_FAST
@@ -109,27 +109,6 @@ messages:
       }
 
       propagate;
-   }
-
-   HitSideEffect(what=$,who=$)
-   {
-      local oSpell;
-
-      if Random(1,POISON_CHANCE) = 1
-      {
-         oSpell = Send(SYS,@FindSpellByNum,#num=SID_POISON);
-         Send(oSpell,@MakePoisoned,#source=self,#who=what,
-               #healthloss=POISON_HEALTHLOSS,#vigorloss=POISON_VIGORLOSS,#duration=POISON_DURATION);
-
-         if who <> $
-         {
-            Send(who,@MsgSendUser,#message_rsc=scorpion_illusion_poisoned,
-                  #parm1=Send(what,@GetDef),#parm2=Send(what,@GetName),
-                  #parm3=Send(what,@GetHisHer));
-         }
-      }
-
-      return;
    }
 
 end

@@ -2131,16 +2131,21 @@ messages:
    {
       local iTimeLeft, i, each_obj;
 
-      // The object still thinks it's with it's old owner.  If it's an item from
-      //   a player, then make sure the items don't disappear immediately.
-      if IsClass(what,&Item)
+      if (ptDispose = $)
+      {
+         // Create a dispose timer if we don't have one already.
+         ptDispose = CreateTimer(self,@DisposeTimer,piDispose_delay);
+      }
+      else if IsClass(what,&Item)
          AND Send(what,@GetOwner) <> $
          AND IsClass(Send(what,@GetOwner),&Player)
       {
+         // The object still thinks it's with it's old owner.  If it's an item
+         // from a player, then make sure the items don't disappear immediately.
          // Check the time currently left on the dipose timer.  Reset the timer
-         //  to a minute if we have less than a minute left.  This should cut
-         //  down on cases of someone dropping an object and it being cleaned up
-         //  immediately afterwards.
+         // to a minute if we have less than a minute left.  This should cut
+         // down on cases of someone dropping an object and it being cleaned up
+         // immediately afterwards.
          iTimeLeft = GetTimeRemaining(ptDispose);
          if iTimeLeft < 60000
          {
@@ -3898,6 +3903,14 @@ messages:
       {
          each_obj = Send(self,@HolderExtractObject,#data=i);
          Send(each_obj,@DestroyDisposable);
+      }
+
+      // Don't need a dispose timer if nothing to dispose.
+      if (NOT pbUser_in_room
+         AND ptDispose <> $)
+      {
+         DeleteTimer(ptDispose);
+         ptDispose = $;
       }
 
       return;

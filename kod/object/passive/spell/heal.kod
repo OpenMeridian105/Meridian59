@@ -27,9 +27,11 @@ resources:
    heal_cast_on_other = "You heal %s%s for ~g~B%i~B~n hitpoints."
    heal_unnecessary_rsc = "%s%s is perfectly healthy."
    heal_slow_bleeding_rsc = "Shal'ille's holy magic has slowed the bleeding."
-   heal_slow_bleeding_other_rsc = "Shal'ille's holy magic has slowed %s%s's bleeding."
+   heal_slow_bleeding_other_rsc = \
+      "Shal'ille's holy magic has slowed %s%s's bleeding."
    heal_stem_bleeding_rsc = "Shal'ille's holy magic has stemmed the bleeding."
-   heal_stem_bleeding_other_rsc = "Shal'ille's holy magic has stemmed %s%s's bleeding."
+   heal_stem_bleeding_other_rsc = \
+      "Shal'ille's holy magic has stemmed %s%s's bleeding."
 
 classvars:
 
@@ -119,7 +121,7 @@ messages:
       // A little boost for casting on newbies, even if you're the newbie!
       if NOT Send(oTarget,@CheckPlayerFlag,#flag=PFLAG_PKILL_ENABLE)
       {
-         iHeal = iHeal + Random(200,500);
+         iHeal += Random(200,500);
       }
 
       // Try to cure bleed effects first.
@@ -160,7 +162,7 @@ messages:
                   // Don't forget to make sure iStrength is negative.
                   iStrength = (-iDamage * 100) / (iTime / 100);
                   Send(oTarget,@SetOverTimeEffect,#effect=i,#strength=iStrength,
-                     #state=100*iStrength/Nth(i,3));
+                        #state=100*iStrength/Nth(i,3));
 
                   // We're spent. No point in going any further.
                   break;
@@ -175,7 +177,7 @@ messages:
             if who <> oTarget
             {
                Send(who,@MsgSendUser,#message_rsc=heal_slow_bleeding_other_rsc,
-                  #parm1=Send(oTarget,@GetDef),#parm2=Send(oTarget,@GetName));
+                     #parm1=Send(oTarget,@GetDef),#parm2=Send(oTarget,@GetName));
             }
 
             Send(oTarget,@MsgSendUser,#message_rsc=heal_slow_bleeding_rsc);
@@ -189,7 +191,7 @@ messages:
             if who <> oTarget
             {
                Send(who,@MsgSendUser,#message_rsc=heal_stem_bleeding_other_rsc,
-                  #parm1=Send(oTarget,@GetDef),#parm2=Send(oTarget,@GetName));
+                     #parm1=Send(oTarget,@GetDef),#parm2=Send(oTarget,@GetName));
             }
 
             Send(oTarget,@MsgSendUser,#message_rsc=heal_stem_bleeding_rsc);
@@ -203,7 +205,7 @@ messages:
             if who <> oTarget
             {
                Send(who,@MsgSendUser,#message_rsc=heal_stem_bleeding_other_rsc,
-                  #parm1=Send(oTarget,@GetDef),#parm2=Send(oTarget,@GetName));
+                     #parm1=Send(oTarget,@GetDef),#parm2=Send(oTarget,@GetName));
             }
 
             Send(oTarget,@MsgSendUser,#message_rsc=heal_stem_bleeding_rsc);

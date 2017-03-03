@@ -307,6 +307,9 @@ messages:
       // If this Battler has Apparitions attacking it, delete them.
       Send(self,@RemoveAllApparitions);
 
+      // Delete any over time effects the battler may have.
+      Send(self,@DeleteOverTimeEffect,#clear=TRUE);
+
       if plHurtMeRecently <> $
       {
          foreach i in plHurtMeRecently
@@ -340,20 +343,6 @@ messages:
          DeleteTimer(ptVigor);
          ptVigor = $;
       }
-
-      foreach i in plOverTimeEffects
-      {
-         if First(i) <> $
-         {
-            if IsTimer(First(i))
-            {
-               DeleteTimer(First(i));
-               SetFirst(i,$);
-            }
-         }
-      }
-
-      plOverTimeEffects = $;
 
       propagate;
    }
@@ -2063,6 +2052,7 @@ messages:
                   if IsTimer(First(i))
                   {
                      DeleteTimer(First(i));
+                     SetFirst(i,$);
                   }
                }
             }

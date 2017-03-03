@@ -7348,22 +7348,32 @@ messages:
       return;
    }
 
-   DistributeBetaPotions(health = 100, healthCap = 100, giveHealth = TRUE)
+   DistributeBetaPotions(health = 100, healthCap = 100, giveHealth = TRUE,
+                         logged_on = TRUE)
    {
-      local i, oBetaPotion;
+      local i, oItem, lGive;
 
-      if health <> 0 AND healthCap <> 0  AND giveHealth <> $
+      if health <> 0 AND healthCap <> 0 AND giveHealth <> $
       {
-         foreach i in plUsers_logged_on
+         if (logged_on)
          {
-            oBetaPotion = Create(&BetaPotion,#health=health, #healthCap=healthCap, #giveHealth=giveHealth);
-            Send(i,@Newhold,#what=oBetaPotion);
+            lGive = plUsers_logged_on;
+         }
+         else
+         {
+            lGive = plUsers;
+         }
+
+         foreach i in lGive
+         {
+            oItem = Create(&BetaPotion,#health=health,#healthCap=healthCap,
+                           #giveHealth=giveHealth);
+            Send(i,@Newhold,#what=oItem);
 
             if Send(i,@IsLoggedOn)
             {
                Send(i,@MsgSendUser,#Message_rsc=system_gift,
-                     #parm1=Send(oBetaPotion,@GetIndef),
-                     #parm2=Send(oBetaPotion,@GetName));
+                     #parm1=Send(oItem,@GetIndef),#parm2=Send(oItem,@GetName));
             }
          }
       }

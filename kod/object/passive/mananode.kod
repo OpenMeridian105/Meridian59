@@ -113,7 +113,7 @@ messages:
    {
       if NOT IsClass(where,&Room)
       {
-         DEBUG("Node::NodeAppear Not a room!");
+         Debug("Node::NodeAppear Not a room!");
 
          return;
       }
@@ -125,20 +125,20 @@ messages:
 
       if poOwner <> $
       {
-         DEBUG("Node::NodeAppear Already has an owner!");
+         Debug("Node::NodeAppear Already has an owner!");
 
          return;
       }
 
       if row = 0 OR col = 0
       {
-         DEBUG("Node::NodeAppear Bad coordinates!");
+         Debug("Node::NodeAppear Bad coordinates!");
 
          return;
       }
 
       Send(where,@NewHold,#what=self,#new_row=row,#new_col=col,
-           #fine_row=fine_row,#fine_col=fine_col);
+            #fine_row=fine_row,#fine_col=fine_col);
 
       return;
    }
@@ -151,7 +151,7 @@ messages:
    {
       if poOwner = $
       {
-         DEBUG("NodeDisappear called with null owner!");
+         Debug("NodeDisappear called with null owner!");
 
          return;
       }
@@ -168,7 +168,7 @@ messages:
    {
       if poOwner = $
       {
-         DEBUG("TryActivate called with nil owner!");
+         Debug("TryActivate called with nil owner!");
 
          return TRUE;
       }
@@ -182,12 +182,12 @@ messages:
 
       if IsClass(who,&User) AND poOwner = Send(who,@GetOwner)
       {
-         if Abs(Send(who,@GetRow)-Send(self,@GetRow)) < MANANODE_RANGE
-            AND Abs(Send(who,@GetCol)-Send(self,@GetCol)) < MANANODE_RANGE
+         if Abs(Send(who,@GetRow) - Send(self,@GetRow)) < MANANODE_RANGE
+            AND Abs(Send(who,@GetCol) - Send(self,@GetCol)) < MANANODE_RANGE
          {
             // If this is the yeti node, the wall must be open.
-            if (IsClass(poOwner,&IceCave1))
-               AND NOT Send(poOwner,@NodeIsAvailable)
+            if (IsClass(poOwner,&IceCave1)
+               AND NOT Send(poOwner,@NodeIsAvailable))
             {
                Send(who,@MsgSendUser,#message_rsc=mananode_yeti_alive);
 
@@ -240,14 +240,15 @@ messages:
       return piNode_num;
    }
 
-   GetManaAdjust(who=$)
+   GetManaAdjust(who = $, myst = 25)
+   "Returns x10 value."
    {
       if piState = NODE_DEAD
       {
          return 0;
       }
 
-      return (((5 + Send(who,@GetMysticism)) / 10) + 3);
+      return (30 + myst);
    }
 
    ReqNewOwner(what = $)
@@ -375,14 +376,10 @@ messages:
          iColor = LIGHT_WHITE;
       }
 
-      AddPacket(2,LIGHT_FLAG_ON);
-      AddPacket(1,iIntensity);
-      AddPacket(2,iColor);
+      AddPacket(2,LIGHT_FLAG_ON, 1,iIntensity, 2,iColor);
 
       return;
    }
 
-
 end
 ////////////////////////////////////////////////////////////////////////////////
-

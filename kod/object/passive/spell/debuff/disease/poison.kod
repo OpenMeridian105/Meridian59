@@ -26,9 +26,9 @@ resources:
    poison_kraanan = \
       "~IKraanan's magic fortifies you against the accursed venom!"
    poison_desc = \
-   "Like fire under your skin, the poison burns with dangerous "
-   "strength, slowly sapping away at your strength, your health, "
-   "and your will to live.  "
+      "Like fire under your skin, the poison burns with dangerous "
+      "strength, slowly sapping away at your strength, your health, "
+      "and your will to live.  "
 
    poison_sound = poisoned.ogg
 
@@ -86,6 +86,7 @@ messages:
          if (Random(1,100) < Send(who,@GetEnchantedState,#what=oSpell))
          {
             Send(who,@MsgSendUser,#message_rsc=poison_kraanan);
+
             return;
          }
       }
@@ -99,7 +100,8 @@ messages:
             state = i * healthloss / 2000;
          }
 
-         Send(who,@StartOverTimeEffect,#strength=-healthloss,#duration=duration,#what=self,#who=source,#type=TYPE_HEALTH,#state=state);
+         Send(who,@StartOverTimeEffect,#strength=-healthloss,#duration=duration,
+               #what=self,#who=source,#type=TYPE_HEALTH,#state=state);
       }
 
       if manaloss > 0
@@ -109,10 +111,12 @@ messages:
             state = i * manaloss / 2000;
          }
 
-         Send(who,@StartOverTimeEffect,#strength=-manaloss,#duration=duration,#what=self,#who=source,#type=TYPE_MANA,#state=state);
+         Send(who,@StartOverTimeEffect,#strength=-manaloss,#duration=duration,
+               #what=self,#who=source,#type=TYPE_MANA,#state=state);
       }
 
-      // Vigor somewhat runs along. It doesn't create an icon and won't report being cleared or dropping off.
+      // Vigor somewhat runs along. It doesn't create an icon
+      // and won't report being cleared or dropping off.
       if vigorloss > 0
       {
          if state = $
@@ -120,8 +124,9 @@ messages:
             state = i * vigorloss / 2000;
          }
 
-         Send(who,@StartOverTimeEffect,#strength=-vigorloss,#duration=duration,#what=self,#who=source,#type=TYPE_VIGOR,
-            #showicon=FALSE,#removable=REMOVE_INTERNAL,#state=state);
+         Send(who,@StartOverTimeEffect,#strength=-vigorloss,#duration=duration,
+               #what=self,#who=source,#type=TYPE_VIGOR,#showicon=FALSE,
+               #removable=REMOVE_INTERNAL,#state=state);
       }
 
       if IsClass(who,&Player)
@@ -129,7 +134,7 @@ messages:
          Send(who,@MsgSendUser,#message_rsc=vrEnchantment_On);
          Send(who,@WaveSendUser,#wave_rsc=vrSucceed_wav);
          duration = healthloss + manaloss + vigorloss;
-         duration = bound(duration/2,100,2000);
+         duration = Bound(duration / 2,100,2000);
          Send(who,@EffectSendUserDurationAndXlat,#effect=EFFECT_FLASHXLAT,
                #duration=duration,#xlat=86);
       }

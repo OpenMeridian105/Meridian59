@@ -22,7 +22,7 @@ resources:
    Councilor_icon_rsc = hermit.bgf
    Councilor_desc_rsc = ""
 
-   blank_spec_rsc=""
+   blank_spec_rsc = ""
    con_token_delivered_rsc = \
       "Thank you. You have done me a great service. %s %s"
    con_duke_delivered_rsc = \
@@ -72,25 +72,32 @@ messages:
 
    CheckWhyWanted(obj=$,who=$)
    {
-      local oMoney,spec_rsc,fact_rsc;
+      local oMoney, iFaction, rFactMsg;
 
       if IsClass(obj,&Token)
       {
+         iFaction = Send(who,@GetFaction);
 
-         spec_rsc=Send(self,@CheckSpecialDeliverer,#who=who);
-
-         if Send(who,@GetFaction)=FACTION_DUKE
-         { fact_rsc=Con_duke_delivered_rsc;}
-         if Send(who,@GetFaction)=FACTION_NEUTRAL
-         { fact_rsc=Con_neutral_delivered_rsc;}
-         if Send(who,@GetFaction)=FACTION_PRINCESS
-         { fact_rsc=Con_princess_delivered_rsc;}
-         if Send(who,@GetFaction)=FACTION_REBEL
-         { fact_rsc=Con_rebel_delivered_rsc;}
+         if iFaction = FACTION_DUKE
+         {
+            rFactMsg = Con_duke_delivered_rsc;
+         }
+         else if iFaction = FACTION_NEUTRAL
+         {
+            rFactMsg = Con_neutral_delivered_rsc;
+         }
+         else if iFaction = FACTION_PRINCESS
+         {
+            rFactMsg = Con_princess_delivered_rsc;
+         }
+         else if iFaction = FACTION_REBEL
+         {
+            rFactMsg = Con_rebel_delivered_rsc;
+         }
 
          Post(poOwner,@SomeoneSaid,#what=self,#type=SAY_RESOURCE,
-               #string=Con_token_delivered_rsc,
-               #parm1=fact_rsc,#parm2=spec_rsc);
+               #string=Con_token_delivered_rsc,#parm1=rFactMsg,
+               #parm2=Send(self,@CheckSpecialDeliverer,#who=who));
 
          return TRUE;
       }
@@ -110,19 +117,19 @@ messages:
 
    GotoHomeroom()
    {
-      local room;
+      local oRoom;
 
-      room = Send(SYS,@FindRoomByNum,#num=viHomeroom);
-      if room=$
+      oRoom = Send(SYS,@FindRoomByNum,#num=viHomeroom);
+      if oRoom = $
       {
          Debug("FindRoombyNum num=",viHomeroom,"returned null");
 
          return;
       }
 
-      Send(room,@teleport,#what=self);
-      Send(room,@SomethingMoved,#what=self,#new_row=viMyRow,#new_col=viMyCol);
-      Send(room,@SomethingTurned,#what=self,#new_angle=viMyAngle);
+      Send(oRoom,@Teleport,#what=self);
+      Send(oRoom,@SomethingMoved,#what=self,#new_row=viMyRow,#new_col=viMyCol);
+      Send(oRoom,@SomethingTurned,#what=self,#new_angle=viMyAngle);
 
       return;
    }

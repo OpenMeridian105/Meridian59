@@ -133,7 +133,7 @@ messages:
          return TRUE;
       }
 
-      if IsClass(who,&User) AND poOwner = send(who,@GetOwner)
+      if IsClass(who,&User) AND poOwner = Send(who,@GetOwner)
       {
          if Abs(Send(who,@GetRow) - Send(self,@GetRow)) < CORPSENODE_RANGE
             AND Abs(Send(who,@GetCol) - Send(self,@GetCol)) < CORPSENODE_RANGE
@@ -165,8 +165,6 @@ messages:
 
    Meld(who=$)
    {
-      local mysticism;
-
       Send(who,@MsgSendUser,#message_rsc=corpsenode_meld);
       Send(who,@WaveSendUser,#wave_rsc=uworld_meld_sound);
       Send(who,@ConnectManaNode,#node_num=piNode_num);
@@ -186,9 +184,10 @@ messages:
       return piNode_num;
    }
 
-   GetManaAdjust(who=$)
+   GetManaAdjust(who = $, myst = 25)
+   "Returns x10 value, caller must scale down to use it."
    {
-      return (((5 + Send(who,@GetMysticism)) / 10) + 3);
+      return (30 + myst);
    }
 
    ReqNewOwner(what = $)

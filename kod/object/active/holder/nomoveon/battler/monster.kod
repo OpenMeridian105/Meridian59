@@ -3786,69 +3786,73 @@ messages:
 
    // A monster's attack may cause side effects.
    HitSideEffect(what=$,who=$,amount=0)
-   "Called after every non-fatal monster hit"
+   "Called after every non-fatal monster hit."
    {
       local oEffect, iStrength, iDuration;
 
-      // Who should be nil at this point, unless a player is assuming the form of a monster.
+      // Who should be nil at this point, unless a player
+      // is assuming the form of a monster.
       if who = $
       {
          who = self;
       }
 
       // Check for various effects.
-      // Poison: Frequency scales with intellect, strength with intellect, duration with mysticism.
+      // Poison: Frequency scales with intellect, strength with intellect,
+      // duration with mysticism.
       if viPoisonChance > 0
-      AND random(1,100) <= bound(viPoisonChance*(50+piIntellect)/75,0,100)
-      AND Send(what,@CanPoison)
+         AND Random(1,100) <= Bound(viPoisonChance * (50 + piIntellect) / 75,0,100)
+         AND Send(what,@CanPoison)
       {
          oEffect = Send(SYS,@FindSpellByNum,#num=SID_POISON);
          iStrength = Send(self,@GetPoisonStrength,#amount=amount);
-         iStrength = iStrength * (50+piIntellect)/75;
+         iStrength = iStrength * (50 + piIntellect) / 75;
          iDuration = Send(self,@GetPoisonDuration,#amount=amount);
-         iDuration = iDuration * (50+piMysticism)/75;
+         iDuration = iDuration * (50 + piMysticism) / 75;
          Send(oEffect,@StartPoison,#who=what,#source=who,#duration=iDuration,
-            #healthloss=iStrength*viPoisonHealth/100,#manaloss=iStrength*viPoisonMana/100,
-            #vigorloss=iStrength*viPoisonVigor/100);
-         Send(self,@IllusionHitEffectMessage,#who=who,#what=what,#effect=$,#num=SID_POISON);
+               #healthloss=iStrength * viPoisonHealth / 100,
+               #manaloss=iStrength * viPoisonMana / 100,
+               #vigorloss=iStrength * viPoisonVigor / 100);
+         Send(self,@IllusionHitEffectMessage,#who=who,#what=what,
+               #effect=$,#num=SID_POISON);
          Send(self,@PoisonVisualEffect,#what=what);
       }
 
       // Bleed: Frequency scales with aim, strength with aim, duration with might.
       if viBleedChance > 0
-      AND random(1,100) <= bound(viBleedChance*(50+piAim)/75,0,100)
-      AND Send(what,@CanBleed)
+         AND Random(1,100) <= Bound(viBleedChance * (50 + piAim) / 75,0,100)
+         AND Send(what,@CanBleed)
       {
          oEffect = Send(SYS,@FindSpellByNum,#num=SID_BLEED);
          iStrength = Send(self,@GetBleedStrength,#amount=amount);
-         iStrength = iStrength * (50+piAim)/75;
+         iStrength = iStrength * (50 + piAim) / 75;
          iDuration = Send(self,@GetBleedDuration,#amount=amount);
-         iDuration = iDuration * (50+piMight)/75;
+         iDuration = iDuration * (50 + piMight) / 75;
          Send(oEffect,@StartBleed,#who=what,#source=who,
-            #strength=iStrength,#duration=iDuration);
+               #strength=iStrength,#duration=iDuration);
          Send(self,@IllusionHitEffectMessage,#who=who,#what=what,
-            #amount=(iStrength/100)*(iDuration/100)/100,#num=SID_BLEED);
+               #amount=(iStrength/100)*(iDuration/100)/100,#num=SID_BLEED);
       }
 
       // Siphon: Frequency scales with mysticism, strength with mysticism, duration with intellect.
       if viSiphonChance > 0
-      AND random(1,100) <= bound(viSiphonChance*(50+piMysticism)/75,0,100)
-      AND Send(what,@CanSiphon)
+         AND Random(1,100) <= Bound(viSiphonChance * (50 + piMysticism) / 75,0,100)
+         AND Send(what,@CanSiphon)
       {
          oEffect = Send(SYS,@FindSpellByNum,#num=SID_SIPHON);
          iStrength = Send(self,@GetSiphonStrength,#amount=amount);
-         iStrength = iStrength * (50+piMysticism)/75;
+         iStrength = iStrength * (50 + piMysticism) / 75;
          iDuration = Send(self,@GetSiphonDuration,#amount=amount);
-         iDuration = iDuration * (50+piIntellect)/75;
+         iDuration = iDuration * (50 + piIntellect) / 75;
          Send(oEffect,@StartSiphon,#who=what,#source=who,
-            #strength=iStrength,#duration=iDuration);
+               #strength=iStrength,#duration=iDuration);
          Send(self,@IllusionHitEffectMessage,#who=who,#what=what,#num=SID_SIPHON);
       }
 
       // Fatigue: Frequency scales with might, strength with might, duration with aim.
       if viFatigueChance > 0
-      AND random(1,100) <= bound(viFatigueChance*(50+piMight)/75,0,100)
-      AND Send(what,@CanFatigue)
+         AND Random(1,100) <= Bound(viFatigueChance * (50 + piMight) / 75,0,100)
+         AND Send(what,@CanFatigue)
       {
          oEffect = Send(SYS,@FindSpellByNum,#num=SID_FATIGUE);
          iStrength = Send(self,@GetFatigueStrength,#amount=amount);
@@ -3856,7 +3860,7 @@ messages:
          iDuration = Send(self,@GetFatigueDuration,#amount=amount);
          iDuration = iDuration * (50+piAim)/75;
          Send(oEffect,@StartFatigue,#who=what,#source=who,
-            #strength=iStrength,#duration=iDuration);
+               #strength=iStrength,#duration=iDuration);
          Send(self,@IllusionHitEffectMessage,#who=who,#what=what,#num=SID_FATIGUE);
       }
 
@@ -3865,11 +3869,10 @@ messages:
 
    IllusionHitEffectMessage(who=$,what=$,effect=$,amount=0,num=$)
    {
-      local rMessage,rAmount;
+      local rMessage, rAmount;
 
       if IsClass(who,&Player)
       {
-         rMessage = $;
          rAmount = monster_illusion_damage_blank;
 
          if num = SID_POISON
@@ -3893,8 +3896,8 @@ messages:
          if rMessage <> $
          {
             Send(who,@MsgSendUser,#message_rsc=rMessage,
-               #parm1=Send(what,@GetCapDef),#parm2=Send(what,@GetName),
-               #parm3=Send(what,@GetHisHer),#parm4=rAmount);
+                  #parm1=Send(what,@GetCapDef),#parm2=Send(what,@GetName),
+                  #parm3=Send(what,@GetHisHer),#parm4=rAmount);
          }
       }
 

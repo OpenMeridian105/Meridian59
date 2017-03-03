@@ -83,6 +83,8 @@ Bool HandleInvalidateData(char *ptr,long len);
 Bool HandleWait(char *ptr,long len);
 Bool HandleUnwait(char *ptr,long len);
 Bool HandleLook(char *ptr,long len);
+Bool HandleLookSpell(char *ptr,long len);
+Bool HandleLookSkill(char *ptr, long len);
 Bool HandleUse(char *ptr,long len);
 Bool HandleUnuse(char *ptr,long len);
 Bool HandleUseList(char *ptr,long len);

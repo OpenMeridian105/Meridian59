@@ -89,7 +89,13 @@ resources:
    spell_silenced_rsc = "Your words catch in your throat and you cannot speak."
 
    spell_fail_wav = spelfail.ogg
-   spell_desc_rsc = "SCHOOL : %s         LEVEL : %i \n\n%s%s%s%r%r%r"
+   spell_desc_school = "SCHOOL : %s"
+   spell_desc_level = "LEVEL : %i"
+   spell_desc_mana = "MANA : %i"
+   spell_desc_vigor = "VIGOR : %i"
+   spell_desc_rsc = "%s%s%s%r%r%r%r"
+   spell_reg_desc = "\n\nRequired reagents:%r"
+   spell_reg_one = "\n   %i %s"
    spell_school_riija = "Riija"
    spell_school_shalille = "Shal'ille"
    spell_school_qor = "Qor"
@@ -336,14 +342,18 @@ messages:
       return rSchool;
    }
 
+   // WARNING: Spells display a custom description, don't override this
+   // message unless you are sure you know what the effect will be if a
+   // user tries to look at the overridden spell's description.
    ShowDesc(who=$)
    {
       local rSchool, rOutlaw, rExtra;
 
       if viSchool <> SS_DM_COMMAND
+         AND pbCanBeLearned
       {
          rSchool = Send(self,@GetSchoolStr);
-      
+
          rOutlaw = spell_nothing;
          if viOutlaw
          {
@@ -352,25 +362,71 @@ messages:
 
          rExtra = Send(self,@GetExtraDesc);
 
-         AddPacket(4,spell_desc_rsc, 4,rSchool, 4,viSpell_Level, 4,vrDesc,
-                   4,rOutlaw, 4,rExtra);
+         // First send spell data for special desc box.
+         AddPacket(4,spell_desc_school, 4, rSchool,
+                   4,spell_desc_level, 4, viSpell_Level,
+                   4,spell_desc_mana, 4,viMana,
+                   4,spell_desc_vigor, 4,viSpellExertion,
+                   4,spell_desc_rsc, 4,vrDesc, 4,rOutlaw, 4,rExtra);
 
+         Send(self,@SendTPCost,#who=who);
+         Send(self,@SendReagentCost,#who=who);
          Send(self,@SendStatsDesc,#who=who);
          Send(self,@SendTimeDesc,#who=who);
 
-         if piMeditate_ratio = 0
-         {
-            AddPacket(4,spell_nothing);
-         }
-         else
-         {
-            AddPacket(4,spell_meditate_ratio_rsc,4,piMeditate_ratio);
-         }
+         return;
+      }
+
+      propagate;
+   }
+
+   SendTPCost(who = $)
+   {
+      if piMeditate_ratio = 0
+      {
+         AddPacket(4,spell_nothing);
+      }
+      else
+      {
+         AddPacket(4,spell_meditate_ratio_rsc,4,piMeditate_ratio);
+      }
+
+      return;
+   }
+
+   SendReagentCost(who = $)
+   {
+      local i, lTemplates, iLen, iNumber, oItem;
+
+      if plReagents = $
+      {
+         AddPacket(4,spell_blank);
 
          return;
       }
-      
-      propagate;
+
+      lTemplates = Send(SYS,@GetItemTemplates);
+
+      if (lTemplates = $)
+      {
+         AddPacket(4,spell_blank);
+
+         return;
+      }
+
+      iLen = Length(plReagents);
+
+      AddPacket(4,spell_reg_desc, 4,Send(SYS,@AddResourceTemplate,#iNum=iLen));
+
+      foreach i in plReagents
+      {
+         oItem = GetListElemByClass(lTemplates,First(i));
+         iNumber = Nth(i,2);
+         AddPacket(4, spell_reg_one, 4,iNumber,
+                   4, Send(oItem,@GetName,#number=iNumber));
+      }
+
+      return;
    }
 
    SendTimeDesc()

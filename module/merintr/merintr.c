@@ -1572,7 +1572,7 @@ Bool HandleLookPlayer(char *ptr, long len)
    if (len != 0)
       return False;
 
-   DisplayDescription(&obj, flags, desc, fixed, url);
+   DisplayDescription(&obj, flags, desc, fixed, url, NULL, 0, 0, 0);
    ObjectDestroy(&obj);
    return True;
 }

@@ -5926,7 +5926,7 @@ messages:
 
    SendLook(what = $, bShow_All = FALSE)
    {
-      local byInscription, oOwner;
+      local byInscription, oOwner, bAbility;
 
       if pbLogged_on
       {
@@ -5947,30 +5947,56 @@ messages:
             return;
          }
 
-         AddPacket(1,BP_LOOK);
+         // Show special description for non-DM spells that
+         // players can learn.
+         if (IsClass(what,&Spell)
+            AND NOT (Send(what,@GetSchool) = SS_DM_COMMAND)
+            AND Send(what,@CanBeLearned))
+         {
+            bAbility = TRUE;
+            AddPacket(1,BP_LOOK_SPELL);
+         }
+         else if (IsClass(what,&Skill))
+         {
+            bAbility = TRUE;
+            AddPacket(1,BP_LOOK_SKILL);
+         }
+         else
+         {
+            bAbility = FALSE;
+            AddPacket(1,BP_LOOK);
+         }
+
          Send(self,@ToCliObject,#what=what,#show_type=SHOW_LOOK,
-              #bShow_All=bShow_All);
+               #bShow_All=bShow_All);
 
-         byInscription = 0x00;
-         oOwner = Send(what,@GetOwner);
-         if Send(what,@HasInscription)
+         if (bAbility)
          {
-            byInscription |= 0x02;
+            // Must add School, level, mana, vigor costs first.
+            Send(what,@ShowDesc,#bShowAll = bShow_All,#who=self);
          }
-
-         if Send(what,@CanEditInscription)
-            AND (oOwner = self OR oOwner = poOwner)
+         else
          {
-            byInscription |= 0x01;
-         }
+            byInscription = 0x00;
+            oOwner = Send(what,@GetOwner);
+            if Send(what,@HasInscription)
+            {
+               byInscription |= 0x02;
+            }
 
-         AddPacket(1, byInscription);
+            if Send(what,@CanEditInscription)
+               AND (oOwner = self OR oOwner = poOwner)
+            {
+               byInscription |= 0x01;
+            }
 
-         Send(what,@ShowDesc,#bShowAll = bShow_All,#who=self);
+            AddPacket(1, byInscription);
+            Send(what,@ShowDesc,#bShowAll = bShow_All,#who=self);
 
-         if (byInscription)
-         {
-            Send(what,@ShowInscription);
+            if (byInscription)
+            {
+               Send(what,@ShowInscription);
+            }
          }
 
          SendPacket(poSession);

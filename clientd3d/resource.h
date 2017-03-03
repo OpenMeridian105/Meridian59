@@ -142,10 +142,12 @@
 #define IDD_DOWNLOAD                    122
 #define IDS_GUESTFULL                   122
 #define IDD_PASSWORD                    123
+#define IDD_DESCSPELL                   124
 #define IDC_TARGETCURSOR                125
 #define IDD_TIMEOUT                     126
 #define IDD_REGISTER                    127
 #define IDD_ADMINNOTE                   128
+#define IDD_DESCSKILL                   129
 #define IDS_NOSELLERS                   128
 #define IDS_NOOFFERERS                  129
 #define IDS_NOBROWSER                   130
@@ -253,6 +255,10 @@
 #define IDC_PARITYNONE                  1026
 #define IDC_PARITYEVEN                  1027
 #define IDC_PARITYODD                   1028
+#define IDC_DESCSCHOOLNAME              1029
+#define IDC_DESCSPELLLEVEL              1030
+#define IDC_DESCMANACOST                1031
+#define IDC_DESCVIGORCOST               1032
 #define IDC_INITSTR                     1033
 #define IDC_BAUD38400                   1034
 #define IDC_NUMBER                      1035

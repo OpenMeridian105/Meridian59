@@ -31,7 +31,9 @@ resources:
    
    skill_sound_fail = spelfail.ogg
 
-   skill_desc_rsc = "SCHOOL : %s         LEVEL : %i \n\n%s%r%r"
+   skill_desc_school = "SCHOOL : %s"
+   skill_desc_level = "LEVEL : %i"
+   skill_desc_rsc = "%s%r%r"
    skill_school_weaponcraft = "Weaponcraft"
    skill_school_rogue = "Roguery"
    skill_school_dm = "DM"
@@ -58,10 +60,12 @@ classvars:
 
    viSkill_level = 1
 
-   // Initial chance to increase, modified by Intellect.   
+   // Initial chance to increase, modified by Intellect.
    viChance_to_Increase = 25
-   // This is NOT the same as the chance to increase. This determines how many training points a player needs to spend per improvement.
-   // So it's not x improvements in 100 attempts, but 1 improvement per X points.
+
+   // This is NOT the same as the chance to increase. This determines how
+   // many training points a player needs to spend per improvement. So it's
+   // not x improvements in 100 attempts, but 1 improvement per X points.
    viMeditate_ratio = 100
 
    viskillExertion = 2
@@ -106,28 +110,31 @@ messages:
    GetSchoolStr(iSchool=-1)
    {
       local rSchool;
-      
+
       if iSchool = -1
       {
          iSchool = viSchool;
       }
-      
-      if viSchool = SKS_DM
+
+      if iSchool = SKS_WEAPONCRAFT
+      {
+         rSchool = skill_school_weaponcraft;
+      }
+      else if iSchool = SKS_DM
       {
          rSchool = skill_school_dm;
       }
-      else if viSchool = SKS_ROGUE
+      else if iSchool = SKS_ROGUE
       {
          rSchool = skill_school_rogue;
-      }
-      else
-      {
-         rSchool = skill_school_weaponcraft;
       }
 
       return rSchool;
    }
 
+   // WARNING: Skills display a custom description, don't override this
+   // message unless you are sure you know what the effect will be if a
+   // user tries to look at the overridden skill's description.
    ShowDesc(who=$)
    {
       local rSchool;
@@ -145,12 +152,14 @@ messages:
          rSchool = skill_school_weaponcraft;
       }
 
-      // Base description.
-      AddPacket(4,skill_desc_rsc, 4,rSchool, 4,viSkill_Level, 4,vrDesc);
+      // Skill info, then description.
+      AddPacket(4,skill_desc_school, 4,rSchool,
+                4,skill_desc_level,4,viSkill_level,
+                4,skill_desc_rsc, 4,vrDesc);
 
       // Add time resource if appropriate.
       Send(self,@SendTimeDesc,#who=who);
-      
+
       // Add meditate ratio.
       if piMeditate_ratio = 0
       {
@@ -173,15 +182,14 @@ messages:
 
    GetValue()
    {
-      local i,j;
+      local i, j;
 
       i = 1;
       j = 2;
 
-      while i < viSkill_level
+      while i++ < viSkill_level
       {
-         j = j * 2;
-         i = i + 1;
+         j *= 2;
       }
 
       return 250 * j;
@@ -191,7 +199,7 @@ messages:
    {
       return viSchool;
    }
-   
+
    KarmaCheck()
    {
       return TRUE;
@@ -206,7 +214,7 @@ messages:
    {
       return Send(who,@GetAgility);
    }
-   
+
    GetPrimaryStat()
    {
       if (viSkill_Num = SKID_DEFAULT)
@@ -216,7 +224,7 @@ messages:
       {
          return STAT_ID_MIGHT;
       }
-   
+
       if (viSkill_Num = SKID_SECOND_WIND)
       {
          return STAT_ID_STAMINA;
@@ -248,7 +256,7 @@ messages:
       
       return;
    }
-   
+
    GetSkillNum()
    {
       return viSkill_Num;
@@ -271,7 +279,7 @@ messages:
 
       iRequisiteStat = Send(self,@GetRequisiteStat,#who=who);
 
-      return bound(random(iRequisiteStat/2,iRequisiteStat)/2,1,25);
+      return Bound(Random(iRequisiteStat/2,iRequisiteStat)/2,1,25);
    }
 
    GetMeditateRatio()
@@ -292,6 +300,7 @@ messages:
    ResetMeditateRatio()
    {
       piMeditate_ratio = viMeditate_ratio;
+
       return;
    }
 
@@ -307,7 +316,8 @@ messages:
          return FALSE;
       }
 
-      if not Send(who,@HasVigor,#amount=viSkillExertion) and vbCheck_Exertion = TRUE
+      if NOT Send(who,@HasVigor,#amount=viSkillExertion)
+         AND vbCheck_Exertion = TRUE
       {
          Send(who,@MsgSendUser,#message_rsc=skill_too_tired,#parm1=vrName);
 
@@ -319,7 +329,7 @@ messages:
       if oTarget <> $ AND oOwner <> Send(oTarget,@GetOwner)
       {
          Send(who,@MsgSendUser,#message_rsc=skill_out_of_range, 
-              #parm1=Send(oTarget,@GetCapDef),#parm2=Send(oTarget,@GetName));
+               #parm1=Send(oTarget,@GetCapDef),#parm2=Send(oTarget,@GetName));
 
          return FALSE;
       }
@@ -332,17 +342,17 @@ messages:
 
    SuccessChance(who=$,modifier=0)
    "For strokes, this is always true, because stroke success is figured in"
-   "other procedures of player kod."
-   "Modifier indicates the plusses (or minuses, if negative) to apply to the chance"
+   "other procedures of player kod.  Modifier indicates the plusses "
+   "(or minuses, if negative) to apply to the chance"
    {
       local iRequisiteStat,iAbility,num;
 
       iRequisiteStat = Send(self,@GetRequisiteStat,#who=who);
       iAbility = Send(who,@GetSkillAbility,#skill_num=viSkill_num);
       num = ((100-iRequisiteStat)*iAbility/100) + iRequisiteStat;
-      num = num + modifier;
+      num += modifier;
 
-      if random(1,100) > num
+      if Random(1,100) > num
       {
          return FALSE;
       }
@@ -409,13 +419,13 @@ messages:
    "and the level the player has already acquired."
    {
       local difficulty, iability, intellect, requisitestat, increase_chance,
-            iRandom, iInitialChance, oOwner;
+            iInitialChance, oOwner;
 
-      // Monsters can cast spells, can't improve in them   
+      // Monsters can cast spells, can't improve in them
       if NOT IsClass(who,&Player)
       {
          return FALSE;
-      }     
+      }
 
       // players can't advance on anything they can choose to
       //  generate: revenants and illusions
@@ -437,9 +447,8 @@ messages:
       }
 
       iInitialChance = Send(self,@GetInitialChance,#who=who);
-      iRandom = random(1,100);
-      
-      if iRandom > iInitialChance
+
+      if Random(1,100) > iInitialChance
       {
          return FALSE;
       }
@@ -449,14 +458,15 @@ messages:
       {
          return FALSE;
       }
- 
-      increase_chance = Send(self,@GetSecondaryChance,#who=who,#target=target,#bonus=bonus);
+
+      increase_chance = Send(self,@GetSecondaryChance,#who=who,#target=target,
+                              #bonus=bonus);
 
       oOwner = Send(who,@GetOwner);
       if oOwner <> $
       {
          increase_chance = Send(oOwner,@ModifyChanceToImprove,#who=who,
-                                #oSpellSkill=self,#chance=increase_chance);
+                                 #oSpellSkill=self,#chance=increase_chance);
       }
 
       // For times when it's simply impossible to improve.
@@ -466,11 +476,10 @@ messages:
       }
 
       RequisiteStat = Send(self,@GetRequisiteStat,#who=who);
-      increase_chance = bound(increase_chance,(1+requisitestat/10),99);
-      
-      iRandom = random(0,100);
-      if iRandom < increase_chance
-      {         
+      increase_chance = Bound(increase_chance,(1+requisitestat/10),99);
+
+      if Random(0,100) < increase_chance
+      {
          Send(who,@ChangeSkillAbility,#skill_num=viskill_Num,#amount=1,#report=TRUE);
          Post(who,@DrawOffense);
          Post(who,@DrawDefense);
@@ -484,42 +493,43 @@ messages:
 
          return TRUE;
       }
-      
+
       return FALSE;
    }
 
    GetInitialChance(who=$)
    {
-      local iBonus, iFaction, iFinal;
+      local iBonus, iFaction;
 
-      // Give up to a 50// bonus to the initial chance to learn for high intellect.
+      // Give up to a 50% bonus to the initial chance to learn for high intellect.
       iBonus = (viChance_to_increase * Send(who,@GetIntellect)) / 100;
 
-      iBonus = iBonus + Send(Send(SYS,@GetParliament),@GetFactionLearnBonus,
-                             #who=who,#theskill=self);
+      iBonus += Send(Send(SYS,@GetParliament),@GetFactionLearnBonus,
+                     #who=who,#theskill=self);
 
-      iFinal = (viChance_to_increase + iBonus);
-
-      return iFinal;
+      return (viChance_to_increase + iBonus);
    }
 
    GetSecondaryChance(who=$,target=$,bonus=0)
    {
       local difficulty, iAbility, iRequisiteStat, increase_chance, factor, final;
-      
+
       iRequisiteStat = Send(self,@GetRequisiteStat,#who=who);
 
-      // 110// base chance at 1st level for 50 requisite stat
-      increase_chance = 60 + iRequisiteStat;      
-      increase_chance = increase_chance - (Send(self,@GetLevel) * 10);
-      
-      // This is the penalty for generalization
-      increase_chance = increase_chance - Send(who,@GetTotalLearnPoints,#except=SKS_WEAPONCRAFT);
+      // 110% base chance at 1st level for 50 requisite stat
+      increase_chance = 60 + iRequisiteStat - (Send(self,@GetLevel) * 10);
 
-      difficulty = 60;
-      if target <> $ AND IsClass(target,&Monster)
+      // This is the penalty for generalization
+      increase_chance -= Send(who,@GetTotalLearnPoints,#except=SKS_WEAPONCRAFT);
+
+      if target <> $
+         AND IsClass(target,&Monster)
       {
-         difficulty = bound(Send(target,@GetLevel),1,150);
+         difficulty = Bound(Send(target,@GetLevel),1,150);
+      }
+      else
+      {
+         difficulty = 60;
       }
 
       iAbility = Send(who,@GetSpellAbility,#spell_num=viSkill_num);
@@ -528,18 +538,18 @@ messages:
       //  a better chance to imp on harder monsters.  Adding 10 to compensate
       //  for losing the "knowing more in the school" bonus.
       factor = ((2*difficulty) - (iAbility) + 10);
-      factor = bound(factor,50,100);
+      factor = Bound(factor,50,100);
 
       final = (increase_chance * factor)/100;
-      final = bound(final,5,$);
+      final = Bound(final,5,$);
 
       // Are we above the spells requisite stat?  Apply the "soft cap".
-      if iability > ((2*iRequisiteStat)-1)
+      if iability > ((2 * iRequisiteStat) - 1)
       {
-         final = final / bound(Send(SETTINGS_OBJECT,@GetSkillSoftcapPenalty),1,$);
+         final /= Bound(Send(SETTINGS_OBJECT,@GetSkillSoftcapPenalty),1,$);
       }
 
-      final = bound(final,1,$);
+      final = Bound(final,1,$);
 
       // The global modifier from system.
       final = (final * Send(SETTINGS_OBJECT, @GetAdvancementRate)) / 100;

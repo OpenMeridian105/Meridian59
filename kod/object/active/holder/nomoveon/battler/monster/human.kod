@@ -231,7 +231,7 @@ messages:
    Constructed()
    {
       // Have to set attack range for mobs with weapon.
-      piAttackRange = Send(self,@GetAttackRange);
+      piMeleeRange = Send(self,@GetAttackRange);
 
       propagate;
    }
@@ -823,7 +823,7 @@ messages:
       return Send(oWeapon,@GetAttackSpell);
    }
 
-   MonsterAttack(what = $)
+   DoMeleeAnimation(what = $)
    "Add in any attack animation calls."
    {
       local oWeapon;
@@ -2097,16 +2097,19 @@ messages:
    {
       local i, lSpells;
 
-      if plSpellBook = $
+      if plActions = $
       {
          return $;
       }
 
       lSpells = $;
 
-      foreach i in plSpellBook
+      foreach i in plActions
       {
-         lSpells = Cons(First(i),lSpells);
+         if First(i) < 400
+         {
+            lSpells = Cons(First(i),lSpells);
+         }
       }
 
       return lSpells;

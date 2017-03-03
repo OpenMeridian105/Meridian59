@@ -98,9 +98,14 @@ messages:
    }
 
    GetDuration(duration = 0)
-   "Return the final duration modified as necessary."
    {
-      return duration;
+      local iDuration;
+
+      iDuration = Random(duration*4/5,duration*6/5);
+      iDuration = iDuration * 1000;
+      iDuration = bound(iDuration,1000,200000);
+
+      return iDuration;
    }
 
    SomethingMoved(what = $,new_row = $,new_col = $)
@@ -330,7 +335,7 @@ messages:
 
    LocationCheck(where = $)
    {
-      if (IsClass(where,&GuildHall)
+      if ((IsClass(where,&GuildHall) AND NOT IsClass(where,&GuildHall15))
             AND Send(where,@InFoyer,#who=poCaster))
          OR (Send(where,@IsArena)
             AND NOT Send(where,@InPlay,#what=self,#bNonPlayerOkay=TRUE))

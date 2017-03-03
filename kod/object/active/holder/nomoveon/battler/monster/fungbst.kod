@@ -59,6 +59,8 @@ classvars:
    viLevel = 50
    viDifficulty = 3
    viVisionDistance = 10
+   viMeleeRange = 0
+   viFireRange = 128
    viKarma = 30
    viDefault_behavior = AI_FIGHT_AGGRESSIVE | AI_FIGHT_WIZARD_KILLER
    viCashmin = 100
@@ -81,16 +83,9 @@ messages:
                         [ATCK_WEAP_THRUST, 60 ]
                       ];
 
+      plActions = [ [SID_SPORE_BURST,0,0,MAX_KOD_INT,-10000,11000,1] ];
+
       propagate;
-   }
-
-   MonsterAttack(what = $)
-   {
-      Send(self,@DoAttack);
-
-      Send(poOwner,@SomethingShot,#who=self,#target=what,#projectile=self);
-
-      return;
    }
 
    DoSpasm()
@@ -108,19 +103,6 @@ messages:
       }
 
       Send(poOwner,@SomethingChanged,#what=self);
-
-      return;
-   }
-
-   DoAttack()
-   {
-      local iAnim;
-
-      iAnim = piAnimation;
-
-      piAnimation = ANIM_ATTACK;
-      Send(poOwner,@SomethingChanged,#what=self);
-      piAnimation = iAnim;
 
       return;
    }
@@ -178,6 +160,25 @@ messages:
    {
       // No lighting information.
       return LIGHT_FLAG_NONE;
+   }
+
+   AssessDamage(aSpell=0)
+   {
+      local i;
+
+      // Casting spells will make them go poof.
+      if (aSpell & ATCK_SPELL_ALL)
+      {
+         foreach i in plActions
+         {
+            if First(i) = SID_SPORE_BURST
+            {
+               SetNth(i,5,1000);
+            }
+         }
+      }
+
+      propagate;
    }
 
 end

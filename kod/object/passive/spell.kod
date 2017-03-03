@@ -856,6 +856,11 @@ messages:
    {
       local i, each_obj, oRoom, iRand, oSpell, oTarget;
 
+      if NOT IsClass(who,&User)
+      {
+         return TRUE;
+      }
+
       if lTargets <> $
          AND Length(lTargets) = 1
       {
@@ -871,11 +876,6 @@ messages:
 
             return FALSE;
          }
-      }
-
-      if NOT IsClass(who,&User)
-      {
-         return TRUE;
       }
 
       if NOT pbEnabled
@@ -1095,7 +1095,7 @@ messages:
    }
 
    CanPayMonsterCosts(who=$,lTargets=$,iSpellpower=$)
-   {   
+   {
       local oSpell, oRoom;
 
       if NOT Send(self,@CanPayCosts,#who=who,#ltargets=ltargets,
@@ -1364,7 +1364,7 @@ messages:
                      #lRadiusState=Nth(i,3));
       }
 
-      num = bound(num,5,99);
+      num = Bound(num,5,99);
 
       if lTargets <> $
          AND Send(self,@GetNumSpellTargets) = 1
@@ -1502,7 +1502,7 @@ messages:
       return TRUE;
    }
 
-   CastSpell(who = $, lTargets = $, iSpellPower = 0, bItemCast=FALSE)
+   CastSpell(who = $, lTargets = $, iSpellPower = 0, iPowerLevel = 100, bItemCast=FALSE)
    {
       local oTarget, oRoom;
 
@@ -1598,15 +1598,6 @@ messages:
       if lTargets <> $
       {
          oTarget = First(lTargets);
-
-         // If the spell was cast on a monster, let the monster keep track of that for loot.
-         if IsClass(oTarget,&Monster)
-            AND NOT bItemCast
-            AND who <> $
-            AND IsClass(who,&Player)
-         {
-            Send(oTarget,@AddToSpellList,#spellNum=viSpell_num);
-         }
       }
       else
       {
@@ -1837,7 +1828,7 @@ messages:
          iCost = iCost - Send(oPrincessShield,@GetSpellManaReduction);
       }
 
-      return bound(iCost,1,$);
+      return Bound(iCost,1,$);
    }
 
    GetRequisiteStat(who=$)
@@ -1898,7 +1889,7 @@ messages:
       }
 
       iInitialChance = Send(self,@GetInitialChance,#who=who);
-      iRandom = random(1,100);
+      iRandom = Random(1,100);
       if iRandom > iInitialChance
       {
          return FALSE;
@@ -1926,9 +1917,9 @@ messages:
       }
 
       RequisiteStat = Send(self,@GetRequisiteStat,#who=who);
-      increase_chance = bound(increase_chance,(1+RequisiteStat/10),99);
+      increase_chance = Bound(increase_chance,(1+RequisiteStat/10),99);
       
-      iRandom = random(0,100);      
+      iRandom = Random(0,100);      
       if iRandom < increase_chance
       {      
          Send(who,@ChangeSpellAbility, #spell_num=vispell_Num,#amount=1,
@@ -2805,6 +2796,12 @@ messages:
    "Just a dummy catching over time effects without message."
    {
       return;
+   }
+
+   // Most spells don't have a range limitation. Return MAX_KOD_INT.
+   GetSquaredRange()
+   {
+      return MAX_KOD_INT;
    }
 
 end

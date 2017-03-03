@@ -123,7 +123,7 @@ messages:
       }
 
       // Monsters should ONLY be waiting or moving at this point.
-      if (state & STATE_CHASE) OR (state & STATE_ATTACK)
+      if (state & STATE_ENGAGE)
       {
          Debug("Unreachable. Illegal state",state," for ",mob," in room ",
                Send(Send(mob,@GetOwner),@GetName));
@@ -206,40 +206,7 @@ messages:
 
       if (state & STATE_MOVE) OR (state & STATE_WAIT)
       {
-         if Send(mob,@CanReachLocation,#row=new_row,#col=new_col,
-                  #fine_row=fine_row,#fine_col=fine_col)
-         {
-            Send(mob,@EnterStateAttack,#actnow=True);   // Used to be post.
-
-            return;
-         }
-
-         Send(mob,@EnterStateChase,#target=what,#actnow=True); // Used to be post.
-
-         return;
-      }
-
-      if state & STATE_CHASE
-      {
-         if Send(mob,@CanReachLocation,#row=new_row,#col=new_col,
-                  #fine_row=fine_row,#fine_col=fine_col)
-         {
-            Send(mob,@EnterStateAttack,#target=what,#actnow=True); // Used to be post.
-         }
-
-         return;
-      }
-
-      if state & STATE_ATTACK
-      {
-         if NOT Send(mob,@CanReachLocation,#row=new_row,#col=new_col,
-                     #fine_row=fine_row,#fine_col=fine_col)
-         {
-            Send(mob,@EnterStateChase,#target=what,#actnow=True); // Used to be post.
-
-            return;
-         }
-
+         Send(mob,@EnterStateEngage,#target=what,#actnow=True); // Used to be post.
          return;
       }
 
@@ -291,21 +258,14 @@ messages:
       {
          if Send(self,@AttemptTargetSwitch,#what=what,#event=iType,#mob=mob)
          {
-            if Send(mob,@CanReach,#what=what)
-            {
-               Send(mob,@EnterStateAttack,#target=what,#actnow=True);
-
-               return;
-            }
-
             // If they hit us, we chase them whether we can see them or not.
-            Send(mob,@EnterStateChase,#target=what,#actnow=True);
+            Send(mob,@EnterStateEngage,#target=what,#actnow=True);
 
             return;
          }
       }
 
-      if state & STATE_CHASE
+      if state & STATE_ENGAGE
       {
          bSwitch = FALSE;
          if iType <> TS_FIGHT_ME_VICTIM
@@ -322,23 +282,11 @@ messages:
                            #event=iType,#mob=mob);
          }
 
-         if bSwitch
-         {
-            Send(mob,@EnterStateAttack,#actnow=True);
-
-            return;
-         }
-
          // If we can't reach them, we keep chasing our original target.
          // Note however that if the attacker is closer to us than our
-         // target, XChaseTimer will switch us to chasing the attacker
+         // target, XEngageTimer will switch us to chasing the attacker
          // (assuming he is a valid target for us at all times and not
          // only when he attacks)
-         return;
-      }
-
-      if state & STATE_ATTACK
-      {
          return;
       }
 
@@ -360,7 +308,7 @@ messages:
 
 //      if IsClass(what,&Battler) AND NOT (what = mob)
 //      {
-//         if (state&STATE_ATTACK)=0
+//         if (state&STATE_ENGAGE)=0
 //         {
 //            if Send(mob,@CanSee,#what=what) AND
 //            Send(self,@AttemptTargetSwitch,#what=what,#event=TS_MOVE,#mob=mob)
@@ -410,15 +358,8 @@ messages:
       {
          if Send(self,@AttemptTargetSwitch,#what=what,#event=TS_MURDER,#mob=mob)
          {
-            if Send(mob,@CanReach,#what=what)
-            {
-               Send(mob,@EnterStateAttack,#target=what,#actnow=True);
-
-               return;
-            }
-
             // If they hit us, we chase them whether we can see them or not.
-            Send(mob,@EnterStateChase,#target=what,#actnow=True);
+            Send(mob,@EnterStateEngage,#target=what,#actnow=True);
 
             return;
          }
@@ -428,14 +369,8 @@ messages:
       {
          if Send(self,@AttemptTargetSwitch,#what=what,#event=TS_MURDER,#mob=mob)
          {
-            if Send(mob,@CanReach,#what=what)
-            {
-               Send(mob,@EnterStateAttack,#target=what,#actnow=True);
-               return;
-            }
-
            // If they hit us, we chase them whether we can see them or not.
-            Send(mob,@EnterStateChase,#target=what,#actnow=True);
+            Send(mob,@EnterStateEngage,#target=what,#actnow=True);
 
             return;
          }
@@ -444,40 +379,9 @@ messages:
       return;
    }
 
-   PostAttackTimer(mob = $, state = $)
+   PostEngageTimer(mob = $, delay = 0)
    {
       local oTarget;
-
-      if NOT (state & STATE_ATTACK)
-      {
-         return;
-      }
-
-      oTarget = Send(mob,@GetTarget);
-      Send(mob,@EnterStateAttack,#target=oTarget,#actnow=False);
-
-      return;
-   }
-
-   // Returning True means state has changed
-   PreChaseTimer(mob = $)
-   {
-      local oTarget;
-
-      oTarget = Send(mob,@GetTarget);
-      if Send(mob,@CanReach,#what=oTarget)
-      {
-         Send(mob,@EnterStateAttack,#target=oTarget,#actnow=True);
-
-         return True;
-      }
-
-      return False;
-   }
-
-   PostChaseTimer(mob = $)
-   {
-      local oTarget,oNearest;
 
       oTarget = Send(mob,@GetTarget);
       if IsClass(oTarget,&User)
@@ -491,7 +395,10 @@ messages:
          }
       }
 
-      Send(mob,@EnterStateChase,#target=oTarget,#actnow=False);
+      // Move time is our lower bound for delay between actions.
+      delay = Bound(delay,Send(mob,@GetMoveTime),$);
+
+      Send(mob,@EnterStateEngage,#target=oTarget,#actnow=False,#delay=delay);
 
       return;
    }
@@ -507,6 +414,23 @@ messages:
    {
       Send(mob,@EnterStateMove,#actnow=True);
 
+      return;
+   }
+
+   PostRestTimer(mob = $)
+   {
+      local oTarget;
+
+      oTarget = Send(mob,@GetTarget);
+
+      if Random(1,4) = 1 OR oTarget = $
+      {
+         Send(mob,@EnterStateMove,#actnow=TRUE);
+      }
+      else
+      {
+         Send(mob,@EnterStateEngage,#target=oTarget,#actnow=TRUE);
+      }
       return;
    }
 
@@ -535,9 +459,11 @@ messages:
    "2. If blind, wander aimlessly."
    "3. If frightened, run for your life."
    "4. If you have a master, go to his side."
-   "5. Otherwise, wander aimlessly."
+   "5. If we feel chatty, move up to a buddy."
+   "6. Otherwise, wander aimlessly."
    {
-      local oMaster, oOwner, oMasterRoom, oFrightener;
+      local oMaster, oOwner, oMasterRoom, oFrightener, oSocial,
+         iDistance, iVision, iAttack;
 
       if mob = $
       {
@@ -557,7 +483,7 @@ messages:
       if (behavior & AI_MOVE_RANDOM)
       {
          // skip 9/10 of the possible steps
-         if Random(1,100) < 10
+         if Random(1,100) < Send(mob,@GetAgility)
          {
            Send(mob,@DoRandomWalk);
          }
@@ -620,120 +546,63 @@ messages:
          }
       }
 
-      // If in doubt, wander aimlessly.
-      // skip 9/10 of the possible steps
-      if (Random(1,100) < 10 AND NOT (behavior & AI_CAN_PATROL))
+      // If we had a real target location, we wouldn't be strolling anymore.
+      if (behavior & AI_STROLLING)
       {
-         Send(mob,@DoRandomWalk);
+         // Check against our Stamina. If we succeed, we keep walking.
+         if Random(1,Send(mob,@GetStamina)+10) > 1
+         {
+            Send(mob,@DoGoTowardsLocation);
+
+            return;
+         }
+         // Too tired. Stop our stroll.
+         else
+         {
+            Send(mob,@ClearStrollLocation);
+         }
+      }
+
+      // If we aren't preoccupied with anything else, find somewhere to walk.
+      if NOT (behavior & AI_HAS_TARGET_LOCATION)
+      {
+         // Social monsters like to chat other monsters up. Find a buddy and walk over.
+         if (behavior & AI_SOCIALIZER)
+         {
+            // Find our closest ally.
+            oSocial = Send(mob,@GetClosestAlly);
+            if oSocial <> $
+            {
+               // Check if ally is within sight. Stop if we are close enough.
+               iDistance = Send(mob,@SquaredFineDistanceTo3D,#what=oSocial);
+               iVision = Send(mob,@GetVisionDistance)*64;
+               iVision *= iVision;
+               if iDistance > 10000
+                  AND iDistance < iVision
+               {
+                  Send(mob,@MoveTowards,#oTarget=oSocial,#face_target=TRUE);
+               }
+            }
+            // We want to socialize but noone is around.
+            // Time to stroll around a bit when we get too bored.
+            // Bigger mobs don't scamper around as much.
+            else if (Random(1,2000) < (Send(mob,@GetAgility)+10) * 150 / Send(mob,@GetLevel))
+            {
+               Send(mob,@GoStrolling);
+            }
+         }
+         // Not feeling chatty today. Higher chance of strolling.
+         // Bigger mobs don't scamper around as much.
+         else if (Random(1,800) < (Send(mob,@GetAgility)+10) * 150 / Send(mob,@GetLevel))
+         {
+            Send(mob,@GoStrolling);
+         }
       }
 
       return;
    }
 
-   GetAttackBehavior(behavior=0, mob = $, target = $)
-   "This is called when monster has a target, but isn't close enough to fight."
-   "1. Do nothing if immobile."
-   "2. If blind, wander aimlessly."      
-   "3. If we are terrified of what we are fighting, run away."
-   "3. If wounded below viWimpy, either run away, or towards closest ally."
-   "4. Try to move to optimal range, if possible."
-   "5. Otherwise, move around target, but stay in range."
-   {
-      local oMaster, oOwner, oMasterRoom, oFrightener, oAlly, iRange, iOpt_range, oForm;
-
-      if mob = $ OR target = $
-      {
-         Debug("Unreachable!  Called without argument!");
-
-         return;
-      }
-
-      if (behavior & AI_NOMOVE)
-      {
-         // Monster is immobile.
-         return;
-      }
-
-      // Example, monster is blind. Forced randomness has precedence
-      // over everything else. Panic and move several times.
-      if (behavior & AI_MOVE_RANDOM)
-      {
-         Send(mob,@DoRandomWalk);
-
-         return;
-      }
-
-      if (behavior & AI_MOVE_FLEE_FRIGHTENERS)
-      {
-         // Okay, if the mob is FIGHTING someone he's frightened of,
-         // try to get away.
-         oForm = Send(target,@GetIllusionForm);
-         if oForm = $
-         {
-            oForm = target;
-         }
-         if Send(mob,@IsFrightenedOf,#target=oForm)
-         {
-            Send(mob,@MoveAway,#oTarget=target,#face_away=TRUE);
-
-            return;
-         }
-      }
-
-      if Send(mob,@HealthBelowWimpy)
-      {
-         // If regroup flag set, monster will seek allies.
-         if (behavior & AI_MOVE_REGROUP)
-         {
-            oAlly = Send(mob,@GetClosestAlly);
-            if oAlly <> $
-            {
-               Send(mob,@MoveTowards,#oTarget=oAlly,#Face_target=TRUE);
-
-               return;
-            }
-            else
-            {
-               // Mob has no allies available.  But he's not a wimp,
-               // he'll stay and fight to the end.
-               Send(mob,@MoveTowards,#oTarget=target,#face_target=TRUE);
-
-               return;
-            }
-         }
-         // Mob is a chicken, running from attacker.
-         Send(mob,@MoveAway,#oTarget=target,#face_away = TRUE);
-
-         return;
-      }
-
-      if (behavior & AI_MOVE_OPTIMAL_RANGE)
-      {
-         // Optimal range may not be fighting range.  Example,
-         // shamans may want to be optimal spellcasting range away!
-         iOpt_range = Send(mob,@GetOptimalRange);
-
-         iRange = Send(mob,@SquaredFineDistanceTo3D,#what=target);
-         if iRange < (iOpt_range * iOpt_range)
-         {
-            Send(mob,@MoveAway,#oTarget=target,#face_target=TRUE);
-
-            return;
-         }
-      }
-
-      // Okay, at this point, we want the monster to move,
-      // but only cosmetically, and staying in range all the while.
-      if (Send(mob,@GetOwner) = Send(target,@GetOwner))
-         AND (Random(1,20) < Send(mob,@GetDifficulty))
-      {
-         Send(mob,@MoveTowards,#oTarget=target,#face_target=TRUE);
-      }
-
-      return;
-   }
-
-  GetChaseBehavior(behavior=0, mob = $, target = $)
+  GetEngageBehavior(behavior=0, mob = $, target = $)
    "This is called when monster has a target, but isn't close enough to fight."
    "1. Do nothing if immobile."
    "2. If blind, wander aimlessly."
@@ -747,7 +616,7 @@ messages:
 
       if mob = $ OR target = $
       {
-         Debug("Unreachable! GetChaseBehavior called without argument!");
+         Debug("Unreachable! GetEngageBehavior called without argument!");
 
          return;
       }
@@ -831,14 +700,15 @@ messages:
 
       if (behavior & AI_MOVE_OPTIMAL_RANGE)
       {
-         // Optimal range may not be best fighting range.
-         // shamans want to get far away and cast spells!
          iOpt_range = Send(mob,@GetOptimalRange);
 
          iRange = Send(mob,@SquaredFineDistanceTo3D,#what=target);
          if iRange < (iOpt_range * iOpt_range)
          {
-            Send(mob,@MoveAway,#oTarget=target,#face_away=TRUE);
+            if NOT Send(mob,@MoveAway,#oTarget=target,#face_target=TRUE)
+            {
+               Send(mob,@SetBehaviorFlag,#flag=AI_CORNERED,#value=TRUE);
+            }
 
             return;
          }

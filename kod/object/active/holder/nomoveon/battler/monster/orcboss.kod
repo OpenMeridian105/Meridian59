@@ -62,7 +62,8 @@ classvars:
    viDifficulty = 7
    viVisionDistance = 30
    // Attack range of 192, or 3 row/col.
-   viAttackRange = 192
+   viMeleeRange = 192
+   viBonusSwing = 100
    viKarma = -90
    viDefault_behavior = \
       AI_FIGHT_AGGRESSIVE | AI_FIGHT_HYPERAGGRESSIVE | AI_FIGHT_SWITCHALOT
@@ -79,9 +80,6 @@ classvars:
 properties:
 
    piAnimation = ANIM_NONE
-   pbFirstAttack = TRUE
-   ptSecondAttack = $
-
    piReputationGroup = REP_ORC
    
 messages:
@@ -111,50 +109,10 @@ messages:
       return (viDifficulty*10);
    }
 
-   MonsterAttack(what = $)
+   DoMeleeAttack(swings=0)
+   "Orc Pit Boss does a double attack by default."
    {
-      if (NOT pbFirstAttack)
-      {
-         Send(self,@DoSlash);
-         pbFirstAttack = TRUE;
-      }
-      else
-      {
-         pbFirstAttack = FALSE;
-         if ptSecondAttack = $
-         {
-            // This code executes the attack twice,
-            // but only does the animation once.
-            ptSecondAttack = CreateTimer(self,@SecondAttackTimer,400);
-         }
-      }
-
-      return;
-   }
-
-   SecondAttackTimer()
-   {
-      ptSecondAttack = $;
-
-      if pbFirstAttack
-      {
-         return;
-      }
-
-      if poTarget <> $
-         AND poOwner = Send(poTarget,@GetOwner)
-      {
-         Send(self,@TryAttack,#what=poTarget);
-      }
-
-      return;
-   }
-
-   DoSlash()
-   {
-      piAnimation = ANIM_ATTACK;
-      Send(poOwner,@SomethingChanged,#what=self);
-      piAnimation = ANIM_NONE;
+      Send(Self,@DoMeleeAnimation);
 
       return;
    }
@@ -189,17 +147,6 @@ messages:
       }
 
       // if no body animation.
-      propagate;
-   }
-
-   Delete()
-   {
-      if ptSecondAttack <> $
-      {
-         DeleteTimer(ptSecondAttack);
-         ptSecondAttack = $;
-      }
-
       propagate;
    }
 

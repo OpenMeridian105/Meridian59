@@ -74,9 +74,13 @@ classvars:
    viDifficulty = 8
    viVisionDistance = 60
    // Attack range of 192, or 3 row/col.
-   viAttackRange = 3 * FINENESS
+   viMeleeRange = 3 * FINENESS
    viSpeed = SPEED_FASTER
    viKarma = 0
+
+   viSiphonChance = 50
+   viSiphonStrength = 4000
+   viSiphonDuration = 5000
 
    vrSound_hit = Xeochicatl_sound_attack
    vrSound_miss = Xeochicatl_sound_attack
@@ -85,9 +89,6 @@ classvars:
 
    viCashMin = 0
    viCashMax = 0
-
-   // 1 in x chance to cast a spell.
-   viSpellChance = 4
 
    viAttributes = MOB_ONE_TREASURE
 
@@ -117,37 +118,6 @@ messages:
       pbDontDispose = InAttack;
 
       propagate;
-   }
-
-   MonsterAttack(what=$)
-   {
-      local iAmount;
-
-      piAnimation = ANIM_ATTACK;
-      Send(poOwner,@SomethingChanged,#what=self);
-      piAnimation = ANIM_NONE;
-
-      if IsClass(what,&Player)
-      {
-         if Random(1,100) < DRAIN_CHANCE
-         {
-            iAmount = Send(what,@GetMaxMana);
-            iAmount = ((iAmount * piDrainAmount)/100) + 1;
-            iAmount = Bound(iAmount,0,Send(what,@GetMana));
-
-            Send(what,@LoseMana,#amount=iAmount);
-            piMana = piMana + iAmount;
-            Send(what,@MsgSendUser,#message_rsc=Xeochicatl_drain_rsc,
-                  #parm1=vrName);
-            Send(self,@GainMana,#amount=iAmount);
-         }
-         else
-         {
-            Send(self,@MonsterCastSpell);
-         }
-      }
-
-      return;
    }
 
    SendMoveAnimation()
@@ -239,16 +209,6 @@ messages:
       piAnimation = ANIM_NONE;
 
       return;
-   }
-
-   CanCastWallSpell()
-   {
-      if (Send(poOwner,@CountHoldingSummoned) + 6) > (MAX_WALLS * 6)
-      {
-         return FALSE;
-      }
-
-      return TRUE;
    }
 
    CanMorphTo()

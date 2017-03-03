@@ -56,7 +56,7 @@ classvars:
    viDifficulty = 9
    viVisionDistance = 15
    // Attack range of 192, or 3 row/col.
-   viAttackRange = 192
+   viMeleeRange = 192
    viKarma = 0
    viDefault_behavior = \
       AI_FIGHT_AGGRESSIVE | AI_MOVE_OPTIMAL_RANGE | AI_FIGHT_SWITCHALOT
@@ -67,8 +67,8 @@ classvars:
    vrSound_aware = yeti_sound_aware
    vrSound_death = yeti_sound_death
 
-   // 1 in x chance to cast a spell.
-   viSpellChance = 3
+   // 1 in x chance to discord.
+   viRumbleChance = 3
 
 properties:
 
@@ -88,23 +88,9 @@ messages:
                         [-ATCK_SPELL_FIRE, -45 ]
                       ];
 
+      plActions = [ [SID_DISCORDANCE,0,0,MAX_KOD_INT,500,50,99] ];
+
       propagate;
-   }
-
-   MonsterAttack(what = $)
-   {
-      Send(self,@DoSlash);
-
-      return;
-   }
-
-   DoSlash()
-   {
-      piAnimation = ANIM_ATTACK;
-      Send(poOwner,@SomethingChanged,#what=self);
-      piAnimation = ANIM_NONE;
-
-      return;
    }
 
    SendMoveAnimation()
@@ -150,98 +136,15 @@ messages:
       propagate;
    }
 
-   MonsterCastSpell()
+   MonsterCastAnimation(iSpellNum=$)
+   "If a monster has a special cast animation, call this."
    {
-      local oSpell;
-      if Random(1,piSpellChance) = 1
-         AND Send(poOwner,@IsEnchanted,#what=$)
-      {
-         Send(poOwner,@SomethingWaveRoom,#what=self,#wave_rsc=yeti_cast_sound);
-         Send(poOwner,@SomeoneSaid,#type=SAY_MESSAGE,
-               #string=yeti_cast_spell,#what=self);
-         Send(self,@DoSlash);
-         oSpell = Send(SYS,@FindSpellByNum,#num=SID_DISCORDANCE);
-         Send(oSpell,@CastSpell,#who=self,#lTargets=$);
+      Send(poOwner,@SomethingWaveRoom,#what=self,#wave_rsc=yeti_cast_sound);
+      Send(poOwner,@SomeoneSaid,#type=SAY_MESSAGE,
+            #string=yeti_cast_spell,#what=self);
+      Send(poOwner,@Rumble,#duration=250,#disruption=25);
 
-         return TRUE;
-      }
-
-      return FALSE;
-   }
-
-   MonsterCastAttackSpell()
-   {
-      local oSpell;
-
-      if Random(1,ATTACK_SPELL_CHANCE) = 1
-         AND Send(poOwner,@IsEnchanted,#what=$)
-      {
-         Send(poOwner,@SomethingWaveRoom,#what=self,#wave_rsc=yeti_cast_sound);
-         Send(poOwner,@SomeoneSaid,#type=SAY_MESSAGE,
-               #string=yeti_cast_spell,#what=self);
-         Send(self,@DoSlash);
-         oSpell = Send(SYS,@FindSpellByNum,#num=SID_DISCORDANCE);
-         Send(oSpell,@CastSpell,#who=self,#lTargets=$);
-
-         return TRUE;
-      }
-
-      return FALSE;
-   }
-
-   AttackTimer(timer = $)
-   "We were bashing on something before, and now its time to hit it again."
-   {
-      local oSpell;
-
-      Send(self,@ClearBehavior,#timer=timer);
-
-      //// sanity checks
-
-      if poOwner = $
-      {
-         Debug("Unreachable. Null Owner"); 
-         Send(self,@EnterStateLimbo);
-
-         return;
-      }
-
-      if poTarget=$
-      {
-         Debug("Unreachable. Null poTarget","monster",self); 
-         Send(self,@EnterStateWait);
-
-         return;
-      }
-
-      if NOT Send(self,@CanReach,#what=poTarget)
-      {
-         // Debug("BAD: Victim no longer in range at AttackTimer:",vrname,self);
-
-         // Not the optimal response, but then we should never be here.
-         Send(self,@EnterStateMove);
-
-         return;
-      }
-
-      oSpell = Send(SYS,@FindSpellByNum,#num=SID_TRUCE);
-      if Send(poOwner,@IsEnchanted,#what=oSpell)
-      {
-         Send(self,@MonsterCastAttackSpell);
-      }
-      else
-      {
-         // Carry out attack
-         Send(self,@TryAttack,#what=poTarget);
-      }
-
-      // Sanity check, in rare occurrences mob dies before this can execute 
-      if poBrain <> $
-      {
-         Send(poBrain,@PostAttackTimer,#mob=self,#state=piState);
-      }
-
-      return;
+      propagate;
    }
 
    CanMorphTo()

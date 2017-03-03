@@ -1420,7 +1420,7 @@ messages:
 
       now = GetTime();
       piStomach = piStomach-(now-piTimeLastStomachUpdate)*FOOD_USE_RATE/100;
-      piStomach = bound(piStomach,1,100);
+      piStomach = Bound(piStomach,1,100);
       piTimeLastStomachUpdate = now;
 
       return;
@@ -1642,7 +1642,7 @@ messages:
    SetAge(age = 0)
    "Admin supported."
    {
-      age = bound(age, 0, Send(SYS,@GetYear));
+      age = Bound(age, 0, Send(SYS,@GetYear));
       piBorn_year = Send(SYS,@GetYear) - age;
 
       return age;
@@ -4909,7 +4909,7 @@ messages:
       // Give offensive buffs a small chance to improve each swing!
       foreach i in plPassiveImprovement
       {
-         if Nth(i,3) AND random(1,50) = 50
+         if Nth(i,3) AND Random(1,50) = 50
          {
             Send(First(i),@ImproveAbility,#who=self,#target=what);
          }
@@ -5381,13 +5381,6 @@ messages:
       origdamage = damage/100;
       color_rsc = player_hit_color_none;
 
-      // Attacks against a minion master will cause minions to defend the master.
-      if what <> $
-         AND IsClass(what,&Battler)
-      {
-         Send(self,@CommandMinionAttack,#oTarget=what);
-      }
-
       if what <> $ AND IsClass(what,&monster)
       {
          color_rsc = player_hit_color_blue;
@@ -5488,7 +5481,7 @@ messages:
          }
 
          // maximum of 30 damage per hit
-         damage = bound(damage,$,MAX_DAMAGE_PER_HIT*100);
+         damage = Bound(damage,$,MAX_DAMAGE_PER_HIT*100);
       }
 
       // Faction enemies an extra 15// damage to each other, above caps.
@@ -5890,7 +5883,7 @@ messages:
                            Create(&Revenant,#target=self,#location=poOwner,
                                  #level=Bound((((Send(self,@GetBaseMaxHealth)*110)/100)+
                                     (7*piKill_Count_decay)),95,180),
-                                 #diff=bound(Send(self,@GetBaseMaxHealth)/12,4,9),
+                                 #diff=Bound(Send(self,@GetBaseMaxHealth)/12,4,9),
                                  #karmic=-piKarma/100);
                         }
                      }
@@ -6721,7 +6714,7 @@ messages:
       //
       //     if this becomes undesirable, use this new code:
       //if piHealth > iPrev_max { piHealth = piMax_health + (piHealth - iPrev_max); }
-      //else { piHealth = bound(piHealth, $, piMax_health); }
+      //else { piHealth = Bound(piHealth, $, piMax_health); }
 
       Send(self,@NewHealth); // in case need heal timer
 
@@ -7108,62 +7101,62 @@ messages:
 
    GetMight()
    {
-      return bound((piMight + piMightMod),1,MAXIMUM_STAT);
+      return Bound((piMight + piMightMod),1,MAXIMUM_STAT);
    }
 
    GetIntellect()
    {
-      return bound((piIntellect + piIntellectMod),1,MAXIMUM_STAT);
+      return Bound((piIntellect + piIntellectMod),1,MAXIMUM_STAT);
    }
 
    GetAgility()
    {
-      return bound((piAgility + piAgilityMod),1,MAXIMUM_STAT);
+      return Bound((piAgility + piAgilityMod),1,MAXIMUM_STAT);
    }
 
    GetAim()
    {
-      return bound((piAim + piAimMod),1,MAXIMUM_STAT);
+      return Bound((piAim + piAimMod),1,MAXIMUM_STAT);
    }
 
    GetStamina()
    {
-      return bound((piStamina + piStaminaMod),1,MAXIMUM_STAT);
+      return Bound((piStamina + piStaminaMod),1,MAXIMUM_STAT);
    }
 
    GetMysticism()
    {
-      return bound((piMysticism + piMysticismMod),1,MAXIMUM_STAT);
+      return Bound((piMysticism + piMysticismMod),1,MAXIMUM_STAT);
    }
 
    GetRawMight()
    {
-      return bound(piMight,1,50);
+      return Bound(piMight,1,50);
    }
 
    GetRawIntellect()
    {
-      return bound(piIntellect,1,50);
+      return Bound(piIntellect,1,50);
    }
 
    GetRawAgility()
    {
-      return bound(piAgility,1,50);
+      return Bound(piAgility,1,50);
    }
 
    GetRawAim()
    {
-      return bound(piAim,1,50);
+      return Bound(piAim,1,50);
    }
 
    GetRawStamina()
    {
-      return bound(piStamina,1,50);
+      return Bound(piStamina,1,50);
    }
 
    GetRawMysticism()
    {
-      return bound(piMysticism,1,50);
+      return Bound(piMysticism,1,50);
    }
 
    GetRawStatisticsTotal()
@@ -7257,7 +7250,7 @@ messages:
       iChange = - ((iBase*iBase*ibase)/2500 + (5*iBase));
 
       // Swing factor must be a number from 1 to 10
-      swing_factor = bound(swing_factor,1,10);
+      swing_factor = Bound(swing_factor,1,10);
 
       return (iChange / (11 - swing_factor));
    }
@@ -7505,7 +7498,7 @@ messages:
       }
 
       iAbility = Send(self,@DecodeSpellAbility,#compound=i);
-      newAbility = bound(iAbility+amount,1,99);
+      newAbility = Bound(iAbility+amount,1,99);
       iChange = newAbility-iAbility;
 
       SetNth(plSpells,elemNum,Send(self,@EncodeSpell,
@@ -7743,7 +7736,7 @@ messages:
 
       // Spell format: [ num * 100 + ability ]
 
-      iBoundAbility = bound(iAbility,0,99);
+      iBoundAbility = Bound(iAbility,0,99);
       
       if iBoundAbility = 0
       {
@@ -8042,7 +8035,7 @@ messages:
       }
 
       iability = Send(self,@DecodeSkillAbility,#compound=i);
-      newability = bound(iability+amount,1,99);
+      newability = Bound(iability+amount,1,99);
       iChange = newability - iability;
 
       // If we advance a stroke or a proficiency, then
@@ -8171,7 +8164,7 @@ messages:
 
       // Skill format: [ num * 100 + ability ]
 
-      iBoundAbility = bound(iAbility,0,99);
+      iBoundAbility = Bound(iAbility,0,99);
       
       if iBoundAbility = 0
       {
@@ -8962,7 +8955,7 @@ messages:
       {
          if piTraining_points <= 1000
          {
-            points = bound(points,-piTraining_points,1000 - piTraining_points);
+            points = Bound(points,-piTraining_points,1000 - piTraining_points);
          }
          else if points > 0
          {
@@ -10169,8 +10162,8 @@ messages:
 
       if rand
       {
-         pants_color = random(XLAT_TO_SKIN1, XLAT_TO_SKIN4);
-         shirt_color = random(XLAT_TO_ORANGE, XLAT_HIGH_VALUE);
+         pants_color = Random(XLAT_TO_SKIN1, XLAT_TO_SKIN4);
+         shirt_color = Random(XLAT_TO_ORANGE, XLAT_HIGH_VALUE);
          if shirt_color = XLAT_TO_SKIN4
          {
             shirt_color = XLAT_TO_RED;
@@ -12046,7 +12039,7 @@ messages:
       // mean that the need is greater than 99// in three of the previous
       // level's spells, or 297 (most of the time).  Levels with fewer than
       // three spells are a special instance.
-      if iNeed > (99*(bound(prev_level,1,3)))
+      if iNeed > (99*(Bound(prev_level,1,3)))
       {
          if scryer <> $
          {
@@ -14365,7 +14358,7 @@ messages:
                      #flag=AI_MOVE_FOLLOW_MASTER,#value=FALSE);
                Send(oActive,@TargetSwitch,#what=oTarget,
                      #iHatred=100);
-               Send(oActive,@EnterStateChase,#target=oTarget,
+               Send(oActive,@EnterStateEngage,#target=oTarget,
                      #actnow=TRUE);
             }
          }

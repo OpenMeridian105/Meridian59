@@ -82,7 +82,7 @@ classvars:
    viDifficulty = 9
    viVisionDistance = 40
    // Attack range of 256, or 4 row/col.
-   viAttackRange = 256
+   viMeleeRange = 256
    viKarma = 100
    viDefault_behavior = \
       AI_FIGHT_AGGRESSIVE |  AI_FIGHT_WIZARD_KILLER | AI_FIGHT_HYPERAGGRESSIVE
@@ -172,7 +172,7 @@ messages:
       propagate;
    }
 
-   MonsterAttack(what = $)
+   DoMeleeAnimation(what = $)
    {
       piAnimation = ANIM_BITE;
       Send(poOwner,@SomethingChanged,#what=self);
@@ -357,71 +357,6 @@ messages:
       }
 
       // Do damage?
-
-      return;
-   }
-
-   AttackTimer(timer = $)
-   "We were bashing on something before, and now its time to hit it again."
-   {
-      local oSpell, iRandom;
-
-      iRandom = Random(1,piHoldAttackChance);
-      oSpell = Send(SYS,@FindSpellByNum,#num=SID_HOLD);
-      Send(self,@ClearBehavior,#timer=timer);
-
-      // Sanity checks.
-
-      if poOwner = $
-      {
-         Debug("Unreachable. Null Owner"); 
-         Send(self,@EnterStateLimbo);
-
-         return;
-      }
-
-      if poTarget=$
-      {
-         Debug("Unreachable. Null poTarget","monster",self);
-         Send(self,@EnterStateWait);
-
-         return;
-      }
-
-      Send(self,@FindNewTarget);
-      if NOT Send(self,@CanReach,#what=poTarget)
-         AND Send(poTarget,@IsEnchanted,#what=oSpell)
-      {
-         Send(self,@EnterStateChase,#Target=poTarget);
-
-         return;
-      }
-      else
-      {
-         if NOT Send(self,@CanReach,#what=poTarget) 
-         {
-            Send(self,@MonsterCastAttackSpell);
-            Send(self,@EnterStateChase,#Target=poTarget);
-            //Send(poBrain,@PostAttackTimer,#mob=self,#state=piState);
-
-            return;
-         }
-      }
-
-      if NOT Send(poTarget,@IsEnchanted,#what=oSpell)
-         AND iRandom = 1
-      {
-         Send(self,@MonsterCastAttackSpell);
-      }
-      else
-      {
-         Send(self,@TryAttack,#what=poTarget);
-      }
-
-      if poBrain <> $
-      {
-         Send(poBrain,@PostAttackTimer,#mob=self,#state=piState);
-      }
 
       return;
    }

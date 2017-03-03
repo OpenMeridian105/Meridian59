@@ -85,7 +85,12 @@ classvars:
    viVisionDistance = 22
 
    // Attack range of 320, or 5 row/col.
-   viAttackRange = 320
+   viMeleeRange = 192
+   viFireRange = 320
+
+   viMeleePriority = 500
+   viMovePriority = 550
+   viFirePriority = 600
 
    viKarma = 80
    viCashmin = 500
@@ -95,9 +100,6 @@ classvars:
    vrSound_aware = avarshaman_sound_aware
    vrSound_death = avarshaman_sound_death
 
-   // 1 in x chance to cast a spell.
-   viSpellChance = 7
-
 properties:
 
    vrName = avarshaman_name_rsc
@@ -105,9 +107,6 @@ properties:
 
    piAnimation = ANIM_NONE
    piColor_Translation = PT_PURPLETORED
-
-   piMax_mana = 30
-   piSpellPower = 75
 
 messages:
 
@@ -136,9 +135,10 @@ messages:
                         [ATCK_WEAP_MAGIC, -10 ]
                       ];
 
-      plSpellBook = [ [SID_HOLD,5,40], [SID_MANA_BOMB,6,70],
-                      [SID_HEAT,4,85], [SID_EVIL_TWIN,10,90],
-                      [SID_EARTHQUAKE,10,100] ];
+      plActions = [ [SID_HOLD,0,50,40],
+                      [SID_HEAT,0,200,85],
+                      [SID_EVIL_TWIN,0,100,90],
+                      [SID_EARTHQUAKE,0,200,100] ];
 
       propagate;
    }
@@ -210,18 +210,6 @@ messages:
       }
 
       propagate;
-   }
-
-   MonsterAttack(what = $)
-   {
-      piAnimation = ANIM_ATTACK;
-      Send(poOwner,@SomethingShot,#who=self,#target=poTarget,#projectile=self,
-            #flags=PROJ_FLAG_LIGHT_SOURCE);
-      Send(what,@EffectSendUser,#what=self,#effect=EFFECT_INVERT);
-      Send(poOwner,@SomethingChanged,#what=self);
-      piAnimation = ANIM_NONE;
-
-      return;
    }
 
    SendMoveAnimation()
@@ -321,12 +309,6 @@ messages:
    IsWizard()
    {
       return TRUE;
-   }
-
-   GetOptimalRange()
-   {
-      // Random range between 6 and 12 row/cols.
-      return Random(384,768);
    }
 
    IsAlly(target = $)

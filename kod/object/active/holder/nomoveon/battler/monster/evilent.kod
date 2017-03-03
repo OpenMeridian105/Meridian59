@@ -58,6 +58,11 @@ classvars:
    viKarma = -40
    viCashmin = 125
    viCashmax = 500
+
+   viMeleePriority = 1100
+
+   viPowerLevel = 100
+
    vrSound_hit = EvilEnt_sound_hit
    vrSound_miss = EvilEnt_sound_miss
    vrSound_aware = EvilEnt_sound_aware
@@ -65,9 +70,6 @@ classvars:
 
    vrLeaves = EvilEnt_leaves_sparse_rsc
    vrDead_leaves = EvilEnt_dead_leaves_sparse_rsc
-
-   // 1 in x chance to cast a spell.
-   viSpellChance = 8
 
 properties:
 
@@ -112,20 +114,11 @@ messages:
                         [ATCK_WEAP_SLASH, -10 ],
                         [-ATCK_SPELL_FIRE, -10 ] ];
 
-      plSpellBook = [ [SID_LIGHTNING, 5, 100] ];
+      plActions = [ [SID_LIGHTNING], [SID_POISON_FOG] ];
 
       plReputationEnemies = [REP_UNDEAD];
 
       propagate;
-   }
-
-   MonsterAttack(what = $)
-   {
-      piAnimation = ANIM_ATTACK;
-      Send(poOwner,@SomethingChanged,#what=self);
-      piAnimation = ANIM_NONE;
-
-      return;
    }
 
    SendMoveAnimation()
@@ -204,9 +197,10 @@ messages:
    {
       // Living trees get more dangerous if you burn 'em.
 
-      if (aSpell & ATCK_SPELL_FIRE) AND piSpellChance > 2
+      if (aSpell & ATCK_SPELL_FIRE)
       {
-         piSpellChance = piSpellChance - 1;
+         piSpellPower += 20;
+         piSpellPower = Bound(piSpellPower,$,99);
       }
 
       propagate;

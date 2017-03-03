@@ -58,7 +58,7 @@ classvars:
    viLevel = 60
    viDifficulty = 5
    // Attack range of 192, or 3 row/col.
-   viAttackRange = 192
+   viMeleeRange = 192
    viVisionDistance = 15
    viCashmin = 300
    viCashmax = 600
@@ -90,21 +90,14 @@ messages:
       propagate;
    }
 
-   MonsterAttack(what = $)
-   {
-      // add in any attack animation calls
-      Send(self,@DoSlash);
-      Send(poOwner,@SomethingShot,#who=self,#target=what,#projectile=self,
-            #flags=PROJ_FLAG_LIGHT_SOURCE);
-
-      return;
-   }
-
-   DoSlash()
+   DoMissileAnimation()
+   "Handles ranged attack animation. Default is same as melee."
    {
       piAnimation = ANIM_ATTACK;
       Send(poOwner,@SomethingChanged,#what=self);
       piAnimation = ANIM_NONE;
+      Send(poOwner,@SomethingShot,#who=self,#target=poTarget,
+         #projectile=self,#flags=PROJ_FLAG_LIGHT_SOURCE);
 
       return;
    }
@@ -176,7 +169,7 @@ messages:
    {
       if IsClass(what,&EvilFairy)
       {
-         return 1;
+         return 100;
       }
 
       propagate;

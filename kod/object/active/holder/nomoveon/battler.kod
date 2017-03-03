@@ -171,6 +171,9 @@ resources:
    battler_pierce_damage = "lacerates"
    battler_pierce_slay = "fells"
 
+   battler_ambush_attacker = "~I~kYou ambush your prey!"
+   battler_ambush_victim = "~I~rYou are caught off guard!"
+
 classvars:
 
    viObject_flags = OF_ATTACKABLE
@@ -768,7 +771,7 @@ messages:
    {
       if amount <> $
       {
-         piHealth = bound(amount*100,0,$);
+         piHealth = Bound(amount*100,0,$);
       }
 
       Send(self,@DrawHealth);
@@ -780,7 +783,7 @@ messages:
    {
       if amount <> $
       {
-         piHealth = bound(amount,0,$);
+         piHealth = Bound(amount,0,$);
       }
 
       Send(self,@DrawHealth);
@@ -883,7 +886,7 @@ messages:
       if piWind > 0 AND piHealth < piMax_health * 25
       {
          iBoost = piWind * (piMax_health * 25 - piHealth)/(piMax_health * 25);
-         iBoost = bound(iBoost,25,100);
+         iBoost = Bound(iBoost,25,100);
          iHealthPerTick = iHealthPerTick * iBoost / 25;
       }
 
@@ -896,7 +899,7 @@ messages:
       // A curse will stop our natural regeneration.
       if pbHealthCurse
       {
-         iHealthPerTick = bound(iHealthPerTick,$,0);
+         iHealthPerTick = Bound(iHealthPerTick,$,0);
       }
 
       // Factor in restorate.
@@ -917,7 +920,7 @@ messages:
       // Disable regeneration when sitting at or above max health.
       if piHealth >= 100*piMax_health
       {
-         iHealthPerTick = bound(iHealthPerTick,$,0);
+         iHealthPerTick = Bound(iHealthPerTick,$,0);
       }
 
       // Add a decay of 1 point per 5 seconds if sitting above the max.
@@ -929,7 +932,7 @@ messages:
       // Stop any decay if we are already sitting at 0 health.
       if piHealth = 0
       {
-         iHealthPerTick = bound(iHealthPerTick,0,$);
+         iHealthPerTick = Bound(iHealthPerTick,0,$);
       }
 
       return iHealthPerTick;
@@ -966,7 +969,7 @@ messages:
          return;
       }
 
-      piHealth = bound(piHealth + Send(self,@GetTickFactor,#i=100),$,piMax_health*100);
+      piHealth = Bound(piHealth + Send(self,@GetTickFactor,#i=100),$,piMax_health*100);
       Send(self,@NewHealth);
 
       return;
@@ -981,7 +984,7 @@ messages:
          return;
       }
 
-      piHealth = bound(piHealth - Send(self,@GetTickFactor,#i=100),0,$);
+      piHealth = Bound(piHealth - Send(self,@GetTickFactor,#i=100),0,$);
 
       // We've run out of health. Check what happens now.
       if piHealth < 1
@@ -1020,7 +1023,7 @@ messages:
    {
       if amount <> $
       {
-         piMana = bound(amount*100,0,$);
+         piMana = Bound(amount*100,0,$);
       }
 
       Send(self,@DrawMana);
@@ -1032,7 +1035,7 @@ messages:
    {
       if amount <> $
       {
-         piMana = bound(amount,0,$);
+         piMana = Bound(amount,0,$);
       }
 
       Send(self,@DrawMana);
@@ -1214,7 +1217,7 @@ messages:
       // A curse will stop our natural regeneration.
       if pbManaCurse
       {
-         iManaPerTick = bound(iManaPerTick,$,0);
+         iManaPerTick = Bound(iManaPerTick,$,0);
       }
 
       // Factor in rejuvenate.
@@ -1235,7 +1238,7 @@ messages:
       // Disable regeneration when sitting at or above max mana.
       if piMana >= 100 * piMax_mana
       {
-         iManaPerTick = bound(iManaPerTick,$,0);
+         iManaPerTick = Bound(iManaPerTick,$,0);
       }
 
       // Add a decay of 1 point per 5 seconds if sitting above the max.
@@ -1247,7 +1250,7 @@ messages:
       // Stop any decay if we are already sitting at 0 mana.
       if piMana = 0
       {
-         iManaPerTick = bound(iManaPerTick,0,$);
+         iManaPerTick = Bound(iManaPerTick,0,$);
       }
 
       return iManaPerTick;
@@ -1284,7 +1287,7 @@ messages:
          return;
       }
 
-      piMana = bound(piMana + Send(self,@GetTickFactor,#i=100),$,100 * piMax_mana);
+      piMana = Bound(piMana + Send(self,@GetTickFactor,#i=100),$,100 * piMax_mana);
       Send(self,@NewMana);
 
       return;
@@ -1318,7 +1321,7 @@ messages:
          Send(self,@ZeroMana);
       }
 
-      piMana = bound(piMana,0,$);
+      piMana = Bound(piMana,0,$);
 
       Send(self,@NewMana);
 
@@ -1445,7 +1448,7 @@ messages:
    {
       if amount <> $
       {
-         piVigor = bound(amount*100,0,$);
+         piVigor = Bound(amount*100,0,$);
       }
 
       Send(self,@DrawVigor);
@@ -1457,7 +1460,7 @@ messages:
    {
       if amount <> $
       {
-         piVigor = bound(amount,0,$);
+         piVigor = Bound(amount,0,$);
       }
 
       Send(self,@DrawVigor);
@@ -1619,7 +1622,7 @@ messages:
          {
             iBonus = 50 * (iLimit - iVigor) / iLimit;
             iBonus *= iBonus;
-            iBonus = bound(iBonus,100,2500) * (2 * iStamina + piWind + 1) / 100;
+            iBonus = Bound(iBonus,100,2500) * (2 * iStamina + piWind + 1) / 100;
 
             iNatural += iBonus;
          }
@@ -1640,28 +1643,20 @@ messages:
       }
 
       // Running is straining and drains our vigor slowly.
-      // Check if we've been running lately.
-      if GetTickCount() - piLastMoveUpdateTime < 1000
+      // Exertion has to be handled separately for non-players.
+      if IsClass(self,&Player)
       {
-         // Exertion has to be handled separately for non-players.
-         if IsClass(self,&Player)
-         {
-            iExertion = EXERTION_PER_MOVE * 9 * piSpeed / 2500;
+         iExertion = EXERTION_PER_MOVE * 9 * piSpeed / 2500;
 
-            // If we are hasted, our vigor drain will be reduced.
-            if (piFlags2 & PFLAG2_HASTED)
+         // If we are hasted, our vigor drain will be reduced.
+         if (piFlags2 & PFLAG2_HASTED)
+         {
+            iHaste = Send(self,@GetEnchantedState,#what=Send(SYS,@FindSpellByNum,#num=SID_HASTE));
+
+            if iHaste <> $
             {
-               iHaste = Send(self,@GetEnchantedState,#what=Send(SYS,@FindSpellByNum,#num=SID_HASTE));
-
-               if iHaste <> $
-               {
-                  iExertion = (iExertion * (100 - iHaste)) / 100;
-               }
+               iExertion = (iExertion * (100 - iHaste)) / 100;
             }
-         }
-         else
-         {
-            iExertion = 500;
          }
       }
 
@@ -1680,7 +1675,7 @@ messages:
          // regen which only counteracts drains, but add later.
          if piVigor_Rate > 0
          {
-            iVigorPerTick = bound(iNatural-iExertion,$,0);
+            iVigorPerTick = Bound(iNatural-iExertion,$,0);
             iVigorPerTick += piVigor_Rate;
          }
          // External effects hinder us. Bunch them up with exertion
@@ -1688,7 +1683,7 @@ messages:
          // before, natural regen can only offset, never surpass drain.
          else
          {
-            iVigorPerTick = bound(iNatural-iExertion+piVigor_Rate,$,0);
+            iVigorPerTick = Bound(iNatural-iExertion+piVigor_Rate,$,0);
          }
       }
       // We are above the limit, forget natural regeneration entirely.
@@ -1700,7 +1695,7 @@ messages:
       // Disable regeneration when sitting at or above max vigor.
       if iVigor >= piMax_vigor
       {
-         iVigorPerTick = bound(iVigorPerTick,$,0);
+         iVigorPerTick = Bound(iVigorPerTick,$,0);
       }
 
       // Add a decay of 1 point per 5 seconds if sitting above the max.
@@ -1712,7 +1707,7 @@ messages:
       // Stop any decay if we are already sitting at 0 vigor.
       if piVigor = 0
       {
-         iVigorPerTick = bound(iVigorPerTick,0,$);
+         iVigorPerTick = Bound(iVigorPerTick,0,$);
       }
 
       return iVigorPerTick;
@@ -1751,7 +1746,7 @@ messages:
          return;
       }
 
-      piVigor = bound(piVigor + Send(self,@GetTickFactor,#i=100),$,100 * piMax_vigor);
+      piVigor = Bound(piVigor + Send(self,@GetTickFactor,#i=100),$,100 * piMax_vigor);
 
       // Grant a chance to improve Second Wind if regenerating below threshold.
       // No improvement if we don't have the skill or are regenerating from rest.
@@ -1761,9 +1756,9 @@ messages:
          iLimit = 100 * piVigor_rest_threshold + 20 * (piWind + 1);
          iPenalty = 50 * (iLimit - piVigor) / iLimit;
          iPenalty *= iPenalty;
-         iPenalty = bound(iPenalty / 100,1,25);
+         iPenalty = Bound(iPenalty / 100,1,25);
 
-         if piVigor < iLimit AND random(0,30*iPenalty) = 0
+         if piVigor < iLimit AND Random(0,30*iPenalty) = 0
          {
             Send(Send(sys,@FindSkillByNum,#num=SKID_SECOND_WIND),@ImproveAbility,#who=self);
          }
@@ -1783,7 +1778,7 @@ messages:
          return;
       }
 
-      piVigor = bound(piVigor - Send(self,@GetTickFactor,#i=100),0,$);
+      piVigor = Bound(piVigor - Send(self,@GetTickFactor,#i=100),0,$);
 
       // We've run out of vigor. Check what happens now.
       if piVigor < 1
@@ -2123,9 +2118,12 @@ messages:
    // run into this cap as piBaseRating is increased though.
    //
    // NOTE: For a monster, the stroke_obj is the monster itself for now.
-   TryAttack(what = $,stroke_obj=$)
+   TryAttack(what=$,stroke_obj=$,ambush=FALSE,factor=100)
    {
       local iOffense, iDefense, iChanceToHit, iDamage, iScalefactor, oWeapon;
+
+      // Attacks against a minion master will cause minions to defend the master.
+      Send(what,@CommandMinionAttack,#oTarget=self);
 
       oWeapon = Send(self,@GetWeapon);
 
@@ -2134,17 +2132,33 @@ messages:
       iDefense = Send(what,@GetDefense,#what=self,#stroke_obj=stroke_obj) 
          + Send(SETTINGS_OBJECT,@GetBaseRating);
       iChanceToHit = iOffense * Send(SETTINGS_OBJECT,@GetEqualChanceToHit) / iDefense;
-      iChanceToHit = bound(iChanceToHit,125,2000);
-      if iChanceToHit >= random(1,1000) OR Send(what,@IsResting)
+      iChanceToHit = Bound(iChanceToHit,125,2000);
+      if iChanceToHit >= Random(1,1000) OR Send(what,@IsResting)
       {
          // We hit!
-         iDamage = Send(self,@GetDamage,#what=what,#stroke_obj=stroke_obj);
+         iDamage = Send(self,@GetDamage,#what=what,#stroke_obj=stroke_obj)*factor/100;
          iScalefactor = 1000;
 
          // Scale damage with chance to hit beyond 100 percent.
          if iChanceToHit > 1000 AND Send(SETTINGS_OBJECT,@GetDamageScaling)
          {
             iScalefactor = iChanceToHit;
+         }
+
+         if ambush
+         {
+            iDamage *= 2;
+
+            // Inform the battlers!
+            if IsClass(self,&Player)
+            {
+               Send(self,@MsgSendUser,#message_rsc=battler_ambush_attacker);
+            }
+
+            if IsClass(what,&Player)
+            {
+               Send(what,@MsgSendUser,#message_rsc=battler_ambush_victim);
+            }
          }
 
          iDamage = Send(what,@AssessDamage,#what=self,#damage=iDamage,
@@ -2665,7 +2679,7 @@ messages:
       iBlock = Send(self,@GetBlockAbility,#stroke_obj=stroke_obj);
       iDodge = Send(self,@GetDodgeAbility,#stroke_obj=stroke_obj);
       iRandom = iParry + iBlock + iDodge + BATTLER_AVOID_CHANCE;
-      iRandom = random(0,iRandom);
+      iRandom = Random(0,iRandom);
 
       if iRandom < iParry
       {

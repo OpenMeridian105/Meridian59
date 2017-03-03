@@ -55,8 +55,6 @@ classvars:
    viCashmin = 25000
    viCashmax = 50000
 
-   viSpellChance = 3
-
 properties:
 
    viTreasure_type = TID_EASTER_BUNNY
@@ -76,8 +74,8 @@ messages:
       plResistances = [ [-ATCK_SPELL_ALL, 20 ],
                         [ATCK_WEAP_ALL, 20 ] ];
 
-      plSpellBook = [ [SID_DAZZLE, 5, 30], [SID_APPARITION, 5, 60],
-                      [SID_KILLING_FIELDS, 5, 90], [SID_VERTIGO, 5, 100] ];
+      plActions = [ [SID_DAZZLE], [SID_APPARITION],
+                    [SID_KILLING_FIELDS], [SID_VERTIGO] ];
 
       ptSpawnKillerBunny = CreateTimer(self,@SpawnKillerBunny,piSpawnBunnyTime);
 
@@ -152,11 +150,11 @@ messages:
                AND IsClass(poTarget,&Player)
             {
                Post(oBunny,@TargetSwitch,#what=poTarget,#iHatred=100);
-               Post(oBunny,@EnterStateChase,#target=poTarget,#actnow=True);
+               Post(oBunny,@EnterStateEngage,#target=poTarget,#actnow=True);
             }
 
             // Do an attack animation.
-            Send(self,@MonsterAttack);
+            Send(self,@DoMeleeAnimation);
 
             foreach i in Send(poOwner,@GetHolderActive)
             {

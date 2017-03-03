@@ -60,11 +60,14 @@ classvars:
    viDifficulty = 9
    viVisionDistance = 60
    // Attack range of 192, or 3 row/col.
-   viAttackRange = 192
+   viMeleeRange = 192
    viKarma = -100
    vbIsUndead = TRUE
    viCashmin = 1000
    viCashmax = 5500
+
+   viMeleePriority = 1100
+
    vrSound_hit = ghost_sound_hit
    vrSound_miss = ghost_sound_miss
    vrSound_aware = ghost_sound_aware
@@ -75,9 +78,6 @@ classvars:
       AI_FIGHT_AGGRESSIVE | AI_MOVE_WALKTHROUGH_WALLS \
       | AI_FIGHT_WIZARD_KILLER | AI_MOVE_FLEE_FRIGHTENERS
 
-   // 1 in x chance to cast a spell.
-   viSpellChance = 4
-   
 properties:
 
    piAnimation = ANIM_NONE
@@ -92,7 +92,7 @@ properties:
    piMax_mana = 20
 
    piReputationGroup = REP_FARNOHL
-   
+
 messages:
 
    Constructed()
@@ -106,14 +106,16 @@ messages:
                         [-ATCK_SPELL_HOLY, -50]
                       ];
 
-      plSpellBook = [ [ SID_FIREBALL, 3, 100 ] ];
+      plActions = [ [SID_FIREBALL,0,0,MAX_KOD_INT,400,100,99],
+                    [SID_RING_OF_FLAMES,0,0,MAX_KOD_INT,600,600,99],
+                    [SID_DARKNESS,0,0,MAX_KOD_INT,1200,0,99] ];
 
       plReputationEnemies = [REP_FAROL];
 
       propagate;
    }
 
-   MonsterAttack(what = $)
+   DoMeleeAnimation(what = $)
    {
       piGroup = Random(1,5);
       if piGroup > 2
@@ -126,6 +128,44 @@ messages:
       piAnimation = ANIM_NONE;
 
       return;
+   }
+
+   MonsterCastAnimation(iSpellNum=$)
+   "Give ghost a chance to create fog and zombies on spell cast."
+   {
+      local i, iRandom, oElement, iMRow, iMCol, iMRowFine, iMColFine;
+
+      iRandom = Random(3,8);
+      i = 0;
+
+      while i < iRandom
+      {
+         if GetRandomPointBSP(Send(poOwner,@GetRoomData), 15, *iMRow, *iMCol, *iMRowFine, *iMColFine)
+         {
+            if Random (1,iRandom) = 1
+            {
+               oElement = Create(&Zombie,#DropsTreasure=FALSE,#Level=15);
+               Send(poOwner,@NewHold,#what=oElement,#new_row=iMRow,#new_col=iMCol,
+                    #fine_row=iMRowFine,#fine_col=iMColFine);
+
+               if poTarget <> $
+               {
+                  Send(oElement,@TargetSwitch,#what=poTarget,#iHatred=100);
+                  Send(oElement,@EnterStateEngage,#target=poTarget,#actnow=TRUE);
+               }
+            }
+            else
+            {
+               oElement = Create(&FogCloud,#Caster=self,#Duration=5);
+               Send(poOwner,@NewHold,#what=oElement,#new_row=iMRow,#new_col=iMCol,
+                    #fine_row=iMRowFine,#fine_col=iMColFine);
+            }
+         }
+
+         ++i;
+      }
+
+      propagate;
    }
 
    SendLookAnimation()

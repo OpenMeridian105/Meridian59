@@ -81,14 +81,19 @@ classvars:
    viAttack_type = ATCK_WEAP_PIERCE
    viSpeed = SPEED_FAST
    viDefault_behavior = \
-      AI_FIGHT_AGGRESSIVE | AI_MOVE_OPTIMAL_RANGE\
+      AI_FIGHT_AGGRESSIVE | AI_MOVE_OPTIMAL_RANGE \
       | AI_FIGHT_WIZARD_KILLER | AI_FIGHT_MONSTERS
    viLevel = 135
    viDifficulty = 9
    viVisionDistance = 28
 
    // Attack range of 192, or 3 row/col.
-   viAttackRange = 192
+   viMeleeRange = 192
+   viFireRange = 640
+
+   viMeleePriority = 500
+   viMovePriority = 550
+   viFirePriority = 600
 
    viKarma = 85
    viCashmin = 650
@@ -98,9 +103,6 @@ classvars:
    vrSound_miss = avarchief_sound_miss
    vrSound_aware = avarchief_sound_aware
    vrSound_death = avarchief_sound_death
-
-   // Chance to do his 'spell' which is really a ranged attack
-   viSpellChance = 6
 
 properties:
 
@@ -208,25 +210,6 @@ messages:
       propagate;
    }
 
-   MonsterAttack(what = $)
-   {
-      if pbFire
-      {
-         piAnimation = ANIM_FIRE;
-      }
-      else
-      {
-         piAnimation = ANIM_ATTACK;
-      }
-
-      pbFire = FALSE;
-      
-      Send(poOwner,@SomethingChanged,#what=self);
-      piAnimation = ANIM_NONE;
-
-      return;
-   }
-
    // You cannot parry the chief's attacks.
    CanParry()
    {
@@ -274,35 +257,12 @@ messages:
       return;
    }
 
-   // This is technically a ranged attack, and we use RangedAttackChance
-   // to see if we can do it. Use the same range as that for spells. We
-   // also use piSpellChance for the base chance to do our ranged attack.
-   MonsterCastSpell()
+   DoMissileAnimation()
    {
-      local iBase;
-
-      iBase = Send(self,@RangedAttackChance,#base=(piSpellChance*6));
-
-      if Random(1,iBase) = 1
-         AND Send(self,@SquaredFineDistanceTo3D,#what=poTarget)
-                  < piSpellRange * piSpellRange
-         AND Send(poOwner,@LineOfSight,#obj1=self,#obj2=poTarget)
-         AND Send(poOwner,@ReqSomethingAttack,#what=self,#victim=poTarget,
-                  #use_weapon=self)
-      {
-         Send(self,@DoMissileAttack);
-
-         return TRUE;
-      }
-
-      return FALSE;
-   }
-
-   DoMissileAttack()
-   {
-      pbFire = TRUE;
+      piAnimation = ANIM_FIRE;
+      Send(poOwner,@SomethingChanged,#what=self);
+      piAnimation = ANIM_NONE;
       Send(poOwner,@SomethingShot,#who=self,#target=poTarget,#projectile=self);
-      Send(self,@TryAttack,#what=poTarget,#stroke_obj=self);
 
       return;
    }
@@ -328,12 +288,6 @@ messages:
    {
       // No lighting information.
       return LIGHT_FLAG_NONE;
-   }
-
-   GetOptimalRange()
-   {
-      // Random range between 8-15 row/col units.
-      return random(512,960);
    }
 
    IsAlly(target = $)

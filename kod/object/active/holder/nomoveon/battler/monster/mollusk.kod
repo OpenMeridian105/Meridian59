@@ -80,7 +80,8 @@ classvars:
    viDifficulty = 8
    viVisionDistance = 20
    // Attack range of 192, or 3 row/col.
-   viAttackRange = 192
+   viMeleeRange = 192
+   viFireRange = 512
    viKarma = 100
    viCashmin = 400
    viCashmax = 1500
@@ -89,7 +90,7 @@ classvars:
    vrSound_death = MolluskMonster_sound_death
 
    // Chance to do a rock throw
-   viSpellChance = 4
+   viRockThrowChance = 4
 
 properties:
 
@@ -218,46 +219,31 @@ messages:
       return;
    }
 
-   MonsterAttack(what = $)
+   DoMissileAnimation()
    {
-      piAnimation = ANIM_ATTACK;
-      Send(poOwner,@SomethingChanged,#what=self);
-      piAnimation = ANIM_NONE;
+      local oElement;
 
-      return;
-   }
-
-   // This is technically a ranged attack, and we use RangedAttackChance
-   // to see if we can do it. Use the same range as that for spells. We
-   // also use piSpellChance for the base chance to do our ranged attack.
-   MonsterCastSpell()
-   {
-      local iBase;
-
-      iBase = Send(self,@RangedAttackChance,#base=(piSpellChance*6));
-
-      if Random(1,iBase) = 1
-         AND Send(self,@SquaredFineDistanceTo3D,#what=poTarget)
-            <= piSpellRange * piSpellRange
-         AND Send(poOwner,@LineOfSight,#obj1=self,#obj2=poTarget)
-         AND Send(poOwner,@ReqSomethingAttack,#what=self,#victim=poTarget,
-                  #use_weapon=self)
-      {
-         Send(self,@DoMissileAttack);
-
-         return TRUE;
-      }
-
-      return FALSE;
-   }
-
-   DoMissileAttack()
-   {
       piAnimation = ANIM_THROW;
       Send(poOwner,@SomethingChanged,#what=self);
       piAnimation = ANIM_NONE;
       Send(poOwner,@SomethingShot,#who=self,#target=poTarget,#projectile=self);
-      Send(self,@TryAttack,#what=poTarget,#stroke_obj=self);
+
+      if Random(1,10) < 2
+      {
+         oElement = Create(&FogCloud,#Caster=self,#Duration=5);
+      }
+      else if Random(1,10) = 10
+      {
+         oElement = Create(&PoisonFogCloud,#Caster=self,#Duration=5,#Odds=101);
+      }
+      else
+      {
+         oElement = Create(&ActiveSporeCloud,#Caster=self,#Duration=5,#iSpellPower=50);
+      }
+
+      Send(poOwner,@NewHold,#what=oElement,
+         #new_row=Send(poTarget,@GetRow),#new_col=Send(poTarget,@GetCol),
+         #fine_row=Random(1,64),#fine_col=Random(1,64));
 
       return;
    }
@@ -289,12 +275,6 @@ messages:
    {
       // No lighting information.
       return LIGHT_FLAG_NONE;
-   }
-
-   GetOptimalRange()
-   {
-      // Random range between 6 and 10 row/col units.
-      return Random(384,640);
    }
 
    IsAlly(target = $)

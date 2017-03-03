@@ -40,16 +40,11 @@ properties:
 
 messages:
 
-   constructor(Caster=$,Duration=75)
+   Constructor(Caster=$,duration=75)
    {
-     local iDuration;
-     iDuration = Random(Duration-15,Duration+15);
-     iDuration = iDuration * 750;
-     iDuration = bound(iDuration,22500,150000);
-
      poCaster = Caster;
      vbSummoned = isClass(Caster,&User);
-     ptExpire = CreateTimer(self,@Expire,iDuration);
+     ptExpire = CreateTimer(self,@Expire,Send(self,@GetDuration,#duration=duration));
 
      propagate;
    }
@@ -58,9 +53,20 @@ messages:
    {
       /// at this point, the wall should have already been created.
       /// therefore, it should be safe to delete it.
-      post(self,@ArenaCheck);
+      Post(self,@ArenaCheck);
 
       propagate;
+   }
+
+   GetDuration(duration = 0)
+   {
+      local iDuration;
+
+      iDuration = Random(duration*4/5,duration*6/5);
+      iDuration = iDuration * 1000;
+      iDuration = bound(iDuration,1000,200000);
+
+      return iDuration;
    }
 
    ArenaCheck()

@@ -6843,19 +6843,16 @@ messages:
       return;
    }
 
-   ConnectManaNode(node_num=0,all=FALSE,boost=FALSE)
+   ConnectManaNode(node_num=0,all=FALSE)
    {
       if all
       {
-         piNodelist = 8191;
+         piNodelist = NODE_ALL;
       }
-
-      if boost
+      else
       {
-         piNodelist = 65535;
+         piNodelist |= node_num;
       }
-
-      piNodelist |= node_num;
 
       Send(self,@ComputeMaxMana);
 
@@ -6900,10 +6897,24 @@ messages:
 
    ComputeMaxMana()
    {
-      local i, iMagic, oCrystalizeMana, iCrystalizeManaAbility;
+      local i, index, iNodeList, oNode, iMagic, oCrystalizeMana, iCrystalizeManaAbility;
 
       iMagic = Send(self,@GetMysticism);
-      piMax_mana = (150 + (2* iMagic) + (Send(self,@NumManaNodes) * (30 + iMagic)))/10;
+      piMax_mana = 150 + (2 * iMagic);
+
+      for (index = 1, iNodelist = piNodelist;
+           iNodeList > 0 AND index <= NODE_MAX_VALUE;
+           index *= 2)
+      {
+         if (iNodeList & index)
+         {
+            oNode = Send(SYS,@FindNodeByNum,#num=index);
+            piMax_mana += Send(oNode,@GetManaAdjust,#who=self,#myst=iMagic);
+            iNodelist &= ~index;
+         }
+      }
+
+      piMax_mana /= 10;
 
       // Account for any items that may affect max mana
       foreach i in plUsing

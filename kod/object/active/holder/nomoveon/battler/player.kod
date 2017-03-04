@@ -6049,7 +6049,7 @@ messages:
       {
          if poGuild = oGuild
          {
-            oChance = oChance + 20;
+            oChance += 20;
          }
          else
          {
@@ -6059,19 +6059,19 @@ messages:
             }
             if Send(poGuild,@IsAlly,#otherguild=oGuild)
             {
-               oChance = oChance + 10;
+               oChance += 10;
             }
             if Send(oGuild,@IsAlly,#otherguild=poGuild)
             {
-               oChance = oChance + 10;
+               oChance += 10;
             }
             if Send(poGuild,@IsEnemy,#otherguild=oGuild)
             {
-               oChance = oChance - 10;
+               oChance -= 10;
             }
             if Send(oGuild,@IsEnemy,#otherguild=poGuild)
             {
-               oChance = oChance - 10;
+               oChance -= 10;
             }
          }
       }
@@ -6081,36 +6081,36 @@ messages:
       {
          if piFaction <> iFaction
          {
-            oChance = oChance - 5;
+            oChance -= 5;
          }
          else
          {
-            oChance = oChance + 15;
+            oChance += 15;
          }
       }
-      
+
       // Our max health, bound to max HP
       iMaxHealth = Send(self,@GetBaseMaxHealth);
       // Punish them more if they beat up someone weaker than they are.
-      oChance = oChance + ((10 * iMaxHealth) / Send(target,@GetBaseMaxHealth));
+      oChance += ((10 * iMaxHealth) / Send(target,@GetBaseMaxHealth));
 
       // People with greater absolute Karma have a greater chance to produce
       // a revenant.  Being a good person, in general, decreases your chance.
       // Even if you are murderous scum.
-      oChance = oChance + (Abs(Send(target,@GetKarma)-piKarma/100))/20;
+      oChance += (Abs(Send(target,@GetKarma)-piKarma/100))/20;
 
       // Punish them more if they walked away with more health.
-      oChance = oChance + bound(piHealth/(5 * iMaxHealth),0,20);
+      oChance += Bound(piHealth / (5 * iMaxHealth),0,20);
 
       // Bind the number to a reasonable amount, then add in the penalty
       // for being a repeat killer.
-      oChance = (bound(oChance,20,80) + (5*piKill_count_decay));
+      oChance = (Bound(oChance,20,80) + (5 * piKill_count_decay));
 
       oSpell = Send(SYS,@FindSpellByNum,#num=SID_MARTYRS_BATTLEGROUND);
       if Send(oVictimRoom,@IsEnchanted,#what=oSpell)
       {
-         oChance = oChance +
-               (oChance * Send(oVictimRoom,@GetEnchantmentState,#what=oSpell) / 100);
+         oChance += (oChance * First(Send(oVictimRoom,@GetEnchantmentState,
+                                       #what=oSpell)) / 100);
       }
       oChance = Bound(oChance,40,95);
 

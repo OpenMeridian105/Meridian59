@@ -552,6 +552,7 @@ messages:
       lStats = $;
       lTemp = $;
       i = 6;
+
       // The total amount of stat points distributed. A couple points may
       // by lost to truncation in the process, but (carelevel << carethreshold)
       iStatPoints = Bound(viDifficulty + 1,1,10) * 5 * i;
@@ -616,6 +617,17 @@ messages:
       piStamina = bound(Nth(lTemp,4)+viBonusStamina,1,MONSTER_STAT_CAP);
       piIntellect = bound(Nth(lTemp,5)+viBonusIntellect,1,MONSTER_STAT_CAP);
       piMysticism = bound(Nth(lTemp,6)+viBonusMysticism,1,MONSTER_STAT_CAP);
+
+      // No randomization for templates, just straight values scaled with viDifficulty.
+      if template
+      {
+         piAgility = bound((viDifficulty+1)*5+viBonusAgility,1,MONSTER_STAT_CAP);
+         piAim = bound((viDifficulty+1)*5+viBonusAim,1,MONSTER_STAT_CAP);
+         piMight = bound((viDifficulty+1)*5+viBonusMight,1,MONSTER_STAT_CAP);
+         piStamina = bound((viDifficulty+1)*5+viBonusStamina,1,MONSTER_STAT_CAP);
+         piIntellect = bound((viDifficulty+1)*5+viBonusIntellect,1,MONSTER_STAT_CAP);
+         piMysticism = bound((viDifficulty+1)*5+viBonusMysticism,1,MONSTER_STAT_CAP);
+      }
 
       // Set the monsters resources based on the stats we just created.
       // Health
@@ -2549,7 +2561,14 @@ messages:
    "Make damage thresholds available for hots/regeneration."
    {
       local iPercentClass;
+
       ptHealth = $;
+
+      // There's no reason this should ever happen really.
+      if poOwner = $
+      {
+         return;
+      }
 
       // Check health before gaining a health point.
       iPercentClass = piHealth/(piMax_health*20);
@@ -2573,6 +2592,12 @@ messages:
       local iPercentClass;
 
       ptHealth = $;
+
+      // There's no reason this should ever happen really.
+      if poOwner = $
+      {
+         return;
+      }
 
       // Check health before losing a health point.
       iPercentClass = piHealth/(piMax_health*20);

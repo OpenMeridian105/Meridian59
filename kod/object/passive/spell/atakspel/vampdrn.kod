@@ -24,13 +24,11 @@ resources:
    VampiricDrain_name_rsc = "vampiric drain"
    VampiricDrain_icon_rsc = ivamptou.bgf
    VampiricDrain_desc_rsc = \
-      "Draws out the very life force of the target and converts the energy into "
-      "life for the caster.  Requires one vial of shaman blood to cast."
-
+      "Draws out the very life force of the target and converts the energy "
+      "into life for the caster."
    VampiricDrain_death = "You drain the last bit of %s%s's life force."
    VampiricDrain_health_gain = \
       "You siphon your victim's life force, gaining ~g~B%i~B~n health."
-
    VampiricDrain_sound = qvtouch.ogg
 
 classvars:
@@ -71,7 +69,7 @@ messages:
    {
       plReagents = $;
       plReagents = cons([&ShamanBlood, 1],plReagents);
-      
+
       return;
    }
 
@@ -79,7 +77,7 @@ messages:
    DoSideEffect(who=$,victim=$,damage=0)
    {
       local iToHeal;
-      
+
       if who = $ OR victim = $
          OR Send(victim,@IsDrainImmune)
       {
@@ -90,22 +88,22 @@ messages:
       if damage <> $
       {
          // Add half of the damage done.
-         iToHeal = bound(damage/DAMAGE_FACTOR_TO_HEAL,0,$);
+         iToHeal = Bound(damage/DAMAGE_FACTOR_TO_HEAL,0,$);
       }
       else
       {
          // Ah!  We killed someone.  Give them a large bonus based on max damage.
          iToHeal = bound(piDamageMax*100/DAMAGE_FACTOR_TO_HEAL,0,$);
          Post(who,@MsgSendUser,#message_rsc=VampiricDrain_death,
-              #parm1=Send(victim,@GetDef),#parm2=Send(victim,@GetName));
+               #parm1=Send(victim,@GetDef),#parm2=Send(victim,@GetName));
       }
 
-      Send(who,@MsgSendUser,#message_rsc=VampiricDrain_health_gain,#parm1=iToHeal/100);
+      Send(who,@MsgSendUser,#message_rsc=VampiricDrain_health_gain,
+            #parm1=iToHeal/100);
       Send(who,@GainHealth,#bCapped=FALSE,#amount=iToHeal,#precision=TRUE);
 
       propagate;
    }
-
 
 end
 ////////////////////////////////////////////////////////////////////////////////

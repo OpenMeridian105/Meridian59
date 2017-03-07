@@ -65,7 +65,7 @@ messages:
    {
       local oMonster, oBody, oRoom, oScapegoat, iRand, i, each_obj,
             iRow, iCol, iFineRow, iFineCol, iDropChance;
-      
+
       oRoom = Send(who,@GetOwner);
       iRow = Send(who,@GetRow);
       iCol = Send(who,@GetCol);
@@ -140,7 +140,6 @@ messages:
                AND Send(i,@ReqNewOwner,#what=oRoom)
                AND Send(i,@ReqLeaveOwner)
                AND Send(i,@DropOnDeath)
-               AND NOT IsClass(i,&RiijaSword)
                AND Random(1,100) < iDropChance
             {
                Send(oRoom,@NewHold,#what=i,#new_row=iRow,#new_col=iCol,
@@ -164,48 +163,34 @@ messages:
          }
       }
 
-      Send(who,@AddDefenseModifier,#what=self);      
+      Send(who,@AddDefenseModifier,#what=self);
 
       iRand = Random(1,100);
       if iRand > 3
       {
-         Send(self,@SendMessage,#who=who,
-              #string=feigndeath_user_killed,
-              #parm1=Send(who,@GetUserName),
-              #parm2=Send(oScapeGoat,@GetIndef),
-              #parm3=Send(oScapeGoat,@GetName));
+         Send(self,@SendMessage,#who=who,#string=feigndeath_user_killed,
+               #parm1=Send(who,@GetUserName),#parm2=Send(oScapeGoat,@GetIndef),
+               #parm3=Send(oScapeGoat,@GetName));
          Send(oScapeGoat,@Delete);
+      }
+      else if iRand = 1
+      {
+         Send(self,@SendMessage,#who=who,#string=feigndeath_user_killed,
+               #parm1=Send(who,@GetUserName),#parm2=feigndeath_nuthin,
+               #parm3=feigndeath_angrymocker);
+      }
+      else if iRand = 2
+      {
+         Send(self,@SendMessage,#who=who,#string=feigndeath_user_killed,
+               #parm1=Send(who,@GetUserName),#parm2=feigndeath_nuthin,
+               #parm3=feigndeath_fallingpiano);
       }
       else
       {
-         if iRand = 1
-         {
-            Send(self,@SendMessage,#who=who,
-                 #string=feigndeath_user_killed,
-                 #parm1=Send(who,@GetUserName),
-                 #parm2=feigndeath_nuthin,
-                 #parm3=feigndeath_angrymocker);
-         }
-         else
-         {
-            if iRand = 2
-            {
-               Send(self,@SendMessage,#who=who,
-                    #string=feigndeath_user_killed,
-                    #parm1=Send(who,@GetUserName),
-                    #parm2=feigndeath_nuthin,
-                    #parm3=feigndeath_fallingpiano);
-            }
-            else
-            {
-               // if iRand = 3
-               Send(self,@SendMessage,#who=who,
-                    #string=feigndeath_user_killed,
-                    #parm1=Send(who,@GetUserName),
-                    #parm2=feigndeath_nuthin,
-                    #parm3=feigndeath_firebunny);
-            }
-         }
+         // if iRand = 3
+         Send(self,@SendMessage,#who=who,#string=feigndeath_user_killed,
+               #parm1=Send(who,@GetUserName),#parm2=feigndeath_nuthin,
+               #parm3=feigndeath_firebunny);
       }
 
       propagate;
@@ -229,7 +214,7 @@ messages:
          foreach j in Send(oYellRoom,@GetHolderActive)
          {
             each_obj = Send(oYellRoom,@HolderExtractObject,#data=j);
-            if IsClass(each_obj,&player)
+            if IsClass(each_obj,&Player)
             {
                Send(each_obj,@MsgSendUser,#message_rsc=string,
                      #parm1=parm1,#parm2=parm2,#parm3=parm3);
@@ -242,7 +227,7 @@ messages:
          foreach j in Send(oRoom,@GetHolderActive)
          {
             each_obj = Send(oRoom,@HolderExtractObject,#data=j);
-            if IsClass(each_obj,&player)
+            if IsClass(each_obj,&Player)
             {
                Send(each_obj,@MsgSendUser,#message_rsc=string,
                      #parm1=parm1,#parm2=parm2,#parm3=parm3);
@@ -410,7 +395,7 @@ messages:
    IllusionGetTemplate(who = $)
    {
       local oState;
-   
+
       if who <> $
       {
          oState = Send(who,@GetEnchantedState,#what=self);
@@ -420,7 +405,7 @@ messages:
          }
       }
 
-      return $;
+      return;
    }
 
    IllusionShowDesc(who = $, iHitPoint_Percent=$)

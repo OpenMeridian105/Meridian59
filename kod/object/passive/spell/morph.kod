@@ -25,17 +25,13 @@ resources:
    morph_name_rsc = "morph"
    morph_icon_rsc = imorph.bgf
    morph_desc_rsc = \
-      "The touch of Riija shifts you into another beast!  "
-      "Requires web moss and dragonfly eyes to cast."
-
+      "The touch of Riija shifts you into another beast!"
    morph_already_enchanted = "You already have been affected by %s%s."
    morph_already_affected = "You are already morphed."
-
    morph_on = \
       "You painfully undergo a transformation which changes you almost but "
       "not quite into %s%s."
    morph_off = "Your alternate form wears off; you return to your normal self."
-
    Morph_attackable = \
       "\nNOTE: While you are in the form of a monster, Shal'ille's protection "
       "will not apply to you.  You can be attacked by others freely, even in "
@@ -43,7 +39,7 @@ resources:
       "innocents."
 
    morph_sound = rmorph.ogg
-   
+
 classvars:
 
    vrName = morph_name_rsc
@@ -66,11 +62,11 @@ properties:
 messages:
 
    ResetReagents()
-   {      
+   {
       plReagents = $;
       plReagents = Cons([&WebMoss,3],plReagents);
       plReagents = Cons([&DragonflyEye,2],plReagents);
-      
+
       return;
    }
 
@@ -80,8 +76,8 @@ messages:
       if Send(who,@CheckPlayerFlag,#flag=PFLAG_MORPHED)
       {
          Send(who,@MsgSendUser,#message_rsc=morph_already_enchanted,
-              #parm1=Send(self,@GetIndef),#parm2=Send(self,@GetName));
-         
+               #parm1=Send(self,@GetIndef),#parm2=Send(self,@GetName));
+
          return FALSE;
       }
 
@@ -90,8 +86,7 @@ messages:
 
    CastSpell(who = $, iSpellPower = 0)
    {
-      Send(self,@PerformMorph,#caster=who,#victim=who,
-           #iSpellpower=iSpellpower);      
+      Send(self,@PerformMorph,#caster=who,#victim=who,#iSpellpower=iSpellpower);
 
       propagate;
    }
@@ -99,26 +94,26 @@ messages:
    GetTranceTime(iSpellpower=0,who=$)
    {
       local iPercent;
-      
+
       if iSpellpower = 0
       {
          Debug("Bad iSpellpower passed to GetTranceTime");
       }
-      
+
       // Don't eliminate the casting time for DMs since they can use this
       //  spell to transform.
 
       // 51 for high, 149 for low
-      iPercent = 150 - iSpellPower;   
-      
-      return (viCast_time*iPercent)/100;
+      iPercent = 150 - iSpellPower;
+
+      return (viCast_time * iPercent) / 100;
    }
 
    PerformMorph(caster = $,victim = $,iIllusion_type = $, iSpellpower = 0)
    "A secondary function so that a potion can cast this easily"
    {
-      local oIllusion,iTime,oRoom,playerHP, monsterHP, differenceHP,
-            lPlayerUsed, changeHP, i;
+      local i, oIllusion, iTime, oRoom, playerHP, monsterHP, differenceHP,
+            changeHP;
 
       // Are they already enchanted by Illusionary form?
       if Send(victim,@IsEnchanted,#byClass=&IllusionaryForm)
@@ -126,12 +121,10 @@ messages:
          // Remove Illusionary form
          Send(victim,@RemoveEnchantmentClass,#class=&IllusionaryForm);
       }
-   
+
       oRoom = Send(victim,@GetOwner);
 
-      lPlayerUsed = Send(victim,@GetPlayerUsing);
-
-      foreach i in lPlayerUsed
+      foreach i in Send(victim,@GetPlayerUsing)
       {
          if NOT IsClass(i,&SoldierShield)
          {
@@ -141,7 +134,8 @@ messages:
 
       if iSpellPower = $
       {
-         DEBUG("Something funky is up here.");
+         Debug("$ spellpower passed to morph PerformMorph.");
+
          return;
       }
 
@@ -150,17 +144,17 @@ messages:
          iIllusion_type = Send(self,@CalculateIllusionType,
                                #iSpellpower=iSpellPower);
       }
-      
+
       oIllusion = Nth(Send(SYS,@GetMonsterTemplates),iIllusion_type);
       Send(victim,@MsgSendUser,#message_rsc=morph_on,
-           #parm1=Send(oIllusion,@GetIndef),#parm2=Send(oIllusion,@GetName));
+            #parm1=Send(oIllusion,@GetIndef),#parm2=Send(oIllusion,@GetName));
 
       playerHP = Send(victim,@GetMaxHealth);
       monsterHP = Send(oIllusion,@GetLevel);
 
       // Do the random hp range here instead of relying on the template's
-      //  set hps.
-      monsterHP = (monsterHP * random(90,110)) / 100;
+      // set hps.
+      monsterHP = (monsterHP * Random(90,110)) / 100;
       differenceHP = ((playerHP - monsterHP) * iSpellPower) / 100;
       changeHP = Send(victim,@GainMaxHealth,#amount=-differenceHP);
 
@@ -171,10 +165,10 @@ messages:
       //  the caster and the target monster, and a slight random.
       iTime = 60 + 3*iSpellPower; 
       iTime = (iTime * playerHP) / MonsterHP;
-      iTime = (iTime * random(80,120)) / 100;
+      iTime = (iTime * Random(80,120)) / 100;
 
       // Convert to ms.
-      iTime = iTime * 1000;
+      iTime *= 1000;
 
       Send(oRoom,@SomethingWaveRoom,#what=victim,#wave_rsc=morph_scream_wav);
       Send(victim,@EffectSendUserDuration,#effect=EFFECT_PAIN,
@@ -190,14 +184,14 @@ messages:
 
    SetSpellPlayerFlag(who=$)
    {
-      local iIllusion_type,oIllusion,iFX;
+      local iIllusion_type, oIllusion, iFX;
 
       iIllusion_type = First(Send(who,@GetEnchantedState,#what=self));
       if iIllusion_type = $
       {
          return;
       }
-         
+
       oIllusion = Nth(Send(SYS,@GetMonsterTemplates),iIllusion_type);
 
       if oIllusion <> $
@@ -213,7 +207,7 @@ messages:
 
       return;
    }
-   
+
    TranceBlocksSay()
    {
       return TRUE;
@@ -222,62 +216,58 @@ messages:
    SomethingSaidDuringTrance(who=$,string=$)
    {
       local iForm, iCount, i, iLevel, iSpellPower, bDM;
-            
+
       iSpellPower = Send(self,@GetSpellPower,#who=who);
       iForm = -1;
       iCount = 1;
-      
+
+      bDM = IsClass(who,&DM);
+
       foreach i in Send(SYS,@GetMonsterTemplates)
       {
-         bDM = FALSE;
-
-         if IsClass(who,&DM) AND StringEqual(string,Send(i,@GetName))
-         {
-            bDM = TRUE;
-         }
-    
-         if bDM OR StringEqual(string,Send(i,@GetKocName))
+         if (StringEqual(string,Send(i,@GetName)) AND bDM)
+            OR StringEqual(string,Send(i,@GetKocName))
          {
             iLevel = Send(i,@GetLevel);
 
             // Be sure the player deserves to be able to 'steer' to this monster
             // But, always let player select monster if they have max spellpower.
-            if (iSpellPower <= (iLevel + random(0,10))
-                AND iSpellPower < SPELLPOWER_MAXIMUM)
+            if (iSpellPower <= (iLevel + Random(0,10))
+                  AND iSpellPower < SPELLPOWER_MAXIMUM)
                AND NOT bDM
             {
                return;
             }
 
-            // Be sure the player CAN morph to it.  Can't do some mosnters because of
-            //  size, special event status, etc.
+            // Be sure the player CAN morph to it.  Can't do some mosnters
+            // because of size, special event status, etc.
             if NOT (bDM OR Send(i,@CanMorphTo))
             {
                return;
             }
-            
+
             iForm = iCount;
-            
+
             break;
          }
-         
-         iCount = iCount + 1;
+
+         ++iCount;
       }
-      
+
       if iForm <> -1
       {
          // Use EVENT_STEER so we don't print fizzle message.
          Send(who,@BreakTrance,#event=EVENT_STEER);  
          Send(self,@PerformMorph,#caster=who,#victim=who,#iIllusion_type=iForm,
-              #iSpellpower=iSpellpower);
+               #iSpellpower=iSpellpower);
       }
-      
+
       return;
    }
 
    CalculateIllusionType(iSpellPower = 0)
-   "Returns an illusion id based on spellpower--higher spellpower gives you a better "
-   "chance of being a cooler monster."
+   "Returns an illusion id based on spellpower--higher spellpower gives "
+   "you a better chance of being a cooler monster."
    {
       local i, iLevel, iMax, iIndex, iCount, iAmount;
             
@@ -288,9 +278,9 @@ messages:
       //        level 45    45
       //        level 55    25    // note the decrease is double the increase rate
       //        level 65     5
-      //        level 75     1     
+      //        level 75     1
 
-      iMax = 0;      
+      iMax = 0;
       foreach i in Send(SYS,@GetMonsterTemplates)
       {
          iLevel = Send(i,@GetLevel);
@@ -299,15 +289,15 @@ messages:
             iAmount = iSpellPower - iLevel;
             if iAmount < 0
             {
-               iAmount = abs(iAmount*2);
+               iAmount = Abs(iAmount * 2);
             }
-            
-            iAmount = bound((iSpellPower - iAmount),1,100);
-            iMax = iMax + iAmount;
+
+            iAmount = Bound((iSpellPower - iAmount),1,100);
+            iMax += iAmount;
          }
       }
-      
-      iIndex = random(0,iMax);
+
+      iIndex = Random(0,iMax);
       iCount = 1;
       foreach i in Send(SYS,@GetMonsterTemplates)
       {
@@ -317,24 +307,24 @@ messages:
             iAmount = iSpellPower - iLevel;
             if iAmount < 0
             {
-               iAmount = abs(iAmount*2);
+               iAmount = Abs(iAmount * 2);
             }
-            
-            iAmount = bound((iSpellPower - iAmount),1,100);
-            iIndex = iIndex - iAmount;
-            
+
+            iAmount = Bound((iSpellPower - iAmount),1,100);
+            iIndex -= iAmount;
+
             if iIndex <= 0
             {
                return iCount;
             }
          }
-         
-         iCount = iCount + 1;
+
+         ++iCount;
       }
 
-      debug("Shouldn't get here!");
+      Debug("Shouldn't get here!");
 
-      return $;
+      return;
    }
 
    EndEnchantment(who = $, state=$,report = TRUE)
@@ -348,7 +338,7 @@ messages:
       {
          Send(who,@MsgSendUser,#message_rsc=morph_off);
       }
-       
+
       Send(who,@ResetPlayerIllusion);
 
       // Health could have changed, Send NewHealth.
@@ -363,7 +353,7 @@ messages:
 
    IllusionGetIcon(who = $)
    {
-      local iIllusion_type,oIllusion;
+      local iIllusion_type, oIllusion;
 
       iIllusion_type = First(Send(who,@GetEnchantedState,#what=self));
       if iIllusion_type = $
@@ -372,13 +362,13 @@ messages:
       }
 
       oIllusion = Nth(Send(SYS,@GetMonsterTemplates),iIllusion_type);
-      
+
       return Send(oIllusion,@GetIcon);
    }
 
    IllusionSendAnimation(who = $,animation = $)
    {
-      local iIllusion_type,oIllusion;
+      local iIllusion_type, oIllusion;
 
       iIllusion_type = First(Send(who,@GetEnchantedState,#what=self));
       if iIllusion_type = $
@@ -397,7 +387,7 @@ messages:
       {
          Send(oIllusion,@SetAnimation,#animation=ANIM_NONE);
       }
-      
+
       Send(oIllusion,@SendAnimation);
 
       return;
@@ -405,7 +395,7 @@ messages:
 
    IllusionSendMoveAnimation(who = $)
    {
-      local iIllusion_type,oIllusion;
+      local iIllusion_type, oIllusion;
 
       iIllusion_type = First(Send(who,@GetEnchantedState,#what=self));
       if iIllusion_type = $
@@ -421,7 +411,7 @@ messages:
 
    IllusionSendOverlays(who = $,animation = $)
    {
-      local iIllusion_type,oIllusion;
+      local iIllusion_type, oIllusion;
 
       iIllusion_type = First(Send(who,@GetEnchantedState,#what=self));
       if iIllusion_type = $
@@ -440,7 +430,7 @@ messages:
       {
          Send(oIllusion,@SetAnimation,#animation=ANIM_NONE);
       }
-      
+
       Send(oIllusion,@SendOverlays);
 
       return;
@@ -448,7 +438,7 @@ messages:
 
    IllusionSendMoveOverlays(who = $)
    {
-      local iIllusion_type,oIllusion;
+      local iIllusion_type, oIllusion;
 
       iIllusion_type = First(Send(who,@GetEnchantedState,#what=self));
       if iIllusion_type = $
@@ -464,7 +454,7 @@ messages:
 
    IllusionShowDesc(who = $,iHitPoint_Percent=$)
    {
-      local iIllusion_type,oIllusion;
+      local iIllusion_type, oIllusion;
 
       iIllusion_type = First(Send(who,@GetEnchantedState,#what=self));
       if iIllusion_type = $
@@ -480,14 +470,14 @@ messages:
 
    IllusionGetCapDef(who = $)
    {
-      local iIllusion_type,oIllusion;
+      local iIllusion_type, oIllusion;
 
       iIllusion_type = First(Send(who,@GetEnchantedState,#what=self));
       if iIllusion_type = $
       {
          return object_article_none_rsc;
       }
-      
+
       oIllusion = Nth(Send(SYS,@GetMonsterTemplates),iIllusion_type);
       if oIllusion = $
       {
@@ -499,14 +489,14 @@ messages:
 
    IllusionGetDef(who = $)
    {
-      local iIllusion_type,oIllusion;
+      local iIllusion_type, oIllusion;
 
       iIllusion_type = First(Send(who,@GetEnchantedState,#what=self));
       if iIllusion_type = $
       {
          return object_article_none_rsc;
       }
-      
+
       oIllusion = Nth(Send(SYS,@GetMonsterTemplates),iIllusion_type);
 
       if oIllusion = $
@@ -519,14 +509,14 @@ messages:
 
    IllusionGetInDef(who = $)
    {
-      local iIllusion_type,oIllusion;
+      local iIllusion_type, oIllusion;
 
       iIllusion_type = First(Send(who,@GetEnchantedState,#what=self));
       if iIllusion_type = $
       {
          return object_article_none_rsc;
       }
-      
+
       oIllusion = Nth(Send(SYS,@GetMonsterTemplates),iIllusion_type);
       if oIllusion = $
       {
@@ -538,14 +528,14 @@ messages:
 
    IllusionGetCapInDef(who = $)
    {
-      local iIllusion_type,oIllusion;
+      local iIllusion_type, oIllusion;
 
       iIllusion_type = First(Send(who,@GetEnchantedState,#what=self));
       if iIllusion_type = $
       {
          return object_article_none_rsc;
       }
-      
+
       oIllusion = Nth(Send(SYS,@GetMonsterTemplates),iIllusion_type);
       if oIllusion = $
       {
@@ -557,14 +547,14 @@ messages:
 
    IllusionGetHisHer(who = $)
    {
-      local iIllusion_type,oIllusion;
+      local iIllusion_type, oIllusion;
 
       iIllusion_type = First(Send(who,@GetEnchantedState,#what=self));
       if iIllusion_type = $
       {
          return object_article_none_rsc;
       }
-      
+
       oIllusion = Nth(Send(SYS,@GetMonsterTemplates),iIllusion_type);
       if oIllusion = $
       {
@@ -576,14 +566,14 @@ messages:
 
    IllusionGetName(who = $)
    {
-      local iIllusion_type,oIllusion;
+      local iIllusion_type, oIllusion;
 
       iIllusion_type = First(Send(who,@GetEnchantedState,#what=self));
       if iIllusion_type = $
       {
          return Send(who,@GetTrueName);
       }
-      
+
       oIllusion = Nth(Send(SYS,@GetMonsterTemplates),iIllusion_type);
       if oIllusion = $
       {
@@ -594,21 +584,21 @@ messages:
    }
 
    IllusionGetTemplate(who=$)
-   {      
+   {
       local iIllusion;
-      
+
       iIllusion = First(Send(who,@GetEnchantedState,#what=self)); 
       if iIllusion = $
       {
          return $;
       }
-      
-      return Nth(Send(SYS,@GetMonsterTemplates),iIllusion);      
+
+      return Nth(Send(SYS,@GetMonsterTemplates),iIllusion);
    }
 
    IllusionGetLightingInformation(who=$)
    {
-      local iIllusion_type,oIllusion;
+      local iIllusion_type, oIllusion;
 
       iIllusion_type = First(Send(who,@GetEnchantedState,#what=self));
       if iIllusion_type = $
@@ -616,7 +606,7 @@ messages:
          // If no illusion, then send no lighting information.
          return FALSE;
       }
-      
+
       oIllusion = Nth(Send(SYS,@GetMonsterTemplates),iIllusion_type);
       if oIllusion = $
       {
@@ -641,7 +631,6 @@ messages:
 
       propagate;
    }
-
 
 end
 ////////////////////////////////////////////////////////////////////////////////

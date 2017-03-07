@@ -21,23 +21,28 @@ resources:
    Sweep_name_rsc = "sweep"
    Sweep_icon_rsc = isweep.bgf
    Sweep_desc_rsc = \
-      "The wild winds of Faren sweep through the area gathering loose items for you.  "
-      "Requires mushrooms to cast."
-
-   Sweep_room_cast = "%s%s magically sweeps some of the items in the area into %s hands."
-
+      "The wild winds of Faren sweep through the area gathering loose "
+      "items for you."
+   Sweep_room_cast = \
+      "%s%s magically sweeps some of the items in the area into %s hands."
    Sweep_Something = "You straighten things up a bit."
    Sweep_Nothing = "The ground doesn't seem any cleaner."
-  
-   Sweep_Pissed_rant = "~kRan er\'Hoth screams, \"~r%s%s, you groveling gutter slug, I was USING that.~k\""
-   Sweep_Grateful_rant = "~kRan er\'Hoth grovels and moans, \"Oh, thank you o' mighty %s%s, thank you, thank you.  I was so afraid, so scared until you swept it away.\""
-   Sweep_Freaked_rant = "~kRan er\'Hoth screams, \"ACK! ERK! URK! ORK! Where did it go?  What did you do to it, %s%s? Please don't do it to ME!\""
-
-   Sweep_no_reward = "Hey, that was nice of you . . . cleaning up my shop for free."
-
-   Sweep_spell_intro_rsc = "Faren Lv. 1: Summons the winds of Faren to remove all loose items from the area."
+   Sweep_Pissed_rant = \
+      "~kRan er\'Hoth screams, \"~r%s%s, you groveling gutter slug, I was "
+      "USING that.~k\""
+   Sweep_Grateful_rant = \
+      "~kRan er\'Hoth grovels and moans, \"Oh, thank you o' mighty %s%s, "
+      "thank you, thank you.  I was so afraid, so scared until you swept "
+      "it away.\""
+   Sweep_Freaked_rant = \
+      "~kRan er\'Hoth screams, \"ACK! ERK! URK! ORK! Where did it go?  "
+      "What did you do to it, %s%s? Please don't do it to ME!\""
+   Sweep_no_reward = "Hey, that was nice of you... cleaning up my shop for free."
+   Sweep_spell_intro_rsc = \
+      "Faren Lv. 1: Summons the winds of Faren to remove all loose items "
+      "from the area."
    Sweep_sound = faren.ogg
-   
+
 classvars:
 
    vrName = Sweep_name_rsc
@@ -81,22 +86,20 @@ messages:
 
    CastSpell(who = $, iSpellPower = 0)
    {
-      local i, j, oRoom, lPassiveItems, lActiveItems, oEachObj, iLenBefore, iLenAfter,
-            iNumDel, iLenLoop, oObj, lPassive, lGoodItems;
+      local i, j, oRoom, lPassiveItems, oEachObj, iLenBefore,
+            iLenAfter, iNumDel, iLenLoop, oObj, lPassive, lGoodItems;
 
       oRoom = Send(who,@GetOwner);
       lPassiveItems = Send(oRoom,@GetplPassive);
       iLenBefore = Length(lPassiveItems);
-      
+
       if iSpellPower = $
       {
          iSpellPower = 99;
-         debug("Spell passed iSpellpower = $.  BOO HISS");
+         Debug("Spell passed iSpellpower = $.  BOO HISS");
       }
-      
-      iNumDel = Send(self,@GetNumDeleted,#iSpellPower=iSpellPower);
 
-      lGoodItems = $;
+      iNumDel = Send(self,@GetNumDeleted,#iSpellPower=iSpellPower);
 
       foreach lPassive in lPassiveItems
       {
@@ -115,38 +118,38 @@ messages:
                         #iFineRow=Send(oObj,@GetFineRow),
                         #iFineCol=Send(oObj,@GetFineCol)))
          {
-            lGoodItems = cons(oObj,lGoodItems);
-         }                 
+            lGoodItems = Cons(oObj,lGoodItems);
+         }
       }
 
       i = iNumDel;
-      
-      if send(who,@PlayerIsImmortal)
+
+      if Send(who,@PlayerIsImmortal)
       {
          i = Length(lGoodItems);
       }
 
-      while i > 0
+      while i-- > 0
       {
-         i = i - 1;
-
          iLenLoop = Length(lGoodItems);
 
          if iLenLoop <= 0
          {
             i = 0;
-            
+
             break;
          }
 
-         oEachObj = nth(lGoodItems,Random(1,iLenLoop));
+         oEachObj = Nth(lGoodItems,Random(1,iLenLoop));
 
          if oEachObj <> $
-            AND NOT send(oEachObj,@HasAttribute,#ItemAtt=IA_CORPSEPOINTER)
+            AND NOT Send(oEachObj,@HasAttribute,#ItemAtt=IA_CORPSEPOINTER)
          {
             Send(self,@GetItem,#what=oEachObj,#who=who);
-            
-            // Remove the gotten item from our list, it may still be in the room, but if so we can't hold it so we don't want it in the list anymore.
+
+            // Remove the gotten item from our list, it may still be in the
+            // room, but if so we can't hold it so we don't want it in the
+            // list anymore.
             lGoodItems = DelListElem(lGoodItems,oEachObj);
          }
       }
@@ -156,7 +159,7 @@ messages:
       if iLenAfter >= iLenBefore
       {
          Send(who,@MsgSendUser,#message_rsc=Sweep_Nothing);
-         
+
          propagate;
       }
 
@@ -165,45 +168,40 @@ messages:
       {
          // Proximity check.  Have Ran'er'hoth give a snit if we're within
          //  10 units of him in Marion.
-         oObj = send(oRoom,@FindHoldingActive,#class=&MarionElder);
+         oObj = Send(oRoom,@FindHoldingActive,#class=&MarionElder);
 
          if oObj <> $
-            AND send(who,@SquaredDistanceTo,#what=oObj) < 100
+            AND Send(who,@SquaredDistanceTo,#what=oObj) < 100
          {
             Send(self,@RanSnit,#who=who);
          }
       }
 
-      lActiveItems = Send(oRoom,@GetplActive);
-
-      foreach j in lActiveItems
+      foreach j in Send(oRoom,@GetHolderActive)
       {
-         oEachObj = Send(oRoom,@HolderExtractObject,#data=j); 
-         if isClass(oEachObj,&Monster)
+         oEachObj = First(j);
+         if IsClass(oEachObj,&Monster)
          {
-            if NOT send(who,@CheckPlayerFlag,#flag=PFLAG_PKILL_ENABLE)
+            if NOT Send(who,@CheckPlayerFlag,#flag=PFLAG_PKILL_ENABLE)
                AND Send(oEachObj,@GetBehavior) & AI_NPC
                AND NOT IsClass(oEachObj,&Wanderer)
             {
                Send(oEachObj,@RewardSweep,#who = who);
             }
          }
-         else
+         else if oEachObj = who
          {
             // It's a player, send a message of spell being cast.
-            if oEachObj = who
-            {
-               Send(oEachObj,@MsgSendUser,#message_rsc=Sweep_Something);
-            }
-            else
-            { 
-               send(oEachObj,@MsgSendUser,#message_rsc=Sweep_room_cast,
-                    #parm1=send(who,@GetCapDef),#parm2=send(who,@GetName),
-                    #parm3=send(who,@GetHisHer));
-            }
+            Send(oEachObj,@MsgSendUser,#message_rsc=Sweep_Something);
+         }
+         else
+         {
+            Send(oEachObj,@MsgSendUser,#message_rsc=Sweep_room_cast,
+                  #parm1=send(who,@GetCapDef),#parm2=send(who,@GetName),
+                  #parm3=send(who,@GetHisHer));
          }
       }
-      
+
       propagate;
    }
 
@@ -212,18 +210,21 @@ messages:
       if what = $
       {
          Debug("GotItem got no what");
+
          return;
       }
+
       if who = $
       {
          Debug("GotItem got no who");
+
          return;
       }
 
       // Double check, just in case.
-      if send(who,@ReqNewHold,#what=what)
+      if Send(who,@ReqNewHold,#what=what)
       {
-         send(who,@NewHold,#what=what);
+         Send(who,@NewHold,#what=what);
       }
 
       return;
@@ -233,7 +234,7 @@ messages:
    {
       local iNumDel;
 
-      iNumDel = bound(iSpellPower/6,2,15);
+      iNumDel = Bound(iSpellPower/6,2,15);
 
       return iNumDel;
    }
@@ -248,19 +249,17 @@ messages:
       {
          rRant = Sweep_Pissed_rant;
       }
-
-      if iRandom = 2
+      else if iRandom = 2
       {
         rRant = Sweep_Grateful_rant;
       }
-
-      if iRandom = 3
+      else if iRandom = 3
       {
          rRant = Sweep_Freaked_rant;
       }
 
       Post(oRoom,@SomeoneSaid,#what=who,#string=rRant,#type=SAY_MESSAGE,
-           #parm1=Send(who,@GetDef),#parm2=Send(who,@GetName));
+            #parm1=Send(who,@GetDef),#parm2=Send(who,@GetName));
 
       return;
    }

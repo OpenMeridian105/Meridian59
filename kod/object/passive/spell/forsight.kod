@@ -29,9 +29,7 @@ resources:
    Foresight_name_rsc = "foresight"
    Foresight_icon_rsc = iforesig.bgf
    Foresight_desc_rsc = \
-      "Reveals knowledge of the victim, informing you of their abilities.  "
-      "Requires two uncut seraphym to cast."
-
+      "Reveals knowledge of the victim, informing you of their abilities."
    Foresight_caster = "You glare at %s%s read their thoughts."
    Foresight_info = "%s%s %s"
    Foresight_abil_name = "%s %s, %s"
@@ -42,14 +40,13 @@ resources:
    Foresight_one = "%s %s."
    Foresight_notplayer = \
       "Hmmm...you aren't sure WHAT to make of what %s%s is thinking."
-
    Foresight_KnowsOf = "knows of"
    Foresight_AdequateAt  = "is adequate at"
    Foresight_MediocreAt  = "is mediocre at"
    Foresight_GoodAt  = "is good at"
    Foresight_PractitionerOf = "is a practitioner of"
-   Foresight_GreatAt = "is great at" 
-   Foresight_MasterOf = "is a master of" 
+   Foresight_GreatAt = "is great at"
+   Foresight_MasterOf = "is a master of"
 
 classvars:
 
@@ -142,7 +139,7 @@ messages:
          iTemp = Nth(lAbilities,iAbilityLength-iCounter);
          SetNth(lAbilities,iAbilityLength-iCounter,Nth(lAbilities,iCounter));
          SetNth(lAbilities,iCounter,iTemp);
-         iCounter = iCounter + 2;
+         iCounter += 2;
       }
 
       iAbilityLength = Length(lAbilities);
@@ -228,19 +225,17 @@ messages:
 
       if (lSpellBook = $)
       {
-         AddPacket(1,BP_MESSAGE,4,Foresight_nothing);
-         AddPacket(4,Send(oTarget,@GetCapDef));
-         AddPacket(4,Send(oTarget,@GetName));
+         AddPacket(1,BP_MESSAGE, 4,Foresight_nothing,
+                   4,Send(oTarget,@GetCapDef), 4,Send(oTarget,@GetName));
          SendPacket(Send(who,@GetSession));
 
          return;
       }
 
-      AddPacket(1,BP_MESSAGE,4,Foresight_info);
-      AddPacket(4,Send(oTarget,@GetCapDef));
-      AddPacket(4,Send(oTarget,@GetName));
+      AddPacket(1,BP_MESSAGE, 4,Foresight_info,4,Send(oTarget,@GetCapDef),
+                4,Send(oTarget,@GetName));
 
-      // Mobs have the same spellpower/// for all spells they cast from spellbook.
+      // Mobs have the same spellpower % for all spells they cast from spellbook.
       rAbility = Send(self,@GetAbilityResource,
                         #iAbility=Send(oTarget,@GetBaseSpellPower));
 

@@ -27,15 +27,13 @@ resources:
       "This spell involves weaving your hands in a holy tracery which "
       "frightens nearby unholy beings.  Requires two elderberries to be "
       "crushed onto the skin of your hands to ritually cleanse them."
-
    HolySymbol_success = \
       "Your hands weave through the air in a delicate tracery, speaking "
       "through motion the purity of Shal'ille, a ward against the unholy."
-
    HolySymbol_sound = sholysym.ogg
-
    holysymbol_intro = \
-      "Shal'ille Lv. 1: Weaves a holy symbol in the air which repels any nearby undead."
+      "Shal'ille Lv. 1: Weaves a holy symbol in the air which repels "
+      "any nearby undead."
 
 classvars:
 
@@ -91,14 +89,16 @@ messages:
             AND NOT (Send(oMonster,@GetBehavior) & AI_NPC)
             AND (Send(oMonster,@IsUndead))
          {
-            // Use the "detect" option for the monster's karma in case we're trying to turn an event monster.
-            iChance = (iSpellPower*3/4) + (Send(who,@GetBaseMaxHealth) - Send(oMonster,@GetLevel)/2)
-                                        + (Send(who,@GetKarma) + Send(oMonster,@GetKarma,#detect=TRUE));
+            // Use the "detect" option for the monster's karma in case we're
+            // trying to turn an event monster.
+            iChance = (iSpellPower * 3 / 4);
+            iChance += (Send(who,@GetBaseMaxHealth) - Send(oMonster,@GetLevel)/2);
+            iChance += (Send(who,@GetKarma) + Send(oMonster,@GetKarma,#detect=TRUE));
 
-            if Send(oMonster, @GetTarget) <> $
+            if Send(oMonster,@GetTarget) <> $
             {
                // harder if monster already has a target
-               iChance = (iChance - 5);
+               iChance -=5;
             }
 
             iChance = Bound(iChance,2,98);
@@ -125,11 +125,7 @@ messages:
 
    GetDuration(iSpellpower=$)
    {
-      local iDuration;
-
-      iDuration = iSpellpower/10;  //seconds
-
-      return iDuration;
+      return iSpellpower / 10; // Seconds
    }
 
 end

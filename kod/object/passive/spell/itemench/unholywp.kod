@@ -20,23 +20,19 @@ resources:
 
    include unholywp.lkod
 
+   unholyweapon_name_rsc = "unholy weapon"
+   unholyweapon_icon_rsc = iunholyw.bgf
+   unholyweapon_desc_rsc = \
+      "Dedicates your weapon to Qor, enhancing its "
+      "effectiveness against the holy."
    unholyweapon_cast_rsc = "Your %s is now dedicated to Qor."
    unholyweapon_no_can = "You cannot dedicate %s%s to Qor."
    unholyweapon_fails = "The %s is strangely unaffected by the spell."
    unholyweapon_already_done = \
       "This weapon is already dedicated to Qor."
-
-   unholyweapon_name_rsc = "unholy weapon"
-   unholyweapon_icon_rsc = iunholyw.bgf
-   unholyweapon_desc_rsc = \
-      "Dedicates your weapon to Qor, enhancing its "
-      "effectiveness against the holy.  "
-      "Requires two fairy wings and an orc tooth to cast."
-
    unholyweapon_spell_intro = \
       "Qor Lv. 2: Dedicates your weapon to Qor, enhancing its "
       "effectiveness against the holy."
-
    unholyweapon_label_rsc = "supplicant of Qor"
 
 classvars:
@@ -106,7 +102,8 @@ messages:
 
    CastSpell(who=$,lTargets=$,iSpellPower=0)
    {
-      local iCurrentSpell, oWeapon, oWeapAtt, iDuration, oEnchantedWeapAtt, iEnchanted;
+      local iCurrentSpell, oWeapon, oWeapAtt, iDuration, oEnchantedWeapAtt,
+            iEnchanted;
 
       oWeapon = First(lTargets);
 
@@ -116,7 +113,7 @@ messages:
          Send(who,@MsgSendUser,#message_rsc=unholyweapon_no_can,
                #parm1=Send(oWeapon,@GetDef),#parm2=Send(oWeapon,@GetName));
 
-         return False;
+         return FALSE;
       }
 
       if NOT Send(oWeapon,@CanEnchant,#oSpell = self)
@@ -132,7 +129,7 @@ messages:
          Send(who, @MsgSendUser,#message_rsc=spell_out_of_range,
                #parm1=Send(oWeapon,@GetCapDef),#parm2=Send(oWeapon,@GetName));
 
-         return False;
+         return FALSE;
       }
 
       oWeapAtt = Send(SYS,@FindItemAttByNum,#num=WA_ATTACKSPELLTYPE);

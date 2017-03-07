@@ -20,13 +20,13 @@ resources:
 
    SummonCow_name_rsc = "summon bovine"
    SummonCow_icon_rsc = cow.bgf
-   SummonCow_desc_rsc = "Summons a pygmy cow for the amusement of all nearby.  "
-      "Requires 5 perfectly polished seraphym, and the casters' mystical energies must be focused "
-      "through a prism."
-   
+   SummonCow_desc_rsc = \
+      "Summons a pygmy cow for the amusement of all nearby.  The casters' "
+      "mystical energies must be focused through a prism."
    SummonCow_sound = lichres.ogg
-
-   summoncow_failed_rsc = "There is too much summoning magic focused here to bring a cow into existence."
+   summoncow_failed_rsc = \
+      "There is too much summoning magic focused here to bring a cow into "
+      "existence."
 
 classvars:
 
@@ -35,8 +35,9 @@ classvars:
    vrDesc = SummonCow_desc_rsc
 
    vrSucceed_wav = SummonCow_sound
-                                 
-   viMana = 5           // Mana is amount used upon inititiation
+
+   // Mana is amount used upon inititiation
+   viMana = 5
 
    viSpell_num = SID_SUMMON_COW
    viSchool = SS_RIIJA
@@ -46,15 +47,17 @@ classvars:
    viCast_time = 20000
    viChance_To_Increase = 15
 
-   viManaDrain = 1000            // Mana drained per second (10^3)
-
-   viCast_time = 2000    // in milliseconds
+   // Mana drained per second (10^3)
+   viManaDrain = 1000
+   // in milliseconds
+   viCast_time = 2000
 
 properties:
 
-   viMultiCast_Spellpower = 2250000   // (20 min, 5 casters) This is the total sum of spellpower
+   // (20 min, 5 casters) This is the total sum of spellpower
+   viMultiCast_Spellpower = 2250000
 
-messages:      
+messages:
 
    ResetReagents()
    {
@@ -64,39 +67,39 @@ messages:
       return;
    }
 
-   PrismCast(spellpower = 0, lCasters=$)  // Remember - this number could be MASSIVE
+   // Remember - this number could be MASSIVE
+   PrismCast(spellpower = 0, lCasters=$)
    {
       local oCow, oRoom, iRow, iCol, iFine_Row, iFine_Col, who;
 
-      who = first(lCasters);
-      oRoom = send(who,@GetOwner);
+      who = First(lCasters);
+      oRoom = Send(who,@GetOwner);
 
-      iRow = send(who,@GetRow);
-      iCol = send(who,@GetCol);
-      iFine_Row = send(who,@GetFineRow);
-      iFine_Col = send(who,@GetFineCol);
+      iRow = Send(who,@GetRow);
+      iCol = Send(who,@GetCol);
+      iFine_Row = Send(who,@GetFineRow);
+      iFine_Col = Send(who,@GetFineCol);
 
-      if (send(oRoom,@CountHoldingHowMany,#class=&monster) > 25) or
-         (send(oRoom,@CountHoldingHowMany,#class=&cow) > 5) or
-         ((send(oRoom,@CountHoldingSummoned)) > 
-           Send(SETTINGS_OBJECT, @GetPlayerSummonedObjectLimit))
+      if (Send(oRoom,@CountHoldingHowMany,#class=&Monster) > 25)
+         OR (Send(oRoom,@CountHoldingHowMany,#class=&Cow) > 5)
+         OR ((Send(oRoom,@CountHoldingSummoned)) >
+               Send(SETTINGS_OBJECT, @GetPlayerSummonedObjectLimit))
       {
          foreach who in lCasters
          {
-            send(who,@MsgSendUser,#message_rsc=summoncow_failed_rsc);
+            Send(who,@MsgSendUser,#message_rsc=summoncow_failed_rsc);
          }
       }
       else
       {
          oCow = Create(&Cow);
-         send(oCow,@SetSummoned,#value=TRUE);
-         send(oRoom,@newhold,#what=oCow,#new_row=iRow,#new_col=iCol,
+         Send(oCow,@SetSummoned,#value=TRUE);
+         Send(oRoom,@NewHold,#what=oCow,#new_row=iRow,#new_col=iCol,
                #fine_row=iFine_Row,#fine_col=iFine_Col);
       }
-      
+
       return;
    }
-
 
 end
 ////////////////////////////////////////////////////////////////////////////////

@@ -21,12 +21,9 @@ resources:
    forgetspell_name_rsc = "forget"
    forgetspell_icon_rsc = iforget.bgf
    forgetspell_desc_rsc = \
-      "Causes the victim to forget his or her own abilities.  "
-      "Requires one firesand and two uncut seraphym to cast."
-
+      "Causes the victim to forget his or her own abilities."
    forgetspell_already_enchanted = \
       "You can't seem to make %s%s any more forgetful."
-
    forgetspell_on = "The art of %s slips from your mind."
    forgetspell_off = \
       "You suddenly recall what it was that you had forgotten."
@@ -37,10 +34,8 @@ resources:
        "forget forgetting what you had forgotten, and thus you might forget "
        "not forgetting all you had forgotten when the forget spell leaves "
        "you, and so you forget about it."
-
    forgetspell_caster_failed = \
       "%s%s is too stupid to make any stupider!"
-
    forgetspell_sound = rforget.ogg
 
 classvars:
@@ -114,7 +109,6 @@ messages:
          propagate;
       }
 
-      lState = $;
       lSkills = Send(oTarget,@GetSkillList);
       lSpells = Send(oTarget,@GetSpellList);
       iPowerLeft = iSpellPower;
@@ -140,21 +134,18 @@ messages:
       while iPowerLeft > 0
       {
          oAbility = $;
-         
+
          if iSpellLength = 0
          {
             i = 2;
          }
+         else if iSkillLength = 0
+         {
+            i = 1;
+         }
          else
          {
-            if iSkillLength = 0
-            {
-               i = 1;
-            }
-            else
-            {
-               i = Random(1,2);
-            }
+            i = Random(1,2);
          }
 
          if i = 1 AND iSpellLength > 0
@@ -164,19 +155,16 @@ messages:
             iAbilityNum = Send(oTarget,@DecodeSpellNum,#compound=iCompound);
             oAbility = Send(SYS,@FindSpellByNum,#num=iAbilityNum);
          }
-         else
+         else if iSkillLength > 0
          {
-            if iSkillLength > 0
-            {
-               i = Random(1,iSkillLength);
-               iCompound = Nth(lSkills,i);
-               iAbilityNum = Send(oTarget,@DecodeSkillNum,#compound=iCompound);
-               oAbility = Send(SYS,@FindSkillByNum,#num=iAbilityNum);
-            }
+            i = Random(1,iSkillLength);
+            iCompound = Nth(lSkills,i);
+            iAbilityNum = Send(oTarget,@DecodeSkillNum,#compound=iCompound);
+            oAbility = Send(SYS,@FindSkillByNum,#num=iAbilityNum);
          }
 
          lState = Cons(oAbility,lState);
-         iPowerLeft = iPowerLeft - 24;
+         iPowerLeft -= 24;
       }
 
       foreach i in lState
@@ -240,9 +228,7 @@ messages:
    "Determines if the target has the forget enchantment, and if so, checks "
    "if they have forgotten 'what'"
    {
-      local  lState, iStateMember;
-
-      lState = $;
+      local lState;
 
       if IsClass(who,&Player)
          AND NOT Send(who,@CheckPlayerFlag,#flag=PFLAG_FORGOTTEN)
@@ -256,15 +242,7 @@ messages:
          return FALSE;
       }
 
-      foreach iStateMember in lState
-      {
-         if iStateMember = what
-         {
-            return TRUE;
-         }
-      }
-
-      return FALSE;
+      return FindListElem(lState,what);
    }
 
 end

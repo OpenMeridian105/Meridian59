@@ -24,8 +24,7 @@ resources:
    Animate_icon_rsc = ianimate.bgf
    Animate_desc_rsc = \
       "Animates the corpse of a monster or player, that it may do your "
-      "bidding.  Requires the blood of a shaman to cast."
-
+      "bidding."
    Animate_bad_target = "You can't cast animate on %s%s!"
    Animate_human_cast_rsc ="%s's corpse pulls itself up off the ground."
    Animate_human_failed_rsc ="%s's corpse remains inanimate on the ground."
@@ -120,13 +119,10 @@ messages:
             return FALSE;
          }
       }
-      else
+      else if Send(who,@CheckBattlerMinionCount)
+         >= Send(SETTINGS_OBJECT,@GetMonsterMinionLimit)
       {
-         if Send(who,@CheckBattlerMinionCount)
-            >= Send(SETTINGS_OBJECT,@GetMonsterMinionLimit)
-         {
-            return FALSE;
-         }
+         return FALSE;
       }
 
       propagate;
@@ -159,7 +155,6 @@ messages:
 
       oRoom = Send(who,@GetOwner);
       oTarget = First(lTargets);
-
 
       if (oTarget = $
          OR oRoom <> Send(oTarget,@GetOwner))

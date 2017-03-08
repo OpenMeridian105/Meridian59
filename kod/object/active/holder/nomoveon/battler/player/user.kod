@@ -1089,6 +1089,13 @@ messages:
       return;
    }
 
+   ResetLogoffPenaltyCount()
+   {
+      piLogoffPenaltyCount = 0;
+
+      return;
+   }
+
    GetLogoffPenaltyCount()
    {
       return piLogoffPenaltyCount;
@@ -1141,6 +1148,28 @@ messages:
          }
 
          return;
+      }
+
+      // Handle users phasing in guild halls.
+      if (poOwner <> $
+         AND IsClass(poOwner,&GuildHall)
+         AND Send(poOwner,@GetGuildOwner) <> $
+         AND Send(poOwner,@CanEnter,#who=self)
+         AND NOT Send(poOwner,@InFoyer,#who=self))
+      {
+         // User is inside a guild hall they own. Teleport them back to an
+         // inn, and give penalties only if they were recently in combat.
+         if NOT (Send(self,@IsRecentPvPCombatant))
+         {
+            Send(self,@ResetLogoffPenaltyTime);
+            // Calling object still needs to display a message for the free pen.
+            if (what <> $)
+            {
+               Send(what,@SendPenaltyInfo,#who=self);
+            }
+
+            return;
+         }
       }
 
       // Add the penalty for repeat logging to the number of recent kills.
@@ -2896,7 +2925,7 @@ messages:
       Send(self,@CancelIfOffer);
 
       Send(self,@SysMsgSendUser,#message_rsc=user_garbage_collecting);
-      Send(self,@WaveSendUser,#what=self,#wave_rsc=user_saving_wav_rsc);
+      //Send(self,@WaveSendUser,#what=self,#wave_rsc=user_saving_wav_rsc);
 
       AddPacket(1,BP_WAIT);
       SendPacket(poSession);

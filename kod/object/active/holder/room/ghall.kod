@@ -282,7 +282,7 @@ messages:
    NewHold(what=$)
    "Don't let anyone log in anyplace but the foyer!"
    {
-      If IsClass(what,&Player)
+      if IsClass(what,&Player)
       {
          // Post a message to be sure that it does this after
          // the guy's stats are correctly set.
@@ -297,8 +297,20 @@ messages:
       propagate;
    }
 
+   SomethingPhasedIn(what=$)
+   {
+      Post(self,@ValidEntry,#what=what);
+
+      propagate;
+   }
+
    ValidEntry(what=$)
    {
+      if (Send(what,@GetOwner) <> self)
+      {
+         return;
+      }
+
       // If they can't open the door, make sure they're outside the foyer
       if NOT Send(self,@CanEnter,#who=what)
       {

@@ -5857,6 +5857,17 @@ messages:
                         Send(self,@MsgSendUser,#message_rsc=player_wanted_now,
                               #parm1=Send(what,@GetDef),#parm2=Send(what,@GetName));
                         Send(self,@SetPlayerFlag,#flag=PFLAG_MURDERER,#value=TRUE);
+
+                        // If scaling pens are enabled for murderers, but not
+                        // for innocents/outlaws, reset our logoff pen count.
+                        // Fair because play styles are different when scaling
+                        // pens are in effect.
+                        if (Send(SETTINGS_OBJECT,@GetFlatPenaltiesEnable)
+                           <> Send(SETTINGS_OBJECT,@GetFlatPenaltiesEnable,
+                                    #flag=PFLAG_MURDERER))
+                        {
+                           Send(self,@ResetLogoffPenaltyCount);
+                        }
                         piTimeLastMurder = GetTime();
                         Send(self,@SetPlayerFlag,#flag=PFLAG_OUTLAW,#value=FALSE);
                         Send(self,@EvaluatePKStatus,#dbug=TRUE);

@@ -120,13 +120,11 @@ messages:
       {
          iXPForLevel = Send(who,@GetXPRemainingForNextLevel);
          iXP = Send(who,@GetTotalXP);
-         iMaxHP = Send(who,@GetMaxHealth);
+         iMaxHP = Send(who,@GetUncappedBaseMaxHealth);
          Send(dmis,@MsgSendUser,#message_rsc=evaluate_message,
                #parm1=Send(who,@GetTrueName),#parm2=iXP,#parm3=iXPForLevel,
                #parm4=iMaxHP + 1);
 
-         monsterA = $;
-         monsterB = $;
          foreach i in Send(SYS,@GetMonsterTemplates)
          {
             // This routine finds two monsters who are closest in level to the
@@ -155,9 +153,13 @@ messages:
             }
          }
 
-         Send(dmis,@MsgSendUser,#message_rsc=evaluate_monster,
-               #parm1=Send(who,@GetName),#parm2=Send(who,@GetHisHer),
-               #parm3=Send(MonsterA,@GetName),#parm4=Send(MonsterB,@GetName));
+         if (monsterA <> $
+            AND monsterB <> $)
+         {
+            Send(dmis,@MsgSendUser,#message_rsc=evaluate_monster,
+                  #parm1=Send(who,@GetName),#parm2=Send(who,@GetHisHer),
+                  #parm3=Send(MonsterA,@GetName),#parm4=Send(MonsterB,@GetName));
+         }
       }
 
       Send(dmis,@MsgSendUser,#message_rsc=Evaluate_combat,

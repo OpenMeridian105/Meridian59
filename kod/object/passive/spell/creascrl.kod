@@ -23,19 +23,17 @@ resources:
    CreateScroll_name_rsc = "inscription"
    CreateScroll_icon_rsc = icrescroll.bgf
    CreateScroll_desc_rsc = \
-      "Allows the caster to scribe their knowledge of a spell on to a scroll. "
-      "Simply write the name of the spell you want onto a slip of parchment "
-      "and seal the magical properties by casting this spell.  "
-      "Requires the ingredients of a spell to seal.  "
-   CreateScroll_not_scroll = \
-      "You may not create a scroll using %s%s."
+      "Allows the caster to scribe their knowledge of a spell onto a scroll.  "
+      "Simply write the name of the spell you wish to invoke onto a slip of "
+      "parchment, and seal the magical properties by casting this spell.  "
+      "You must have the reagents needed for the spell you wish to transcribe."
+   CreateScroll_not_scroll = "You may not create a scroll using %s%s."
    CreateScroll_not_holding_scroll = \
       "You are not holding the slip of parchment."
    CreateScroll_no_message = \
       "With no spell to scribe, the spell fizzles into nothing."
    CreateScroll_bad_spell = "You cannot make a scroll with those powers."
-   CreateScroll_do = \
-      "You seal magic into %s%s."
+   CreateScroll_do = "You seal magic into %s%s."
    CreateScroll_no_ingredient = "You do not have all the indgredients you need."
 
    CreateScroll_sound = Jdistill.wav
@@ -62,132 +60,135 @@ properties:
    //  the final multiple.
    piMultipleBase = 5
 
+   // Spell ID to use. Set in CanPayCosts, used later.
+   // Unsafe if we ever use multiple threads (unlikely).
+   piScrollSpellNum = 0
+
 messages:
-
-   CanPayCosts(who = $, lTargets = $)
-   { 
-      local oTarget;
-      oTarget = First(lTargets);
-   
-      if NOT isClass(oTarget,&BlankScroll)
-      {
-         Send(who,@MsgSendUser,#message_rsc=CreateScroll_not_scroll,
-         #parm1=Send(oTarget,@GetDef),
-         #parm2=Send(oTarget,@GetName));
-         return FALSE;
-      }
-
-      if NOT Send(who,@IsHolding,#what=oTarget)
-      {
-         Send(who,@MsgSendUser,#message_rsc=CreateScroll_not_holding_scroll,
-         #parm1=Send(oTarget,@GetDef),
-         #parm2=Send(oTarget,@GetName));
-         return FALSE;
-      }
- 
-      propagate;
-   }
 
    GetNumSpellTargets()
    {
       return 1;
    }
 
-   CastSpell(who = $, lTargets = $)
+   CanPayCosts(who = $, lTargets = $)
    {
-      local oTarget, sInscription;
+      local oTarget, sInscription, oSpell, i;
+
       oTarget = First(lTargets);
-   
-      if isClass(oTarget,&BlankScroll) 
-         AND Send(who,@IsHolding,#what=oTarget)
-      {
-         Send(self,@TryCreateScroll,#who=who,#target=oTarget,
-            #string=send(oTarget,@GetInscription));
-      }
-      else
+
+      if NOT IsClass(oTarget,&BlankScroll)
       {
          Send(who,@MsgSendUser,#message_rsc=CreateScroll_not_scroll,
-            #parm1=Send(oTarget,@GetDef),#parm2=Send(oTarget,@GetName));
-         Send(who,@WaveSendUser,#wave_rsc=spell_fail_wav);
-      }
+               #parm1=Send(oTarget,@GetDef),#parm2=Send(oTarget,@GetName));
 
-      return;
-   }
-   
-   TryCreateScroll(who = $, target = $, string = $)
-   {
-      local lSpells, oSpell, iAbility, i;
-
-      if string = $
-      {
-         Send(who,@MsgSendUser,#message_rsc=CreateScroll_no_message);
-         Send(who,@WaveSendUser,#wave_rsc=spell_fail_wav);
          return FALSE;
       }
 
-      lSpells = Send(SYS,@GetSpells);
-      foreach i in lSpells
+      if NOT Send(who,@IsHolding,#what=oTarget)
       {
-         if StringEqual(string,Send(i,@GetName))
+         Send(who,@MsgSendUser,#message_rsc=CreateScroll_not_holding_scroll,
+               #parm1=Send(oTarget,@GetDef),#parm2=Send(oTarget,@GetName));
+
+         return FALSE;
+      }
+
+      sInscription = Send(oTarget,@GetInscription);
+
+      if sInscription = $
+      {
+         Send(who,@MsgSendUser,#message_rsc=CreateScroll_no_message);
+
+         return FALSE;
+      }
+
+      foreach i in Send(SYS,@GetSpells)
+      {
+         if StringEqual(sInscription,Send(i,@GetName))
          {
             oSpell = i;
+
             break;
          }
       }
 
-      if oSpell <> $
-         AND Send(oSpell,@GetScrollClass) <> $
-      {
-         Send(self,@PerformCreateScroll,
-            #caster=who,#oSpell=oSpell,#oParchment=target);
-         return TRUE;
-      }
-      else
+      if oSpell = $
+         OR Send(oSpell,@GetScrollClass) = $
       {
          Send(who,@MsgSendUser,#message_rsc=CreateScroll_bad_spell);
-         Send(who,@WaveSendUser,#wave_rsc=spell_fail_wav);
+
          return FALSE;
       }
-      
-      return;
-   }
 
-   PerformCreateScroll(caster = $,oSpell = $,oParchment = $)
-   {
-      if Send(self,@CanPayIngredients,#caster=caster,#oTarget=oSpell)
+      if (NOT Send(self,@CanPayIngredients,#who=who,#oSpell=oSpell))
       {
-         Send(self,@PayIngredients,#caster=caster,#oTarget=oSpell);
-         Send(self,@MakeScroll,#caster=caster,#oTarget=oSpell,#oParchment=oParchment);
+         Send(who,@MsgSendUser,#message_rsc=CreateScroll_no_ingredient);
 
-         // Call this here since "cast spell" is actually a failure condition.
-         Send(self,@ImproveAbility,#who=caster);
+         return FALSE;
       }
-     
-      return;      
+
+      // Put spell ID into property to use later. Allows us to fail
+      // inscription without taking mana or regs while not performing
+      // string checks in CastSpell.
+      piScrollSpellNum = Send(oSpell,@GetSpellNum);
+
+      propagate;
    }
 
-   CanPayIngredients(caster = $, oTarget = $)
+   CastSpell(who = $, lTargets = $)
+   {
+      local oTarget, oSpell;
+
+      oTarget = First(lTargets);
+
+      if NOT IsClass(oTarget,&BlankScroll)
+         OR NOT Send(who,@IsHolding,#what=oTarget)
+      {
+         Debug(who," tried to create an invalid scroll ",oTarget);
+
+         return;
+      }
+
+      oSpell = Send(SYS,@FindSpellByNum,#num=piScrollSpellNum);
+      if (oSpell = $)
+      {
+         Debug("CastSpell got invalid SID in piScrollSpellNum",
+               piScrollSpellNum);
+
+         return;
+      }
+
+      Send(self,@PayIngredients,#who=who,#oSpell=oSpell);
+      Send(self,@MakeScroll,#who=who,#oSpell=oSpell,#oTarget=oTarget);
+
+      // Delete old scroll.
+      Post(oTarget,@Delete);
+
+      propagate;
+   }
+
+   CanPayIngredients(who = $, oSpell = $)
    "Do we have the ingredients?"
    {
       local lIngredients, lIngredient, cReagentClass, iNumNeeded, bFound,
-            lItems, lLists, oUserObject, iNum, oOwner, oSpell; 
+            lItems, lLists, oUserObject, iNum;
 
       // Most of this is a modified cut and paste from CanPayReagents() in
       //  Spell superclass.
 
-      lIngredients = Send(self,@GetIngredients,#caster=caster,
-                          #oTarget=oTarget);
+      lIngredients = Send(self,@GetIngredients,#who=who,#oSpell=oSpell);
 
       // Check reagents
       foreach lIngredient in lIngredients
       {
-         cReagentClass = first(lIngredient);
-         iNumNeeded = Nth(lIngredient, 2);
+         cReagentClass = First(lIngredient);
+         iNumNeeded = Nth(lIngredient,2);
 
          bFound = FALSE;
 
-         lLists = [ Send(caster,@GetHolderActive),
-                    Send(caster,@GetHolderPassive)
+         lLists = [ Send(who,@GetHolderActive),
+                    Send(who,@GetHolderPassive),
+                    Send(who,@GetReagentBagContents)
                   ];
 
          // Count # of reagent that user has; complain if not enough
@@ -195,9 +196,9 @@ messages:
          {
             foreach oUserObject in lItems
             {
-               if isClass(oUserObject,cReagentClass)
+               if IsClass(oUserObject,cReagentClass)
                {
-                  if isClass(oUserObject,&NumberItem)
+                  if IsClass(oUserObject,&NumberItem)
                   {
                      iNum = Send(oUserObject,@GetNumber);
                      if iNum >= iNumNeeded
@@ -206,12 +207,12 @@ messages:
                      }
                      else
                      {
-                        iNumNeeded = iNumNeeded - iNum;
+                        iNumNeeded -= iNum;
                      }
                   }
                   else
                   {
-                     iNumNeeded = iNumNeeded - 1;
+                     --iNumNeeded;
                   }
 
                   if iNumNeeded = 0
@@ -228,11 +229,8 @@ messages:
             }
          }
 
-         if not bFound
+         if NOT bFound
          {
-            Send(caster,@WaveSendUser,#wave_rsc=spell_fail_wav);
-            Send(caster,@MsgSendUser,#message_rsc=CreateScroll_no_ingredient);
-
             return FALSE;
          }
       }
@@ -240,38 +238,41 @@ messages:
       return TRUE;
    }
 
-   PayIngredients(caster = $, oTarget = $)
-   "Now we're making a potion so remove the ingredients."
+   PayIngredients(who = $, oSpell = $)
+   "Now we're making a scroll so remove the ingredients."
    {
-      local num, reqstat, iability, lIngredient, lIngredients,
-            cIngredientClass, iLists, lItems, iNumNeeded,oUserObject;
+      local lIngredient, lIngredients, cIngredientClass, iLists, lItems,
+            iNumNeeded, oUserObject;
 
       // Again: Cut and paste from spell.kod
 
-      lIngredients = Send(self,@GetIngredients,#caster=caster,
-                          #oTarget=oTarget);
-      
-      if NOT IsClass(caster,&Player)
+      lIngredients = Send(self,@GetIngredients,#who=who,#oSpell=oSpell);
+
+      if NOT IsClass(who,&Player)
+         OR lIngredients = $
       {
-         return TRUE;
+         return;
       }
 
       // Use up reagents
       foreach lIngredient in lIngredients
       {
          cIngredientClass = First(lIngredient);
-         iNumNeeded = Nth(lIngredient, 2);
-         iLists = 1;
+         iNumNeeded = Nth(lIngredient,2);
 
-         while iLists <= 2 
+         for (iLists = 0; iLists < 3; ++iLists)
          {
-            if iLists = 1
+            if iLists = 0
             {
-               lItems = Send(caster, @GetHolderActive);
+               lItems = Send(who,@GetReagentBagContents);
             }
-            else
+            else if iLists = 1
             {
-               lItems = Send(caster, @GetHolderPassive);
+               lItems = Send(who,@GetHolderPassive);
+            }
+            else if iLists = 2
+            {
+               lItems = Send(who,@GetHolderActive);
             }
 
             // Since spell is cast, we can be cavalier about deleting things
@@ -286,96 +287,87 @@ messages:
 
                      break;
                   }
-                  else 
+                  else
                   {
                      Send(oUserObject,@Delete);
-                     iNumNeeded = iNumNeeded - 1;
-                     if iNumNeeded = 0
+                     if --iNumNeeded = 0
                      {
                         break;
                      }
                   }
                }
-            }   
+            }
 
-            if iNumNeeded = 0 
+            if iNumNeeded = 0
             {
                // Found all we need
                break;
             }
-
-            iLists = iLists + 1;
          }
-      }      
+      }
 
-      return TRUE;
+      return;
    }
 
-   MakeScroll(caster = $, oTarget = $, oParchment = $)
+   MakeScroll(who = $, oSpell = $)
    "Determine the scroll's atributes.  Make it.  Hold it."
    {
       local oScroll, cScrollClass, iAbility, iSpellpower, iScrollPower,
             iLevel, iSkill, iGoBadTime;
 
-      cScrollClass = Send(oTarget,@GetScrollClass);
+      cScrollClass = Send(oSpell,@GetScrollClass);
 
-      if cScrollClass = FALSE
+      if cScrollClass = $
       {
          return;
       }
 
-      iLevel = Send(oTarget,@GetLevel);
-      iAbility = Send(caster,@GetSpellAbility,
-                      #spell_num=Send(oTarget,@GetSpellNum));
-      iSkill = Send(caster,@GetSpellAbility,#spell_num=viSpell_num);
-      iSpellPower = Send(self,@GetSpellPower,#who=caster);
+      iLevel = Send(oSpell,@GetLevel);
+      iAbility = Send(who,@GetSpellAbility,#spell_num=Send(oSpell,@GetSpellNum));
+      iSkill = Send(who,@GetSpellAbility,#spell_num=viSpell_num);
+      iSpellPower = Send(self,@GetSpellPower,#who=who);
 
-      iScrollPower = Bound(((iAbility * (iSkill + 1)) / 100),20,99);
-      iScrollPower = iScrollPower - bound((iLevel*15)
-                     - (Send(caster,@GetMaxHealth)-20),0,$);
-      iScrollPower = iScrollPower + Random(-20,(iSpellPower/10));
+      iScrollPower = Bound(((iAbility * (iSkill + 1)) / 100),1,99);
+      iScrollPower -= Bound((iLevel*15)-(Send(who,@GetMaxHealth)-20),0,$);
+      iScrollPower += Random(-20,(iSpellPower/10));
       iScrollPower = Bound(iScrollPower,5,SPELLPOWER_MAXIMUM);
 
       iGoBadTime = Bound((iSpellPower / iLevel) / 3,1,7);
-      iGoBadTime = iGoBadTime * 24 * 60 * 60 * 60 * 1000;
+      iGoBadTime *= 24 * 60 * 60 * 60 * 1000;
 
       oScroll = Create(cScrollClass,#labelled=TRUE,#iSpellPower=iScrollPower,
-                       #gobadtime=igobadtime,#maker=caster,#ability=iSkill);
-           
-      Send(caster,@NewHold,#what=oScroll);
-      Send(caster,@MsgSendUser,#message_rsc=CreateScroll_do,
-           #parm1=Send(oScroll,@GetIndef),#parm2=Send(oScroll,@GetName));
-      Post(caster,@WaveSendUser,#wave_rsc=vrSucceed_wav);
+                       #gobadtime=igobadtime,#maker=who,#ability=iSkill);
 
-      Send(oParchment, @Delete);
+      Send(who,@NewHold,#what=oScroll);
+      Send(who,@MsgSendUser,#message_rsc=CreateScroll_do,
+            #parm1=Send(oScroll,@GetIndef),#parm2=Send(oScroll,@GetName));
+
       return;
    }
 
-   GetIngredients(oTarget = $, caster = $)
-   "Ask oTarget what its reagents are and multiply by proper factor, scale "
+   GetIngredients(who = $, oSpell = $)
+   "Ask oSpell what its reagents are and multiply by proper factor, scale "
    "this to spellpower."
    {
-      local iMultiple,lreagents,lIngredients,i,iNumber,cType,lList,iSpellpower;
+      local iMultiple, lIngredients, i, iSpellpower;
 
-      lIngredients = $;
-      iSpellpower = Send(self,@GetSpellPower,#who=caster);
+      iSpellpower = Send(self,@GetSpellPower,#who=who);
 
       iMultiple = Bound(iSpellpower / 20,1,4);
       iMultiple = Bound(piMultipleBase - iMultiple,3,15);
 
-      lReagents  = Send(oTarget,@GetReagents);
-
-      foreach i in lReagents
-      {  
-         cType  = Nth(i,1);
-         iNumber = Nth(i,2) * iMultiple;
-         lList = [ cType,iNumber ];
-         lIngredients = Cons(lList,lIngredients);
+      foreach i in Send(oSpell,@GetReagents)
+      {
+         lIngredients = Cons([First(i), Nth(i,2) * iMultiple],lIngredients);
       }
 
       return lIngredients;
    }
 
+   SpellBannedInArena()
+   {
+      return TRUE;
+   }
 
 end
 ////////////////////////////////////////////////////////////////////////////////

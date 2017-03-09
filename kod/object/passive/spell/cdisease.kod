@@ -26,8 +26,7 @@ resources:
    curedisease_name_rsc = "cure disease"
    curedisease_icon_rsc = icuredis.bgf
    curedisease_desc_rsc = \
-      "Pure, healing energy purges disease from the target.  "
-      "Requires two herbs and two elderberries to cast."
+      "Pure, healing energy purges disease from the target."
    curedisease_on = "The power of Shal'ille burns the disease from your body."
    curedisease_abates = "You feel the disease grow weaker."
    curedisease_unnecessary = "%s%s is not suffering from any diseases."
@@ -95,6 +94,7 @@ messages:
             if IsClass(Nth(i,2),&Disease)
             {
                bHasDebuff = TRUE;
+
                break;
             }
          }
@@ -112,6 +112,7 @@ messages:
                if IsClass(Nth(i,5),&Disease)
                {
                   bHasDebuff = TRUE;
+
                   break;
                }
             }
@@ -131,9 +132,8 @@ messages:
 
    CastSpell(who=$,lTargets=$,iSpellpower=0)
    {
-      local oSpell, oTarget, oDisease, iRandom, iOrigStatLoss, iNewStatLoss, lState;
+      local oSpell, oTarget, oDisease, iOrigStatLoss, iNewStatLoss, lState;
 
-      iRandom = Random(1,100);
       oTarget = First(lTargets);
 
       Send(who,@MsgSendUser,#message_rsc=spell_cast_on_target,
@@ -142,7 +142,7 @@ messages:
 
       Send(oTarget,@MsgSendUser,#message_rsc=curedisease_on);
 
-      if iRandom < iSpellpower
+      if Random(1,100) < iSpellpower
       {
          Send(oTarget,@RemoveEnchantmentClass,#class=&Disease);
       }

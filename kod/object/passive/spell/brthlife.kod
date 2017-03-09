@@ -20,22 +20,22 @@ resources:
 
    include brthlife.lkod
 
-   breathoflife_cast_rsc = "You feel %s%s's life force filling your body. You gain ~g~B%i~B~n health."
-   breathoflife_caster_msg_rsc = "You give part of your life force to %s%s, sacrificing ~r~B%i~B~n health."
-
+   breathoflife_cast_rsc = \
+      "You feel %s%s's life force filling your body. You gain ~g~B%i~B~n health."
+   breathoflife_caster_msg_rsc = \
+      "You give part of your life force to %s%s, sacrificing ~r~B%i~B~n health."
    breathoflife_name_rsc = "breath of life"
    breathoflife_icon_rsc = ibreath.bgf
    breathoflife_desc_rsc = \
       "The great power of Shal'ille takes part of the caster's life force "
-      "and gives it to another person.  "
-      "Requires herbs to cast."
-
-   breathoflife_unnecessary_rsc = "%s%s cannot handle additional life force from this spell."
-   breathoflife_toohurt_rsc = "You do not have enough health to transfer to another!"
+      "and gives it to another person."
+   breathoflife_unnecessary_rsc = \
+      "%s%s cannot handle additional life force from this spell."
+   breathoflife_toohurt_rsc = \
+      "You do not have enough health to transfer to another!"
    breathoflife_notonself_rsc = "You cannot cast Breath of Life on yourself."
-
-   breathoflife_spell_intro = "Shal'ille Lv. 1: Gives part of caster's health to another person."
-
+   breathoflife_spell_intro = \
+      "Shal'ille Lv. 1: Gives part of caster's health to another person."
    breathoflife_sound = sbrthlf.ogg
 
 classvars:
@@ -54,7 +54,7 @@ classvars:
    viSpellExertion = 0
    viChance_To_Increase = 20
    viMeditate_ratio = 10
-  
+
    viFlash = FLASH_GOOD
 
 properties:
@@ -63,8 +63,6 @@ messages:
 
    ResetReagents()
    {
-      // separate message so can change, then set from admin mode
-
       plReagents = $;
       plReagents = Cons([&Herbs,1],plReagents);
 
@@ -79,7 +77,7 @@ messages:
    CanPayCosts(who = $, lTargets = $)
    {
       local target, i;
-      
+
       // Can cast spell if the 1 target item is a user
       if Length(lTargets) <> 1
       {
@@ -87,17 +85,17 @@ messages:
       }
 
       target = First(lTargets);
-      if not IsClass(target, &User)
+      if NOT IsClass(target,&User)
       {
-         Send(who,@MsgSendUser,#message_rsc=spell_bad_target, 
-              #parm1=vrName,#parm2=Send(target,@GetDef),#parm3=Send(target,@GetName));
+         Send(who,@MsgSendUser,#message_rsc=spell_bad_target,#parm1=vrName,
+               #parm2=Send(target,@GetDef),#parm3=Send(target,@GetName));
 
          return FALSE;
       }
 
       if target = who
       {
-         Send(who, @MsgSendUser, #message_rsc=breathoflife_notonself_rsc);
+         Send(who,@MsgSendUser,#message_rsc=breathoflife_notonself_rsc);
 
          return FALSE;
       }
@@ -115,10 +113,10 @@ messages:
       if Send(target,@GetHealth) >= ((Send(target,@GetMaxHealth) * 3) / 2)
          OR Send(target,@GetHealth) >= MAX_TOTAL_AMOUNT
          OR ((Send(target,@GetHealth) >= Send(target,@GetMaxHealth))
-             AND send(target,@IsEnchanted,#byClass=&MarkOfDishonor))
+             AND Send(target,@IsEnchanted,#byClass=&MarkOfDishonor))
       {
          Send(who,@MsgSendUser,#message_rsc=breathoflife_unnecessary_rsc,
-	           #parm1=Send(target,@GetDef),#parm2=Send(target,@GetName));
+               #parm1=Send(target,@GetDef),#parm2=Send(target,@GetName));
 
          return FALSE;
       }
@@ -131,32 +129,31 @@ messages:
       local iPercent, iKarmaSum, oTarget, iHpAmount, iTransfer;
 
       oTarget = First(lTargets);
-      
+
       // Amount of life transferred depends on the Karma of our target.
-      iPercent = bound(send(oTarget,@GetKarma),10,80);
+      iPercent = Bound(Send(oTarget,@GetKarma),10,80);
       iHpAmount = (Send(who,@GetExactHealth) * iPercent) / 100;
 
       // Don't drain caster below 10 hps,
-      iHpAmount = bound(iHpAmount,$,(Send(who,@GetExactHealth)-1000));
+      iHpAmount = Bound(iHpAmount,$,(Send(who,@GetExactHealth)-1000));
 
       // Alter amount transferred to (75 + spell power/2) percent of sacrifice.
       iTransfer = (iHpAmount * (75 + iSpellPower/2)) / 100;
 
       // Don't let target get more than 150// over max, don't let target get over 150
-      iTransfer = bound(iTransfer,$,((Send(oTarget,@GetMaxHealth)*3)/2)*100-Send(oTarget,@GetExactHealth));
-      iTransfer = bound(iTransfer,$,(MAX_TOTAL_AMOUNT*100-Send(oTarget,@GetExactHealth)));
+      iTransfer = Bound(iTransfer,$,((Send(oTarget,@GetMaxHealth)*3)/2)*100-Send(oTarget,@GetExactHealth));
+      iTransfer = Bound(iTransfer,$,(MAX_TOTAL_AMOUNT*100-Send(oTarget,@GetExactHealth)));
 
       Send(who,@MsgSendUser,#message_rsc=breathoflife_caster_msg_rsc,
-           #parm1=Send(oTarget,@GetDef),#parm2=Send(oTarget,@GetName),#parm3=iHpAmount/100);  
+            #parm1=Send(oTarget,@GetDef),#parm2=Send(oTarget,@GetName),#parm3=iHpAmount/100);
       Send(who,@LoseHealth,#amount=iHpAmount,#precision=TRUE);
 
       Send(oTarget,@MsgSendUser,#message_rsc=breathoflife_cast_rsc,
-      	   #parm1=Send(who,@GetDef),#parm2=Send(who,@GetName),#parm3=iTransfer/100);
+            #parm1=Send(who,@GetDef),#parm2=Send(who,@GetName),#parm3=iTransfer/100);
       Send(oTarget,@GainHealth,#bCapped=FALSE,#amount=iTransfer,#precision=TRUE);
 
       propagate;
    }
-
 
 end
 ////////////////////////////////////////////////////////////////////////////////

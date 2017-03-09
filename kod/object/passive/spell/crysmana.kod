@@ -28,15 +28,11 @@ resources:
       "itself, harnessing the laws of the universe themselves to summon "
       "a surge of magical energy. The surge is exhausting, but experienced "
       "bards will recover from their spiritual fatigue faster. "
-      "May be cast for 1 sapphire and 1 uncut seraphym, but exhausted mages "
-      "can also instinctively call upon these forces in desperate situations."
-
-   CrystalizeMana_song = song06.ogg
-
+      "May be cast at any time, but exhausted mages can also instinctively "
+      "call upon these forces in desperate situations."
    CrystalizeMana_no_room = \
       "You stop singing once you realize you won't be able to hold the mana "
       "crystal."
-
    CrystalizeMana_already_surging = \
       "Your spirit is too weak to summon another surge of energy at this time."
    CrystalizeMana_cast = \
@@ -47,8 +43,8 @@ resources:
       "yourself able to hear a vast and distant song..."
    CrystalizeMana_surge = \
       "Incredible energies roar through you!"
-
    Surge_sound = wscndwnd.ogg
+   CrystalizeMana_song = song06.ogg
 
 classvars:
 
@@ -102,6 +98,7 @@ messages:
       if Send(who,@IsCrystalizeManaSurging)
       {
          Send(who,@MsgSendUser,#message_rsc=CrystalizeMana_already_surging);
+
          return FALSE;
       }
 
@@ -126,7 +123,7 @@ messages:
    {
       local iManaSurge, iMaxMana, oCirclet;
 
-      if who=$
+      if who = $
          OR NOT IsClass(who,&User)
       {
          return;
@@ -138,7 +135,7 @@ messages:
       oCirclet = Send(who,@FindUsing,#class=&Circlet);
       if oCirclet <> $
       {
-         iMaxMana = iMaxMana - Send(oCirclet,@GetManaChange);
+         iMaxMana -= Send(oCirclet,@GetManaChange);
       }
 
       // Now give the full circlet bonus to every caster,
@@ -170,7 +167,7 @@ messages:
    GetManaBonus(spell_ability=0)
    "Mastery of crystalline energy can provide up to 20 maximum mana."
    {
-      return bound((spell_ability+1)/5,0,20);
+      return Bound((spell_ability+1)/5,0,20);
    }
 
    SendTimeDesc(who=$)

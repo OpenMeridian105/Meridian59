@@ -21,16 +21,15 @@ resources:
    fade_name_rsc = "fade"
    fade_icon_rsc = ifade.bgf
    fade_desc_rsc = \
-      "Temporarily dissolves your physical form leaving "
-      "you invisible.  The spell lasts as long as your trance "
-      "is maintained.  "
-      "Requires dark angel feather."
-   
+      "Temporarily dissolves your physical form leaving you invisible.  The "
+      "spell lasts as long as your trance is maintained."
    fade_already_enchanted = "You are already invisible."
-
-   fade_on = "Your physical form fades from existence leaving only a shimmering apparition."
+   fade_on = \
+      "Your physical form fades from existence leaving only a shimmering "
+      "apparition."
    fade_off = "Your physical form is visible once more."
-   fade_broke_trance = "You lose your concentration and become visible once more."
+   fade_broke_trance = \
+      "You lose your concentration and become visible once more."
 
    fade_sound = qfade.ogg
 
@@ -74,21 +73,20 @@ messages:
       if Send(who,@CheckPlayerFlag,#flag=PFLAG_INVISIBLE)
       {
          Send(who,@MsgSendUser,#message_rsc=fade_already_enchanted);
-         
+
          return FALSE;
       }
-      
+
       propagate;
    }
-	 
 
    CastSpell(who = $, iSpellPower = 0)
    {
       Send(who,@MsgSendUser,#message_rsc=fade_on);
       Send(who,@StartEnchantment,#what=self,
-           #time=send(self,@GetDuration,#iSpellPower=iSpellPower));      
-      send(who,@ResetPlayerFlagList);
-      
+            #time=Send(self,@GetDuration,#iSpellPower=iSpellPower));
+      Send(who,@ResetPlayerFlagList);
+
       propagate;
    }
 
@@ -96,7 +94,7 @@ messages:
    {
       Send(who,@SetTranceFlag);
       Send(who,@SetPlayerFlag,#flag=PFLAG_INVISIBLE,#value=TRUE);
-      
+
       return;
    }
 
@@ -104,9 +102,8 @@ messages:
    {
       local iDuration;
 
-      // roughly 2-10 minutes, based on spell level
-      iDuration = 120 + (iSpellPower * 5);
-      iDuration = iDuration * 1000;
+      // Roughly 2-10 minutes, based on spell level
+      iDuration = (120 + (iSpellPower * 5)) * 1000;
 
       return iDuration;
    }
@@ -119,7 +116,7 @@ messages:
       {
          Send(who,@MsgSendUser,#message_rsc=fade_off);
       }
-        
+
       return;
    }
 
@@ -128,7 +125,7 @@ messages:
       // It's a PKing only spell.  Denied.
       return FALSE;
    }
-   
+
    IsIllusion()
    {
       return TRUE;

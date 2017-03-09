@@ -28,13 +28,11 @@ resources:
       "Requires emeralds and dried elderberries, which during the ceremony "
       "are crushed together into a symbolic handful of dust and scattered "
       "into the air."
-   
    FinalRites_success = \
       "You crush the reagents into a fine powder, and with a murmur "
       "you cast the handful of dust heavenward."
    FinalRites_success_others = \
       "With a solemn murmur %s%s casts a handful of dust heavenward."
-
    FinalRites_hurt = \
       "%s%s shrieks in pain as the sand showers down like a holy rain."
    FinalRites_hurt_necro = \
@@ -101,8 +99,6 @@ messages:
    {
       local oRoom, i, each_obj, lFinalTargets;
 
-      lFinalTargets = $;
-
       oRoom = Send(who,@GetOwner);
       foreach i in Send(oRoom,@GetHolderActive)
       {
@@ -119,8 +115,8 @@ messages:
 
    CastSpell(who=$, lTargets = $, iSpellPower=0)
    {
-      local oUndead,iDamage,oRoom;
-      
+      local oUndead, iDamage, oRoom;
+
       oRoom = Send(who,@GetOwner);
       Send(who,@MsgSendUser,#message_rsc=FinalRites_success);
 
@@ -130,15 +126,15 @@ messages:
 
       foreach oUndead in lTargets
       {
-         if isClass(oUndead,&Player)
+         if IsClass(oUndead,&Player)
          {
             Send(oUndead,@MsgSendUser,#message_rsc=FinalRites_hurt_necro,
                   #parm1=Send(who,@GetCapDef),#parm2=Send(who,@GetName));
          }
-            
+
          // Do damage to them.
-         iDamage = random(1,5) + (iSpellpower/20) + (2*((Send(who,@GetKarma,#detect=TRUE)
-            - Send(oUndead,@GetKarma,#detect=TRUE))/40));
+         iDamage = Random(1,5) + (iSpellpower/20) + (2*((Send(who,@GetKarma,#detect=TRUE)
+                     - Send(oUndead,@GetKarma,#detect=TRUE))/40));
          if Send(oUndead,@AssessDamage,#what=who,#damage=iDamage,#aspell=ATCK_SPELL_HOLY) = $
          {
             Send(who,@KilledSomething,#what=oUndead,#use_weapon=self);
@@ -146,7 +142,7 @@ messages:
 
          Send(oRoom,@SomethingAttacked,#what=who,#victim=oUndead,#use_weapon=self);
       }
-      
+
       propagate;
    }
 

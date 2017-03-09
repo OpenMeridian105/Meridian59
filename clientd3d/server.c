@@ -55,6 +55,8 @@ static handler_struct game_handler_table[] = {
 { BP_REMOVE,            HandleRemove },
 { BP_CHANGE,            HandleChange },
 { BP_LOOK,              HandleLook },
+{ BP_LOOK_SPELL,        HandleLookSpell },
+{ BP_LOOK_SKILL,        HandleLookSkill },
 { BP_USE,               HandleUse },
 { BP_UNUSE,             HandleUnuse },
 { BP_USE_LIST,          HandleUseList },
@@ -1020,7 +1022,109 @@ Bool HandleLook(char *ptr, long len)
          return False;
    }
 
-   DisplayDescription(&obj, flags, (pane? inscr : NULL), msg, NULL);
+   DisplayDescription(&obj, flags, (pane? inscr : NULL), msg, NULL, NULL, 0, 0, 0);
+   ObjectDestroy(&obj);
+
+   return True;
+}
+/********************************************************************/
+Bool HandleLookSpell(char *ptr, long len)
+{
+   char message[MAXMESSAGE];
+   char* msg = message;
+   char school_name[MAXMESSAGE];
+   char* sname = school_name;
+   char spell_level[MAXMESSAGE];
+   char* slevel = spell_level;
+   char spell_mana[MAXMESSAGE];
+   char* smana = spell_mana;
+   char spell_vigor[MAXMESSAGE];
+   char* svigor = spell_vigor;
+
+   ID resource_id;
+   char *start = ptr;
+   object_node obj;
+
+   memset(&obj, 0, sizeof(obj));
+   ExtractObject(&ptr, &obj);
+
+   len -= (ptr - start);
+
+   // School name.
+   Extract(&ptr, &resource_id, SIZE_ID);
+   len -= SIZE_ID;
+   if (!CheckServerMessage(&sname, &ptr, &len, resource_id))
+      return False;
+   // Spell level.
+   Extract(&ptr, &resource_id, SIZE_ID);
+   len -= SIZE_ID;
+   if (!CheckServerMessage(&slevel, &ptr, &len, resource_id))
+      return False;
+   // Spell mana cost.
+   Extract(&ptr, &resource_id, SIZE_ID);
+   len -= SIZE_ID;
+   if (!CheckServerMessage(&smana, &ptr, &len, resource_id))
+      return False;
+   // Spell vigor cost.
+   Extract(&ptr, &resource_id, SIZE_ID);
+   len -= SIZE_ID;
+   if (!CheckServerMessage(&svigor, &ptr, &len, resource_id))
+      return False;
+
+   // Description.
+   Extract(&ptr, &resource_id, SIZE_ID);
+   len -= SIZE_ID;
+   // See if we need to reorder the message.
+   if (CheckMessageOrder(&ptr, &len, resource_id) < 0)
+      return False;
+   if (!CheckServerMessage(&msg, &ptr, &len, resource_id))
+      return False;
+
+   DisplayDescription(&obj, 0, NULL, msg, NULL, sname, slevel, smana, svigor);
+   ObjectDestroy(&obj);
+
+   return True;
+}
+/********************************************************************/
+Bool HandleLookSkill(char *ptr, long len)
+{
+   char message[MAXMESSAGE];
+   char* msg = message;
+   char school_name[MAXMESSAGE];
+   char* sname = school_name;
+   char skill_level[MAXMESSAGE];
+   char* slevel = skill_level;
+
+   ID resource_id;
+   char *start = ptr;
+   object_node obj;
+
+   memset(&obj, 0, sizeof(obj));
+   ExtractObject(&ptr, &obj);
+
+   len -= (ptr - start);
+
+   // School name.
+   Extract(&ptr, &resource_id, SIZE_ID);
+   len -= SIZE_ID;
+   if (!CheckServerMessage(&sname, &ptr, &len, resource_id))
+      return False;
+   // Skill level.
+   Extract(&ptr, &resource_id, SIZE_ID);
+   len -= SIZE_ID;
+   if (!CheckServerMessage(&slevel, &ptr, &len, resource_id))
+      return False;
+
+   // Description.
+   Extract(&ptr, &resource_id, SIZE_ID);
+   len -= SIZE_ID;
+   // See if we need to reorder the message.
+   if (CheckMessageOrder(&ptr, &len, resource_id) < 0)
+      return False;
+   if (!CheckServerMessage(&msg, &ptr, &len, resource_id))
+      return False;
+
+   DisplayDescription(&obj, 0, NULL, msg, NULL, sname, slevel, NULL, NULL);
    ObjectDestroy(&obj);
 
    return True;

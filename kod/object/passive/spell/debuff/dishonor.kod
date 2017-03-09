@@ -26,11 +26,8 @@ resources:
    MarkOfDishonor_desc_rsc = \
       "Allows caster to cast Shal'ille's displeasure upon a target.  Will "
       "prevent target's life force from replenishing by natural means.  For "
-      "evil targets, Shal'ille will see to further punishment.  "
-      "Requires an emerald to cast."
-
+      "evil targets, Shal'ille will see to further punishment."
    MarkOfDishonor_sound = smarkdis.ogg
-
    MarkOfDishonor_start = \
       "Shal'ille singles you out for punishment.  Your life energies ebb."
    MarkOfDishonor_stop  = \
@@ -40,8 +37,6 @@ resources:
    MarkOfDishonor_no_self = \
       "You cannot cast mark of dishonor upon yourself; if you were truly "
       "dishonorable you would not be able to cast Shal'ille's spells."
-
-
 classvars:
 
    vrName = MarkOfDishonor_name_rsc
@@ -95,9 +90,9 @@ messages:
       local iKarma;
 
       // Put a DoT based on their karma and stop their health regeneration.
-      iKarma = bound(Send(oTarget,@GetKarma),-100,0);
-      Send(oTarget,@StartOverTimeEffect,#strength=(iSpellPower*iKarma/5),#duration=iDuration,
-         #what=self,#who=what,#curse=TYPE_HEALTH);
+      iKarma = Bound(Send(oTarget,@GetKarma),-100,0);
+      Send(oTarget,@StartOverTimeEffect,#strength=(iSpellPower*iKarma/5),
+            #duration=iDuration,#what=self,#who=what,#curse=TYPE_HEALTH);
 
       if IsClass(oTarget,&Player)
       {
@@ -112,14 +107,14 @@ messages:
       }
 
       Send(what,@MsgSendUser,#message_rsc=MarkOfDishonor_success,
-         #parm1=Send(oTarget,@GetDef),#parm2=Send(oTarget,@GetName));
+            #parm1=Send(oTarget,@GetDef),#parm2=Send(oTarget,@GetName));
 
       propagate;
    }
 
    GetDuration(iSpellPower=0)
    {
-      return 15000 + iSpellPower*150;
+      return 15000 + iSpellPower * 150;
    }
 
    OverTimeEffectWearingOff(who=$,overtimeeffect=$,report=TRUE)

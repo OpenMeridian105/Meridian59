@@ -11,25 +11,24 @@
 CreateWeapon is Spell
 
 constants:
+
    include blakston.khd
 
 resources:
 
    include creaweap.lkod
 
-   createweapon_cast_rsc = "%s%s appears."
-   createweapon_inv_full_rsc = \
-      "%s%s appears in the air before you but since you are unable "
-      "to carry it, it falls on the floor with a loud clang."
    createweapon_name_rsc = "create weapon"
    createweapon_icon_rsc = icremace.bgf
    createweapon_desc_rsc = \
       "Materializes a weapon. Requires nothing but a violent will."
-
+   createweapon_cast_rsc = "%s%s appears."
+   createweapon_inv_full_rsc = \
+      "%s%s appears in the air before you but since you are unable "
+      "to carry it, it falls on the floor with a loud clang."
    createweapon_spell_intro = \
       "Kraanan Lv. 1: Creates a variety of weapons for use in "
       "defeating your foes."
-
    createweapon_sound = kraanan.ogg
 
 classvars:
@@ -46,7 +45,6 @@ classvars:
    viMana = 15
    viCast_time = 5000
    viMeditate_ratio = 10
-   
 
    vrSucceed_wav = createweapon_sound
 
@@ -73,36 +71,38 @@ messages:
 
    SomethingSaidDuringTrance(who=$,string=$)
    {
-      local i, iSpellPower, iCount,isWeaponCreateable, oWeapon, oItemAtt,iSpellPercent;
+      local i, iSpellPower, iCount, isWeaponCreateable, oWeapon, oItemAtt,
+            iSpellPercent;
 
       iCount = 0;
-      isWeaponCreateable = false;
+      isWeaponCreateable = FALSE;
 
       iSpellPower = Send(self,@GetSpellPower,#who=who);
       iSpellPercent = Send(who,@GetSpellAbility,#spell_num=SID_CREATE_WEAPON);
 
       foreach i in Send(SYS,@GetItemTemplates)
       {
-         if(StringEqual(string,Send(i,@GetName)))
+         if (StringEqual(string,Send(i,@GetName)))
          {
-            if(NOT isClass(i,&Weapon))
+            if (NOT IsClass(i,&Weapon))
             {
                return;
             }
 
-            if(NOT Send(self,@CanCreateWeapon,#sWeapon=Send(i,@GetName),
-                  #iSpellPower=iSpellPower,#iSpellPercent=iSpellPercent))
+            if (NOT Send(self,@CanCreateWeapon,#sWeapon=Send(i,@GetName),
+                        #iSpellPower=iSpellPower,#iSpellPercent=iSpellPercent))
             {
                return;
             }
 
-            oWeapon = Create(getClass(i));
-            isWeaponCreateable = true;
+            oWeapon = Create(GetClass(i));
+            isWeaponCreateable = TRUE;
+
             break;
          }
       }
 
-      if(isWeaponCreateable = true)
+      if (isWeaponCreateable)
       {
          Send(who,@BreakTrance,#event=EVENT_STEER);
          // Weapon has half its hits, + iSpellPower// of the other half.
@@ -134,40 +134,39 @@ messages:
 
    CanCreateWeapon(sWeapon=$,iSpellPower=$,iSpellPercent=$)
    {
-
       if(StringEqual("Mace",sWeapon) AND iSpellPercent > 0)
       {
-         return true;
+         return TRUE;
       }
       if(StringEqual("Short Sword",sWeapon) AND iSpellPercent >= 30)
       {
-         return true;
+         return TRUE;
       }
       if(StringEqual("Hammer",sWeapon) AND iSpellPercent >= 45)
       {
-         return true;
+         return TRUE;
       }
       if(StringEqual("Axe",sWeapon) AND iSpellPercent >= 45)
       {
-         return true;
+         return TRUE;
       }
       if(StringEqual("Long Sword",sWeapon) AND iSpellPercent >=45)
       {
-         return true;
+         return TRUE;
       }
       if(StringEqual("Scimitar",sWeapon) AND iSpellPercent >= 55)
       {
-         return true;
+         return TRUE;
       }
       if(StringEqual("Mystic Sword",sWeapon) AND iSpellPercent >= 95)
       {
-         return true;
+         return TRUE;
       }
       if(StringEqual("Practice Bow",sWeapon) AND iSpellPercent >= 98)
       {
-         return true;
+         return TRUE;
       }
-      return false;
+      return FALSE;
    }
 
    CastSpell(who=$,lTargets=$,iSpellPower=$)
@@ -181,44 +180,29 @@ messages:
       {
          oWeapon = Create(&Mace);
       }
+      else if iNum < 30
+      {
+         oWeapon = Create(&ShortSword);
+      }
+      else if iNum < 45
+      {
+         oWeapon = Create(&Hammer);
+      }
+      else if iNum < 60
+      {
+         oWeapon = create(&Axe);
+      }
+      else if iNum < 75
+      {
+         oWeapon = Create(&LongSword);
+      }
+      else if iNum < 95
+      {
+         oWeapon = Create(&Scimitar);
+      }
       else
       {
-         if iNum < 30
-         {
-            oWeapon = Create(&ShortSword);
-         }
-         else
-         {
-            if iNum < 45
-            {
-               oWeapon = Create(&Hammer);
-            }
-            else
-            {
-               if iNum < 60
-               {
-                  oWeapon = create(&Axe);
-               }
-               else
-               {
-                  if iNum < 75
-                  {
-                     oWeapon = Create(&LongSword);
-                  }
-                  else
-                  {
-                     if iNum < 95
-                     {
-                        oWeapon = Create(&Scimitar);
-                     }
-                     else
-                     {
-                        oWeapon = Create(&MysticSword);
-                     }
-                  }
-               }
-            }
-         }
+         oWeapon = Create(&MysticSword);
       }
 
       // Weapon has half its hits, + iSpellPower// of the other half.

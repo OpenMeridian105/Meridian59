@@ -29,22 +29,17 @@ resources:
    MysticTouch_icon_rsc = imysticc.bgf
    MysticTouch_desc_rsc = \
       "Draws upon the magic of Faren to transfer magical energy from caster to "
-      "target.  "
-      "Requires mushrooms to cast."
-   
+      "target."
    MysticTouch_cast_rsc = \
       "You feel the magical energies of another filling your body."
    MysticTouch_caster_msg_rsc = "You give part of your magical energy to %s%s."
-
    MysticTouch_unnecessary_rsc = \
       "%s%s cannot handle additional magical energy from this spell."
    MysticTouch_nomana_rsc = \
       "You do not have enough magical energy to transfer to another!"
    MysticTouch_notonself_rsc = "You cannot cast mystic touch on yourself."
-
    MysticTouch_spell_intro = \
       "Faren Lv. 1: Gives part of caster's mana to another person."
-
    MysticTouch_sound = fmystic.ogg
 
 classvars:
@@ -63,7 +58,6 @@ classvars:
    viSpellExertion = 1
    viChance_To_Increase = 20
    viMeditate_ratio = 10
-  
    viFlash = FLASH_GOOD
 
 properties:
@@ -88,7 +82,7 @@ messages:
    CanPayCosts(who = $, lTargets = $)
    {
       local target, i;
-      
+
       // Can cast spell if the 1 target item is a user
       if Length(lTargets) <> 1
       {
@@ -96,11 +90,10 @@ messages:
       }
 
       target = First(lTargets);
-      if NOT IsClass(target, &User)
+      if NOT IsClass(target,&User)
       {
-         Send(who,@MsgSendUser,#message_rsc=spell_bad_target, 
-              #parm1=vrName,#parm2=Send(target,@GetDef),
-              #parm3=Send(target,@GetName));
+         Send(who,@MsgSendUser,#message_rsc=spell_bad_target,#parm1=vrName,
+               #parm2=Send(target,@GetDef),#parm3=Send(target,@GetName));
 
          return FALSE;
       }
@@ -125,7 +118,7 @@ messages:
          OR Send(target,@GetMana) >= MAX_TOTAL_AMOUNT 
       {
          Send(who,@MsgSendUser,#message_rsc=MysticTouch_unnecessary_rsc,
-	           #parm1=Send(target,@GetDef),#parm2=Send(target,@GetName));
+               #parm1=Send(target,@GetDef),#parm2=Send(target,@GetName));
 
          return FALSE;
       }
@@ -138,10 +131,10 @@ messages:
       local iPercent, oTarget, iSpAmount;
 
       oTarget = First(lTargets);
-      
-      iPercent = bound(iSpellPower/2,10,55);
-      
-      iSpAmount = bound(((Send(who,@GetMana) * iPercent) / 100),1,$);
+
+      iPercent = Bound(iSpellPower/2,10,55);
+
+      iSpAmount = Bound(((Send(who,@GetMana) * iPercent) / 100),1,$);
 
       if iSpAmount > (Send(who,@GetMana) - viMana)
       {
@@ -159,7 +152,7 @@ messages:
       }
 
       Send(who,@MsgSendUser,#message_rsc=MysticTouch_caster_msg_rsc,
-           #parm1=Send(oTarget,@GetDef),#parm2=Send(oTarget,@GetName));  
+            #parm1=Send(oTarget,@GetDef),#parm2=Send(oTarget,@GetName));  
       Send(who,@LoseMana,#amount=iSpAmount);
 
       Send(oTarget,@MsgSendUser,#message_rsc=MysticTouch_cast_rsc);
@@ -167,7 +160,6 @@ messages:
 
       propagate;
    }
-
 
 end
 ////////////////////////////////////////////////////////////////////////////////

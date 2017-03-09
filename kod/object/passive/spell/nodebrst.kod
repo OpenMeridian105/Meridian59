@@ -25,15 +25,12 @@ resources:
    Nodeburst_desc_rsc = \
       "You tap all of your mana nodes to the maximum, giving you "
       "an instant burst of mana and health, but destroying your bonds.  "
-      "May only be cast once per day.  "
-      "Requires fairy wings and entroot berries and is very tiring to cast."
-
+      "May only be cast once per day."
    Nodeburst_fail = "You have no links to any mana nodes which you can burst."
    Nodeburst_success = \
       "You open all your mana links to the maximum and mana floods down the "
       "links."
    Nodeburst_not_today = "You may only cast Nodeburst once per day."
-   
    Nodeburst_sound = qor.ogg
 
 classvars:
@@ -77,18 +74,18 @@ messages:
    CanPayCosts(who = $, lTargets = $)
    {
       local oCaster;
-      
+
       if lTargets = $
       {
          lTargets = [who];
       }
-      
+
       // Check for availability of mana node links.
       if Send(who,@GetNodeList) = 0
       {
-	      Send(who,@MsgSendUser,#message_rsc=Nodeburst_fail);
+         Send(who,@MsgSendUser,#message_rsc=Nodeburst_fail);
 
-	      return FALSE;
+         return FALSE;
       }
 
       foreach oCaster in plRecentCasters
@@ -107,7 +104,7 @@ messages:
    CastSpell(who = $, iSpellPower = 0)
    {
       local iNumNodes, iOrigMana, iNewMana, iGain;
-      
+
       // First save original mana.  Removing a node will remove some.
       iOrigMana = Send(who,@GetMana);
       iNumNodes = Send(who,@NumManaNodes);
@@ -134,7 +131,7 @@ messages:
 
    NewCaster(who=$)
    {
-      plRecentcasters = cons(who,plRecentCasters);
+      plRecentcasters = Cons(who,plRecentCasters);
 
       return;
    }
@@ -144,13 +141,12 @@ messages:
       plRecentCasters = $;
 
       return;
-   }   
+   }
 
    GetPotionClass()
    {
       return &NodeburstPotion;
    }
-
 
 end
 ////////////////////////////////////////////////////////////////////////////////

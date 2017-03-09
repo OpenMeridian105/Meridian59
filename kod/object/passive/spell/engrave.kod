@@ -20,13 +20,15 @@ resources:
 
    engrave_name_rsc = "engrave"
    engrave_icon_rsc = iillufrm.bgf
-   engrave_desc_rsc = "Adds a message to an item.  A DM only spell, currently.  "
+   engrave_desc_rsc = "Adds a message to an item.  A DM only spell, currently."
 
    engrave_already_engraved = "%s%s already has a message engraved onto it."
    engrave_cant_engrave = "You can't engrave a message on %s%s."
    engrave_no_message = "With no message to engrave, the spell fizzles into nothing."
 
-   engrave_do = "You watch in fascination as the words '%q' write themselves in eldritch script on %s%s."
+   engrave_do = \
+      "You watch in fascination as the words '%q' write themselves in "
+      "eldritch script on %s%s."
 
 classvars:
 
@@ -39,16 +41,16 @@ classvars:
    viSchool = SS_DM_COMMAND
    viMana = 0
    viSpellExertion = 0
-   viCast_time = 30000   
+   viCast_time = 30000
 
 properties:
 
 messages:
 
    ResetReagents()
-   {      
+   {
       plReagents = $;
-      
+
       return;
    }
 
@@ -60,42 +62,40 @@ messages:
 
    IsTargetInRange(who = $,target = $)
    {
-      if who = Send(target,@GetOwner) 
-         OR send(who,@GetOwner) = send(target,@GetOwner)
+      if who = Send(target,@GetOwner)
+         OR Send(who,@GetOwner) = Send(target,@GetOwner)
       {
          return TRUE;
       }
 
       return FALSE;
    }
-   
+
    CanPayCosts(who = $, lTargets = $)
    {
       local oTarget;
-     
-      // check for enchantment already applied
-      
-      oTarget = first(lTargets);
+
+      oTarget = First(lTargets);
 
       // Only castable on items.
       if NOT IsClass(oTarget,&Item)
       {
          return FALSE;
       }
-      
-      if send(oTarget,@HasAttribute,#itematt=IA_ENGRAVED)
+
+      if Send(oTarget,@HasAttribute,#itematt=IA_ENGRAVED)
       {
          Send(who,@MsgSendUser,#message_rsc=engrave_already_engraved,
-              #parm1=send(oTarget,@GetCapDef),#parm2=send(oTarget,@GetName));
-              
+              #parm1=Send(oTarget,@GetCapDef),#parm2=Send(oTarget,@GetName));
+
          return FALSE;
-      }    
-      
-      if isClass(oTarget,&NumberItem)
+      }
+
+      if IsClass(oTarget,&NumberItem)
       {
          Send(who,@MsgSendUser,#message_rsc=engrave_cant_engrave,
-              #parm1=send(oTarget,@GetDef),#parm2=send(oTarget,@GetName));
-              
+              #parm1=Send(oTarget,@GetDef),#parm2=Send(oTarget,@GetName));
+
          return FALSE;
       }
 
@@ -104,8 +104,8 @@ messages:
 
    CastSpell(who = $)
    {
-      send(who,@MsgSendUser,#message_rsc=engrave_no_message);
-      
+      Send(who,@MsgSendUser,#message_rsc=engrave_no_message);
+
       return FALSE;
    }
 
@@ -119,37 +119,37 @@ messages:
    "Realistically, this will usually be called by SomethingSaidDuringTrance."
    {
       local oItemAtt;
-      
-      if send(oTarget,@HasAttribute,#itematt=IA_ENGRAVED)
+
+      if Send(oTarget,@HasAttribute,#itematt=IA_ENGRAVED)
       {
          Send(caster,@MsgSendUser,#message_rsc=engrave_already_engraved,
-              #parm1=send(oTarget,@GetCapDef),#parm2=send(oTarget,@GetName));
-              
+              #parm1=Send(oTarget,@GetCapDef),#parm2=Send(oTarget,@GetName));
+
          return FALSE;
       }
-      
-      oItemAtt = send(SYS,@FindItemAttByNum,#num=IA_ENGRAVED);
-      
-      if send(oItemAtt,@ReqAddToItem,#oItem=oTarget)
+
+      oItemAtt = Send(SYS,@FindItemAttByNum,#num=IA_ENGRAVED);
+
+      if Send(oItemAtt,@ReqAddToItem,#oItem=oTarget)
       {
-         send(oItemAtt,@AddToItem,#oItem=oTarget,#state1=sMessage);
+         Send(oItemAtt,@AddToItem,#oItem=oTarget,#state1=sMessage);
       }
-      
-      send(caster,@MsgSendUser,#message_rsc=engrave_do,#parm1=sMessage,
-           #parm2=send(oTarget,@GetDef),#parm3=send(oTarget,@GetName));
-           
+
+      Send(caster,@MsgSendUser,#message_rsc=engrave_do,#parm1=sMessage,
+            #parm2=Send(oTarget,@GetDef),#parm3=Send(oTarget,@GetName));
+
       return;
    }
 
    SomethingSaidDuringTrance(who=$,string=$,lTargets = $)
    {
       // Don't print fizzle message.
-      send(who,@BreakTrance,#event=EVENT_STEER);
-      send(self,@PerformEngrave,#caster=who,#oTarget=first(lTargets),#sMessage=string);
+      Send(who,@BreakTrance,#event=EVENT_STEER);
+      Send(self,@PerformEngrave,#caster=who,#oTarget=First(lTargets),
+            #sMessage=string);
 
       return;
-   }  
-
+   }
 
 end
 ////////////////////////////////////////////////////////////////////////////////

@@ -182,6 +182,8 @@ enum {
    BP_ARTICLE               = 182,
 
    BP_LOOKUP_NAMES          = 190,
+   BP_LOOK_SPELL            = 191,
+   BP_LOOK_SKILL            = 192,
 
    BP_MOVE                  = 200,
    BP_TURN                  = 201,

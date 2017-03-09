@@ -23,16 +23,12 @@ resources:
    Vertigo_desc_rsc = \
       "This spell causes the victim to become so ill that they can hardly "
       "stand, much less fight. "
-      "Requires two dragonfly eyes and a vial of solagh to cast."
-
    Vertigo_caster = "%s%s looks strangely dazed... and confused."
    Vertigo_already_enchanted = "%s%s already appears to be freaking."
-
    Vertigo_on = \
       "Your stomach leaps into your throat and you feel as though "
       "someone hit you on the head with a very large hammer."
    Vertigo_off = "You recover from that terrible feeling."
-
    Vertigo_sound = rvertigo.ogg
 
 classvars:
@@ -88,7 +84,7 @@ messages:
 
    DoSpell(what=$,oTarget=$,iDuration=0,iSpellPower=$)
    {
-      local iAmount,iAgil,iMight,iAim;
+      local iAmount, iAgil, iMight, iAim;
 
       iAmount = Send(self,@GetAmount,#iSpellPower=iSpellPower);
 
@@ -127,7 +123,7 @@ messages:
       local iAmount;
 
       // Stats are reduced between 15-24
-      iAmount = 15+(iSpellPower/10);
+      iAmount = 15 + (iSpellPower / 10);
 
       return iAmount;
    }
@@ -141,7 +137,7 @@ messages:
       // spellpower multiplier, with the final duration 90-100// max
 
       iDuration = (piBaseDuration + (iSpellPower+1)*piSpellPowerModifier);
-      iDuration = random(iDuration*(100-piDeviation)/100,iDuration);
+      iDuration = Random(iDuration*(100-piDeviation)/100,iDuration);
 
       return iDuration;
    }
@@ -155,13 +151,13 @@ messages:
 
       if IsClass(who,&User)
       {
-         Send(who,@AddAgility,#points=Nth(state,1));
+         Send(who,@AddAgility,#points=First(state));
          Send(who,@AddMight,#points=Nth(state,2));
          Send(who,@AddAim,#points=Nth(state,3));
       }
       else
       {
-         Send(who,@AddMonsterAgility,#points=Nth(state,1));
+         Send(who,@AddMonsterAgility,#points=First(state));
          Send(who,@AddMonsterAim,#points=Nth(state,2));
       }
 
@@ -170,11 +166,9 @@ messages:
 
    RestartEnchantmentEffect(who=$,state=$)
    {
-      local i, iDuration, oList;
+      local i, iDuration;
 
-      oList = Send(who,@GetEnchantmentList);
-
-      foreach i in oList
+      foreach i in Send(who,@GetEnchantmentList)
       {
          if Nth(i,2) = self
          {

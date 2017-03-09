@@ -21,13 +21,12 @@ resources:
    Bait_name_rsc = "bait"
    Bait_icon_rsc = idistrac.bgf
    Bait_desc_rsc = \
-      "Makes you mighty appetizing to nearby monsters.  The more powerful you are, "
-      "the more likely you are to get the monster's attention.  "
-      "Requires web moss and firesand to cast."
-   
-   Bait_success = "The scent of something really yummy fills the air.  Your mouth "
-            "involuntarily begins to water, a moment before you realize that "
-            "the appetizing smell is coming from you!"
+      "Makes you mighty appetizing to nearby monsters.  The more powerful "
+      "you are, the more likely you are to get the monster's attention."
+   Bait_success = \
+      "The scent of something really yummy fills the air.  Your mouth "
+      "involuntarily begins to water, a moment before you realize that "
+      "the appetizing smell is coming from you!"
 
    Bait_sound = rdistrac.ogg
 
@@ -68,62 +67,66 @@ messages:
    {
       return 0;
    }
-	 
+
    CastSpell(who = $,iSpellPower=0)
    {
-      local oMonster,iMonsterFaction,iModifier,iBaseChance;
+      local i, oMonster, iMonsterFaction, iModifier, iBaseChance;
+
       Send(who,@MsgSendUser,#message_rsc=Bait_success);
-      foreach oMonster in send(send(who,@GetOwner),@GetHolderActive)
+
+      foreach i in Send(send(who,@GetOwner),@GetHolderActive)
       {
-         if isClass(first(oMonster), &Monster)
-               and not ( send(first(oMonster), @GetBehavior) & AI_NPC )
+         oMonster = First(i);
+
+         if IsClass(oMonster,&Monster)
+            AND NOT (Send(oMonster,@GetBehavior) & AI_NPC)
          {
             iBaseChance = 25;
-            if send(first(oMonster), @GetTarget) = $
+            if Send(oMonster,@GetTarget) = $
             {
                // easier if monster doesn't have a target
                iModifier = 2;
-            } else {
+            } else
+            {
                // harder if monster already has a target
                iModifier = 4;
             }
 
-            // Faction Kludge: Should put in a special trait for "player-like" monsters.
-            // Doesn't fall for bait as much, since has "player-like" characteristics.
-            if IsClass(first(oMonster),&FactionTroop)
+            // Human mobs fall for bait less often.
+            if IsClass(oMonster,&Human)
             {
                iBaseChance = 0;
-               iModifier = iModifier + 4;
+               iModifier += 4;
             }
 
             // Avoid faction problems, don't make it work on aligned people.
-            iMonsterFaction = send(first(oMonster),@GetFaction);
-            if not(iMonsterFaction = FACTION_NEUTRAL) and (send(who,@GetFaction) = iMonsterFaction)
+            iMonsterFaction = Send(oMonster,@GetFaction);
+            if NOT (iMonsterFaction = FACTION_NEUTRAL)
+               AND (send(who,@GetFaction) = iMonsterFaction)
             {
                iBaseChance = -200;
             }
-            
-            if random(1,100) < (iBaseChance + (iSpellPower/iModifier))
+
+            // Don't allow in happyland, unless the monster has no master.
+            // Also must be in range.
+            if (Random(1,100) < (iBaseChance + (iSpellPower/iModifier))
+               AND (Send(SYS,@IsPKAllowed)
+                  OR Send(oMonster,@GetMaster) = $)
+               AND Send(who,@SquaredDistanceTo,#what=oMonster)
+                  < (piBaitRange * piBaitRange))
             {
-	            /// don't allow in happyland, unless the monster has no master.
-	            if send(SYS,@IsPKAllowed) or send(first(oMonster),@GetMaster) = $
-	            {
-                    if Send(who,@SquaredDistanceTo,#what=First(oMonster)) < (piBaitRange * piBaitRange)
-                    {
-                       send(first(oMonster), @TargetSwitch, #what=who, #iHatred=100);
-                       send(first(oMonster), @EnterStateChase, #target=who, #actnow=True);
-                    }
-                }
+               Send(oMonster,@TargetSwitch,#what=who,#iHatred=100);
+               Send(oMonster,@EnterStateChase,#target=who,#actnow=TRUE);
             }
          }
       }
-      
+
       propagate;
    }
 
    GetPotionClass()
    {
-      RETURN &BaitPotion;
+      return &BaitPotion;
    }
 
 end

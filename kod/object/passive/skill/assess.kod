@@ -43,7 +43,7 @@ classvars:
    vrDesc = assess_desc_rsc
 
    viSkill_num = SKID_assess
-   vischool = SKS_BRAWLING
+   vischool = SKS_DM
 
    viSkill_level = 50
    viMeditate_ratio = 0
@@ -68,7 +68,7 @@ messages:
       {
          Send(who, @MsgSendUser, #message_rsc=skill_bad_target, 
            #parm1=vrName,#parm2=Send(otarget,@GetCapDef),#parm3=Send(otarget,@GetName));
-	 return False;
+   return False;
       }
 
       propagate;   // Check other things higher up
@@ -82,40 +82,40 @@ messages:
 
       if isclass(oTarget,&user)
       {
-	 dodge=send(otarget,@getskillability,#skill_num=SKID_DODGE);
-	 health=send(otarget,@getmaxhealth);
-	 slash=send(otarget,@getskillability,#skill_num=SKID_SLASH);
-	 strength=send(otarget,@getmight);
-	 agility=(send(oTarget,@getagility));
-	 totalpower=(dodge+health+slash+strength+agility)/4;
+         dodge=send(otarget,@getskillability,#skill_num=SKID_DODGE);
+         health=send(otarget,@getmaxhealth);
+         slash=send(otarget,@getskillability,#skill_num=SKID_SLASH);
+         strength=send(otarget,@getmight);
+         agility=(send(oTarget,@getagility));
+         totalpower=(dodge+health+slash+strength+agility)/4;
       }
       else
       {
-	 totalpower=send(oTarget,@getlevel);
+         totalpower=send(oTarget,@getlevel);
       }
       message = $;
 
       if totalpower < 20
         { message = assess_below_20; }
-      if totalpower > 19 and totalpower < 30
+      else if totalpower > 19 and totalpower < 30
         { message = assess_20_30 ;  }
-      if totalpower > 29 and totalpower < 40
+      else if totalpower > 29 and totalpower < 40
         { message = assess_30_40 ;  }
-      if totalpower > 39 and totalpower < 50
+      else if totalpower > 39 and totalpower < 50
         { message = assess_40_50 ;  }
-      if totalpower > 49 and totalpower < 60
+      else if totalpower > 49 and totalpower < 60
         { message = assess_50_60 ;  }
-      if totalpower > 59 and totalpower < 70
+      else if totalpower > 59 and totalpower < 70
         { message = assess_60_70 ;  }
-      if totalpower > 69 and totalpower < 80
+      else if totalpower > 69 and totalpower < 80
         { message = assess_70_80 ;  }
-      if totalpower > 79 and totalpower < 90
+      else if totalpower > 79 and totalpower < 90
         { message = assess_80_90 ;  }
-      if totalpower > 89 and totalpower < 100
+      else if totalpower > 89 and totalpower < 100
         { message = assess_90_100 ;  }
-      if totalpower > 99 and totalpower < 150
+      else if totalpower > 99 and totalpower < 150
         { message = assess_100_150 ;  }
-      if message = $
+      else
         { message = assess_150_up ; }
 
       Send(who, @MsgSendUser, #message_rsc=message,

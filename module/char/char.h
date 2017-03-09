@@ -92,9 +92,9 @@ typedef enum {
    SS_RIIJA = 5,
    SS_JALA = 6,
    SS_DM_COMMAND = 7,
-   SKS_FENCING = 10,
-   SKS_BRAWLING = 11,
-   SKS_THIEVERY = 12,
+   SKS_WEAPONCRAFT = 10,
+   SKS_DM = 11,
+   SKS_ROGUE = 12,
 } School;
 
 // Info on each available spell

@@ -243,7 +243,7 @@ Bool HandleCharInfo(char *ptr, long len)
       // skill selection. School hardcoded to weaponcraft until
       // alternatives are available, due to incompatibility
       // with existing protocol (school not sent for skills).
-      list_str.assign(GetSchoolString(SKS_FENCING));
+      list_str.assign(GetSchoolString(SKS_WEAPONCRAFT));
       if (s->cost < 25)
          list_str.append(" 1: ");
       else
@@ -326,12 +326,12 @@ char *GetSchoolString(School school_id)
       return GetString(hInst, IDS_JALA);
    case SS_DM_COMMAND:
       return GetString(hInst, IDS_DMSCHOOL);
-   case SKS_FENCING:
-      return GetString(hInst, IDS_FENCING);
-   case SKS_BRAWLING:
-      return GetString(hInst, IDS_BRAWLING);
-   case SKS_THIEVERY:
-      return GetString(hInst, IDS_THIEVERY);
+   case SKS_WEAPONCRAFT:
+      return GetString(hInst, IDS_WEAPONCRAFT);
+   case SKS_DM:
+      return GetString(hInst, IDS_DMSKILL);
+   case SKS_ROGUE:
+      return GetString(hInst, IDS_ROGUE);
    }
 
    return "Unknown";

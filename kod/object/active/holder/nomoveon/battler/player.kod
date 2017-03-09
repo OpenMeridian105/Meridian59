@@ -1992,7 +1992,7 @@ messages:
 //         }
 //
 //         // weaponcraft
-//         if Send(self,@CountKnownAtLevel,#school=SKS_FENCING,#level=5) >= 1
+//         if Send(self,@CountKnownAtLevel,#school=SKS_WEAPONCRAFT,#level=5) >= 1
 //         {
 //            if NOT j
 //            {
@@ -7012,8 +7012,8 @@ messages:
 
       if plSchoolCasts = $
       {
-         // 11 elements for now
-         plSchoolCasts = [ 0,0,0,0,0,0,0,0,0,0,0 ];
+         // 12 elements for now
+         plSchoolCasts = [ 0,0,0,0,0,0,0,0,0,0,0,0 ];
       }
 
       if school = $
@@ -7036,13 +7036,13 @@ messages:
    {
       if plSchoolCasts = $
       {
-         // 11 elements for now
-         plSchoolCasts = [ 0,0,0,0,0,0,0,0,0,0,0 ];
+         // 12 elements for now
+         plSchoolCasts = [ 0,0,0,0,0,0,0,0,0,0,0,0 ];
       }
 
       if school = $
          OR school < 0
-         OR school > length(plSchoolCasts)
+         OR school > Length(plSchoolCasts)
       {
          return 0;
       }
@@ -7055,13 +7055,13 @@ messages:
    {
       if plSchoolCasts = $
       {
-         // 11 elements for now
-         plSchoolCasts = [ 0,0,0,0,0,0,0,0,0,0,0 ];
+         // 12 elements for now
+         plSchoolCasts = [ 0,0,0,0,0,0,0,0,0,0,0,0 ];
       }
 
       if school = $
          OR school < 0
-         OR school > length(plSchoolCasts)
+         OR school > Length(plSchoolCasts)
       {
          return;
       }
@@ -7559,13 +7559,13 @@ messages:
 
       if plSchools = $
       {
-         // 11 elements right now.
-         plSchools = [ 0,0,0,0,0,0,0,0,0,0,0 ];
+         // 12 elements right now.
+         plSchools = [ 0,0,0,0,0,0,0,0,0,0,0,0 ];
       }
 
-      while length(plSchools) < school
+      while Length(plSchools) < school
       {
-         plSchools = cons(0, plSchools);
+         plSchools = Cons(0, plSchools);
       }
 
       iOldValue = Nth(plSchools,school);
@@ -7579,20 +7579,19 @@ messages:
 
    RefigureSchoolsLists(informlore=FALSE)
    {
-      local i, lOldList, oAbility, iSchool, iAbility, iValue, oLore, bChanged,
-            index, iNum;
+      local i, lOldList, oAbility, iSchool, iAbility, iValue, oLore, iNum;
 
       lOldList = plSchools;
 
-      // 11 elements right now.
-      plSchools = [ 0,0,0,0,0,0,0,0,0,0,0 ];
+      // 12 elements right now.
+      plSchools = [ 0,0,0,0,0,0,0,0,0,0,0,0 ];
 
       foreach i in plSpells
       {
          iAbility = Send(self,@DecodeSpellAbility,#compound=i);
          iNum = Send(self,@DecodeSpellNum,#compound=i);
-         oAbility=Send(SYS,@FindSpellByNum,#num=iNum);
-         if IsClass(oAbility,&spell)
+         oAbility = Send(SYS,@FindSpellByNum,#num=iNum);
+         if IsClass(oAbility,&Spell)
          {
             iSchool = Send(oAbility,@GetSchool);
             iValue = Nth(plSchools,iSchool);
@@ -7602,7 +7601,7 @@ messages:
 
       foreach i in plSkills
       {
-         oAbility=Send(SYS,@FindSkillByNum,#num=Send(self,@DecodeSkillNum,#compound=i));
+         oAbility = Send(SYS,@FindSkillByNum,#num=Send(self,@DecodeSkillNum,#compound=i));
          iSchool = Send(oAbility,@GetSchool);
          iAbility = Send(self,@DecodeSkillAbility,#compound=i);
          iValue = Nth(plSchools,iSchool);
@@ -7610,28 +7609,16 @@ messages:
       }
 
       if informlore OR lOldList = $
-      { 
+      {
          // Assume that something has changed
          oLore = Send(SYS,@GetLore);
-         Send(oLore,@PlayerAdvanced,#who=self,#school = iSchool);
-         
+         Send(oLore,@PlayerAdvanced,#who=self,#school=iSchool);
+
          return;
       }
 
-      // We want to know if something has changed.
-      bChanged = FALSE;
-      index = 0;
-      foreach i in lOldList
-      {
-         index = index + 1;
-         if Nth(lOldList,index) <> Nth(plSchools,index)
-         {
-            bChanged = TRUE;
-         }
-      }
-
       // If they changed, update them in the lore.
-      if bChanged
+      if (NOT IsListMatch(lOldList,plSchools))
       {
          oLore = Send(SYS,@GetLore);
          Send(oLore,@PlayerAdvanced,#who=self,#school=-1);
@@ -7644,15 +7631,15 @@ messages:
    "Admin supported.\n"
    "Adds, removes or changes a spell by an additional or absolute value."
    {
-      local oSpell, oldAbility;
+      local oldAbility;
 
       if num = $ OR num = 0
       {
          return Send(SYS,@GetFailureRsc);
       }
 
-      oSpell = Send(SYS,@FindSpellByNum,#num=num);
-      if oSpell = $
+      // Spell must exist.
+      if Send(SYS,@FindSpellByNum,#num=num) = $
       {
          return Send(SYS,@GetFailureRsc);
       }
@@ -7671,7 +7658,7 @@ messages:
       }
 
       // Remove?
-      if ability = 0 and add <= -oldAbility
+      if ability = 0 AND add <= -oldAbility
       {
          if Send(self,@RemoveSpell,#num=num)
          {
@@ -12144,7 +12131,7 @@ messages:
          }
       }
 
-      if except <> SKS_FENCING
+      if except <> SKS_WEAPONCRAFT
       {
          foreach iSpell in plSkills
          {

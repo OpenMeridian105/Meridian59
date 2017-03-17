@@ -8,7 +8,7 @@ SOURCEDIR = .
 OUTDIR = $(CLIENTRUNDIR)\resource
 OUTDIRSUB = ..\$(OUTDIR)
 
-DIRS = giantdskel ratking spell
+DIRS = giantdskel ratking spells skills dualweapons
 
 all:
    @-for %i in (*.bgf) do @$(CP) %i $(OUTDIR) >nul

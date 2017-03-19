@@ -2748,7 +2748,13 @@ messages:
       ClearPacket();
 
       // Radius enchants, because SomethingMoved not always sent to players.
-      SendListByClass(plActive,1,&NoMoveOn,@NoMoveOnRadiusEnchCheckOne,#who=what);
+      // Object must still have us as the owner, as they may have died due
+      // to the result of one of the SomethingMoved calls (e.g. firewall).
+      if (Send(what,@GetOwner) = self)
+      {
+         SendListByClass(plActive,1,&NoMoveOn,@NoMoveOnRadiusEnchCheckOne,
+               #who=what);
+      }
 
       return;
    }

@@ -132,7 +132,6 @@ typedef struct d3d_texture_cache_entry
 {
 	LPDIRECT3DTEXTURE9	pTexture;
 	unsigned int		pDibID;
-	unsigned int		pDibID2;
 	int					size;
 	int					effects;
 	BYTE				xLat0;

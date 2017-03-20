@@ -84,7 +84,6 @@ LPDIRECT3DTEXTURE9 D3DCacheTextureLookupSwizzled(d3d_texture_cache *pTextureCach
 		pTexEntry = (d3d_texture_cache_entry *)list->data;
 
 		if ((pPacket->pDib->uniqueID == pTexEntry->pDibID) &&
-			(pPacket->pDib->uniqueID2 == pTexEntry->pDibID2) &&
 			(pPacket->pDib->frame == pTexEntry->frame))
 		{
 			if ((pPacket->xLat0 == pTexEntry->xLat0) &&
@@ -125,7 +124,6 @@ LPDIRECT3DTEXTURE9 D3DCacheTextureLookupSwizzled(d3d_texture_cache *pTextureCach
 
 	pTexEntry->effects = effect;
 	pTexEntry->pDibID = pPacket->pDib->uniqueID;
-	pTexEntry->pDibID2 = pPacket->pDib->uniqueID2;
 	pTexEntry->frame = pPacket->pDib->frame;
 	pTexEntry->pTexture = pTexture;
 	pTexEntry->xLat0 = pPacket->xLat0;
@@ -160,7 +158,6 @@ LPDIRECT3DTEXTURE9 D3DCacheTextureLookup(d3d_texture_cache *pTextureCache, d3d_r
 		pTexEntry = (d3d_texture_cache_entry *)list->data;
 
 		if ((pPacket->pDib->uniqueID == pTexEntry->pDibID) &&
-			(pPacket->pDib->uniqueID2 == pTexEntry->pDibID2) &&
 			(pPacket->pDib->frame == pTexEntry->frame))
 		{
 			if ((pPacket->xLat0 == pTexEntry->xLat0) &&
@@ -201,7 +198,6 @@ LPDIRECT3DTEXTURE9 D3DCacheTextureLookup(d3d_texture_cache *pTextureCache, d3d_r
 
 	pTexEntry->effects = effect;
 	pTexEntry->pDibID = pPacket->pDib->uniqueID;
-	pTexEntry->pDibID2 = pPacket->pDib->uniqueID2;
 	pTexEntry->frame = pPacket->pDib->frame;
 	pTexEntry->pTexture = pTexture;
 	pTexEntry->xLat0 = pPacket->xLat0;

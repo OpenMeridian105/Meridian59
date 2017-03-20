@@ -21,7 +21,6 @@ typedef struct {
    int    yoffset;  // Y offset to use when displaying this bitmap over another one
    POINT *hotspots; // Hotspot positions; tell where overlay bitmaps should be placed
    unsigned int	uniqueID;	// unique identifier to identify this bitmap, even if pointer changes
-   unsigned int	uniqueID2;	// unique identifier to identify this bitmap, even if pointer changes
    char		frame;			// indicates which bitmap in group this particular dib is
    BYTE   shrink;   // Divide by this to get actual size of object 
    BYTE   num_hotspots;   // # of hotspots in bitmap

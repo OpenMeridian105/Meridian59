@@ -36,6 +36,8 @@ static Bool LoadSectors(file_node *f, room_type *room, int num_sectors);
 static Bool LoadThings(file_node *f, room_type *room, int num_things);
 static Bool LoadSidedefs(file_node *f, room_type *room, int num_sidedefs);
 static Bool RoomSwizzle(room_type *room, BSPTree tree, int num_nodes, int num_walls, int num_sidedefs, int num_sectors);
+void PrecalcLeafData(BSPleaf *leaf);
+void PrecalcInternalNodeData(BSPinternal *iNode);
 /*****************************************************************************************/
 /*
  * BSPRooFileLoad:  Load room description from given file, and put result in room.
@@ -190,6 +192,14 @@ Bool BSPRooFileLoad(char *fname, room_type *room)
    room->num_walls    = num_walls;
    room->num_sectors  = num_sectors;
    room->num_sidedefs = num_sidedefs;
+
+   for (int i = 0; i < num_nodes; ++i)
+   {
+      if (room->nodes[i].type == BSPleaftype)
+         PrecalcLeafData(&room->nodes[i].u.leaf);
+      else if (room->nodes[i].type == BSPinternaltype)
+         PrecalcInternalNodeData(&room->nodes[i].u.internal);
+   }
 
 //   BSPDumpTree(room->tree, 0);
 //   D3DGeometryBuild(room);
@@ -934,12 +944,651 @@ Bool RoomSwizzle(room_type *room, BSPTree tree,
          return False;
       }
       leaf->sector = &room->sectors[leaf->sector_num - 1];
+
       break;
    }
 
    return True;
 }
 
+void PrecalcWallData(WallData *pWall, unsigned int type, int side)
+{
+   int drawTopDown;
+   Sidedef *pSideDef = NULL;
+   PDIB pDib;
+   custom_xyz *pXYZ;
+   custom_st *pST;
+   unsigned int *flags;
+   int xOffset, yOffset, top, bottom;
+
+
+   if (side > 0)
+   {
+      pSideDef = pWall->pos_sidedef;
+      if (!pSideDef)
+         return;
+      xOffset = pWall->pos_xoffset;
+      yOffset = pWall->pos_yoffset;
+
+      if (type == D3DRENDER_WALL_NORMAL)
+      {
+         pDib = pWall->pos_sidedef->normal_bmap;
+         if (!pDib)
+            return;
+
+         pST = pWall->pos_normal_stBase;
+         pXYZ = pWall->pos_normal_xyz;
+         flags = &pWall->pos_normal_d3dFlags;
+
+         pXYZ[0].z = (float)pWall->z2;
+         pXYZ[3].z = (float)pWall->zz2;
+         pXYZ[1].z = (float)pWall->z1;
+         pXYZ[2].z = (float)pWall->zz1;
+         drawTopDown = ((pSideDef->flags & WF_NORMAL_TOPDOWN) == WF_NORMAL_TOPDOWN);
+      }
+      else if (type == D3DRENDER_WALL_BELOW)
+      {
+         pDib = pWall->pos_sidedef->below_bmap;
+         if (!pDib)
+            return;
+
+         pXYZ = pWall->pos_below_xyz;
+         pST = pWall->pos_below_stBase;
+         flags = &pWall->pos_below_d3dFlags;
+
+         if ((pWall->bowtie_bits & BT_BELOW_POS)
+            || (pWall->bowtie_bits & BT_BELOW_NEG))
+         {
+            pXYZ[0].z = (float)pWall->z1Neg;
+            pXYZ[3].z = (float)pWall->zz1Neg;
+         }
+         else
+         {
+            pXYZ[0].z = (float)pWall->z1;
+            pXYZ[3].z = (float)pWall->zz1;
+         }
+
+         pXYZ[1].z = (float)pWall->z0;
+         pXYZ[2].z = (float)pWall->zz0;
+         drawTopDown = ((pSideDef->flags & WF_BELOW_TOPDOWN) == WF_BELOW_TOPDOWN);
+      }
+      else if (type == D3DRENDER_WALL_ABOVE)
+      {
+         pDib = pWall->pos_sidedef->above_bmap;
+         if (!pDib)
+            return;
+
+         pXYZ = pWall->pos_above_xyz;
+         pST = pWall->pos_above_stBase;
+         flags = &pWall->pos_above_d3dFlags;
+
+         pXYZ[0].z = (float)pWall->z3;
+         pXYZ[3].z = (float)pWall->zz3;
+         pXYZ[1].z = (float)pWall->z2;
+         pXYZ[2].z = (float)pWall->zz2;
+         drawTopDown = !((pSideDef->flags & WF_ABOVE_BOTTOMUP) == WF_ABOVE_BOTTOMUP);
+      }
+      pXYZ[0].x = pWall->x0;
+      pXYZ[3].x = pWall->x1;
+      pXYZ[1].x = pWall->x0;
+      pXYZ[2].x = pWall->x1;
+
+      pXYZ[0].y = pWall->y0;
+      pXYZ[3].y = pWall->y1;
+      pXYZ[1].y = pWall->y0;
+      pXYZ[2].y = pWall->y1;
+   }
+   else if (side < 0)
+   {
+      pSideDef = pWall->neg_sidedef;
+      if (!pSideDef)
+         return;
+
+      xOffset = pWall->neg_xoffset;
+      yOffset = pWall->neg_yoffset;
+
+      if (type == D3DRENDER_WALL_NORMAL)
+      {
+         pDib = pWall->neg_sidedef->normal_bmap;
+         if (!pDib)
+            return;
+
+         pXYZ = pWall->neg_normal_xyz;
+         pST = pWall->neg_normal_stBase;
+         flags = &pWall->neg_normal_d3dFlags;
+
+         pXYZ[0].z = (float)pWall->zz2;
+         pXYZ[3].z = (float)pWall->z2;
+         pXYZ[1].z = (float)pWall->zz1;
+         pXYZ[2].z = (float)pWall->z1;
+         drawTopDown = ((pSideDef->flags & WF_NORMAL_TOPDOWN) == WF_NORMAL_TOPDOWN);
+      }
+      else if (type == D3DRENDER_WALL_BELOW)
+      {
+         pDib = pWall->neg_sidedef->below_bmap;
+         if (!pDib)
+            return;
+         pXYZ = pWall->neg_below_xyz;
+         pST = pWall->neg_below_stBase;
+         flags = &pWall->neg_below_d3dFlags;
+
+         pXYZ[0].z = (float)pWall->zz1;
+         pXYZ[3].z = (float)pWall->z1;
+         pXYZ[1].z = (float)pWall->zz0;
+         pXYZ[2].z = (float)pWall->z0;
+         drawTopDown = ((pSideDef->flags & WF_BELOW_TOPDOWN) == WF_BELOW_TOPDOWN);
+      }
+      else if (type == D3DRENDER_WALL_ABOVE)
+      {
+         pDib = pWall->neg_sidedef->above_bmap;
+         if (!pDib)
+            return;
+         pXYZ = pWall->neg_above_xyz;
+         pST = pWall->neg_above_stBase;
+         flags = &pWall->neg_above_d3dFlags;
+
+         pXYZ[0].z = (float)pWall->zz3;
+         pXYZ[3].z = (float)pWall->z3;
+         pXYZ[1].z = (float)pWall->zz2;
+         pXYZ[2].z = (float)pWall->z2;
+         drawTopDown = !((pSideDef->flags & WF_ABOVE_BOTTOMUP) == WF_ABOVE_BOTTOMUP);
+      }
+
+      pXYZ[0].x = pWall->x1;
+      pXYZ[3].x = pWall->x0;
+      pXYZ[1].x = pWall->x1;
+      pXYZ[2].x = pWall->x0;
+
+      pXYZ[0].y = pWall->y1;
+      pXYZ[3].y = pWall->y0;
+      pXYZ[1].y = pWall->y1;
+      pXYZ[2].y = pWall->y0;
+   }
+
+   *flags = 0;
+
+   if (pSideDef->flags & WF_TRANSPARENT)
+      *flags |= D3DRENDER_TRANSPARENT;
+
+   if (type == D3DRENDER_WALL_NORMAL && (pSideDef->flags & WF_NO_VTILE))
+      *flags |= D3DRENDER_NO_VTILE;
+
+   float invWidth, invHeight, invWidthFudge, invHeightFudge;
+   // force a wraparound because many textures in the old client do this, grr
+   yOffset = yOffset << 16;
+   yOffset = yOffset >> 16;
+
+   invWidth = 1.0f / (float)pDib->width;
+   invHeight = 1.0f / (float)pDib->height;
+   invWidthFudge = 1.0f / ((float)pDib->width * PETER_FUDGE);
+   invHeightFudge = 1.0f / ((float)pDib->height * PETER_FUDGE);
+
+   pST[0].t = (float)xOffset * (float)(pDib->shrink) * invHeight;
+   pST[1].t = (float)xOffset * (float)(pDib->shrink) * invHeight;
+   pST[3].t = (float)(pST[0].t + ((float)pWall->length * (float)pDib->shrink) * invHeight);
+   pST[2].t = (float)(pST[1].t + ((float)pWall->length * (float)pDib->shrink) * invHeight);
+
+   if (!drawTopDown)
+   {
+      if (pXYZ[1].z == pXYZ[2].z)
+         bottom = pXYZ[1].z;
+      else
+      {
+         bottom = min(pXYZ[1].z, pXYZ[2].z);
+         bottom &= ~(FINENESS - 1);
+      }
+
+      if (pXYZ[0].z == pXYZ[3].z)
+         top = pXYZ[0].z;
+      else
+      {
+         top = max(pXYZ[0].z, pXYZ[3].z);
+         top = (top + FINENESS - 1) & ~(FINENESS - 1);
+      }
+
+      if (pXYZ[1].z == pXYZ[2].z)
+      {
+         pST[1].s = 1.0f - (((float)yOffset * (float)pDib->shrink) * invWidth);
+         pST[2].s = 1.0f - (((float)yOffset * (float)pDib->shrink) * invWidth);
+      }
+      else
+      {
+         pST[1].s = 1.0f - (((float)yOffset * (float)pDib->shrink) *invWidth);
+         pST[2].s = 1.0f - (((float)yOffset * (float)pDib->shrink) * invWidth);
+         pST[1].s -= (pXYZ[1].z - bottom) * (float)pDib->shrink * invWidthFudge;
+         pST[2].s -= (pXYZ[2].z - bottom) * (float)pDib->shrink * invWidthFudge;
+      }
+
+      pST[0].s = pST[1].s - ((pXYZ[0].z - pXYZ[1].z) * (float)pDib->shrink * invWidthFudge);
+      pST[3].s = pST[2].s - ((pXYZ[3].z - pXYZ[2].z) * (float)pDib->shrink * invWidthFudge);
+   }
+   else   // else, need to place tex origin at top left
+   {
+      if (pXYZ[0].z == pXYZ[3].z)
+         top = pXYZ[0].z;
+      else
+      {
+         top = max(pXYZ[0].z, pXYZ[3].z);
+         top = (top + FINENESS - 1) & ~(FINENESS - 1);
+      }
+
+      if (pXYZ[1].z == pXYZ[2].z)
+         bottom = pXYZ[1].z;
+      else
+      {
+         bottom = min(pXYZ[1].z, pXYZ[2].z);
+         bottom &= ~(FINENESS - 1);
+      }
+
+      if (pXYZ[0].z == pXYZ[3].z)
+      {
+         pST[0].s = 0.0f;
+         pST[3].s = 0.0f;
+      }
+      else
+      {
+         pST[0].s = ((float)top - pXYZ[0].z) * (float)pDib->shrink * invWidthFudge;
+         pST[3].s = ((float)top - pXYZ[3].z) * (float)pDib->shrink * invWidthFudge;
+      }
+
+      pST[0].s -= ((float)(yOffset * pDib->shrink) * invWidth);
+      pST[3].s -= ((float)(yOffset * pDib->shrink) * invWidth);
+
+      pST[1].s = pST[0].s + ((pXYZ[0].z - pXYZ[1].z) * (float)pDib->shrink * invWidthFudge);
+      pST[2].s = pST[3].s + ((pXYZ[3].z - pXYZ[2].z) * (float)pDib->shrink * invWidthFudge);
+   }
+
+   if (pSideDef->flags & WF_BACKWARDS)
+   {
+      float temp;
+      temp = pST[3].t;
+      pST[3].t = pST[0].t;
+      pST[0].t = temp;
+
+      temp = pST[2].t;
+      pST[2].t = pST[1].t;
+      pST[1].t = temp;
+   }
+   /*if (pSideDef->flags & WF_NO_VTILE)
+   {
+   if (pST[1].t > 0.99f)
+   pST[1].t = 0.99f;
+
+   if (pST[2].t > 0.99f)
+   pST[2].t = 0.99f;
+   }*/
+
+   if (*flags & D3DRENDER_NO_VTILE)
+   {
+      if (pST[0].s < 0.0f)
+      {
+         float   tex, wall, ratio, temp;
+
+         tex = pST[1].s - pST[0].s;
+         if (tex == 0)
+            tex = 1.0f;
+         temp = -pST[0].s;
+         ratio = temp / tex;
+
+         wall = pXYZ[0].z - pXYZ[1].z;
+         temp = wall * ratio;
+         pXYZ[0].z -= temp;
+         pST[0].s = 0.0f;
+      }
+      if (pST[3].s < 0.0f)
+      {
+         float   tex, wall, ratio, temp;
+
+         tex = pST[2].s - pST[3].s;
+         if (tex == 0)
+            tex = 1.0f;
+         temp = -pST[3].s;
+         ratio = temp / tex;
+
+         wall = pXYZ[3].z - pXYZ[2].z;
+         temp = wall * ratio;
+         pXYZ[3].z -= temp;
+         pST[3].s = 0.0f;
+      }
+
+      pXYZ[1].z -= 16.0f;
+      pXYZ[2].z -= 16.0f;
+   }
+
+   pST[0].s += 1.0f / pDib->width;
+   pST[3].s += 1.0f / pDib->width;
+   pST[1].s -= 1.0f / pDib->width;
+   pST[2].s -= 1.0f / pDib->width;
+}
+
+void PrecalcWallDataAll(WallData *pWall)
+{
+   if (pWall->pos_sidedef)
+   {
+      if (pWall->pos_sidedef->normal_bmap && (((short)pWall->z2 != (short)pWall->z1)
+         || ((short)pWall->zz2 != (short)pWall->zz1)))
+      {
+         PrecalcWallData(pWall, D3DRENDER_WALL_NORMAL, 1);
+      }
+
+      if (pWall->pos_sidedef->below_bmap && (((short)pWall->z1 != (short)pWall->z0)
+         || ((short)pWall->zz1 != (short)pWall->zz0)))
+      {
+         PrecalcWallData(pWall, D3DRENDER_WALL_BELOW, 1);
+      }
+
+      if (pWall->pos_sidedef->above_bmap && (((short)pWall->z3 != (short)pWall->z2)
+         || ((short)pWall->zz3 != (short)pWall->zz2)))
+      {
+         PrecalcWallData(pWall, D3DRENDER_WALL_ABOVE, 1);
+      }
+   }
+
+   if (pWall->neg_sidedef)
+   {
+      if (pWall->neg_sidedef->normal_bmap && (((short)pWall->z2 != (short)pWall->z1)
+         || ((short)pWall->zz2 != (short)pWall->zz1)))
+      {
+         PrecalcWallData(pWall, D3DRENDER_WALL_NORMAL, -1);
+      }
+      if (pWall->neg_sidedef->below_bmap && (((short)pWall->z1 != (short)pWall->z0)
+         || ((short)pWall->zz1 != (short)pWall->zz0)))
+      {
+         PrecalcWallData(pWall, D3DRENDER_WALL_BELOW, -1);
+      }
+      if (pWall->neg_sidedef->above_bmap && (((short)pWall->z3 != (short)pWall->z2)
+         || ((short)pWall->zz3 != (short)pWall->zz2)))
+      {
+         PrecalcWallData(pWall, D3DRENDER_WALL_ABOVE, -1);
+      }
+   }
+}
+
+// Precalculate some internal node data (walls) so it doesn't have
+// to be done during frame rendering.
+void PrecalcInternalNodeData(BSPinternal *iNode)
+{
+   WallData *pWall;
+
+   for (pWall = iNode->walls_in_plane; pWall != NULL; pWall = pWall->next)
+   {
+      pWall->separator.a = iNode->separator.a;
+      pWall->separator.b = iNode->separator.b;
+      pWall->separator.c = iNode->separator.c;
+
+      PrecalcWallDataAll(pWall);
+   }
+}
+
+// Precalculate some leaf data (floors/ceilings) so it doesn't have
+// to be done during frame rendering.
+void PrecalcLeafData(BSPleaf *leaf)
+{
+   int left = 0, top = 0;
+   // Pre-calc some floor/ceiling stuff
+
+   // Ceiling texture coords.
+   for (int i = 0; i < leaf->poly.npts; ++i)
+   {
+      if (leaf->poly.p[i].x < left)
+         left = leaf->poly.p[i].x;
+      if (leaf->poly.p[i].y < top)
+         top = leaf->poly.p[i].y;
+   }
+
+   // Floor texture coords.
+
+   for (int i = 0; i < leaf->poly.npts; ++i)
+   {
+      if (leaf->sector->sloped_ceiling)
+      {
+         // Texture coords
+
+         BSPleafdata *ceil = &leaf->ceil;
+         SlopeData *slope = leaf->sector->sloped_ceiling;
+
+         ceil->xyz[i].x = leaf->poly.p[i].x;
+         ceil->xyz[i].y = leaf->poly.p[i].y;
+         ceil->xyz[i].z = (-slope->plane.a * ceil->xyz[i].x
+               - slope->plane.b * ceil->xyz[i].y
+               - slope->plane.d) * (1.0f / slope->plane.c);
+
+         // Ceiling ST
+         custom_xyz   vectorU, vectorV, vector;
+         custom_xyz   intersectTop, intersectLeft;
+         float      U, temp, distance;
+
+         // calc distance from top line (vector u)
+         U = ((ceil->xyz[i].x - slope->p0.x) * (slope->p1.x - slope->p0.x))
+            + ((ceil->xyz[i].z - slope->p0.z) * (slope->p1.z - slope->p0.z))
+            + ((ceil->xyz[i].y - slope->p0.y) * (slope->p1.y - slope->p0.y));
+         temp = ((slope->p1.x - slope->p0.x) * (slope->p1.x - slope->p0.x))
+            + ((slope->p1.z - slope->p0.z) * (slope->p1.z - slope->p0.z))
+            + ((slope->p1.y - slope->p0.y) * (slope->p1.y - slope->p0.y));
+
+         if (temp == 0)
+            temp = 1.0f;
+
+         U /= temp;
+
+         intersectTop.x = slope->p0.x + U * (slope->p1.x - slope->p0.x);
+         intersectTop.z = slope->p0.z + U * (slope->p1.z - slope->p0.z);
+         intersectTop.y = slope->p0.y + U * (slope->p1.y - slope->p0.y);
+
+         ceil->st[i].t = sqrt((ceil->xyz[i].x - intersectTop.x) *
+            (ceil->xyz[i].x - intersectTop.x) +
+            (ceil->xyz[i].z - intersectTop.z) *
+            (ceil->xyz[i].z - intersectTop.z) +
+            (ceil->xyz[i].y - intersectTop.y) *
+            (ceil->xyz[i].y - intersectTop.y));
+
+         // calc distance from left line (vector v)
+         U = ((ceil->xyz[i].x - slope->p0.x) * (slope->p2.x - slope->p0.x))
+            +  ((ceil->xyz[i].z - slope->p0.z) * (slope->p2.z - slope->p0.z))
+            + ((ceil->xyz[i].y - slope->p0.y) * (slope->p2.y - slope->p0.y));
+         temp = ((slope->p2.x - slope->p0.x) * (slope->p2.x - slope->p0.x))
+            + ((slope->p2.z - slope->p0.z) *  (slope->p2.z - slope->p0.z))
+            + ((slope->p2.y - slope->p0.y) * (slope->p2.y - slope->p0.y));
+
+         if (temp == 0)
+            temp = 1.0f;
+
+         U /= temp;
+
+         intersectLeft.x = slope->p0.x + U * (slope->p2.x - slope->p0.x);
+         intersectLeft.z = slope->p0.z + U * (slope->p2.z - slope->p0.z);
+         intersectLeft.y = slope->p0.y + U * (slope->p2.y - slope->p0.y);
+
+         ceil->st[i].s = sqrt((ceil->xyz[i].x - intersectLeft.x) *
+            (ceil->xyz[i].x - intersectLeft.x) +
+            (ceil->xyz[i].z - intersectLeft.z) *
+            (ceil->xyz[i].z - intersectLeft.z) +
+            (ceil->xyz[i].y - intersectLeft.y) *
+            (ceil->xyz[i].y - intersectLeft.y));
+
+         // Commented out in original D3D version.
+         //ceil->st[i].t += leaf->sector->ty / 2.0f;
+         //ceil->st[i].s += leaf->sector->tx / 2.0f;
+         //ceil->st[i].s -= pSector->ty / 2.0f;
+         //ceil->st[i].t -= pSector->tx / 2.0f;
+
+         vectorU.x = slope->p1.x - slope->p0.x;
+         vectorU.z = slope->p1.z - slope->p0.z;
+         vectorU.y = slope->p1.y - slope->p0.y;
+
+         distance = sqrt((vectorU.x * vectorU.x) + (vectorU.y * vectorU.y));
+
+         if (distance == 0)
+            distance = 1.0f;
+
+         vectorU.x /= distance;
+         vectorU.z /= distance;
+         vectorU.y /= distance;
+
+         vectorV.x = slope->p2.x - slope->p0.x;
+         vectorV.z = slope->p2.z - slope->p0.z;
+         vectorV.y = slope->p2.y - slope->p0.y;
+
+         distance = sqrt((vectorV.x * vectorV.x) + (vectorV.y * vectorV.y));
+
+         if (distance == 0)
+            distance = 1.0f;
+
+         vectorV.x /= distance;
+         vectorV.z /= distance;
+         vectorV.y /= distance;
+
+         vector.x = ceil->xyz[i].x - slope->p0.x;
+         vector.y = ceil->xyz[i].y - slope->p0.y;
+
+         distance = sqrt((vector.x * vector.x) + (vector.y * vector.y));
+
+         if (distance == 0)
+            distance = 1.0f;
+
+         vector.x /= distance;
+         vector.y /= distance;
+
+         if (((vector.x * vectorU.x) + (vector.y * vectorU.y)) < 0)
+            ceil->st[i].s = -ceil->st[i].s;
+
+         if (((vector.x * vectorV.x) + (vector.y * vectorV.y)) > 0)
+            ceil->st[i].t = -ceil->st[i].t;
+
+         ceil->st[i].t -= leaf->sector->ty / 2.0f;
+         ceil->st[i].s -= leaf->sector->tx / 2.0f;
+      }
+      else
+      {
+         BSPleafdata *ceil = &leaf->ceil;
+         ceil->xyz[i].x = leaf->poly.p[i].x;
+         ceil->xyz[i].y = leaf->poly.p[i].y;
+         ceil->xyz[i].z = (float)leaf->sector->ceiling_height;
+         ceil->st[i].t = fabs(leaf->poly.p[i].y - top) - leaf->sector->ty;
+         ceil->st[i].s = fabs(leaf->poly.p[i].x - left) - leaf->sector->tx;
+      }
+
+      if (leaf->sector->sloped_floor)
+      {
+         BSPleafdata *floor = &leaf->floor;
+         SlopeData *slope = leaf->sector->sloped_floor;
+
+         floor->xyz[i].x = leaf->poly.p[i].x;
+         floor->xyz[i].y = leaf->poly.p[i].y;
+         floor->xyz[i].z = (-slope->plane.a * leaf->poly.p[i].x
+               - slope->plane.b * leaf->poly.p[i].y
+               - slope->plane.d) * (1.0f / slope->plane.c);
+
+         // Floor ST
+         custom_xyz   vectorU, vectorV, vector;
+         custom_xyz   intersectTop, intersectLeft;
+         float      U, temp, distance;
+
+         // calc distance from top line (vector u)
+         U = ((floor->xyz[i].x - slope->p0.x) * (slope->p1.x - slope->p0.x))
+            + ((floor->xyz[i].z - slope->p0.z) * (slope->p1.z - slope->p0.z))
+            + ((floor->xyz[i].y - slope->p0.y) * (slope->p1.y - slope->p0.y));
+         temp = ((slope->p1.x - slope->p0.x) * (slope->p1.x - slope->p0.x))
+            + ((slope->p1.z - slope->p0.z) * (slope->p1.z - slope->p0.z))
+            + ((slope->p1.y - slope->p0.y) * (slope->p1.y - slope->p0.y));
+
+         if (temp == 0)
+            temp = 1.0f;
+
+         U /= temp;
+
+         intersectTop.x = slope->p0.x + U * (slope->p1.x - slope->p0.x);
+         intersectTop.z = slope->p0.z + U * (slope->p1.z - slope->p0.z);
+         intersectTop.y = slope->p0.y + U * (slope->p1.y - slope->p0.y);
+
+         floor->st[i].t = sqrt((floor->xyz[i].x - intersectTop.x) *
+            (floor->xyz[i].x - intersectTop.x) +
+            (floor->xyz[i].z - intersectTop.z) *
+            (floor->xyz[i].z - intersectTop.z) +
+            (floor->xyz[i].y - intersectTop.y) *
+            (floor->xyz[i].y - intersectTop.y));
+
+         // calc distance from left line (vector v)
+         U = ((floor->xyz[i].x - slope->p0.x) * (slope->p2.x - slope->p0.x))
+            + ((floor->xyz[i].z - slope->p0.z) * (slope->p2.z - slope->p0.z))
+            + ((floor->xyz[i].y - slope->p0.y) * (slope->p2.y - slope->p0.y));
+         temp = ((slope->p2.x - slope->p0.x) * (slope->p2.x - slope->p0.x))
+            + ((slope->p2.z - slope->p0.z) * (slope->p2.z - slope->p0.z))
+            + ((slope->p2.y - slope->p0.y) * (slope->p2.y - slope->p0.y));
+
+         if (temp == 0)
+            temp = 1.0f;
+
+         U /= temp;
+
+         intersectLeft.x = slope->p0.x + U * (slope->p2.x - slope->p0.x);
+         intersectLeft.z = slope->p0.z + U * (slope->p2.z - slope->p0.z);
+         intersectLeft.y = slope->p0.y + U * (slope->p2.y - slope->p0.y);
+
+         floor->st[i].s = sqrt((floor->xyz[i].x - intersectLeft.x) *
+            (floor->xyz[i].x - intersectLeft.x) +
+            (floor->xyz[i].z - intersectLeft.z) *
+            (floor->xyz[i].z - intersectLeft.z) +
+            (floor->xyz[i].y - intersectLeft.y) *
+            (floor->xyz[i].y - intersectLeft.y));
+
+         floor->st[i].t += leaf->sector->ty / 2.0f;
+         floor->st[i].s += leaf->sector->tx / 2.0f;
+
+         vectorU.x = slope->p1.x - slope->p0.x;
+         vectorU.z = slope->p1.z - slope->p0.z;
+         vectorU.y = slope->p1.y - slope->p0.y;
+
+         distance = sqrt((vectorU.x * vectorU.x) + (vectorU.y * vectorU.y));
+
+         if (distance == 0)
+            distance = 1.0f;
+
+         vectorU.x /= distance;
+         vectorU.z /= distance;
+         vectorU.y /= distance;
+
+         vectorV.x = slope->p2.x - slope->p0.x;
+         vectorV.z = slope->p2.z - slope->p0.z;
+         vectorV.y = slope->p2.y - slope->p0.y;
+
+         distance = sqrt((vectorV.x * vectorV.x) + (vectorV.y * vectorV.y));
+
+         if (distance == 0)
+            distance = 1.0f;
+
+         vectorV.x /= distance;
+         vectorV.z /= distance;
+         vectorV.y /= distance;
+
+         vector.x = floor->xyz[i].x - slope->p0.x;
+         vector.y = floor->xyz[i].y - slope->p0.y;
+
+         distance = sqrt((vector.x * vector.x) + (vector.y * vector.y));
+
+         if (distance == 0)
+            distance = 1.0f;
+
+         vector.x /= distance;
+         vector.y /= distance;
+
+         if (((vector.x * vectorU.x) + (vector.y * vectorU.y)) <= 0)
+            floor->st[i].s = -(floor->st[i].s);
+
+         if (((vector.x * vectorV.x) + (vector.y * vectorV.y)) > 0)
+            floor->st[i].t = -(floor->st[i].t);
+      }
+      else
+      {
+         BSPleafdata *floor = &leaf->floor;
+         floor->xyz[i].x = leaf->poly.p[i].x;
+         floor->xyz[i].y = leaf->poly.p[i].y;
+         floor->xyz[i].z = (float)leaf->sector->floor_height;
+         floor->st[i].t = fabs(leaf->poly.p[i].y - top) - leaf->sector->ty;// / pDib->shrink;
+         floor->st[i].s = fabs(leaf->poly.p[i].x - left) - leaf->sector->tx;// / pDib->shrink;
+      }
+   }
+}
 /*****************************************************************************/
 /*
  * BSPDumpTree:  Print out BSP tree.  Pass in 0 for level to start.
@@ -1250,6 +1899,7 @@ void SetWallHeights(WallData *wall)
       wall->z2 = wall->z3 = GetCeilingHeight(wall->x0, wall->y0, S2);
       wall->zz0 = wall->zz1 = GetFloorHeight(wall->x1, wall->y1, S2);
       wall->zz2 = wall->zz3 = GetCeilingHeight(wall->x1, wall->y1, S2);
+      PrecalcWallDataAll(wall);
       return;
    }
 
@@ -1259,6 +1909,7 @@ void SetWallHeights(WallData *wall)
       wall->z2 = wall->z3 = GetCeilingHeight(wall->x0, wall->y0, S1);
       wall->zz0 = wall->zz1 = GetFloorHeight(wall->x1, wall->y1, S1);
       wall->zz2 = wall->zz3 = GetCeilingHeight(wall->x1, wall->y1, S1);
+      PrecalcWallDataAll(wall);
       return;
    }
    
@@ -1395,4 +2046,5 @@ void SetWallHeights(WallData *wall)
       wall->zz2 = S2_height1;
        }
    }
+   PrecalcWallDataAll(wall);
 }

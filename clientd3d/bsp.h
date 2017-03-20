@@ -305,6 +305,9 @@ typedef struct WallData
    unsigned int neg_normal_d3dFlags;
    unsigned int neg_below_d3dFlags;
    unsigned int neg_above_d3dFlags;
+
+   float scrollS; /* Amount to scroll wall in S direction */
+   float scrollT; /* Amount to scroll wall in T direction */
 } WallData, *WallList, *WallDataList;
 
 typedef struct
@@ -330,11 +333,18 @@ typedef struct {
    /*    invariant: p[npts] == p[0] */
 } Poly;
 
+typedef struct BSPleafdata
+{
+   custom_xyz xyz[MAX_NPTS];
+   custom_st st[MAX_NPTS];
+} BSPleafdata;
+
 typedef struct BSPleaf
 {
    Poly poly;                  /* Polygon of floor area */
    ObjectList objects;         /* objects within this leaf */
-
+   BSPleafdata floor;          /* pre-calculated floor data */
+   BSPleafdata ceil;           /* pre-calculated ceiling data */
    union {
       Sector *sector;      /* Sector to which leaf belongs (cannot be NULL) */
       WORD    sector_num;  /* Sector number (used during loading) */

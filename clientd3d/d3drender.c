@@ -258,8 +258,7 @@ unsigned char gSkyboxBGRA[] =
 
 void            D3DRenderBackgroundsLoad(char *pFilename, int index);
 LPDIRECT3DTEXTURE9   D3DRenderTextureCreateFromResource(BYTE *ptr, int width, int height);
-void            D3DRenderWorldDraw(d3d_render_pool_new *pPool, room_type *room,
-                                Draw3DParams *params);
+void            D3DRenderWorldDraw(room_type *room, Draw3DParams *params);
 void            D3DRenderPaletteSet(UINT xlatID0, UINT xlatID1, BYTE flags);
 void            D3DRenderPaletteSetNew(UINT xlatID0, UINT xlatID1, BYTE flags);
 void            D3DRenderNamesDraw3D(d3d_render_cache_system *pCacheSystem, d3d_render_pool_new *pPool,
@@ -323,7 +322,7 @@ float               D3DRenderFogEndCalc(d3d_render_chunk_new *pChunk);
 
 // Functions for filling out tree data and retrieving it.
 void           D3DFillTreeData(room_type *room, Draw3DParams *params, Bool full);
-void           D3DFillTreeDataTraverse(BSPnode *tree, Draw3DParams *params, Bool full);
+void           D3DFillTreeDataTraverse(BSPnode *tree, Draw3DParams *params);
 void           D3DExtractWallFromTree(WallData *pWall, PDIB pDib, unsigned int *flags, custom_xyz *pXYZ,
    custom_st *pST, custom_bgra *pBGRA, unsigned int type, int side);
 void           D3DExtractFloorFromTree(BSPnode *pNode, PDIB pDib, custom_xyz *pXYZ, custom_st *pST,
@@ -820,7 +819,7 @@ void D3DRenderBegin(room_type *room, Draw3DParams *params)
    // Data is valid for the entire frame. D3DGeometryBuildNew also calls this
    // to build the static light maps (with the third parameter set to TRUE to
    // fill the entire tree).
-   D3DFillTreeDataTraverse(room->tree, params, FALSE);
+   D3DFillTreeDataTraverse(room->tree, params);
    //D3DFillTreeData(room, params, FALSE);
 
    playerDeltaPos.x = params->viewer_x - playerOldPos.x;
@@ -933,7 +932,7 @@ void D3DRenderBegin(room_type *room, Draw3DParams *params)
 
       D3DRenderPoolReset(&gWorldPool, &D3DMaterialWorldPool);
       D3DCacheSystemReset(&gWorldCacheSystem);
-      D3DRenderWorldDraw(&gWorldPool, room, params);
+      D3DRenderWorldDraw(room, params);
       D3DCacheFill(&gWorldCacheSystem, &gWorldPool, 1);
 
       // this pass is a gigantic hack used to cover up the cracks
@@ -1419,7 +1418,7 @@ void D3DRenderReset()
    D3DParticlesInit(false);
 }
 
-void D3DRenderWorldDraw(d3d_render_pool_new *pPool, room_type *room, Draw3DParams *params)
+void D3DRenderWorldDraw(room_type *room, Draw3DParams *params)
 {
    int         count;
    BSPnode      *pNode = NULL;
@@ -1681,7 +1680,7 @@ void D3DFillTreeData(room_type *room, Draw3DParams *params, Bool full)
  *                          the full parameter set, this ONLY adds data for what
  *                          the player can actually see.
  */
-void D3DFillTreeDataTraverse(BSPnode *tree, Draw3DParams *params, Bool full)
+void D3DFillTreeDataTraverse(BSPnode *tree, Draw3DParams *params)
 {
    long      side;
    Sector      *pSector;
@@ -1692,12 +1691,11 @@ void D3DFillTreeDataTraverse(BSPnode *tree, Draw3DParams *params, Bool full)
    // If full is True, we draw the entire tree (e.g. for static lightmaps).
    // Otherwise, check if the bounding box of the tree is outside the player's
    // view and skip this node if so.
-   if (!full && IsHidden(params, (long)tree->bbox.x0, (long)tree->bbox.y0, (long)tree->bbox.x1, (long)tree->bbox.y1))
+   if (IsHidden(params, (long)tree->bbox.x0, (long)tree->bbox.y0, (long)tree->bbox.x1, (long)tree->bbox.y1))
       return;
 
-   switch (tree->type)
+   if (tree->type == BSPleaftype)
    {
-   case BSPleaftype:
       pSector = tree->u.leaf.sector;
       if (pSector->floor)
       {
@@ -1709,18 +1707,18 @@ void D3DFillTreeDataTraverse(BSPnode *tree, Draw3DParams *params, Bool full)
          tree->ceiling_pDib = pSector->ceiling;
          D3DRenderCeilingExtract(tree, tree->ceiling_pDib, tree->ceiling_xyz, tree->ceiling_stBase, tree->ceiling_bgra);
       }
-      return;
-
-   case BSPinternaltype:
+   }
+   else if (tree->type == BSPinternaltype)
+   {
       side = tree->u.internal.separator.a * params->viewer_x +
          tree->u.internal.separator.b * params->viewer_y +
          tree->u.internal.separator.c;
 
       //first, traverse closer side 
       if (side > 0)
-         D3DFillTreeDataTraverse(tree->u.internal.pos_side, params, full);
+         D3DFillTreeDataTraverse(tree->u.internal.pos_side, params);
       else
-         D3DFillTreeDataTraverse(tree->u.internal.neg_side, params, full);
+         D3DFillTreeDataTraverse(tree->u.internal.neg_side, params);
 
       // then do walls on the separator
       if (side != 0)
@@ -1788,15 +1786,9 @@ void D3DFillTreeDataTraverse(BSPnode *tree, Draw3DParams *params, Bool full)
 
       // lastly, traverse farther side
       if (side > 0)
-         D3DFillTreeDataTraverse(tree->u.internal.neg_side, params, full);
+         D3DFillTreeDataTraverse(tree->u.internal.neg_side, params);
       else
-         D3DFillTreeDataTraverse(tree->u.internal.pos_side, params, full);
-
-      return;
-
-   default:
-      debug(("WalkBSPtree fill tree data error!\n"));
-      return;
+         D3DFillTreeDataTraverse(tree->u.internal.pos_side, params);
    }
 }
 
@@ -2571,8 +2563,8 @@ void D3DRenderPacketWallAdd(WallData *pWall, d3d_render_pool_new *pPool, unsigne
       pChunk->xyz[vertex].y = xyz[vertex].y;
       pChunk->xyz[vertex].z = xyz[vertex].z;
 
-      pChunk->st0[vertex].s = stBase[vertex].s;
-      pChunk->st0[vertex].t = stBase[vertex].t;
+      pChunk->st0[vertex].s = stBase[vertex].s - pWall->scrollS;
+      pChunk->st0[vertex].t = stBase[vertex].t + pWall->scrollT;
 
       pChunk->bgra[vertex].b = bgra[vertex].b;
       pChunk->bgra[vertex].g = bgra[vertex].g;
@@ -2921,8 +2913,8 @@ void D3DRenderPacketWallMaskAdd(WallData *pWall, d3d_render_pool_new *pPool, uns
          pChunk->xyz[vertex].y = xyz[vertex].y;
          pChunk->xyz[vertex].z = xyz[vertex].z;
 
-         pChunk->st0[vertex].s = stBase[vertex].s;
-         pChunk->st0[vertex].t = stBase[vertex].t;
+         pChunk->st0[vertex].s = stBase[vertex].s - pWall->scrollS;
+         pChunk->st0[vertex].t = stBase[vertex].t + pWall->scrollT;
 
          pChunk->bgra[vertex].b = bgra[vertex].b;
          pChunk->bgra[vertex].g = bgra[vertex].g;
@@ -4586,15 +4578,13 @@ void D3DExtractCeilingFromTree(BSPnode *pNode, PDIB pDib, custom_xyz *pXYZ, cust
 int D3DRenderWallExtract(WallData *pWall, PDIB pDib, unsigned int *flags, custom_xyz *pXYZ,
                     custom_st *pST, custom_bgra *pBGRA, unsigned int type, int side)
 {
-   int            top, bottom;
-   int            xOffset, yOffset;
-   Sidedef         *pSideDef = NULL;
-   int            drawTopDown;
-   int            paletteIndex;
-   BYTE         light;
+   Sidedef *pSideDef = NULL;
+   int paletteIndex;
+   BYTE light;
 
    if (pDib == NULL)
       return 0;
+
    if (pXYZ)
    {
       // pos and neg sidedefs have their x and y coords reversed
@@ -4606,77 +4596,6 @@ int D3DRenderWallExtract(WallData *pWall, PDIB pDib, unsigned int *flags, custom
             light = 0;
          else
             light = pWall->pos_sector->light;
-
-         xOffset = pWall->pos_xoffset;
-         yOffset = pWall->pos_yoffset;
-
-         pXYZ[0].x = pWall->x0;
-         pXYZ[3].x = pWall->x1;
-         pXYZ[1].x = pWall->x0;
-         pXYZ[2].x = pWall->x1;
-
-         pXYZ[0].y = pWall->y0;
-         pXYZ[3].y = pWall->y1;
-         pXYZ[1].y = pWall->y0;
-         pXYZ[2].y = pWall->y1;
-         //debug(("y0 is %6.4f, pXYZ[0].y is %6.4f\n", pWall->y0, pXYZ[0].y));
-         switch (type)
-         {
-            case D3DRENDER_WALL_NORMAL:
-            {
-               pXYZ[0].z = (float)pWall->z2;
-               pXYZ[3].z = (float)pWall->zz2;
-               pXYZ[1].z = (float)pWall->z1;
-               pXYZ[2].z = (float)pWall->zz1;
-
-               if (pSideDef->flags & WF_NORMAL_TOPDOWN)
-                  drawTopDown = 1;
-               else
-                  drawTopDown = 0;
-            }
-            break;
-
-            case D3DRENDER_WALL_BELOW:
-            {
-               if ((pWall->bowtie_bits & BT_BELOW_POS) ||
-                  (pWall->bowtie_bits & BT_BELOW_NEG))
-               {
-                  pXYZ[0].z = (float)pWall->z1Neg;
-                  pXYZ[3].z = (float)pWall->zz1Neg;
-               }
-               else
-               {
-                  pXYZ[0].z = (float)pWall->z1;
-                  pXYZ[3].z = (float)pWall->zz1;
-               }
-
-               pXYZ[1].z = (float)pWall->z0;
-               pXYZ[2].z = (float)pWall->zz0;
-
-               if (pSideDef->flags & WF_BELOW_TOPDOWN)
-                  drawTopDown = 1;
-               else
-                  drawTopDown = 0;
-            }
-            break;
-
-            case D3DRENDER_WALL_ABOVE:
-            {
-               pXYZ[0].z = (float)pWall->z3;
-               pXYZ[3].z = (float)pWall->zz3;
-               pXYZ[1].z = (float)pWall->z2;
-               pXYZ[2].z = (float)pWall->zz2;
-
-               if (pSideDef->flags & WF_ABOVE_BOTTOMUP)
-                  drawTopDown = 0;
-               else
-                  drawTopDown = 1;
-            }
-            break;
-
-            default:
-            break;
-         }
       }
       else if (side < 0)
       {
@@ -4686,268 +4605,29 @@ int D3DRenderWallExtract(WallData *pWall, PDIB pDib, unsigned int *flags, custom
             light = 0;
          else
             light = pWall->neg_sector->light;
-
-         xOffset = pWall->neg_xoffset;
-         yOffset = pWall->neg_yoffset;
-
-         pXYZ[0].x = pWall->x1;
-         pXYZ[3].x = pWall->x0;
-         pXYZ[1].x = pWall->x1;
-         pXYZ[2].x = pWall->x0;
-
-         pXYZ[0].y = pWall->y1;
-         pXYZ[3].y = pWall->y0;
-         pXYZ[1].y = pWall->y1;
-         pXYZ[2].y = pWall->y0;
-
-         switch (type)
-         {
-            case D3DRENDER_WALL_NORMAL:
-            {
-               pXYZ[0].z = (float)pWall->zz2;
-               pXYZ[3].z = (float)pWall->z2;
-               pXYZ[1].z = (float)pWall->zz1;
-               pXYZ[2].z = (float)pWall->z1;
-
-               if (pSideDef->flags & WF_NORMAL_TOPDOWN)
-                  drawTopDown = 1;
-               else
-                  drawTopDown = 0;
-            }
-            break;
-
-            case D3DRENDER_WALL_BELOW:
-            {
-               pXYZ[0].z = (float)pWall->zz1;
-               pXYZ[3].z = (float)pWall->z1;
-               pXYZ[1].z = (float)pWall->zz0;
-               pXYZ[2].z = (float)pWall->z0;
-
-               if (pSideDef->flags & WF_BELOW_TOPDOWN)
-                  drawTopDown = 1;
-               else
-                  drawTopDown = 0;
-            }
-            break;
-
-            case D3DRENDER_WALL_ABOVE:
-            {
-               pXYZ[0].z = (float)pWall->zz3;
-               pXYZ[3].z = (float)pWall->z3;
-               pXYZ[1].z = (float)pWall->zz2;
-               pXYZ[2].z = (float)pWall->z2;
-
-               if (pSideDef->flags & WF_ABOVE_BOTTOMUP)
-                  drawTopDown = 0;
-               else
-                  drawTopDown = 1;
-            }
-            break;
-
-            default:
-            break;
-         }
       }
       else
          assert(0);
    }
 
-   *flags = 0;
-
-   if (pSideDef->flags & WF_TRANSPARENT)
-      *flags |= D3DRENDER_TRANSPARENT;
-
-   if (type == D3DRENDER_WALL_NORMAL && (pSideDef->flags & WF_NO_VTILE))
-      *flags |= D3DRENDER_NO_VTILE;
-
    if ((pXYZ) && (pST))
    {
-      float   invWidth, invHeight, invWidthFudge, invHeightFudge;
-
-      // force a wraparound because many textures in the old client do this, grr
-      yOffset = yOffset << 16;
-      yOffset = yOffset >> 16;
-
-      invWidth = 1.0f / (float)pDib->width;
-      invHeight = 1.0f / (float)pDib->height;
-      invWidthFudge = 1.0f / ((float)pDib->width * PETER_FUDGE);
-      invHeightFudge = 1.0f / ((float)pDib->height * PETER_FUDGE);
-
-      pST[0].t = (float)xOffset * (float)(pDib->shrink) * invHeight;
-      pST[1].t = (float)xOffset * (float)(pDib->shrink) * invHeight;
-      pST[3].t = (float)(pST[0].t + ((float)pWall->length * (float)pDib->shrink) * invHeight);
-      pST[2].t = (float)(pST[1].t + ((float)pWall->length * (float)pDib->shrink) * invHeight);
-
-      if (!drawTopDown)
-      {
-         if (pXYZ[1].z == pXYZ[2].z)
-            bottom = pXYZ[1].z;
-         else
-         {
-            bottom = min(pXYZ[1].z, pXYZ[2].z);
-            bottom = bottom & ~(FINENESS - 1);
-         }
-
-         if (pXYZ[0].z == pXYZ[3].z)
-            top = pXYZ[0].z;
-         else
-         {
-            top = max(pXYZ[0].z, pXYZ[3].z);
-            top = (top + FINENESS - 1) & ~(FINENESS - 1);
-         }
-
-         if (pXYZ[1].z == pXYZ[2].z)
-         {
-            pST[1].s = 1.0f - (((float)yOffset * (float)pDib->shrink)
-               * invWidth);
-            pST[2].s = 1.0f - (((float)yOffset * (float)pDib->shrink)
-               * invWidth);
-         }
-         else
-         {
-            pST[1].s = 1.0f - (((float)yOffset * (float)pDib->shrink)
-               *invWidth);
-            pST[2].s = 1.0f - (((float)yOffset * (float)pDib->shrink)
-               * invWidth);
-            pST[1].s -= (pXYZ[1].z - bottom) * (float)pDib->shrink
-                  * invWidthFudge;
-            pST[2].s -= (pXYZ[2].z - bottom) * (float)pDib->shrink
-                  * invWidthFudge;
-         }
-
-         pST[0].s = pST[1].s -
-            ((pXYZ[0].z - pXYZ[1].z) * (float)pDib->shrink * invWidthFudge);
-         pST[3].s = pST[2].s -
-            ((pXYZ[3].z - pXYZ[2].z) * (float)pDib->shrink * invWidthFudge);
-      }
-      else   // else, need to place tex origin at top left
-      {
-         if (pXYZ[0].z == pXYZ[3].z)
-            top = pXYZ[0].z;
-         else
-         {
-            top = max(pXYZ[0].z, pXYZ[3].z);
-            top = (top + FINENESS - 1) & ~(FINENESS - 1);
-         }
-
-         if (pXYZ[1].z == pXYZ[2].z)
-            bottom = pXYZ[1].z;
-         else
-         {
-            bottom = min(pXYZ[1].z, pXYZ[2].z);
-            bottom = bottom & ~(FINENESS - 1);
-         }
-
-         if (pXYZ[0].z == pXYZ[3].z)
-         {
-            pST[0].s = 0.0f;
-            pST[3].s = 0.0f;
-         }
-         else
-         {
-            pST[0].s = ((float)top - pXYZ[0].z) * (float)pDib->shrink
-                  * invWidthFudge;
-            pST[3].s = ((float)top - pXYZ[3].z) * (float)pDib->shrink
-                  * invWidthFudge;
-         }
-
-         pST[0].s -= ((float)(yOffset * pDib->shrink) * invWidth);
-         pST[3].s -= ((float)(yOffset * pDib->shrink) * invWidth);
-
-         pST[1].s = pST[0].s + ((pXYZ[0].z - pXYZ[1].z) * (float)pDib->shrink
-            * invWidthFudge);
-         pST[2].s = pST[3].s + ((pXYZ[3].z - pXYZ[2].z) * (float)pDib->shrink
-            * invWidthFudge);
-      }
-
       if (pSideDef->animate != NULL && pSideDef->animate->animation == ANIMATE_SCROLL)
       {
-         int   i;
-         if (pSideDef->flags & WF_BACKWARDS)
+         float invWidth = 1.0f / (float)pDib->width;
+         float invHeight = 1.0f / (float)pDib->height;
+
+         for (int i = 0; i < 4; i++)
          {
-            for (i = 0; i < 4; i++)
-            {
-               pST[i].t -= pSideDef->animate->u.scroll.xoffset * pDib->shrink *
-                  invHeight;
-               pST[i].s += pSideDef->animate->u.scroll.yoffset * pDib->shrink *
-                  invWidth;
-            }
-         }
-         else
-         {
-            for (i = 0; i < 4; i++)
-            {
-               pST[i].t += pSideDef->animate->u.scroll.xoffset * pDib->shrink *
-                  invHeight;
-               pST[i].s -= pSideDef->animate->u.scroll.yoffset * pDib->shrink *
-                  invWidth;
-            }
+            pWall->scrollT = (pSideDef->animate->u.scroll.xoffset * pDib->shrink * invHeight);
+            pWall->scrollS = (pSideDef->animate->u.scroll.yoffset * pDib->shrink * invWidth);
          }
       }
-
-      if (pSideDef->flags & WF_BACKWARDS)
+      else
       {
-         float   temp;
-
-         temp = pST[3].t;
-         pST[3].t = pST[0].t;
-         pST[0].t = temp;
-
-         temp = pST[2].t;
-         pST[2].t = pST[1].t;
-         pST[1].t = temp;
+         pWall->scrollT = 0.0f;
+         pWall->scrollS = 0.0f;
       }
-
-/*      if (pSideDef->flags & WF_NO_VTILE)
-      {
-         if (pST[1].t > 0.99f)
-            pST[1].t = 0.99f;
-
-         if (pST[2].t > 0.99f)
-            pST[2].t = 0.99f;
-      }*/
-
-      if (*flags & D3DRENDER_NO_VTILE)
-      {
-         if (pST[0].s < 0.0f)
-         {
-            float   tex, wall, ratio, temp;
-
-            tex = pST[1].s - pST[0].s;
-            if (tex == 0)
-               tex = 1.0f;
-            temp = -pST[0].s;
-            ratio = temp / tex;
-
-            wall = pXYZ[0].z - pXYZ[1].z;
-            temp = wall * ratio;
-            pXYZ[0].z -= temp;
-            pST[0].s = 0.0f;
-         }
-         if (pST[3].s < 0.0f)
-         {
-            float   tex, wall, ratio, temp;
-
-            tex = pST[2].s - pST[3].s;
-            if (tex == 0)
-               tex = 1.0f;
-            temp = -pST[3].s;
-            ratio = temp / tex;
-
-            wall = pXYZ[3].z - pXYZ[2].z;
-            temp = wall * ratio;
-            pXYZ[3].z -= temp;
-            pST[3].s = 0.0f;
-         }
-
-         pXYZ[1].z -= 16.0f;
-         pXYZ[2].z -= 16.0f;
-      }
-
-      pST[0].s += 1.0f / pDib->width;
-      pST[3].s += 1.0f / pDib->width;
-      pST[1].s -= 1.0f / pDib->width;
-      pST[2].s -= 1.0f / pDib->width;
    }
 
    if (pBGRA)
@@ -5015,189 +4695,25 @@ void D3DRenderFloorExtract(BSPnode *pNode, PDIB pDib, custom_xyz *pXYZ, custom_s
 {
    Sector   *pSector = pNode->u.leaf.sector;
    int      count;
-   int      left, top;
    int      paletteIndex;
-   float   oneOverC, inv128, inv64;
-   custom_xyz   intersectTop, intersectLeft;
    long      lightscale;
-
-   left = top = 0;
-
-   //inv128 = 1.0f / (128.0f * PETER_FUDGE);// / pDib->shrink);
-   inv128 = 0.00048828125f;
-   //inv64 = 1.0f / (64.0f * PETER_FUDGE);// / pDib->shrink);
-   inv64 = 0.0009765625f;
-
-   // generate texture coordinates
-   if (pSector->sloped_floor)
-   {
-      left = pSector->sloped_floor->p0.x;
-      top = pSector->sloped_floor->p0.y;
-   }
-   else
-   {
-      for (count = 0; count < pNode->u.leaf.poly.npts; count++)
-      {
-         if (pNode->u.leaf.poly.p[count].x < left)
-            left = pNode->u.leaf.poly.p[count].x;
-         if (pNode->u.leaf.poly.p[count].y < top)
-            top = pNode->u.leaf.poly.p[count].y;
-      }
-   }
-
-   if (pSector->sloped_floor)
-      oneOverC = 1.0f / pSector->sloped_floor->plane.c;
+   float inv64 = 0.0009765625f;
 
    if (pXYZ)
    {
       for (count = 0; count < pNode->u.leaf.poly.npts; count++)
       {
+         pXYZ[count].x = pNode->u.leaf.floor.xyz[count].x;
+         pXYZ[count].y = pNode->u.leaf.floor.xyz[count].y;
          if (pSector->sloped_floor)
-         {
-            pXYZ[count].x = pNode->u.leaf.poly.p[count].x;
-            pXYZ[count].y = pNode->u.leaf.poly.p[count].y;
-            pXYZ[count].z = (-pSector->sloped_floor->plane.a * pXYZ[count].x -
-               pSector->sloped_floor->plane.b * pXYZ[count].y -
-               pSector->sloped_floor->plane.d) * oneOverC;
-         }
+            pXYZ[count].z = pNode->u.leaf.floor.xyz[count].z;
          else
-         {
-            pXYZ[count].x = pNode->u.leaf.poly.p[count].x;
-            pXYZ[count].y = pNode->u.leaf.poly.p[count].y;
             pXYZ[count].z = (float)pSector->floor_height;
-         }
 
          if (pST)
          {
-            custom_xyz   vectorU, vectorV, vector;
-            float      U, temp;
-
-            if (pSector->sloped_floor)
-            {
-               float   distance;
-
-               // calc distance from top line (vector u)
-               U = ((pXYZ[count].x - pSector->sloped_floor->p0.x) *
-                  (pSector->sloped_floor->p1.x - pSector->sloped_floor->p0.x)) +
-                  ((pXYZ[count].z - pSector->sloped_floor->p0.z) *
-                  (pSector->sloped_floor->p1.z - pSector->sloped_floor->p0.z)) +
-                  ((pXYZ[count].y - pSector->sloped_floor->p0.y) *
-                  (pSector->sloped_floor->p1.y - pSector->sloped_floor->p0.y));
-               temp = ((pSector->sloped_floor->p1.x - pSector->sloped_floor->p0.x) *
-                  (pSector->sloped_floor->p1.x - pSector->sloped_floor->p0.x)) +
-                  ((pSector->sloped_floor->p1.z - pSector->sloped_floor->p0.z) *
-                  (pSector->sloped_floor->p1.z - pSector->sloped_floor->p0.z)) +
-                  ((pSector->sloped_floor->p1.y - pSector->sloped_floor->p0.y) *
-                  (pSector->sloped_floor->p1.y - pSector->sloped_floor->p0.y));
-
-               if (temp == 0)
-                  temp = 1.0f;
-
-               U /= temp;
-
-               intersectTop.x = pSector->sloped_floor->p0.x +
-                  U * (pSector->sloped_floor->p1.x - pSector->sloped_floor->p0.x);
-               intersectTop.z = pSector->sloped_floor->p0.z +
-                  U * (pSector->sloped_floor->p1.z - pSector->sloped_floor->p0.z);
-               intersectTop.y = pSector->sloped_floor->p0.y +
-                  U * (pSector->sloped_floor->p1.y - pSector->sloped_floor->p0.y);
-
-               pST[count].t = sqrt((pXYZ[count].x - intersectTop.x) *
-                           (pXYZ[count].x - intersectTop.x) +
-                           (pXYZ[count].z - intersectTop.z) *
-                           (pXYZ[count].z - intersectTop.z) +
-                           (pXYZ[count].y - intersectTop.y) *
-                           (pXYZ[count].y - intersectTop.y));
-
-               // calc distance from left line (vector v)
-               U = ((pXYZ[count].x - pSector->sloped_floor->p0.x) *
-                  (pSector->sloped_floor->p2.x - pSector->sloped_floor->p0.x)) +
-                  ((pXYZ[count].z - pSector->sloped_floor->p0.z) *
-                  (pSector->sloped_floor->p2.z - pSector->sloped_floor->p0.z)) +
-                  ((pXYZ[count].y - pSector->sloped_floor->p0.y) *
-                  (pSector->sloped_floor->p2.y - pSector->sloped_floor->p0.y));
-               temp = ((pSector->sloped_floor->p2.x - pSector->sloped_floor->p0.x) *
-                  (pSector->sloped_floor->p2.x - pSector->sloped_floor->p0.x)) +
-                  ((pSector->sloped_floor->p2.z - pSector->sloped_floor->p0.z) *
-                  (pSector->sloped_floor->p2.z - pSector->sloped_floor->p0.z)) +
-                  ((pSector->sloped_floor->p2.y - pSector->sloped_floor->p0.y) *
-                  (pSector->sloped_floor->p2.y - pSector->sloped_floor->p0.y));
-
-               if (temp == 0)
-                  temp = 1.0f;
-
-               U /= temp;
-
-               intersectLeft.x = pSector->sloped_floor->p0.x +
-                  U * (pSector->sloped_floor->p2.x - pSector->sloped_floor->p0.x);
-               intersectLeft.z = pSector->sloped_floor->p0.z +
-                  U * (pSector->sloped_floor->p2.z - pSector->sloped_floor->p0.z);
-               intersectLeft.y = pSector->sloped_floor->p0.y +
-                  U * (pSector->sloped_floor->p2.y - pSector->sloped_floor->p0.y);
-
-               pST[count].s = sqrt((pXYZ[count].x - intersectLeft.x) *
-                           (pXYZ[count].x - intersectLeft.x) +
-                           (pXYZ[count].z - intersectLeft.z) *
-                           (pXYZ[count].z - intersectLeft.z) +
-                           (pXYZ[count].y - intersectLeft.y) *
-                           (pXYZ[count].y - intersectLeft.y));
-
-               pST[count].t += pSector->ty / 2.0f;
-               pST[count].s += pSector->tx / 2.0f;
-
-               vectorU.x = pSector->sloped_floor->p1.x - pSector->sloped_floor->p0.x;
-               vectorU.z = pSector->sloped_floor->p1.z - pSector->sloped_floor->p0.z;
-               vectorU.y = pSector->sloped_floor->p1.y - pSector->sloped_floor->p0.y;
-
-               distance = sqrt((vectorU.x * vectorU.x) +
-                  (vectorU.y * vectorU.y));
-
-               if (distance == 0)
-                  distance = 1.0f;
-
-               vectorU.x /= distance;
-               vectorU.z /= distance;
-               vectorU.y /= distance;
-
-               vectorV.x = pSector->sloped_floor->p2.x - pSector->sloped_floor->p0.x;
-               vectorV.z = pSector->sloped_floor->p2.z - pSector->sloped_floor->p0.z;
-               vectorV.y = pSector->sloped_floor->p2.y - pSector->sloped_floor->p0.y;
-
-               distance = sqrt((vectorV.x * vectorV.x) +
-                  (vectorV.y * vectorV.y));
-
-               if (distance == 0)
-                  distance = 1.0f;
-
-               vectorV.x /= distance;
-               vectorV.z /= distance;
-               vectorV.y /= distance;
-
-               vector.x = pXYZ[count].x - pSector->sloped_floor->p0.x;
-               vector.y = pXYZ[count].y - pSector->sloped_floor->p0.y;
-
-               distance = sqrt((vector.x * vector.x) +
-                  (vector.y * vector.y));
-
-               if (distance == 0)
-                  distance = 1.0f;
-
-               vector.x /= distance;
-               vector.y /= distance;
-
-               if (((vector.x * vectorU.x) +
-                  (vector.y * vectorU.y)) <= 0)
-                  pST[count].s = -pST[count].s;
-
-               if (((vector.x * vectorV.x) +
-                  (vector.y * vectorV.y)) > 0)
-                  pST[count].t = -pST[count].t;
-            }
-            else
-            {
-               pST[count].t = fabs(pNode->u.leaf.poly.p[count].y - top) - pSector->ty;// / pDib->shrink;
-               pST[count].s = fabs(pNode->u.leaf.poly.p[count].x - left) - pSector->tx;// / pDib->shrink;
-            }
+            pST[count].t = pNode->u.leaf.floor.st[count].t;
+            pST[count].s = pNode->u.leaf.floor.st[count].s;
 
             if (pSector->animate != NULL && pSector->animate->animation == ANIMATE_SCROLL)
             {
@@ -5208,17 +4724,8 @@ void D3DRenderFloorExtract(BSPnode *pNode, PDIB pDib, custom_xyz *pXYZ, custom_s
                }
             }
 
-            //if (pDib->width == BITMAP_WIDTH * 2)
-            if(0)
-            {
-               pST[count].s *= inv128;
-               pST[count].t *= inv128;
-            }
-            else
-            {
-               pST[count].s *= inv64;
-               pST[count].t *= inv64;
-            }
+            pST[count].s *= inv64;
+            pST[count].t *= inv64;
          }
       }
    }
@@ -5283,190 +4790,27 @@ void D3DRenderFloorExtract(BSPnode *pNode, PDIB pDib, custom_xyz *pXYZ, custom_s
 void D3DRenderCeilingExtract(BSPnode *pNode, PDIB pDib, custom_xyz *pXYZ, custom_st *pST,
                      custom_bgra *pBGRA)
 {
-   Sector      *pSector = pNode->u.leaf.sector;
-   int         count;
-   int         left, top;
-   int         paletteIndex;
-   float      oneOverC, inv128, inv64;
-   custom_xyz   intersectTop, intersectLeft;
-   long      lightscale;
-
-   left = top = 0;
-
-   //inv128 = 1.0f / (128.0f * PETER_FUDGE);// / pDib->shrink);
-   inv128 = 0.00048828125f;
-   //inv64 = 1.0f / (64.0f * PETER_FUDGE);// / pDib->shrink);
-   inv64 = 0.0009765625f;
-
-   // generate texture coordinates
-   for (count = 0; count < pNode->u.leaf.poly.npts; count++)
-   {
-      if (pNode->u.leaf.poly.p[count].x < left)
-         left = pNode->u.leaf.poly.p[count].x;
-      if (pNode->u.leaf.poly.p[count].y < top)
-         top = pNode->u.leaf.poly.p[count].y;
-   }
-
-   // extract plane normal
-   if (pSector->sloped_ceiling)
-      oneOverC = 1.0f / pSector->sloped_ceiling->plane.c;
+   Sector *pSector = pNode->u.leaf.sector;
+   int count;
+   int paletteIndex;
+   long lightscale;
+   float inv64 = 0.0009765625f;
 
    if (pXYZ)
    {
       for (count = 0; count < pNode->u.leaf.poly.npts; count++)
       {
+         pXYZ[count].x = pNode->u.leaf.ceil.xyz[count].x;
+         pXYZ[count].y = pNode->u.leaf.ceil.xyz[count].y;
          if (pSector->sloped_ceiling)
-         {
-            pXYZ[count].x = pNode->u.leaf.poly.p[count].x;
-            pXYZ[count].y = pNode->u.leaf.poly.p[count].y;
-            pXYZ[count].z = (-pSector->sloped_ceiling->plane.a * pXYZ[count].x -
-               pSector->sloped_ceiling->plane.b * pXYZ[count].y -
-               pSector->sloped_ceiling->plane.d) * oneOverC;
-         }
+            pXYZ[count].z = pNode->u.leaf.ceil.xyz[count].z;
          else
-         {
-            pXYZ[count].x = pNode->u.leaf.poly.p[count].x;
-            pXYZ[count].y = pNode->u.leaf.poly.p[count].y;
             pXYZ[count].z = (float)pSector->ceiling_height;
-         }
 
          if (pST)
          {
-            custom_xyz   vectorU, vectorV, vector;
-            float      U, temp;
-
-            if (pSector->sloped_ceiling)
-            {
-               float   distance;
-
-               // calc distance from top line (vector u)
-               U = ((pXYZ[count].x - pSector->sloped_ceiling->p0.x) *
-                  (pSector->sloped_ceiling->p1.x - pSector->sloped_ceiling->p0.x)) +
-                  ((pXYZ[count].z - pSector->sloped_ceiling->p0.z) *
-                  (pSector->sloped_ceiling->p1.z - pSector->sloped_ceiling->p0.z)) +
-                  ((pXYZ[count].y - pSector->sloped_ceiling->p0.y) *
-                  (pSector->sloped_ceiling->p1.y - pSector->sloped_ceiling->p0.y));
-               temp = ((pSector->sloped_ceiling->p1.x - pSector->sloped_ceiling->p0.x) *
-                  (pSector->sloped_ceiling->p1.x - pSector->sloped_ceiling->p0.x)) +
-                  ((pSector->sloped_ceiling->p1.z - pSector->sloped_ceiling->p0.z) *
-                  (pSector->sloped_ceiling->p1.z - pSector->sloped_ceiling->p0.z)) +
-                  ((pSector->sloped_ceiling->p1.y - pSector->sloped_ceiling->p0.y) *
-                  (pSector->sloped_ceiling->p1.y - pSector->sloped_ceiling->p0.y));
-
-               if (temp == 0)
-                  temp = 1.0f;
-
-               U /= temp;
-
-               intersectTop.x = pSector->sloped_ceiling->p0.x +
-                  U * (pSector->sloped_ceiling->p1.x - pSector->sloped_ceiling->p0.x);
-               intersectTop.z = pSector->sloped_ceiling->p0.z +
-                  U * (pSector->sloped_ceiling->p1.z - pSector->sloped_ceiling->p0.z);
-               intersectTop.y = pSector->sloped_ceiling->p0.y +
-                  U * (pSector->sloped_ceiling->p1.y - pSector->sloped_ceiling->p0.y);
-
-               pST[count].t = sqrt((pXYZ[count].x - intersectTop.x) *
-                           (pXYZ[count].x - intersectTop.x) +
-                           (pXYZ[count].z - intersectTop.z) *
-                           (pXYZ[count].z - intersectTop.z) +
-                           (pXYZ[count].y - intersectTop.y) *
-                           (pXYZ[count].y - intersectTop.y));
-
-               // calc distance from left line (vector v)
-               U = ((pXYZ[count].x - pSector->sloped_ceiling->p0.x) *
-                  (pSector->sloped_ceiling->p2.x - pSector->sloped_ceiling->p0.x)) +
-                  ((pXYZ[count].z - pSector->sloped_ceiling->p0.z) *
-                  (pSector->sloped_ceiling->p2.z - pSector->sloped_ceiling->p0.z)) +
-                  ((pXYZ[count].y - pSector->sloped_ceiling->p0.y) *
-                  (pSector->sloped_ceiling->p2.y - pSector->sloped_ceiling->p0.y));
-               temp = ((pSector->sloped_ceiling->p2.x - pSector->sloped_ceiling->p0.x) *
-                  (pSector->sloped_ceiling->p2.x - pSector->sloped_ceiling->p0.x)) +
-                  ((pSector->sloped_ceiling->p2.z - pSector->sloped_ceiling->p0.z) *
-                  (pSector->sloped_ceiling->p2.z - pSector->sloped_ceiling->p0.z)) +
-                  ((pSector->sloped_ceiling->p2.y - pSector->sloped_ceiling->p0.y) *
-                  (pSector->sloped_ceiling->p2.y - pSector->sloped_ceiling->p0.y));
-
-               if (temp == 0)
-                  temp = 1.0f;
-
-               U /= temp;
-
-               intersectLeft.x = pSector->sloped_ceiling->p0.x +
-                  U * (pSector->sloped_ceiling->p2.x - pSector->sloped_ceiling->p0.x);
-               intersectLeft.z = pSector->sloped_ceiling->p0.z +
-                  U * (pSector->sloped_ceiling->p2.z - pSector->sloped_ceiling->p0.z);
-               intersectLeft.y = pSector->sloped_ceiling->p0.y +
-                  U * (pSector->sloped_ceiling->p2.y - pSector->sloped_ceiling->p0.y);
-
-               pST[count].s = sqrt((pXYZ[count].x - intersectLeft.x) *
-                           (pXYZ[count].x - intersectLeft.x) +
-                           (pXYZ[count].z - intersectLeft.z) *
-                           (pXYZ[count].z - intersectLeft.z) +
-                           (pXYZ[count].y - intersectLeft.y) *
-                           (pXYZ[count].y - intersectLeft.y));
-
-//               pST[count].s = -pST[count].s;
-//               pST[count].t = -pST[count].t;
-
-//               pST[count].s -= pSector->ty / 2.0f;
-//               pST[count].t -= pSector->tx / 2.0f;
-
-               vectorU.x = pSector->sloped_ceiling->p1.x - pSector->sloped_ceiling->p0.x;
-               vectorU.z = pSector->sloped_ceiling->p1.z - pSector->sloped_ceiling->p0.z;
-               vectorU.y = pSector->sloped_ceiling->p1.y - pSector->sloped_ceiling->p0.y;
-
-               distance = sqrt((vectorU.x * vectorU.x) +
-                  (vectorU.y * vectorU.y));
-
-               if (distance == 0)
-                  distance = 1.0f;
-
-               vectorU.x /= distance;
-               vectorU.z /= distance;
-               vectorU.y /= distance;
-
-               vectorV.x = pSector->sloped_ceiling->p2.x - pSector->sloped_ceiling->p0.x;
-               vectorV.z = pSector->sloped_ceiling->p2.z - pSector->sloped_ceiling->p0.z;
-               vectorV.y = pSector->sloped_ceiling->p2.y - pSector->sloped_ceiling->p0.y;
-
-               distance = sqrt((vectorV.x * vectorV.x) +
-                  (vectorV.y * vectorV.y));
-
-               if (distance == 0)
-                  distance = 1.0f;
-
-               vectorV.x /= distance;
-               vectorV.z /= distance;
-               vectorV.y /= distance;
-
-               vector.x = pXYZ[count].x - pSector->sloped_ceiling->p0.x;
-               vector.y = pXYZ[count].y - pSector->sloped_ceiling->p0.y;
-
-               distance = sqrt((vector.x * vector.x) +
-                  (vector.y * vector.y));
-
-               if (distance == 0)
-                  distance = 1.0f;
-
-               vector.x /= distance;
-               vector.y /= distance;
-
-               if (((vector.x * vectorU.x) +
-                  (vector.y * vectorU.y)) < 0)
-                  pST[count].s = -pST[count].s;
-
-               if (((vector.x * vectorV.x) +
-                  (vector.y * vectorV.y)) > 0)
-                  pST[count].t = -pST[count].t;
-
-               pST[count].t -= pSector->ty / 2.0f;
-               pST[count].s -= pSector->tx / 2.0f;
-            }
-            else
-            {
-               pST[count].t = fabs(pNode->u.leaf.poly.p[count].y - top) - pSector->ty;
-               pST[count].s = fabs(pNode->u.leaf.poly.p[count].x - left) - pSector->tx;
-            }
+            pST[count].t = pNode->u.leaf.ceil.st[count].t;
+            pST[count].s = pNode->u.leaf.ceil.st[count].s;
 
             if (pSector->animate != NULL && pSector->animate->animation == ANIMATE_SCROLL)
             {

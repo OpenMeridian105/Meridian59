@@ -1028,6 +1028,13 @@ void PrecalcWallData(WallData *pWall, unsigned int type, int side)
          pXYZ[2].z = (float)pWall->zz2;
          drawTopDown = !((pSideDef->flags & WF_ABOVE_BOTTOMUP) == WF_ABOVE_BOTTOMUP);
       }
+      else
+      {
+         debug(("Invalid wall type %u in PrecalcWallData, not saving wall!.\n", type));
+
+         return;
+      }
+
       pXYZ[0].x = pWall->x0;
       pXYZ[3].x = pWall->x1;
       pXYZ[1].x = pWall->x0;
@@ -1093,6 +1100,12 @@ void PrecalcWallData(WallData *pWall, unsigned int type, int side)
          pXYZ[2].z = (float)pWall->z2;
          drawTopDown = !((pSideDef->flags & WF_ABOVE_BOTTOMUP) == WF_ABOVE_BOTTOMUP);
       }
+      else
+      {
+         debug(("Invalid wall type %u in PrecalcWallData, not saving wall!.\n", type));
+
+         return;
+      }
 
       pXYZ[0].x = pWall->x1;
       pXYZ[3].x = pWall->x0;
@@ -1103,6 +1116,12 @@ void PrecalcWallData(WallData *pWall, unsigned int type, int side)
       pXYZ[3].y = pWall->y0;
       pXYZ[1].y = pWall->y1;
       pXYZ[2].y = pWall->y0;
+   }
+   else
+   {
+      debug(("Got side == 0 in PrecalcWallData! Not saving wall data.\n"));
+
+      return;
    }
 
    *flags = 0;
@@ -1321,7 +1340,11 @@ void PrecalcInternalNodeData(BSPinternal *iNode)
 }
 
 // Precalculate some leaf data (floors/ceilings) so it doesn't have
-// to be done during frame rendering.
+// to be done during frame rendering. This is kept in a separate data
+// structure than floor_xyz etc in BSPnode, because we add dynamic
+// info to those alongside the original data from BSPleaf. Walls are
+// handled differently due to the number of extra fields that would
+// be needed.
 void PrecalcLeafData(BSPleaf *leaf)
 {
    int left = 0, top = 0;

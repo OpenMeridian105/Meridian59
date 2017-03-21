@@ -383,6 +383,9 @@ typedef struct BSPnode
    Bool drawfloor;   // True if D3D renderer should draw this floor.
    Bool drawceiling; // True if D3D renderer should draw this ceiling.
 
+   // True if the renderer has already visited this node in this frame.
+   Bool seenFloorThisFrame;
+   Bool seenCeilThisFrame;
 } BSPnode, *BSPTree;
 
 #pragma warning( default : 4201 )      // nonstandard extension used : nameless struct/union (a union in this case )

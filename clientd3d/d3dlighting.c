@@ -547,6 +547,9 @@ void D3DRenderLMapPostFloorAdd(BSPnode *pNode, d3d_render_pool_new *pPool,
    if (!pSector || !pSector->floor)
       return;
 
+   if (!pNode->seenFloorThisFrame)
+      D3DRenderFloorExtract(pNode, NULL, pNode->floor_xyz, pNode->floor_stBase, pNode->floor_bgra);
+
    PDIB pDib = pSector->floor;
 
    int count;
@@ -653,6 +656,10 @@ void D3DRenderLMapPostCeilingAdd(BSPnode *pNode, d3d_render_pool_new *pPool,
 
    if (!pSector || !pSector->ceiling)
       return;
+
+   if (!pNode->seenCeilThisFrame)
+      D3DRenderCeilingExtract(pNode, NULL, pNode->ceiling_xyz, pNode->ceiling_stBase,
+         pNode->ceiling_bgra);
 
    PDIB pDib = pSector->ceiling;
 
@@ -892,6 +899,9 @@ void D3DRenderLMapPostWallAdd(WallData *pWall, d3d_render_pool_new *pPool,
    if (NULL == pDib)
       return;
 
+   // Don't appear to need this.
+   //D3DRenderWallExtract(pWall, pDib, &flags, xyz, stBase, bgra, type, side);
+
    unsigned int i;
    float falloff;
    custom_xyz normal, vec0, vec1;
@@ -928,7 +938,7 @@ void D3DRenderLMapPostWallAdd(WallData *pWall, d3d_render_pool_new *pPool,
    lightVec.z * normal.z;
 
    if (cosAngle <= 0)
-   continue;
+   return;
    }*/
 
    pPacket = D3DRenderPacketFindMatch(pPool, NULL, pDib, 0, 0, 0);

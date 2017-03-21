@@ -176,6 +176,14 @@ Bool D3DMaterialParticlePool(d3d_render_pool_new *pPool);
 Bool D3DMaterialParticlePacket(d3d_render_packet_new *pPacket, d3d_render_cache_system *pCacheSystem);
 Bool D3DMaterialParticleChunk(d3d_render_chunk_new *pChunk);
 
+// Updating data for each frame.
+void D3DRenderFloorExtract(BSPnode *pNode, PDIB pDib, custom_xyz *pXYZ, custom_st *pST,
+   custom_bgra *pBGRA);
+void D3DRenderCeilingExtract(BSPnode *pNode, PDIB pDib, custom_xyz *pXYZ, custom_st *pST,
+   custom_bgra *pBGRA);
+void D3DRenderWallExtract(WallData *pWall, PDIB pDib, unsigned int *flags, custom_xyz *pXYZ,
+   custom_st *pST, custom_bgra *pBGRA, unsigned int type, int side);
+
 // Use this function to determine if the bounding box is out of the player's
 //view. Useful for not adding stuff to draw that the player can't see.
 Bool IsHidden(Draw3DParams *params, long x0, long y0, long x1, long y1);

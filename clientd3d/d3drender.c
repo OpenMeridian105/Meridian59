@@ -381,11 +381,8 @@ HRESULT D3DRenderInit(HWND hWnd)
    /*                       INITIAL RENDERSTATE                               */
    /***************************************************************************/
    
-   // Keep AA disabled for now, until fixed
-   if (config.aaMode > 0)
-      hr = IDirect3DDevice9_SetRenderState(gpD3DDevice, D3DRS_MULTISAMPLEANTIALIAS, TRUE);
-   else
-      hr = IDirect3DDevice9_SetRenderState(gpD3DDevice, D3DRS_MULTISAMPLEANTIALIAS, FALSE);
+   // Set AA mode
+   hr = IDirect3DDevice9_SetRenderState(gpD3DDevice, D3DRS_MULTISAMPLEANTIALIAS, config.aaMode > 0);
    
    // Number of mipmaps/texture levels. Config is a boolean, pick 5 (on) or 1 (off).
    if (config.mipMaps)
@@ -801,6 +798,15 @@ void D3DRenderBegin(room_type *room, Draw3DParams *params)
    {
       room->nodes[i].seenFloorThisFrame = False;
       room->nodes[i].seenCeilThisFrame = False;
+      if (room->nodes[i].type == BSPinternaltype)
+      {
+         WallData *pWall;
+         for (pWall = room->nodes[i].u.internal.walls_in_plane;
+            pWall != NULL; pWall = pWall->next)
+         {
+            pWall->seen &= ~HR_DRAWMASK;
+         }
+      }
    }
 
    playerDeltaPos.x = params->viewer_x - playerOldPos.x;
@@ -1043,9 +1049,9 @@ void D3DRenderBegin(room_type *room, Draw3DParams *params)
    if (draw_objects)
    {
       timeObjects = timeGetTime();
-      
+
       /************************** NAMES *********************************/
-      
+
       if (config.draw_player_names || config.draw_sign_names || config.draw_npc_names)
       {
          IDirect3DDevice9_SetVertexShader(gpD3DDevice, NULL);
@@ -1151,6 +1157,7 @@ void D3DRenderBegin(room_type *room, Draw3DParams *params)
 
       IDirect3DDevice9_SetVertexShader(gpD3DDevice, NULL);
       IDirect3DDevice9_SetVertexDeclaration(gpD3DDevice, decl1dc);
+
       timeObjects = timeGetTime() - timeObjects;
    }
 
@@ -1385,8 +1392,8 @@ void D3DRenderBegin(room_type *room, Draw3DParams *params)
 
    timeOverall = timeGetTime() - timeOverall;
 //   debug(("number of objects = %d\n", gNumObjects));
-   if ((gFrame & 255) == 255)
-      debug(("number of vertices = %d\nnumber of dp calls = %d\n", gNumVertices, gNumDPCalls));
+   //if ((gFrame & 255) == 255)
+   //   debug(("number of vertices = %d\nnumber of dp calls = %d\n", gNumVertices, gNumDPCalls));
 
    //debug(("all = %d lmaps = %d wrld = %d obj = %d  particles = %d sky = %d init = %d\n",
       //timeOverall, timeLMaps, timeWorld, timeObjects, timeParticles, timeSkybox+timeSkybox2, timeInit));
@@ -1475,7 +1482,7 @@ void D3DRenderWorldDraw(room_type *room, Draw3DParams *params)
                // that value to decide whether to render the wall.  Old code left commented out as 
                // opposed to deleting in case any modification to drawbsp.c is performed which
                // invalidates this method.
-               //if (pWall->drawnormal)
+               //if (pWall->seen & SR_DRAWNORMAL)
                if ((flags & D3DRENDER_WALL_NORMAL) && ((pWall->z2 != pWall->z1)
                   || (pWall->zz2 != pWall->zz1)))
                {
@@ -1483,7 +1490,7 @@ void D3DRenderWorldDraw(room_type *room, Draw3DParams *params)
                   D3DRenderPacketWallAdd(pWall, &gWorldPool, D3DRENDER_WALL_NORMAL, -1, TRUE);
                }
 
-               //if (pWall->drawbelow)
+               //if (pWall->seen & SR_DRAWBELOW)
                if ((flags & D3DRENDER_WALL_BELOW) && ((pWall->z1 != pWall->z0)
                   || (pWall->zz1 != pWall->zz0)))
                {
@@ -1491,7 +1498,7 @@ void D3DRenderWorldDraw(room_type *room, Draw3DParams *params)
                   D3DRenderPacketWallAdd(pWall, &gWorldPool, D3DRENDER_WALL_BELOW, -1, TRUE);
                }
 
-               //if (pWall->drawabove)
+               //if (pWall->seen & SR_DRAWABOVE)
                if ((flags & D3DRENDER_WALL_ABOVE) && ((pWall->z3 != pWall->z2)
                   || (pWall->zz3 != pWall->zz2)))
                {
@@ -2242,6 +2249,9 @@ void D3DRenderPacketWallAdd(WallData *pWall, d3d_render_pool_new *pPool, unsigne
    d3d_render_packet_new   *pPacket;
    d3d_render_chunk_new   *pChunk;
 
+   // Positive if this wall part has already been seen this frame.
+   int seenWall = 0;
+
    // pos and neg sidedefs have their x and y coords reversed
    if (side > 0)
    {
@@ -2263,6 +2273,7 @@ void D3DRenderPacketWallAdd(WallData *pWall, d3d_render_pool_new *pPool, unsigne
                stBase[i] = pWall->pos_normal_stBase[i];
                flags = pWall->pos_normal_d3dFlags;
             }
+            seenWall = (pWall->seen & HR_SEENPOSNORMAL);
          }
          else
             pDib = NULL;
@@ -2279,6 +2290,7 @@ void D3DRenderPacketWallAdd(WallData *pWall, d3d_render_pool_new *pPool, unsigne
                stBase[i] = pWall->pos_below_stBase[i];
                flags = pWall->pos_below_d3dFlags;
             }
+            seenWall = (pWall->seen & HR_SEENPOSBELOW);
          }
          else
             pDib = NULL;
@@ -2295,6 +2307,7 @@ void D3DRenderPacketWallAdd(WallData *pWall, d3d_render_pool_new *pPool, unsigne
                stBase[i] = pWall->pos_above_stBase[i];
                flags = pWall->pos_above_d3dFlags;
             }
+            seenWall = (pWall->seen & HR_SEENPOSABOVE);
          }
          else
             pDib = NULL;
@@ -2324,6 +2337,7 @@ void D3DRenderPacketWallAdd(WallData *pWall, d3d_render_pool_new *pPool, unsigne
                stBase[i] = pWall->neg_normal_stBase[i];
                flags = pWall->neg_normal_d3dFlags;
             }
+            seenWall = (pWall->seen & HR_SEENNEGNORMAL);
          }
          else
             pDib = NULL;
@@ -2340,6 +2354,7 @@ void D3DRenderPacketWallAdd(WallData *pWall, d3d_render_pool_new *pPool, unsigne
                stBase[i] = pWall->neg_below_stBase[i];
                flags = pWall->neg_below_d3dFlags;
             }
+            seenWall = (pWall->seen & HR_SEENNEGBELOW);
          }
          else
             pDib = NULL;
@@ -2356,6 +2371,7 @@ void D3DRenderPacketWallAdd(WallData *pWall, d3d_render_pool_new *pPool, unsigne
                stBase[i] = pWall->neg_above_stBase[i];
                flags = pWall->neg_above_d3dFlags;
             }
+            seenWall = (pWall->seen & HR_SEENNEGABOVE);
          }
          else
             pDib = NULL;
@@ -2370,7 +2386,8 @@ void D3DRenderPacketWallAdd(WallData *pWall, d3d_render_pool_new *pPool, unsigne
       return;
 //      pDib = current_room.sectors[0].floor;
 
-   D3DRenderWallExtract(pWall, pDib, &flags, xyz, stBase, bgra, type, side);
+   if (!seenWall)
+      D3DRenderWallExtract(pWall, pDib, &flags, xyz, stBase, bgra, type, side);
 
    pPacket = D3DRenderPacketFindMatch(pPool, NULL, pDib, 0, 0, 0);
    if (NULL == pPacket)
@@ -2583,7 +2600,7 @@ void D3DRenderPacketWallMaskAdd(WallData *pWall, d3d_render_pool_new *pPool, uns
          return;
    }
 
-   // We now use the previously extracted data.
+   // Only called after D3DRenderPacketWallAdd, which updates data.
    //D3DRenderWallExtract(pWall, pDib, &flags, xyz, stBase, bgra, type, side);
 
    pPacket = D3DRenderPacketFindMatch(pPool, NULL, pDib, 0, 0, 0);
@@ -2777,8 +2794,9 @@ void D3DRenderFloorMaskAdd(BSPnode *pNode, d3d_render_pool_new *pPool, Bool bDyn
    d3d_render_packet_new   *pPacket;
    d3d_render_chunk_new   *pChunk;
 
-   if (!pNode->seenFloorThisFrame)
-      D3DRenderFloorExtract(pNode, NULL, pNode->floor_xyz, NULL, pNode->floor_bgra);
+   // Only called after D3DRenderPacketFloorAdd, which updates data.
+   // if (!pNode->seenFloorThisFrame)
+   //   D3DRenderFloorExtract(pNode, NULL, pNode->floor_xyz, NULL, pNode->floor_bgra);
 
    pPacket = D3DRenderPacketFindMatch(pPool, gpNoLookThrough, NULL, 0, 0, 0);
    if (NULL == pPacket)
@@ -2839,8 +2857,9 @@ void D3DRenderCeilingMaskAdd(BSPnode *pNode, d3d_render_pool_new *pPool, Bool bD
 
    left = top = 0;
 
-   if (!pNode->seenCeilThisFrame)
-      D3DRenderCeilingExtract(pNode, NULL, pNode->ceiling_xyz, NULL, pNode->ceiling_bgra);
+   // Only called after D3DRenderPacketCeilingAdd, which updates data.
+   // if (!pNode->seenCeilThisFrame)
+   //   D3DRenderCeilingExtract(pNode, NULL, pNode->ceiling_xyz, NULL, pNode->ceiling_bgra);
 
    pPacket = D3DRenderPacketFindMatch(pPool, gpNoLookThrough, NULL, 0, 0, 0);
    if (NULL == pPacket)
@@ -4321,6 +4340,13 @@ void D3DRenderWallExtract(WallData *pWall, PDIB pDib, unsigned int *flags, custo
    // pos and neg sidedefs have their x and y coords reversed
    if (side > 0)
    {
+      if (type == D3DRENDER_WALL_NORMAL)
+         pWall->seen |= HR_SEENPOSNORMAL;
+      else if (type == D3DRENDER_WALL_ABOVE)
+         pWall->seen |= HR_SEENPOSABOVE;
+      else if (type == D3DRENDER_WALL_BELOW)
+         pWall->seen |= HR_SEENPOSBELOW;
+
       pSideDef = pWall->pos_sidedef;
 
       if (NULL == pWall->pos_sector)
@@ -4330,6 +4356,13 @@ void D3DRenderWallExtract(WallData *pWall, PDIB pDib, unsigned int *flags, custo
    }
    else if (side < 0)
    {
+      if (type == D3DRENDER_WALL_NORMAL)
+         pWall->seen |= HR_SEENNEGNORMAL;
+      else if (type == D3DRENDER_WALL_ABOVE)
+         pWall->seen |= HR_SEENNEGABOVE;
+      else if (type == D3DRENDER_WALL_BELOW)
+         pWall->seen |= HR_SEENNEGBELOW;
+
       pSideDef = pWall->neg_sidedef;
 
       if (NULL == pWall->neg_sector)

@@ -187,6 +187,22 @@ typedef struct {
 
 #define MAX_NPTS 100
 
+// Wall drawing bitfield.
+#define SR_SEEN             0x001 // Some part drawn in Software Renderer (used for map lines)
+#define SR_DRAWBELOW        0x002 // Below wall drawn in SR
+#define SR_DRAWNORMAL       0x004 // Normal wall drawn in SR
+#define SR_DRAWABOVE        0x008 // Above wall drawn in SR
+#define SR_DRAWMASK         0x00E // Mask for SR draw flags (but not the 'seen' flag)
+#define HR_SEENPOSBELOW     0x010 // Pos side below wall visited in Hardware Renderer
+#define HR_SEENPOSNORMAL    0x020 // Pos side normal wall visited in HR
+#define HR_SEENPOSABOVE     0x040 // Pos side above wall visited in HR
+#define HR_SEENNEGBELOW     0x080 // Neg side below wall visited in HR
+#define HR_SEENNEGNORMAL    0x100 // Neg side normal wall visited in HR
+#define HR_SEENNEGABOVE     0x200 // Neg side above wall visited in HR
+#define HR_DRAWMASK         0x3F0 // Mask for HR draw flags
+
+typedef int WallSeenFlags;
+
 typedef struct WallData
 {
    union {
@@ -241,10 +257,7 @@ typedef struct WallData
    /* (x0,y0) and (x1,y1) must satisfy separator plane equation */
    /* positive side of wall must be on right when going from 0 to 1 */
 
-   Bool seen;                  /* True iff part of this wall has been drawn */
-   Bool drawbelow;     // True if D3D renderer should draw this wall.
-   Bool drawabove;     // True if D3D renderer should draw this wall.
-   Bool drawnormal;    // True if D3D renderer should draw this wall.
+   WallSeenFlags seen;
 
    // for bowtie handling
    BYTE bowtie_bits;           /* flags set indicating a bowtie & it's orientation */

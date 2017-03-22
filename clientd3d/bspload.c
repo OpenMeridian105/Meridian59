@@ -1347,7 +1347,7 @@ void PrecalcInternalNodeData(BSPinternal *iNode)
 // be needed.
 void PrecalcLeafData(BSPleaf *leaf)
 {
-   int left = 0, top = 0;
+   float left = 0, top = 0;
    // Pre-calc some floor/ceiling stuff
 
    // Ceiling texture coords.

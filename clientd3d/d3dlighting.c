@@ -772,6 +772,9 @@ void D3DRenderLMapPostWallAdd(WallData *pWall, d3d_render_pool_new *pPool,
    d3d_render_packet_new *pPacket;
    d3d_render_chunk_new *pChunk;
 
+   // Positive if this wall part has already been seen this frame.
+   int seenWall = 0;
+
    // pos and neg sidedefs have their x and y coords reversed
    if (side > 0)
    {
@@ -793,6 +796,7 @@ void D3DRenderLMapPostWallAdd(WallData *pWall, d3d_render_pool_new *pPool,
                stBase[i] = pWall->pos_normal_stBase[i];
                flags = pWall->pos_normal_d3dFlags;
             }
+            seenWall = (pWall->seen & HR_SEENPOSNORMAL);
          }
          else
             pDib = NULL;
@@ -809,6 +813,7 @@ void D3DRenderLMapPostWallAdd(WallData *pWall, d3d_render_pool_new *pPool,
                stBase[i] = pWall->pos_below_stBase[i];
                flags = pWall->pos_below_d3dFlags;
             }
+            seenWall = (pWall->seen & HR_SEENPOSBELOW);
          }
          else
             pDib = NULL;
@@ -825,6 +830,7 @@ void D3DRenderLMapPostWallAdd(WallData *pWall, d3d_render_pool_new *pPool,
                stBase[i] = pWall->pos_above_stBase[i];
                flags = pWall->pos_above_d3dFlags;
             }
+            seenWall = (pWall->seen & HR_SEENPOSABOVE);
          }
          else
             pDib = NULL;
@@ -854,6 +860,7 @@ void D3DRenderLMapPostWallAdd(WallData *pWall, d3d_render_pool_new *pPool,
                stBase[i] = pWall->neg_normal_stBase[i];
                flags = pWall->neg_normal_d3dFlags;
             }
+            seenWall = (pWall->seen & HR_SEENNEGNORMAL);
          }
          else
             pDib = NULL;
@@ -870,6 +877,7 @@ void D3DRenderLMapPostWallAdd(WallData *pWall, d3d_render_pool_new *pPool,
                stBase[i] = pWall->neg_below_stBase[i];
                flags = pWall->neg_below_d3dFlags;
             }
+            seenWall = (pWall->seen & HR_SEENNEGBELOW);
          }
          else
             pDib = NULL;
@@ -886,6 +894,7 @@ void D3DRenderLMapPostWallAdd(WallData *pWall, d3d_render_pool_new *pPool,
                stBase[i] = pWall->neg_above_stBase[i];
                flags = pWall->neg_above_d3dFlags;
             }
+            seenWall = (pWall->seen & HR_SEENNEGABOVE);
          }
          else
             pDib = NULL;
@@ -899,8 +908,8 @@ void D3DRenderLMapPostWallAdd(WallData *pWall, d3d_render_pool_new *pPool,
    if (NULL == pDib)
       return;
 
-   // Don't appear to need this.
-   //D3DRenderWallExtract(pWall, pDib, &flags, xyz, stBase, bgra, type, side);
+   if (!seenWall)
+      D3DRenderWallExtract(pWall, pDib, &flags, xyz, stBase, bgra, type, side);
 
    unsigned int i;
    float falloff;

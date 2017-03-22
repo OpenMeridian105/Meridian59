@@ -213,6 +213,11 @@ FixedPoint fpSqrtSlowest(FixedPoint x)
 #define CIRCLE4 (NUMDEGREES >> 2)
 #define CIRCLE8 (NUMDEGREES >> 3)
 
+int intATan2f(float dy, float dx)
+{
+   return RadToDeg(atan2f(dy, dx));
+}
+
 int intATan2(int dy, int dx)
 {
 #if 1

@@ -573,6 +573,7 @@ void D3DRenderLMapPostFloorAdd(BSPnode *pNode, d3d_render_pool_new *pPool,
    pChunk->pSector = pSector;
    pPacket->pMaterialFctn = &D3DMaterialLMapDynamicPacket;
    pChunk->side = 0;
+   pChunk->flags |= D3DRENDER_FLOOR;
 
    if (pSector->light <= 127)
       pChunk->flags |= D3DRENDER_NOAMBIENT;
@@ -684,6 +685,7 @@ void D3DRenderLMapPostCeilingAdd(BSPnode *pNode, d3d_render_pool_new *pPool,
    pChunk->pSector = pSector;
    pPacket->pMaterialFctn = &D3DMaterialLMapDynamicPacket;
    pChunk->side = 0;
+   pChunk->flags |= D3DRENDER_CEILING;
 
    if (pSector->light <= 127)
       pChunk->flags |= D3DRENDER_NOAMBIENT;
@@ -908,8 +910,8 @@ void D3DRenderLMapPostWallAdd(WallData *pWall, d3d_render_pool_new *pPool,
    if (NULL == pDib)
       return;
 
-   if (!seenWall)
-      D3DRenderWallExtract(pWall, pDib, &flags, xyz, stBase, bgra, type, side);
+   //if (!seenWall)
+      //D3DRenderWallExtract(pWall, pDib, &flags, xyz, stBase, bgra, type, side);
 
    unsigned int i;
    float falloff;

@@ -1851,6 +1851,8 @@ Bool HandleLightShading(char *ptr, long len)
    Extract(&ptr, &sun_y, 2);
 
    SetLightingInfo(sun_x, sun_y, directional_light);
+   gD3DRedrawAll |= D3DRENDER_REDRAW_UPDATE;
+
    return True;
 }
 /********************************************************************/

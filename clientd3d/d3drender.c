@@ -135,8 +135,6 @@ extern Draw3DParams      *p;
 extern int            gNumCalls;
 extern room_type      current_room;
 extern long            shade_amount;
-extern DrawItem         drawdata[];
-extern long            nitems;
 extern int            sector_depths[];
 extern d3d_driver_profile   gD3DDriverProfile;
 extern BYTE            *gBits;
@@ -1948,7 +1946,7 @@ void GeometryUpdate(d3d_render_pool_new *pPool, d3d_render_cache_system *pCacheS
    d3d_render_packet_new   *pPacket;
    d3d_render_chunk_new   *pChunk;
    Sector               *pSector;
-   int                  distX, distY, distance, paletteIndex;
+   int                  distX, distY, paletteIndex;
    list_type            list;
    long               lightScale;
    long               lo_end = FINENESS-shade_amount;
@@ -1968,67 +1966,105 @@ void GeometryUpdate(d3d_render_pool_new *pPool, d3d_render_cache_system *pCacheS
          {
             pChunk = &pPacket->renderChunks[curChunk];
 
-            if (pChunk->pSector)
+            // Default lightScale
+            lightScale = FINENESS;
+
+            // Chunk is a floor.
+            if (pChunk->flags & D3DRENDER_FLOOR)
+            {
                pSector = pChunk->pSector;
-            else
-            {
-               // is a wall
-               if (pChunk->side > 0)
-                  pSector = pChunk->pSectorPos;
-               else
-                  pSector = pChunk->pSectorNeg;
-            }
-
-            if (NULL == pSector)
-               continue;
-
-            for (i = 0; i < pChunk->numVertices; i++)
-            {
-               distX = pChunk->xyz[i].x - player.x;
-               distY = pChunk->xyz[i].y - player.y;
-
-               distance = DistanceGet(distX, distY);
-
-               if (shade_amount != 0)
+               if (NULL == pSector)
+                  continue;
+               if (!shade_amount)
                {
-                  long   a, b;
+                  if (pSector->sloped_floor != NULL)
+                     pSector->sloped_floor->lightscale = FINENESS;
+               }
+               else if (pSector->sloped_floor != NULL
+                  && (pSector->sloped_floor->flags & SLF_DIRECTIONAL))
+               {
+                  // light scale is based on dot product of surface normal and sun vector
+                  lightScale = (long)(pSector->sloped_floor->plane.a * sun_vect.x +
+                     pSector->sloped_floor->plane.b * sun_vect.y +
+                     pSector->sloped_floor->plane.c * sun_vect.z) >> LOG_FINENESS;
 
-                  a = pChunk->plane.a;
-                  b = pChunk->plane.b;
+                  lightScale = (lightScale + FINENESS) >> 1; // map to 0 to 1 range
 
-                  if (pChunk->side < 0)
-                  {
-                     a = -a;
-                     b = -b;
-                  }
+                  lightScale = lo_end + ((lightScale * shade_amount) >> LOG_FINENESS);
 
-                  lightScale = (long)(a * sun_vect.x +
-                              b * sun_vect.y) >> LOG_FINENESS;
-
-                  lightScale = (lightScale + FINENESS)>>1; // map to 0 to 1 range
-
-                  lightScale = lo_end + ((lightScale * shade_amount)>>LOG_FINENESS);
-                  
                   if (lightScale > FINENESS)
                      lightScale = FINENESS;
-                  else if ( lightScale < 0)
+                  else if (lightScale < 0)
                      lightScale = 0;
+
+                  pSector->sloped_floor->lightscale = lightScale;
+               }
+            }
+            // Chunk is a ceiling.
+            else if (pChunk->flags & D3DRENDER_CEILING)
+            {
+               pSector = pChunk->pSector;
+               if (NULL == pSector)
+                  continue;
+               if (!shade_amount)
+               {
+                  if (pSector->sloped_ceiling != NULL)
+                     pSector->sloped_ceiling->lightscale = FINENESS;
+               }
+               else if (pSector->sloped_ceiling != NULL
+                  && (pSector->sloped_ceiling->flags & SLF_DIRECTIONAL))
+               {
+                  // light scale is based on dot product of surface normal and sun vector
+                  lightScale = (long)(pSector->sloped_ceiling->plane.a * sun_vect.x +
+                     pSector->sloped_ceiling->plane.b * sun_vect.y +
+                     pSector->sloped_ceiling->plane.a * sun_vect.z) >> LOG_FINENESS;
+
+                  lightScale = (lightScale + FINENESS) >> 1; // map to 0 to 1 range
+
+                  lightScale = lo_end + ((lightScale * shade_amount) >> LOG_FINENESS);
+
+                  if (lightScale > FINENESS)
+                     lightScale = FINENESS;
+                  else if (lightScale < 0)
+                     lightScale = 0;
+
+                  pSector->sloped_ceiling->lightscale = lightScale;
+               }
+            }
+            // Must be a wall.
+            else
+            {
+               float a = pChunk->plane.a;
+               float b = pChunk->plane.b;
+               if (pChunk->side > 0)
+               {
+                  pSector = pChunk->pSectorPos;
                }
                else
+               {
+                  pSector = pChunk->pSectorNeg;
+                  a = -a;
+                  b = -b;
+               }
+               if (NULL == pSector)
+                  continue;
+
+               if (!shade_amount)
+               {
                   lightScale = FINENESS;
-
-//               if (distance <= 0)
-//                  distance = MAX_DISTANCE;
-
-               if (gD3DDriverProfile.bFogEnable)
-                  paletteIndex = GetLightPaletteIndex(FINENESS, pSector->light, lightScale, 0);
+               }
                else
-                  paletteIndex = GetLightPaletteIndex(distance, pSector->light, lightScale, 0);
-   //            paletteIndex = 64;
+               {
+                  lightScale = (long)(a * sun_vect.x + b * sun_vect.y) >> LOG_FINENESS;
+                  lightScale = (lightScale + FINENESS) >> 1; // map to 0 to 1 range
 
-               pChunk->bgra[i].r = pChunk->bgra[i].g = pChunk->bgra[i].b =
-                  paletteIndex * COLOR_AMBIENT / 64;
-               pChunk->bgra[i].a = 255;
+                  lightScale = lo_end + ((lightScale * shade_amount) >> LOG_FINENESS);
+
+                  if (lightScale > FINENESS)
+                     lightScale = FINENESS;
+                  else if (lightScale < 0)
+                     lightScale = 0;
+               }
             }
 
             if (pRenderCache != pChunk->pRenderCache)
@@ -2042,6 +2078,17 @@ void GeometryUpdate(d3d_render_pool_new *pPool, d3d_render_cache_system *pCacheS
 
             for (i = 0; i < pChunk->numVertices; i++)
             {
+               distX = pChunk->xyz[i].x - player.x;
+               distY = pChunk->xyz[i].y - player.y;
+
+               if (gD3DDriverProfile.bFogEnable)
+                  paletteIndex = GetLightPaletteIndex(FINENESS, pSector->light, lightScale, 0);
+               else
+                  paletteIndex = GetLightPaletteIndex(DistanceGet(distX, distY), pSector->light, lightScale, 0);
+
+               pChunk->bgra[i].r = pChunk->bgra[i].g = pChunk->bgra[i].b = paletteIndex * COLOR_AMBIENT / 64;
+               pChunk->bgra[i].a = 255;
+
                D3DCacheBGRASet(pChunk->pRenderCache, pChunk->startIndex + i, pChunk->bgra[i].b,
                   pChunk->bgra[i].g, pChunk->bgra[i].r, pChunk->bgra[i].a);
             }
@@ -2085,6 +2132,7 @@ void D3DRenderPacketFloorAdd(BSPnode *pNode, d3d_render_pool_new *pPool, Bool bD
    pChunk->numPrimitives = pChunk->numVertices - 2;
    pChunk->pSector = pSector;
    pChunk->side = 0;
+   pChunk->flags |= D3DRENDER_FLOOR;
 
    if (pSector->light <= 127)
       pChunk->flags |= D3DRENDER_NOAMBIENT;
@@ -2178,6 +2226,7 @@ void D3DRenderPacketCeilingAdd(BSPnode *pNode, d3d_render_pool_new *pPool, Bool 
    pChunk->numPrimitives = pChunk->numVertices - 2;
    pChunk->pSector = pSector;
    pChunk->side = 0;
+   pChunk->flags |= D3DRENDER_CEILING;
 
    if (pSector->light <= 127)
       pChunk->flags |= D3DRENDER_NOAMBIENT;
@@ -2810,7 +2859,8 @@ void D3DRenderFloorMaskAdd(BSPnode *pNode, d3d_render_pool_new *pPool, Bool bDyn
    pChunk->numPrimitives = pChunk->numVertices - 2;
    pChunk->pSector = pSector;
    pChunk->zBias = ZBIAS_MASK;
-   
+   pChunk->flags |= D3DRENDER_FLOOR;
+
    pPacket->pMaterialFctn = &D3DMaterialWorldPacket;
 
    pChunk->pMaterialFctn = &D3DMaterialMaskChunk;
@@ -2873,7 +2923,8 @@ void D3DRenderCeilingMaskAdd(BSPnode *pNode, d3d_render_pool_new *pPool, Bool bD
    pChunk->numPrimitives = pChunk->numVertices - 2;
    pChunk->pSector = pSector;
    pChunk->zBias = ZBIAS_MASK;
-   
+   pChunk->flags |= D3DRENDER_CEILING;
+
    pPacket->pMaterialFctn = &D3DMaterialWorldPacket;
 
    pChunk->pMaterialFctn = &D3DMaterialMaskChunk;
@@ -3325,6 +3376,20 @@ void D3DRenderNamesDraw3D(d3d_render_cache_system *pCacheSystem, d3d_render_pool
             }
             else
             {
+               if (pRNode->obj.drawingtype == DRAWFX_TRANSLUCENT25)
+                  pChunk->alphaRef = D3DRENDER_TRANS25 - 1;
+               else if (pRNode->obj.drawingtype == DRAWFX_TRANSLUCENT50)
+                  pChunk->alphaRef = D3DRENDER_TRANS50 - 1;
+               else if (pRNode->obj.drawingtype == DRAWFX_TRANSLUCENT75)
+                  pChunk->alphaRef = D3DRENDER_TRANS75 - 1;
+               else if (pRNode->obj.drawingtype == DRAWFX_DITHERTRANS)
+                  pChunk->alphaRef = 1;
+               else if (pRNode->obj.drawingtype == DRAWFX_DITHERINVIS)
+                  pChunk->alphaRef = D3DRENDER_TRANS50 - 1;
+               else if (pRNode->obj.drawingtype == DRAWFX_DITHERGREY)
+                  pChunk->alphaRef = D3DRENDER_TRANS50 - 1;
+               else
+                  pChunk->alphaRef = TEMP_ALPHA_REF;
                pChunk->xLat0 = pRNode->obj.translation;
                pChunk->xLat1 = 0;
             }
@@ -4851,10 +4916,8 @@ d3d_render_chunk_new *D3DRenderChunkNew(d3d_render_packet_new *pPacket)
 void D3DRenderChunkInit(d3d_render_chunk_new *pChunk)
 {
    pChunk->curIndex = 0;
-   pChunk->drawn = 0;
    pChunk->flags = 0;
    pChunk->zBias = 0;
-   pChunk->isTargeted = FALSE;
    pChunk->numIndices = 0;
    pChunk->xLat0 = 0;
    pChunk->xLat1 = 0;
@@ -4965,6 +5028,7 @@ void D3DRenderBackgroundObjectsDraw(d3d_render_pool_new *pPool, room_type *room,
       pPacket->pMaterialFctn = &D3DMaterialObjectPacket;
       pChunk->pMaterialFctn = &D3DMaterialObjectChunk;
       pChunk->zBias = 0;
+      pChunk->alphaRef = TEMP_ALPHA_REF;
 
       // Background objects don't adjust angle, but we adjust the viewing angle
       // for the player so they view the object face on.
@@ -5020,7 +5084,7 @@ void D3DRenderObjectsDraw(d3d_render_pool_new *pPool, room_type *room,
                       Draw3DParams *params, BYTE flags, Bool drawTransparent)
 {
    D3DMATRIX         mat;
-   int               i, curObject;
+   int               i;
    room_contents_node   *pRNode;
    long            dx, dy, angle;
    PDIB            pDib;
@@ -5035,18 +5099,13 @@ void D3DRenderObjectsDraw(d3d_render_pool_new *pPool, room_type *room,
    d3d_render_chunk_new   *pChunk = NULL;
 
    // base objects
-   //for (list = room->contents; list != NULL; list = list->next)
-   for (curObject = 0; curObject < nitems; curObject++)
+   for (list_type list = room->contents; list != NULL; list = list->next)
    {
-      if (drawdata[curObject].type != DrawObjectType)
-         continue;
+      pRNode = (room_contents_node *)list->data;
 
-      pRNode = drawdata[curObject].u.object.object->draw.obj;
-
-      if (pRNode == NULL)
-         continue;
-
-      if (pRNode->obj.id == player.id)
+      if (pRNode == NULL
+         || !pRNode->visible
+         || pRNode->obj.id == player.id)
          continue;
 
       if (flags == DRAWFX_INVISIBLE)
@@ -5135,22 +5194,16 @@ void D3DRenderObjectsDraw(d3d_render_pool_new *pPool, room_type *room,
          {
          case SF_DEPTH1:
             if (ROOM_OVERRIDE_DEPTH1 & GetRoomFlags())
-            {
                depth = GetOverrideRoomDepth(SF_DEPTH1);
-            }
-         break;
+            break;
          case SF_DEPTH2:
             if (ROOM_OVERRIDE_DEPTH2 & GetRoomFlags())
-            {
                depth = GetOverrideRoomDepth(SF_DEPTH2);
-            }
-         break;
+            break;
          case SF_DEPTH3:
             if (ROOM_OVERRIDE_DEPTH3 & GetRoomFlags())
-            {
                depth = GetOverrideRoomDepth(SF_DEPTH3);
-            }
-         break;
+            break;
          }
       }
 
@@ -5202,17 +5255,39 @@ void D3DRenderObjectsDraw(d3d_render_pool_new *pPool, room_type *room,
       }*/
 
       if (pRNode->obj.drawingtype == DRAWFX_TRANSLUCENT25)
+      {
          bgra.a = D3DRENDER_TRANS25;
+         pChunk->alphaRef = D3DRENDER_TRANS25 - 1;
+      }
       if (pRNode->obj.drawingtype == DRAWFX_TRANSLUCENT50)
+      {
          bgra.a = D3DRENDER_TRANS50;
+         pChunk->alphaRef = D3DRENDER_TRANS50 - 1;
+      }
       if (pRNode->obj.drawingtype == DRAWFX_TRANSLUCENT75)
+      {
          bgra.a = D3DRENDER_TRANS75;
+         pChunk->alphaRef = D3DRENDER_TRANS75 - 1;
+      }
       if (pRNode->obj.drawingtype == DRAWFX_DITHERTRANS)
+      {
          bgra.a = D3DRENDER_TRANS50;
+         pChunk->alphaRef = 1;
+      }
       if (pRNode->obj.drawingtype == DRAWFX_DITHERINVIS)
+      {
          bgra.a = D3DRENDER_TRANS50;
+         pChunk->alphaRef = D3DRENDER_TRANS50 - 1;
+      }
       if (pRNode->obj.drawingtype == DRAWFX_DITHERGREY)
+      {
          bgra.a = D3DRENDER_TRANS50;
+         pChunk->alphaRef = D3DRENDER_TRANS50 - 1;
+      }
+      else
+      {
+         pChunk->alphaRef = TEMP_ALPHA_REF;
+      }
 
       for (i = 0; i < 4; i++)
       {
@@ -5401,13 +5476,13 @@ void D3DRenderObjectsDraw(d3d_render_pool_new *pPool, room_type *room,
          pChunk = D3DRenderChunkNew(pPacket);
          assert(pChunk);
          pChunk->drawingtype = DRAWFX_TRANSLUCENT50;
+         pChunk->alphaRef = D3DRENDER_TRANS50 - 1;
          pChunk->numIndices = 4;
          pChunk->numVertices = 4;
          pChunk->numPrimitives = pChunk->numVertices - 2;
          pChunk->xLat0 = xLat0;
          pChunk->xLat1 = xLat1;
          pChunk->zBias = ZBIAS_TARGETED;
-         pChunk->isTargeted = TRUE;
 
          MatrixMultiply(&pChunk->xForm, &mPlayerHeadingTrans, &mat);
 
@@ -5417,7 +5492,7 @@ void D3DRenderObjectsDraw(d3d_render_pool_new *pPool, room_type *room,
          }
          else
          {
-            pChunk->pMaterialFctn = &D3DMaterialObjectChunk;
+            pChunk->pMaterialFctn = &D3DMaterialTargetedObjectChunk;
          }
 
          D3DObjectLightingCalc(room, pRNode, &bgra, 0);
@@ -5477,13 +5552,14 @@ void D3DRenderObjectsDraw(d3d_render_pool_new *pPool, room_type *room,
          pChunk->indices[3] = 3;
       }
    }
+   return;
 }
 
 void D3DRenderOverlaysDraw(d3d_render_pool_new *pPool, room_type *room, Draw3DParams *params,
                      BOOL underlays, BYTE flags, Bool drawTransparent)
 {
    D3DMATRIX         mat;
-   int               i, curObject;
+   int               i;
    room_contents_node   *pRNode;
    long            dx, dy, angle, top, bottom;
    PDIB            pDib, pDibOv, pDibOv2;
@@ -5498,20 +5574,14 @@ void D3DRenderOverlaysDraw(d3d_render_pool_new *pPool, room_type *room, Draw3DPa
    d3d_render_packet_new   *pPacket = NULL;
    d3d_render_chunk_new   *pChunk = NULL;
 
-   for (curObject = 0; curObject < nitems; curObject++)
+   for (list_type list = room->contents; list != NULL; list = list->next)
    {
-      list_type   list2;
-      int         pass, depth;
+      pRNode = (room_contents_node *)list->data;
 
-      if (drawdata[curObject].type != DrawObjectType)
-         continue;
-
-      pRNode = drawdata[curObject].u.object.object->draw.obj;
-
-      if (pRNode == NULL)
-         continue;
-
-      if (pRNode->obj.id == player.id)
+      if (pRNode == NULL
+         || !pRNode->visible
+         || pRNode->obj.id == player.id
+         || *pRNode->obj.overlays == NULL)
          continue;
 
       if (flags == DRAWFX_INVISIBLE)
@@ -5533,11 +5603,9 @@ void D3DRenderOverlaysDraw(d3d_render_pool_new *pPool, room_type *room, Draw3DPa
             continue;
       }
 
-      if (NULL == *pRNode->obj.overlays)
-         continue;
-
+      int depth;
       // three passes each
-      for (pass = 0; pass < 4; pass++)
+      for (int pass = 0; pass < 4; pass++)
       {
          // flush cache between passes
          // unlock all buffers
@@ -5585,7 +5653,7 @@ void D3DRenderOverlaysDraw(d3d_render_pool_new *pPool, room_type *room, Draw3DPa
             }
          }
 
-         for (list2 = *pRNode->obj.overlays; list2 != NULL; list2 = list2->next)
+         for (list_type list2 = *pRNode->obj.overlays; list2 != NULL; list2 = list2->next)
          {
             bHotspot = FALSE;
 
@@ -5791,7 +5859,8 @@ void D3DRenderOverlaysDraw(d3d_render_pool_new *pPool, room_type *room, Draw3DPa
                pChunk = D3DRenderChunkNew(pPacket);
                assert(pChunk);
 
-               pChunk->drawingtype = DRAWFX_TRANSLUCENT50;;
+               pChunk->drawingtype = DRAWFX_TRANSLUCENT50;
+               pChunk->alphaRef = D3DRENDER_TRANS50 - 1;
                pChunk->numIndices = 4;
                pChunk->numVertices = 4;
                pChunk->numPrimitives = pChunk->numVertices - 2;
@@ -5992,16 +6061,6 @@ void D3DRenderOverlaysDraw(d3d_render_pool_new *pPool, room_type *room, Draw3DPa
                      pChunk->st1[3].s = D3DRENDER_CLIP_TO_SCREEN_X(topLeft.x, gScreenWidth) / gScreenWidth;
                      pChunk->st1[3].t = D3DRENDER_CLIP_TO_SCREEN_Y(topLeft.y, gScreenHeight) / gScreenHeight;
 
-                     //if ((gFrame & 15) < 15)
-                     {
-            /*            pChunk->st1[0].s -= ((int)rand() % 3) / 256.0f;
-                        pChunk->st1[0].t -= ((int)rand() % 3) / 256.0f;
-                        pChunk->st1[1].s -= ((int)rand() % 3) / 256.0f;
-                        pChunk->st1[1].t += ((int)rand() % 3) / 256.0f;
-                        pChunk->st1[2].s += ((int)rand() % 3) / 256.0f;
-                        pChunk->st1[2].t += ((int)rand() % 3) / 256.0f;
-                        pChunk->st1[3].s += ((int)rand() % 3) / 256.0f;
-                        pChunk->st1[3].t -= ((int)rand() % 3) / 256.0f;*/
                         pChunk->st1[0].s -= (gFrame & 3) / 256.0f;
                         pChunk->st1[0].t -= (gFrame & 3) / 256.0f;
                         pChunk->st1[1].s -= (gFrame & 3) / 256.0f;
@@ -6010,22 +6069,8 @@ void D3DRenderOverlaysDraw(d3d_render_pool_new *pPool, room_type *room, Draw3DPa
                         pChunk->st1[2].t += (gFrame & 3) / 256.0f;
                         pChunk->st1[3].s += (gFrame & 3) / 256.0f;
                         pChunk->st1[3].t -= (gFrame & 3) / 256.0f;
-                        /*pChunk->st1[0].s += (5) / 256.0f;
-                        pChunk->st1[0].t -= (5) / 256.0f;
-                        pChunk->st1[1].s += (5) / 256.0f;
-                        pChunk->st1[1].t += (5) / 256.0f;
-                        pChunk->st1[2].s -= (5) / 256.0f;
-                        pChunk->st1[2].t += (5) / 256.0f;
-                        pChunk->st1[3].s -= (5) / 256.0f;
-                        pChunk->st1[3].t -= (5) / 256.0f;*/
-                     }
                   }
 
-/*                  if (((D3DRENDER_CLIP(topLeft.x, 1.0f) ||
-                     D3DRENDER_CLIP(topLeft.y, 1.0f)) &&
-                     (D3DRENDER_CLIP(bottomRight.x, 1.0f) ||
-                     D3DRENDER_CLIP(bottomRight.y, 1.0f))) &&
-                     D3DRENDER_CLIP(topLeft.z, 1.0f))*/
                   if (
                      (
                      (D3DRENDER_CLIP(topLeft.x, 1.0f) &&
@@ -6103,13 +6148,13 @@ void D3DRenderOverlaysDraw(d3d_render_pool_new *pPool, room_type *room, Draw3DPa
                   assert(pChunk);
 
                   pChunk->drawingtype = DRAWFX_TRANSLUCENT50;
+                  pChunk->alphaRef = D3DRENDER_TRANS50 - 1;
                   pChunk->numIndices = 4;
                   pChunk->numVertices = 4;
                   pChunk->numPrimitives = pChunk->numVertices - 2;
                   pChunk->xLat0 = xLat0;
                   pChunk->xLat1 = xLat1;
                   pChunk->zBias = ZBIAS_TARGETED;
-                  pChunk->isTargeted = TRUE;
 
                   MatrixMultiply(&pChunk->xForm, &mPlayerHeadingTrans, &mat);
 
@@ -6119,7 +6164,7 @@ void D3DRenderOverlaysDraw(d3d_render_pool_new *pPool, room_type *room, Draw3DPa
                   }
                   else
                   {
-                     pChunk->pMaterialFctn = &D3DMaterialObjectChunk;
+                     pChunk->pMaterialFctn = &D3DMaterialTargetedObjectChunk;
                   }
 
                   D3DObjectLightingCalc(room, pRNode, &bgra, 0);
@@ -6279,8 +6324,18 @@ void D3DRenderProjectilesDrawNew(d3d_render_pool_new *pPool, room_type *room, Dr
       pChunk->indices[2] = 0;
       pChunk->indices[3] = 3;
 
-      unsigned char alpha = ((pProjectile->flags & PROJ_FLAG_TRANSPARENT50) == PROJ_FLAG_TRANSPARENT50)
-         ? D3DRENDER_TRANS50 : COLOR_MAX;
+      unsigned char alpha;
+      if ((pProjectile->flags & PROJ_FLAG_TRANSPARENT50) == PROJ_FLAG_TRANSPARENT50)
+      {
+         alpha = D3DRENDER_TRANS50;
+         pChunk->alphaRef = D3DRENDER_TRANS50 - 1;
+      }
+      else
+      {
+         alpha = COLOR_MAX;
+         pChunk->alphaRef = TEMP_ALPHA_REF;
+      }
+
       for (int i = 0; i < 4; i++)
       {
          pChunk->bgra[i].b = COLOR_MAX;
@@ -6425,17 +6480,39 @@ void D3DRenderPlayerOverlaysDraw(d3d_render_pool_new *pPool, room_type *room, Dr
       }
 
       if (pRNode->obj.drawingtype == DRAWFX_TRANSLUCENT25)
+      {
          bgra.a = D3DRENDER_TRANS25;
+         pChunk->alphaRef = D3DRENDER_TRANS25 - 1;
+      }
       if (pRNode->obj.drawingtype == DRAWFX_TRANSLUCENT50)
+      {
          bgra.a = D3DRENDER_TRANS50;
+         pChunk->alphaRef = D3DRENDER_TRANS50 - 1;
+      }
       if (pRNode->obj.drawingtype == DRAWFX_TRANSLUCENT75)
+      {
          bgra.a = D3DRENDER_TRANS75;
+         pChunk->alphaRef = D3DRENDER_TRANS75 - 1;
+      }
       if (pRNode->obj.drawingtype == DRAWFX_DITHERTRANS)
+      {
          bgra.a = D3DRENDER_TRANS50;
+         pChunk->alphaRef = 1;
+      }
       if (pRNode->obj.drawingtype == DRAWFX_DITHERINVIS)
+      {
          bgra.a = D3DRENDER_TRANS50;
+         pChunk->alphaRef = D3DRENDER_TRANS50 - 1;
+      }
       if (pRNode->obj.drawingtype == DRAWFX_DITHERGREY)
+      {
          bgra.a = D3DRENDER_TRANS50;
+         pChunk->alphaRef = D3DRENDER_TRANS50 - 1;
+      }
+      else
+      {
+         pChunk->alphaRef = TEMP_ALPHA_REF;
+      }
 
       pChunk->xyz[0].x = pChunk->xyz[1].x = objArea.x;
       pChunk->xyz[0].z = pChunk->xyz[3].z = objArea.y;
@@ -6677,17 +6754,39 @@ void D3DRenderPlayerOverlayOverlaysDraw(d3d_render_pool_new *pPool, list_type ov
          }
 
          if (pRNode->obj.drawingtype == DRAWFX_TRANSLUCENT25)
+         {
             bgra.a = D3DRENDER_TRANS25;
+            pChunk->alphaRef = D3DRENDER_TRANS25 - 1;
+         }
          if (pRNode->obj.drawingtype == DRAWFX_TRANSLUCENT50)
+         {
             bgra.a = D3DRENDER_TRANS50;
+            pChunk->alphaRef = D3DRENDER_TRANS50 - 1;
+         }
          if (pRNode->obj.drawingtype == DRAWFX_TRANSLUCENT75)
+         {
             bgra.a = D3DRENDER_TRANS75;
+            pChunk->alphaRef = D3DRENDER_TRANS75 - 1;
+         }
          if (pRNode->obj.drawingtype == DRAWFX_DITHERTRANS)
+         {
             bgra.a = D3DRENDER_TRANS50;
+            pChunk->alphaRef = 1;
+         }
          if (pRNode->obj.drawingtype == DRAWFX_DITHERINVIS)
+         {
             bgra.a = D3DRENDER_TRANS50;
+            pChunk->alphaRef = D3DRENDER_TRANS50 - 1;
+         }
          if (pRNode->obj.drawingtype == DRAWFX_DITHERGREY)
+         {
             bgra.a = D3DRENDER_TRANS50;
+            pChunk->alphaRef = D3DRENDER_TRANS50 - 1;
+         }
+         else
+         {
+            pChunk->alphaRef = TEMP_ALPHA_REF;
+         }
 
          for (i = 0; i < 4; i++)
          {
@@ -7955,31 +8054,48 @@ Bool D3DMaterialObjectChunk(d3d_render_chunk_new *pChunk)
    // layer-ordering is saved in pChunk->zBias
    IDirect3DDevice9_SetRenderState(gpD3DDevice, D3DRS_DEPTHBIAS, F2DW((float)pChunk->zBias * -0.00001f));
 
-   if (pChunk->drawingtype == DRAWFX_TRANSLUCENT25)
-      IDirect3DDevice9_SetRenderState(gpD3DDevice, D3DRS_ALPHAREF, D3DRENDER_TRANS25 - 1);
-   else if (pChunk->drawingtype == DRAWFX_TRANSLUCENT50)
-      IDirect3DDevice9_SetRenderState(gpD3DDevice, D3DRS_ALPHAREF, D3DRENDER_TRANS50 - 1);
-   else if (pChunk->drawingtype == DRAWFX_TRANSLUCENT75)
-      IDirect3DDevice9_SetRenderState(gpD3DDevice, D3DRS_ALPHAREF, D3DRENDER_TRANS75 - 1);
-   else if (pChunk->drawingtype == DRAWFX_DITHERTRANS)
-      IDirect3DDevice9_SetRenderState(gpD3DDevice, D3DRS_ALPHAREF, 1);
-   else if (pChunk->drawingtype == DRAWFX_DITHERINVIS)
-      IDirect3DDevice9_SetRenderState(gpD3DDevice, D3DRS_ALPHAREF, D3DRENDER_TRANS50 - 1);
-   else if (pChunk->drawingtype == DRAWFX_DITHERGREY)
-      IDirect3DDevice9_SetRenderState(gpD3DDevice, D3DRS_ALPHAREF, D3DRENDER_TRANS50 - 1);
-   else
-      IDirect3DDevice9_SetRenderState(gpD3DDevice, D3DRS_ALPHAREF, TEMP_ALPHA_REF);
+   IDirect3DDevice9_SetRenderState(gpD3DDevice, D3DRS_ALPHAREF, pChunk->alphaRef);
 
-   if (pChunk->isTargeted)
+   D3DRENDER_SET_COLOR_STAGE(gpD3DDevice, 0, D3DTOP_MODULATE, D3DTA_TEXTURE, D3DTA_DIFFUSE);
+   D3DRENDER_SET_ALPHA_STAGE(gpD3DDevice, 0, D3DTOP_MODULATE, D3DTA_TEXTURE, D3DTA_DIFFUSE);
+
+   if (gD3DDriverProfile.bFogEnable)
    {
-      D3DRENDER_SET_COLOR_STAGE(gpD3DDevice, 0, D3DTOP_SELECTARG1, D3DTA_DIFFUSE, 0);
-      D3DRENDER_SET_ALPHA_STAGE(gpD3DDevice, 0, D3DTOP_MODULATE, D3DTA_TEXTURE, D3DTA_DIFFUSE);
+      float   end;
+
+      end = D3DRenderFogEndCalc(pChunk);
+      IDirect3DDevice9_SetRenderState(gpD3DDevice, D3DRS_FOGEND, *(DWORD *)(&end));
    }
-   else
+
+   return TRUE;
+}
+
+Bool D3DMaterialTargetedObjectChunk(d3d_render_chunk_new *pChunk)
+{
+   static BYTE   lastXLat0, lastXLat1;
+
+   IDirect3DDevice9_SetTransform(gpD3DDevice, D3DTS_WORLD, &pChunk->xForm);
+
+   if ((pChunk->xLat0) || (pChunk->xLat1))
    {
-      D3DRENDER_SET_COLOR_STAGE(gpD3DDevice, 0, D3DTOP_MODULATE, D3DTA_TEXTURE, D3DTA_DIFFUSE);
-      D3DRENDER_SET_ALPHA_STAGE(gpD3DDevice, 0, D3DTOP_MODULATE, D3DTA_TEXTURE, D3DTA_DIFFUSE);
+      D3DRenderPaletteSet(pChunk->xLat0, pChunk->xLat1, pChunk->drawingtype);
+      lastXLat0 = pChunk->xLat0;
+      lastXLat1 = pChunk->xLat1;
    }
+   else if ((lastXLat0) || (lastXLat1))
+   {
+      D3DRenderPaletteSet(0, 0, 0);
+      lastXLat0 = lastXLat1 = 0;
+   }
+
+   // apply Z-BIAS here to make sure coplanar object-layers are rendered correctly
+   // layer-ordering is saved in pChunk->zBias
+   IDirect3DDevice9_SetRenderState(gpD3DDevice, D3DRS_DEPTHBIAS, F2DW((float)pChunk->zBias * -0.00001f));
+
+   IDirect3DDevice9_SetRenderState(gpD3DDevice, D3DRS_ALPHAREF, pChunk->alphaRef);
+
+   D3DRENDER_SET_COLOR_STAGE(gpD3DDevice, 0, D3DTOP_SELECTARG1, D3DTA_DIFFUSE, 0);
+   D3DRENDER_SET_ALPHA_STAGE(gpD3DDevice, 0, D3DTOP_MODULATE, D3DTA_TEXTURE, D3DTA_DIFFUSE);
 
    if (gD3DDriverProfile.bFogEnable)
    {
@@ -8051,18 +8167,7 @@ Bool D3DMaterialObjectInvisibleChunk(d3d_render_chunk_new *pChunk)
    // layer-ordering is saved in pChunk->zBias
    IDirect3DDevice9_SetRenderState(gpD3DDevice, D3DRS_DEPTHBIAS, F2DW((float)pChunk->zBias * -0.00001f));
 
-   if (pChunk->drawingtype == DRAWFX_TRANSLUCENT25)
-      IDirect3DDevice9_SetRenderState(gpD3DDevice, D3DRS_ALPHAREF, D3DRENDER_TRANS25 - 1);
-   else if (pChunk->drawingtype == DRAWFX_TRANSLUCENT50)
-      IDirect3DDevice9_SetRenderState(gpD3DDevice, D3DRS_ALPHAREF, D3DRENDER_TRANS50 - 1);
-   else if (pChunk->drawingtype == DRAWFX_TRANSLUCENT75)
-      IDirect3DDevice9_SetRenderState(gpD3DDevice, D3DRS_ALPHAREF, D3DRENDER_TRANS75 - 1);
-   else if (pChunk->drawingtype == DRAWFX_DITHERTRANS)
-      IDirect3DDevice9_SetRenderState(gpD3DDevice, D3DRS_ALPHAREF, 1);
-   else if (pChunk->drawingtype == DRAWFX_DITHERINVIS)
-      IDirect3DDevice9_SetRenderState(gpD3DDevice, D3DRS_ALPHAREF, D3DRENDER_TRANS50 - 1);
-   else if (pChunk->drawingtype == DRAWFX_DITHERGREY)
-      IDirect3DDevice9_SetRenderState(gpD3DDevice, D3DRS_ALPHAREF,  D3DRENDER_TRANS50 - 1);
+   IDirect3DDevice9_SetRenderState(gpD3DDevice, D3DRS_ALPHAREF, pChunk->alphaRef);
 
    return TRUE;
 }
@@ -8151,7 +8256,6 @@ Bool D3DMaterialParticlePacket(d3d_render_packet_new *pPacket, d3d_render_cache_
       D3DRENDER_SET_COLOR_STAGE(gpD3DDevice, 0, D3DTOP_SELECTARG2, 0, D3DTA_DIFFUSE);
       D3DRENDER_SET_ALPHA_STAGE(gpD3DDevice, 0, D3DTOP_SELECTARG2, 0, D3DTA_DIFFUSE);
    }
-
 
    return TRUE;
 }

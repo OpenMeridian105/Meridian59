@@ -155,6 +155,7 @@ Bool D3DMaterialLMapStaticChunk(d3d_render_chunk_new *pChunk);
 Bool D3DMaterialObjectPool(d3d_render_pool_new *pPool);
 Bool D3DMaterialObjectPacket(d3d_render_packet_new *pPacket, d3d_render_cache_system *pCacheSystem);
 Bool D3DMaterialObjectChunk(d3d_render_chunk_new *pChunk);
+Bool D3DMaterialTargetedObjectChunk(d3d_render_chunk_new *pChunk);
 
 // invisible objects
 Bool D3DMaterialObjectInvisiblePool(d3d_render_pool_new *pPool);

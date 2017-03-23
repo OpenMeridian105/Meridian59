@@ -16,16 +16,21 @@ Bool D3DMaterialNone(d3d_render_chunk_new *pPool);
 // world
 Bool D3DMaterialWorldPool(d3d_render_pool_new *pPool);
 Bool D3DMaterialWorldPacket(d3d_render_packet_new *pPacket, d3d_render_cache_system *pCacheSystem);
-Bool D3DMaterialWorldDynamicChunk(d3d_render_chunk_new *pChunk);
-Bool D3DMaterialWorldStaticChunk(d3d_render_chunk_new *pChunk);
+Bool D3DMaterialSkyboxChunk(d3d_render_chunk_new *pChunk);
+Bool D3DMaterialFloorCeilDynamicChunk(d3d_render_chunk_new *pChunk);
+Bool D3DMaterialFloorCeilStaticChunk(d3d_render_chunk_new *pChunk);
+Bool D3DMaterialWallDynamicChunk(d3d_render_chunk_new *pChunk);
+Bool D3DMaterialWallStaticChunk(d3d_render_chunk_new *pChunk);
 Bool D3DMaterialWallMaskPool(d3d_render_pool_new *pPool);
 Bool D3DMaterialMaskChunk(d3d_render_chunk_new *pChunk);
 
 // lmaps
 Bool D3DMaterialLMapDynamicPool(d3d_render_pool_new *pPool);
 Bool D3DMaterialLMapDynamicPacket(d3d_render_packet_new *pPacket, d3d_render_cache_system *pCacheSystem);
-Bool D3DMaterialLMapDynamicChunk(d3d_render_chunk_new *pChunk);
-Bool D3DMaterialLMapStaticChunk(d3d_render_chunk_new *pChunk);
+Bool D3DMaterialLMapFloorCeilDynamicChunk(d3d_render_chunk_new *pChunk);
+Bool D3DMaterialLMapWallDynamicChunk(d3d_render_chunk_new *pChunk);
+Bool D3DMaterialLMapFloorCeilStaticChunk(d3d_render_chunk_new *pChunk);
+Bool D3DMaterialLMapWallStaticChunk(d3d_render_chunk_new *pChunk);
 
 // objects
 Bool D3DMaterialObjectPool(d3d_render_pool_new *pPool);

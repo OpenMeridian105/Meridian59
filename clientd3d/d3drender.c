@@ -1923,9 +1923,9 @@ void D3DRenderPacketFloorAdd(BSPnode *pNode, d3d_render_pool_new *pPool, Bool bD
    pPacket->pMaterialFctn = &D3DMaterialWorldPacket;
 
    if (bDynamic)
-      pChunk->pMaterialFctn = &D3DMaterialWorldDynamicChunk;
+      pChunk->pMaterialFctn = &D3DMaterialFloorCeilDynamicChunk;
    else
-      pChunk->pMaterialFctn = &D3DMaterialWorldStaticChunk;
+      pChunk->pMaterialFctn = &D3DMaterialFloorCeilStaticChunk;
 
    for (vertex = 0; vertex < pNode->u.leaf.poly.npts; vertex++)
    {
@@ -1966,12 +1966,9 @@ void D3DRenderPacketCeilingAdd(BSPnode *pNode, d3d_render_pool_new *pPool, Bool 
    Sector      *pSector = pNode->u.leaf.sector;
    PDIB      pDib;
    int         vertex;
-   int         left, top;
 
    d3d_render_packet_new   *pPacket;
    d3d_render_chunk_new   *pChunk;
-
-   left = top = 0;
 
    if (pSector->ceiling)
    {
@@ -2017,9 +2014,9 @@ void D3DRenderPacketCeilingAdd(BSPnode *pNode, d3d_render_pool_new *pPool, Bool 
    pPacket->pMaterialFctn = &D3DMaterialWorldPacket;
 
    if (bDynamic)
-      pChunk->pMaterialFctn = &D3DMaterialWorldDynamicChunk;
+      pChunk->pMaterialFctn = &D3DMaterialFloorCeilDynamicChunk;
    else
-      pChunk->pMaterialFctn = &D3DMaterialWorldStaticChunk;
+      pChunk->pMaterialFctn = &D3DMaterialFloorCeilStaticChunk;
 
    for (vertex = 0; vertex < pNode->u.leaf.poly.npts; vertex++)
    {
@@ -2229,9 +2226,9 @@ void D3DRenderPacketWallAdd(WallData *pWall, d3d_render_pool_new *pPool, unsigne
    pPacket->pMaterialFctn = &D3DMaterialWorldPacket;
 
    if (bDynamic)
-      pChunk->pMaterialFctn = &D3DMaterialWorldDynamicChunk;
+      pChunk->pMaterialFctn = &D3DMaterialWallDynamicChunk;
    else
-      pChunk->pMaterialFctn = &D3DMaterialWorldStaticChunk;
+      pChunk->pMaterialFctn = &D3DMaterialWallStaticChunk;
 
    for (vertex = 0; vertex < 4; vertex++)
    {
@@ -4135,7 +4132,7 @@ void D3DRenderSkyboxDraw(d3d_render_pool_new *pPool)
       pChunk->numVertices = 4;
       pChunk->numPrimitives = pChunk->numVertices - 2;
       pPacket->pMaterialFctn = &D3DMaterialWorldPacket;
-      pChunk->pMaterialFctn = &D3DMaterialWorldDynamicChunk;
+      pChunk->pMaterialFctn = &D3DMaterialSkyboxChunk;
       pChunk->flags |= D3DRENDER_NOAMBIENT;
 
       // add xyz, st, and bgra data

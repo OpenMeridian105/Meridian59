@@ -487,69 +487,63 @@ void D3DCacheFill(d3d_render_cache_system *pCacheSystem, d3d_render_pool_new *pP
    }
 }
 
-void D3DCacheFlush(d3d_render_cache_system *pCacheSystem, d3d_render_pool_new *pPool, int numStages,
-				   int type)
+void D3DCacheFlush(d3d_render_cache_system *pCacheSystem, d3d_render_pool_new *pPool,
+   int numStages, int type)
 {
-	u_int				curPacket, curChunk, numPackets;
-	LPDIRECT3DTEXTURE9	pTexture = NULL;
-	d3d_render_cache		*pRenderCache = NULL;
-	d3d_render_packet_new	*pPacket;
-	d3d_render_chunk_new	*pChunk;
-	list_type				list;
-	int						i;
+   u_int curPacket, curChunk, numPackets;
+   LPDIRECT3DTEXTURE9 pTexture = NULL;
+   d3d_render_cache *pRenderCache = NULL;
+   d3d_render_packet_new *pPacket;
+   d3d_render_chunk_new *pChunk;
 
-	// call material function for this pool
-	if (FALSE == pPool->pMaterialFctn(pPool))
-		return;
+   // call material function for this pool
+   if (FALSE == pPool->pMaterialFctn(pPool))
+      return;
 
-	for (list = pPool->renderPacketList; list != pPool->curPacketList->next; list = list->next)
-	{
-		pPacket = (d3d_render_packet_new *)list->data;
+   for (list_type list = pPool->renderPacketList; list != pPool->curPacketList->next; list = list->next)
+   {
+      pPacket = (d3d_render_packet_new *)list->data;
 
-		if (list == pPool->curPacketList)
-			numPackets = pPool->curPacket;
-		else
-			numPackets = pPool->size;
+      if (list == pPool->curPacketList)
+         numPackets = pPool->curPacket;
+      else
+         numPackets = pPool->size;
 
-		for (curPacket = 0; curPacket < numPackets; curPacket++, pPacket++)
-		{
-			// call material function for this packet
-			if (FALSE == pPacket->pMaterialFctn(pPacket, pCacheSystem))
-				continue;
+      for (curPacket = 0; curPacket < numPackets; curPacket++, pPacket++)
+      {
+         // call material function for this packet
+         if (FALSE == pPacket->pMaterialFctn(pPacket, pCacheSystem))
+            continue;
 
-			for (curChunk = 0; curChunk < pPacket->curChunk; curChunk++)
-			{
-				pChunk = &pPacket->renderChunks[curChunk];
+         for (curChunk = 0; curChunk < pPacket->curChunk; curChunk++)
+         {
+            pChunk = &pPacket->renderChunks[curChunk];
 
-				// call material function for this chunk
-				if (FALSE == pChunk->pMaterialFctn(pChunk))
-					continue;
+            // call material function for this chunk
+            if (FALSE == pChunk->pMaterialFctn(pChunk))
+               continue;
 
-				if (pRenderCache != pChunk->pRenderCache)
-				{
-					pRenderCache = pChunk->pRenderCache;
-					D3DRENDER_SET_STREAMS(gpD3DDevice, pRenderCache, numStages);
-				}
+            if (pRenderCache != pChunk->pRenderCache)
+            {
+               pRenderCache = pChunk->pRenderCache;
+               D3DRENDER_SET_STREAMS(gpD3DDevice, pRenderCache, numStages);
+            }
 
-				IDirect3DDevice9_DrawIndexedPrimitive(gpD3DDevice,
-                                                  (D3DPRIMITIVETYPE) type,
-												  0,
-                                                  pChunk->startIndex,
-                                                  pChunk->numIndices,
-                                                  pChunk->startIndex,
-                                                  pChunk->numPrimitives);
+            IDirect3DDevice9_DrawIndexedPrimitive(gpD3DDevice,
+               (D3DPRIMITIVETYPE)type, 0, pChunk->startIndex,
+               pChunk->numIndices, pChunk->startIndex, pChunk->numPrimitives);
 
-				gNumVertices += pChunk->numIndices;
-				gNumDPCalls++;
-			}
-		}
-	}
+            gNumVertices += pChunk->numIndices;
+            gNumDPCalls++;
+         }
+      }
+   }
 
-	// now decrement reference count for these textures
-	for (i = 0; i < numStages; i++)
-	{
-		IDirect3DDevice9_SetTexture(gpD3DDevice, i, NULL);
-	}
+   // now decrement reference count for these textures
+   for (int i = 0; i < numStages; i++)
+   {
+      IDirect3DDevice9_SetTexture(gpD3DDevice, i, NULL);
+   }
 
-	D3DRENDER_CLEAR_STREAMS(gpD3DDevice, numStages);
+   D3DRENDER_CLEAR_STREAMS(gpD3DDevice, numStages);
 }

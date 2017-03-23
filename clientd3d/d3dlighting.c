@@ -547,8 +547,9 @@ void D3DRenderLMapPostFloorAdd(BSPnode *pNode, d3d_render_pool_new *pPool,
    if (!pSector || !pSector->floor)
       return;
 
-   if (!pNode->seenFloorThisFrame)
-      D3DRenderFloorUpdate(pNode, NULL, pNode->floor_xyz, pNode->floor_stBase, pNode->floor_bgra);
+   // Causes shading discrepancies.
+   //if (!pNode->seenFloorThisFrame)
+   //   D3DRenderFloorUpdate(pNode, NULL, pNode->floor_xyz, pNode->floor_stBase, pNode->floor_bgra);
 
    PDIB pDib = pSector->floor;
 
@@ -579,9 +580,9 @@ void D3DRenderLMapPostFloorAdd(BSPnode *pNode, d3d_render_pool_new *pPool,
       pChunk->flags |= D3DRENDER_NOAMBIENT;
 
    if (bDynamic)
-      pChunk->pMaterialFctn = &D3DMaterialLMapDynamicChunk;
+      pChunk->pMaterialFctn = &D3DMaterialLMapFloorCeilDynamicChunk;
    else
-      pChunk->pMaterialFctn = &D3DMaterialLMapStaticChunk;
+      pChunk->pMaterialFctn = &D3DMaterialLMapFloorCeilStaticChunk;
 
    for (count = 0; count < pNode->u.leaf.poly.npts; count++)
    {
@@ -658,9 +659,10 @@ void D3DRenderLMapPostCeilingAdd(BSPnode *pNode, d3d_render_pool_new *pPool,
    if (!pSector || !pSector->ceiling)
       return;
 
-   if (!pNode->seenCeilThisFrame)
-      D3DRenderCeilingUpdate(pNode, NULL, pNode->ceiling_xyz, pNode->ceiling_stBase,
-         pNode->ceiling_bgra);
+   // Causes shading discrepancies.
+   //if (!pNode->seenCeilThisFrame)
+   //   D3DRenderCeilingUpdate(pNode, NULL, pNode->ceiling_xyz, pNode->ceiling_stBase,
+   //      pNode->ceiling_bgra);
 
    PDIB pDib = pSector->ceiling;
 
@@ -691,9 +693,9 @@ void D3DRenderLMapPostCeilingAdd(BSPnode *pNode, d3d_render_pool_new *pPool,
       pChunk->flags |= D3DRENDER_NOAMBIENT;
 
    if (bDynamic)
-      pChunk->pMaterialFctn = &D3DMaterialLMapDynamicChunk;
+      pChunk->pMaterialFctn = &D3DMaterialLMapFloorCeilDynamicChunk;
    else
-      pChunk->pMaterialFctn = &D3DMaterialLMapStaticChunk;
+      pChunk->pMaterialFctn = &D3DMaterialLMapFloorCeilStaticChunk;
 
    for (count = 0; count < pNode->u.leaf.poly.npts; count++)
    {
@@ -969,9 +971,9 @@ void D3DRenderLMapPostWallAdd(WallData *pWall, d3d_render_pool_new *pPool,
    pPacket->pMaterialFctn = &D3DMaterialLMapDynamicPacket;
 
    if (bDynamic)
-      pChunk->pMaterialFctn = &D3DMaterialLMapDynamicChunk;
+      pChunk->pMaterialFctn = &D3DMaterialLMapWallDynamicChunk;
    else
-      pChunk->pMaterialFctn = &D3DMaterialLMapStaticChunk;
+      pChunk->pMaterialFctn = &D3DMaterialLMapWallStaticChunk;
 
    if (normal.x < 0)
       normal.x = -normal.x;

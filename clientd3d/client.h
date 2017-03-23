@@ -200,6 +200,7 @@ M59EXPORT void _cdecl dprintf(char *fmt,...);
 #include "d3drender.h"
 #include "d3dlighting.h"
 #include "d3dparticle.h"
+#include "d3dmaterial.h"
 #include "matrix.h"
 #include "d3ddriver.h"
 #include "rscload.h"

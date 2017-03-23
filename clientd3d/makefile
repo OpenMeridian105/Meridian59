@@ -129,6 +129,7 @@ OBJS = \
     $(OUTDIR)\d3dlighting.obj \
     $(OUTDIR)\d3dparticle.obj \
     $(OUTDIR)\d3drender.obj \
+    $(OUTDIR)\d3dmaterial.obj \
     $(OUTDIR)\matrix.obj
 
 

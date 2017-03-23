@@ -2027,12 +2027,10 @@ static void WalkWall(WallData *wall, long side)
    DrawItem *item;
    Sidedef *sidedef;
 
-   // These booleans are used in d3drender.c to decide whether to add the wall to
+   // These flags are used in d3drender.c to decide whether to add the wall to
    // the rendering pipeline. If these are modified or removed, d3drender.c needs
    // to be modified also.
-   wall->drawbelow = FALSE;
-   wall->drawabove = FALSE;
-   wall->drawnormal = FALSE;
+   wall->seen &= ~SR_DRAWMASK;
 
    /* Skip if nothing on this side */
    if (side > 0)
@@ -2163,10 +2161,10 @@ static void WalkWall(WallData *wall, long side)
       item_template.u.wall.wall = wall;
       item_template.u.wall.side = SGN(side);
       item_template.u.wall.wall_type = WALL_BELOW;
-      wall->drawbelow = TRUE;
+      wall->seen |= SR_DRAWBELOW;
       if (add_dn(&item_template, a, b, d, col0, col1))
       {
-         wall->seen = True;
+         wall->seen |= SR_SEEN;
       }
    }
 
@@ -2204,10 +2202,10 @@ static void WalkWall(WallData *wall, long side)
       item_template.u.wall.wall = wall;
       item_template.u.wall.side = SGN(side);
       item_template.u.wall.wall_type = WALL_ABOVE;
-      wall->drawabove = TRUE;
+      wall->seen |= SR_DRAWABOVE;
       if (add_up(&item_template, a, b, d, col0, col1))
       {
-         wall->seen = True;
+         wall->seen |= SR_SEEN;
       }
    }
    
@@ -2220,14 +2218,14 @@ static void WalkWall(WallData *wall, long side)
       // The following code is not accurate enough to calculate correctly
       // whether we should draw the wall or not, so if we've got this far,
       // flag it for drawing.
-      wall->drawnormal = TRUE;
+      wall->seen |= SR_DRAWNORMAL;
      blakassert(col1 < MAXX);
      if (col1 >= MAXX)
         col1 = MAXX - 1;
      for(c = search_for_first(col0); c->cone.leftedge <= col1; c = next)
      {
 	    next = c->next;
-	    wall->seen = True;
+       wall->seen |= SR_SEEN;
 	    
 	    if (sidedef->flags & WF_TRANSPARENT &&
 		 !(sidedef->flags & WF_NOLOOKTHROUGH))

@@ -132,7 +132,6 @@ typedef struct d3d_texture_cache_entry
 {
 	LPDIRECT3DTEXTURE9	pTexture;
 	unsigned int		pDibID;
-	unsigned int		pDibID2;
 	int					size;
 	int					effects;
 	BYTE				xLat0;
@@ -185,12 +184,12 @@ typedef struct d3d_render_chunk_new
 	d3d_render_cache	*pRenderCache;
 	u_int				flags;
 	BYTE				drawingtype;
+   DWORD          alphaRef;
 	u_int				curIndex;
 	u_int				startIndex;
 	u_int				numIndices;
 	u_int				numVertices;
 	u_int				numPrimitives;
-	BOOL				drawn;
 	int					side;
 
 	Sector				*pSector;
@@ -201,7 +200,6 @@ typedef struct d3d_render_chunk_new
 	BYTE				xLat0;
 	BYTE				xLat1;
 	BYTE				zBias;
-	Bool				isTargeted;
 	Plane				plane;
 	custom_index		indices[(MAX_NPTS - 2) * 3];
 	custom_st			st0[MAX_NPTS];

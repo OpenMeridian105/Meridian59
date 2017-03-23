@@ -328,7 +328,7 @@ void MapDrawMiniMapWalls(HDC hdc, int x, int y, room_type *room)
 
       // draw highlighted
 	  if ((config.showMapBlocking && lastBlockingWall == wall) ||
-		  (config.showUnseenWalls && !wall->seen))
+		  (config.showUnseenWalls && !(wall->seen & SR_SEEN)))
       {
         SelectObject(hdc, GetStockObject(WHITE_PEN));
 	    MoveToEx(hdc, x + pMap->p0.x, y + pMap->p0.y, NULL);
@@ -693,21 +693,21 @@ void MapShowAllWalls(room_type *room, Bool show)
    Sidedef *sidedef;
 
    for (i = 0; i < room->num_walls; i++)
-     {
+   {
       wall = &room->walls[i];
-      
+
       sidedef = wall->pos_sidedef;
       if (sidedef == NULL)
-	 sidedef = wall->neg_sidedef;
+         sidedef = wall->neg_sidedef;
       if (sidedef == NULL)
-	 continue;
+         continue;
 
       if (show && !(sidedef->flags & WF_MAP_NEVER))
-	wall->seen = True;
+         wall->seen |= SR_SEEN;
 
       if (!show && !(sidedef->flags & WF_MAP_ALWAYS))
-	wall->seen = False;
-     }
+         wall->seen &= ~SR_SEEN;
+   }
 }
 
 void MapMiniSizeChanged(AREA *newArea)
@@ -885,7 +885,8 @@ static void PrintMapWalls(HDC hdc)
       if (sidedef == NULL)
 	 continue;
 
-      if (((sidedef->flags & WF_MAP_ALWAYS) || wall->seen) && !(sidedef->flags & WF_MAP_NEVER))
+      if (((sidedef->flags & WF_MAP_ALWAYS) || (wall->seen & SR_SEEN))
+         && !(sidedef->flags & WF_MAP_NEVER))
       {
          GetPrintCoordinates(&ptFrom, wall->x0, wall->y0);
          GetPrintCoordinates(&ptTo, wall->x1, wall->y1);

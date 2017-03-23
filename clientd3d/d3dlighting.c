@@ -547,6 +547,10 @@ void D3DRenderLMapPostFloorAdd(BSPnode *pNode, d3d_render_pool_new *pPool,
    if (!pSector || !pSector->floor)
       return;
 
+   // Causes shading discrepancies.
+   //if (!pNode->seenFloorThisFrame)
+   //   D3DRenderFloorUpdate(pNode, NULL, pNode->floor_xyz, pNode->floor_stBase, pNode->floor_bgra);
+
    PDIB pDib = pSector->floor;
 
    int count;
@@ -570,14 +574,15 @@ void D3DRenderLMapPostFloorAdd(BSPnode *pNode, d3d_render_pool_new *pPool,
    pChunk->pSector = pSector;
    pPacket->pMaterialFctn = &D3DMaterialLMapDynamicPacket;
    pChunk->side = 0;
+   pChunk->flags |= D3DRENDER_FLOOR;
 
    if (pSector->light <= 127)
       pChunk->flags |= D3DRENDER_NOAMBIENT;
 
    if (bDynamic)
-      pChunk->pMaterialFctn = &D3DMaterialLMapDynamicChunk;
+      pChunk->pMaterialFctn = &D3DMaterialLMapFloorCeilDynamicChunk;
    else
-      pChunk->pMaterialFctn = &D3DMaterialLMapStaticChunk;
+      pChunk->pMaterialFctn = &D3DMaterialLMapFloorCeilStaticChunk;
 
    for (count = 0; count < pNode->u.leaf.poly.npts; count++)
    {
@@ -654,6 +659,11 @@ void D3DRenderLMapPostCeilingAdd(BSPnode *pNode, d3d_render_pool_new *pPool,
    if (!pSector || !pSector->ceiling)
       return;
 
+   // Causes shading discrepancies.
+   //if (!pNode->seenCeilThisFrame)
+   //   D3DRenderCeilingUpdate(pNode, NULL, pNode->ceiling_xyz, pNode->ceiling_stBase,
+   //      pNode->ceiling_bgra);
+
    PDIB pDib = pSector->ceiling;
 
    custom_bgra bgra[MAX_NPTS];
@@ -677,14 +687,15 @@ void D3DRenderLMapPostCeilingAdd(BSPnode *pNode, d3d_render_pool_new *pPool,
    pChunk->pSector = pSector;
    pPacket->pMaterialFctn = &D3DMaterialLMapDynamicPacket;
    pChunk->side = 0;
+   pChunk->flags |= D3DRENDER_CEILING;
 
    if (pSector->light <= 127)
       pChunk->flags |= D3DRENDER_NOAMBIENT;
 
    if (bDynamic)
-      pChunk->pMaterialFctn = &D3DMaterialLMapDynamicChunk;
+      pChunk->pMaterialFctn = &D3DMaterialLMapFloorCeilDynamicChunk;
    else
-      pChunk->pMaterialFctn = &D3DMaterialLMapStaticChunk;
+      pChunk->pMaterialFctn = &D3DMaterialLMapFloorCeilStaticChunk;
 
    for (count = 0; count < pNode->u.leaf.poly.npts; count++)
    {
@@ -765,6 +776,9 @@ void D3DRenderLMapPostWallAdd(WallData *pWall, d3d_render_pool_new *pPool,
    d3d_render_packet_new *pPacket;
    d3d_render_chunk_new *pChunk;
 
+   // Positive if this wall part has already been seen this frame.
+   int seenWall = 0;
+
    // pos and neg sidedefs have their x and y coords reversed
    if (side > 0)
    {
@@ -786,6 +800,7 @@ void D3DRenderLMapPostWallAdd(WallData *pWall, d3d_render_pool_new *pPool,
                stBase[i] = pWall->pos_normal_stBase[i];
                flags = pWall->pos_normal_d3dFlags;
             }
+            seenWall = (pWall->seen & HR_SEENPOSNORMAL);
          }
          else
             pDib = NULL;
@@ -802,6 +817,7 @@ void D3DRenderLMapPostWallAdd(WallData *pWall, d3d_render_pool_new *pPool,
                stBase[i] = pWall->pos_below_stBase[i];
                flags = pWall->pos_below_d3dFlags;
             }
+            seenWall = (pWall->seen & HR_SEENPOSBELOW);
          }
          else
             pDib = NULL;
@@ -818,6 +834,7 @@ void D3DRenderLMapPostWallAdd(WallData *pWall, d3d_render_pool_new *pPool,
                stBase[i] = pWall->pos_above_stBase[i];
                flags = pWall->pos_above_d3dFlags;
             }
+            seenWall = (pWall->seen & HR_SEENPOSABOVE);
          }
          else
             pDib = NULL;
@@ -847,6 +864,7 @@ void D3DRenderLMapPostWallAdd(WallData *pWall, d3d_render_pool_new *pPool,
                stBase[i] = pWall->neg_normal_stBase[i];
                flags = pWall->neg_normal_d3dFlags;
             }
+            seenWall = (pWall->seen & HR_SEENNEGNORMAL);
          }
          else
             pDib = NULL;
@@ -863,6 +881,7 @@ void D3DRenderLMapPostWallAdd(WallData *pWall, d3d_render_pool_new *pPool,
                stBase[i] = pWall->neg_below_stBase[i];
                flags = pWall->neg_below_d3dFlags;
             }
+            seenWall = (pWall->seen & HR_SEENNEGBELOW);
          }
          else
             pDib = NULL;
@@ -879,6 +898,7 @@ void D3DRenderLMapPostWallAdd(WallData *pWall, d3d_render_pool_new *pPool,
                stBase[i] = pWall->neg_above_stBase[i];
                flags = pWall->neg_above_d3dFlags;
             }
+            seenWall = (pWall->seen & HR_SEENNEGABOVE);
          }
          else
             pDib = NULL;
@@ -891,6 +911,9 @@ void D3DRenderLMapPostWallAdd(WallData *pWall, d3d_render_pool_new *pPool,
 
    if (NULL == pDib)
       return;
+
+   //if (!seenWall)
+      //D3DRenderWallUpdate(pWall, pDib, &flags, xyz, stBase, bgra, type, side);
 
    unsigned int i;
    float falloff;
@@ -928,7 +951,7 @@ void D3DRenderLMapPostWallAdd(WallData *pWall, d3d_render_pool_new *pPool,
    lightVec.z * normal.z;
 
    if (cosAngle <= 0)
-   continue;
+   return;
    }*/
 
    pPacket = D3DRenderPacketFindMatch(pPool, NULL, pDib, 0, 0, 0);
@@ -948,9 +971,9 @@ void D3DRenderLMapPostWallAdd(WallData *pWall, d3d_render_pool_new *pPool,
    pPacket->pMaterialFctn = &D3DMaterialLMapDynamicPacket;
 
    if (bDynamic)
-      pChunk->pMaterialFctn = &D3DMaterialLMapDynamicChunk;
+      pChunk->pMaterialFctn = &D3DMaterialLMapWallDynamicChunk;
    else
-      pChunk->pMaterialFctn = &D3DMaterialLMapStaticChunk;
+      pChunk->pMaterialFctn = &D3DMaterialLMapWallStaticChunk;
 
    if (normal.x < 0)
       normal.x = -normal.x;

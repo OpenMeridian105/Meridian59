@@ -70,6 +70,7 @@ FixedPoint fpSqrtSlow(FixedPoint x);
 FixedPoint fpSqrtSlowest(FixedPoint x);
 FixedPoint fpSqrt(FixedPoint x);
 
+int intATan2f(float dy, float dx);
 int intATan2(int dy, int dx);
 long GetLongSqrt(long value);
 float GetFloatSqrt(float value);

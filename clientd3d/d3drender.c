@@ -308,10 +308,6 @@ LPDIRECT3DTEXTURE9      D3DRenderFramebufferTextureCreate(LPDIRECT3DTEXTURE9   p
                                         float width, float height);
 void               *D3DRenderMalloc(unsigned int bytes);
 
-// Functions for filling out tree data and retrieving it.
-void           D3DFillTreeData(room_type *room, Draw3DParams *params, Bool full);
-void           D3DFillTreeDataTraverse(BSPnode *tree, Draw3DParams *params, Bool full);
-
 // externed stuff
 extern int         FindHotspotPdib(PDIB pdib, char hotspot, POINT *point);
 extern Bool         ComputePlayerOverlayArea(PDIB pdib, char hotspot, AREA *obj_area);
@@ -1416,8 +1412,6 @@ void D3DRenderWorldDraw(room_type *room, Draw3DParams *params)
       pNode = &room->nodes[count];
 
       // If the player can't see the bounding box (i.e.behind camera view) skip this node.
-      // Since the extract packet functions use pre-extracted data, we shouldn't draw data
-      // not visible to the player (it may not be extracted).
       if (IsHidden(params, (long)pNode->bbox.x0, (long)pNode->bbox.y0, (long)pNode->bbox.x1, (long)pNode->bbox.y1))
          continue;
 
@@ -1521,224 +1515,6 @@ void D3DRenderWorldDraw(room_type *room, Draw3DParams *params)
    }
 }
 
-/*
- * D3DFillTreeData: Iterates through the list of BSP nodes in a room, and extracts
- *                  the data to the BSPnode struct for walls and ceilings, and to
- *                  the WallData struct for walls. This is done to precalculate the
- *                  data once prior to drawing a frame, and removes the need to 
- *                  calculate it multiple times. NOTE that without the full parameter
- *                  set, this ONLY adds data for what the player can actually see.
- */
-void D3DFillTreeData(room_type *room, Draw3DParams *params, Bool full)
-{
-   BSPnode      *pNode = NULL;
-   WallData   *pWall;
-   Sector      *pSector;
-   debug(("number of nodes is %i\n", room->num_nodes));
-   for (int count = 0; count < room->num_nodes; count++)
-   {
-      pNode = &room->nodes[count];
-
-      // If full is True, we draw the entire tree (e.g. for static lightmaps).
-      // Otherwise, check if the bounding box of the tree is outside the player's
-      // view and skip this node if so.
-      if (!full && IsHidden(params, (long)pNode->bbox.x0, (long)pNode->bbox.y0, (long)pNode->bbox.x1, (long)pNode->bbox.y1))
-         continue;
-
-      switch (pNode->type)
-      {
-      case BSPinternaltype:
-         for (pWall = pNode->u.internal.walls_in_plane; pWall != NULL; pWall = pWall->next)
-         {
-            int flags = 0;
-
-            if (pWall->pos_sidedef)
-            {
-               if (pWall->pos_sidedef->normal_bmap && (((short)pWall->z2 != (short)pWall->z1)
-                  || ((short)pWall->zz2 != (short)pWall->zz1)))
-               {
-                  D3DRenderWallExtract(pWall, pWall->pos_sidedef->normal_bmap, &pWall->pos_normal_d3dFlags,
-                     pWall->pos_normal_xyz, pWall->pos_normal_stBase, pWall->pos_normal_bgra, D3DRENDER_WALL_NORMAL, 1);
-               }
-
-               if (pWall->pos_sidedef->below_bmap && (((short)pWall->z1 != (short)pWall->z0)
-                  || ((short)pWall->zz1 != (short)pWall->zz0)))
-               {
-                  D3DRenderWallExtract(pWall, pWall->pos_sidedef->below_bmap, &pWall->pos_below_d3dFlags,
-                     pWall->pos_below_xyz, pWall->pos_below_stBase, pWall->pos_below_bgra, D3DRENDER_WALL_BELOW, 1);
-               }
-
-               if (pWall->pos_sidedef->above_bmap && (((short)pWall->z3 != (short)pWall->z2)
-                  || ((short)pWall->zz3 != (short)pWall->zz2)))
-               {
-                  D3DRenderWallExtract(pWall, pWall->pos_sidedef->above_bmap, &pWall->pos_above_d3dFlags,
-                     pWall->pos_above_xyz, pWall->pos_above_stBase, pWall->pos_above_bgra, D3DRENDER_WALL_ABOVE, 1);
-               }
-            }
-
-            if (pWall->neg_sidedef)
-            {
-               if (pWall->neg_sidedef->normal_bmap && (((short)pWall->z2 != (short)pWall->z1)
-                  || ((short)pWall->zz2 != (short)pWall->zz1)))
-               {
-                  D3DRenderWallExtract(pWall, pWall->neg_sidedef->normal_bmap, &pWall->neg_normal_d3dFlags,
-                     pWall->neg_normal_xyz, pWall->neg_normal_stBase, pWall->neg_normal_bgra, D3DRENDER_WALL_NORMAL, -1);
-               }
-
-               if (pWall->neg_sidedef->below_bmap && (((short)pWall->z1 != (short)pWall->z0)
-                  || ((short)pWall->zz1 != (short)pWall->zz0)))
-               {
-                  D3DRenderWallExtract(pWall, pWall->neg_sidedef->below_bmap, &pWall->neg_below_d3dFlags,
-                     pWall->neg_below_xyz, pWall->neg_below_stBase, pWall->neg_below_bgra, D3DRENDER_WALL_BELOW, -1);
-               }
-               if (pWall->neg_sidedef->above_bmap && (((short)pWall->z3 != (short)pWall->z2)
-                  || ((short)pWall->zz3 != (short)pWall->zz2)))
-               {
-                  D3DRenderWallExtract(pWall, pWall->neg_sidedef->above_bmap, &pWall->neg_above_d3dFlags,
-                     pWall->neg_above_xyz, pWall->neg_above_stBase, pWall->neg_above_bgra, D3DRENDER_WALL_ABOVE, -1);
-               }
-            }
-         }
-         break;
-
-      case BSPleaftype:
-         pSector = pNode->u.leaf.sector;
-         if (pSector->floor)
-         {
-            pNode->floor_pDib = pSector->floor;
-            D3DRenderFloorExtract(pNode, pNode->floor_pDib, pNode->floor_xyz, pNode->floor_stBase, pNode->floor_bgra);
-         }
-         if (pSector->ceiling)
-         {
-            pNode->ceiling_pDib = pSector->ceiling;
-            D3DRenderCeilingExtract(pNode, pNode->ceiling_pDib, pNode->ceiling_xyz, pNode->ceiling_stBase, pNode->ceiling_bgra);
-         }
-         break;
-
-      default:
-         break;
-      }
-   }
-}
-
-/*
- * D3DFillTreeDataTraverse: Traverses the BSP tree for a room, extracts the data
- *                          for the floors, ceilings and walls and stores it in
- *                          the appropriate structs (BSPnode and WallData).
- *                          Differs from D3DFillTreeData in that this is a tree
- *                          traversal via recursion versus iterating through the
- *                          nodes stored in the room_type struct. NOTE that without
- *                          the full parameter set, this ONLY adds data for what
- *                          the player can actually see.
- */
-void D3DFillTreeDataTraverse(BSPnode *tree, Draw3DParams *params,  Bool full)
-{
-   long side;
-   Sector *pSector;
-
-   if (!tree)
-      return;
-
-   // If full is True, we draw the entire tree (e.g. for static lightmaps).
-   // Otherwise, check if the bounding box of the tree is outside the player's
-   // view and skip this node if so.
-   if (!full && IsHidden(params, (long)tree->bbox.x0, (long)tree->bbox.y0, (long)tree->bbox.x1, (long)tree->bbox.y1))
-      return;
-
-   if (tree->type == BSPleaftype)
-   {
-      pSector = tree->u.leaf.sector;
-      if (pSector->floor)
-      {
-         tree->floor_pDib = pSector->floor;
-         D3DRenderFloorExtract(tree, tree->floor_pDib, tree->floor_xyz, tree->floor_stBase, tree->floor_bgra);
-      }
-      if (pSector->ceiling)
-      {
-         tree->ceiling_pDib = pSector->ceiling;
-         D3DRenderCeilingExtract(tree, tree->ceiling_pDib, tree->ceiling_xyz, tree->ceiling_stBase, tree->ceiling_bgra);
-      }
-   }
-   else if (tree->type == BSPinternaltype)
-   {
-      side = tree->u.internal.separator.a * params->viewer_x +
-         tree->u.internal.separator.b * params->viewer_y +
-         tree->u.internal.separator.c;
-
-      //first, traverse closer side 
-      if (side > 0)
-         D3DFillTreeDataTraverse(tree->u.internal.pos_side, params, full);
-      else
-         D3DFillTreeDataTraverse(tree->u.internal.neg_side, params, full);
-
-      // then do walls on the separator
-      if (side != 0)
-      {
-         //WallList list;
-         WallData   *pWall;
-         int         flags;
-
-         for (pWall = tree->u.internal.walls_in_plane; pWall != NULL; pWall = pWall->next)
-         {
-            flags = 0;
-
-            if (pWall->pos_sidedef)
-            {
-               if (pWall->pos_sidedef->normal_bmap && (((short)pWall->z2 != (short)pWall->z1)
-                  || ((short)pWall->zz2 != (short)pWall->zz1)))
-               {
-                  D3DRenderWallExtract(pWall, pWall->pos_sidedef->normal_bmap, &pWall->pos_normal_d3dFlags,
-                     pWall->pos_normal_xyz, pWall->pos_normal_stBase, pWall->pos_normal_bgra, D3DRENDER_WALL_NORMAL, 1);
-               }
-
-               if (pWall->pos_sidedef->below_bmap && (((short)pWall->z1 != (short)pWall->z0)
-                  || ((short)pWall->zz1 != (short)pWall->zz0)))
-               {
-                  D3DRenderWallExtract(pWall, pWall->pos_sidedef->below_bmap, &pWall->pos_below_d3dFlags,
-                     pWall->pos_below_xyz, pWall->pos_below_stBase, pWall->pos_below_bgra, D3DRENDER_WALL_BELOW, 1);
-               }
-
-               if (pWall->pos_sidedef->above_bmap && (((short)pWall->z3 != (short)pWall->z2)
-                  || ((short)pWall->zz3 != (short)pWall->zz2)))
-               {
-                  D3DRenderWallExtract(pWall, pWall->pos_sidedef->above_bmap, &pWall->pos_above_d3dFlags,
-                     pWall->pos_above_xyz, pWall->pos_above_stBase, pWall->pos_above_bgra, D3DRENDER_WALL_ABOVE, 1);
-               }
-            }
-
-            if (pWall->neg_sidedef)
-            {
-               if (pWall->neg_sidedef->normal_bmap && (((short)pWall->z2 != (short)pWall->z1)
-                  || ((short)pWall->zz2 != (short)pWall->zz1)))
-               {
-                  D3DRenderWallExtract(pWall, pWall->neg_sidedef->normal_bmap, &pWall->neg_normal_d3dFlags,
-                     pWall->neg_normal_xyz, pWall->neg_normal_stBase, pWall->neg_normal_bgra, D3DRENDER_WALL_NORMAL, -1);
-               }
-
-               if (pWall->neg_sidedef->below_bmap && (((short)pWall->z1 != (short)pWall->z0)
-                  || ((short)pWall->zz1 != (short)pWall->zz0)))
-               {
-                  D3DRenderWallExtract(pWall, pWall->neg_sidedef->below_bmap, &pWall->neg_below_d3dFlags,
-                     pWall->neg_below_xyz, pWall->neg_below_stBase, pWall->neg_below_bgra, D3DRENDER_WALL_BELOW, -1);
-               }
-               if (pWall->neg_sidedef->above_bmap && (((short)pWall->z3 != (short)pWall->z2)
-                  || ((short)pWall->zz3 != (short)pWall->zz2)))
-               {
-                  D3DRenderWallExtract(pWall, pWall->neg_sidedef->above_bmap, &pWall->neg_above_d3dFlags,
-                     pWall->neg_above_xyz, pWall->neg_above_stBase, pWall->neg_above_bgra, D3DRENDER_WALL_ABOVE, -1);
-               }
-            }
-         }
-      }
-
-      // lastly, traverse farther side
-      if (side > 0)
-         D3DFillTreeDataTraverse(tree->u.internal.neg_side, params, full);
-      else
-         D3DFillTreeDataTraverse(tree->u.internal.pos_side, params, full);
-   }
-}
-
 void D3DGeometryBuildNew(room_type *room, d3d_render_pool_new *pPool, Draw3DParams *params)
 {
    int         count;
@@ -1751,10 +1527,6 @@ void D3DGeometryBuildNew(room_type *room, d3d_render_pool_new *pPool, Draw3DPara
    D3DRenderPoolReset(&gWorldPoolStatic, &D3DMaterialWorldPool);
    D3DRenderPoolReset(&gWallMaskPool, &D3DMaterialWallMaskPool);
 
-   // No need to fill data here any more, still print nodes for debug mode though.
-   // long timeFill = timeGetTime();
-   //D3DFillTreeData(room, params, TRUE);
-   // debug(("Time to calculate and fill BSP data is %d\n", timeGetTime() - timeFill));
    debug(("number of nodes is %i\n", room->num_nodes));
 
    for (count = 0; count < room->num_nodes; count++)
@@ -2122,7 +1894,7 @@ void D3DRenderPacketFloorAdd(BSPnode *pNode, d3d_render_pool_new *pPool, Bool bD
 
    // Update data if we haven't visited this node yet.
    if (!pNode->seenFloorThisFrame)
-      D3DRenderFloorExtract(pNode, pDib, pNode->floor_xyz, pNode->floor_stBase, pNode->floor_bgra);
+      D3DRenderFloorUpdate(pNode, pDib, pNode->floor_xyz, pNode->floor_stBase, pNode->floor_bgra);
 
 //   pChunk->numIndices = (pNode->u.leaf.poly.npts - 2) * 3;
    pChunk->numVertices = pNode->u.leaf.poly.npts;
@@ -2210,7 +1982,7 @@ void D3DRenderPacketCeilingAdd(BSPnode *pNode, d3d_render_pool_new *pPool, Bool 
 
    // Update data if we haven't visited this node yet.
    if (!pNode->seenCeilThisFrame)
-      D3DRenderCeilingExtract(pNode, pDib, pNode->ceiling_xyz, pNode->ceiling_stBase, pNode->ceiling_bgra);
+      D3DRenderCeilingUpdate(pNode, pDib, pNode->ceiling_xyz, pNode->ceiling_stBase, pNode->ceiling_bgra);
 
    pPacket = D3DRenderPacketFindMatch(pPool, NULL, pDib, 0, 0, 0);
    if (NULL == pPacket)
@@ -2434,7 +2206,7 @@ void D3DRenderPacketWallAdd(WallData *pWall, d3d_render_pool_new *pPool, unsigne
 //      pDib = current_room.sectors[0].floor;
 
    if (!seenWall)
-      D3DRenderWallExtract(pWall, pDib, &flags, xyz, stBase, bgra, type, side);
+      D3DRenderWallUpdate(pWall, pDib, &flags, xyz, stBase, bgra, type, side);
 
    pPacket = D3DRenderPacketFindMatch(pPool, NULL, pDib, 0, 0, 0);
    if (NULL == pPacket)
@@ -2648,7 +2420,7 @@ void D3DRenderPacketWallMaskAdd(WallData *pWall, d3d_render_pool_new *pPool, uns
    }
 
    // Only called after D3DRenderPacketWallAdd, which updates data.
-   //D3DRenderWallExtract(pWall, pDib, &flags, xyz, stBase, bgra, type, side);
+   //D3DRenderWallUpdate(pWall, pDib, &flags, xyz, stBase, bgra, type, side);
 
    pPacket = D3DRenderPacketFindMatch(pPool, NULL, pDib, 0, 0, 0);
    if (NULL == pPacket)
@@ -2843,7 +2615,7 @@ void D3DRenderFloorMaskAdd(BSPnode *pNode, d3d_render_pool_new *pPool, Bool bDyn
 
    // Only called after D3DRenderPacketFloorAdd, which updates data.
    // if (!pNode->seenFloorThisFrame)
-   //   D3DRenderFloorExtract(pNode, NULL, pNode->floor_xyz, NULL, pNode->floor_bgra);
+   //   D3DRenderFloorUpdate(pNode, NULL, pNode->floor_xyz, NULL, pNode->floor_bgra);
 
    pPacket = D3DRenderPacketFindMatch(pPool, gpNoLookThrough, NULL, 0, 0, 0);
    if (NULL == pPacket)
@@ -2907,7 +2679,7 @@ void D3DRenderCeilingMaskAdd(BSPnode *pNode, d3d_render_pool_new *pPool, Bool bD
 
    // Only called after D3DRenderPacketCeilingAdd, which updates data.
    // if (!pNode->seenCeilThisFrame)
-   //   D3DRenderCeilingExtract(pNode, NULL, pNode->ceiling_xyz, NULL, pNode->ceiling_bgra);
+   //   D3DRenderCeilingUpdate(pNode, NULL, pNode->ceiling_xyz, NULL, pNode->ceiling_bgra);
 
    pPacket = D3DRenderPacketFindMatch(pPool, gpNoLookThrough, NULL, 0, 0, 0);
    if (NULL == pPacket)
@@ -4390,7 +4162,7 @@ void D3DRenderSkyboxDraw(d3d_render_pool_new *pPool)
 }
 
 // UV coords reversed for rotated texture.
-void D3DRenderWallExtract(WallData *pWall, PDIB pDib, unsigned int *flags, custom_xyz *pXYZ,
+void D3DRenderWallUpdate(WallData *pWall, PDIB pDib, unsigned int *flags, custom_xyz *pXYZ,
    custom_st *pST, custom_bgra *pBGRA, unsigned int type, int side)
 {
    Sidedef *pSideDef = NULL;
@@ -4510,7 +4282,7 @@ void D3DRenderWallExtract(WallData *pWall, PDIB pDib, unsigned int *flags, custo
 }
 
 // UV coords reversed for rotated texture.
-void D3DRenderFloorExtract(BSPnode *pNode, PDIB pDib, custom_xyz *pXYZ, custom_st *pST,
+void D3DRenderFloorUpdate(BSPnode *pNode, PDIB pDib, custom_xyz *pXYZ, custom_st *pST,
    custom_bgra *pBGRA)
 {
    Sector *pSector = pNode->u.leaf.sector;
@@ -4597,7 +4369,7 @@ void D3DRenderFloorExtract(BSPnode *pNode, PDIB pDib, custom_xyz *pXYZ, custom_s
 }
 
 // UV coords reversed for rotated texture.
-void D3DRenderCeilingExtract(BSPnode *pNode, PDIB pDib, custom_xyz *pXYZ, custom_st *pST,
+void D3DRenderCeilingUpdate(BSPnode *pNode, PDIB pDib, custom_xyz *pXYZ, custom_st *pST,
    custom_bgra *pBGRA)
 {
    Sector *pSector = pNode->u.leaf.sector;

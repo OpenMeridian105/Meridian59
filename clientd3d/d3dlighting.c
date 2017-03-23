@@ -548,7 +548,7 @@ void D3DRenderLMapPostFloorAdd(BSPnode *pNode, d3d_render_pool_new *pPool,
       return;
 
    if (!pNode->seenFloorThisFrame)
-      D3DRenderFloorExtract(pNode, NULL, pNode->floor_xyz, pNode->floor_stBase, pNode->floor_bgra);
+      D3DRenderFloorUpdate(pNode, NULL, pNode->floor_xyz, pNode->floor_stBase, pNode->floor_bgra);
 
    PDIB pDib = pSector->floor;
 
@@ -659,7 +659,7 @@ void D3DRenderLMapPostCeilingAdd(BSPnode *pNode, d3d_render_pool_new *pPool,
       return;
 
    if (!pNode->seenCeilThisFrame)
-      D3DRenderCeilingExtract(pNode, NULL, pNode->ceiling_xyz, pNode->ceiling_stBase,
+      D3DRenderCeilingUpdate(pNode, NULL, pNode->ceiling_xyz, pNode->ceiling_stBase,
          pNode->ceiling_bgra);
 
    PDIB pDib = pSector->ceiling;
@@ -911,7 +911,7 @@ void D3DRenderLMapPostWallAdd(WallData *pWall, d3d_render_pool_new *pPool,
       return;
 
    //if (!seenWall)
-      //D3DRenderWallExtract(pWall, pDib, &flags, xyz, stBase, bgra, type, side);
+      //D3DRenderWallUpdate(pWall, pDib, &flags, xyz, stBase, bgra, type, side);
 
    unsigned int i;
    float falloff;

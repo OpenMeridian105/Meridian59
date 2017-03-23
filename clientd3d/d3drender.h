@@ -132,11 +132,11 @@ void				*D3DRenderMalloc(unsigned int bytes);
 void				D3DRenderFontInit(font_3d *pFont, HFONT hFont);
 
 // Updating data for each frame.
-void D3DRenderFloorExtract(BSPnode *pNode, PDIB pDib, custom_xyz *pXYZ, custom_st *pST,
+void D3DRenderFloorUpdate(BSPnode *pNode, PDIB pDib, custom_xyz *pXYZ, custom_st *pST,
    custom_bgra *pBGRA);
-void D3DRenderCeilingExtract(BSPnode *pNode, PDIB pDib, custom_xyz *pXYZ, custom_st *pST,
+void D3DRenderCeilingUpdate(BSPnode *pNode, PDIB pDib, custom_xyz *pXYZ, custom_st *pST,
    custom_bgra *pBGRA);
-void D3DRenderWallExtract(WallData *pWall, PDIB pDib, unsigned int *flags, custom_xyz *pXYZ,
+void D3DRenderWallUpdate(WallData *pWall, PDIB pDib, unsigned int *flags, custom_xyz *pXYZ,
    custom_st *pST, custom_bgra *pBGRA, unsigned int type, int side);
 
 // Use this function to determine if the bounding box is out of the player's

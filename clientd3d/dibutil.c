@@ -278,6 +278,8 @@ Bool DibOpenBitmapFile(char *szFile, HBITMAP *phBitmap, HPALETTE *phPalette)
       GetDIBColorTable(hMemDC, 0, 256, rgb);
       // Create a palette from the color tabl
       pLogPal = (LOGPALETTE *)malloc(sizeof(LOGPALETTE) + (256 * sizeof(PALETTEENTRY)));
+      if (!pLogPal)
+         return FALSE;
       pLogPal->palVersion = 0x300;
       pLogPal->palNumEntries = 256;
       for (i = 0;i<256;i++)
@@ -342,6 +344,8 @@ Bool DibOpenBitmapResource(HINSTANCE hInst, UINT rsc, HBITMAP *phBitmap, HPALETT
       GetDIBColorTable(hMemDC, 0, 256, rgb);
       // Create a palette from the color tabl
       pLogPal = (LOGPALETTE *)malloc(sizeof(LOGPALETTE) + (256 * sizeof(PALETTEENTRY)));
+      if (!pLogPal)
+         return FALSE;
       pLogPal->palVersion = 0x300;
       pLogPal->palNumEntries = 256;
       for (i = 0;i<256;i++)

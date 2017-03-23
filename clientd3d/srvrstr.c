@@ -395,7 +395,7 @@ int CheckMessageOrder(char **params, long *len, ID fmt_id)
    WORD string_len;
    DWORD field;
    int fieldPos = 0, currentPos = 0, tempLen = 0;
-   char digit[2];
+   char digit[3];
    PosArray posArray;
 
    // If there's nothing to reorder (i.e. no $ modifiers) don't perform
@@ -429,10 +429,24 @@ int CheckMessageOrder(char **params, long *len, ID fmt_id)
             reorder = True;
             // Get the numbers for field position.
             if (rsc[3] >= '0' && rsc[3] <= '9')
+            {
                digit[0] = rsc[3];
-            // Check for a second number.
-            if (rsc[4] != '\0' && rsc[4] >= '0' && rsc[4] <= '9')
-               digit[1] = rsc[4];
+               // Check for a second number.
+               if (rsc[4] != '\0' && rsc[4] >= '0' && rsc[4] <= '9')
+               {
+                  digit[1] = rsc[4];
+                  digit[2] = 0;
+               }
+               else
+               {
+                  digit[1] = 0;
+               }
+            }
+            else
+            {
+               digit[0] = 0;
+            }
+
             // Take one, because arrays are 0-indexed.
             fieldPos = atoi(digit) - 1;
 

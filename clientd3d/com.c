@@ -240,7 +240,7 @@ Bool WriteServer(char *buf, UINT numbytes)
 Bool SendServer(char *msg, UINT numbytes)
 {
 	WORD length = (WORD) numbytes;
-	WORD randnum, temp, crc;
+	WORD randnum = 0, temp, crc;
 	char copybuf[MAX_COPYBUF + 20], *ptr;
 	Bool single_write;
 	BYTE byte = 0;

@@ -147,15 +147,16 @@ Bool MapFileLoadRoom(room_type *room)
       return False;
    }
 
-   for (i=0; i < num_walls; i++)
+   for (i = 0; i < num_walls; i++)
    {
       offset = i % 8;
       if (offset == 0)
       {
-	 if (read(mapfile, &byte, 1) != 1)
-	    return False;
+         if (read(mapfile, &byte, 1) != 1)
+            return False;
       }
-      room->walls[i].seen = ((byte & (1 << offset)) != 0) ? True : False;
+      if ((byte & (1 << offset)) != 0)
+         room->walls[i].seen |= SR_SEEN;
    }
 
    if (read(mapfile, &room->annotations_offset, 4) != 4)
@@ -208,16 +209,16 @@ Bool MapFileSaveRoom(room_type *room)
       return False;
 
    byte = 0;
-   for (i=0; i < room->num_walls; i++)
+   for (i = 0; i < room->num_walls; i++)
    {
       offset = i % 8;
-      if (room->walls[i].seen)
-	 byte |= (1 << offset);
+      if (room->walls[i].seen & SR_SEEN)
+         byte |= (1 << offset);
       if (offset == 7)
       {
-	 if (write(mapfile, &byte, 1) != 1)
-	    return False;
-	 byte = 0;
+         if (write(mapfile, &byte, 1) != 1)
+            return False;
+         byte = 0;
       }
    }
 

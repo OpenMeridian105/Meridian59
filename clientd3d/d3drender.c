@@ -277,8 +277,6 @@ d3d_render_packet_new   *D3DRenderPacketNew(d3d_render_pool_new *pPool);
 void               D3DRenderPacketInit(d3d_render_packet_new *pPacket);
 d3d_render_chunk_new   *D3DRenderChunkNew(d3d_render_packet_new *pPacket);
 void               D3DRenderChunkInit(d3d_render_chunk_new *pChunk);
-d3d_render_packet_new   *D3DRenderPacketFindMatch(d3d_render_pool_new *pPool, LPDIRECT3DTEXTURE9 pTexture,
-                                    PDIB pDib, BYTE xLat0, BYTE xLat1, BYTE effect);
 void               D3DRenderObjectsDraw(d3d_render_pool_new *pPool, room_type *room,
                      Draw3DParams *params, BYTE flags, Bool drawTransparent);
 void               D3DRenderOverlaysDraw(d3d_render_pool_new *pPool, room_type *room, Draw3DParams *params,
@@ -412,7 +410,7 @@ HRESULT D3DRenderInit(HWND hWnd)
    D3DCacheSystemInit(&gParticleCacheSystem, 1000000);
 
    D3DRenderPoolInit(&gObjectPool, POOL_SIZE, PACKET_SIZE);
-   D3DRenderPoolInit(&gWorldPool, POOL_SIZE, PACKET_SIZE);
+   D3DRenderPoolInit(&gWorldPool, POOL_SIZE / 2, PACKET_SIZE);
    D3DRenderPoolInit(&gWorldPoolStatic, POOL_SIZE, PACKET_SIZE);
    D3DRenderPoolInit(&gWallMaskPool, POOL_SIZE / 2, PACKET_SIZE);
    D3DRenderPoolInit(&gEffectPool, POOL_SIZE / 8, PACKET_SIZE);
@@ -1420,8 +1418,6 @@ void D3DRenderWorldDraw(room_type *room, Draw3DParams *params)
          case BSPinternaltype:
             for (pWall = pNode->u.internal.walls_in_plane; pWall != NULL; pWall = pWall->next)
             {
-               int flags = 0;
-
                if (!((pWall->pos_sidedef && pWall->pos_sidedef->flags & WF_HAS_ANIMATED)
                   || (pWall->neg_sidedef && pWall->neg_sidedef->flags & WF_HAS_ANIMATED)
                   || (pWall->pos_sector && pWall->pos_sector->flags & SF_HAS_ANIMATED)
@@ -1439,29 +1435,8 @@ void D3DRenderWorldDraw(room_type *room, Draw3DParams *params)
                      }
                }*/
 
-               if (pWall->pos_sidedef)
-               {
-                  if (pWall->pos_sidedef->normal_bmap)
-                     flags |= D3DRENDER_WALL_NORMAL;
-
-                  if (pWall->pos_sidedef->below_bmap)
-                     flags |= D3DRENDER_WALL_BELOW;
-
-                  if (pWall->pos_sidedef->above_bmap)
-                     flags |= D3DRENDER_WALL_ABOVE;
-               }
-
-               if (pWall->neg_sidedef)
-               {
-                  if (pWall->neg_sidedef->normal_bmap)
-                     flags |= D3DRENDER_WALL_NORMAL;
-
-                  if (pWall->neg_sidedef->below_bmap)
-                     flags |= D3DRENDER_WALL_BELOW;
-
-                  if (pWall->neg_sidedef->above_bmap)
-                     flags |= D3DRENDER_WALL_ABOVE;
-               }
+               if (!(pWall->pos_sidedef || pWall->neg_sidedef))
+                  continue;
 
                // TODO: this feature doesn't currently work properly, due to walls not being tagged
                // as drawable correctly in drawbsp.c. Code left commented out, as it is a work in progress.
@@ -1473,24 +1448,21 @@ void D3DRenderWorldDraw(room_type *room, Draw3DParams *params)
                // opposed to deleting in case any modification to drawbsp.c is performed which
                // invalidates this method.
                //if (pWall->seen & SR_DRAWNORMAL)
-               if ((flags & D3DRENDER_WALL_NORMAL) && ((pWall->z2 != pWall->z1)
-                  || (pWall->zz2 != pWall->zz1)))
+               if (pWall->seen & WF_CANDRAWNORMAL)
                {
                   D3DRenderPacketWallAdd(pWall, &gWorldPool, D3DRENDER_WALL_NORMAL, 1, TRUE);
                   D3DRenderPacketWallAdd(pWall, &gWorldPool, D3DRENDER_WALL_NORMAL, -1, TRUE);
                }
 
                //if (pWall->seen & SR_DRAWBELOW)
-               if ((flags & D3DRENDER_WALL_BELOW) && ((pWall->z1 != pWall->z0)
-                  || (pWall->zz1 != pWall->zz0)))
+               if (pWall->seen & WF_CANDRAWBELOW)
                {
                   D3DRenderPacketWallAdd(pWall, &gWorldPool, D3DRENDER_WALL_BELOW, 1, TRUE);
                   D3DRenderPacketWallAdd(pWall, &gWorldPool, D3DRENDER_WALL_BELOW, -1, TRUE);
                }
 
                //if (pWall->seen & SR_DRAWABOVE)
-               if ((flags & D3DRENDER_WALL_ABOVE) && ((pWall->z3 != pWall->z2)
-                  || (pWall->zz3 != pWall->zz2)))
+               if (pWall->seen & WF_CANDRAWABOVE)
                {
                   D3DRenderPacketWallAdd(pWall, &gWorldPool, D3DRENDER_WALL_ABOVE, 1, TRUE);
                   D3DRenderPacketWallAdd(pWall, &gWorldPool, D3DRENDER_WALL_ABOVE, -1, TRUE);
@@ -1538,34 +1510,10 @@ void D3DGeometryBuildNew(room_type *room, d3d_render_pool_new *pPool, Draw3DPara
          case BSPinternaltype:
             for (pWall = pNode->u.internal.walls_in_plane; pWall != NULL; pWall = pWall->next)
             {
-               int flags = 0;
+               if (!(pWall->pos_sidedef || pWall->neg_sidedef))
+                  continue;
 
-               if (pWall->pos_sidedef)
-               {
-                  if (pWall->pos_sidedef->normal_bmap)
-                     flags |= D3DRENDER_WALL_NORMAL;
-
-                  if (pWall->pos_sidedef->below_bmap)
-                     flags |= D3DRENDER_WALL_BELOW;
-
-                  if (pWall->pos_sidedef->above_bmap)
-                     flags |= D3DRENDER_WALL_ABOVE;
-               }
-
-               if (pWall->neg_sidedef)
-               {
-                  if (pWall->neg_sidedef->normal_bmap)
-                     flags |= D3DRENDER_WALL_NORMAL;
-
-                  if (pWall->neg_sidedef->below_bmap)
-                     flags |= D3DRENDER_WALL_BELOW;
-
-                  if (pWall->neg_sidedef->above_bmap)
-                     flags |= D3DRENDER_WALL_ABOVE;
-               }
-
-               if ((flags & D3DRENDER_WALL_NORMAL) && ((short)pWall->z2 != (short)pWall->z1)
-                  || ((short)pWall->zz2 != (short)pWall->zz1))
+               if (pWall->seen & WF_CANDRAWNORMAL)
                {
                   D3DRenderPacketWallAdd(pWall, &gWorldPoolStatic, D3DRENDER_WALL_NORMAL, 1, FALSE);
                   D3DRenderPacketWallAdd(pWall, &gWorldPoolStatic, D3DRENDER_WALL_NORMAL, -1, FALSE);
@@ -1573,8 +1521,7 @@ void D3DGeometryBuildNew(room_type *room, d3d_render_pool_new *pPool, Draw3DPara
                   D3DRenderPacketWallMaskAdd(pWall, &gWallMaskPool, D3DRENDER_WALL_NORMAL, -1, FALSE);
                }
 
-               if ((flags & D3DRENDER_WALL_BELOW) && ((short)pWall->z1 != (short)pWall->z0)
-                  || ((short)pWall->zz1 != (short)pWall->zz0))
+               if (pWall->seen & WF_CANDRAWBELOW)
                {
                   D3DRenderPacketWallAdd(pWall, &gWorldPoolStatic, D3DRENDER_WALL_BELOW, 1, FALSE);
                   D3DRenderPacketWallAdd(pWall, &gWorldPoolStatic, D3DRENDER_WALL_BELOW, -1, FALSE);
@@ -1582,8 +1529,7 @@ void D3DGeometryBuildNew(room_type *room, d3d_render_pool_new *pPool, Draw3DPara
                   D3DRenderPacketWallMaskAdd(pWall, &gWallMaskPool, D3DRENDER_WALL_BELOW, -1, FALSE);
                }
 
-               if ((flags & D3DRENDER_WALL_ABOVE) && ((short)pWall->z3 != (short)pWall->z2)
-                  || ((short)pWall->zz3 != (short)pWall->zz2))
+               if (pWall->seen & WF_CANDRAWABOVE)
                {
                   D3DRenderPacketWallAdd(pWall, &gWorldPoolStatic, D3DRENDER_WALL_ABOVE, 1, FALSE);
                   D3DRenderPacketWallAdd(pWall, &gWorldPoolStatic, D3DRENDER_WALL_ABOVE, -1, FALSE);
@@ -1634,55 +1580,22 @@ void D3DGeometryBuildNew(room_type *room, d3d_render_pool_new *pPool, Draw3DPara
             case BSPinternaltype:
                for (pWall = pNode->u.internal.walls_in_plane; pWall != NULL; pWall = pWall->next)
                {
-                  int   flags, wallFlags;
+                  if (!(pWall->pos_sidedef || pWall->neg_sidedef))
+                     continue;
 
-                  flags = 0;
-                  wallFlags = 0;
-
-                  if (pWall->pos_sidedef)
-                  {
-                     wallFlags |= pWall->pos_sidedef->flags;
-
-                     if (pWall->pos_sidedef->normal_bmap)
-                        flags |= D3DRENDER_WALL_NORMAL;
-
-                     if (pWall->pos_sidedef->below_bmap)
-                        flags |= D3DRENDER_WALL_BELOW;
-
-                     if (pWall->pos_sidedef->above_bmap)
-                        flags |= D3DRENDER_WALL_ABOVE;
-                  }
-
-                  if (pWall->neg_sidedef)
-                  {
-                     wallFlags |= pWall->neg_sidedef->flags;
-
-                     if (pWall->neg_sidedef->normal_bmap)
-                        flags |= D3DRENDER_WALL_NORMAL;
-
-                     if (pWall->neg_sidedef->below_bmap)
-                        flags |= D3DRENDER_WALL_BELOW;
-
-                     if (pWall->neg_sidedef->above_bmap)
-                        flags |= D3DRENDER_WALL_ABOVE;
-                  }
-
-                  if ((flags & D3DRENDER_WALL_NORMAL) && ((short)pWall->z2 != (short)pWall->z1)
-                     || ((short)pWall->zz2 != (short)pWall->zz1))
+                  if (pWall->seen & WF_CANDRAWNORMAL)
                   {
                        D3DRenderLMapPostWallAdd(pWall, &gLMapPoolStatic, D3DRENDER_WALL_NORMAL, 1, light, FALSE);
                        D3DRenderLMapPostWallAdd(pWall, &gLMapPoolStatic, D3DRENDER_WALL_NORMAL, -1, light, FALSE);
                   }
 
-                  if ((flags & D3DRENDER_WALL_BELOW) && ((short)pWall->z1 != (short)pWall->z0)
-                     || ((short)pWall->zz1 != (short)pWall->zz0))
+                  if (pWall->seen & WF_CANDRAWBELOW)
                   {
                        D3DRenderLMapPostWallAdd(pWall, &gLMapPoolStatic, D3DRENDER_WALL_BELOW, 1, light, FALSE);
                        D3DRenderLMapPostWallAdd(pWall, &gLMapPoolStatic, D3DRENDER_WALL_BELOW, -1, light, FALSE);
                   }
 
-                  if ((flags & D3DRENDER_WALL_ABOVE) && ((short)pWall->z3 != (short)pWall->z2)
-                     || ((short)pWall->zz3 != (short)pWall->zz2))
+                  if (pWall->seen & WF_CANDRAWABOVE)
                   {
                        D3DRenderLMapPostWallAdd(pWall, &gLMapPoolStatic, D3DRENDER_WALL_ABOVE, 1, light, FALSE);
                        D3DRenderLMapPostWallAdd(pWall, &gLMapPoolStatic, D3DRENDER_WALL_ABOVE, -1, light, FALSE);
@@ -4741,7 +4654,6 @@ d3d_render_packet_new *D3DRenderPacketFindMatch(d3d_render_pool_new *pPool, LPDI
 
    return pPacket;
 }
-
 
 void D3DGetBackgroundOverlayPosition(BackgroundOverlay *pOverlay, Draw3DParams *params, Pnt3D *bObj)
 {

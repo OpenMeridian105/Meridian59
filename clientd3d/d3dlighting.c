@@ -21,7 +21,6 @@ extern int gNumObjects;
 
 void D3DLightingXYCalc(d_light *light, u_char intensity);
 void D3DLightingColorCalc(d_light *light, u_short color);
-
 /*
 * D3DLightingRenderBegin: Called to set up lighting for rendering a frame.
 */
@@ -101,7 +100,6 @@ void D3DRenderLMapsPostDraw(BSPnode *tree, Draw3DParams *params, d_light *light)
       {
          //WallList list;
          WallData *pWall;
-         int flags;
 
          for (pWall = tree->u.internal.walls_in_plane; pWall != NULL; pWall = pWall->next)
          {
@@ -111,34 +109,8 @@ void D3DRenderLMapsPostDraw(BSPnode *tree, Draw3DParams *params, d_light *light)
                || (pWall->neg_sector && pWall->neg_sector->flags & SF_HAS_ANIMATED)))
                continue;
 
-            flags = 0;
-            if (pWall->pos_sidedef)
-            {
-               if (pWall->pos_sidedef->normal_bmap)
-                  flags |= D3DRENDER_WALL_NORMAL;
-
-               if (pWall->pos_sidedef->below_bmap)
-                  flags |= D3DRENDER_WALL_BELOW;
-
-               if (pWall->pos_sidedef->above_bmap)
-                  flags |= D3DRENDER_WALL_ABOVE;
-            }
-
-            if (pWall->neg_sidedef)
-            {
-               if (pWall->neg_sidedef->normal_bmap)
-                  flags |= D3DRENDER_WALL_NORMAL;
-
-               if (pWall->neg_sidedef->below_bmap)
-                  flags |= D3DRENDER_WALL_BELOW;
-
-               if (pWall->neg_sidedef->above_bmap)
-                  flags |= D3DRENDER_WALL_ABOVE;
-            }
-
-            pWall->separator.a = tree->u.internal.separator.a;
-            pWall->separator.b = tree->u.internal.separator.b;
-            pWall->separator.c = tree->u.internal.separator.c;
+            if (!(pWall->pos_sidedef || pWall->neg_sidedef))
+               continue;
 
             // D3DRenderLMapsPostDraw now relies on checks done while constructing the list
             // of viewable objects, walls etc. in DrawBSP() in drawbsp.c. Walls that can be seen
@@ -147,25 +119,16 @@ void D3DRenderLMapsPostDraw(BSPnode *tree, Draw3DParams *params, d_light *light)
             // rendering large amounts of lights. Old code left commented out as opposed to deleting
             // in case any modification to drawbsp.c is performed which invalidates this method.
             //if (pWall->drawnormal) 
-            if ((flags & D3DRENDER_WALL_NORMAL) && (((short)pWall->z2 != (short)pWall->z1)
-               || (pWall->zz2 != pWall->zz1)))
-            {
+            if (pWall->seen & WF_CANDRAWNORMAL)
                D3DRenderLMapPostWallAdd(pWall, &gLMapPool, D3DRENDER_WALL_NORMAL, side, light, TRUE);
-            }
 
             //if (pWall->drawbelow)
-            if ((flags & D3DRENDER_WALL_BELOW) && (((short)pWall->z1 != (short)pWall->z0)
-               || ((short)pWall->zz1 != (short)pWall->zz0)))
-            {
+            if (pWall->seen & WF_CANDRAWBELOW)
                D3DRenderLMapPostWallAdd(pWall, &gLMapPool, D3DRENDER_WALL_BELOW, side, light, TRUE);
-            }
 
             //if (pWall->drawabove)
-            if ((flags & D3DRENDER_WALL_ABOVE) && (((short)pWall->z3 != (short)pWall->z2)
-               || ((short)pWall->zz3 != (short)pWall->zz2)))
-            {
+            if (pWall->seen & WF_CANDRAWABOVE)
                D3DRenderLMapPostWallAdd(pWall, &gLMapPool, D3DRENDER_WALL_ABOVE, side, light, TRUE);
-            }
          }
       }
 
@@ -232,40 +195,11 @@ void D3DRenderLMapsDynamicPostDraw(BSPnode *tree, Draw3DParams *params, d_light 
       {
          //WallList list;
          WallData *pWall;
-         int flags;
 
          for (pWall = tree->u.internal.walls_in_plane; pWall != NULL; pWall = pWall->next)
          {
-            flags = 0;
-
-            if (pWall->pos_sidedef)
-            {
-
-               if (pWall->pos_sidedef->normal_bmap)
-                  flags |= D3DRENDER_WALL_NORMAL;
-
-               if (pWall->pos_sidedef->below_bmap)
-                  flags |= D3DRENDER_WALL_BELOW;
-
-               if (pWall->pos_sidedef->above_bmap)
-                  flags |= D3DRENDER_WALL_ABOVE;
-            }
-
-            if (pWall->neg_sidedef)
-            {
-               if (pWall->neg_sidedef->normal_bmap)
-                  flags |= D3DRENDER_WALL_NORMAL;
-
-               if (pWall->neg_sidedef->below_bmap)
-                  flags |= D3DRENDER_WALL_BELOW;
-
-               if (pWall->neg_sidedef->above_bmap)
-                  flags |= D3DRENDER_WALL_ABOVE;
-            }
-
-            pWall->separator.a = tree->u.internal.separator.a;
-            pWall->separator.b = tree->u.internal.separator.b;
-            pWall->separator.c = tree->u.internal.separator.c;
+            if (!(pWall->pos_sidedef || pWall->neg_sidedef))
+               continue;
 
             // D3DRenderLMapsDynamicPostDraw now relies on checks done while constructing the list
             // of viewable objects, walls etc. in DrawBSP() in drawbsp.c. Walls that can be seen
@@ -274,25 +208,16 @@ void D3DRenderLMapsDynamicPostDraw(BSPnode *tree, Draw3DParams *params, d_light 
             // rendering large amounts of lights. Old code left commented out as opposed to deleting
             // in case any modification to drawbsp.c is performed which invalidates this method.
             //if (pWall->drawnormal)
-            if ((flags & D3DRENDER_WALL_NORMAL) && (((short)pWall->z2 != (short)pWall->z1)
-               || ((short)pWall->zz2 != (short)pWall->zz1)))
-            {
+            if (pWall->seen & WF_CANDRAWNORMAL)
                D3DRenderLMapPostWallAdd(pWall, &gLMapPool, D3DRENDER_WALL_NORMAL, side, light, TRUE);
-            }
 
-            //if (pWall->drawbelow) 
-            if ((flags & D3DRENDER_WALL_BELOW) && (((short)pWall->z1 != (short)pWall->z0)
-               || ((short)pWall->zz1 != (short)pWall->zz0)))
-            {
+            //if (pWall->drawbelow)
+            if (pWall->seen & WF_CANDRAWBELOW)
                D3DRenderLMapPostWallAdd(pWall, &gLMapPool, D3DRENDER_WALL_BELOW, side, light, TRUE);
-            }
 
             //if (pWall->drawabove)
-            if ((flags & D3DRENDER_WALL_ABOVE) && (((short)pWall->z3 != (short)pWall->z2)
-               || ((short)pWall->zz3 != (short)pWall->zz2)))
-            {
+            if (pWall->seen & WF_CANDRAWABOVE)
                D3DRenderLMapPostWallAdd(pWall, &gLMapPool, D3DRENDER_WALL_ABOVE, side, light, TRUE);
-            }
          }
       }
 
@@ -510,10 +435,10 @@ void D3DLightingXYCalc(d_light *light, u_char intensity)
    else
       light->xyzScale.x = light->xyzScale.y = light->xyzScale.z = DLIGHT_SCALE(intensity);
 
-   light->maxX = light->xyz.x + light->xyzScale.x / 2.0f;
-   light->minX = light->xyz.x - light->xyzScale.x / 2.0f;
-   light->maxY = light->xyz.y + light->xyzScale.y / 2.0f;
-   light->minY = light->xyz.y - light->xyzScale.y / 2.0f;
+   light->maxX = light->xyz.x + light->xyzScale.x / 2.2f;
+   light->minX = light->xyz.x - light->xyzScale.x / 2.2f;
+   light->maxY = light->xyz.y + light->xyzScale.y / 2.2f;
+   light->minY = light->xyz.y - light->xyzScale.y / 2.2f;
 
    light->invXYZScale.x = 1.0f / light->xyzScale.x;
    light->invXYZScale.y = 1.0f / light->xyzScale.y;
@@ -547,17 +472,10 @@ void D3DRenderLMapPostFloorAdd(BSPnode *pNode, d3d_render_pool_new *pPool,
    if (!pSector || !pSector->floor)
       return;
 
-   // Causes shading discrepancies.
-   //if (!pNode->seenFloorThisFrame)
-   //   D3DRenderFloorUpdate(pNode, NULL, pNode->floor_xyz, pNode->floor_stBase, pNode->floor_bgra);
-
    PDIB pDib = pSector->floor;
 
    int count;
    float falloff;
-
-   custom_st st[MAX_NPTS];
-   custom_bgra bgra[MAX_NPTS];
 
    d3d_render_packet_new *pPacket;
    d3d_render_chunk_new *pChunk;
@@ -586,8 +504,6 @@ void D3DRenderLMapPostFloorAdd(BSPnode *pNode, d3d_render_pool_new *pPool,
 
    for (count = 0; count < pNode->u.leaf.poly.npts; count++)
    {
-      bgra[count] = pNode->floor_bgra[count];
-
       falloff = (pNode->floor_xyz[count].z - light->xyz.z) * light->invXYZScaleHalf.z;
 
       if (falloff < 0)
@@ -600,34 +516,24 @@ void D3DRenderLMapPostFloorAdd(BSPnode *pNode, d3d_render_pool_new *pPool,
       if (light->flags & LIGHT_FLAG_HIGHLIGHT)
          falloff = 1.0f;
 
-      bgra[count].b = falloff * light->color.b;
-      bgra[count].g = falloff * light->color.g;
-      bgra[count].r = falloff * light->color.r;
-      bgra[count].a = falloff * light->color.a;
+      pChunk->st0[count].s = pNode->floor_xyz[count].x - light->xyz.x;
+      pChunk->st0[count].t = pNode->floor_xyz[count].y - light->xyz.y;
+      pChunk->st0[count].s *= light->invXYZScale.x;
+      pChunk->st0[count].t *= light->invXYZScale.y;
+      pChunk->st0[count].s += 0.5f;
+      pChunk->st0[count].t += 0.5f;
 
-      st[count].s = pNode->floor_xyz[count].x - light->xyz.x;
-      st[count].t = pNode->floor_xyz[count].y - light->xyz.y;
-
-      st[count].s *= light->invXYZScale.x;
-      st[count].t *= light->invXYZScale.y;
-
-      st[count].s += 0.5f;
-      st[count].t += 0.5f;
+      pChunk->st1[count].s = pNode->floor_stBase[count].s;
+      pChunk->st1[count].t = pNode->floor_stBase[count].t;
 
       pChunk->xyz[count].x = pNode->floor_xyz[count].x;
       pChunk->xyz[count].y = pNode->floor_xyz[count].y;
       pChunk->xyz[count].z = pNode->floor_xyz[count].z;
 
-      pChunk->bgra[count].b = bgra[count].b;
-      pChunk->bgra[count].g = bgra[count].g;
-      pChunk->bgra[count].r = bgra[count].r;
-      pChunk->bgra[count].a = bgra[count].a;
-
-      pChunk->st0[count].s = st[count].s;
-      pChunk->st0[count].t = st[count].t;
-
-      pChunk->st1[count].s = pNode->floor_stBase[count].s;
-      pChunk->st1[count].t = pNode->floor_stBase[count].t;
+      pChunk->bgra[count].b = falloff * light->color.b;
+      pChunk->bgra[count].g = falloff * light->color.g;
+      pChunk->bgra[count].r = falloff * light->color.r;
+      pChunk->bgra[count].a = falloff * light->color.a;
    }
 
    unsigned int index;
@@ -659,15 +565,8 @@ void D3DRenderLMapPostCeilingAdd(BSPnode *pNode, d3d_render_pool_new *pPool,
    if (!pSector || !pSector->ceiling)
       return;
 
-   // Causes shading discrepancies.
-   //if (!pNode->seenCeilThisFrame)
-   //   D3DRenderCeilingUpdate(pNode, NULL, pNode->ceiling_xyz, pNode->ceiling_stBase,
-   //      pNode->ceiling_bgra);
-
    PDIB pDib = pSector->ceiling;
 
-   custom_bgra bgra[MAX_NPTS];
-   custom_st st[MAX_NPTS];
    float falloff;
    int count;
 
@@ -699,8 +598,6 @@ void D3DRenderLMapPostCeilingAdd(BSPnode *pNode, d3d_render_pool_new *pPool,
 
    for (count = 0; count < pNode->u.leaf.poly.npts; count++)
    {
-      bgra[count] = pNode->ceiling_bgra[count];
-
       falloff = (pNode->ceiling_xyz[count].z - light->xyz.z) * light->invXYZScaleHalf.z;
 
       if (falloff < 0)
@@ -710,34 +607,24 @@ void D3DRenderLMapPostCeilingAdd(BSPnode *pNode, d3d_render_pool_new *pPool,
       falloff = 1.0f - falloff;
       // falloff = 255.0f * falloff;
 
-      bgra[count].b = falloff * light->color.b;
-      bgra[count].g = falloff * light->color.g;
-      bgra[count].r = falloff * light->color.r;
-      bgra[count].a = falloff * light->color.a;
+      pChunk->st0[count].s = pNode->ceiling_xyz[count].x - light->xyz.x;
+      pChunk->st0[count].t = pNode->ceiling_xyz[count].y - light->xyz.y;
+      pChunk->st0[count].s *= light->invXYZScale.x;
+      pChunk->st0[count].t *= light->invXYZScale.y;
+      pChunk->st0[count].s += 0.5f;
+      pChunk->st0[count].t += 0.5f;
 
-      st[count].s = pNode->ceiling_xyz[count].x - light->xyz.x;
-      st[count].t = pNode->ceiling_xyz[count].y - light->xyz.y;
-
-      st[count].s *= light->invXYZScale.x;
-      st[count].t *= light->invXYZScale.y;
-
-      st[count].s += 0.5f;
-      st[count].t += 0.5f;
+      pChunk->st1[count].s = pNode->ceiling_stBase[count].s;
+      pChunk->st1[count].t = pNode->ceiling_stBase[count].t;
 
       pChunk->xyz[count].x = pNode->ceiling_xyz[count].x;
       pChunk->xyz[count].y = pNode->ceiling_xyz[count].y;
       pChunk->xyz[count].z = pNode->ceiling_xyz[count].z;
 
-      pChunk->bgra[count].b = bgra[count].b;
-      pChunk->bgra[count].g = bgra[count].g;
-      pChunk->bgra[count].r = bgra[count].r;
-      pChunk->bgra[count].a = bgra[count].a;
-
-      pChunk->st0[count].s = st[count].s;
-      pChunk->st0[count].t = st[count].t;
-
-      pChunk->st1[count].s = pNode->ceiling_stBase[count].s;
-      pChunk->st1[count].t = pNode->ceiling_stBase[count].t;
+      pChunk->bgra[count].b = falloff * light->color.b;
+      pChunk->bgra[count].g = falloff * light->color.g;
+      pChunk->bgra[count].r = falloff * light->color.r;
+      pChunk->bgra[count].a = falloff * light->color.a;
 
       unsigned int index;
       int first, last;
@@ -765,7 +652,7 @@ void D3DRenderLMapPostWallAdd(WallData *pWall, d3d_render_pool_new *pPool,
                               unsigned int type, int side, d_light *light,
                               Bool bDynamic)
 {
-   custom_xyz xyz[4];
+   custom_xyz xyz[4], *normal;
    custom_st st[4];
    custom_st stBase[4];
    custom_bgra bgra[4];
@@ -775,9 +662,6 @@ void D3DRenderLMapPostWallAdd(WallData *pWall, d3d_render_pool_new *pPool,
 
    d3d_render_packet_new *pPacket;
    d3d_render_chunk_new *pChunk;
-
-   // Positive if this wall part has already been seen this frame.
-   int seenWall = 0;
 
    // pos and neg sidedefs have their x and y coords reversed
    if (side > 0)
@@ -793,14 +677,11 @@ void D3DRenderLMapPostWallAdd(WallData *pWall, d3d_render_pool_new *pPool,
          if (pWall->pos_sidedef->normal_bmap)
          {
             pDib = pWall->pos_sidedef->normal_bmap;
-            for (int i = 0; i < 4; i++)
-            {
-               xyz[i] = pWall->pos_normal_xyz[i];
-               bgra[i] = pWall->pos_normal_bgra[i];
-               stBase[i] = pWall->pos_normal_stBase[i];
-               flags = pWall->pos_normal_d3dFlags;
-            }
-            seenWall = (pWall->seen & HR_SEENPOSNORMAL);
+            memcpy(xyz, pWall->pos_normal_xyz, sizeof(xyz));
+            memcpy(bgra, pWall->pos_normal_bgra, sizeof(bgra));
+            memcpy(stBase, pWall->pos_normal_stBase, sizeof(stBase));
+            flags = pWall->pos_normal_d3dFlags;
+            normal = &pWall->pos_normal_normal;
          }
          else
             pDib = NULL;
@@ -810,14 +691,11 @@ void D3DRenderLMapPostWallAdd(WallData *pWall, d3d_render_pool_new *pPool,
          if (pWall->pos_sidedef->below_bmap)
          {
             pDib = pWall->pos_sidedef->below_bmap;
-            for (int i = 0; i < 4; i++)
-            {
-               xyz[i] = pWall->pos_below_xyz[i];
-               bgra[i] = pWall->pos_below_bgra[i];
-               stBase[i] = pWall->pos_below_stBase[i];
-               flags = pWall->pos_below_d3dFlags;
-            }
-            seenWall = (pWall->seen & HR_SEENPOSBELOW);
+            memcpy(xyz, pWall->pos_below_xyz, sizeof(xyz));
+            memcpy(bgra, pWall->pos_below_bgra, sizeof(bgra));
+            memcpy(stBase, pWall->pos_below_stBase, sizeof(stBase));
+            flags = pWall->pos_below_d3dFlags;
+            normal = &pWall->pos_below_normal;
          }
          else
             pDib = NULL;
@@ -827,14 +705,11 @@ void D3DRenderLMapPostWallAdd(WallData *pWall, d3d_render_pool_new *pPool,
          if (pWall->pos_sidedef->above_bmap)
          {
             pDib = pWall->pos_sidedef->above_bmap;
-            for (int i = 0; i < 4; i++)
-            {
-               xyz[i] = pWall->pos_above_xyz[i];
-               bgra[i] = pWall->pos_above_bgra[i];
-               stBase[i] = pWall->pos_above_stBase[i];
-               flags = pWall->pos_above_d3dFlags;
-            }
-            seenWall = (pWall->seen & HR_SEENPOSABOVE);
+            memcpy(xyz, pWall->pos_above_xyz, sizeof(xyz));
+            memcpy(bgra, pWall->pos_above_bgra, sizeof(bgra));
+            memcpy(stBase, pWall->pos_above_stBase, sizeof(stBase));
+            flags = pWall->pos_above_d3dFlags;
+            normal = &pWall->pos_above_normal;
          }
          else
             pDib = NULL;
@@ -857,14 +732,11 @@ void D3DRenderLMapPostWallAdd(WallData *pWall, d3d_render_pool_new *pPool,
          if (pWall->neg_sidedef->normal_bmap)
          {
             pDib = pWall->neg_sidedef->normal_bmap;
-            for (int i = 0; i < 4; i++)
-            {
-               xyz[i] = pWall->neg_normal_xyz[i];
-               bgra[i] = pWall->neg_normal_bgra[i];
-               stBase[i] = pWall->neg_normal_stBase[i];
-               flags = pWall->neg_normal_d3dFlags;
-            }
-            seenWall = (pWall->seen & HR_SEENNEGNORMAL);
+            memcpy(xyz, pWall->neg_normal_xyz, sizeof(xyz));
+            memcpy(bgra, pWall->neg_normal_bgra, sizeof(bgra));
+            memcpy(stBase, pWall->neg_normal_stBase, sizeof(stBase));
+            flags = pWall->neg_normal_d3dFlags;
+            normal = &pWall->neg_normal_normal;
          }
          else
             pDib = NULL;
@@ -874,14 +746,11 @@ void D3DRenderLMapPostWallAdd(WallData *pWall, d3d_render_pool_new *pPool,
          if (pWall->neg_sidedef->below_bmap)
          {
             pDib = pWall->neg_sidedef->below_bmap;
-            for (int i = 0; i < 4; i++)
-            {
-               xyz[i] = pWall->neg_below_xyz[i];
-               bgra[i] = pWall->neg_below_bgra[i];
-               stBase[i] = pWall->neg_below_stBase[i];
-               flags = pWall->neg_below_d3dFlags;
-            }
-            seenWall = (pWall->seen & HR_SEENNEGBELOW);
+            memcpy(xyz, pWall->neg_below_xyz, sizeof(xyz));
+            memcpy(bgra, pWall->neg_below_bgra, sizeof(bgra));
+            memcpy(stBase, pWall->neg_below_stBase, sizeof(stBase));
+            flags = pWall->neg_below_d3dFlags;
+            normal = &pWall->neg_below_normal;
          }
          else
             pDib = NULL;
@@ -891,14 +760,11 @@ void D3DRenderLMapPostWallAdd(WallData *pWall, d3d_render_pool_new *pPool,
          if (pWall->neg_sidedef->above_bmap)
          {
             pDib = pWall->neg_sidedef->above_bmap;
-            for (int i = 0; i < 4; i++)
-            {
-               xyz[i] = pWall->neg_above_xyz[i];
-               bgra[i] = pWall->neg_above_bgra[i];
-               stBase[i] = pWall->neg_above_stBase[i];
-               flags = pWall->neg_above_d3dFlags;
-            }
-            seenWall = (pWall->seen & HR_SEENNEGABOVE);
+            memcpy(xyz, pWall->neg_above_xyz, sizeof(xyz));
+            memcpy(bgra, pWall->neg_above_bgra, sizeof(bgra));
+            memcpy(stBase, pWall->neg_above_stBase, sizeof(stBase));
+            flags = pWall->neg_above_d3dFlags;
+            normal = &pWall->neg_above_normal;
          }
          else
             pDib = NULL;
@@ -912,25 +778,8 @@ void D3DRenderLMapPostWallAdd(WallData *pWall, d3d_render_pool_new *pPool,
    if (NULL == pDib)
       return;
 
-   //if (!seenWall)
-      //D3DRenderWallUpdate(pWall, pDib, &flags, xyz, stBase, bgra, type, side);
-
    unsigned int i;
    float falloff;
-   custom_xyz normal, vec0, vec1;
-
-   // calc cross product, get normal and determine major axis
-   vec0.x = xyz[1].x - xyz[0].x;
-   vec0.y = xyz[1].y - xyz[0].y;
-   vec0.z = xyz[1].z - xyz[0].z;
-
-   vec1.x = xyz[3].x - xyz[0].x;
-   vec1.y = xyz[3].y - xyz[0].y;
-   vec1.z = xyz[3].z - xyz[0].z;
-
-   normal.x = vec0.z * vec1.y - vec0.y * vec1.z;
-   normal.z = vec0.y * vec1.x - vec0.x * vec1.y;
-   normal.y = vec0.x * vec1.z - vec0.z * vec1.x;
 
    // check to see if dot product is necessary
    //			if ((light->xyz.z < xyz[0].z) &&
@@ -954,34 +803,9 @@ void D3DRenderLMapPostWallAdd(WallData *pWall, d3d_render_pool_new *pPool,
    return;
    }*/
 
-   pPacket = D3DRenderPacketFindMatch(pPool, NULL, pDib, 0, 0, 0);
-   if (NULL == pPacket)
-      return;
-   pChunk = D3DRenderChunkNew(pPacket);
-   assert(pChunk);
+   bool bskip = true;
 
-   pChunk->flags = flags;
-   pChunk->numIndices = 4;
-   pChunk->numVertices = 4;
-   pChunk->numPrimitives = pChunk->numVertices - 2;
-   pChunk->pSideDef = pSideDef;
-   pChunk->pSectorPos = pWall->pos_sector;
-   pChunk->pSectorNeg = pWall->neg_sector;
-   pChunk->side = side;
-   pPacket->pMaterialFctn = &D3DMaterialLMapDynamicPacket;
-
-   if (bDynamic)
-      pChunk->pMaterialFctn = &D3DMaterialLMapWallDynamicChunk;
-   else
-      pChunk->pMaterialFctn = &D3DMaterialLMapWallStaticChunk;
-
-   if (normal.x < 0)
-      normal.x = -normal.x;
-
-   if (normal.y < 0)
-      normal.y = -normal.y;
-
-   if (normal.x > normal.y)
+   if (normal->x > normal->y)
    {
       for (i = 0; i < 4; i++)
       {
@@ -999,6 +823,8 @@ void D3DRenderLMapPostWallAdd(WallData *pWall, d3d_render_pool_new *pPool,
          bgra[i].g = falloff * light->color.g;
          bgra[i].r = falloff * light->color.r;
          bgra[i].a = falloff * light->color.a;
+         if (bgra[i].a > 1)
+            bskip = false;
       }
    }
    else
@@ -1019,8 +845,36 @@ void D3DRenderLMapPostWallAdd(WallData *pWall, d3d_render_pool_new *pPool,
          bgra[i].g = falloff * light->color.g;
          bgra[i].r = falloff * light->color.r;
          bgra[i].a = falloff * light->color.a;
+         if (bgra[i].a > 1)
+            bskip = false;
       }
    }
+
+   if (bskip)
+   {
+      return;
+   }
+
+   pPacket = D3DRenderPacketFindMatch(pPool, NULL, pDib, 0, 0, 0);
+   if (NULL == pPacket)
+      return;
+   pChunk = D3DRenderChunkNew(pPacket);
+   assert(pChunk);
+
+   pChunk->flags = flags;
+   pChunk->numIndices = 4;
+   pChunk->numVertices = 4;
+   pChunk->numPrimitives = pChunk->numVertices - 2;
+   pChunk->pSideDef = pSideDef;
+   pChunk->pSectorPos = pWall->pos_sector;
+   pChunk->pSectorNeg = pWall->neg_sector;
+   pChunk->side = side;
+   pPacket->pMaterialFctn = &D3DMaterialLMapDynamicPacket;
+
+   if (bDynamic)
+      pChunk->pMaterialFctn = &D3DMaterialLMapWallDynamicChunk;
+   else
+      pChunk->pMaterialFctn = &D3DMaterialLMapWallStaticChunk;
 
    for (i = 0; i < pChunk->numVertices; i++)
    {

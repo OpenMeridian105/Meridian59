@@ -602,7 +602,7 @@ void MapEnterRoom(room_type *room)
    int i;
 
    for (i = 0; i < room->num_walls; i++)
-      room->walls[i].seen = False;
+      room->walls[i].seen &= ~SR_SEEN;
 
    memset(room->annotations, 0, MAX_ANNOTATIONS * sizeof(MapAnnotation));
    room->annotations_changed = False;

@@ -48,6 +48,8 @@ classvars:
    viPoisonHealth = 25
    viPoisonVigor = 10
 
+   vbCanSiphon = FALSE
+
    viTreasure_type = TID_MEDIUM_TOUGH
    viSpeed = SPEED_AVERAGE
    viAttack_type =  ATCK_WEAP_BITE
@@ -56,7 +58,7 @@ classvars:
    viDifficulty = 4
    viVisionDistance = 9
    viKarma = -30
-   viDefault_behavior = AI_MOVE_REGROUP | AI_FIGHT_AGGRESSIVE
+   viDefault_behavior = AI_FIGHT_AGGRESSIVE
    viWimpy = 30
    viCashmin = -100
    viCashmax = 300
@@ -68,6 +70,9 @@ classvars:
 properties:
 
    piAnimation = ANIM_NONE
+
+   // Counter used for special mob behavior, such as spawning web.
+   piCounter = 0
 
 messages:
 
@@ -138,6 +143,34 @@ messages:
       }
 
       // Charm checks up higher.
+      propagate;
+   }
+
+   // Spiders leave a trail of webs when fleeing.
+   DoFleeingRoutine()
+   {
+      local oElement;
+
+      if piCounter < 100
+      {
+         ++piCounter;
+
+         if piCounter % 6 = 0
+         {
+            oElement = Create(&Web,#Caster=self,#Duration=15,#MaxHoldTime=4);
+            Send(poOwner,@NewHold,#what=oElement,#new_row=piRow,#new_col=piCol,
+                 #fine_row=piFine_row,#fine_col=piFine_col);
+         }
+      }
+
+      return;
+   }
+
+   // Recharge glands.
+   EnterStateLimbo()
+   {
+      piCounter = 0;
+
       propagate;
    }
 

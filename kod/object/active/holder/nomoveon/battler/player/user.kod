@@ -529,6 +529,9 @@ properties:
    // Moves are accepted unless there is not enough tokens in the bucket left.
    piMovementBucket = 0
 
+   // Keeps track of when mobs have last been alerted of our presence.
+   piLastMoveNotification = 0
+
    piCheaterLogs = 0
 
    ptLogonDelayTimer = $
@@ -3188,7 +3191,7 @@ messages:
    "This message builds the minimap dot flags for each object we can see, "
    "which is then sent to our client for drawing objects on the map/minimap."
    {
-      local iBehavior, iFlags, oIllusion, oOtherGuild;
+      local iBehavior, iFlags, oIllusion, oOtherGuild, oTarget;
 
       if what = $
          OR poOwner <> Send(what,@GetOwner)
@@ -3301,41 +3304,72 @@ messages:
          else
          {
             iFlags |= MM_MONSTER;
+
+            oTarget = Send(what,@GetTarget);
+
+            if (oTarget <> $)
+            {
+               if (oTarget = self)
+               {
+                  iFlags |= MM_AGGRO_SELF;
+               }
+               else
+               {
+                  iFlags |= MM_AGGRO_OTHER;
+               }
+            }
          }
       }
 
       if IsClass(what,&Monster)
       {
-         if Send(what,@GetMaster) <> $
-         {
-            if (Send(what,@GetMaster) = self)
-            {
-               return MM_MINION_SELF;
-            }
-            else
-            {
-               return MM_MINION_OTHER;
-            }
-         }
          if Send(what,@GetBehavior) & AI_NPC
          {
             // Draw dots for NPCs.
             return MM_NPC;
+         }
+
+         oTarget = Send(what,@GetTarget);
+
+         if (oTarget <> $)
+         {
+            if (oTarget = self)
+            {
+               iFlags |= MM_AGGRO_SELF;
+            }
+            else
+            {
+               iFlags |= MM_AGGRO_OTHER;
+            }
+         }
+
+         if Send(what,@GetMaster) <> $
+         {
+            if (Send(what,@GetMaster) = self)
+            {
+               iFlags |= MM_MINION_SELF;
+            }
+            else
+            {
+               iFlags |= MM_MINION_OTHER;
+            }
          }
          if IsClass(poOwner,&SurvivalRoom)
          {
             // Survival room specific dots.
             if Send(poOwner,@IsMiniBoss,#what=what)
             {
-               return MM_MINIBOSS;
+               iFlags |= MM_MINIBOSS;
             }
             if Send(poOwner,@IsBoss,#what=what)
             {
-               return MM_BOSS;
+               iFlags |= MM_BOSS;
             }
          }
 
-         return MM_MONSTER;
+         iFlags |= MM_MONSTER;
+
+         return iFlags;
       }
 
       // Not a monster or a player. Ask the object what flags it has.
@@ -4192,11 +4226,12 @@ messages:
       Send(self,@NewVigor);
 
       //
-      // 7. Notify monsters about presence (bitflag check instead of function)
+      // 7. Notify monsters about presence every second.
       //
-      if NOT (piFlags & PFLAG_MOVED_SINCE_ENTRY)
+      if (Abs(iCurrentTime - piLastMoveNotification) > 1000)
       {
-         Send(self,@NotifyMonstersOfPresence);
+         Send(poOwner,@UserMoved,#what=self,#new_row=piRow,#new_col=piCol);
+         piLastMoveNotification = iCurrentTime;
       }
 
       //
@@ -4215,25 +4250,11 @@ messages:
             #fine_row=fine_row,#fine_col=fine_col,
             #cause=CAUSE_USER_INPUT,#speed=speed);
 
-      return;
-   }
+      //
+      // 10. Set the flag so that wall elements can affect us.
+      //
 
-   NotifyMonstersOfPresence()
-   // When a player first enters the room, the game will prevent AIs from
-   //  attacking that player until that player takes an action.  This function
-   //  is called when a player takes his first action in the room.  It should
-   //  be accompanied by a bitcheck of PFLAG_MOVED_SINCE_ENTRY, which was
-   //  previously done in a function call, but is now done in a raw bitcheck
-   //  for performance reasons (as this needs to be checked pretty much before
-   //  a player does anything).  See UserMove() for an example of the correct
-   //  usage of this function.
-   {
-      // Sanity check, or if we want to call the function externally.
-      if NOT (piFlags & PFLAG_MOVED_SINCE_ENTRY)
-      {
-         Send(self,@SetPlayerFlag,#flag=PFLAG_MOVED_SINCE_ENTRY,#value=TRUE);  
-         Send(poOwner,@FirstMove,#what=self,#new_row=piRow,#new_col=piCol);
-      }
+      Send(self,@SetPlayerFlag,#flag=PFLAG_MOVED_SINCE_ENTRY,#value=TRUE);
 
       return;
    }
@@ -4267,12 +4288,6 @@ messages:
 
       Send(poOwner,@SomethingTurned,#what=self,#new_angle=new_angle,
            #cause=CAUSE_USER_INPUT);
-
-      // bitflag check instead of function for speed.
-      if NOT (piFlags & PFLAG_MOVED_SINCE_ENTRY)
-      {
-         Send(self,@NotifyMonstersOfPresence);
-      }
 
       return;
    }
@@ -4773,13 +4788,6 @@ messages:
          return 0;
       }
 
-      // User took an action!  Wake any AIs in the room to the user's presence!
-      // bitflag check instead of function for speed.
-      if NOT (piFlags & PFLAG_MOVED_SINCE_ENTRY)
-      {
-         Send(self,@NotifyMonstersOfPresence);
-      }
-
       oOldOwner = Send(what,@GetOwner);
 
       // Make sure we're not trying to get something we've already got!
@@ -4943,13 +4951,6 @@ messages:
    {
       local i,Item_pos,oNumber;
 
-      // User took an action!  Wake any AIs in the room to the user's presence!
-      // bitflag check instead of function for speed.
-      if NOT (piFlags & PFLAG_MOVED_SINCE_ENTRY)
-      {
-         Send(self,@NotifyMonstersOfPresence);
-      }
-
       if NOT Send(self,@IsHolding,#what=what)
       {
          Send(self,@MsgSendUser,#message_rsc=user_err_drop);
@@ -5080,13 +5081,6 @@ messages:
    UserPut(what = $,where = $,number = $)
    {
       local i, lObjects, lItem_pos, oNumber;
-
-      // User took an action!  Wake any AIs in the room to the user's presence!
-      //  bitflag check instead of function for speed.
-      if NOT (piFlags & PFLAG_MOVED_SINCE_ENTRY)  
-      {
-         Send(self,@NotifyMonstersOfPresence);
-      }
 
       // Detect if someone's using an exploit to put items into another player.
       if IsClass(where,&User)
@@ -5263,13 +5257,6 @@ messages:
       // A room can completely block a piece of communication if it chooses.
       // An excellent example is Out Of Grace, which blocks all tells to 
       // non-DMs, as well as Guild Tells and Broadcasts
-
-      // User took an action!  Wake any AIs in the room to the user's presence!
-      // bitflag check instead of function for speed.
-      if NOT (piFlags & PFLAG_MOVED_SINCE_ENTRY)
-      {
-         Send(self,@NotifyMonstersOfPresence);
-      }
 
       if type = SAY_NORMAL
       {
@@ -5853,13 +5840,6 @@ messages:
    {
       local i,type;
 
-      // User took an action!  Wake any AIs in the room to the user's presence!
-      // bitflag check instead of function for speed.
-      if NOT (piFlags & PFLAG_MOVED_SINCE_ENTRY)
-      {
-         Send(self,@NotifyMonstersOfPresence);
-      }   
-
       // A bit hackish, no_tell is currently only used for guild Sends.  Don't
       //  do TrySayGroup on guild Sends to eliminate mana costs.
       if no_tell OR Send(self,@TrySayGroup,#users=users)
@@ -5908,13 +5888,6 @@ messages:
 
    UserLook(what = $)
    {
-      // User took an action!  Wake any AIs in the room to the user's presence!
-      // Use a bitflag check instead of function for speed.
-      if NOT (piFlags & PFLAG_MOVED_SINCE_ENTRY)
-      {
-         Send(self,@NotifyMonstersOfPresence);
-      }
-
       Send(what,@TryLook,#what=self);
 //      Send(self,@SetPlayerView,#what=what,
 //         #iFlags =   REMOTE_VIEW_CONTROL | REMOTE_VIEW_TURN  
@@ -6229,13 +6202,6 @@ messages:
 
    UserTryActivate(what = $)
    {
-      // User took an action!  Wake any AIs in the room to the user's presence!
-      // bitflag check instead of function for speed.
-      if NOT (piFlags & PFLAG_MOVED_SINCE_ENTRY)
-      {
-         Send(self,@NotifyMonstersOfPresence);
-      }
-
       if IsClass(what,&Sun) OR IsClass(what,&Moon)
       {
          // No message for background overlays.
@@ -6264,14 +6230,6 @@ messages:
    UserMail(dest_list = $,string = $)
    {
       local i;
-
-      // 11/21/2014 Keen - why is this even here?  commented out for now.
-      // User took an action!  Wake any AIs in the room to the user's presence!
-      // bitflag check instead of function for speed.
-      //if NOT (piFlags & PFLAG_MOVED_SINCE_ENTRY)
-      //{
-      //   Send(self,@NotifyMonstersOfPresence);
-      //}
 
       // Can't send mail if squelched.
       if piFlags2 & PFLAG2_SQUELCHED_MAIL
@@ -6360,13 +6318,6 @@ messages:
    {
       local lNew_Mail;
 
-      // User took an action!  Wake any AIs in the room to the user's presence!
-      // bitflag check instead of function for speed.
-      if NOT (piFlags & PFLAG_MOVED_SINCE_ENTRY)  
-      {
-         Send(self,@NotifyMonstersOfPresence);
-      }
-
       if index <> $
          AND plNew_mail <> $
       {
@@ -6423,13 +6374,6 @@ messages:
    {
       // check if valid, if item, if holding
 
-      // User took an action!  Wake any AIs in the room to the user's presence!
-      // bitflag check instead of function for speed.
-      if NOT (piFlags & PFLAG_MOVED_SINCE_ENTRY)
-      {
-         Send(self,@NotifyMonstersOfPresence);
-      }
-
       if piFlags & PFLAG_TRANCE
       {
          Send(self,@BreakTrance,#event=EVENT_USE);
@@ -6447,13 +6391,6 @@ messages:
 
    UserUnuseItem(what = $)
    {
-      // User took an action!  Wake any AIs in the room to the user's presence!
-      // bitflag check instead of function for speed.
-      if NOT (piFlags & PFLAG_MOVED_SINCE_ENTRY)
-      {
-         Send(self,@NotifyMonstersOfPresence);
-      }
-
       if piFlags & PFLAG_TRANCE
       {
          Send(self,@BreakTrance,#event=EVENT_USE);
@@ -6477,13 +6414,6 @@ messages:
    UserAttack(type=STROKE_NORMAL,what=$)
    {
       local i, use_weapon, stroke_id, stroke_obj, is_spell;
-
-      // User took an action!  Wake any AIs in the room to the user's presence!
-      // bitflag check instead of function for speed.
-      if NOT (piFlags & PFLAG_MOVED_SINCE_ENTRY)
-      {
-         Send(self,@NotifyMonstersOfPresence);
-      }
 
       if piFlags & PFLAG_TRANCE
       {
@@ -6565,6 +6495,9 @@ messages:
          stroke_obj = use_weapon;
       }
 
+      // Set flag so that wall elements can affect us.
+      Send(self,@SetPlayerFlag,#flag=PFLAG_MOVED_SINCE_ENTRY,#value=TRUE);
+
       return Send(self,@TryAttack,#what=what,#use_weapon=use_weapon,
                   #stroke_obj=stroke_obj);
    }
@@ -6587,13 +6520,6 @@ messages:
          AND IsClass(oSpell,&AttackSpell)
       {
          Send(self,@CommandMinionAttack,#oTarget=First(lTargets));
-      }
-
-      // User took an action!  Wake any AIs in the room to the user's presence!
-      // bitflag check instead of function for speed.
-      if NOT (piFlags & PFLAG_MOVED_SINCE_ENTRY)
-      {
-         Send(self,@NotifyMonstersOfPresence);
       }
 
       if piFlags & PFLAG_TRANCE
@@ -6674,6 +6600,9 @@ messages:
             Send(self,@AddUnboundEnergy,#iAmount=-iCost);
          }
 
+         // Set flag so that wall elements can affect us.
+         Send(self,@SetPlayerFlag,#flag=PFLAG_MOVED_SINCE_ENTRY,#value=TRUE);
+
          // Alright, cast that spell already.
          Send(oSpell,@BeginCastingTrance,#who=self,#lTargets=lFinalTargets,
                #iSpellPower=iSpellPower);
@@ -6715,13 +6644,6 @@ messages:
 
    UserAction(action = $)
    {
-      // User took an action!  Wake any AIs in the room to the user's presence!
-      // bitflag check instead of function for speed.
-      if NOT (piFlags & PFLAG_MOVED_SINCE_ENTRY)  
-      {
-         Send(self,@NotifyMonstersOfPresence);
-      }
-
       // Make this count as an attack.  This prevents action spamming.
       // IsOkayAttackTime defaults to 1 second
       if NOT Send(self,@IsOkayAttackTime)

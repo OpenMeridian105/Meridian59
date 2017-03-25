@@ -257,6 +257,8 @@ resources:
       "~k~I%s%s looks distressed as as your attack siphons mana from %s soul.%s"
    monster_illusion_fatigue = \
       "~k~I%s%s gasps for air as your attack takes %s breath away.%s"
+   monster_illusion_burn = \
+      "~k~I%s%s flails around wildly as your attack sets %s clothes on fire.%s"
    monster_illusion_damage_blank = ""
 
    monster_projectile_icon = rocksm.bgf
@@ -346,6 +348,12 @@ classvars:
 
    viWimpy = 0
 
+   // How likely are monster to try and chat others up and how likely are they
+   // to mind their own business? Takes values between 0 and 100.
+   // 0 will always walk alone, 100 will always look for others.
+   // Unsocial monsters will also not come to their allies help.
+   viSocial = 50
+
    // Some monsters classes may inherently have higher (or lower) stats.
    viBonusAgility = 0
    viBonusAim = 0
@@ -380,12 +388,16 @@ classvars:
    viFatigueChance = 0
    viFatigueStrength = $
    viFatigueDuration = $
+   viBurnChance = 0
+   viBurnStrength = $
+   viBurnDuration = $
 
    // Some monsters are immune to certain drain effects.
    vbCanPoison = TRUE
    vbCanBleed = TRUE
    vbCanSiphon = TRUE
    vbCanFatigue = TRUE
+   vbCanBurn = TRUE
 
    // If true, items that are sold actually come out of the monster's
    // inventory. If false, the items in the inventory are inexhaustible
@@ -423,6 +435,7 @@ classvars:
    vrIllusionBleed = monster_illusion_bleed
    vrIllusionSiphon = monster_illusion_siphon
    vrIllusionFatigue = monster_illusion_fatigue
+   vrIllusionBurn = monster_illusion_burn
 
    // Obsolete, but still included here for safety's sake.
    vrSound_hit = $
@@ -672,7 +685,7 @@ messages:
       piMeleeRange = viMeleeRange;
       piFireRange = viFireRange * (75 + piAim) / 100;
       piSpellPower = Bound(viSpellPower + (piIntellect + piMysticism) / 2, 0, 99);
-      piVisionDistance = viVisionDistance + piSurvivalLevel + (piIntellect + piAim) / 10;
+      piVisionDistance = viVisionDistance + piSurvivalLevel + (piIntellect + piAim) / 20;
       piChanceToPatrol = 50 + piAgility + piStamina;
       piBoostedLevel = piSurvivalLevel;
 
@@ -812,6 +825,12 @@ messages:
       {
          lSpin = [SKID_SPIN,0,500,piMeleeRange*piMeleeRange,viMeleePriority+1,0,75];
          plActions = Cons(lSpin,plActions);
+      }
+
+      // Check if the monster starts out socializing or minding their own business.
+      if Random(1,100) <= viSocial
+      {
+         piBehavior = piBehavior | AI_SOCIALIZER ;
       }
 
       propagate;
@@ -1161,18 +1180,15 @@ messages:
    
    EnterStateLimbo()
    {
-      Send(self,@ClearBehavior);
-      if poTarget <> $
-         AND Send(poTarget,@GetOwner) = poOwner
-         AND isClass(poTarget,&User)
-      {
-         Send(poTarget,@SubtractFromMonsterChasers,
-              #level=viLevel);
-      }
+      // SetTarget without a what passed sets target to nil.
+      Send(self,@SetTarget);
 
-      poTarget = $;
-      piHatred = 0;
       Send(self,@SetState,#bit=STATE_LIMBO);
+
+      Send(self,@ClearBehavior);
+
+      piHatred = 0;
+
       // The whole point of the limbo state is that there are no timers to set.
 
       return;
@@ -1180,19 +1196,14 @@ messages:
 
    EnterStateWait(actnow=FALSE,delay=MOB_MOVE_TIMER_WAIT)
    {
-      if poTarget <> $
-         AND Send(poTarget,@GetOwner) = poOwner
-         AND isClass(poTarget,&user)
-      {
-         Send(poTarget,@SubtractFromMonsterChasers,
-              #level=viLevel);
-      }
-
-      poTarget = $;
-      piHatred = 0;
+      // SetTarget without a what passed sets target to nil.
+      Send(self,@SetTarget);
 
       Send(self,@SetState,#bit=STATE_WAIT);
+
       Send(self,@ClearBehavior);
+
+      piHatred = 0;
 
       if actnow
       {
@@ -1208,21 +1219,15 @@ messages:
 
    EnterStateMove( actnow=FALSE )
    {
+      // SetTarget without a what passed sets target to nil.
+      Send(self,@SetTarget);
+
       // Note: All monsters "move" even the ones who physically can't.
       Send(self,@SetState,#bit=STATE_MOVE);
 
-      if poTarget <> $
-         AND Send(poTarget,@GetOwner) = poOwner
-         AND isClass(poTarget,&User)
-      {
-         Send(poTarget,@SubtractFromMonsterChasers,
-              #level=viLevel);
-      }
-
-      poTarget = $;
-      piHatred = 0;
-
       Send(self,@ClearBehavior);
+
+      piHatred = 0;
 
       if actnow
       {
@@ -1361,9 +1366,8 @@ messages:
    }
 
    SomethingAttacked(what = $,victim = $,use_weapon = $)
-   "We may have been assaulted by something, so lets return fire if "
-   "appropriateIf were already fighting this person, this doesnt interrupt "
-   "our plans."
+   "Something in the room has been attacked. We might want to respond"
+   "by defending ourselves or our allies."
    {
       if poBrain <> $
       {
@@ -1407,14 +1411,6 @@ messages:
    GetLastAttacker()
    {
       return poLastAttacker;
-   }
-
-   PlayerFirstMove(what=$, where = $, new_row = 0, new_col=0)
-   {
-      Send(poBrain,@PlayerFirstMove,#mob=self,#state=piState,
-           #what=what,#where=where,#new_row = new_row, #new_col=new_col);
-
-      return;
    }
 
    SomethingEntered(what = $,where=$)
@@ -1705,7 +1701,7 @@ messages:
    "chasing, or we attack. Note that even if we can't move,"
    "we can still be 'engaging'...."
    {
-      local i,oVictim,iVision,each_obj,iCount, iDelay;
+      local i,oVictim, iDistance, iChaseRange, iDelay, bSight;
       oVictim = poTarget;
 
       Send(self,@ClearBehavior,#timer=timer);
@@ -1737,9 +1733,35 @@ messages:
          return;
       }
 
+      // Get distance to target and check LoS.
+      iDistance = Send(self,@SquaredFineDistanceTo3D,#what=oVictim);
+      bSight = Send(poOwner,@LineOfSight,#obj1=self,#obj2=oVictim);
+
+      // Mobs may stop chasing if the target gets out of range.
+      // Not if it has hurt us recently though.
+      if NOT Send(self,@GetHurtMeRecentlyAmount,#who=oVictim)
+      {
+         iChaseRange =  piVisionDistance * FINENESS;
+         iChaseRange = iChaseRange * (50 + piStamina) / 50;
+         if NOT bSight
+         {
+            iChaseRange /= 5;
+         }
+         iChaseRange *= iChaseRange;
+
+         // Mobs may lose interest if the target is too far away or out of sight.
+         if (NOT ((piBehavior & AI_FIGHT_SINGLEMINDED) OR (poMaster <> $)))
+            AND (iDistance > iChaseRange)
+         {
+            Send(self,@EnterStateMove);
+
+            return;
+         }
+      }
+
       if Send(self,@MonsterCombatCheck)
       {
-         iDelay = Send(self,@MonsterCombatAction);
+         iDelay = Send(self,@MonsterCombatAction,#distance=iDistance,#sight=bSight);
       }
       else
       {
@@ -1753,16 +1775,9 @@ messages:
       }
 
       // If we can move, we physically try to get closer.
-      if iDelay = 0
+      if iDelay <= 0
       {
          Send(poBrain,@GetEngageBehavior,#mob=self,#target=poTarget,#behavior=piBehavior);
-      }
-
-      // A negative delay means that we took an action but were located
-      // on top of the target. Let's take a free side step!
-      else if iDelay < 0 AND NOT (piBehavior & AI_NOMOVE)
-      {
-         Send(self,@MoveAway,#oTarget=poTarget,#face_target=TRUE);
       }
 
       // Monster acted. Pass on the appriopriate delay.
@@ -1796,7 +1811,7 @@ messages:
       if (piBehavior & AI_SOCIALIZER)
       {
          // Mighty monsters tend to stick to themselves.
-         if Random(1,1000) < piMight
+         if (Random(1,500) < piMight) AND (Random(1,100) >= viSocial)
          {
             piBehavior = piBehavior & ~AI_SOCIALIZER ;
          }
@@ -1804,14 +1819,17 @@ messages:
       else
       {
          // Smart monsters tend to stick together.
-         if Random(1,1000) < piIntellect
+         if (Random(1,500) < piIntellect) AND (Random(1,100) <= viSocial)
          {
             piBehavior = piBehavior | AI_SOCIALIZER ;
          }
       }
 
       // Okay, ask our brain how to move
-      Send(poBrain,@GetMoveBehavior,#behavior=piBehavior,#mob=self);
+      if Send(poBrain,@GetMoveBehavior,#behavior=piBehavior,#mob=self) = FALSE
+      {
+         return;
+      }
 
       // See if we want to change state now, but check for brain here first.
       // Sometimes we've died by now.
@@ -2131,8 +2149,7 @@ messages:
          iNew_finecol = FINENESS - (-iNew_finecol % FINENESS);
       }
 
-      if (NOT (piBehavior & AI_MOVE_WALKTHROUGH_WALLS))
-         OR Send(self,@ReqMonsterMove,#new_row=iNew_row,#new_col=iNew_col,
+      if Send(self,@ReqMonsterMove,#new_row=iNew_row,#new_col=iNew_col,
                   #new_finerow=iNew_finerow,#new_finecol=iNew_finecol)
       {
          Send(self,@MonsterOrient,#new_row=iNew_row,#new_col=iNew_col,
@@ -3026,6 +3043,20 @@ messages:
    {
       local r,c;
 
+      // Not actively chasing anyone. Let's avoid getting our feet wet.
+      // If we are already wading through water, we might as well keep
+      // going.
+      if (piState & STATE_MOVE) AND (piBehavior & AI_STROLLING)
+         AND (Send(poOwner,@GetSectorIDAtLocation,#row=new_row,#col=new_col,
+            #fine_row=new_finerow,#fine_col=new_finecol) = 10)
+      {
+         if Send(poOwner,@GetSectorIDAtLocation,#row=piRow,#col=piCol,
+            #fine_row=piFine_row,#fine_col=piFine_col) <> 10
+         {
+            return FALSE;
+         }
+      }
+
       if NOT (piBehavior & AI_MOVE_WALKTHROUGH_WALLS)
       {
          return TRUE;
@@ -3036,7 +3067,7 @@ messages:
       c = ((new_col * FINENESS) + new_finecol) / 16;
 
       // Monsters that can attack/move through walls shouldn't wander off the
-      //  map.
+      // map.
       if r > Send(poOwner,@GetRoomRowsHighRes)
          OR r < 1
          OR c > Send(poOwner,@GetRoomColsHighRes)
@@ -3090,7 +3121,7 @@ messages:
    MoveTowardsCoords(iRow=$, iCol=$, iFineRow=FINENESS_HALF, iFineCol=FINENESS_HALF,
                      face_target=FALSE, face_away=FALSE, to_master=FALSE)
    {
-      local iState, iMoveFlags;
+      local iState, iMoveFlags, iSpeed;
 
       if (iRow = $ or iCol = $)
       {
@@ -3117,19 +3148,23 @@ messages:
 
       if iState <> $
       {
+         iSpeed = piSpeed;
+
+         if (piBehavior & AI_FIGHT_SIDE_STEP)
+         {
+            iSpeed *= 4;
+         }
+
          piState = iState;
 
-         // debug("step",iRow,iCol,iFineRow,iFineCol);
-
-         if (NOT (piBehavior & AI_MOVE_WALKTHROUGH_WALLS))
-             OR Send(self,@ReqMonsterMove,#new_row=iRow,#new_col=iCol,
+         if Send(self,@ReqMonsterMove,#new_row=iRow,#new_col=iCol,
                      #new_finerow=iFineRow,#new_finecol=iFineCol)
          {
             Send(self,@MonsterOrient,#new_row=iRow,#new_col=iCol,
                  #new_finerow=iFineRow,#new_finecol=iFineCol,
                  #face_target=face_target,#face_away=face_away);
 
-            Send(poOwner,@SomethingMoved,#what=self,#speed=piSpeed,
+            Send(poOwner,@SomethingMoved,#what=self,#speed=iSpeed,
                  #new_row=iRow,#new_col=iCol,
                  #fine_row=iFineRow,#fine_col=iFineCol,
                  #non_monsters_only=TRUE);
@@ -3172,7 +3207,9 @@ messages:
    {
       local iMRow,iMCol,iMRowFine,iMColFine;
 
-      if NOT GetRandomPointBSP(Send(poOwner,@GetRoomData), 15, *iMRow, *iMCol, *iMRowFine, *iMColFine)
+      if (NOT GetRandomPointBSP(Send(poOwner,@GetRoomData), 15, *iMRow, *iMCol, *iMRowFine, *iMColFine))
+         OR (Send(poOwner,@GetSectorIDAtLocation,#row=iMRow,#col=iMCol,
+            #fine_row=iMRowFine,#fine_col=iMColFine) = 10)
          OR (piBehavior & AI_HAS_TARGET_LOCATION)
          OR (piBehavior & AI_CAN_PATROL)
       {
@@ -3999,6 +4036,22 @@ messages:
          Send(self,@IllusionHitEffectMessage,#who=who,#what=what,#num=SID_FATIGUE);
       }
 
+      // Burn: Frequency scales with mysticism, strength with mysticism, duration with stamina.
+      if viBurnChance > 0
+         AND Random(1,100) <= Bound(viBurnChance * (50 + piMysticism) / 75,0,100)
+         AND Send(what,@CanBurn)
+      {
+         oEffect = Send(SYS,@FindSpellByNum,#num=SID_BURN);
+         iStrength = Send(self,@GetBurnStrength,#amount=amount);
+         iStrength = iStrength * (50 + piMysticism) / 75;
+         iDuration = Send(self,@GetBurnDuration,#amount=amount);
+         iDuration = iDuration * (50 + piStamina) / 75;
+         Send(oEffect,@StartBurn,#who=what,#source=who,
+               #strength=iStrength,#duration=iDuration);
+         Send(self,@IllusionHitEffectMessage,#who=who,#what=what,
+               #amount=(iStrength/100)*(iDuration/100)/100,#num=SID_BURN);
+      }
+
       return;
    }
 
@@ -4026,6 +4079,10 @@ messages:
          if num = SID_FATIGUE
          {
             rMessage = vrIllusionFatigue;
+         }
+         if num = SID_BURN
+         {
+            rMessage = vrIllusionBurn;
          }
 
          if rMessage <> $
@@ -4143,8 +4200,32 @@ messages:
       return 10000;
    }
 
+   GetBurnStrength(amount=$)
+   {
+      if viBurnStrength <> $
+      {
+         return viBurnStrength;
+      }
+
+      // Return a rate of 10% mob damage dealt per second.
+      return Send(self,@GetDamage);
+   }
+
+   GetBurnDuration(amount=$)
+   {
+      if viBurnDuration <> $
+      {
+         return viBurnDuration;
+      }
+
+      // Default duration of 10 seconds.
+      return 10000;
+   }
+
    KilledSomething(what=$,use_weapon=$)
    {
+      local oOwner;
+
       if what = $
       {
          Debug("Bad info in killedsomething().");
@@ -4193,7 +4274,12 @@ messages:
       }
 
       // If we don't have a master, proceed as normal.
-      Send(Send(what,@GetOwner),@SomethingKilled,#what=self,#victim=what);
+      oOwner = Send(what,@GetOwner);
+
+      if oOwner <> $
+      {
+         Send(oOwner,@SomethingKilled,#what=self,#victim=what);
+      }
 
       if what = self
       {
@@ -5353,33 +5439,41 @@ messages:
       return TRUE;
    }
 
-   MonsterCombatAction()
+   MonsterCombatAction(distance=0,sight=TRUE)
    "Figure out what the monster is going to attack with."
    "Depending on our action, return an appropriate delay."
    {
-      local i, iDistance, iPriority, lActions, lAction, iNum, oSpell, iAttacks,
+      local i, iPriority, lActions, lAction, iNum, oSpell, iAttacks,
          iMana, iVigor, iFactor, iSpellPower, lTargets, iDelay, iPowerLevel,
          oTarget, iAction;
 
-      // If we don't have a target, we don't have to worry about
-      // what to hit it with.
-      if poTarget = $
-      {
-         return FALSE;
-      }
-
-      // Get distance to target.
-      iDistance = Send(self,@SquaredFineDistanceTo3D,#what=poTarget);
-
-      // Sort out any actions in our action list that can't reach the
-      // target or that we don't have the resources for.
       lActions = $;
-      foreach i in plActions
+
+      // If we have don't have sight, and we can't attack through walls,
+      // only allow moving. Same if we are scared and not cornered.
+      if (NOT sight AND NOT (piBehavior & AI_FIGHT_THROUGH_WALLS))
+         OR (Send(self,@HealthBelowWimpy) AND NOT (piBehavior & AI_CORNERED))
       {
-         if Nth(i,2) < piMana
-            AND Nth(i,4) > iDistance
+         foreach i in plActions
          {
-            lActions = Cons(i,lActions);
+            if First(i) = SKID_MINIMUM
+            {
+               lActions = Cons(i,lActions);
+            }
+         }
+      }
+      // Running is not required or not an option. Attack!
+      else
+      {
+         // Sort out any actions in our action list that can't reach the
+         // target or that we don't have the resources for.
+         foreach i in plActions
+         {
+            if Nth(i,2) < piMana
+               AND Nth(i,4) > distance
+            {
+               lActions = Cons(i,lActions);
+            }
          }
       }
 
@@ -5400,7 +5494,7 @@ messages:
          {
             lActions = DelListElem(lActions,i);
          }
-         else if ((iNum = SKID_FIRE) AND (iDistance <= piMeleeRange*piMeleeRange))
+         else if ((iNum = SKID_FIRE) AND (distance <= piMeleeRange*piMeleeRange))
             AND NOT (IsClass(self,&Reflection) OR IsClass(self,&EvilTwin))
          {
             lActions = DelListElem(lActions,i);
@@ -5434,15 +5528,14 @@ messages:
          return FALSE;
       }
 
-      // Time for some LoS checks.
+      // Time for an attack check.
       if iNum <> SKID_MINIMUM
-         AND (NOT Send(poOwner,@LineOfSight,#obj1=self,#obj2=poTarget)
-         OR NOT Send(poOwner,@ReqSomethingAttack,#what=self,#victim=poTarget,#use_weapon=self))
+         AND NOT Send(poOwner,@ReqSomethingAttack,#what=self,#victim=poTarget,#use_weapon=self)
       {
          return FALSE;
       }
 
-      // We have sight, are allowed to attack and got a pool of actions.
+      // We are allowed to attack and got a pool of actions.
       // Compare priorities to decide for one.
       iPriority = MIN_KOD_INT;
       foreach i in lActions
@@ -5569,21 +5662,26 @@ messages:
             Send(self,@MonsterCastAnimation,#iSpellNum=iNum);
          }
 
-         // Monsters don't necessarily cast at the same power level as
-         // players. Calculate power percentage here.
-
-         if viPowerLevel <> $
+         // We are almost ready to cast the spell, only a spell resist can
+         // save the victim now.
+         if (Length(lTargets) = 1)
+            AND NOT Send(poTarget,@SpellResist,#oSpell=oSpell,#who=self,#iSpellpower=iSpellPower)
          {
-            iPowerLevel = viPowerLevel;
-         }
-         else
-         {
-            iPowerLevel = bound(piMysticism + piIntellect + viLevel,$,300) / 3;
-         }
+            // Monsters don't necessarily cast at the same power level as
+            // players. Calculate power percentage here.
+            if viPowerLevel <> $
+            {
+               iPowerLevel = viPowerLevel;
+            }
+            else
+            {
+               iPowerLevel = bound(piMysticism + piIntellect + viLevel,$,300) / 3;
+            }
 
-         // Cast the spell.
-         Send(oSpell,@CastSpell,#who=self,#lTargets=lTargets,
-            #iSpellPower=iSpellPower,#iPowerLevel=iPowerLevel);
+            // Cast the spell.
+            Send(oSpell,@CastSpell,#who=self,#lTargets=lTargets,
+               #iSpellPower=iSpellPower,#iPowerLevel=iPowerLevel);
+         }
 
          iDelay = iDelay * Bound(150 - piIntellect,50,$) / 100;
       }
@@ -5648,9 +5746,9 @@ messages:
          }
       }
 
-      // Standing too close. Pass on a negative delay which
-      // allows the monster to take a free side step.
-      if iDistance < 2500
+      // Standing too close. Pass on a negative delay which allows 
+      // the monster to take a free side step.
+      if Send(self,@SideStepCheck,#distance=distance)
       {
          return -iDelay;
       }
@@ -7654,6 +7752,81 @@ messages:
       return FALSE;
    }
 
+   GetClosestEnemy()
+   {
+      local lActive, iRangeSquared, oTarget, iThisRangeSquared, i,
+            iDistRow, iDistCol, oIllusion, oObject, oBodyType;
+
+      if poOwner = $
+      {
+         return $;
+      }
+
+      oTarget = $;
+
+      iRangeSquared = piVisionDistance * piVisionDistance;
+
+      lActive = Send(poOwner,@GetHolderActive);
+      foreach i in lActive
+      {
+         oObject = First(i);
+
+         // We usually don't hold much of a grudge against inanimate objects.
+         if NOT IsClass(oObject,&Battler)
+         {
+            continue;
+         }
+
+         // We don't care about monsters, unless they are sworn enemies.
+         if IsClass(oObject,&Monster) AND NOT Send(self,@IsEnemy,#what=oObject)
+         {
+            continue;
+         }
+
+         // Does it look like an ally?
+         oBodyType = oObject;
+         if IsClass(oObject,&User)
+         {
+            oIllusion = Send(oObject,@GetIllusionForm); 
+            if oIllusion <> $
+            {
+               oBodyType = oIllusion;
+            }
+         }
+
+         // If it does, we don't care.
+         if Send(self,@IsAlly,#target=oBodyType,#regroup=TRUE)
+         {
+            continue;
+         }
+
+         // Looks like we found someone we wouldn't mind clubbing. Check if
+         // it is close enough.
+         iDistRow = (piRow * FINENESS + piFine_row)
+                     - (Send(oObject,@GetRow) * FINENESS + Send(oObject,@GetFineRow));
+
+         iDistCol = (piCol * FINENESS + piFine_col)
+                     - (Send(oObject,@GetCol) * FINENESS + Send(oObject,@GetFineCol));
+
+         iThisRangeSquared = (iDistRow * iDistRow + iDistCol * iDistCol) / FINENESS_SQUARED;
+
+         if iThisRangeSquared <= iRangeSquared
+         {
+            iRangeSquared = iThisRangeSquared;
+            oTarget = oObject;
+         }
+      }
+
+      // oTarget = nil if none are in range.
+      return oTarget;
+   }
+
+   IsEnemy(what = $)
+   "Just a dummy. Some mobs may have sworn racial enemies."
+   {
+      return FALSE;
+   }
+
    HealthBelowWimpy()
    {
       // Wimpy of 0 means monster never runs, just fights til the end.
@@ -7662,12 +7835,16 @@ messages:
          return FALSE;
       }
 
-      // If wimpy is set at 50, monster will flee once his health is at 49// of
+      // If wimpy is set at 50, monster will flee once his health is at 49% of
       //  max.
       if (piHealth/ piMax_health) < viWimpy
       {
+         Send(self,@SetBehaviorFlag,#flag=AI_FLEEING,#value=TRUE);
+
          return TRUE;
       }
+
+      Send(self,@SetBehaviorFlag,#flag=AI_FLEEING,#value=FALSE);
 
       return FALSE;
    }
@@ -7720,19 +7897,8 @@ messages:
 
       piHatred = iHatred;
 
-      if poTarget <> $
-         AND IsClass(poTarget,&User)
-         AND Send(poTarget,@GetOwner) = poOwner
-      {
-         Send(poTarget,@SubtractFromMonsterChasers,#level=viLevel);
-      }
-
-      poTarget = what;
-      if IsClass(poTarget,&User)
-         AND Send(poTarget,@GetOwner) = poOwner
-      {
-         Send(poTarget,@AddToMonsterChasers,#level=viLevel);
-      }
+      // SetTarget handles the rest.
+      Send(self,@SetTarget,#what=what);
 
       piState = (piState & VSTATE_VALIDITY_MASK);
 
@@ -7846,6 +8012,157 @@ messages:
       Debug("ptBehavior has ",GetTimeRemaining(ptBehavior),"ms left.");
 
       return;
+   }
+
+   PrintBehavior()
+   "Prints monster behavior out to the Debug log."
+   {
+      if (piBehavior & AI_NPC)
+      {
+         Debug(self,"is in AI_NPC.");
+      }
+
+      if (piBehavior & AI_NOMOVE)
+      {
+         Debug(self,"is in AI_NOMOVE");
+      }
+
+      if (piBehavior & AI_MOVE_RANDOM)
+      {
+         Debug(self,"is in AI_MOVE_RANDOM");
+      }
+
+      if (piBehavior & AI_MOVE_OPTIMAL_RANGE)
+      {
+         Debug(self,"is in AI_MOVE_OPTIMAL_RANGE");
+      }
+
+      if (piBehavior & AI_MOVE_FOLLOW_MASTER)
+      {
+         Debug(self,"is in AI_MOVE_FOLLOW_MASTER.");
+      }
+
+      if (piBehavior & AI_MOVE_FLEE_FRIGHTENERS)
+      {
+         Debug(self,"is in AI_MOVE_FLEE_FRIGHTENERS");
+      }
+
+      if (piBehavior & AI_MOVE_WALKTHROUGH_WALLS)
+      {
+         Debug(self,"is in AI_MOVE_WALKTHROUGH_WALLS");
+      }
+
+      if (piBehavior & AI_MOVE_WHEN_ALONE)
+      {
+         Debug(self,"is in AI_MOVE_WHEN_ALONE.");
+      }
+
+      if (piBehavior & AI_CAN_PATROL)
+      {
+         Debug(self,"is in AI_CAN_PATROL");
+      }
+
+      if (piBehavior & AI_HAS_TARGET_LOCATION)
+      {
+         Debug(self,"is in AI_HAS_TARGET_LOCATION");
+      }
+
+      if (piBehavior & AI_LOOPING_PATROL)
+      {
+         Debug(self,"is in AI_LOOPING_PATROL");
+      }
+
+      if (piBehavior & AI_NOFIGHT)
+      {
+         Debug(self,"is in AI_NOFIGHT.");
+      }
+
+      if (piBehavior & AI_FIGHT_AGGRESSIVE)
+      {
+         Debug(self,"is in AI_FIGHT_AGGRESSIVE");
+      }
+
+      if (piBehavior & AI_FLEEING)
+      {
+         Debug(self,"is in AI_FLEEING");
+      }
+
+      if (piBehavior & AI_FIGHT_SIDE_STEP)
+      {
+         Debug(self,"is in AI_FIGHT_SIDE_STEP");
+      }
+
+      if (piBehavior & AI_FIGHT_KARMA_AGGRESSIVE)
+      {
+         Debug(self,"is in AI_FIGHT_KARMA_AGGRESSIVE");
+      }
+
+      if (piBehavior & AI_FIGHT_MURDERERS)
+      {
+         Debug(self,"is in AI_FIGHT_MURDERERS");
+      }
+
+      if (piBehavior & AI_FIGHT_NEWBIESAFE)
+      {
+         Debug(self,"is in AI_FIGHT_NEWBIESAFE");
+      }
+
+      if (piBehavior & AI_FIGHT_SINGLEMINDED)
+      {
+         Debug(self,"is in AI_FIGHT_SINGLEMINDED");
+      }
+
+      if (piBehavior & AI_FIGHT_THROUGH_WALLS)
+      {
+         Debug(self,"is in AI_FIGHT_THROUGH_WALLS");
+      }
+
+      if (piBehavior & AI_FIGHT_LASHOUT)
+      {
+         Debug(self,"is in AI_FIGHT_LASHOUT");
+      }
+
+      if (piBehavior & AI_FIGHT_WIZARD_KILLER)
+      {
+         Debug(self,"is in AI_FIGHT_WIZARD_KILLER");
+      }
+
+      if (piBehavior & AI_FIGHT_HYPERAGGRESSIVE)
+      {
+         Debug(self,"is in AI_FIGHT_HYPERAGGRESSIVE");
+      }
+
+      if (piBehavior & AI_FIGHT_SWITCHALOT)
+      {
+         Debug(self,"is in AI_FIGHT_SWITCHALOT");
+      }
+
+      if (piBehavior & AI_CORNERED)
+      {
+         Debug(self,"is in AI_CORNERED");
+      }
+
+      if (piBehavior & AI_SOCIALIZER)
+      {
+         Debug(self,"is in AI_SOCIALIZER");
+      }
+
+      if (piBehavior & AI_STROLLING)
+      {
+         Debug(self,"is in AI_STROLLING");
+      }
+
+      return;
+   }
+
+   InCombat()
+   {
+      if (piState & STATE_ENGAGE)
+      {
+         return TRUE;
+      }
+
+      return FALSE;
    }
 
    GetFaction()
@@ -8218,6 +8535,11 @@ messages:
       return vbCanFatigue;
    }
 
+   CanBurn()
+   {
+      return vbCanBurn;
+   }
+
    GetProjectileSpeed()
    {
       return viProjectileSpeed;
@@ -8238,6 +8560,140 @@ messages:
    GetProjectileLightFlags()
    {
       return LIGHT_FLAG_NONE;
+   }
+
+   SetTarget(what=$)
+   {
+      // Sanity checks: If we drift in the void or our designated
+      // target is the same as our current target, skip.
+      if (poOwner <> $) AND (poTarget <> what)
+      {
+         // We have had a different target before. If that different
+         // target was a User, subtract us from his chaser log. If the
+         // User is no longer in the same room, his chaser log has already
+         // been reset and we have to skip instead.
+         if (poTarget <> $)
+            AND IsClass(poTarget,&User)
+            AND (Send(poTarget,@GetOwner) = poOwner)
+         {
+            Send(poTarget,@SubtractFromMonsterChasers,#level=viLevel);
+         }
+
+         // We have a new target now. If that new target is a User,
+         // we have to add ourselves to his chaser list. Our new
+         // target will automatically be in the same room, unless
+         // something has gone horribly wrong in the calls before.
+         if (what <> $)
+            AND IsClass(what,&User)
+         {
+            Send(what,@AddToMonsterChasers,#level=viLevel);
+         }
+
+         // Set the new target as our current target.
+         poTarget = what;
+
+         // Notify the room that we changed our target. This allows
+         // the Users' minimap dots to update accordingly.
+         Send(poOwner,@SomethingChanged,#what=self);
+      }
+
+      return;
+   }
+
+   IsPacified()
+   {
+      if Send(self,@HasOverTimeEffect,#num=SID_MARK_OF_DISHONOR)
+      {
+         return TRUE;
+      }
+
+      return FALSE;
+   }
+
+   GetAggroRange(what=$,bStrolling=FALSE)
+   {
+      local iStealth, iDifference, iRange;
+
+      if what = $
+      {
+         return 0;
+      }
+
+      if IsClass(what,&Player)
+      {
+         // Our aggro range is dependant on the target's stealth level.
+         // Agility and intellect are weighted 2:1 when it comes to stealth.
+         iStealth = 2 * Send(what,@GetAgility) + Send(what,@GetIntellect);
+
+         // A snearking target has increased stealth.
+         if bStrolling OR (Send(what,@GetSpeed) < 1000)
+         {
+            iStealth += 150;
+         }
+
+         // A high level difference between our target and us makes it less
+         // likely for us to attack them, since we are scared / don't care.
+         iDifference = Abs(Send(what,@GetMaxHealth) - Send(self,@GetLevel));
+         iDifference = Bound(iDifference,0,50);
+      }
+      else
+      {
+         if bStrolling
+         {
+            iStealth = 150;
+         }
+         else
+         {
+            iStealth = 0;
+         }
+
+         iDifference = Abs(Send(what,@GetLevel) - Send(self,@GetLevel));
+         iDifference = Bound(iDifference,0,50);
+      }
+
+      // Our base range is our vision.
+      iRange = Send(self,@GetVisionDistance) * FINENESS;
+
+      // Factor in stealth calculated earlier.
+      iRange = (iRange * (300 - iStealth)) / 300;
+
+      // Factor in level difference calculated earlier.
+      iRange = (iRange * (100 - iDifference)) / 100;
+
+      // We are much more likely to stop chasing when we can't
+      // see our target anymore.
+      if NOT Send(poOwner,@LineOfSight,#obj1=self,#obj2=what)
+      {
+         iRange /= 10;
+      }
+
+      //All range checks are handled squared.
+      iRange *= iRange;
+
+      return iRange;
+   }
+
+   GetSocial()
+   {
+      return viSocial;
+   }
+
+   SideStepCheck(distance=0)
+   {
+      if Bound(8000 - distance,0,$)
+      {
+         Send(self,@SetBehaviorFlag,#flag=AI_FIGHT_SIDE_STEP,#value=TRUE);
+
+         return TRUE;
+      }
+
+      return FALSE;
+   }
+
+   // Some mobs may have a special trick up their sleeves.
+   DoFleeingRoutine()
+   {
+      return;
    }
 
 end

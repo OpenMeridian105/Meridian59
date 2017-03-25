@@ -423,7 +423,9 @@ enum {
 #define MM_MINIBOSS      0x00000400    // Set if mob is a miniboss (survival arena).
 #define MM_BOSS          0x00000800    // Set if mob is a boss (survival arena).
 #define MM_RARE_ITEM     0x00001000    // Set if item is rare.
-#define MM_NO_PVP         0x00002000    // Set if player has no PVP flag.
+#define MM_NO_PVP        0x00002000    // Set if player has no PVP flag.
+#define MM_AGGRO_SELF    0x00004000    // Set if monster has aggro on the player.
+#define MM_AGGRO_OTHER   0x00008000    // Set if monster has aggro on another player.
 
 /* Player name color sent as hex RGB value. Define constants
    for ease of use as needed. Requires OF_PLAYER boolean flag

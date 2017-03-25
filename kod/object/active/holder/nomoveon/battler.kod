@@ -1643,8 +1643,11 @@ messages:
       }
 
       // Running is straining and drains our vigor slowly.
-      // Exertion has to be handled separately for non-players.
-      if IsClass(self,&Player)
+      // We handle exertion as a vigor dot for players to clean up
+      // visual feedback and keep the vigor bar steady.
+      // Exertion is handled separately for non-players.
+      // (Each move action taken by the monster costs vigor.)
+      if IsClass(self,&Player) AND Abs(piLastMoveUpdateTime - GetTickCount()) < 1000
       {
          iExertion = EXERTION_PER_MOVE * 9 * piSpeed / 2500;
 
@@ -3469,6 +3472,11 @@ messages:
       return;
    }
 
+   GetSpeed()
+   {
+      return piSpeed;
+   }
+
    CanPoison()
    {
       return TRUE;
@@ -3487,6 +3495,16 @@ messages:
    CanFatigue()
    {
       return TRUE;
+   }
+
+   CanBurn()
+   {
+      return TRUE;
+   }
+
+   GetTerrain()
+   {
+      return Send(poOwner,@GetSectorIDAtLocation,#row=piRow,#col=piCol,#fine_row=piFine_row,#fine_col=piFine_col);
    }
 
 end

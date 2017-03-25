@@ -70,6 +70,11 @@ classvars:
    viCashmin = 150
    viCashmax = 500
 
+   vbCanPoison = FALSE
+   vbCanBleed = FALSE
+   vbCanSiphon = FALSE
+   vbCanFatigue = FALSE
+
 properties:
 
    vrName = LivingStatue_name_rsc
@@ -490,6 +495,33 @@ messages:
       poOriginalShield = $;
 
       propagate;
+   }
+
+   // Statues don't regenerate health.
+   CalculateHealthPerTick()
+   {
+      local iHealthPerTick, iBoost, i;
+
+      iHealthPerTick = 0;
+
+      // Additional effects may cause our health to decay.
+      iHealthPerTick += piHealth_Rate;
+
+      iHealthPerTick = Bound(iHealthPerTick,$,0);
+
+      // Add a decay of 1 point per 5 seconds if sitting above the max.
+      if piHealth > 100*piMax_health
+      {
+         iHealthPerTick -= 200;
+      }
+
+      // Stop any decay if we are already sitting at 0 health.
+      if piHealth = 0
+      {
+         iHealthPerTick = Bound(iHealthPerTick,0,$);
+      }
+
+      return iHealthPerTick;
    }
 
 end

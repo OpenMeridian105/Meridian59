@@ -89,8 +89,10 @@ classvars:
    vrSound_aware = MolluskMonster_sound_aware
    vrSound_death = MolluskMonster_sound_death
 
-   // Chance to do a rock throw
-   viRockThrowChance = 4
+   // Mollusks very rarely team up.
+   viSocial = 2
+
+   vbCanSiphon = FALSE
 
 properties:
 
@@ -223,27 +225,39 @@ messages:
    {
       local oElement;
 
-      piAnimation = ANIM_THROW;
-      Send(poOwner,@SomethingChanged,#what=self);
-      piAnimation = ANIM_NONE;
-      Send(poOwner,@SomethingShot,#who=self,#target=poTarget,#projectile=self);
+      ptAction = $;
 
-      if Random(1,10) < 2
+      if poOwner <> $
       {
-         oElement = Create(&FogCloud,#Caster=self,#Duration=5);
-      }
-      else if Random(1,10) = 10
-      {
-         oElement = Create(&PoisonFogCloud,#Caster=self,#Duration=5,#Odds=101);
-      }
-      else
-      {
-         oElement = Create(&ActiveSporeCloud,#Caster=self,#Duration=5,#iSpellPower=50);
-      }
+         piAnimation = ANIM_THROW;
+         Send(poOwner,@SomethingChanged,#what=self);
+         piAnimation = ANIM_NONE;
+         Send(poOwner,@SomethingShot,#who=self,#target=poTarget,#projectile=self);
 
-      Send(poOwner,@NewHold,#what=oElement,
-         #new_row=Send(poTarget,@GetRow),#new_col=Send(poTarget,@GetCol),
-         #fine_row=Random(1,64),#fine_col=Random(1,64));
+         if Random(1,10) < 2
+         {
+            oElement = Create(&FogCloud,#Caster=self,#Duration=5);
+         }
+         else if Random(1,10) = 10
+         {
+            oElement = Create(&PoisonFogCloud,#Caster=self,#Duration=5,#Odds=101);
+         }
+         else
+         {
+            oElement = Create(&ActiveSporeCloud,#Caster=self,#Duration=5,#iSpellPower=50);
+         }
+
+         Send(poOwner,@NewHold,#what=oElement,
+            #new_row=Send(poTarget,@GetRow),#new_col=Send(poTarget,@GetCol),
+            #fine_row=Random(1,64),#fine_col=Random(1,64));
+
+         --piAction;
+
+         if piAction > 0
+         {
+            ptAction = CreateTimer(self,@DoMissileAnimation,400);
+         }
+      }
 
       return;
    }

@@ -67,8 +67,7 @@ classvars:
    viTreasure_type = TID_AVAR
    viAttack_type = ATCK_WEAP_BLUDGEON
    viSpeed = SPEED_AVERAGE
-   viDefault_behavior = \
-      AI_MOVE_REGROUP | AI_FIGHT_AGGRESSIVE | AI_FIGHT_MONSTERS
+   viDefault_behavior = AI_FIGHT_AGGRESSIVE
    viLevel = 120
    viDifficulty = 7
    viVisionDistance = 16
@@ -84,6 +83,8 @@ classvars:
    vrSound_miss = avar_sound_miss
    vrSound_aware = avar_sound_aware
    vrSound_death = avar_sound_death
+
+   vbCanSiphon = FALSE
 
 properties:
 
@@ -165,7 +166,7 @@ messages:
       if poOwner = $
          OR NOT IsClass(poOwner,&KCForest)
       {
-         if Random (1,5) > 1
+         if Random (1,3) > 1
          {
             Send(self,@SetClan,#clan=random(PT_PURPLETOBLUE,PT_PURPLETOYELLOW));
          }
@@ -222,56 +223,40 @@ messages:
       return;
    }
 
-   IsAlly(target = $, regroup = FALSE)
+   IsAlly(target=$,regroup=FALSE)
    {
-      if IsClass(target,&AvarShaman)
+      local oTargetMaster;
+
+      if NOT IsClass(target,&Battler)
+      {
+         return FALSE;
+      }
+
+      oTargetMaster = Send(target,@GetMaster);
+
+      if target = self
+      {
+         return TRUE;
+      }
+      else if poMaster <> $
+      {
+         if target = poMaster
+            OR (IsClass(target,&Battler) AND oTargetMaster = poMaster)
+         {
+            return TRUE;
+         }
+      }
+      else if (IsClass(target,&AvarShaman)
          OR IsClass(target,&AvarChieftain)
+         OR IsClass(target,&Avar)) AND (oTargetMaster = $)
       {
          if Send(target,@GetClan) = Send(self,@GetClan)
          {
             return TRUE;
          }
-
-         propagate;
       }
 
-      if IsClass(target,&Avar)
-      {
-         // Regroup makes the avars run to their shamans when they are wounded,
-         // instead of each other.
-         if regroup
-         {
-            return FALSE;
-         }
-
-         if Send(target,@GetClan) = Send(self,@GetClan)
-         {
-            return TRUE;
-         }
-
-         propagate;
-      }
-
-      // Charm checks up higher.
-      propagate;
-   }
-
-   SpecialHatredBehavior(what=$)
-   {
-      /// Avars attack other avars of other clans, but only 
-      /// in the temple of riija ruins (rid_KC3).
-      if IsClass(what,&AvarShaman)
-         OR IsClass(what,&AvarChieftain)
-         OR IsClass(what,&Avar)
-      {
-         if poOwner <> $ AND Send(poOwner,@GetRoomNum) = RID_KC3
-            AND Send(what,@GetClan) <> Send(self,@GetClan)
-         {
-            return 45;
-         }
-      }
-
-      return 0;
+      return FALSE;
    }
 
    GetTreasureType()
@@ -299,6 +284,27 @@ messages:
       }
 
       return oBody;
+   }
+
+   IsEnemy(what=$)
+   {
+      /// Avars attack other avars of other clans.
+      if (IsClass(what,&AvarShaman)
+         OR IsClass(what,&AvarChieftain)
+         OR IsClass(what,&Avar))
+            AND Send(what,@GetClan) <> Send(self,@GetClan)
+      {
+         return TRUE;
+      }
+
+      if IsClass(what,&DragonFly)
+         OR IsClass(what,&DragonFlyQueen)
+         OR IsClass(what,&DragonFlyPet)
+      {
+         return TRUE;
+      }
+
+      propagate;
    }
 
 end

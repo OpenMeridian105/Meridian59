@@ -75,6 +75,7 @@ classvars:
    viBonusAgility = 20
    viMeleeRange = 128
    viVisionDistance = 20
+   viSocial = 1
    viKarma = -50
    viWimpy = 2
    viCashmin = 500
@@ -83,6 +84,11 @@ classvars:
    vrSound_miss = Kriipa_sound_miss
    vrSound_aware = Kriipa_sound_aware
    vrSound_death = Kriipa_sound_death
+
+   viBleedChance = 20
+   viBleedStrength = 2500
+   viBleedDuration = 8000
+   vbCanSiphon = FALSE
 
 properties:
 
@@ -168,31 +174,37 @@ messages:
       return;
    }
 
-   MonsterCombatAction()
+   MonsterCombatAction(distance=0,sight=TRUE)
    "Kriipas have special attack patterns, which are handled here."
    {
-      local i, iDistance, iPriority, lActions, lAction, iNum, oSpell, 
+      local i, iPriority, lActions, lAction, iNum, oSpell, 
          iMana, iVigor, iFactor, iSpellPower, lTargets, iDelay, bStateChange;
 
-      // If we don't have a target, we don't have to worry about
-      // what to hit it with.
-      if poTarget = $
-      {
-         return FALSE;
-      }
-
-      // Get distance to target.
-      iDistance = Send(self,@SquaredFineDistanceTo3D,#what=poTarget);
-
-      // Sort out any actions in our action list that can't reach the
-      // target or that we don't have the resources for.
       lActions = $;
-      foreach i in plActions
+
+      // If we have sight, proceed as usual, else, only allow moving.
+      if sight
       {
-         if Nth(i,2) < piMana
-            AND Nth(i,4) > iDistance
+         // Sort out any actions in our action list that can't reach the
+         // target or that we don't have the resources for.
+         foreach i in plActions
          {
-            lActions = Cons(i,lActions);
+            if Nth(i,2) < piMana
+               AND Nth(i,4) > distance
+            {
+               lActions = Cons(i,lActions);
+            }
+         }
+      }
+      else
+      {
+         // Can't see the target, let's try to move towards it.
+         foreach i in plActions
+         {
+            if First(i) = SKID_MINIMUM
+            {
+               lActions = Cons(i,lActions);
+            }
          }
       }
 
@@ -213,7 +225,7 @@ messages:
          {
             lActions = DelListElem(lActions,i);
          }
-         else if ((iNum = SKID_FIRE) AND (iDistance <= piMeleeRange*piMeleeRange))
+         else if ((iNum = SKID_FIRE) AND (distance <= piMeleeRange*piMeleeRange))
             AND NOT (IsClass(self,&Reflection) OR IsClass(self,&EvilTwin))
          {
             lActions = DelListElem(lActions,i);
@@ -226,15 +238,14 @@ messages:
          return FALSE;
       }
 
-      // Time for some LoS checks.
+      // Time for an attack check.
       if iNum <> SKID_MINIMUM
-         AND (NOT Send(poOwner,@LineOfSight,#obj1=self,#obj2=poTarget)
-         OR NOT Send(poOwner,@ReqSomethingAttack,#what=self,#victim=poTarget,#use_weapon=self))
+         AND NOT Send(poOwner,@ReqSomethingAttack,#what=self,#victim=poTarget,#use_weapon=self)
       {
          return FALSE;
       }
 
-      // We have sight, are allowed to attack and got a pool of actions.
+      // We are allowed to attack and got a pool of actions.
       // Compare priorities to decide for one.
       iPriority = MIN_KOD_INT;
       foreach i in lActions

@@ -15,12 +15,14 @@ constants:
    include blakston.khd
 
    TS_MOVE = 1
-   TS_FIGHT_ME_VICTIM = 2
-   TS_FIGHT_ME_AGGRESSOR = 3
-   TS_FIGHT = 4
-   TS_MURDER = 5
-   TS_ENTRY = 6
-   TS_ENTRY_APPROVED = 7
+   TS_FIGHT_DEFEND_SELF = 2
+   TS_MURDER = 3
+   TS_FIGHT_DEFEND_VICTIM = 4
+   TS_FIGHT_ASSIST_VICTIM = 5
+   TS_FIGHT_DEFEND_ATTACKER = 6
+   TS_FIGHT_ASSIST_ATTACKER = 7
+   TS_ENTRY = 8
+   TS_ENTRY_APPROVED = 9
 
 resources:
 
@@ -36,8 +38,8 @@ properties:
    // will pick the highest level player in the room.
    piPlayer_factor = 10
 
-   // Any monster flagged with this is much more likely to
-   // engage in very deadly behavior.  Used to make orcs deadly.
+   // Direct counter to chase factor. This allows aggressive
+   // monsters to swarm a target.
    piHyperAggressive_factor = 60
 
    // The higher this is, the less likely monsters will 'swarm'.
@@ -148,180 +150,9 @@ messages:
       return;
    }
 
-   //// State changes are posted rather than sent because the player
-   //// has not been moved to the new coordinates yet.  An alternative
-   //// solution would be to have monster post this message to brain.
-   //// In fact, this might be preferable, since then the special XLocation
-   //// calls would not be needed, as the player *would* be in the new
-   //// location when this message was processed. Duh.
-   SomethingMoved(mob=$, state=$, what=$, new_row=$, new_col=$,
-                  fine_row=$, fine_col=$, ignoreWait=FALSE)
-   {
-      local iVisionRange, oTarget;
-
-      if what = mob
-      {
-         return;
-      }
-
-      /// We now process all SomethingMoved calls for fluidity.
-      //if (ignoreWait = FALSE)
-      //   AND Random(1,5) <> 5
-      //{
-      //   return;
-      //}
-
-      if state & STATE_LIMBO
-      {
-         if Send(mob,@GetOwner) <> $
-         {
-            Send(mob,@EnterStateMove,#actnow=FALSE);
-         }
-
-         return;
-      }
-
-      // Ignore moves if in WAIT
-      if state & STATE_WAIT
-         AND (ignoreWait = FALSE)
-      {
-         return;
-      }
-
-      // If they aren't our target already and aren't a valid target for
-      // us in general, do nothing.
-      if NOT Send(self,@AttemptTargetSwitch,#what=what,#event=TS_MOVE,#mob=mob)
-      {
-         return;
-      }
-
-      oTarget = Send(mob,@GetTarget);
-
-      // Some other monster may have already killed this target on the same
-      // SomethingMoved.  If so, this don't fly no more, do it?
-      if Send(mob,@GetOwner) <> Send(what,@GetOwner)
-      {
-         return;
-      }
-
-      if (state & STATE_MOVE) OR (state & STATE_WAIT)
-      {
-         Send(mob,@EnterStateEngage,#target=what,#actnow=True); // Used to be post.
-         return;
-      }
-
-      return;
-   }
-
-   SomethingAttacked(mob=$, state=$, what=$, victim=$, use_weapon=$)
-   {
-      local oTarget, iType, bSwitch;
-
-      oTarget = Send(mob,@GetTarget);
-
-      //// Sanity check
-      if what=$
-      {
-         Debug("BAD: null <what> in SomethingAttacked.");
-      }
-
-      if what = victim   // Earthquake style attack spell.
-      {
-         return;
-      }
-
-      iType = TS_FIGHT;
-      if victim = mob
-      {
-         iType = TS_FIGHT_ME_VICTIM;
-
-         // Monster needs to record the time, used for when players flee it.
-         Send(mob,@RecordTimeAttacked,#who=what);
-      }
-      else
-      {
-         // Always respond to your own attacks.
-         // Respond to others half the time.
-         if Random(1,10) < 6
-            OR (Send(mob,@GetBehavior) & AI_FIGHT_MURDERERS)
-         {
-            return;
-         }
-      }
-
-      if what = mob
-      {
-         iType = TS_FIGHT_ME_AGGRESSOR;
-      }
-
-      if (state & STATE_WAIT) OR (state & STATE_MOVE)
-      {
-         if Send(self,@AttemptTargetSwitch,#what=what,#event=iType,#mob=mob)
-         {
-            // If they hit us, we chase them whether we can see them or not.
-            Send(mob,@EnterStateEngage,#target=what,#actnow=True);
-
-            return;
-         }
-      }
-
-      if state & STATE_ENGAGE
-      {
-         bSwitch = FALSE;
-         if iType <> TS_FIGHT_ME_VICTIM
-            AND Send(mob,@CanReach,#what=victim)
-         {
-            bSwitch = Send(self,@AttemptTargetSwitch,#what=victim,
-                           #event=iType,#mob=mob);
-         }
-
-         if iType <> TS_FIGHT_ME_AGGRESSOR
-            AND Send(mob,@CanReach,#what=what)
-         {
-            bSwitch = Send(self,@AttemptTargetSwitch,#what=what,
-                           #event=iType,#mob=mob);
-         }
-
-         // If we can't reach them, we keep chasing our original target.
-         // Note however that if the attacker is closer to us than our
-         // target, XEngageTimer will switch us to chasing the attacker
-         // (assuming he is a valid target for us at all times and not
-         // only when he attacks)
-         return;
-      }
-
-      return;
-   }
-
-   PlayerFirstMove(mob=$, state=$, what=$, where=$, new_row=0, new_col = 0)
-   {
-      Send(self,@SomethingMoved,#mob=mob,#state=state,#what=what,
-            #where=where,#ignoreWait=TRUE,
-            #new_row=new_row,#new_col=new_col);
-
-      return;
-   }
-
+   // Not currently in use. Kept for future use.
    SomethingEntered(mob=$, state=$, what=$, where=$)
    {
-//      local iVision;
-
-//      if IsClass(what,&Battler) AND NOT (what = mob)
-//      {
-//         if (state&STATE_ENGAGE)=0
-//         {
-//            if Send(mob,@CanSee,#what=what) AND
-//            Send(self,@AttemptTargetSwitch,#what=what,#event=TS_MOVE,#mob=mob)
-//            {
-//              // Changing non-combat state --- is this necessary?
-//              // Should it be elsewhere?
-//               Send(mob,@ClearBasicTimers);
-//               Send(mob,@StartBasicTimers);
-//               Send(mob,@EnterStateWait);
-//            }
-//         }
-//      }
-
       return;
    }
 
@@ -339,43 +170,166 @@ messages:
 
       if what = oTarget
       {
-         Send(mob,@EnterStateMove,#actnow=False);
+         Send(mob,@EnterStateMove,#actnow=FALSE);
       }
 
       return;
    }
 
+   // Not currently in use. Kept for future use.
+   SomethingMoved(mob=$, state=$, what=$, new_row=$, new_col=$,
+                  fine_row=$, fine_col=$, ignoreWait=FALSE)
+   {
+      return;
+   }
+
+   SomethingAttacked(mob=$, state=$, what=$, victim=$, use_weapon=$)
+   {
+      local iType, iDelay, iDistance, iAggroRange, iPercentage;
+
+      // Check if we have an attacker. If we don't that's a bit odd.
+      if what=$ OR NOT IsClass(what,&Battler)
+      {
+         Debug("BAD: null <what> in SomethingAttacked.");
+      }
+
+      // If we did the attack ourselves or some dummy hurt themselves,
+      // we don't care.
+      if what = mob OR what = victim
+      {
+         return;
+      }
+
+      // Looks like we need to take this seriously.
+      iType = 0;
+
+      // Case 1: Someone attacked us. We must defend ourselves!
+      if victim = mob
+      {
+         iType = TS_FIGHT_DEFEND_SELF;
+         Send(mob,@RecordTimeAttacked,#who=what);
+      }
+      // Case 2: Someone else is being attacked.
+      else
+      {
+         // Special case: Attacker is a douche and we don't like that.
+         if (Send(mob,@GetBehavior) & AI_FIGHT_MURDERERS)
+            AND (Send(what,@CheckPlayerFlag,#flag=PFLAG_OUTLAW)
+               OR Send(what,@CheckPlayerFlag,#flag=PFLAG_MURDERER))
+         {
+            iType = TS_MURDER;
+         }
+         // Case 2a: Victim is an ally! Defend them!
+         if Send(mob,@IsAlly,#target=victim)
+         {
+            iType = TS_FIGHT_DEFEND_VICTIM;
+         }
+         // Case 2b: Attacker is an ally! Defend them!
+         else if Send(mob,@IsAlly,#target=what)
+         {
+            iType = TS_FIGHT_DEFEND_ATTACKER;
+         }
+         // Case 2c: Attacker is an enemy! Assist the victim!
+         else if Send(mob,@IsEnemy,#what=what)
+         {
+            iType = TS_FIGHT_ASSIST_VICTIM;
+         }
+         // Case 2d: Victim is an enemy! Assist the attacker!
+         else if Send(mob,@IsEnemy,#what=victim)
+         {
+            iType = TS_FIGHT_ASSIST_ATTACKER;
+         }
+         // Case 3: None of the above. We don't care.
+         else
+         {
+            return;
+         }
+      }
+
+      // We have a potential social situation here. Check if we care.
+      if (iType > 3) AND (Random(1,100) >= Send(mob,@GetSocial))
+      {
+         return;
+      }
+
+      // Things are heating up. We got an idea of who to attack now.
+      // Unless we defend ourselves or a murder victim, let's check
+      // if they are within our aggro zone.
+      // Case 1: We want to fight the attacker.
+      if ((iType = TS_FIGHT_DEFEND_VICTIM) OR (iType = TS_FIGHT_ASSIST_VICTIM))
+      {
+         iDistance = Send(mob,@SquaredFineDistanceTo3D,#what=what);
+         iAggroRange = Send(mob,@GetAggroRange,#what=what);
+
+         if iAggroRange < iDistance
+         {
+            return;
+         }
+      }
+      // Case 2: We are ganging up on the victim.
+      // Use stroll aggro range in this case.
+      else if ((iType = TS_FIGHT_DEFEND_ATTACKER) OR (iType = TS_FIGHT_ASSIST_ATTACKER))
+      {
+         iDistance = Send(mob,@SquaredFineDistanceTo3D,#what=victim);
+         iAggroRange = Send(mob,@GetAggroRange,#what=victim,#bStrolling=TRUE);
+
+         if iAggroRange < iDistance
+         {
+            return;
+         }
+      }
+
+      // Target is in range and we have nothing better to do than to attack it.
+      if (state & STATE_WAIT) OR (state & STATE_MOVE)
+      {
+         // We got attacked or fight of a criminal. Attack them now!
+         if ((iType = TS_FIGHT_DEFEND_SELF) OR (iType = TS_MURDER))
+            AND Send(self,@AttemptTargetSwitch,#what=what,#event=iType,#mob=mob)
+         {
+            Send(mob,@EnterStateEngage,#target=what,#actnow=TRUE);
+
+            return;
+         }
+
+         // We are defending a victim. Respond quickly.
+         if ((iType = TS_FIGHT_DEFEND_VICTIM) OR (iType = TS_FIGHT_ASSIST_VICTIM))
+            AND Send(self,@AttemptTargetSwitch,#what=what,#event=iType,#mob=mob)
+         {
+            iDelay = Bound(100 - Send(mob,@GetAgility),25,100) * 20;
+            Send(mob,@EnterStateEngage,#target=what,#actnow=FALSE,#delay=iDelay);
+
+            return;
+         }
+
+         // We are assisting an attacker. Take a bit of time to think about it.
+         if ((iType = TS_FIGHT_DEFEND_ATTACKER) OR (iType = TS_FIGHT_ASSIST_ATTACKER))
+            AND Send(self,@AttemptTargetSwitch,#what=victim,#event=iType,#mob=mob)
+         {
+            iDelay = Bound(100 - Send(mob,@GetAgility),25,100) * 50;
+            Send(mob,@EnterStateEngage,#target=victim,#actnow=FALSE,#delay=iDelay);
+
+            return;
+         }
+      }
+
+      // If we are already engaged in combat, we don't switch to assist an attacker,
+      // only to defend ourselves or a victim. In that case, act immediately.
+      if (state & STATE_ENGAGE) AND (iType < 6)
+         AND Send(self,@AttemptTargetSwitch,#what=what,#event=iType,#mob=mob)
+      {
+         Send(mob,@EnterStateEngage,#target=what,#actnow=TRUE);
+      }
+
+      return;
+   }
+
+   // Not currently in use. Kept for future use.
    SomethingKilled(mob=$, state=$, what=$, victim=$, use_weapon=$)
    "Effects of killing are handled in response to SomethingLeft and"
    "LastUserLeft.  Special cases handled here: "
    "1. guards being activated by a murder of a white-name."
    "2. monster mourning the death of his master."
    {
-      if IsClass(what,&User) AND IsClass(victim,&User)
-         AND NOT Send(victim,@CheckPlayerFlag,#flag=PFLAG_OUTLAW)
-         AND NOT Send(victim,@CheckPlayerFlag,#flag=PFLAG_MURDERER)
-         AND (Send(mob,@GetBehavior) & AI_FIGHT_MURDERERS)
-      {
-         if Send(self,@AttemptTargetSwitch,#what=what,#event=TS_MURDER,#mob=mob)
-         {
-            // If they hit us, we chase them whether we can see them or not.
-            Send(mob,@EnterStateEngage,#target=what,#actnow=True);
-
-            return;
-         }
-      }
-
-      if victim = Send(mob,@GetMaster)
-      {
-         if Send(self,@AttemptTargetSwitch,#what=what,#event=TS_MURDER,#mob=mob)
-         {
-           // If they hit us, we chase them whether we can see them or not.
-            Send(mob,@EnterStateEngage,#target=what,#actnow=True);
-
-            return;
-         }
-      }
-
       return;
    }
 
@@ -463,7 +417,7 @@ messages:
    "6. Otherwise, wander aimlessly."
    {
       local oMaster, oOwner, oMasterRoom, oFrightener, oSocial,
-         iDistance, iVision, iAttack;
+         iDistance, iVision, iAttack, oEnemy, iDelay;
 
       if mob = $
       {
@@ -546,6 +500,26 @@ messages:
          }
       }
 
+      // We don't have any pressing matters to attend to. However, we are
+      // still prepared to bash some skulls in if we should encounter any.
+      oEnemy = Send(mob,@GetClosestEnemy);
+      if oEnemy <> $
+      {
+         iDistance = Send(mob,@SquaredFineDistanceTo3D,#what=oEnemy);
+
+         // Well, look what we have here. A skull!
+         if iDistance < Send(mob,@GetAggroRange,#what=oEnemy,#bStrolling=TRUE)
+         {
+            if Send(self,@AttemptTargetSwitch,#what=oEnemy,#event=TS_MOVE,#mob=mob)
+            {
+               iDelay = Bound(100 - Send(mob,@GetAgility),25,100) * 40;
+               Send(mob,@EnterStateEngage,#target=oEnemy,#actnow=FALSE,#delay=iDelay);
+
+               return FALSE;
+            }
+         }
+      }
+
       // If we had a real target location, we wouldn't be strolling anymore.
       if (behavior & AI_STROLLING)
       {
@@ -571,16 +545,38 @@ messages:
          {
             // Find our closest ally.
             oSocial = Send(mob,@GetClosestAlly);
-            if oSocial <> $
+
+            // We got a friend! How quaint!
+            if oSocial <> $ AND IsClass(oSocial,&Monster)
             {
                // Check if ally is within sight. Stop if we are close enough.
                iDistance = Send(mob,@SquaredFineDistanceTo3D,#what=oSocial);
                iVision = Send(mob,@GetVisionDistance)*64;
                iVision *= iVision;
-               if iDistance > 10000
-                  AND iDistance < iVision
+               if iDistance < iVision
                {
-                  Send(mob,@MoveTowards,#oTarget=oSocial,#face_target=TRUE);
+                  // Let's see if our friend needs help with something. Pesky
+                  // adventurers for example.
+                  if Send(oSocial,@InCombat)
+                     AND (Random(1,iVision) > iDistance * 2)
+                     AND NOT Send(mob,@IsPacified)
+                  {
+                     oEnemy = Send(oSocial,@GetTarget);
+
+                     if oEnemy <> $
+                        AND Send(self,@AttemptTargetSwitch,#mob=mob,#what=oEnemy,
+                           #event=TS_FIGHT_ASSIST_ATTACKER)
+                     {
+                        iDelay = Bound(100 - Send(mob,@GetAgility),25,100) * 40;
+                        Send(mob,@EnterStateEngage,#target=oEnemy,#actnow=FALSE,#delay=iDelay);
+
+                        return FALSE;
+                     }
+                  }
+                  else if iDistance > 10000
+                  {
+                     Send(mob,@MoveTowards,#oTarget=oSocial,#face_target=TRUE);
+                  }
                }
             }
             // We want to socialize but noone is around.
@@ -611,8 +607,8 @@ messages:
    "5. If wounded below viWimpy, either run away, or towards closest ally."
    "6. Otherwise, move towards target."
    {
-      local oMaster, oOwner, oMasterRoom, oFrightener,
-            oAlly, iRange, iOpt_range, iSquaredVision, iSquaredDistance;
+      local oMaster, oOwner, oMasterRoom, oFrightener, oAlly, iRange, iOpt_range,
+            iSquaredVision, iSquaredDistance, iAlly;
 
       if mob = $ OR target = $
       {
@@ -671,29 +667,41 @@ messages:
          }
       }
 
-      if Send(mob,@HealthBelowWimpy)
+      // Mob is trying to flee. If we have allies, run towards them.
+      // Run away if we don't have an ally or our ally has managed
+      // to intercept the attacker.
+      if (behavior & AI_FLEEING)
       {
-         // If regroup flag set, monster will seek allies.
-         if (behavior & AI_MOVE_REGROUP)
+         // Do any special fleeing routines that our mob might have.
+         Send(mob,@DoFleeingRoutine);
+
+         // Got an ally! Yay! Save me!
+         if oAlly <> $
          {
-            oAlly = Send(mob,@GetClosestAlly);
-            if oAlly <> $
+            iRange = Send(mob,@SquaredFineDistanceTo3D,#what=target);
+            iAlly = Send(oAlly,@SquaredFineDistanceTo3D,#what=target);
+
+            // If my ally is further from the target than I, run to ally.
+            if iAlly > iRange
             {
                Send(mob,@MoveTowards,#oTarget=oAlly,#face_target=TRUE);
 
                return;
             }
-            else
-            {
-               // Mob has no allies available.  But he's not a wimp,
-               // he'll stay and fight to the end.
-               Send(mob,@MoveTowards,#oTarget=target,#face_target=TRUE);
-
-               return;
-            }
          }
-         // Mob is a chicken, running like hell from attacker.
+
          Send(mob,@MoveAway,#oTarget=target,#face_away=TRUE);
+
+         return;
+      }
+
+      // Target is too close. Gain a bit of distance.
+      if (behavior & AI_FIGHT_SIDE_STEP)
+      {
+         Send(mob,@MoveAway,#oTarget=target,#face_target=TRUE);
+
+         // Call this after moving to allow the flag to affect movement.
+         Send(mob,@SetBehaviorFlag,#flag=AI_FIGHT_SIDE_STEP,#value=FALSE);
 
          return;
       }
@@ -750,14 +758,16 @@ messages:
       return piDefault_behavior;
    }
 
-   GetHatred(mob=$,what=$,behavior=0,event=0)
+   GetHatred(mob=$,what=$,behavior=0,event=0,percentage=100,modifier=0)
    "Returns a value.  If this value is greater than the existing hatred, "
    "we attack. If iBalance ends up greater than 0, return TRUE."
    {
       local iBalance, oTarget, iHatred, iKarma1, iKarma2, oMaster,
-            oApparentForm, oApparentTarget, bKarmaHater, iAdd, oMobTarget,
-            iSquaredVision, iSquaredDistance;
+            oApparentForm, oApparentTarget, iAdd, oMobTarget,
+            iSquaredVision, iSquaredDistance, iSwarm, iLevel;
 
+      //// Immediately return 0 if...
+      // ...mob or target are nil.
       if mob = $ OR what = $
       {
          Debug("BadInfo passed to GetHatred!");
@@ -765,47 +775,72 @@ messages:
          return FALSE;
       }
 
-      // Never switch to target yourself.
+      // ...mob tries to attack itself.
       if what = mob
       {
          return 0;
       }
 
-      // These guys never target anyone at all.
+      // ...mob can't fight or is an NPC.
       if (behavior & AI_NOFIGHT) OR (behavior & AI_NPC)
       {
          return 0;
       }
 
+      // ...mob and target don't share a room.
+      if Send(mob,@GetOwner) <> Send(what,@GetOwner)
+      {
+         return 0;
+      }
+
+      // ...mob tries to attack an ally.
+      if Send(mob,@IsAlly,#target=what)
+      {
+         return 0;
+      }
+
+      //// Let's start fresh...
       iHatred = 0;
 
+      //// Check against the mob's current target.
       oMobTarget = Send(mob,@GetTarget);
+
       if oMobTarget <> $
       {
-         // Singleminded monsters (i.e. revenant) never switch targets.
          if (behavior & AI_FIGHT_SINGLEMINDED)
          {
             return 0;
          }
 
-         // If I'm already fighting someone, I probably won't
-         // switch a lot.  I'm less likely to switch if he's
-         // attacking me, too.
-         iHatred = iHatred - 10;
-         if Send(oMobTarget,@GetTarget) = mob
+         // Mob is already fighting a target and may be a
+         // bit reluctant to switch targets.
+         if oMobTarget <> what
          {
-            iHatred = iHatred - 15;
+            iHatred -= Send(mob,@GetLevel) / 10;
          }
       }
 
+      if (behavior & AI_FIGHT_NEWBIESAFE)
+         AND (event = TS_MOVE)
+         AND IsClass(what,&Player)
+         AND NOT Send(what,@CheckPlayerFlag,#flag=PFLAG_PKILL_ENABLE)
+      {
+         return 0;
+      }
+
+      //// Convert recent damage taken to hatred.
+      // 1 point of damage converts to 1 point of hatred.
+      iHatred += Send(mob,@GetHurtMeRecentlyAmount,#who=what) / 100;
+
+      //// Minion Checks
       oMaster = Send(mob,@GetMaster);
 
-      // Minions do not attack players unless provoked.
       if oMaster <> $
       {
+         // Minions do not attack players unless provoked.
          if IsClass(oMaster,&User)
             AND IsClass(what,&User)
-            AND event <> TS_FIGHT_ME_VICTIM
+            AND event <> TS_FIGHT_DEFEND_SELF
          {
             if NOT Send(SYS,@IsPKAllowed)
             {
@@ -813,20 +848,10 @@ messages:
             }
          }
 
-         // Never switch to target your master
-         // UNLESS your master is attacking you.
+         // Minions will never attack their master.
          if oMaster = what
          {
-            if event <> TS_FIGHT_ME_VICTIM
-            {
-               return 0;
-            }
-            else
-            {
-               Send(mob,@SetBehaviorFlag,#flag=AI_FIGHT_SINGLEMINDED);
-
-               return 1000;
-            }
+            return 0;
          }
 
          // Don't attack faction soldier NPCs unless
@@ -836,291 +861,188 @@ messages:
          {
             return 0;
          }
-      }
 
-      // Tend to not favor invis or shadowform.
-      if event <> TS_FIGHT_ME_VICTIM
-      {
-         if Send(what,@IsInvisible)
+         // If my master wants to kill this guy, so do I.
+         // Basic courtesy, really.
+         if Send(oMaster,@GetTarget) = what
+            OR Send(what,@GetTarget) = oMaster
          {
-            iHatred = (iHatred - piInvis_reduction);
+            iHatred += 1000;
          }
-         else
+
+         // Master under attack! Defend them!
+         if Send(what,@GetTarget) = oMaster
          {
-            if Send(what,@IsShadowForm)
-            {
-               iHatred = (iHatred - piShadForm_reduction);
-            }
+            iHatred += 500;
          }
       }
 
-      /// If they aren't in the same room, don't switch to them.
-      if Send(mob,@GetOwner) <> Send(what,@GetOwner)
+      //// Checks against aggro lowering mechanics.
+      // Will only work if mobs isn't attacked directly.
+      if event <> TS_FIGHT_DEFEND_SELF
       {
-         return 0;
-      }
-
-      // if it was a murder of a whitename and I'm a guard, or it was the
-      // death of my master, then go hard after the killer.  Note, we've
-      // already checked to see if it's a murder in SomethingKilled().
-      if event = TS_MURDER
-      {
-         iHatred = (iHatred + 75);
-      }
-
-      oTarget = Send(what,@GetTarget);
-
-      if (oTarget <> $) AND (NOT IsObject(oTarget))
-      {
-         // Monster makes no decision if the target is invalid.
-         Debug("Got",oTarget,"for target of what",GetClass(what),
-               "and mob",GetClass(mob));
-         oTarget = $;
-
-         return 0;
-      }
-
-      oApparentTarget = $;
-      if (oTarget <> $) AND IsClass(oTarget,&Battler)
-      {
-         oApparentTarget = Send(oTarget,@GetIllusionForm);
-      }
-      if oApparentTarget = $
-      {
-         oApparentTarget = oTarget;
-      }
-
-      // Might think a player feigning death is actually dead.
-      if (oApparentTarget <> $)
-         AND IsClass(oApparentTarget,&DeadBody)
-      {
-         if (Random(0,150) > Send(mob,@GetMaxHealth))
+         // A pacified mob will only fight back if smacked.
+         if Send(mob,@IsPacified)
          {
             return 0;
          }
-         else
+         // Feigning death may throw our attacker off.
+         if Send(mob,@IsEnchanted,#byClass=&FeignDeath)
+            AND (Random(0,300) > Send(mob,@GetMaxHealth))
          {
-            oApparentTarget = oTarget;
+            return 0;
+         }
+         // Invisible targets have low priority.
+         if Send(what,@IsInvisible)
+         {
+            iHatred -= piInvis_reduction;
+         }
+         // Shadowform may also save the target from aggression.
+         else if Send(what,@IsShadowForm)
+         {
+            iHatred -= piShadForm_reduction;
          }
       }
 
-      if (oApparentTarget <> $) AND (NOT IsObject(oApparentTarget))
+      //// Adjustments for event types.
+      if event = TS_FIGHT_DEFEND_SELF
       {
-         // Monster makes no decision if the apparent target is invalid.
-         Debug("Got",oApparentTarget,"for apparent target of what",
-               GetClass(what),"and mob",GetClass(mob));
-         oApparentTarget = $;
-
-         return 0;
+         iHatred += 40;
       }
 
-      if oTarget <> $
+      if event = TS_MURDER
       {
-         // If either of them is targetting our master, that goes against them.
-         if oTarget = oMaster
-         {
-            iHatred = (iHatred + 60);
-         }
-
-         // If they are fighting us, that's a little less important.
-         if oTarget = mob
-         {
-            iHatred = (iHatred + 40);
-         }
-
-         // If they are fighting an ally, that's not as important.
-         // Still, help out your buds, even if they are morphed to fool you.
-         if Send(mob,@IsAlly,#target=oApparentTarget)
-         {
-            iHatred = (iHatred + 20);
-         }
+         iHatred += 30;
       }
 
-      // Never switch to target an ally, UNLESS he is not of his own free will.
-      if Send(mob,@IsAlly,#target=what) AND oTarget <> mob
-         AND oMaster = $ AND Send(what,@GetMaster) = $
+      if event = TS_FIGHT_DEFEND_VICTIM
       {
-         return 0;
+         iHatred += 25;
       }
 
-      // If my master wants to kill this guy, so do i.
-      if oMaster <> $ AND Send(oMaster,@GetTarget) = what
+      if event = TS_FIGHT_ASSIST_VICTIM
       {
-         iHatred = (iHatred + 50);
+         iHatred += 20;
       }
 
-      /// Reflection spells can fool monsters.
+      if event = TS_FIGHT_DEFEND_ATTACKER
+      {
+         iHatred += 15;
+      }
+
+      if event = TS_FIGHT_ASSIST_ATTACKER
+      {
+         iHatred += 10;
+      }
+
+      // The target-to-be might be an illusion.
       oApparentForm = Send(what,@GetIllusionForm);
       if oApparentForm = $
       {
          oApparentForm = what;
       }
-      else
+
+      //// Adjustments for certain targets.
+      // Reflections make good decoys.
+      if IsClass(oApparentForm,&Reflection)
       {
-         if oApparentForm = oMobTarget
-         {
-            iHatred = (iHatred  + 20);
-         }
+         iHatred = iHatred * 200 / 100;
       }
 
-      if IsClass(what,&Monster)
+      // Evil twins tend to be ignored.
+      if IsClass(oApparentForm,&EvilTwin)
       {
-         if NOT (behavior & AI_FIGHT_MONSTERS)
-         {
-            if event <> TS_FIGHT_ME_VICTIM
-            {
-               return 0;
-            }
-            else
-            {
-               iHatred = (iHatred -20);
-            }
-         }
-      }
-      else
-      {
-         if (behavior & AI_FIGHT_NEWBIESAFE)
-            AND NOT Send(what,@CheckPlayerFlag,#flag=PFLAG_PKILL_ENABLE)
-         {
-            if event = TS_MOVE
-            {
-               return 0;
-            }
-            else
-            {
-               iHatred = (iHatred - 20);
-            }
-         }
+         iHatred = iHatred * 50 / 100;
       }
 
-      bKarmaHater = FALSE;
+      //// Special mob behavior...
+      // Some mobs will hunt enemies of opposite karma.
       if (behavior & AI_FIGHT_KARMA_AGGRESSIVE)
       {
-         if IsClass(what,&player) OR (behavior & AI_FIGHT_MONSTERS)
-         {
-            iKarma1 = Send(mob,@GetKarma);
-            iKarma2 = 0;
+         iKarma1 = Send(mob,@GetKarma);
+         iKarma2 = 0;
 
-            // What does mob THINK his target's karma is.
-            if IsClass(oApparentForm,&Battler)
+         // What does mob THINK its target's karma is?
+         if oApparentForm <> $ AND IsClass(oApparentForm,&Battler)
+         {
+            iKarma2 = Send(oApparentForm,@GetKarma);
+         }
+         if iKarma1 <> 0 AND iKarma2 <> 0
+         {
+            if (Abs(iKarma1)/iKarma1) <> (Abs(iKarma2)/iKarma2)
             {
-               iKarma2= Send(oApparentForm,@GetKarma);
-            }
-            if iKarma1 <> 0 AND iKarma2 <> 0
-            {
-               if (abs(iKarma1)/iKarma1) <> (Abs(iKarma2)/iKarma2)
-               {
-                  iHatred = (iHatred + ((Abs(iKarma2)* piKarma_factor)/100));
-                  bKarmaHater = TRUE;
-               }
+               iHatred += (Abs(iKarma2)* piKarma_factor) / 100;
             }
          }
       }
 
-      if (behavior & AI_FIGHT_MURDERERS)
-      {
-         if IsClass(oApparentForm,&User)
-            AND Send(oApparentForm,@CheckPlayerFlag,#flag=PFLAG_MURDERER)
-         {
-            iHatred = (iHatred + 50 + Send(what,@GetUnjustifiedKills)*4);
-         }
-      }
+      // This covers special hatred towards racial enemies that
+      // are specified in the individual monster's code.
+      iHatred += Send(mob,@SpecialHatredBehavior,#what=what);
 
-      if (behavior & AI_FIGHT_WIZARD_KILLER)
-      {
-         if IsClass(oApparentForm,&Battler)
-            AND Send(oApparentForm,@IsWizard)
-         {
-            iHatred = (iHatred + piWizard_factor);
-         }
-      }
-
-      iHatred = iHatred + Send(mob,@SpecialHatredBehavior,#what=what);
-
-      // Basic sense of self-preservation:
-      iAdd = 0;
-      if (event = TS_FIGHT_ME_VICTIM)
-      {
-         if oTarget = $
-         {
-            iAdd = 100;
-         }
-         else
-         {
-            iAdd = Send(mob,@GetLevel)/2;
-         }
-      }
-
-      iHatred = iHatred + iAdd;
-      iAdd = 0;
-
+      // Looks like we don't have any real reason to attack. Let's
+      // quit unless we are deliberately looking for a fight.      
       if iHatred <= 0 AND NOT (behavior & AI_FIGHT_AGGRESSIVE)
       {
          return 0;
       }
 
-      // This is the monster vision check. If 'what' attacked us, skip
-      // this since we will attack regardless of where 'what' is (even
-      // if we can't see them, we can see where the attack comes from).
-      if NOT (event = TS_FIGHT_ME_VICTIM)
+      // Aggressive monsters don't like us getting in their face.
+      // Teach that trespasser some respect!
+      if (event = TS_MOVE)
       {
-         // This is the actual range past which a monster can't 'see'. We
-         // use this as our base for this calculation.
-         iSquaredVision = Send(mob,@GetVisionDistance);
-         iSquaredVision = (iSquaredVision * iSquaredVision);
-
-         // Use the new SqFineDistToVision here for better resolution.
-         // Based on SquaredFineDistanceTo, but without $ checks for speed.
-         iSquaredDistance = (Send(mob,@SqFineDistToVision,#what=what)
-                                    / FINENESS_SQUARED);
-
-         // If outside our vision range, return 0 and don't switch.
-         if iSquaredVision < iSquaredDistance
-         {
-            return 0;
-         }
-         
-         iAdd = Sqrt(iSquaredVision - iSquaredDistance) * 2;
-      }
-      iHatred = iHatred + iAdd;
-
-      if (event = TS_ENTRY) and oMobTarget = $
-      {
-         iHatred = iHatred + 5;
-      }
-      if (event = TS_ENTRY_APPROVED)
-      {
-         iHatred = iHatred + 20;
+         iHatred += 5;
       }
 
-      // Up to 20 points for level.
+      //// Adjust hatred generated based on target level...
+      // Get target level.
       if IsClass(what,&Monster)
       {
-         iHatred = (iHatred + Bound(Send(what,@GetLevel),1,100)/5);
+         iLevel = Send(what,@GetLevel);
       }
       else
       {
-         // Give newbies a break.
-         iHatred = (iHatred + (Bound(Send(what,@GetMaxHealth)-20,0,150)
-                                    * piPlayer_factor)/100);
-
-         // If they already have a lot of people chasing them, run away.
-         if NOT (event = TS_FIGHT_ME_VICTIM)
-         {
-            iHatred = iHatred - (Send(what,@GetMonsterChasers)
-                                       * piChaser_factor)/100;
-         }
+         iLevel = Send(what,@GetMaxHealth);
       }
 
+      // Stronger targets are more likely to draw our attention.
+      iHatred += iHatred * Bound((iLevel - 85)/3,-20,20) / 100;
+
+      //// Prevent excessive player swarming...
+      // Every mob that chases a player adds its viLevel to the player's chase
+      // counter. A high chase counter prevents additional mobs from joining
+      // the fight, unless they have been attacked directly.
+      if IsClass(what,&Player) AND NOT (event = TS_FIGHT_DEFEND_SELF)
+      {
+         // The power of the swarm is calculated in relation to a player's level.
+         iSwarm = Send(what,@GetMonsterChasers) * 20 / iLevel;
+         iSwarm = iSwarm * piChaser_factor / 100;
+         iHatred -= iSwarm;
+      }
+
+      //// Allow increased swarming for some mobs...
+      // This is a direct counter to the chase factor and allows hyper aggressive
+      // mobs to swarm their target.
       if (behavior & AI_FIGHT_HYPERAGGRESSIVE)
       {
-         iHatred = iHatred + piHyperAggressive_factor;
+         iHatred += piHyperAggressive_factor;
       }
+
+      //// Check if the mob can reach it's intended target.
+      // Hatred halved if it can't.
+      if NOT Send(mob,@CanReach,#what=what,#bRanged=TRUE)
+      {
+         iHatred /= 2;
+      }
+
+      // Finally, factor in percentage and flat modifiers.
+      iHatred = iHatred * percentage / 100;
+      iHatred += modifier;
 
       return iHatred;
    }
 
-   AttemptTargetSwitch(mob = $, what=$, event = 1)
+   AttemptTargetSwitch(mob = $, what=$, event = 1, percentage = 100, modifier = 0)
    "Target Switching Behavior."
    {
       local iHatred, oldHatred, behavior, oTarget;
@@ -1154,12 +1076,12 @@ messages:
       }
 
       behavior = Send(mob,@GetBehavior);
-      iHatred = Send(self,@GetHatred,#what=what,#mob=mob,
-                     #event=event,#behavior=behavior);
+      iHatred = Send(self,@GetHatred,#what=what,#mob=mob,#event=event,#behavior=behavior,
+                  #percentage=percentage,#modifier=modifier);
 
       if behavior & AI_FIGHT_SWITCHALOT
-         AND (oTarget <> $ AND NOT Send(mob,@CanReach,#what=oTarget))
-         AND Send(mob,@CanReach,#what=what)
+         AND (oTarget <> $ AND NOT Send(mob,@CanReach,#what=oTarget,#bRanged=TRUE))
+         AND Send(mob,@CanReach,#what=what,#bRanged=TRUE)
       {
          oldHatred = 0;
       }

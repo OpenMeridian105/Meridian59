@@ -60,8 +60,7 @@ classvars:
    // Attack range of 192, or 3 row/col.
    viMeleeRange = 0
    viFireRange = 192
-   viDefault_behavior = \
-      AI_MOVE_REGROUP | AI_FIGHT_MONSTERS | AI_FIGHT_KARMA_AGGRESSIVE
+   viDefault_behavior = AI_FIGHT_KARMA_AGGRESSIVE
    viWimpy = 10
    viCashmin = 300
    viCashmax = 600
@@ -76,6 +75,9 @@ properties:
    viKarma = -50
    piAnimation = ANIM_NONE
 
+   piMana = 6000
+   piMax_Mana = 60
+
    piReputationGroup = REP_FEY_EVIL
    
 messages:
@@ -89,6 +91,15 @@ messages:
                       ];
 
       plReputationEnemies = [REP_FEY_GOOD];
+
+      propagate;
+   }
+
+   Constructed()
+   {
+      plActions = [ [SID_VAMPIRIC_DRAIN],
+                    [SID_DARKNESS],
+                    [SID_SPIDER_WEB] ];
 
       propagate;
    }
@@ -168,16 +179,6 @@ messages:
       return LIGHT_ORANGE;
    }
 
-   AssessDamage(what=$)
-   {
-      if isClass(what,&Fairy)
-      {
-         return 100;
-      }
-
-      propagate;
-   }
-
    SendLightingInformation()
    {
       AddPacket(2,(LIGHT_FLAG_ON | LIGHT_FLAG_DYNAMIC));
@@ -192,6 +193,17 @@ messages:
    CanMorphTo()
    {
       return FALSE;
+   }
+
+   IsEnemy(what=$)
+   {
+      /// Fey Dirhai hate Fey Elhai.
+      if IsClass(what,&Fairy)
+      {
+         return TRUE;
+      }
+
+      propagate;
    }
 
 end

@@ -51,8 +51,7 @@ classvars:
    viSpeed = SPEED_VERY_FAST
    viAttack_type = 0
    viAttack_spell = ATCK_SPELL_SHOCK
-   viDefault_behavior = \
-      AI_MOVE_REGROUP | AI_FIGHT_MONSTERS | AI_FIGHT_KARMA_AGGRESSIVE
+   viDefault_behavior = AI_FIGHT_KARMA_AGGRESSIVE
    viWimpy = 10
 
    viLevel = 60
@@ -73,8 +72,11 @@ properties:
    viKarma = 50
    piAnimation = ANIM_NONE
 
+   piMana = 6000
+   piMax_Mana = 60
+
    piReputationGroup = REP_FEY_GOOD
-   
+
 messages:
 
    Constructor()
@@ -86,6 +88,16 @@ messages:
                       ];
 
       plReputationEnemies = [REP_FEY_EVIL];
+
+      propagate;
+   }
+
+   Constructed()
+   {
+      plActions = [ [SID_HOLY_BLAZE],
+                    [SID_FORCES_OF_LIGHT],
+                    [SID_LIGHT],
+                    [SID_BRAMBLE_WALL] ];
 
       propagate;
    }
@@ -165,16 +177,6 @@ messages:
       return LIGHT_ORANGE;
    }
 
-   AssessDamage(what=$)
-   {
-      if IsClass(what,&EvilFairy)
-      {
-         return 100;
-      }
-
-      propagate;
-   }
-
    SendLightingInformation()
    {
       AddPacket(2,(LIGHT_FLAG_ON | LIGHT_FLAG_DYNAMIC));
@@ -189,6 +191,17 @@ messages:
    CanMorphTo()
    {
       return FALSE;
+   }
+
+   IsEnemy(what=$)
+   {
+      /// Fey Dirhai hate Fey Elhai.
+      if IsClass(what,&EvilFairy)
+      {
+         return TRUE;
+      }
+
+      propagate;
    }
 
 end

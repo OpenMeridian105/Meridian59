@@ -44,7 +44,6 @@ classvars:
 
    viTreasure_type = TID_NONE
 
-   viSpeed = SPEED_VERY_FAST
    viAttack_type = ATCK_WEAP_CLAW
    viAttributes = 0
    viLevel = 10
@@ -60,7 +59,12 @@ classvars:
    vrSound_aware = smallratsound_aware
    vrSound_death = smallratsound_death
 
+   viBleedStrength = 250
+   viBleedDuration = 8000
+
 properties:
+
+   viSpeed = SPEED_VERY_FAST
 
 messages:
 
@@ -77,6 +81,43 @@ messages:
       }
    
       return FALSE;
+   }
+
+   // Rats go speedy gonzales when their health is really low.
+   DoFleeingRoutine()
+   {
+      local oElement;
+
+      ++piCounter;
+
+      if piCounter > 3
+      {
+         oElement = Create(&FogCloud,#Caster=self,#Duration=3);
+         Send(poOwner,@NewHold,#what=oElement,#new_row=piRow,#new_col=piCol,
+              #fine_row=piFine_row,#fine_col=piFine_col);
+
+         piCounter = 0;
+      }
+
+      viSpeed = 40;
+
+      return;
+   }
+
+   // Reset speed
+   EngageTimer()
+   {
+      viSpeed = SPEED_VERY_FAST;
+
+      propagate;
+   }
+
+   // Reset speed
+   MoveTimer()
+   {
+      viSpeed = SPEED_VERY_FAST;
+
+      propagate;
    }
 
 end

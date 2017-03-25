@@ -50,7 +50,6 @@ resources:
    lich_sound_death = lich_dth.ogg
    lich_sound_aware = lich_awr.ogg
 
-   lich_cast_spell = "The lich queen summons forth the darkness!!"
    lich_cast_sound = necro01.ogg
 
    lich_death_blow = \
@@ -65,9 +64,6 @@ resources:
    lich_helper_killer = \
       "The foul Lich Queen has been driven from this plane of reality, "
       "thanks to you and your comrades!"
-   lich_no_truce = \
-      "The Lich Queen's evil presence dispels your truce before you "
-      "can even cast it."
 
    lich_blank = ""
    lich_comma = ", "
@@ -162,6 +158,10 @@ classvars:
    viBleedStrength = 4000
    viBleedDuration = 4000
    viMovePriority = 300
+   viPowerLevel = 200
+
+   vbCanPoison = FALSE
+   vbCanBleed = FALSE
 
 properties:
 
@@ -172,11 +172,6 @@ properties:
    
    pbIllusioned = TRUE
    ptGoIllusioned = $
-
-   piBlindAttackChance = 15    // Chance she'll attack with blind
-   piBlindCounterChance = 7    // Chance she'll counter a spell or arrow with blind
-   piBlindDurationMin = 20000  // Milliseconds.
-   piBlindDurationMax = 30000  // Milliseconds.
 
    ptDeathSequence = $
    piDeathSequenceTimestep = 200  // milliseconds
@@ -362,33 +357,39 @@ messages:
       propagate;
    }
 
-   MonsterCombatAction()
+   MonsterCombatAction(distance=0,sight=TRUE)
    "Figure out what the monster is going to attack with."
    "Depending on our action, return an appropriate delay."
    {
-      local i, iDistance, iPriority, lActions, lAction, iNum, oSpell, iAttacks,
+      local i, iPriority, lActions, lAction, iNum, oSpell, iAttacks,
          iMana, iVigor, iFactor, iSpellPower, lTargets, iDelay, iPowerLevel,
          oTarget, iAction;
 
-      // If we don't have a target, we don't have to worry about
-      // what to hit it with.
-      if poTarget = $
-      {
-         return FALSE;
-      }
-
-      // Get distance to target.
-      iDistance = Send(self,@SquaredFineDistanceTo3D,#what=poTarget);
-
-      // Sort out any actions in our action list that can't reach the
-      // target or that we don't have the resources for.
       lActions = $;
-      foreach i in plActions
+
+      // If we have sight, proceed as usual, else, only allow moving.
+      if sight
       {
-         if Nth(i,2) < piMana
-            AND Nth(i,4) > iDistance
+         // Sort out any actions in our action list that can't reach the
+         // target or that we don't have the resources for.
+         foreach i in plActions
          {
-            lActions = Cons(i,lActions);
+            if Nth(i,2) < piMana
+               AND Nth(i,4) > distance
+            {
+               lActions = Cons(i,lActions);
+            }
+         }
+      }
+      else
+      {
+         // Can't see the target, let's try to move towards it.
+         foreach i in plActions
+         {
+            if First(i) = SKID_MINIMUM
+            {
+               lActions = Cons(i,lActions);
+            }
          }
       }
 
@@ -409,7 +410,7 @@ messages:
          {
             lActions = DelListElem(lActions,i);
          }
-         else if ((iNum = SKID_FIRE) AND (iDistance <= piMeleeRange*piMeleeRange))
+         else if ((iNum = SKID_FIRE) AND (distance <= piMeleeRange*piMeleeRange))
             AND NOT (IsClass(self,&Reflection) OR IsClass(self,&EvilTwin))
          {
             lActions = DelListElem(lActions,i);
@@ -443,15 +444,14 @@ messages:
          return FALSE;
       }
 
-      // Time for some LoS checks.
+      // Time for an attack check.
       if iNum <> SKID_MINIMUM
-         AND (NOT Send(poOwner,@LineOfSight,#obj1=self,#obj2=poTarget)
-         OR NOT Send(poOwner,@ReqSomethingAttack,#what=self,#victim=poTarget,#use_weapon=self))
+         AND NOT Send(poOwner,@ReqSomethingAttack,#what=self,#victim=poTarget,#use_weapon=self)
       {
          return FALSE;
       }
 
-      // We have sight, are allowed to attack and got a pool of actions.
+      // We are allowed to attack and got a pool of actions.
       // Compare priorities to decide for one.
       iPriority = MIN_KOD_INT;
       foreach i in lActions
@@ -580,23 +580,29 @@ messages:
             Send(self,@MonsterCastAnimation,#iSpellNum=iNum);
          }
 
-         // Monsters don't necessarily cast at the same power level as
-         // players. Calculate power percentage here.
-
-         if viPowerLevel <> $
+         // We are almost ready to cast the spell, only a spell resist can
+         // save the victim now.
+         if (Length(lTargets) = 1)
+            AND NOT Send(poTarget,@SpellResist,#oSpell=oSpell,#who=self,#iSpellpower=iSpellPower)
          {
-            iPowerLevel = viPowerLevel;
-         }
-         else
-         {
-            iPowerLevel = bound(piMysticism + piIntellect + viLevel,$,300) / 3;
+            // Monsters don't necessarily cast at the same power level as
+            // players. Calculate power percentage here.
+            if viPowerLevel <> $
+            {
+               iPowerLevel = viPowerLevel;
+            }
+            else
+            {
+               iPowerLevel = bound(piMysticism + piIntellect + viLevel,$,300) / 3;
+            }
+
+            // Cast the spell.
+            Send(oSpell,@CastSpell,#who=self,#lTargets=lTargets,
+               #iSpellPower=iSpellPower,#iPowerLevel=iPowerLevel);
          }
 
-         // Cast the spell.
-         Send(oSpell,@CastSpell,#who=self,#lTargets=lTargets,
-            #iSpellPower=iSpellPower,#iPowerLevel=iPowerLevel);
-
-         iDelay = iDelay * Bound(150 - piIntellect,50,$) / 100;
+         // Speed caster!
+         iDelay = 1500;
 
          // We cast something. Let's check if we want to switch targets.
          if poTarget <> $
@@ -635,14 +641,14 @@ messages:
             }
             else
             {
-               SetNth(i,5,Bound(Nth(i,5)+(iDelay/50)+(iDistance/1000),$,1000));
+               SetNth(i,5,Bound(Nth(i,5)+(iDelay/50)+(distance/1000),$,1000));
             }
          }
       }
 
       // Standing too close. Pass on a negative delay which
       // allows the monster to take a free side step.
-      if iDistance < 2500
+      if distance < 2500
       {
          return -iDelay;
       }
@@ -695,7 +701,7 @@ messages:
    "chasing, or we attack. Note that even if we can't move,"
    "we can still be 'engaging'...."
    {
-      local i,oVictim,iVision,each_obj,iCount, iDelay;
+      local i,oVictim, iDistance, iChaseRange, iDelay, bSight;
       oVictim = poTarget;
 
       Send(self,@ClearBehavior,#timer=timer);
@@ -727,9 +733,28 @@ messages:
          return;
       }
 
+      // Get distance to target.
+      iDistance = Send(self,@SquaredFineDistanceTo3D,#what=oVictim);
+      bSight = Send(poOwner,@LineOfSight,#obj1=self,#obj2=oVictim);
+      iChaseRange =  20 * FINENESS;
+      iChaseRange = iChaseRange * Random(40,50) / 100;
+      if NOT bSight
+      {
+         iChaseRange /= 5;
+      }
+      iChaseRange *= iChaseRange;
+
+      // Mobs may lose interest if the target is too far away or out of sight.
+      if (NOT (piBehavior & AI_FIGHT_SINGLEMINDED)) AND (iDistance > iChaseRange)
+      {
+         Send(self,@EnterStateMove);
+
+         return;
+      }
+
       if Send(self,@MonsterCombatCheck)
       {
-         iDelay = Send(self,@MonsterCombatAction);
+         iDelay = Send(self,@MonsterCombatAction,#distance=iDistance,#sight=bSight);
       }
       else
       {
@@ -786,6 +811,13 @@ messages:
       {
          if GetRandomPointBSP(Send(poOwner,@GetRoomData), 15, *iMRow, *iMCol, *iMRowFine, *iMColFine)
          {
+            if iMRow < 4 OR iMRow > 19 OR iMCol < 7 OR iMCol > 20
+               AND NOT (iMRow <= 14 AND iMRow >= 12 AND iMCol <= 29 AND iMCol >= 20)
+            {
+               ++i;
+               continue;
+            }
+
             iPick = Random (1,iRandom);
 
             if iPick = 1
@@ -808,8 +840,11 @@ messages:
                   Send(poOwner,@NewHold,#what=oElement,#new_row=iMRow,#new_col=iMCol,
                        #fine_row=iMRowFine,#fine_col=iMColFine);
 
+                  Send(oElement,@SetMaster,#oMaster=self);
+
                   if poTarget <> $
                   {
+                     Send(oElement,@SetBehaviorFlag,#flag=AI_MOVE_FOLLOW_MASTER,#value=FALSE);
                      Send(oElement,@TargetSwitch,#what=poTarget,#iHatred=100);
                      Send(oElement,@EnterStateEngage,#target=poTarget,#actnow=TRUE);
                   }
@@ -927,7 +962,7 @@ messages:
       iRandom = Random(1,30);
       iBestDistance = 10000;
 
-      if Send(poTarget,@IsEnchanted,#what=oBlind)
+      if poTarget = $ OR Send(poTarget,@IsEnchanted,#what=oBlind)
       {
          foreach i in lActive
          {
@@ -946,13 +981,13 @@ messages:
 
                if iRandom < 5
                {
-                  return;
+                  return TRUE;
                }
             }
          }
       }
 
-      return;
+      return FALSE;
    }
 
    Killed(what=$, resetScenario=TRUE, guildDisbandDeath=FALSE)
@@ -1437,6 +1472,45 @@ messages:
    CanEvilTwin()
    {
       return FALSE;
+   }
+
+   MoveTimer( timer = $ )
+   "Queen mercilessly chases targets when any are around."
+   {
+      // Sanity checks
+      if poOwner = $
+      {
+         Send(self,@EnterStateLimbo);
+
+         return;
+      }
+
+      if Send(self,@FindNewTarget)
+      {
+         Send(self,@ClearBehavior,#timer=timer);
+         Send(self,@EnterStateEngage,#target=poTarget,#actnow=TRUE);
+
+         return;
+      }
+
+      propagate;
+   }
+
+   ReqMonsterMove(new_row = $,new_col = $)
+   "Called by monster moving code to check if we really want to go"
+   "to <new_row>,<new_col>."
+   {
+      if poOwner <> $
+         AND Send(poOwner,@GetRoomNum) = RID_GUILDH15
+         AND (new_col > 28 OR new_col < 8)
+      {
+         if NOT (piCol > 28 OR piCol < 8)
+         {
+            return FALSE;
+         }
+      }
+
+      propagate;
    }
 
 end

@@ -83,6 +83,7 @@ classvars:
    viVisionDistance = 40
    // Attack range of 256, or 4 row/col.
    viMeleeRange = 256
+   viFireRange = 512
    viKarma = 100
    viDefault_behavior = \
       AI_FIGHT_AGGRESSIVE |  AI_FIGHT_WIZARD_KILLER | AI_FIGHT_HYPERAGGRESSIVE
@@ -95,18 +96,20 @@ classvars:
    vrSound_aware = lupoggking_sound_aware
    vrSound_death = lupoggking_sound_death
 
-   viHoldDurationMax = 25000  // Milliseconds.
-   viHoldDurationMin = 15000  // Milliseconds.
+   viMeleePriority = 600
+   viFirePriority = 400
+   viMovePriority = 300
+
+   viFatigueStrength = 2000
+   viFatigueDuration = 5000
+
+   vbCanBleed = FALSE
+   vbCanBurn = FALSE
 
 properties:
 
    piAnimation = ANIM_NONE
    plAttackers = $  // [player,player....]
-
-   piHoldAttackChance = 12 // Chance he'll attack with a hold
-   piHoldCounterChance = 5 // Chance he'll counter a spell or arrow with a hold
-   piHoldDurationMax = 25000  // Milliseconds.
-   piHoldDurationMin = 15000  // Milliseconds.
 
 messages:
 
@@ -117,12 +120,6 @@ messages:
       // piHealth uses high-precision numbers, so multiply by 100.
       piHealth = piMax_Health * 100;
 
-      // Set hold duration from class variables. Allows modifying
-      // classvars for ALL lupogg kings, or modifying the property
-      // for one specific lupogg king.
-      piHoldDurationMin = viHoldDurationMin;
-      piHoldDurationMax = viHoldDurationMax;
-
       plResistances = [ [ATCK_WEAP_ALL, 40 ],
                         [ATCK_WEAP_PIERCE, 90 ],
                         [-ATCK_SPELL_COLD, 90 ],
@@ -132,6 +129,9 @@ messages:
                         [-ATCK_SPELL_QUAKE, 100 ],
                         [ATCK_WEAP_NERUDITE, -40 ]
                       ];
+
+      plActions =  [ [SID_HOLD,0,0,147456,500,0,99],
+                     [SID_POISON_FOG,0,0,16384,700,1000,99] ];
 
       propagate;
    }
@@ -281,82 +281,394 @@ messages:
       propagate;
    }
 
-   ReqSpellCast(who = $, oSpell = $, lItems = $)
+   MonsterCombatAction(distance=0,sight=TRUE)
+   "Figure out what the monster is going to attack with."
+   "Depending on our action, return an appropriate delay."
    {
-      if oSpell = Send(SYS,@FindSpellByNum,#num=SID_TRUCE)
+      local i, iPriority, lActions, lAction, iNum, oSpell, iAttacks,
+         iMana, iVigor, iFactor, iSpellPower, lTargets, iDelay, iPowerLevel,
+         iAction;
+
+      lActions = $;
+
+      // If we have sight, proceed as usual, else, only allow moving.
+      if sight
       {
-         Send(who,@MsgSendUser,#message_rsc=lupoggking_no_truce);
-
-         return FALSE;
-      }
-
-      if Random(1,piHoldCounterChance) = 1
-      {
-         Send(self,@MonsterCastAttackSpell,#what=who);
-
-         return FALSE;
-      }
-
-      propagate;
-   }
-
-   ReqSomethingAttack(what = $,victim = $,use_weapon = $)
-   {
-      if use_weapon <> $
-         AND IsClass(use_weapon,&RangedWeapon)
-         AND victim = self
-         AND Random(1,piHoldCounterChance) = 1
-      {
-         Send(self,@MonsterCastAttackSpell,#What=what);
-
-         return FALSE;
-      }
-
-      propagate;
-   }
-
-   MonsterCastAttackSpell(what=$)
-   {
-      local oSpell, iRandom, oTarget;
-
-      if what = $
-      {
-         oTarget = poTarget;
+         // Sort out any actions in our action list that can't reach the
+         // target or that we don't have the resources for.
+         foreach i in plActions
+         {
+            if Nth(i,2) < piMana
+               AND Nth(i,4) > distance
+            {
+               lActions = Cons(i,lActions);
+            }
+         }
       }
       else
       {
-         oTarget = what;
+         // Can't see the target, let's try to move towards it.
+         foreach i in plActions
+         {
+            if First(i) = SKID_MINIMUM
+            {
+               lActions = Cons(i,lActions);
+            }
+         }
       }
 
-      // Vision distance check.
-      if NOT Send(self,@CanSee,#what=poTarget)
+      // Double check if the monster can perform basic actions.
+      foreach i in lActions
+      {
+         iNum = First(i);
+
+         if iNum = SKID_MINIMUM
+         {
+            if (piBehavior & AI_NOMOVE) OR (piBehavior & AI_CORNERED)
+            {
+               lActions = DelListElem(lActions,i);
+               Send(self,@SetBehaviorFlag,#flag=AI_CORNERED,#value=FALSE);
+            }
+         }
+         else if (piBehavior & AI_NOFIGHT)
+         {
+            lActions = DelListElem(lActions,i);
+         }
+         else if ((iNum = SKID_FIRE) AND (distance <= 147456))
+            AND NOT (IsClass(self,&Reflection) OR IsClass(self,&EvilTwin))
+         {
+            lActions = DelListElem(lActions,i);
+         }
+      }
+
+      // Check the actual spells in our action list for castability.
+      foreach i in lActions
+      {
+         iNum = First(i);
+         if iNum < 400
+         {
+            oSpell = Send(SYS,@FindSpellByNum,#num=iNum);
+            lTargets = [poTarget];
+            lTargets = Send(oSpell,@GetTargets,#who=self,#lTargets=lTargets);
+            if NOT Send(oSpell,@CanPayMonsterCosts,#who=self,#lTargets=lTargets,#iSpellPower=iSpellPower)
+               OR NOT Send(poOwner,@ReqSpellCast,#who=self,#oSpell=oSpell,#lItems=lTargets)
+            {
+               lActions = DelListElem(lActions,i);
+            }
+         }
+      }
+
+      // If no actions made it through our check, quit here.
+      if lActions = $
+      {
+         return FALSE;
+      }
+
+      // Time for an attack check.
+      if iNum <> SKID_MINIMUM
+         AND NOT Send(poOwner,@ReqSomethingAttack,#what=self,#victim=poTarget,#use_weapon=self)
+      {
+         return FALSE;
+      }
+
+      // We have sight, are allowed to attack and got a pool of actions.
+      // Compare priorities to decide for one.
+      iPriority = MIN_KOD_INT;
+      foreach i in lActions
+      {
+         if Nth(i,5) >= iPriority
+         {
+            lAction = i;
+            iPriority = Nth(i,5);
+         }
+      }
+
+      // We have our action at this point, let's check its ID.
+      iNum = First(lAction);
+
+      // It's clear we will be acting now. Get our action delay.
+      iDelay = Send(self,@GetAttackTime);
+
+      // Standard melee attack. Let's initiate the attack.
+      if (iNum = SKID_SLASH) OR (iNum = SKID_PUNCH)
+      {
+         iAttacks = 100 + viBonusSwing;
+         i = 0;
+
+         while (iAttacks > 0) AND poTarget <> $ AND Send(poTarget,@GetOwner) <> $
+         {
+            if (Random(1,100) <= iAttacks)
+               AND Send(self,@TryAttack,#what=poTarget,#stroke_obj=self,#factor=Nth(lAction,7))
+            {
+               ++i;
+            }
+
+            iAttacks -= 100;
+         }
+
+         if i = 0
+         {
+            return FALSE;
+         }
+         else if poOwner <> $
+         {
+            // We actually attack. Do the animation if we're still around.
+            Send(self,@DoMeleeAttack,#swings=i);
+         }
+      }
+      // If we are a ranged attack, shoot something.
+      else if (iNum = SKID_FIRE)
+      {
+         iAttacks = 100 + viBonusShot;
+         i = 0;
+
+         while (iAttacks > 0) AND poTarget <> $ AND Send(poTarget,@GetOwner) <> $
+         {
+            if (Random(1,100) <= iAttacks)
+               AND Send(self,@TryAttack,#what=poTarget,#stroke_obj=self,#factor=Nth(lAction,7))
+            {
+               ++i;
+
+               Send(Send(SYS,@FindSpellByNum,#num=SID_FATIGUE),@StartFatigue,
+                  #who=poTarget,#source=self,#strength=viFatigueStrength,
+                  #duration=viFatigueDuration);
+            }
+
+            iAttacks -= 100;
+         }
+
+         if i = 0
+         {
+            return FALSE;
+         }
+         else if poOwner <> $
+         {
+            // We actually attack. Do the animation if we're still around.
+            Send(self,@DoMissileAttack,#shots=i);
+         }
+      }
+      // Looks like we are casting something. How exciting!
+      // Time to set our local variables.
+      else if iNum < 400
+      {
+         oSpell = Send(SYS,@FindSpellByNum,#num=iNum);
+         lTargets = [poTarget];
+         lTargets = Send(oSpell,@GetTargets,#who=self,#lTargets=lTargets);
+         iSpellPower = piSpellPower + Nth(lAction,7);
+
+         // Do any special cast animations; send spell for specific ones.
+         // Also, make sure we're still around.
+         if poOwner <> $
+         {
+            // Not facing the target when casting at them is rude. Let's be polite.
+            Send(self,@MonsterOrient,#new_row=Send(poTarget,@GetRow),
+                  #new_col=Send(poTarget,@GetCol),#new_finerow=Send(poTarget,@GetFineRow),
+                  #new_finecol=Send(poTarget,@GetFineCol),#face_target=TRUE);
+            Send(self,@MonsterCastAnimation,#iSpellNum=iNum);
+         }
+
+         // Monsters don't necessarily cast at the same power level as
+         // players. Calculate power percentage here.
+
+         if viPowerLevel <> $
+         {
+            iPowerLevel = viPowerLevel;
+         }
+         else
+         {
+            iPowerLevel = bound(piMysticism + piIntellect + viLevel,$,300) / 3;
+         }
+
+         Send(poOwner,@SomethingWaveRoom,#what=self,#wave_rsc=lupoggking_cast_sound);
+
+         if iNum = SID_POISON_FOG
+         {
+            // Cloud spell is centered around the king.
+            Send(oSpell,@CastSpell,#who=self,#lTargets=lTargets,
+               #iSpellPower=iSpellPower,#iPowerLevel=iPowerLevel,
+               #bRing=TRUE,#bStun=TRUE);
+
+            if poOwner <> $
+            {
+               Send(self,@DoBreath);
+            }
+
+            iDelay = 2000;
+         }
+         else if iNum = SID_HOLD
+         {
+            Send(self,@DoCast);
+
+            if IsClass(poTarget,&User)
+            {
+               Send(poTarget,@MsgSendUser,#message_rsc=lupoggking_cast_spell);
+               Send(poTarget,@EffectSendUserDurationAndXlat,#effect=EFFECT_FLASHXLAT,
+               #duration=5000,#xlat=SPIT_COLOR);
+            }
+
+            Send(oSpell,@DoSpell,#what=self,#oTarget=poTarget,#iDuration=8000);
+
+            iDelay = 500;
+         }
+
+         // We cast something. Let's check if we want to switch targets.
+         if poTarget <> $
+         {
+            Send(self,@FindNewTarget);
+         }
+      }
+      // If none of the above was true, we simply moved.
+      else
+      {
+         iDelay = FALSE;
+      }
+
+      // We did something. Pay the cost.
+      iMana = Nth(lAction,2);
+      iVigor = Nth(lAction,3);
+      Send(self,@LoseMana,#amount=iMana,#precision=TRUE);
+      Send(self,@LoseVigor,#amount=iVigor,#precision=TRUE);
+
+      // If we made it this far, we acted in some way. Adjust our priorities.
+      iFactor = Nth(lAction,6);
+
+      foreach i in plActions
+      {
+         iAction = First(i);
+
+         // Spells lose priorty when cast and gain priority
+         // when another action is taken. Amount of priority
+         // lost is unique to each spell, amount of priority
+         // gained depends on mysticism.
+         if iAction = SID_POISON_FOG
+         {
+            if iAction = iNum
+            {
+               SetNth(i,5,Bound(iPriority - iFactor,-10000,$));
+            }
+            else
+            {
+               SetNth(i,5,Bound(Nth(i,5)+100,$,1000));
+            }
+         }
+      }
+
+      // Standing too close. Pass on a negative delay which
+      // allows the monster to take a free side step.
+      if distance < 2500
+      {
+         return -iDelay;
+      }
+
+      return iDelay;
+   }
+
+   HitSideEffect()
+   "Handled differently for this boss monster."
+   {
+      return;
+   }
+
+   ////  Action Routines
+   EngageTimer( timer = $ )
+   "We're trying to engage our target, so either we keep"
+   "chasing, or we attack. Note that even if we can't move,"
+   "we can still be 'engaging'...."
+   {
+      local i,oVictim, iDistance, iChaseRange, iDelay, bSight;
+      oVictim = poTarget;
+
+      Send(self,@ClearBehavior,#timer=timer);
+
+      // Sanity checks
+      if poOwner = $
+      {
+         Debug("Unreachable. Null owner.");
+         Send(self,@EnterStateLimbo);
+
+         return;
+      }
+
+      // If target left, we should already know
+      if oVictim = $
+      {
+         //Debug("Unreachable. Null victim.");
+         Send(self,@EnterStateWait);
+
+         return;
+      }
+
+      // Victim phased out or is now in spectator mode, break aggro.
+      if IsClass(oVictim,&User)
+         AND Send(oVictim,@IsInCannotInteractMode)
+      {
+         Send(self,@EnterStateMove);
+
+         return;
+      }
+
+      // Get distance to target.
+      iDistance = Send(self,@SquaredFineDistanceTo3D,#what=oVictim);
+      bSight = Send(poOwner,@LineOfSight,#obj1=self,#obj2=oVictim);
+      iChaseRange =  piVisionDistance * FINENESS;
+      iChaseRange = iChaseRange * Random(40,50) / 100;
+      if NOT bSight
+      {
+         iChaseRange /= 5;
+      }
+      iChaseRange *= iChaseRange;
+
+      // Mobs may lose interest if the target is too far away or out of sight.
+      if (NOT (piBehavior & AI_FIGHT_SINGLEMINDED)) AND (iDistance > iChaseRange)
+      {
+         Send(self,@EnterStateMove);
+
+         return;
+      }
+
+      if Send(self,@MonsterCombatCheck)
+      {
+         iDelay = Send(self,@MonsterCombatAction,#distance=iDistance,#sight=bSight);
+      }
+      else
+      {
+         iDelay = 0;
+      }
+
+      // Got gassed after acting and is currently resting. Quit.
+      if (piState & STATE_REST)
       {
          return;
       }
 
-      // Req attack and line of sight check.
-      if NOT Send(poOwner,@ReqSomethingAttack,#what=self,
-                  #victim=poTarget,#use_weapon=self)
-         OR NOT Send(poOwner,@LineOfSight,#obj1=self,#obj2=oTarget)
+      // If we can move, we physically try to get closer.
+      if iDelay = 0
       {
-         return;
+         Send(poBrain,@GetEngageBehavior,#mob=self,#target=poTarget,#behavior=piBehavior);
       }
 
-      oSpell = Send(SYS,@FindSpellByNum,#num=SID_HOLD);
-      iRandom = Random(piHoldDurationMin,piHoldDurationMax);
-
-      Send(poOwner,@SomethingWaveRoom,#what=self,
-            #wave_rsc=lupoggking_cast_sound);
-      Send(self,@DoCast);
-      Send(oSpell,@DoSpell,#what=self,#oTarget=oTarget,#iDuration=iRandom);
-      if IsClass(oTarget,&User)
+      // A negative delay means that we are too close to our target. Move away.
+      // Else, do a random move with a one in three chance to move towards our
+      // target.
+      if iDelay < 0
       {
-         Send(oTarget,@MsgSendUser,#message_rsc=lupoggking_cast_spell);
-         Send(oTarget,@EffectSendUserDurationAndXlat,#effect=EFFECT_FLASHXLAT,
-               #duration=iRandom*1000,#xlat=SPIT_COLOR);
+         Send(self,@MoveAway,#oTarget=poTarget,#face_target=TRUE);
+      }
+      else
+      {
+         Send(self,@MoveTowards,#oTarget=poTarget,#face_target=TRUE);
       }
 
-      // Do damage?
+      // Monster acted. Pass on the appriopriate delay.
+      if poTarget <> $
+      {
+         Send(poBrain,@PostEngageTimer,#mob=self,#delay=Abs(iDelay));
+      }
+      else
+      {
+         // Target died. Move on.
+         Send(self,@EnterStateMove);
+      }
 
       return;
    }
@@ -367,9 +679,12 @@ messages:
    {
       if poOwner <> $
          AND Send(poOwner,@GetRoomNum) = RID_SEWER_KING
-         AND (new_row > 17 OR new_col > 43 OR new_row < 2 OR new_col < 12)
+         AND (new_row > 14 OR new_col > 42 OR new_row < 4 OR new_col < 23)
       {
-         return FALSE;
+         if NOT (piRow > 14 OR piCol > 42 OR piRow < 4 OR piCol < 23)
+         {
+            return FALSE;
+         }
       }
 
       propagate;
@@ -386,7 +701,7 @@ messages:
          iRow = Send(what,@GetRow);
          iCol = Send(what,@GetCol);
 
-         if iRow > 18 OR iCol > 43 OR iCol < 24
+         if iRow > 16 OR iRow < 2 OR iCol > 44 OR iCol < 23
          {
             return FALSE;
          }
@@ -535,6 +850,40 @@ messages:
             #lTargets=lFinalTargets);
 
       return;
+   }
+
+   // The lupogg king has legendary powers of recovery and
+   // is unaffected by health curses.
+   CalculateHealthPerTick()
+   {
+      local iHealthPerTick, iBoost, i;
+
+      // Health regeneration starts out as 2 percent of our health
+      // pool per second at max vigor.
+      iHealthPerTick = (piVigor/100) * piMax_health / 10;
+
+      // Additional effects may cause our health to regenerate or decay.
+      iHealthPerTick += piHealth_Rate;
+
+      // Disable regeneration when sitting at or above max health.
+      if piHealth >= 100*piMax_health
+      {
+         iHealthPerTick = Bound(iHealthPerTick,$,0);
+      }
+
+      // Add a decay of 1 point per 5 seconds if sitting above the max.
+      if piHealth > 100*piMax_health
+      {
+         iHealthPerTick -= 200;
+      }
+
+      // Stop any decay if we are already sitting at 0 health.
+      if piHealth = 0
+      {
+         iHealthPerTick = Bound(iHealthPerTick,0,$);
+      }
+
+      return iHealthPerTick;
    }
 
 end

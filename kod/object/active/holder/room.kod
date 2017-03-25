@@ -324,7 +324,7 @@ properties:
 
    // per room weather conditions
    piWeather = WEATHER_PATTERN_CLEAR
-   
+
 messages:
 
    Constructor()
@@ -4858,109 +4858,84 @@ messages:
       return;
    }
 
-   FirstMove(what=$, new_row=0, new_col = 0)
+   UserMoved(what=$, new_row=0, new_col = 0)
    {
-      local i, oTarg1, oTarg2, oTarg3, oTarg4, oTarg5,
-            iHate1, iHate2, iHate3, iHate4, iHate5, oBrain,
-            iHate, oTarg, iTempHate, oTempTarg;
+      local i, oTarget, iDistance, iClosest, lClosest, iChasers, lClose;
 
-      // We used to reset monster chasers here, but monsters have better AI
-      // now and can on occasion respond before a user makes a move. Calling
-      // this now would reset chasers after a user already has one chasing him,
-      // which leads to multiple aggro without the corresponding increase in
-      // 'chaser level'.
-      //if isClass(what,&user)
-      //{
-      //   Send(what,@ResetMonsterChasers);
-      //}
+      lClose = $;
 
-      iHate1 = 0;
-      iHate2 = 0;
-      iHate3 = 0;
-      iHate4 = 0;
-      iHate5 = 0;
-
+      // Create a list of monsters who are aware of our presence.
       foreach i in plActive
       {
-         oTarg = First(i);
-         if IsClass(oTarg,&Monster)
+         oTarget = First(i);
+
+         if IsClass(oTarget,&Monster)
          {
-            if oBrain = $
-            {
-               oBrain = Send(oTarg,@GetBrain);
-            }
+            iDistance = Send(what,@SquaredFineDistanceTo3D,#what=oTarget);
 
-            iHate = Send(oBrain,@GetHatred,#what=what,#mob=oTarg,
-                           #behavior=Send(oTarg,@GetBehavior),#event=6);
-
-            if iHate > iHate1
+            // If we are in sight, or we bump into a mob, it's a potential chaser.
+            if (iDistance < 4096)
+               OR (iDistance < Send(oTarget,@GetAggroRange,#what=what))
             {
-               iTempHate = iHate1;
-               iHate1 = iHate;
-               iHate = iTempHate;
-               oTempTarg = oTarg1;
-               oTarg1 = oTarg;
-               oTarg = oTempTarg;
-            }
-
-            if iHate > iHate2
-            {
-               iTempHate = iHate2;
-               iHate2 = iHate;
-               iHate = iTempHate;
-               oTempTarg = oTarg2;
-               oTarg2 = oTarg;
-               oTarg = oTempTarg;
-            }
-
-            if iHate > iHate3
-            {
-               iTempHate = iHate3;
-               iHate3 = iHate;
-               iHate = iTempHate;
-               oTempTarg = oTarg3;
-               oTarg3 = oTarg;
-               oTarg = oTempTarg;
-            }
-
-            if iHate > iHate4
-            {
-               iTempHate = iHate4;
-               iHate4 = iHate;
-               iHate = iTempHate;
-               oTempTarg = oTarg4;
-               oTarg4 = oTarg;
-               oTarg = oTempTarg;
-            }
-
-            if iHate > iHate5
-            {
-               iTempHate = iHate5;
-               iHate1 = iHate;
-               iHate = iTempHate;
-               oTempTarg = oTarg5;
-               oTarg5 = oTarg;
-               oTarg = oTempTarg;
+               lClose = Cons([oTarget,iDistance],lClose);
             }
          }
       }
 
-      // Okay, at this point we should know the five
-      //  monsters in the room that hate the player the
-      //  most.  sic' em.
+      if lClose = $
+      {
+         return;
+      }
 
-      Send(self,@TargetSwitchMob,#mob=oTarg1,#what=what);
-      Send(self,@TargetSwitchMob,#mob=oTarg2,#what=what);
-      Send(self,@TargetSwitchMob,#mob=oTarg3,#what=what);
-      Send(self,@TargetSwitchMob,#mob=oTarg4,#what=what);
-      Send(self,@TargetSwitchMob,#mob=oTarg5,#what=what);
+      // Filter out any mobs that don't hate us.
+      foreach i in lClose
+      {
+         oTarget = First(i);
+
+         if (Send(Send(oTarget,@GetBrain),@GetHatred,#what=what,#mob=oTarget,
+               #behavior=Send(oTarget,@GetBehavior),#event=1)) < 1
+         {
+            lClose = DelListElem(lClose,i);
+         }
+      }
+
+      if lClose = $
+      {
+         return;
+      }
+
+      // Don't allow more than the x closest mobs to aggro.
+      iChasers = Length(lClose);
+
+      // Send the chasers after the target. Closest monster got dibs.
+      while iChasers > 0
+      {
+         iClosest = MAX_KOD_INT;
+
+         foreach i in lClose
+         {
+            iDistance = Nth(i,2);
+
+            if iDistance < iClosest
+            {
+               iClosest = iDistance;
+               lClosest = i;
+            }
+         }
+
+         Send(self,@TargetSwitchMob,#mob=First(lClosest),#what=what);
+
+         lClose = DelListElem(lClose,lClosest);
+
+         --iChasers;
+      }
 
       return;
    }
 
    TargetSwitchMob(mob=$,what=$)
    {
-      local oBrain;
+      local oBrain, iDelay;
 
       if mob = $
       {
@@ -4970,10 +4945,10 @@ messages:
       oBrain = Send(mob,@GetBrain);
       if mob <> $
       {
-         if Send(oBrain,@AttemptTargetSwitch,#mob=mob,#what=what,#event=7)
+         if Send(oBrain,@AttemptTargetSwitch,#mob=mob,#what=what,#event=1)
          {
-            // If they hit us, we chase them whether we can see them or not
-            Send(mob,@EnterStateEngage,#target=what,#actnow=TRUE);
+            iDelay = Bound(100 - Send(mob,@GetAgility),25,100) * 20;
+            Send(mob,@EnterStateEngage,#target=what,#actnow=FALSE,#delay=iDelay);
 
             return;
          }

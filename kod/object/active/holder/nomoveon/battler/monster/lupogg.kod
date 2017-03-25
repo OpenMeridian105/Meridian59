@@ -35,6 +35,8 @@ resources:
    lupogg_sound_death = lup_dth.ogg
    lupogg_sound_aware = lup_awr.ogg
 
+   lupogg_spit = gob.bgf
+
 classvars:
 
    vrKocName = lupogg_koc_name_rsc
@@ -53,6 +55,7 @@ classvars:
    viVisionDistance = 18
    // Attack range of 192, or 3 row/col.
    viMeleeRange = 192
+   viFireRange = 512
    viKarma = 75
    viDefault_behavior = AI_FIGHT_AGGRESSIVE | AI_FIGHT_WIZARD_KILLER
    viCashmin = 225
@@ -61,6 +64,16 @@ classvars:
    vrSound_miss = lupogg_sound_miss
    vrSound_aware = lupogg_sound_aware
    vrSound_death = lupogg_sound_death
+
+   // Lupoggs have a 100% chance to fatigue with ranged attacks.
+   // This is handled in DoMissileAnimation. Zero chance of
+   // fatigue with melee attacks.
+   viFatigueStrength = $
+   viFatigueDuration = $
+
+   vbCanBleed = FALSE
+   vbCanSiphon = FALSE
+   vbCanBurn = FALSE
 
 properties:
 
@@ -104,6 +117,25 @@ messages:
          AddPacket(1,ANIMATE_ONCE,4,100,2,6,2,8,2,1);
 
          return;
+      }
+
+      propagate;
+   }
+
+   GetProjectileIcon()
+   {
+      return lupogg_spit;
+   }
+
+   // Packing fatigue into the missile attack.
+   DoMissileAnimation()
+   "Handles ranged attack animation. Default is same as melee."
+   {
+      if poTarget <> $
+      {
+         Send(Send(SYS,@FindSpellByNum,#num=SID_FATIGUE),@StartFatigue,
+            #who=poTarget,#source=self,#strength=viFatigueStrength,
+            #duration=viFatigueDuration);
       }
 
       propagate;

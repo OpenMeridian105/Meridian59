@@ -112,6 +112,10 @@ void D3DRenderLMapsPostDraw(BSPnode *tree, Draw3DParams *params, d_light *light)
             if (!(pWall->pos_sidedef || pWall->neg_sidedef))
                continue;
 
+            // Skip if no draw flag or not inside light radius.
+            if ((!(pWall->seen & WF_CANDRAWMASK)) || !WallInsideRadius(light, pWall))
+               continue;
+
             // D3DRenderLMapsPostDraw now relies on checks done while constructing the list
             // of viewable objects, walls etc. in DrawBSP() in drawbsp.c. Walls that can be seen
             // have the respective boolean value set to TRUE, so all we need to do here is check
@@ -195,10 +199,13 @@ void D3DRenderLMapsDynamicPostDraw(BSPnode *tree, Draw3DParams *params, d_light 
       {
          //WallList list;
          WallData *pWall;
-
          for (pWall = tree->u.internal.walls_in_plane; pWall != NULL; pWall = pWall->next)
          {
             if (!(pWall->pos_sidedef || pWall->neg_sidedef))
+               continue;
+
+            // Skip if no draw flag or not inside light radius.
+            if ((!(pWall->seen & WF_CANDRAWMASK)) || !WallInsideRadius(light, pWall))
                continue;
 
             // D3DRenderLMapsDynamicPostDraw now relies on checks done while constructing the list
@@ -425,6 +432,8 @@ void D3DLMapsStaticGet(room_type *room)
    }
 }
 
+#define LIGHTRADIUS_DIVIDE 2.2f
+#define LIGHTRADIUS_DIVIDE2 1.75f // permissive
 /*
 * D3DLightingXYCalc: Perform lighting xyz calculations based on intensity.
 */
@@ -434,11 +443,12 @@ void D3DLightingXYCalc(d_light *light, u_char intensity)
       light->xyzScale.x = light->xyzScale.y = light->xyzScale.z = DLIGHT_SCALE(intensity) * 0.1f;
    else
       light->xyzScale.x = light->xyzScale.y = light->xyzScale.z = DLIGHT_SCALE(intensity);
-
-   light->maxX = light->xyz.x + light->xyzScale.x / 2.2f;
-   light->minX = light->xyz.x - light->xyzScale.x / 2.2f;
-   light->maxY = light->xyz.y + light->xyzScale.y / 2.2f;
-   light->minY = light->xyz.y - light->xyzScale.y / 2.2f;
+   light->radius = fabs(light->xyzScale.x) / LIGHTRADIUS_DIVIDE2;
+   light->radsquared = light->radius * light->radius;
+   light->maxX = light->xyz.x + light->xyzScale.x / LIGHTRADIUS_DIVIDE;
+   light->minX = light->xyz.x - light->xyzScale.x / LIGHTRADIUS_DIVIDE;
+   light->maxY = light->xyz.y + light->xyzScale.y / LIGHTRADIUS_DIVIDE;
+   light->minY = light->xyz.y - light->xyzScale.y / LIGHTRADIUS_DIVIDE;
 
    light->invXYZScale.x = 1.0f / light->xyzScale.x;
    light->invXYZScale.y = 1.0f / light->xyzScale.y;
@@ -845,7 +855,7 @@ void D3DRenderLMapPostWallAdd(WallData *pWall, d3d_render_pool_new *pPool,
          bgra[i].g = falloff * light->color.g;
          bgra[i].r = falloff * light->color.r;
          bgra[i].a = falloff * light->color.a;
-         if (bgra[i].a > 1)
+         if (bgra[i].a > 0)
             bskip = false;
       }
    }

@@ -1583,6 +1583,10 @@ void D3DGeometryBuildNew(room_type *room, d3d_render_pool_new *pPool, Draw3DPara
                   if (!(pWall->pos_sidedef || pWall->neg_sidedef))
                      continue;
 
+                  // Skip if no draw flag or not inside light radius.
+                  if ((!(pWall->seen & WF_CANDRAWMASK)) || !WallInsideRadius(light, pWall))
+                     continue;
+
                   if (pWall->seen & WF_CANDRAWNORMAL)
                   {
                        D3DRenderLMapPostWallAdd(pWall, &gLMapPoolStatic, D3DRENDER_WALL_NORMAL, 1, light, FALSE);

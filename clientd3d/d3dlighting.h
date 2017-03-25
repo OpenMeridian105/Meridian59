@@ -18,6 +18,7 @@ typedef struct d_light
    // Max and min x,y values for how far
    // the light reaches.
    float maxX, maxY, minX, minY;
+   float radius, radsquared;
    custom_xyz xyzScale;
    custom_xyz invXYZScale;
    custom_xyz invXYZScaleHalf;
@@ -47,5 +48,57 @@ int D3DRenderObjectGetLight(BSPnode *tree, room_contents_node *pRNode);
 float D3DRenderObjectLightGetNearest(room_contents_node *pRNode);
 Bool D3DObjectLightingCalc(room_type *room, room_contents_node *pRNode, custom_bgra *bgra, DWORD flags);
 
+// Testing wall-light intersection, see MinSquaredDistanceToLineSegment() in /blakserv/geometry.h
+#define EPSILON     0.0001f
+#define ISZERO(a)   (((a) > -EPSILON) & ((a) < EPSILON))
+#define V2DOT(a,b)    ((a)->X * (b)->X + (a)->Y * (b)->Y)
+#define V2LEN2(a)     V2DOT(a,a)
+#define V2SCALE(a,b) \
+   (a)->X *= (b); \
+   (a)->Y *= (b);
+__forceinline bool WallInsideRadius(d_light *light, WallData *wall)
+{
+   V2 v1, v2, v3;
+
+   // vectors
+   v1.X = light->xyz.x - wall->x0;
+   v1.Y = light->xyz.y - wall->y0;
+   v3.X = wall->x1 - wall->x0;
+   v3.Y = wall->y1 - wall->y0;
+
+   // squared distance between Q1 and Q2
+   const float len2 = V2LEN2(&v3);
+
+   // Q1 is on Q2 (no line at all)
+   // use squared distance to Q1
+   if (ISZERO(len2))
+      return V2LEN2(&v1) <= light->radsquared;
+
+   const float t = V2DOT(&v1, &v3) / len2;
+
+   // Q1 is closest
+   if (t < 0.0f)
+      return V2LEN2(&v1) <= light->radsquared;
+
+   // Q2 is closest
+   else if (t > 1.0f)
+   {
+      v2.X = light->xyz.x - wall->x1;
+      v2.Y = light->xyz.y - wall->y1;
+
+      return V2LEN2(&v2) <= light->radsquared;
+   }
+
+   // point on line is closest
+   else
+   {
+      V2SCALE(&v3, t);
+      v3.X += (wall->x0 - light->xyz.x);
+      v3.Y += (wall->y0 - light->xyz.y);
+      //V2ADD(&v3, Q1, &v3);
+      //V2SUB(&v3, &v3, P);
+      return V2LEN2(&v3) <= light->radsquared;
+   }
+}
 
 #endif

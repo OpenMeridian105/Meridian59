@@ -793,14 +793,41 @@ messages:
          return 0;
       }
 
-      // ...mob tries to attack an ally.
-      if Send(mob,@IsAlly,#target=what)
+      if (behavior & AI_FIGHT_NEWBIESAFE)
+         AND (event = TS_MOVE)
+         AND IsClass(what,&Player)
+         AND NOT Send(what,@CheckPlayerFlag,#flag=PFLAG_PKILL_ENABLE)
       {
          return 0;
       }
 
       //// Let's start fresh...
       iHatred = 0;
+
+      //// Convert recent damage taken to hatred.
+      // 1 point of damage converts to 1 point of hatred.
+      iHatred += Send(mob,@GetHurtMeRecentlyAmount,#who=what) / 100;
+
+      // ...mob tries to attack an ally. 
+      if Send(mob,@IsAlly,#target=what)
+      {
+         // If the mob hasn't been hurt by the ally, quit.
+         if iHatred = 0
+         {
+            return 0;
+         }
+         // If the mob's ally is a monster, still quit.
+         else if IsClass(what,&Monster)
+         {
+            return 0;
+         }
+         // If the mob's ally is a player, cut hatred from
+         // damage taken in half.
+         else
+         {
+            iHatred /= 2;
+         }
+      }
 
       //// Check against the mob's current target.
       oMobTarget = Send(mob,@GetTarget);
@@ -819,18 +846,6 @@ messages:
             iHatred -= Send(mob,@GetLevel) / 10;
          }
       }
-
-      if (behavior & AI_FIGHT_NEWBIESAFE)
-         AND (event = TS_MOVE)
-         AND IsClass(what,&Player)
-         AND NOT Send(what,@CheckPlayerFlag,#flag=PFLAG_PKILL_ENABLE)
-      {
-         return 0;
-      }
-
-      //// Convert recent damage taken to hatred.
-      // 1 point of damage converts to 1 point of hatred.
-      iHatred += Send(mob,@GetHurtMeRecentlyAmount,#who=what) / 100;
 
       //// Minion Checks
       oMaster = Send(mob,@GetMaster);

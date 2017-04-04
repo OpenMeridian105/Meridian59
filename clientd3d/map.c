@@ -23,6 +23,10 @@
 #define MAP_PLAYER_THICKNESS 4
 #define MAP_OBJECT_THICKNESS 2
 #define MAP_BOSS_THICKNESS 3
+#define MAP_AGGRO_SELF_THICKNESS 5
+#define MAP_AGGRO_OTHER_THICKNESS 4
+#define MAP_BOSS_AGGRO_SELF_THICKNESS 6
+#define MAP_BOSS_AGGRO_OTHER_THICKNESS 5
 
 #define MAP_WALL_COLOR          PALETTERGB(0, 0, 0)
 #define MAP_PLAYER_COLOR        PALETTERGB(0, 0, 255)
@@ -32,7 +36,7 @@
 #define MAP_MINION_OTH_COLOR    PALETTERGB(70,5,130)     // Purple
 #define MAP_FRIEND_COLOR        PALETTERGB(0, 255, 120)  // Green with blue tint
 #define MAP_ENEMY_COLOR         PALETTERGB(255, 0, 0)    // Red
-#define MAP_AGGRO_SELF_COLOR    PALETTERGB(0, 0, 0)      // Black
+#define MAP_AGGRO_SELF_COLOR    PALETTERGB(0,0,0)        // Black
 #define MAP_AGGRO_OTHER_COLOR   PALETTERGB(255,255,255)  // White
 #define MAP_GUILDMATE_COLOR     PALETTERGB(255, 255, 0)  // Yellow
 #define MAP_BUILDGRP_COLOR      PALETTERGB(0, 255, 0)    // Bright Green
@@ -45,19 +49,20 @@
 
 #define MAP_OBJECT_RADIUS (FINENESS / 4)  // Radius of circle drawn for an object
 
-#define MAP_ZOOM_INCREMENT 0.1       // Amount to change zoom factor per user command
-#define MAP_ZOOM_DELAY     100       // # of milliseconds between zooming in by INCREMENT
+#define MAP_ZOOM_INCREMENT 0.05       // Amount to change zoom factor per user command
+#define MAP_ZOOM_DELAY     30       // # of milliseconds between zooming in by INCREMENT
 #define MAP_ZOOM_MINZOOM   0.5       // Farthest we can zoom out
 #define MAP_ZOOM_MAXZOOM   8.0       // Closest we can zoom in
 
 #define MAP_OBJECT_DISTANCE (7 * FINENESS) // Draw all object closer than this to player
 
 static HBRUSH hObjectBrush, hPlayerBrush, hNullBrush, hMinionBrush, hNoPVPBrush,
-              hMinionOtherBrush, hNpcBrush, hTempsafeBrush, hItemBrush;
+              hMinionOtherBrush, hNpcBrush, hTempsafeBrush, hItemBrush, hAggroSelfBrush,
+              hAggroOtherBrush;
 static HPEN hWallPen, hPlayerPen, hObjectPen, hMinionPen, hMinionOtherPen,
             hMinibossPen, hBossPen, hItemPen, hFriendPen, hEnemyPen, hAggroSelfPen,
-            hAggroOtherPen, hGuildmatePen, hBuilderPen, hNpcPen, hTempsafePen,
-            hNoPVPPen;
+            hGuildmatePen, hBuilderPen, hNpcPen, hTempsafePen, hAggroOtherPen,
+            hNoPVPPen, hBossAggroSelfPen, hBossAggroOtherPen;
 
 static float zoom;              // Factor to zoom in on map
 
@@ -147,8 +152,10 @@ void MapInitialize(void)
    hObjectPen = CreatePen(PS_SOLID, MAP_OBJECT_THICKNESS, MAP_OBJECT_COLOR);
    hFriendPen = CreatePen(PS_SOLID, MAP_PLAYER_THICKNESS, MAP_FRIEND_COLOR);
    hEnemyPen = CreatePen(PS_SOLID, MAP_PLAYER_THICKNESS, MAP_ENEMY_COLOR);
-   hAggroSelfPen = CreatePen(PS_SOLID, MAP_OBJECT_THICKNESS, MAP_AGGRO_SELF_COLOR);
-   hAggroOtherPen = CreatePen(PS_SOLID, MAP_OBJECT_THICKNESS, MAP_AGGRO_OTHER_COLOR);
+   hAggroSelfPen = CreatePen(PS_SOLID, MAP_AGGRO_SELF_THICKNESS, MAP_AGGRO_SELF_COLOR);
+   hAggroOtherPen = CreatePen(PS_SOLID, MAP_AGGRO_OTHER_THICKNESS, MAP_AGGRO_OTHER_COLOR);
+   hBossAggroSelfPen = CreatePen(PS_SOLID, MAP_BOSS_AGGRO_SELF_THICKNESS, MAP_AGGRO_SELF_COLOR);
+   hBossAggroOtherPen = CreatePen(PS_SOLID, MAP_BOSS_AGGRO_OTHER_THICKNESS, MAP_AGGRO_OTHER_COLOR);
    hGuildmatePen = CreatePen(PS_SOLID, MAP_PLAYER_THICKNESS, MAP_GUILDMATE_COLOR);
    hMinionPen = CreatePen(PS_SOLID, MAP_OBJECT_THICKNESS, MAP_MINION_COLOR);
    hMinionOtherPen = CreatePen(PS_SOLID, MAP_OBJECT_THICKNESS, MAP_MINION_OTH_COLOR);
@@ -164,6 +171,8 @@ void MapInitialize(void)
    hMinionOtherBrush = CreateSolidBrush(MAP_MINION_OTH_COLOR);
    hMinionBrush = CreateSolidBrush(MAP_MINION_COLOR);
    hObjectBrush = CreateSolidBrush(MAP_OBJECT_COLOR);
+   hAggroSelfBrush = CreateSolidBrush(MAP_AGGRO_SELF_COLOR);
+   hAggroOtherBrush = CreateSolidBrush(MAP_AGGRO_OTHER_COLOR);
    hPlayerBrush = CreateSolidBrush(MAP_PLAYER_COLOR);
    hTempsafeBrush = CreateSolidBrush(MAP_TEMPSAFE_COLOR);
    hNoPVPBrush = CreateSolidBrush(MAP_COLOR_NOPVP);
@@ -198,6 +207,8 @@ void MapClose(void)
    DeleteObject(hEnemyPen);
    DeleteObject(hAggroSelfPen);
    DeleteObject(hAggroOtherPen);
+   DeleteObject(hBossAggroSelfPen);
+   DeleteObject(hBossAggroOtherPen);
    DeleteObject(hGuildmatePen);
    DeleteObject(hMinionPen);
    DeleteObject(hMinionOtherPen);
@@ -211,6 +222,8 @@ void MapClose(void)
    DeleteObject(hMinionOtherBrush);
    DeleteObject(hMinionBrush);
    DeleteObject(hObjectBrush);
+   DeleteObject(hAggroSelfBrush);
+   DeleteObject(hAggroOtherBrush);
    DeleteObject(hPlayerBrush);
    DeleteObject(hNullBrush);
    DeleteObject(hNpcBrush);
@@ -465,20 +478,6 @@ void MapDrawObjects(HDC hdc, list_type objects, int x, int y, float scale)
          DrawMinimapDot(hdc, hMinionPen, hMinionBrush, radius, new_x, new_y);
       else if (r->obj.minimapflags & MM_MINION_OTHER)
          DrawMinimapDot(hdc, hMinionOtherPen, hMinionOtherBrush, radius, new_x, new_y);
-      else if (r->obj.minimapflags & MM_MONSTER)
-      {
-         // Draw a ring around monsters that target us or others.
-         if (r->obj.minimapflags & MM_AGGRO_SELF)
-         {
-            DrawMinimapDot(hdc, hAggroSelfPen, hObjectBrush, 2.2f * radius, new_x, new_y);
-         }
-         if (r->obj.minimapflags & MM_AGGRO_OTHER)
-         {
-            DrawMinimapDot(hdc, hAggroOtherPen, hObjectBrush, 2.2f * radius, new_x, new_y);
-         }
-
-         DrawMinimapDot(hdc, hObjectPen, hObjectBrush, radius, new_x, new_y);
-      }
       else if (r->obj.minimapflags & MM_NPC)
          DrawMinimapDot(hdc, hNpcPen, hNpcBrush, radius, new_x, new_y);
       else if (r->obj.minimapflags & MM_RARE_ITEM)
@@ -488,30 +487,60 @@ void MapDrawObjects(HDC hdc, list_type objects, int x, int y, float scale)
          // Draw a ring around monsters that target us or others.
          if (r->obj.minimapflags & MM_AGGRO_SELF)
          {
-            DrawMinimapDot(hdc, hAggroSelfPen, hObjectBrush, 3.1f * radius, new_x, new_y);
+            DrawMinimapDot(hdc, hAggroSelfPen, hAggroSelfBrush, radius * 2.1f, new_x, new_y);
+            DrawMinimapDot(hdc, hMinibossPen, hObjectBrush, radius * 2.1f, new_x, new_y);
+            DrawMinimapDot(hdc, hObjectPen, hObjectBrush, radius * 2.1f, new_x, new_y);
          }
-         if (r->obj.minimapflags & MM_AGGRO_OTHER)
+         else if (r->obj.minimapflags & MM_AGGRO_OTHER)
          {
-            DrawMinimapDot(hdc, hAggroOtherPen, hObjectBrush, 3.1f * radius, new_x, new_y);
+            DrawMinimapDot(hdc, hAggroOtherPen, hAggroOtherBrush, radius * 2.1f, new_x, new_y);
+            DrawMinimapDot(hdc, hMinibossPen, hObjectBrush, radius * 2.1f, new_x, new_y);
+            DrawMinimapDot(hdc, hObjectPen, hObjectBrush, radius * 2.1f, new_x, new_y);
          }
-
-         DrawMinimapDot(hdc, hMinibossPen, hObjectBrush, radius * 2.1f, new_x, new_y);
-         DrawMinimapDot(hdc, hObjectPen, hObjectBrush, radius * 1.2f, new_x, new_y);
+         else
+         {
+            DrawMinimapDot(hdc, hMinibossPen, hObjectBrush, radius * 2.1f, new_x, new_y);
+            DrawMinimapDot(hdc, hObjectPen, hObjectBrush, radius * 2.1f, new_x, new_y);
+         }
       }
       else if (r->obj.minimapflags & MM_BOSS)
       {
          // Draw a ring around monsters that target us or others.
          if (r->obj.minimapflags & MM_AGGRO_SELF)
          {
-            DrawMinimapDot(hdc, hAggroSelfPen, hObjectBrush, 3.2f * radius, new_x, new_y);
+            DrawMinimapDot(hdc, hAggroSelfPen, hAggroSelfBrush, radius * 2.6f, new_x, new_y);
+            DrawMinimapDot(hdc, hMinibossPen, hObjectBrush, radius * 2.6f, new_x, new_y);
+            DrawMinimapDot(hdc, hObjectPen, hObjectBrush, radius * 2.6f, new_x, new_y);
          }
-         if (r->obj.minimapflags & MM_AGGRO_OTHER)
+         else if (r->obj.minimapflags & MM_AGGRO_OTHER)
          {
-            DrawMinimapDot(hdc, hAggroOtherPen, hObjectBrush, 3.2f * radius, new_x, new_y);
+            DrawMinimapDot(hdc, hAggroOtherPen, hAggroOtherBrush, radius * 2.6f, new_x, new_y);
+            DrawMinimapDot(hdc, hMinibossPen, hObjectBrush, radius * 2.6f, new_x, new_y);
+            DrawMinimapDot(hdc, hObjectPen, hObjectBrush, radius * 2.6f, new_x, new_y);
          }
-
-         DrawMinimapDot(hdc, hBossPen, hObjectBrush, radius * 2.6f, new_x, new_y);
-         DrawMinimapDot(hdc, hObjectPen, hObjectBrush, radius * 1.6f, new_x, new_y);
+         else
+         {
+            DrawMinimapDot(hdc, hBossPen, hObjectBrush, radius * 2.6f, new_x, new_y);
+            DrawMinimapDot(hdc, hObjectPen, hObjectBrush, radius * 2.6f, new_x, new_y);
+         }
+      }
+      else if (r->obj.minimapflags & MM_MONSTER)
+      {
+         // Draw a ring around monsters that target us or others.
+         if (r->obj.minimapflags & MM_AGGRO_SELF)
+         {
+            DrawMinimapDot(hdc, hAggroSelfPen, hAggroSelfBrush, radius, new_x, new_y);
+            DrawMinimapDot(hdc, hObjectPen, hObjectBrush, radius, new_x, new_y);
+         }
+         else if (r->obj.minimapflags & MM_AGGRO_OTHER)
+         {
+            DrawMinimapDot(hdc, hAggroOtherPen, hAggroOtherBrush, radius, new_x, new_y);
+            DrawMinimapDot(hdc, hObjectPen, hObjectBrush, radius, new_x, new_y);
+         }
+         else
+         {
+            DrawMinimapDot(hdc, hObjectPen, hObjectBrush, radius, new_x, new_y);
+         }
       }
    }
 }
@@ -679,7 +708,10 @@ void MapZoom(int direction)
 //   if (!MapVisible())      commented by ajw
 //     return;
 
-   increment = (float) (SGN(direction) * MAP_ZOOM_INCREMENT);
+   increment = (float) (MAP_ZOOM_INCREMENT * zoom);
+   increment = (float) min(increment, MAP_ZOOM_INCREMENT * 8);
+   increment = (float) max(increment, MAP_ZOOM_INCREMENT / 2);
+   increment = (float) (SGN(direction) * increment);
 
    now = timeGetTime();
    dt = now - last_time;

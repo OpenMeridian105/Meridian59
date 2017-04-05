@@ -189,10 +189,12 @@ typedef struct {
 
 // Wall drawing bitfield.
 #define SR_SEEN             0x001 // Some part drawn in Software Renderer (used for map lines)
+
 #define SR_DRAWBELOW        0x002 // Below wall drawn in SR
 #define SR_DRAWNORMAL       0x004 // Normal wall drawn in SR
 #define SR_DRAWABOVE        0x008 // Above wall drawn in SR
 #define SR_DRAWMASK         0x00E // Mask for SR draw flags (but not the 'seen' flag)
+
 #define HR_SEENPOSBELOW     0x010 // Pos side below wall visited in Hardware Renderer
 #define HR_SEENPOSNORMAL    0x020 // Pos side normal wall visited in HR
 #define HR_SEENPOSABOVE     0x040 // Pos side above wall visited in HR
@@ -200,6 +202,11 @@ typedef struct {
 #define HR_SEENNEGNORMAL    0x100 // Neg side normal wall visited in HR
 #define HR_SEENNEGABOVE     0x200 // Neg side above wall visited in HR
 #define HR_DRAWMASK         0x3F0 // Mask for HR draw flags
+
+#define WF_CANDRAWNORMAL    0x1000
+#define WF_CANDRAWABOVE     0x2000
+#define WF_CANDRAWBELOW     0x4000
+#define WF_CANDRAWMASK      0x7000
 
 typedef int WallSeenFlags;
 
@@ -291,6 +298,10 @@ typedef struct WallData
    custom_xyz pos_below_xyz[4];
    custom_xyz pos_above_xyz[4];
 
+   custom_xyz pos_normal_normal;
+   custom_xyz pos_below_normal;
+   custom_xyz pos_above_normal;
+
    custom_st pos_normal_stBase[4];
    custom_st pos_below_stBase[4];
    custom_st pos_above_stBase[4];
@@ -306,6 +317,10 @@ typedef struct WallData
    custom_xyz neg_normal_xyz[4];
    custom_xyz neg_below_xyz[4];
    custom_xyz neg_above_xyz[4];
+
+   custom_xyz neg_normal_normal;
+   custom_xyz neg_below_normal;
+   custom_xyz neg_above_normal;
 
    custom_st neg_normal_stBase[4];
    custom_st neg_below_stBase[4];

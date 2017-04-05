@@ -956,7 +956,7 @@ void PrecalcWallData(WallData *pWall, unsigned int type, int side)
    int drawTopDown;
    Sidedef *pSideDef = NULL;
    PDIB pDib;
-   custom_xyz *pXYZ;
+   custom_xyz *pXYZ, *pNormal;
    custom_st *pST;
    unsigned int *flags;
    int xOffset, yOffset, top, bottom;
@@ -978,6 +978,7 @@ void PrecalcWallData(WallData *pWall, unsigned int type, int side)
 
          pST = pWall->pos_normal_stBase;
          pXYZ = pWall->pos_normal_xyz;
+         pNormal = &pWall->pos_normal_normal;
          flags = &pWall->pos_normal_d3dFlags;
 
          pXYZ[0].z = (float)pWall->z2;
@@ -993,6 +994,7 @@ void PrecalcWallData(WallData *pWall, unsigned int type, int side)
             return;
 
          pXYZ = pWall->pos_below_xyz;
+         pNormal = &pWall->pos_below_normal;
          pST = pWall->pos_below_stBase;
          flags = &pWall->pos_below_d3dFlags;
 
@@ -1019,6 +1021,7 @@ void PrecalcWallData(WallData *pWall, unsigned int type, int side)
             return;
 
          pXYZ = pWall->pos_above_xyz;
+         pNormal = &pWall->pos_above_normal;
          pST = pWall->pos_above_stBase;
          flags = &pWall->pos_above_d3dFlags;
 
@@ -1061,6 +1064,7 @@ void PrecalcWallData(WallData *pWall, unsigned int type, int side)
             return;
 
          pXYZ = pWall->neg_normal_xyz;
+         pNormal = &pWall->neg_normal_normal;
          pST = pWall->neg_normal_stBase;
          flags = &pWall->neg_normal_d3dFlags;
 
@@ -1076,6 +1080,7 @@ void PrecalcWallData(WallData *pWall, unsigned int type, int side)
          if (!pDib)
             return;
          pXYZ = pWall->neg_below_xyz;
+         pNormal = &pWall->neg_below_normal;
          pST = pWall->neg_below_stBase;
          flags = &pWall->neg_below_d3dFlags;
 
@@ -1091,6 +1096,7 @@ void PrecalcWallData(WallData *pWall, unsigned int type, int side)
          if (!pDib)
             return;
          pXYZ = pWall->neg_above_xyz;
+         pNormal = &pWall->neg_above_normal;
          pST = pWall->neg_above_stBase;
          flags = &pWall->neg_above_d3dFlags;
 
@@ -1278,27 +1284,54 @@ void PrecalcWallData(WallData *pWall, unsigned int type, int side)
    pST[3].s += 1.0f / pDib->width;
    pST[1].s -= 1.0f / pDib->width;
    pST[2].s -= 1.0f / pDib->width;
+
+   // Normals
+   custom_xyz vec0, vec1;
+
+   // calc cross product, get normal and determine major axis
+   vec0.x = pXYZ[1].x - pXYZ[0].x;
+   vec0.y = pXYZ[1].y - pXYZ[0].y;
+   vec0.z = pXYZ[1].z - pXYZ[0].z;
+
+   vec1.x = pXYZ[3].x - pXYZ[0].x;
+   vec1.y = pXYZ[3].y - pXYZ[0].y;
+   vec1.z = pXYZ[3].z - pXYZ[0].z;
+
+   pNormal->x = vec0.z * vec1.y - vec0.y * vec1.z;
+   pNormal->z = vec0.y * vec1.x - vec0.x * vec1.y;
+   pNormal->y = vec0.x * vec1.z - vec0.z * vec1.x;
+
+   if (pNormal->x < 0)
+      pNormal->x = -pNormal->x;
+
+   if (pNormal->y < 0)
+      pNormal->y = -pNormal->y;
 }
 
 void PrecalcWallDataAll(WallData *pWall)
 {
+   pWall->seen &= ~WF_CANDRAWMASK;
+
    if (pWall->pos_sidedef)
    {
       if (pWall->pos_sidedef->normal_bmap && (((short)pWall->z2 != (short)pWall->z1)
          || ((short)pWall->zz2 != (short)pWall->zz1)))
       {
+         pWall->seen |= WF_CANDRAWNORMAL;
          PrecalcWallData(pWall, D3DRENDER_WALL_NORMAL, 1);
       }
 
       if (pWall->pos_sidedef->below_bmap && (((short)pWall->z1 != (short)pWall->z0)
          || ((short)pWall->zz1 != (short)pWall->zz0)))
       {
+         pWall->seen |= WF_CANDRAWBELOW;
          PrecalcWallData(pWall, D3DRENDER_WALL_BELOW, 1);
       }
 
       if (pWall->pos_sidedef->above_bmap && (((short)pWall->z3 != (short)pWall->z2)
          || ((short)pWall->zz3 != (short)pWall->zz2)))
       {
+         pWall->seen |= WF_CANDRAWABOVE;
          PrecalcWallData(pWall, D3DRENDER_WALL_ABOVE, 1);
       }
    }
@@ -1308,16 +1341,19 @@ void PrecalcWallDataAll(WallData *pWall)
       if (pWall->neg_sidedef->normal_bmap && (((short)pWall->z2 != (short)pWall->z1)
          || ((short)pWall->zz2 != (short)pWall->zz1)))
       {
+         pWall->seen |= WF_CANDRAWNORMAL;
          PrecalcWallData(pWall, D3DRENDER_WALL_NORMAL, -1);
       }
       if (pWall->neg_sidedef->below_bmap && (((short)pWall->z1 != (short)pWall->z0)
          || ((short)pWall->zz1 != (short)pWall->zz0)))
       {
+         pWall->seen |= WF_CANDRAWBELOW;
          PrecalcWallData(pWall, D3DRENDER_WALL_BELOW, -1);
       }
       if (pWall->neg_sidedef->above_bmap && (((short)pWall->z3 != (short)pWall->z2)
          || ((short)pWall->zz3 != (short)pWall->zz2)))
       {
+         pWall->seen |= WF_CANDRAWABOVE;
          PrecalcWallData(pWall, D3DRENDER_WALL_ABOVE, -1);
       }
    }

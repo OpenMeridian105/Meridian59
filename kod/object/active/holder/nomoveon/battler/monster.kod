@@ -352,6 +352,12 @@ classvars:
 
    viWimpy = 0
 
+   // Aquatic mobs don't mind getting their feet wet while strolling.
+   vbAquatic = FALSE
+
+   // Trools can rally to a flag pole.
+   vbCanRally = FALSE
+
    // How likely are monster to try and chat others up and how likely are they
    // to mind their own business? Takes values between 0 and 100.
    // 0 will always walk alone, 100 will always look for others.
@@ -1699,6 +1705,17 @@ messages:
       return;
    }
 
+   ClearRallyLocation()
+   {
+      Send(self,@SetBehaviorFlag,#flag=AI_RALLY,#value=FALSE);
+      piTargetLocationRow  = 0;
+      piTargetLocationCol  = 0;
+      piTargetLocationFineRow = 0;
+      piTargetLocationFineCol = 0;
+
+      return;
+   }
+
    ////  Action Routines
    EngageTimer( timer = $ )
    "We're trying to engage our target, so either we keep"
@@ -1772,6 +1789,12 @@ messages:
          iDelay = 0;
       }
 
+      // We may no longer be around after the attack (e.g. evil twin killing a target).
+      if poOwner = $
+      {
+         return;
+      }
+
       // Got gassed after acting and is currently resting. Quit.
       if (piState & STATE_REST)
       {
@@ -1779,7 +1802,7 @@ messages:
       }
 
       // If we can move, we physically try to get closer.
-      if iDelay <= 0
+      if iDelay = 0
       {
          Send(poBrain,@GetEngageBehavior,#mob=self,#target=poTarget,#behavior=piBehavior);
       }
@@ -2247,9 +2270,10 @@ messages:
          // close enough
          Send(self,@SetBehaviorFlag,#flag=AI_HAS_TARGET_LOCATION,#value=FALSE);
          Send(self,@SetBehaviorFlag,#flag=AI_STROLLING,#value=FALSE);
+         Send(self,@SetBehaviorFlag,#flag=AI_RALLY,#value=FALSE);
          piPatrolAttempts = 0;
       }
- 
+
       return;
    }
 
@@ -3023,19 +3047,43 @@ messages:
                    #face_away=face_away);
    }
 
-   RandomCombatMove()
+   RandomCombatMove(direction=FALSE,sidestep=FALSE)
    {
-      local iMRow, iMCol, iMRowFine, iMColFine;
+      local iMRow, iMCol, iMRowFine, iMColFine, iSpeed;
 
-      if Random(1,3) = 1
+      direction = Bound(direction,-10,10);
+
+      iSpeed = piSpeed;
+
+      if sidestep
       {
-         Send(self,@MoveTowards,#oTarget=poTarget,#face_target=TRUE,#face_away=FALSE);
+         piSpeed *= 1;
       }
-      else if GetRandomPointBSP(Send(poOwner,@GetRoomData),15,*iMRow,*iMCol,*iMRowFine,*iMColFine)
+
+      if direction
+      {
+         if direction > 0 AND Random(direction,10) = 10
+         {
+            Send(self,@MoveTowards,#oTarget=poTarget,#face_target=TRUE,#face_away=FALSE);
+         }
+         else if direction < 0 AND Random(-10,direction) = -10
+         {
+            Send(self,@MoveAway,#oTarget=poTarget,#face_target=TRUE,#face_away=FALSE);
+         }
+         else
+         {
+            direction = FALSE;
+         }
+      }
+
+      if (NOT direction)
+         AND GetRandomPointBSP(Send(poOwner,@GetRoomData),15,*iMRow,*iMCol,*iMRowFine,*iMColFine)
       {
          Send(self,@MoveTowardsCoords,#iRow=iMRow,#iCol=iMCol,
             #iFineRow=iMRowFine,#iFineCol=iMColFine,#face_target=TRUE,#face_away=FALSE);
       }
+
+      piSpeed = iSpeed;
 
       return;
    }
@@ -3050,7 +3098,7 @@ messages:
       // Not actively chasing anyone. Let's avoid getting our feet wet.
       // If we are already wading through water, we might as well keep
       // going.
-      if (piState & STATE_MOVE) AND (piBehavior & AI_STROLLING)
+      if (piState & STATE_MOVE) AND (piBehavior & AI_STROLLING) AND NOT vbAquatic
          AND (Send(poOwner,@GetSectorIDAtLocation,#row=new_row,#col=new_col,
             #fine_row=new_finerow,#fine_col=new_finecol) = 10)
       {
@@ -3152,13 +3200,6 @@ messages:
 
       if iState <> $
       {
-         iSpeed = piSpeed;
-
-         if (piBehavior & AI_FIGHT_SIDE_STEP)
-         {
-            iSpeed *= 2;
-         }
-
          piState = iState;
 
          if Send(self,@ReqMonsterMove,#new_row=iRow,#new_col=iCol,
@@ -3168,7 +3209,7 @@ messages:
                  #new_finerow=iFineRow,#new_finecol=iFineCol,
                  #face_target=face_target,#face_away=face_away);
 
-            Send(poOwner,@SomethingMoved,#what=self,#speed=iSpeed,
+            Send(poOwner,@SomethingMoved,#what=self,#speed=piSpeed,
                  #new_row=iRow,#new_col=iCol,
                  #fine_row=iFineRow,#fine_col=iFineCol,
                  #non_monsters_only=TRUE);
@@ -3178,7 +3219,7 @@ messages:
                  #new_finerow=iFineRow,#new_finecol=iFineCol,
                  #face_target=face_target,#face_away=face_away);
 
-         return TRUE;
+            return TRUE;
          }
       }
 
@@ -3228,6 +3269,32 @@ messages:
       }
 
       Send(self,@SetBehaviorFlag,#flag=AI_STROLLING,#value=TRUE);
+
+      return;
+   }
+
+   GoRally()
+   "Walk over to the flagpole if we care for it and one is present."
+   {
+      local iRow, iCol;
+
+      if NOT vbCanRally
+      {
+         return;
+      }
+
+      iRow = Send(poOwner,@GetFlagRow);
+      iCol = Send(poOwner,@GetFlagCol);
+
+      if iRow <> $ AND iCol <> $
+      {
+         piTargetLocationRow = iRow;
+         piTargetLocationCol = iCol;
+         piTargetLocationFineRow = FINENESS_HALF;
+         piTargetLocationFineCol = FINENESS_HALF;
+
+         Send(self,@SetBehaviorFlag,#flag=AI_RALLY,#value=TRUE);
+      }
 
       return;
    }
@@ -5750,12 +5817,8 @@ messages:
          }
       }
 
-      // Standing too close. Pass on a negative delay which allows 
-      // the monster to take a free side step.
-      if Send(self,@SideStepCheck,#distance=distance)
-      {
-         return -iDelay;
-      }
+   // Take a step away from the target if too close.
+   Send(self,@SideStepCheck,#distance=distance);
 
       return iDelay;
    }
@@ -7026,10 +7089,36 @@ messages:
       local i, j, oReagent, iNumberItems, oTreasure, oTreasure_type,
             lTreasureItems, iNumberOfItemsDropped, iNumberOfItemsLooted,
             iRandomCashAmount, oMoney, iGetResult, bCapacityFailure,
-            bRangeFailure, iSurvivalLoot;
+            bRangeFailure, iSurvivalLoot, bPlayer, oHurter, oMaster;
+
+      bPlayer = FALSE;
 
       // Apparitions, etc, provide no treasure
       if pbIllusion
+      {
+         return;
+      }
+
+      // If no player was involved, no loot is dropped.
+      foreach i in plHurtMeRecently
+      {
+         oHurter = First(i);
+
+         if IsClass(oHurter,&Player)
+         {
+            bPlayer = TRUE;
+         }
+         else
+         {
+            oMaster = Send(oHurter,@GetMaster);
+            if (oMaster <> $) AND IsClass(oMaster,&Player)
+            {
+               bPlayer = TRUE;
+            }
+         }
+      }
+
+      if NOT bPlayer
       {
          return;
       }
@@ -8091,9 +8180,9 @@ messages:
          Debug(self,"is in AI_FLEEING");
       }
 
-      if (piBehavior & AI_FIGHT_SIDE_STEP)
+      if (piBehavior & AI_RALLY)
       {
-         Debug(self,"is in AI_FIGHT_SIDE_STEP");
+         Debug(self,"is in AI_RALLY");
       }
 
       if (piBehavior & AI_FIGHT_KARMA_AGGRESSIVE)
@@ -8682,16 +8771,16 @@ messages:
       return viSocial;
    }
 
+   // Allow monster to take a step away from the target if too close.
    SideStepCheck(distance=0)
    {
-      if Bound(8000 - distance,0,$)
+      if Bound(4000 - distance,0,$)
       {
-         Send(self,@SetBehaviorFlag,#flag=AI_FIGHT_SIDE_STEP,#value=TRUE);
-
-         return TRUE;
+         // Take a step back unless we are directly on top of our target.
+         Send(self,@RandomCombatMove,#direction=-distance,#sidestep=TRUE);
       }
 
-      return FALSE;
+      return ;
    }
 
    // Some mobs may have a special trick up their sleeves.

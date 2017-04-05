@@ -58,8 +58,10 @@ properties:
    piInvis_reduction = 100
    piShadForm_reduction = 60
 
-   // This property controls mob idle movement.
-   piStroll_chance = 2000
+   // These properties control mob idle movement.
+   // High numbers mean low chance.
+   piStroll_chance = 4000
+   piRally_chance = 1000
 
 messages:
 
@@ -526,7 +528,7 @@ messages:
       // If we had a real target location, we wouldn't be strolling anymore.
       if (behavior & AI_STROLLING)
       {
-         // Check against our Stamina. If we succeed, we keep walking.
+         // Check against our stamina. If we succeed, we keep walking.
          if Random(1,Send(mob,@GetStamina)+10) > 1
          {
             Send(mob,@DoGoTowardsLocation);
@@ -534,6 +536,24 @@ messages:
             return;
          }
          // Too tired. Stop our stroll.
+         else
+         {
+            Send(mob,@ClearStrollLocation);
+         }
+      }
+
+      // If we had a real target location, or a place to stroll to,
+      // we wouldn't be rallying.
+      if (behavior & AI_RALLY)
+      {
+         // Check against our stamina. If we succeed, we keep walking.
+         if Random(1,Send(mob,@GetStamina)+10) * 2 > 1
+         {
+            Send(mob,@DoGoTowardsLocation);
+
+            return;
+         }
+         // Too tired. Stop our attempt at rallying.
          else
          {
             Send(mob,@ClearStrollLocation);
@@ -595,6 +615,10 @@ messages:
          else if (Random(1,piStroll_chance) < (Send(mob,@GetAgility)+10) * 150 / Send(mob,@GetLevel))
          {
             Send(mob,@GoStrolling);
+         }
+         else if (Random(1,piRally_chance) < 2*(Send(mob,@GetIntellect)+10))
+         {
+            Send(mob,@GoRally);
          }
       }
 
@@ -694,17 +718,6 @@ messages:
          }
 
          Send(mob,@MoveAway,#oTarget=target,#face_away=TRUE);
-
-         return;
-      }
-
-      // Target is too close. Gain a bit of distance.
-      if (behavior & AI_FIGHT_SIDE_STEP)
-      {
-         Send(mob,@MoveAway,#oTarget=target,#face_target=TRUE);
-
-         // Call this after moving to allow the flag to affect movement.
-         Send(mob,@SetBehaviorFlag,#flag=AI_FIGHT_SIDE_STEP,#value=FALSE);
 
          return;
       }

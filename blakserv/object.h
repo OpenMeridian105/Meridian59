@@ -42,6 +42,7 @@ object_node * GetObjectByID(int object_id);
 object_node * GetObjectByIDQuietly(int object_id);
 Bool IsObjectByID(int object_id);
 object_node * GetObjectByIDEvenDeleted(int object_id);
+void PrintStartupMissingProp();
 Bool SetObjectPropertyByName(int object_id,char *prop_name,val_type val);
 
 void ForEachObject(void (*callback_func)(object_node *o));

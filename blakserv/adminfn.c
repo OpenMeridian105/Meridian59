@@ -200,6 +200,8 @@ void AdminSetClass(int session_id,admin_parm_type parms[],
                    int num_blak_parm,parm_node blak_parm[]);
 void AdminSetObject(int session_id,admin_parm_type parms[],
                     int num_blak_parm,parm_node blak_parm[]);
+void AdminSetObjInt(int session_id, admin_parm_type parms[],
+                   int num_blak_parm, parm_node blak_parm[]);
 void AdminSetAccountName(int session_id,admin_parm_type parms[],
                          int num_blak_parm,parm_node blak_parm[]);
 void AdminSetAccountPassword(int session_id,admin_parm_type parms[],
@@ -451,6 +453,7 @@ admin_table_type admin_set_table[] =
 	{ AdminSetClass,      {S,S,S,S,N}, F, A|M, NULL, 0, "class", "Set classvar by name of class, name of var, and value" },
 	{ NULL, {N}, F, A|M, admin_setcfg_table,   LEN_ADMIN_SETCFG_TABLE,  "config",   
 	"Config subcommand" },
+   { AdminSetObjInt, { I,S,S,S,N }, F, A | M, NULL, 0, "integer", "Set object by int (constant) single property" },
 	{ AdminSetObject,     {I,S,S,S,N}, F, A|M, NULL, 0, "object", "Set object by id single property" },
 };
 #define LEN_ADMIN_SET_TABLE (sizeof(admin_set_table)/sizeof(admin_table_type))
@@ -3198,8 +3201,22 @@ void AdminSetClass(int session_id,admin_parm_type parms[],
    c->vars[var_id].val = val;
 }
 
+void AdminSetObjInt(int session_id, admin_parm_type parms[],
+   int num_blak_parm, parm_node blak_parm[])
+{
+   if (parms[0] >= 0 && parms[0] <= MAX_BUILTIN_OBJECT)
+   {
+      parms[0] = GetBuiltInObjectID((int)parms[0]);
+      AdminSetObject(session_id, parms, num_blak_parm, blak_parm);
+   }
+   else
+   {
+      aprintf("Can't reference object with int %i.\n", (int)parms[0]);
+   }
+}
+
 void AdminSetObject(int session_id,admin_parm_type parms[],
-                    int num_blak_parm,parm_node blak_parm[])                    
+                    int num_blak_parm,parm_node blak_parm[])
 {
 	object_node *o;
 	class_node *c;

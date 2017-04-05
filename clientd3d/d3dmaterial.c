@@ -157,11 +157,6 @@ Bool D3DMaterialFloorCeilDynamicChunk(d3d_render_chunk_new *pChunk)
 
    IDirect3DDevice9_SetSamplerState(gpD3DDevice, 0, D3DSAMP_ADDRESSU, D3DTADDRESS_WRAP);
 
-   if (pChunk->pSector->ceiling == current_room.sectors[0].ceiling)
-      IDirect3DDevice9_SetRenderState(gpD3DDevice, D3DRS_DEPTHBIAS, F2DW((float)0));
-   else
-      IDirect3DDevice9_SetRenderState(gpD3DDevice, D3DRS_DEPTHBIAS, F2DW((float)ZBIAS_WORLD * -0.00001f));
-
    if (gD3DDriverProfile.bFogEnable)
    {
       float end = D3DRenderFloorCeilFogEndCalc(pChunk);
@@ -188,11 +183,6 @@ Bool D3DMaterialFloorCeilStaticChunk(d3d_render_chunk_new *pChunk)
 
    IDirect3DDevice9_SetSamplerState(gpD3DDevice, 0, D3DSAMP_ADDRESSU, D3DTADDRESS_WRAP);
 
-   if (pChunk->pSector->ceiling == current_room.sectors[0].ceiling)
-      IDirect3DDevice9_SetRenderState(gpD3DDevice, D3DRS_DEPTHBIAS, F2DW((float)0));
-   else
-      IDirect3DDevice9_SetRenderState(gpD3DDevice, D3DRS_DEPTHBIAS, F2DW((float)ZBIAS_WORLD * -0.00001f));
-
    if (gD3DDriverProfile.bFogEnable)
    {
       float end = D3DRenderFloorCeilFogEndCalc(pChunk);
@@ -208,8 +198,6 @@ Bool D3DMaterialWallDynamicChunk(d3d_render_chunk_new *pChunk)
       IDirect3DDevice9_SetSamplerState(gpD3DDevice, 0, D3DSAMP_ADDRESSU, D3DTADDRESS_CLAMP);
    else
       IDirect3DDevice9_SetSamplerState(gpD3DDevice, 0, D3DSAMP_ADDRESSU, D3DTADDRESS_WRAP);
-
-   IDirect3DDevice9_SetRenderState(gpD3DDevice, D3DRS_DEPTHBIAS, F2DW((float)ZBIAS_WORLD * -0.00001f));
 
    if (gD3DDriverProfile.bFogEnable)
    {
@@ -234,8 +222,6 @@ Bool D3DMaterialWallStaticChunk(d3d_render_chunk_new *pChunk)
       IDirect3DDevice9_SetSamplerState(gpD3DDevice, 0, D3DSAMP_ADDRESSU, D3DTADDRESS_CLAMP);
    else
       IDirect3DDevice9_SetSamplerState(gpD3DDevice, 0, D3DSAMP_ADDRESSU, D3DTADDRESS_WRAP);
-
-   IDirect3DDevice9_SetRenderState(gpD3DDevice, D3DRS_DEPTHBIAS, F2DW((float)ZBIAS_WORLD * -0.00001f));
 
    if (gD3DDriverProfile.bFogEnable)
    {
@@ -310,10 +296,15 @@ Bool D3DMaterialLMapFloorCeilDynamicChunk(d3d_render_chunk_new *pChunk)
 {
    IDirect3DDevice9_SetSamplerState(gpD3DDevice, 1, D3DSAMP_ADDRESSU, D3DTADDRESS_WRAP);
 
-   if (pChunk->pSector->ceiling == current_room.sectors[0].ceiling)
-      IDirect3DDevice9_SetRenderState(gpD3DDevice, D3DRS_DEPTHBIAS, F2DW((float)0));
-   else
-      IDirect3DDevice9_SetRenderState(gpD3DDevice, D3DRS_DEPTHBIAS, F2DW((float)ZBIAS_WORLD * -0.00001f));
+   return TRUE;
+}
+
+Bool D3DMaterialLMapFloorCeilStaticChunk(d3d_render_chunk_new *pChunk)
+{
+   if (pChunk->pSector->flags & SF_HAS_ANIMATED)
+      return FALSE;
+
+   IDirect3DDevice9_SetSamplerState(gpD3DDevice, 1, D3DSAMP_ADDRESSU, D3DTADDRESS_WRAP);
 
    return TRUE;
 }
@@ -325,23 +316,6 @@ Bool D3DMaterialLMapWallDynamicChunk(d3d_render_chunk_new *pChunk)
    else
       IDirect3DDevice9_SetSamplerState(gpD3DDevice, 1, D3DSAMP_ADDRESSU, D3DTADDRESS_WRAP);
 
-   IDirect3DDevice9_SetRenderState(gpD3DDevice, D3DRS_DEPTHBIAS, F2DW((float)ZBIAS_WORLD * -0.00001f));
-
-   return TRUE;
-}
-
-Bool D3DMaterialLMapFloorCeilStaticChunk(d3d_render_chunk_new *pChunk)
-{
-   if (pChunk->pSector->flags & SF_HAS_ANIMATED)
-      return FALSE;
-
-   IDirect3DDevice9_SetSamplerState(gpD3DDevice, 1, D3DSAMP_ADDRESSU, D3DTADDRESS_WRAP);
-
-   if (pChunk->pSector->ceiling == current_room.sectors[0].ceiling)
-      IDirect3DDevice9_SetRenderState(gpD3DDevice, D3DRS_DEPTHBIAS, F2DW((float)0));
-   else
-      IDirect3DDevice9_SetRenderState(gpD3DDevice, D3DRS_DEPTHBIAS, F2DW((float)ZBIAS_WORLD * -0.00001f));
-
    return TRUE;
 }
 
@@ -351,8 +325,6 @@ Bool D3DMaterialLMapWallStaticChunk(d3d_render_chunk_new *pChunk)
       IDirect3DDevice9_SetSamplerState(gpD3DDevice, 1, D3DSAMP_ADDRESSU, D3DTADDRESS_CLAMP);
    else
       IDirect3DDevice9_SetSamplerState(gpD3DDevice, 1, D3DSAMP_ADDRESSU, D3DTADDRESS_WRAP);
-
-   IDirect3DDevice9_SetRenderState(gpD3DDevice, D3DRS_DEPTHBIAS, F2DW((float)ZBIAS_WORLD * -0.00001f));
 
    if (pChunk->pSectorPos)
       if (pChunk->pSectorPos->flags & SF_HAS_ANIMATED)

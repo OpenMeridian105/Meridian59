@@ -561,7 +561,9 @@ void D3DRenderLMapPostFloorAdd(BSPnode *pNode, d3d_render_pool_new *pPool,
       pChunk->indices[index] = last;
       pChunk->indices[index + 1] = first;
    }
+#ifndef NODPRINTFS
    gNumObjects++;
+#endif
 }
 
 /*
@@ -652,7 +654,9 @@ void D3DRenderLMapPostCeilingAdd(BSPnode *pNode, d3d_render_pool_new *pPool,
          pChunk->indices[index + 1] = last;
       }
    }
+#ifndef NODPRINTFS
    gNumObjects++;
+#endif
 }
 
 /*

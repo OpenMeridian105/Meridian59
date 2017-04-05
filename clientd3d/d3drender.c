@@ -873,6 +873,14 @@ void D3DRenderBegin(room_type *room, Draw3DParams *params)
       IDirect3DDevice9_SetTextureStageState(gpD3DDevice, 1, D3DTSS_COLOROP, D3DTOP_DISABLE);
       IDirect3DDevice9_SetTextureStageState(gpD3DDevice, 1, D3DTSS_ALPHAOP, D3DTOP_DISABLE);
 
+      // Set depth bias. Used to be done in material chunk function call, with different bias
+      // for ceiling matching sector 0 ceiling (unsure why this was done). Reproduced a full
+      // example here:
+      //if (pChunk->pSector->ceiling == current_room.sectors[0].ceiling)
+      //   IDirect3DDevice9_SetRenderState(gpD3DDevice, D3DRS_DEPTHBIAS, F2DW((float)0));
+      // else
+      IDirect3DDevice9_SetRenderState(gpD3DDevice, D3DRS_DEPTHBIAS, F2DW((float)ZBIAS_WORLD * -0.00001f));
+
       // This is disabled as it seems to draw sky texture in-between wall
       // textures on some maps. No errant effects noted from disabling this.
       // no look through/sky texture walls
@@ -1381,12 +1389,14 @@ void D3DRenderBegin(room_type *room, Draw3DParams *params)
    }
 
    timeOverall = timeGetTime() - timeOverall;
-//   debug(("number of objects = %d\n", gNumObjects));
-   //if ((gFrame & 255) == 255)
-   //   debug(("number of vertices = %d\nnumber of dp calls = %d\n", gNumVertices, gNumDPCalls));
 
+#ifndef NODPRINTFS
+   //   debug(("number of objects = %d\n", gNumObjects));
+   if ((gFrame & 255) == 255)
+      debug(("number of vertices = %d\nnumber of dp calls = %d\n", gNumVertices, gNumDPCalls));
    //debug(("all = %d lmaps = %d wrld = %d obj = %d  particles = %d sky = %d init = %d\n",
-      //timeOverall, timeLMaps, timeWorld, timeObjects, timeParticles, timeSkybox+timeSkybox2, timeInit));
+   //   timeOverall, timeLMaps, timeWorld, timeObjects, timeParticles, timeSkybox+timeSkybox2, timeInit));
+#endif
 }
 
 // Resets the renderer.
@@ -4759,7 +4769,9 @@ void D3DRenderBackgroundObjectsDraw(d3d_render_pool_new *pPool, room_type *room,
          pChunk->bgra[i].a = COLOR_MAX;
       }
 
+#ifndef NODPRINTFS
       gNumObjects++;
+#endif
    }
 }
 
@@ -5907,7 +5919,9 @@ void D3DRenderOverlaysDraw(d3d_render_pool_new *pPool, room_type *room, Draw3DPa
                   pChunk->indices[3] = 3;
                }
 
+#ifndef NODPRINTFS
                gNumObjects++;
+#endif
 TEMP_END2:
                {
                   int i = 0;
@@ -6027,7 +6041,9 @@ void D3DRenderProjectilesDrawNew(d3d_render_pool_new *pPool, room_type *room, Dr
          pChunk->bgra[i].a = alpha;
       }
 
+#ifndef NODPRINTFS
       gNumObjects++;
+#endif
    }
 }
 

@@ -151,7 +151,10 @@ Bool LoadGame(char *filename)
 	}
 	savegame_version = 0;
 	ret_val = LoadGameParse(filename);
-	
+
+   // Print any missing properties to error log.
+   PrintStartupMissingProp();
+
 	LoadGameClose();
 	
 	/* now free load game memory */

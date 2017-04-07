@@ -198,6 +198,11 @@ resources:
    guild_rent_due = \
       "~BYour guild owes %i in rent.  If this number is not reduced to 0 "
       "in the next %i %s, your guild will be disbanded."
+   guild_rent_due_mail ="Subject: Guild rent due\n"
+      "Your guild owes %i in rent.  If this number is not reduced to 0 "
+      "in the next %i %s, your guild will be disbanded.\n\nIf you have a "
+      "guild hall, it will become available for purchase and any items left "
+      "inside may be claimed by others."
 
    guild_new_hall = "~B%s is the new home of %s%q!"
    guild_abandon_hall = "~B%s is no longer the home of %s%q!"
@@ -866,10 +871,21 @@ messages:
             hourhours = guild_hour_rsc;
          }
 
+         // Send a message to all logged on members, mail those not logged on.
          foreach i in plMembers
          {
-            Post(First(i),@MsgSendUser,#message_rsc=guild_rent_due,
-                 #parm1=piRentDue,#parm2=piRentCounter/10,#parm3=hourhours);
+            if (Send(First(i),@IsLoggedOn))
+            {
+               Post(First(i),@MsgSendUser,#message_rsc=guild_rent_due,
+                     #parm1=piRentDue,#parm2=piRentCounter/10,#parm3=hourhours);
+            }
+            else
+            {
+               Send(First(i),@ReceiveNestedMail,#from=guild_frular,
+                  #dest_list=[First(i)],
+                  #nest_list=[4,guild_rent_due_mail,4,piRentDue,
+                        4,piRentCounter/10,4,hourhours]);
+            }
          }
       }
 

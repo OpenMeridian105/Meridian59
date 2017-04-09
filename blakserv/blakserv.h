@@ -32,7 +32,7 @@
 #define INVALID_DSTR -1
 #define NO_SUPERCLASS 0
 
-#define MAX_DEPTH 2000
+#define MAX_DEPTH 800
 
 #define BOF_VERSION 9
 

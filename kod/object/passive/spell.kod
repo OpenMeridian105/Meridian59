@@ -1504,7 +1504,7 @@ messages:
 
    CastSpell(who = $, lTargets = $, iSpellPower = 0, iPowerLevel = 100, bItemCast=FALSE)
    {
-      local oTarget, oRoom;
+      local oTarget, oRoom, i, iAggro;
 
       // Add a mana drain if applicable.
       if IsClass(who,&Battler) AND viManaDrain > 0
@@ -1641,6 +1641,21 @@ messages:
          Send(self,@PlaySpellSound,#room_obj=oRoom,#what=who);
          Send(oRoom,@SpellCast,#who=who,#oSpell=self,#lItems=lTargets,
                #bItemCast=bItemCast);
+
+         // Also inform the room in case we have harmed our targets.
+         foreach i in lTargets
+         {
+            if IsClass(i,&Battler)
+            {
+               iAggro = Send(self,@CausesAggression,#iSpellpower=iSpellPower);
+
+               if iAggro
+               {
+                  Send(i,@AddHurtMeRecently,#who=who,#amount=iAggro);
+                  Send(oRoom,@SomethingAttacked,#what=who,#victim=i,#use_weapon=self);
+               }
+            }
+         }
       }
 
       if Send(self,@AffectsSpellPower)
@@ -2802,6 +2817,12 @@ messages:
    GetSquaredRange()
    {
       return MAX_KOD_INT;
+   }
+
+   // Harmful spells tend to cause aggression. Some exceptions though.
+   CausesAggression(iSpellpower=0)
+   {
+      return viHarmful;
    }
 
 end

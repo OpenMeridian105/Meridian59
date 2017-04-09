@@ -646,13 +646,6 @@ messages:
          }
       }
 
-      // Standing too close. Pass on a negative delay which
-      // allows the monster to take a free side step.
-      if distance < 2500
-      {
-         return -iDelay;
-      }
-
       return iDelay;
    }
 
@@ -773,17 +766,8 @@ messages:
          Send(poBrain,@GetEngageBehavior,#mob=self,#target=poTarget,#behavior=piBehavior);
       }
 
-      // A negative delay means that we are too close to our target. Move away.
-      // Else, do a random move with a one in three chance to move towards our
-      // target.
-      if iDelay < 0
-      {
-         Send(self,@MoveAway,#oTarget=poTarget,#face_target=TRUE);
-      }
-      else
-      {
-         Send(self,@RandomCombatMove);
-      }
+      // 50% chance to move away from the target.
+      Send(self,@RandomCombatMove,#direction=-5);
 
       // Monster acted. Pass on the appriopriate delay.
       if poTarget <> $

@@ -21,8 +21,6 @@ constants:
    TS_FIGHT_ASSIST_VICTIM = 5
    TS_FIGHT_DEFEND_ATTACKER = 6
    TS_FIGHT_ASSIST_ATTACKER = 7
-   TS_ENTRY = 8
-   TS_ENTRY_APPROVED = 9
 
 resources:
 
@@ -124,12 +122,12 @@ messages:
 
       if state & STATE_LIMBO
       {
-         Send(mob,@EnterStateMove,#actnow=False);
+         Send(mob,@EnterStateWait);
 
          return;
       }
 
-      // Monsters should ONLY be waiting or moving at this point.
+      // Monsters should ONLY be waiting at this point.
       if (state & STATE_ENGAGE)
       {
          Debug("Unreachable. Illegal state",state," for ",mob," in room ",
@@ -175,7 +173,7 @@ messages:
 
       if what = oTarget
       {
-         Send(mob,@EnterStateMove,#actnow=FALSE);
+         Send(mob,@EnterStateMove);
       }
 
       return;
@@ -284,20 +282,25 @@ messages:
          }
       }
 
-      // Target is in range and we have nothing better to do than to attack it.
+      // If we were attacked ourselves, we respond immediately, even if we were waiting.
       if (state & STATE_WAIT) OR (state & STATE_MOVE)
       {
-         // We got attacked or fight of a criminal. Attack them now!
-         if ((iType = TS_FIGHT_DEFEND_SELF) OR (iType = TS_MURDER))
+         // We got hit! Attack them now!
+         if (iType = TS_FIGHT_DEFEND_SELF)
             AND Send(self,@AttemptTargetSwitch,#what=what,#event=iType,#mob=mob)
          {
             Send(mob,@EnterStateEngage,#target=what,#actnow=TRUE);
 
             return;
          }
+      }
 
-         // We are defending a victim. Respond quickly.
-         if ((iType = TS_FIGHT_DEFEND_VICTIM) OR (iType = TS_FIGHT_ASSIST_VICTIM))
+      // If we were already on the move, we also repond to other events.
+      if (state & STATE_MOVE)
+      {
+         // We are defending a victim or spotted a criminal. Respond quickly.
+         if ((iType = TS_FIGHT_DEFEND_VICTIM) OR (iType = TS_FIGHT_ASSIST_VICTIM)
+            OR (iType = TS_MURDER))
             AND Send(self,@AttemptTargetSwitch,#what=what,#event=iType,#mob=mob)
          {
             iDelay = Bound(100 - Send(mob,@GetAgility),25,100) * 20;
@@ -340,62 +343,154 @@ messages:
 
    PostEngageTimer(mob = $, delay = 0)
    {
-      local oTarget;
+      local oTarget, bSwitch;
 
+      bSwitch = FALSE;
+
+      // Check if our clubbing target is still around.
       oTarget = Send(mob,@GetTarget);
-      if IsClass(oTarget,&User)
-         AND Send(oTarget,@CheckPlayerFlag,#flag=PFLAG_INVISIBLE)
-         AND NOT IsClass(mob,&Revenant)
+
+      // Nope.
+      if oTarget = $ OR Send(oTarget,@GetOwner) = $
       {
-         if Random(1,50) = 1
+         // Check if we can find a substitute.
+         oTarget = Send(mob,@GetTopHurter);
+         if oTarget <> $
          {
-            Send(mob,@EnterStateMove,#actnow=True);
-            return True;
+            // Yup!
+            bSwitch = TRUE;
          }
+      }
+
+      // Nothing to club. Go for a walk. Hope for better club elsewhere.
+      if oTarget = $
+      {
+         Send(mob,@EnterStateMove);
+
+         return;
       }
 
       // Move time is our lower bound for delay between actions.
       delay = Bound(delay,Send(mob,@GetMoveTime),$);
 
-      Send(mob,@EnterStateEngage,#target=oTarget,#actnow=False,#delay=delay);
+      // We have a new potential target.
+      if bSwitch
+      {
+         // Check if we wanna club it.
+         if Send(self,@AttemptTargetSwitch,#what=oTarget,#event=TS_FIGHT_DEFEND_SELF,#mob=mob)
+         {
+            // Yeah, we do.
+            Send(mob,@EnterStateEngage,#target=oTarget,#actnow=FALSE,#delay=delay);
+         }
+         else
+         {
+            // Nah, not worth it. Try to find something more clubby elsewhere.
+            Send(mob,@EnterStateMove);
+         }
+      }
+      // Our old clubbing buddy is still around. Club 'em.
+      else
+      {
+         Send(mob,@EnterStateEngage,#target=oTarget,#actnow=FALSE,#delay=delay);
+      }
 
       return;
    }
 
    PostMoveTimer(mob = $)
    {
-      Send(mob,@EnterStateMove,#actnow=False);
+      local oTarget;
+
+      oTarget = Send(mob,@GetTopHurter);
+
+      if oTarget = $
+      {
+         Send(mob,@EnterStateMove);
+
+         return;
+      }
+
+      if Send(self,@AttemptTargetSwitch,#what=oTarget,#event=TS_FIGHT_DEFEND_SELF,#mob=mob)
+      {
+         Send(mob,@EnterStateEngage,#target=oTarget,#actnow=TRUE);
+      }
+      else
+      {
+         Send(mob,@EnterStateMove);
+      }
 
       return;
    }
 
    PostWaitTimer(mob = $)
    {
-      Send(mob,@EnterStateMove,#actnow=True);
+      local oTarget;
+
+      oTarget = Send(mob,@GetTopHurter);
+
+      if oTarget = $
+      {
+         Send(mob,@EnterStateMove);
+
+         return;
+      }
+
+      if Send(self,@AttemptTargetSwitch,#what=oTarget,#event=TS_FIGHT_DEFEND_SELF,#mob=mob)
+      {
+         Send(mob,@EnterStateEngage,#target=oTarget,#actnow=TRUE);
+      }
+      else
+      {
+         Send(mob,@EnterStateMove);
+      }
 
       return;
    }
 
    PostRestTimer(mob = $)
    {
-      local oTarget;
+      local oTarget, oHurter;
 
       oTarget = Send(mob,@GetTarget);
+      oHurter = Send(mob,@GetTopHurter);
 
-      if Random(1,4) = 1 OR oTarget = $
+      if (oTarget = $) AND (oHurter = $)
       {
-         Send(mob,@EnterStateMove,#actnow=TRUE);
+         Send(mob,@EnterStateMove);
+
+         return;
+      }
+
+      if oTarget = $
+      {
+         if Send(self,@AttemptTargetSwitch,#what=oHurter,#event=TS_FIGHT_DEFEND_SELF,#mob=mob)
+         {
+            Send(mob,@EnterStateEngage,#target=oHurter,#actnow=TRUE);
+         }
+         else
+         {
+            Send(mob,@EnterStateMove);
+         }
+      }
+      else if oHurter = $
+      {
+         Send(mob,@EnterStateEngage,#target=oTarget,#actnow=TRUE);
+      }
+      else if Send(self,@AttemptTargetSwitch,#what=oHurter,#event=TS_FIGHT_DEFEND_SELF,#mob=mob)
+      {
+         Send(mob,@EnterStateEngage,#target=oHurter,#actnow=TRUE);
       }
       else
       {
          Send(mob,@EnterStateEngage,#target=oTarget,#actnow=TRUE);
       }
+
       return;
    }
 
    Reset(mob = $)
    {
-      Send(mob,@EnterStateMove,#actnow=True);
+      Send(mob,@EnterStateMove,#actnow=TRUE);
 
       return;
    }
@@ -441,7 +536,7 @@ messages:
       // over everything else.
       if (behavior & AI_MOVE_RANDOM)
       {
-         // skip 9/10 of the possible steps
+         // skip steps depending on agility
          if Random(1,100) < Send(mob,@GetAgility)
          {
            Send(mob,@DoRandomWalk);
@@ -507,20 +602,24 @@ messages:
 
       // We don't have any pressing matters to attend to. However, we are
       // still prepared to bash some skulls in if we should encounter any.
-      oEnemy = Send(mob,@GetClosestEnemy);
-      if oEnemy <> $
+      // Only if we are aggressive though.
+      if (behavior & AI_FIGHT_AGGRESSIVE) OR (behavior & AI_FIGHT_KARMA_AGGRESSIVE)
       {
-         iDistance = Send(mob,@SquaredFineDistanceTo3D,#what=oEnemy);
-
-         // Well, look what we have here. A skull!
-         if iDistance < Send(mob,@GetAggroRange,#what=oEnemy,#bStrolling=TRUE)
+         oEnemy = Send(mob,@GetClosestEnemy);
+         if oEnemy <> $
          {
-            if Send(self,@AttemptTargetSwitch,#what=oEnemy,#event=TS_MOVE,#mob=mob)
-            {
-               iDelay = Bound(100 - Send(mob,@GetAgility),25,100) * 40;
-               Send(mob,@EnterStateEngage,#target=oEnemy,#actnow=FALSE,#delay=iDelay);
+            iDistance = Send(mob,@SquaredFineDistanceTo3D,#what=oEnemy);
 
-               return FALSE;
+            // Well, look what we have here. A skull!
+            if iDistance < Send(mob,@GetAggroRange,#what=oEnemy,#bStrolling=TRUE)
+            {
+               if Send(self,@AttemptTargetSwitch,#what=oEnemy,#event=TS_MOVE,#mob=mob)
+               {
+                  iDelay = Bound(100 - Send(mob,@GetAgility),25,100) * 40;
+                  Send(mob,@EnterStateEngage,#target=oEnemy,#actnow=FALSE,#delay=iDelay);
+
+                  return FALSE;
+               }
             }
          }
       }
@@ -651,15 +750,16 @@ messages:
       }
 
       // Example, monster is blind. Forced randomness has precedence
-      // over everything else. Panic and move several times.
+      // over everything else.
       if (behavior & AI_MOVE_RANDOM)
       {
-         // skip 9/10 of the possible steps
-         if Random(1,100) < 10
+         // skip steps depending on agility
+         if Random(1,100) < Send(mob,@GetAgility)
          {
-            Send(mob,@DoRandomWalk);
-            return;
+           Send(mob,@DoRandomWalk);
          }
+
+         return;
       }
 
       if (behavior & AI_MOVE_FLEE_FRIGHTENERS)
@@ -733,25 +833,6 @@ messages:
             {
                Send(mob,@SetBehaviorFlag,#flag=AI_CORNERED,#value=TRUE);
             }
-
-            return;
-         }
-      }
-
-      // Check here if we need to break target, perhaps they are now
-      // too far away and have escaped us. This is the same vision check
-      // as used in GetHatred, with 5 added to the monster vision.
-      if NOT (behavior & AI_FIGHT_HYPERAGGRESSIVE)
-         AND NOT (behavior & AI_FIGHT_SINGLEMINDED)
-         AND (Send(mob,@GetTimeAttacked) + 10) < GetTime()
-      {
-         iSquaredVision = Send(mob,@GetVisionDistance) + 5;
-         iSquaredVision = (iSquaredVision * iSquaredVision);
-         iSquaredDistance = (Send(mob,@SqFineDistToVision,#what=target)
-                                 / FINENESS_SQUARED);
-         if iSquaredVision < iSquaredDistance
-         {
-            Send(mob,@EnterStateWait,#actnow=TRUE);
 
             return;
          }
@@ -832,13 +913,14 @@ messages:
          {
             return 0;
          }
-         // If the mob's ally is a monster, still quit.
-         else if IsClass(what,&Monster)
+         // If the mob's ally is a monster and isn't directly targeting
+         // us, quit. This is to prevent mobs from reacting to accidental
+         // friendly fire from AE attacks.
+         else if IsClass(what,&Monster) AND (Send(what,@GetTarget) <> mob)
          {
             return 0;
          }
-         // If the mob's ally is a player, cut hatred from
-         // damage taken in half.
+         // If none of the above is true, cut hatred in half at least.
          else
          {
             iHatred /= 2;
@@ -1012,7 +1094,7 @@ messages:
       iHatred += Send(mob,@SpecialHatredBehavior,#what=what);
 
       // Looks like we don't have any real reason to attack. Let's
-      // quit unless we are deliberately looking for a fight.      
+      // quit unless we are deliberately looking for a fight.
       if iHatred <= 0 AND NOT (behavior & AI_FIGHT_AGGRESSIVE)
       {
          return 0;

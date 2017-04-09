@@ -3705,7 +3705,7 @@ messages:
    }
 
    TryBroadcast()
-   "Called when the user wants to broadcast a string.  Return True/False, "
+   "Called when the user wants to broadcast a string.  Return TRUE/FALSE, "
    "and use some mana too."
    {
       local iCost;
@@ -3734,7 +3734,7 @@ messages:
 
    TrySayGroup(users=$)
    "Called when the user wants to say a string to a list of people.  "
-   "Return True/False."
+   "Return TRUE/FALSE."
    {
       if piFlags2 & PFLAG2_SQUELCHED_TELLS
       {
@@ -8128,7 +8128,7 @@ messages:
       if (oSkill = $)
       {
          // System has no info on this skill.
-         return False;
+         return FALSE;
       }
 
       // Skill format: [ num * 100 + ability ]
@@ -8166,7 +8166,7 @@ messages:
                #change=iBoundAbility);
       }
 
-      return True;
+      return TRUE;
    }
 
    RemoveAllSkills()
@@ -12385,7 +12385,7 @@ messages:
    // When players join, and subsequently log on, the
    // updated time gets set and the timer gets started.
 
-   UpdateFactionService(full=False,middle=False,front=False,adjust=True)
+   UpdateFactionService(full=FALSE,middle=FALSE,front=FALSE,adjust=TRUE)
    {
       local tyme, oSoldierShield;
 
@@ -12544,7 +12544,7 @@ messages:
       if wasint AND Send(oParl,@IsShutdown)
       {
          Send(self,@MsgSendUser,#message_rsc=player_intrigue_shut);
-         Send(self,@SetPlayerFlag,#flag=PFLAG_INTRIGUING,#value=False);
+         Send(self,@SetPlayerFlag,#flag=PFLAG_INTRIGUING,#value=FALSE);
          Send(oParl,@UpdateEffects,#who=self);
          if ptFactionTimer<>$
          {
@@ -14680,6 +14680,28 @@ messages:
       }
 
       return;
+   }
+
+   GetStealth()
+   {
+      local iStealth;
+
+      // Stealth is primarily based on our agility and intellect.
+      iStealth = 2 * Send(self,@GetAgility) + Send(self,@GetIntellect);
+
+      // Sneaking increases stealth.
+      if (Send(self,@GetSpeed) < 1000)
+      {
+         iStealth += 150;
+      }
+
+      // An invisible target has increased stealth.
+      if Send(self,@CheckPlayerFlag,#flag=PFLAG_INVISIBLE)
+      {
+         iStealth += 150;
+      }
+
+      return Bound(iStealth,0,300);
    }
 
 end

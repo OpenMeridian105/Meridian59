@@ -8,7 +8,7 @@ DEPEND = ..\scroll.bof
 BOFS = mrtrscrl.bof lghtscrl.bof darkscrl.bof discscrl.bof disilscl.bof \
        earthscl.bof firitscl.bof flashscl.bof heatscrl.bof killfscl.bof \
        pfogscrl.bof sporescl.bof trucescl.bof windscrl.bof loadscrl.bof \
-       setscrl.bof mirthscrl.bof melscrl.bof foflscrl.bof
+       setscrl.bof mirthscrl.bof melscrl.bof foflscrl.bof lullabyscrl.bof
 
 # foflscrl.bof
 

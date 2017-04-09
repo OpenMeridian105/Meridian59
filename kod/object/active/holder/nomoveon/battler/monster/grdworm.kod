@@ -432,5 +432,115 @@ messages:
       return FALSE;
    }
 
+   ////  Action Routines
+   EngageTimer( timer = $ )
+   "We're trying to engage our target, so either we keep"
+   "chasing, or we attack. Note that even if we can't move,"
+   "we can still be 'engaging'...."
+   {
+      local i,oVictim, iDistance, iChaseRange, iDelay, bSight;
+      oVictim = poTarget;
+
+      Send(self,@ClearBehavior,#timer=timer);
+
+      // Sanity checks
+      if poOwner = $
+      {
+         Debug("Unreachable. Null owner.");
+         Send(self,@EnterStateLimbo);
+
+         return;
+      }
+
+      // If target left, we should already know
+      if oVictim = $
+      {
+         //Debug("Unreachable. Null victim.");
+         Send(self,@EnterStateWait);
+
+         return;
+      }
+
+      // Victim phased out or is now in spectator mode, break aggro.
+      if IsClass(oVictim,&User)
+         AND Send(oVictim,@IsInCannotInteractMode)
+      {
+         Send(self,@EnterStateMove);
+
+         return;
+      }
+
+      // Get distance to target and check LoS.
+      iDistance = Send(self,@SquaredFineDistanceTo3D,#what=oVictim);
+      bSight = Send(poOwner,@LineOfSight,#obj1=self,#obj2=oVictim);
+
+      // Mobs may stop chasing if the target gets out of range.
+      // Not if it has hurt us recently though.
+      if NOT Send(self,@GetHurtMeRecentlyAmount,#who=oVictim)
+      {
+         iChaseRange =  piVisionDistance * FINENESS;
+         iChaseRange = iChaseRange * (50 + piStamina) / 50;
+         if NOT bSight
+         {
+            iChaseRange /= 5;
+         }
+         iChaseRange *= iChaseRange;
+
+         // Mobs may lose interest if the target is too far away or out of sight.
+         if (NOT ((piBehavior & AI_FIGHT_SINGLEMINDED) OR (poMaster <> $)))
+            AND (iDistance > iChaseRange)
+         {
+            Send(self,@EnterStateMove);
+
+            return;
+         }
+      }
+
+      if Send(self,@MonsterCombatCheck)
+      {
+         iDelay = Send(self,@MonsterCombatAction,#distance=iDistance,#sight=bSight);
+      }
+      else
+      {
+         iDelay = 0;
+      }
+
+      if (iDelay = 0) AND pbSurfaced
+      {
+         Send(self,@PopDown);
+      }
+
+      // We may no longer be around after the attack (e.g. evil twin killing a target).
+      if poOwner = $
+      {
+         return;
+      }
+
+      // Got gassed after acting and is currently resting. Quit.
+      if (piState & STATE_REST)
+      {
+         return;
+      }
+
+      // If we can move, we physically try to get closer.
+      if iDelay = 0
+      {
+         Send(poBrain,@GetEngageBehavior,#mob=self,#target=poTarget,#behavior=piBehavior);
+      }
+
+      // Monster acted. Pass on the appriopriate delay.
+      if poTarget <> $
+      {
+         Send(poBrain,@PostEngageTimer,#mob=self,#delay=Abs(iDelay));
+      }
+      else
+      {
+         // Target died. Move on.
+         Send(self,@EnterStateMove);
+      }
+
+      return;
+   }
+
 end
 ////////////////////////////////////////////////////////////////////////////////

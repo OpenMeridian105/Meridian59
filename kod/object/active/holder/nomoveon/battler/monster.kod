@@ -8794,6 +8794,8 @@ messages:
       // Our base range is our vision.
       iRange = Send(self,@GetVisionDistance) * FINENESS;
 
+      iRange = iRange * Send(SETTINGS_OBJECT,@GetVisionModifier) / 100;
+
       // Factor in stealth.
       iRange = (iRange * (300 - Send(what,@GetStealth,#what=self))) / 300;
 
@@ -8808,7 +8810,9 @@ messages:
          iDifference = Abs(Send(what,@GetLevel) - Send(self,@GetLevel));
       }
 
-      iDifference = Bound(iDifference,0,50);
+      iDifference = iDifference * Send(SETTINGS_OBJECT,@GetAggroDeltaFactor) / 100;
+
+      iDifference = Bound(iDifference,0,100);
 
       // Factor in level difference calculated earlier.
       iRange = (iRange * (100 - iDifference)) / 100;

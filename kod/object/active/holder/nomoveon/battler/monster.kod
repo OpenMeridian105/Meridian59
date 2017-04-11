@@ -466,6 +466,10 @@ classvars:
    viFirePriority = 550
    vbSpin = FALSE
 
+   // How well can the monster see in the dark? Default: 5
+   // Counteracts low room light level (0-255)
+   viNightVision = 5
+
 properties:
 
    piVisionDistance
@@ -7963,15 +7967,6 @@ messages:
          // Hatred is based on damage dealt by the hurter.
          iHurt = Nth(i,2);
 
-         iStealth = Send(oHurter,@GetStealth);
-
-         iHurt = Bound((iHurt*(300-iStealth)/300)-10,0,$);
-
-         if iHurt = 0
-         {
-            continue;
-         }
-
          // Does it look like an ally?
          oBodyType = oHurter;
          if IsClass(oHurter,&User)
@@ -7994,6 +7989,10 @@ messages:
          {
             iHurt /= 2;
          }
+
+         // If the hurter was stealthy, we might not notice him.
+         iStealth = Send(oHurter,@GetStealth,#what=self);
+         iHurt = Bound((iHurt*(300-iStealth)/300)-1000,0,$);
 
          if iHurt > iTop
          {
@@ -8795,8 +8794,8 @@ messages:
       // Our base range is our vision.
       iRange = Send(self,@GetVisionDistance) * FINENESS;
 
-      // Factor in stealth calculated earlier.
-      iRange = (iRange * (300 - Send(what,@GetStealth))) / 300;
+      // Factor in stealth.
+      iRange = (iRange * (300 - Send(what,@GetStealth,#what=self))) / 300;
 
       // A high level difference between our target and us makes it less
       // likely for us to attack them, since we are scared / don't care.
@@ -8918,9 +8917,14 @@ messages:
       return bWipe;
    }
 
-   GetStealth()
+   GetStealth(what=$)
    {
-      local iStealth;
+      local iStealth, iLight;
+
+      if (what = $) OR (poOwner = $)
+      {
+         return FALSE;
+      }
 
       // Stealth is primarily based on our agility and intellect.
       iStealth = 2 * Send(self,@GetAgility) + Send(self,@GetIntellect);
@@ -8928,10 +8932,39 @@ messages:
       // Sneaking/strolling increases stealth.
       if (piBehavior & AI_STROLLING)
       {
-         iStealth += 150;
+         iStealth += 100;
       }
 
+      // Invisibility grants greatly increased stealth.
+      if Send(self,@IsInvisible)
+      {
+         iStealth += 200;
+      }
+
+      // Shadowform grants slightly increased stealth.
+      if Send(self,@IsShadowForm)
+      {
+         iStealth += 50;
+      }
+
+      // A blind target has a very hard time spotting enemies.
+      if Send(what,@IsEnchanted,#byClass=&Blind)
+         OR Send(what,@IsEnchanted,#byClass=&Dazzle)
+      {
+         iStealth += 200;
+      }
+
+      iLight = Send(poOwner,@GetRoomLight);
+      iLight += Send(what,@GetLightLevel);
+
+      iStealth += Bound(155 - iLight,-100,150);
+
       return Bound(iStealth,0,300);
+   }
+
+   GetLightLevel()
+   {
+      return viNightVision;
    }
 
 end

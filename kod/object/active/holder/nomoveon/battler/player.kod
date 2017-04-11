@@ -11370,7 +11370,7 @@ messages:
       return;
    }
 
-   GetPlayerLightLevel()
+   GetLightLevel()
    "Calls RecalcLight and returns the light level."
    {
       Send(self,@RecalcLight);
@@ -14682,9 +14682,14 @@ messages:
       return;
    }
 
-   GetStealth()
+   GetStealth(what=$)
    {
-      local iStealth;
+      local iStealth, iLight;
+
+      if (what = $) OR (poOwner = $)
+      {
+         return FALSE;
+      }
 
       // Stealth is primarily based on our agility and intellect.
       iStealth = 2 * Send(self,@GetAgility) + Send(self,@GetIntellect);
@@ -14692,14 +14697,32 @@ messages:
       // Sneaking increases stealth.
       if (Send(self,@GetSpeed) < 1000)
       {
-         iStealth += 150;
+         iStealth += 100;
       }
 
-      // An invisible target has increased stealth.
-      if Send(self,@CheckPlayerFlag,#flag=PFLAG_INVISIBLE)
+      // Invisibility grants greatly increased stealth.
+      if Send(self,@IsInvisible)
       {
-         iStealth += 150;
+         iStealth += 200;
       }
+
+      // Shadowform grants slightly increased stealth.
+      if Send(self,@IsShadowForm)
+      {
+         iStealth += 50;
+      }
+
+      // A blind target has a very hard time spotting enemies.
+      if Send(what,@IsEnchanted,#byClass=&Blind)
+         OR Send(what,@IsEnchanted,#byClass=&Dazzle)
+      {
+         iStealth += 200;
+      }
+
+      iLight = Send(poOwner,@GetRoomLight);
+      iLight += Send(what,@GetLightLevel);
+
+      iStealth += Bound(155 - iLight,-100,150);
 
       return Bound(iStealth,0,300);
    }

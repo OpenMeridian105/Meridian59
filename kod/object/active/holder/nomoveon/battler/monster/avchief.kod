@@ -80,8 +80,7 @@ classvars:
    viTreasure_type = TID_AVAR_CHIEF
    viAttack_type = ATCK_WEAP_PIERCE
    viSpeed = SPEED_FAST
-   viDefault_behavior = \
-      AI_FIGHT_AGGRESSIVE | AI_MOVE_OPTIMAL_RANGE | AI_FIGHT_WIZARD_KILLER
+   viDefault_behavior = AI_FIGHT_AGGRESSIVE | AI_MOVE_OPTIMAL_RANGE
    viLevel = 135
    viDifficulty = 9
    viVisionDistance = 28
@@ -291,18 +290,17 @@ messages:
       return LIGHT_FLAG_NONE;
    }
 
-   IsAlly(target = $)
+   IsAlliedClass(what=$)
    {
-      if (IsClass(target,&Avar)
-            OR IsClass(target,&AvarShaman)
-            OR IsClass(target,&AvarChieftain))
-         AND Send(target,@GetClan) = Send(self,@GetClan)
+      if (IsClass(what,&Avar)
+            OR IsClass(what,&AvarShaman)
+            OR IsClass(what,&AvarChieftain))
+         AND (Send(what,@GetClan) = Send(self,@GetClan))
       {
          return TRUE;
       }
 
-      // Charm checks up higher.
-      propagate;
+      return FALSE;
    }
 
    SpecialHatredBehavior(what=$)

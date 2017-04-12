@@ -166,6 +166,9 @@ resources:
       "I swear, if I gave you a shilling more than %i you'd topple right over!"
    Lm_bnkr_player_all_full = "You can't hold even a single shilling more!"
 
+   Lm_mercenary_join = "You shouldn't go alone.  It's dangerous out there..."
+   Lm_mercenary_leave = "I've got to get back to my squad.  Stay safe out there!"
+
    vaultman_nogold = "You may not use my services to store %s%s."
    vaultman_nocursed = "I cannot take %s%s from you."
    vaultman_fullvault = \
@@ -447,6 +450,9 @@ classvars:
    vrIllusionFatigue = monster_illusion_fatigue
    vrIllusionBurn = monster_illusion_burn
 
+   vrMercenaryJoin = Lm_mercenary_join
+   vrMercenaryLeave = Lm_mercenary_leave
+
    // Obsolete, but still included here for safety's sake.
    vrSound_hit = $
    vrSound_miss = $
@@ -518,6 +524,8 @@ properties:
    piBehavior = AI_LOOPING_PATROL
    // Who is our master, if we have one.
    poMaster = $
+   // Who is our leader, if we have one.
+   poLeader = $
    // Flag used for minion moves around master
    piKeepWalkingSteps = 0
    // Player who has turned us.
@@ -968,6 +976,12 @@ messages:
          Send(poMaster,@RemoveControlledMinion,#what=self);
       }
 
+      // Tell the leader of our demise - so that he may replace us. Sucks.
+      if poLeader <> $
+      {
+         Send(self,@SetLeader,#report=FALSE);
+      }
+
       // Enchantments must be removed before brain gets set to $.
       Send(self,@RemoveAllEnchantments);
 
@@ -1029,7 +1043,10 @@ messages:
          }
       }
 
-      plActions = $;
+      foreach i in plActions
+      {
+         plActions = DelListElem(plActions,i);
+      }
 
       poMaster = $;
 
@@ -1266,6 +1283,15 @@ messages:
       Send(self,@SetState,#bit=STATE_ENGAGE);
       Send(self,@ClearBehavior);
 
+      // If we have a leader and we are about to smack him, it's probably
+      // a good time to tell him that we are no longer convinced of his
+      // leadership.
+      if target = poLeader
+      {
+         // SetLeader sets leader to nil if none is passed.
+         Send(self,@SetLeader,#report=FALSE);
+      }
+
       if actnow
       {
          Send(self,@EngageTimer);
@@ -1494,6 +1520,24 @@ messages:
             }
          }
       }
+
+      // Our leader may have left.
+      if poLeader <> $ AND what = poLeader
+      {
+         // If we can follow him, let's do that.
+         if (iRow <> 0) AND (iCol <> 0) AND (Send(poLeader,@GetOwner) <> $)
+            AND ((piRow - iRow <= 6) AND (piCol - iCol <= 6))
+         {
+            Post(self,@GotoLeader);
+         }
+         else
+         {
+            // If we can't, let's stop following.
+            // SetLeader sets leader to nil if none is passed.
+            Send(self,@SetLeader);
+         }
+      }
+
       if poBrain <> $
       {
          Send(poBrain,@SomethingLeft,#mob=self,#state=piState,#what=what);
@@ -1584,6 +1628,27 @@ messages:
                #new_row=Send(poMaster,@GetRow),#new_col=Send(poMaster,@GetCol),
                #new_angle=Send(poMaster,@GetAngle));
       }
+
+      return;
+   }
+
+   GotoLeader()
+   {
+      local oNewRoom;
+
+      if poLeader = $
+      {
+         return;
+      }
+
+      oNewRoom = Send(poLeader,@GetOwner);
+      if oNewRoom = $
+      {
+         return;
+      }
+
+      Send(oNewRoom,@NewHold,#what=self,#new_row=Send(poLeader,@GetRow),
+         #new_col=Send(poLeader,@GetCol),#new_angle=Send(poLeader,@GetAngle));
 
       return;
    }
@@ -1813,7 +1878,10 @@ messages:
       }
 
       // Monster acted in some way. Let's figure out what to do next.
-      Send(poBrain,@PostEngageTimer,#mob=self,#delay=Abs(iDelay));
+      if poOwner <> $
+      {
+         Send(poBrain,@PostEngageTimer,#mob=self,#delay=Abs(iDelay));
+      }
 
       return;
    }
@@ -1857,7 +1925,7 @@ messages:
 
       // See if we want to change state now, but check for brain here first.
       // Sometimes we've died by now.
-      if poBrain <> $
+      if poOwner <> $
       {
          Send(poBrain,@PostMoveTimer,#mob=self);
       }
@@ -2238,6 +2306,31 @@ messages:
       return;
    }
 
+   MoveToLeader()
+   {
+      local drow, dcol;
+
+      if poLeader = $
+      {
+         Debug("MovetoLeader Called with nil leader!",Send(self,@GetName));
+         return;
+      }
+
+      // calculate distance in highres-grid squares (steps we can still make)
+      drow = (Send(poLeader,@GetRow) * FINENESS) + Send(poLeader,@GetFineRow);
+      dcol = (Send(poLeader,@GetCol) * FINENESS) + Send(poLeader,@GetFineCol);
+      drow = abs(drow - (piRow * FINENESS + piFine_row));
+      dcol = abs(dcol - (piCol * FINENESS + piFine_col));
+
+      // Let's move up to the leader unless we are close enough already.
+      if drow * drow + dcol * dcol > 50000
+      {
+        Send(self,@MoveTowards,#oTarget=poLeader,#face_target=TRUE);
+      }
+
+      return;
+   }
+
    DoGoTowardsLocation()
    {
       local iDist2;
@@ -2316,21 +2409,25 @@ messages:
          return FALSE;
       }
 
-      // Default location to check is where we are.
-      oRoom = poOwner;
+      // Default location to check is the room the victim is in.
+      // This allows X-room atacks (such as firewalls) to work.
+      oRoom = Send(victim,@GetOwner);
 
-      // If the victim is in a room, then check that location instead.  This
-      // allows distance attacks (like wall spells) to work properly.
-      if Send(victim,@GetOwner) <> poOwner
+      // Check if we are in the same room as our victim.
+      if oRoom <> poOwner
       {
+         // If we are not, check if we have been fed an override.
          if (oRoomOverride <> $)
          {
             oRoom = oRoomOverride;
          }
-         else
-         {
-            oRoom = Send(victim,@GetOwner);
-         }
+      }
+
+      // Our victim has left the world of the living since we started plotting
+      // our attack. Let's leave it in peace.
+      if oRoom = $
+      {
+         return FALSE;
       }
 
       // Phased players can't be hit.
@@ -2414,9 +2511,6 @@ messages:
       {
          return FALSE;
       }
-
-      // If we have minions, see if they can attack too
-      Send(self,@CommandMinionAttack,#oTarget=what);
 
       // Face the target.
       Send(self,@MonsterOrient,#new_row=Send(what,@GetRow),
@@ -2556,9 +2650,6 @@ messages:
 
          return 0;
       }
-
-      // Attacks against a minion master will cause minions to defend the master
-      Send(self,@CommandMinionAttack,#oTarget=what);
 
       // Check for any applicable resistances.
       if NOT absolute
@@ -3050,6 +3141,11 @@ messages:
    {
       local iMRow, iMCol, iMRowFine, iMColFine, iSpeed;
 
+      if poOwner = $
+      {
+         return;
+      }
+
       direction = Bound(direction,-10,10);
 
       iSpeed = piSpeed;
@@ -3276,7 +3372,7 @@ messages:
 
       if NOT vbCanRally
       {
-         return;
+         return FALSE;
       }
 
       iRow = Send(poOwner,@GetFlagRow);
@@ -3292,7 +3388,7 @@ messages:
          Send(self,@SetBehaviorFlag,#flag=AI_RALLY,#value=TRUE);
       }
 
-      return;
+      return TRUE;
    }
 
    GetTargetLocationRow()
@@ -6373,32 +6469,18 @@ messages:
 
    GetSpeed()
    {
-      if piVigor < VIGOR_RUN_THRESHOLD
-      {
-         return viSpeed/2;
-      }
-
-      return viSpeed;
-   }
-
-   GetAttackTime()
-   {
-      return Send(self,@Fuzzy,#num=MOB_ATTACK_TIMER_WAIT)
-             + 3500-70*(3*viDifficulty+piSpeed);
-   }
-
-   GetMoveTime()
-   {
-      local iTime;
-
       // Set our current speed based on classvar and agility.
       piSpeed = Bound(viSpeed + (piAgility/10) - 2,0,30);
 
-      // If our monster is able to move in general, then low
-      // agility can't immobilize it.
-      if viSpeed
+      // Strolling, not in a rush, unless we are under orders.
+      if (piState & STATE_MOVE) AND (poMaster = $) AND (poLeader = $)
       {
-         piSpeed = Bound(piSpeed,2,$);
+         piSpeed = Bound(piSpeed * viStrollSpeed / 100,$,piSpeed);
+      }
+
+      if poLeader <> $
+      {
+         piSpeed *= 2;
       }
 
       // Out of breath, can't run.
@@ -6407,12 +6489,28 @@ messages:
          piSpeed /= 2;
       }
 
-      // Strolling, not in a rush, unless we got a mean master.
-      // Big monsters aren't as panicky.
-      if (piState & STATE_MOVE) AND poMaster = $
+      // If our monster is able to move in general, then other
+      // effects can't immobilize it.
+      if viSpeed
       {
-         piSpeed = Bound(piSpeed * viStrollSpeed / 100,$,piSpeed);
+         piSpeed = Bound(piSpeed,1,$);
       }
+
+      return piSpeed;
+   }
+
+   GetAttackTime()
+   {
+      return Send(self,@Fuzzy,#num=MOB_ATTACK_TIMER_WAIT)
+             + 3500-70*(3*viDifficulty+viSpeed);
+   }
+
+   GetMoveTime()
+   {
+      local iTime;
+
+      // GetSpeed sets piSpeed accordingly.
+      Send(self,@GetSpeed);
 
       // Unit of viSpeed is: #gridsquares per 10 seconds (per 10000 ms)
       // viSpeed is pre-defined by monster
@@ -7619,6 +7717,99 @@ messages:
       return;
    }
 
+   GetLeader()
+   {
+      return poLeader;
+   }
+
+   SetLeader(oLeader=$,report=TRUE)
+   {
+      // We don't have a leader thus far.
+      if (poLeader = $)
+      {
+         // New leader provided.
+         if (oLeader <> $)
+         {
+            // Leader already has a mercenary. Return FALSE.
+            if Send(oLeader,@GetMercenary) <> $
+            {
+               return FALSE;
+            }
+            // Our leader-to-be has a free mercenary spot! Take it and return TRUE.
+            else
+            {
+               if report
+               {
+                  // Let the lucky leader know.
+                  Send(self,@MercenaryJoinMessage,#what=oLeader);
+               }
+
+               Send(oLeader,@SetMercenary,#oMercenary=self);
+               poLeader = oLeader;
+               Send(poOwner,@SomethingChanged,#what=self);
+            }
+         }
+         else
+         {
+            return FALSE;
+         }
+      }
+
+      // We already have a leader.
+      if (poLeader <> $)
+      {
+         // We no longer follow our leader. Tell the leader and return TRUE.
+         if (oLeader = $)
+         {
+            // SetMercenary called without paramter sets mercenary to nil.
+            if report
+            {
+               // Let the abandoned leader know.
+               Send(self,@MercenaryLeaveMessage,#what=poLeader);
+            }
+
+            Send(poLeader,@SetMercenary);
+            poLeader = $;
+            Send(poOwner,@SomethingChanged,#what=self);
+         }
+         // We won't take a new leader if we already got one. Return FALSE.
+         if (oLeader <> $)
+         {
+            return FALSE;
+         }
+      }
+
+      return TRUE;
+   }
+
+   MercenaryJoinMessage(what=$)
+   {
+      Post(self,@SayToOne,#target=what,#message_rsc=vrMercenaryJoin);
+
+      return;
+   }
+
+   MercenaryLeaveMessage(what=$)
+   {
+      Post(self,@SayToOne,#target=what,#message_rsc=vrMercenaryLeave);
+
+      return;
+   }
+
+   MercenaryCommand(what=$,message=$)
+   {
+      if StringEqual(message,"bye")
+         AND (what = poLeader)
+         AND Send(self,@SetLeader)
+      {
+         Send(what,@MercenarySentAway);
+
+         return TRUE;
+      }
+
+      return FALSE;
+   }
+
    CanPlayerAdvanceOnMe()
    {
       return (NOT Send(self,@IsIllusion));
@@ -7719,7 +7910,7 @@ messages:
          }
 
          // Check if we are scared of this.
-         if NOT Send(self,@IsFrightenedOf,#target=oBodyType,#regroup=TRUE)
+         if NOT Send(self,@IsFrightenedOf,#target=oBodyType)
          {
             continue;
          }
@@ -7793,7 +7984,7 @@ messages:
          }
 
          // If not an ally, we don't care.
-         if NOT Send(self,@IsAlly,#target=oBodyType,#regroup=TRUE)
+         if NOT Send(self,@IsAlly,#target=oBodyType)
          {
             continue;
          }
@@ -7818,30 +8009,55 @@ messages:
       return oTarget;
    }
 
-   IsAlly(target=$,regroup=FALSE)
+   IsAlly(target=$)
    {
       local oTargetMaster;
+
+      if target = $
+      {
+         return FALSE;
+      }
 
       if NOT IsClass(target,&Battler)
       {
          return FALSE;
       }
 
-      oTargetMaster = Send(target,@GetMaster);
-
       if target = self
       {
          return TRUE;
       }
-      else if poMaster <> $
+
+      oTargetMaster = Send(target,@GetMaster);
+
+      if poMaster <> $
       {
-         if target = poMaster
-            OR (IsClass(target,&Battler) AND oTargetMaster = poMaster)
+         if (target = poMaster)
+            OR (oTargetMaster = poMaster)
          {
             return TRUE;
          }
       }
-      else if (IsClass(target,GetClass(self)) AND oTargetMaster = $)
+
+      if oTargetMaster <> $
+      {
+         if Send(oTargetMaster,@IsAlly,#target=self)
+         {
+            return TRUE;
+         }
+      }
+      else if Send(target,@IsAlliedClass,#what=self)
+      {
+         return TRUE;
+      }
+
+      return FALSE;
+   }
+
+   IsAlliedClass(what=$)
+   {
+      // Always allied with our own kind.
+      if GetClass(self) = GetClass(what)
       {
          return TRUE;
       }
@@ -7898,7 +8114,7 @@ messages:
             }
 
             // If it does, we don't care.
-            if Send(self,@IsAlly,#target=oBodyType,#regroup=TRUE)
+            if Send(self,@IsAlly,#target=oBodyType)
             {
                continue;
             }
@@ -7979,7 +8195,7 @@ messages:
          }
 
          // If it does, cut amount in half.
-         if Send(self,@IsAlly,#target=oBodyType,#regroup=TRUE)
+         if Send(self,@IsAlly,#target=oBodyType)
          {
             iHurt /= 2;
          }
@@ -8297,11 +8513,6 @@ messages:
       if (piBehavior & AI_FIGHT_LASHOUT)
       {
          Debug(self,"is in AI_FIGHT_LASHOUT");
-      }
-
-      if (piBehavior & AI_FIGHT_WIZARD_KILLER)
-      {
-         Debug(self,"is in AI_FIGHT_WIZARD_KILLER");
       }
 
       if (piBehavior & AI_FIGHT_HYPERAGGRESSIVE)

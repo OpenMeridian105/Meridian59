@@ -1077,6 +1077,9 @@ properties:
    piRemainingPhaseTime = 60000 * 8
    ptCanPhaseTimer = $
 
+   // Our current sidekick
+   poMercenary = $
+
 messages:
 
    Constructor()
@@ -1166,6 +1169,12 @@ messages:
       Send(Send(SYS,@GetAssassinGame),@RemoveFromGame,#who=self);
       Send(Send(SYS,@GetLore),@PlayerSuicides,#who=self);
       plSchools = $;
+
+      if poMercenary <> $ AND IsTimer(poMercenary)
+      {
+         DeleteTimer(poMercenary);
+         poMercenary = $;
+      }
 
       propagate;
    }
@@ -4106,26 +4115,29 @@ messages:
    {
       local oRoom, oGuild, oSpell, oVictimGuild;
 
-      // Default location to check is where we are.
-      oRoom = poOwner;
-
-      // If the victim is in a room, then check that location instead.  This
-      // allows distance attacks (like wall spells) to work properly.
-      if victim <> $
-         AND Send(victim,@GetOwner) <> poOwner
+      // Must have a target.
+      if (victim = $)
       {
+         return FALSE;
+      }
+
+      // Default location to check is the room the victim is in.
+      // This allows X-room atacks (such as firewalls) to work.
+      oRoom = Send(victim,@GetOwner);
+
+      // Check if we are in the same room as our victim.
+      if oRoom <> poOwner
+      {
+         // If we are not, check if we have been fed an override.
          if (oRoomOverride <> $)
          {
             oRoom = oRoomOverride;
          }
-         else
-         {
-            oRoom = Send(victim,@GetOwner);
-         }
       }
 
-      // No attacking logged out players under any circumstances
-      if Send(victim,@GetOwner) = $
+      // Our victim has left the world of the living since we started plotting
+      // our attack. Let's leave it in peace.
+      if oRoom = $
       {
          return FALSE;
       }
@@ -4459,14 +4471,19 @@ messages:
    {
       local oEnemyGuild, oSoldierShield;
 
-      // Don't care about monsters.
-      // And, free attacks on token holders.
+      // Don't care about monsters or token holders...
       if IsClass(victim,&Monster)
          OR (Send(victim,@FindUsing,#class=&Token) <> $)
       {
-         // Unless they're factioned.
+         // ...unless they're factioned...
          if NOT Send(self,@CheckFactionAttack,#what=victim,#report=report,
                      #stroke_obj=stroke_obj)
+         {
+            return FALSE;
+         }
+
+         // ...or our side kick.
+         if NOT Send(self,@CheckMercAttack,#what=victim,#report=report)
          {
             return FALSE;
          }
@@ -4680,6 +4697,28 @@ messages:
       return TRUE;
    }
 
+   CheckMercAttack(what=$,report=TRUE)
+   "Checks attacks against mercenaries."
+   {
+      local oLeader;
+
+      oLeader = Send(what,@GetLeader);
+
+      if oLeader = self
+         AND NOT Send(self,@CheckPlayerPreference,#flag=CF_SAFETY_OFF)
+      {
+         if report
+         {
+            Send(self,@MsgSendUser,#message_rsc=player_safety_caught,
+                 #parm1=Send(what,@GetDef),#parm2=Send(what,@GetName));
+         }
+
+         return FALSE;
+      }
+
+      return TRUE;
+   }
+
    GetLastPlayerAttackTime()
    "Returns the last time the player attacked another player."
    {
@@ -4727,9 +4766,6 @@ messages:
       {
          return FALSE;
       }
-
-      // If we have minions, see if they can attack too
-      Send(self,@CommandMinionAttack,#oTarget=what);
 
       // Can pay costs?  Only check for skills, spells have already been cast.
       if IsClass(stroke_obj,&Skill)
@@ -14282,7 +14318,7 @@ messages:
       return;
    }
 
-   // This section deals with minion code.
+   // Not in use anymore (2017-04-12)
    CommandMinionAttack(oTarget=$)
    {
       local oActive;
@@ -14332,6 +14368,37 @@ messages:
             }
          }
       }
+
+      return;
+   }
+
+   // Mercenary related messages...
+   GetMercenary()
+   {
+      return poMercenary;
+   }
+
+   // Validity checks are handled on the side of the mercenary.
+   SetMercenary(oMercenary=$)
+   {
+      poMercenary = oMercenary;
+
+      return;
+   }
+
+   MercenarySentAway()
+   {
+      if poMercenary = $
+      {
+         poMercenary = CreateTimer(self,@MercenaryTimer,300000);
+      }
+
+      return;
+   }
+
+   MercenaryTimer()
+   {
+      poMercenary = $;
 
       return;
    }
@@ -14725,6 +14792,72 @@ messages:
       iStealth += Bound(155 - iLight,-100,150);
 
       return Bound(iStealth,0,300);
+   }
+
+   IsAlly(target=$)
+   {
+      local oTargetMaster;
+
+      if target = $
+      {
+         return FALSE;
+      }
+
+      if NOT IsClass(target,&Battler)
+      {
+         return FALSE;
+      }
+
+      if target = self
+      {
+         return TRUE;
+      }
+
+      oTargetMaster = Send(target,@GetMaster);
+
+      if oTargetMaster <> $
+      {
+         if Send(oTargetMaster,@IsAlly,#target=self)
+         {
+            return TRUE;
+         }
+      }
+      else if Send(target,@IsAlliedClass,#what=self)
+      {
+         return TRUE;
+      }
+
+      return FALSE;
+   }
+
+   IsAlliedClass(what=$)
+   {
+      local iFaction;
+
+      if IsClass(what,&Battler)
+      {
+         // Let's get the target's faction.
+         iFaction = Send(what,@GetFaction);
+
+         // If we aren't neutral ourselves, we are
+         // allied with targets of the same faction.
+         if piFaction <> FACTION_NEUTRAL
+         {
+            if (iFaction = piFaction)
+            {
+               return TRUE;
+            }
+         }
+         // If we are neutral, we are allied with all
+         // troops, as long as they aren't necromancers.
+         else if IsClass(what,&FactionTroop)
+            AND (iFaction <> FACTION_NECROMANCER)
+         {
+            return TRUE;
+         }
+      }
+
+      return FALSE;
    }
 
 end

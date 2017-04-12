@@ -38,6 +38,7 @@
 #define MAP_ENEMY_COLOR         PALETTERGB(255, 0, 0)    // Red
 #define MAP_AGGRO_SELF_COLOR    PALETTERGB(0,0,0)        // Black
 #define MAP_AGGRO_OTHER_COLOR   PALETTERGB(255,255,255)  // White
+#define MAP_MERCENARY_COLOR     PALETTERGB(255, 169, 27) // Gold
 #define MAP_GUILDMATE_COLOR     PALETTERGB(255, 255, 0)  // Yellow
 #define MAP_BUILDGRP_COLOR      PALETTERGB(0, 255, 0)    // Bright Green
 #define MAP_COLOR_NOPVP         PALETTERGB(255,255,255)  // White
@@ -58,11 +59,11 @@
 
 static HBRUSH hObjectBrush, hPlayerBrush, hNullBrush, hMinionBrush, hNoPVPBrush,
               hMinionOtherBrush, hNpcBrush, hTempsafeBrush, hItemBrush, hAggroSelfBrush,
-              hAggroOtherBrush;
+              hAggroOtherBrush, hMercenaryBrush;
 static HPEN hWallPen, hPlayerPen, hObjectPen, hMinionPen, hMinionOtherPen,
             hMinibossPen, hBossPen, hItemPen, hFriendPen, hEnemyPen, hAggroSelfPen,
             hGuildmatePen, hBuilderPen, hNpcPen, hTempsafePen, hAggroOtherPen,
-            hNoPVPPen, hBossAggroSelfPen, hBossAggroOtherPen;
+            hNoPVPPen, hBossAggroSelfPen, hBossAggroOtherPen, hMercenaryPen;
 
 static float zoom;              // Factor to zoom in on map
 
@@ -154,6 +155,7 @@ void MapInitialize(void)
    hEnemyPen = CreatePen(PS_SOLID, MAP_PLAYER_THICKNESS, MAP_ENEMY_COLOR);
    hAggroSelfPen = CreatePen(PS_SOLID, MAP_AGGRO_SELF_THICKNESS, MAP_AGGRO_SELF_COLOR);
    hAggroOtherPen = CreatePen(PS_SOLID, MAP_AGGRO_OTHER_THICKNESS, MAP_AGGRO_OTHER_COLOR);
+   hMercenaryPen = CreatePen(PS_SOLID, MAP_OBJECT_THICKNESS, MAP_MERCENARY_COLOR);
    hBossAggroSelfPen = CreatePen(PS_SOLID, MAP_BOSS_AGGRO_SELF_THICKNESS, MAP_AGGRO_SELF_COLOR);
    hBossAggroOtherPen = CreatePen(PS_SOLID, MAP_BOSS_AGGRO_OTHER_THICKNESS, MAP_AGGRO_OTHER_COLOR);
    hGuildmatePen = CreatePen(PS_SOLID, MAP_PLAYER_THICKNESS, MAP_GUILDMATE_COLOR);
@@ -173,6 +175,7 @@ void MapInitialize(void)
    hObjectBrush = CreateSolidBrush(MAP_OBJECT_COLOR);
    hAggroSelfBrush = CreateSolidBrush(MAP_AGGRO_SELF_COLOR);
    hAggroOtherBrush = CreateSolidBrush(MAP_AGGRO_OTHER_COLOR);
+   hMercenaryBrush = CreateSolidBrush(MAP_MERCENARY_COLOR);
    hPlayerBrush = CreateSolidBrush(MAP_PLAYER_COLOR);
    hTempsafeBrush = CreateSolidBrush(MAP_TEMPSAFE_COLOR);
    hNoPVPBrush = CreateSolidBrush(MAP_COLOR_NOPVP);
@@ -207,6 +210,7 @@ void MapClose(void)
    DeleteObject(hEnemyPen);
    DeleteObject(hAggroSelfPen);
    DeleteObject(hAggroOtherPen);
+   DeleteObject(hMercenaryPen);
    DeleteObject(hBossAggroSelfPen);
    DeleteObject(hBossAggroOtherPen);
    DeleteObject(hGuildmatePen);
@@ -230,6 +234,7 @@ void MapClose(void)
    DeleteObject(hTempsafeBrush);
    DeleteObject(hNoPVPBrush);
    DeleteObject(hItemBrush);
+   DeleteObject(hMercenaryBrush);
 
    if (pMapWalls)
       SafeFree(pMapWalls);
@@ -530,12 +535,15 @@ void MapDrawObjects(HDC hdc, list_type objects, int x, int y, float scale)
          if (r->obj.minimapflags & MM_AGGRO_SELF)
          {
             DrawMinimapDot(hdc, hAggroSelfPen, hAggroSelfBrush, radius, new_x, new_y);
-            DrawMinimapDot(hdc, hObjectPen, hObjectBrush, radius, new_x, new_y);
          }
          else if (r->obj.minimapflags & MM_AGGRO_OTHER)
          {
             DrawMinimapDot(hdc, hAggroOtherPen, hAggroOtherBrush, radius, new_x, new_y);
-            DrawMinimapDot(hdc, hObjectPen, hObjectBrush, radius, new_x, new_y);
+         }
+         // Draw a mercenary dot if the mob is our mercenary, a regular dot else.
+         if (r->obj.minimapflags & MM_MERCENARY)
+         {
+            DrawMinimapDot(hdc, hMercenaryPen, hMercenaryBrush, radius, new_x, new_y);
          }
          else
          {

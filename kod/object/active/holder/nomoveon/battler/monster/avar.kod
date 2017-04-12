@@ -223,37 +223,14 @@ messages:
       return;
    }
 
-   IsAlly(target=$,regroup=FALSE)
+   IsAlliedClass(what=$)
    {
-      local oTargetMaster;
-
-      if NOT IsClass(target,&Battler)
-      {
-         return FALSE;
-      }
-
-      oTargetMaster = Send(target,@GetMaster);
-
-      if target = self
+      if (IsClass(what,&Avar)
+            OR IsClass(what,&AvarShaman)
+            OR IsClass(what,&AvarChieftain))
+         AND (Send(what,@GetClan) = Send(self,@GetClan))
       {
          return TRUE;
-      }
-      else if poMaster <> $
-      {
-         if target = poMaster
-            OR (IsClass(target,&Battler) AND oTargetMaster = poMaster)
-         {
-            return TRUE;
-         }
-      }
-      else if (IsClass(target,&AvarShaman)
-         OR IsClass(target,&AvarChieftain)
-         OR IsClass(target,&Avar)) AND (oTargetMaster = $)
-      {
-         if Send(target,@GetClan) = Send(self,@GetClan)
-         {
-            return TRUE;
-         }
       }
 
       return FALSE;

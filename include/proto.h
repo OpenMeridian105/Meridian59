@@ -426,6 +426,7 @@ enum {
 #define MM_NO_PVP        0x00002000    // Set if player has no PVP flag.
 #define MM_AGGRO_SELF    0x00004000    // Set if monster has aggro on the player.
 #define MM_AGGRO_OTHER   0x00008000    // Set if monster has aggro on another player.
+#define MM_MERCENARY     0x00010000    // Set if monster is our mercenary.
 
 /* Player name color sent as hex RGB value. Define constants
    for ease of use as needed. Requires OF_PLAYER boolean flag

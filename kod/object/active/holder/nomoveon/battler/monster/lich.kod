@@ -134,7 +134,7 @@ classvars:
    viKarma = -100
    vbIsUndead = TRUE
    viDefault_behavior = \
-      AI_FIGHT_AGGRESSIVE |  AI_FIGHT_WIZARD_KILLER | AI_FIGHT_HYPERAGGRESSIVE \
+      AI_FIGHT_AGGRESSIVE | AI_FIGHT_HYPERAGGRESSIVE \
       | AI_MOVE_FLEE_FRIGHTENERS | AI_FIGHT_THROUGH_WALLS | AI_FIGHT_SWITCHALOT
 
    viAttributes = MOB_LISTEN | MOB_RECEIVE | MOB_TEACHER
@@ -1308,7 +1308,7 @@ messages:
       return;
    }
 
-   IsAlly(target = $, regroup = FALSE)
+   IsAlly(target = $)
    {
       if NOT IsClass(target,&Battler)
       {
@@ -1328,7 +1328,13 @@ messages:
          return TRUE;
       }
 
-      if Send(target,@IsUndead) AND Send(target,@GetMaster) = $
+      propagate;
+   }
+
+   IsAlliedClass(what=$)
+   {
+      if IsClass(what,&DarkAngel)
+         OR Send(what,@IsUndead)
       {
          return TRUE;
       }

@@ -50,8 +50,8 @@ properties:
 
    // These properties control mob idle movement.
    // High numbers mean low chance.
-   piStroll_chance = 4000
-   piRally_chance = 1000
+   piStroll_chance = 2000
+   piRally_chance = 600
 
 messages:
 
@@ -180,7 +180,8 @@ messages:
 
    SomethingAttacked(mob=$, state=$, what=$, victim=$, use_weapon=$)
    {
-      local iType, iDelay, iDistance, iAggroRange, iPercentage;
+      local iType, iDelay, iDistance, iAggroRange, iPercentage,
+         oLeader, oMaster, bAssist;
 
       // Check if we have an attacker. If we don't that's a bit odd.
       if what=$ OR NOT IsClass(what,&Battler)
@@ -197,6 +198,14 @@ messages:
 
       // Looks like we need to take this seriously.
       iType = 0;
+
+      // If our master or leader is involved, we assist regardless of distance.
+      oLeader = Send(mob,@GetLeader);
+      oMaster = Send(mob,@GetMaster);
+      bAssist = ((oLeader = what) 
+              OR (oLeader = victim)
+              OR (oMaster = what)
+              OR (oMaster = victim));
 
       // Case 1: Someone attacked us. We must defend ourselves!
       if victim = mob
@@ -242,35 +251,38 @@ messages:
       }
 
       // We have a potential social situation here. Check if we care.
-      if (iType > 3) AND (Random(1,100) >= Send(mob,@GetSocial))
+      if (iType > 3) AND NOT bAssist AND (Random(1,100) >= Send(mob,@GetSocial))
       {
          return;
       }
 
       // Things are heating up. We got an idea of who to attack now.
-      // Unless we defend ourselves or a murder victim, let's check
-      // if they are within our aggro zone.
+      // Unless we defend ourselves, our commander or a murder victim,
+      // let's check if they are within our aggro zone.
       // Case 1: We want to fight the attacker.
-      if ((iType = TS_FIGHT_DEFEND_VICTIM) OR (iType = TS_FIGHT_ASSIST_VICTIM))
+      if NOT bAssist
       {
-         iDistance = Send(mob,@SquaredFineDistanceTo3D,#what=what);
-         iAggroRange = Send(mob,@GetAggroRange,#what=what);
-
-         if iAggroRange < iDistance
+         if ((iType = TS_FIGHT_DEFEND_VICTIM) OR (iType = TS_FIGHT_ASSIST_VICTIM))
          {
-            return;
+            iDistance = Send(mob,@SquaredFineDistanceTo3D,#what=what);
+            iAggroRange = Send(mob,@GetAggroRange,#what=what);
+
+            if iAggroRange < iDistance
+            {
+               return;
+            }
          }
-      }
-      // Case 2: We are ganging up on the victim.
-      // Use stroll aggro range in this case.
-      else if ((iType = TS_FIGHT_DEFEND_ATTACKER) OR (iType = TS_FIGHT_ASSIST_ATTACKER))
-      {
-         iDistance = Send(mob,@SquaredFineDistanceTo3D,#what=victim);
-         iAggroRange = Send(mob,@GetAggroRange,#what=victim,#bStrolling=TRUE);
-
-         if iAggroRange < iDistance
+         // Case 2: We are ganging up on the victim.
+         // Use stroll aggro range in this case.
+         else if ((iType = TS_FIGHT_DEFEND_ATTACKER) OR (iType = TS_FIGHT_ASSIST_ATTACKER))
          {
-            return;
+            iDistance = Send(mob,@SquaredFineDistanceTo3D,#what=victim);
+            iAggroRange = Send(mob,@GetAggroRange,#what=victim,#bStrolling=TRUE);
+
+            if iAggroRange < iDistance
+            {
+               return;
+            }
          }
       }
 
@@ -281,7 +293,7 @@ messages:
          if (iType = TS_FIGHT_DEFEND_SELF)
             AND Send(self,@AttemptTargetSwitch,#what=what,#event=iType,#mob=mob)
          {
-            Send(mob,@EnterStateEngage,#target=what,#actnow=TRUE);
+            Send(mob,@EnterStateEngage,#target=what,#actnow=FALSE,#delay=300);
 
             return;
          }
@@ -296,7 +308,7 @@ messages:
             AND Send(self,@AttemptTargetSwitch,#what=what,#event=iType,#mob=mob)
          {
             iDelay = Bound(100 - Send(mob,@GetAgility),25,100) * 20;
-            Send(mob,@EnterStateEngage,#target=what,#actnow=FALSE,#delay=iDelay);
+            Send(mob,@EnterStateEngage,#target=what,#actnow=bAssist,#delay=iDelay);
 
             return;
          }
@@ -306,7 +318,7 @@ messages:
             AND Send(self,@AttemptTargetSwitch,#what=victim,#event=iType,#mob=mob)
          {
             iDelay = Bound(100 - Send(mob,@GetAgility),25,100) * 50;
-            Send(mob,@EnterStateEngage,#target=victim,#actnow=FALSE,#delay=iDelay);
+            Send(mob,@EnterStateEngage,#target=victim,#actnow=bAssist,#delay=iDelay);
 
             return;
          }
@@ -592,6 +604,15 @@ messages:
          }
       }
 
+      // If we got a leader, follow him.
+      if Send(mob,@GetLeader) <> $
+      {
+            Send(mob,@MoveToLeader);
+
+            return;
+      }
+
+
       // We don't have any pressing matters to attend to. However, we are
       // still prepared to bash some skulls in if we should encounter any.
       // Only if we are aggressive though.
@@ -654,61 +675,79 @@ messages:
       // If we aren't preoccupied with anything else, find somewhere to walk.
       if NOT (behavior & AI_HAS_TARGET_LOCATION)
       {
-         // Social monsters like to chat other monsters up. Find a buddy and walk over.
-         if (behavior & AI_SOCIALIZER)
-         {
-            // Find our closest ally.
-            oSocial = Send(mob,@GetClosestAlly);
+         // Find our closest ally.
+         oSocial = Send(mob,@GetClosestAlly);
 
-            // We got a friend! How quaint!
-            if oSocial <> $ AND IsClass(oSocial,&Monster)
+         // We got a friend! How quaint!
+         if oSocial <> $
+         {
+            // Check if ally is within sight. It would be a pity if we had a friend
+            // nearby but couldn't see them. Sometimes life is cruel like that.
+            iDistance = Send(mob,@SquaredFineDistanceTo3D,#what=oSocial);
+            iVision = Send(mob,@GetVisionDistance)*64;
+            if NOT Send(Send(mob,@GetOwner),@LineOfSight,#obj1=mob,#obj2=oSocial)
             {
-               // Check if ally is within sight. Stop if we are close enough.
-               iDistance = Send(mob,@SquaredFineDistanceTo3D,#what=oSocial);
-               iVision = Send(mob,@GetVisionDistance)*64;
-               iVision *= iVision;
-               if iDistance < iVision
+               iVision /= 5;
+            }
+            iVision *= iVision;
+
+            if iDistance < iVision
+            {
+               // If our friend is a player, we'll try to be his sidekick.
+               if IsClass(oSocial,&Player)
                {
-                  // Let's see if our friend needs help with something. Pesky
-                  // adventurers for example.
-                  if Send(oSocial,@InCombat)
-                     AND (Random(1,iVision) > iDistance * 2)
+                  if Send(mob,@SetLeader,#oLeader=oSocial)
+                  {
+                     /// Attempt to move towards leader.
+                     Send(mob,@MoveToLeader);
+
+                     return;
+                  }
+               }
+               // Our friend's a monster. Sounds worse than it is really.
+               else
+               {
+                  // Let's see if our friend is chasing some pesky adventurers.
+                  // So far, it doesn't look like any blows have been traded. Else
+                  // we would probably already be assisting our buddy because
+                  // SomethingAttacked would have alerted us.
+                  if Send(oSocial,@InCombat) AND (Random(1,iVision) > iDistance * 2)
                   {
                      oEnemy = Send(oSocial,@GetTarget);
 
                      if oEnemy <> $
-                        AND Send(self,@AttemptTargetSwitch,#mob=mob,#what=oEnemy,
-                           #event=TS_FIGHT_ASSIST_ATTACKER)
+                        AND Send(self,@AttemptTargetSwitch,#mob=mob,#what=oEnemy,#event=TS_MOVE)
                      {
                         iDelay = Bound(100 - Send(mob,@GetAgility),25,100) * 40;
                         Send(mob,@EnterStateEngage,#target=oEnemy,#actnow=FALSE,#delay=iDelay);
 
+                        // Return FALSE so MoveTimer knows not to start a PostMoveTimer.
                         return FALSE;
                      }
                   }
-                  else if iDistance > 10000
+                  // Guess our buddy is fine. If we are a friendly soul, we might still
+                  // stroll over and chat them up. It's so important to have good friends.
+                  // Let's make sure we keep enough distance though. Wouldn't want to make
+                  // them feel uncomfortable now would we?
+                  else if (iDistance > 10000) AND (behavior & AI_SOCIALIZER)
                   {
                      Send(mob,@MoveTowards,#oTarget=oSocial,#face_target=TRUE);
+
+                     return;
                   }
                }
             }
-            // We want to socialize but noone is around.
-            // Time to stroll around a bit when we get too bored.
-            // Bigger mobs don't scamper around as much.
-            else if (Random(1,piStroll_chance * 2) < (Send(mob,@GetAgility)+10) * 150 / Send(mob,@GetLevel))
+         }
+
+         // Either we didn't find a friend or we didn't feel like a chat. Let's see if 
+         // we want to go for a walk. Small and agile mobs tend to scamper around more.
+         if (Random(1,piStroll_chance) < (Send(mob,@GetAgility)+10) * 150 / Send(mob,@GetLevel))
+         {
+            // If we want to go rally and can do so, rally. If not, go strolling.
+            if NOT ((Random(1,1000) <= piRally_chance) AND Send(mob,@GoRally))
             {
                Send(mob,@GoStrolling);
             }
-         }
-         // Not feeling chatty today. Higher chance of strolling.
-         // Bigger mobs don't scamper around as much.
-         else if (Random(1,piStroll_chance) < (Send(mob,@GetAgility)+10) * 150 / Send(mob,@GetLevel))
-         {
-            Send(mob,@GoStrolling);
-         }
-         else if (Random(1,piRally_chance) < 2*(Send(mob,@GetIntellect)+10))
-         {
-            Send(mob,@GoRally);
          }
       }
 

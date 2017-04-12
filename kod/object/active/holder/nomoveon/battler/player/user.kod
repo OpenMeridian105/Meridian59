@@ -3354,6 +3354,12 @@ messages:
                iFlags |= MM_MINION_OTHER;
             }
          }
+
+         if Send(what,@GetLeader) = self
+         {
+            iFlags |= MM_MERCENARY;
+         }
+
          if IsClass(poOwner,&SurvivalRoom)
          {
             // Survival room specific dots.
@@ -6513,13 +6519,6 @@ messages:
          OR NOT IsClass(oSpell,&Spell)
       {
          return;
-      }
-
-      // Command minions to aid in combat
-      if lTargets <> $
-         AND IsClass(oSpell,&AttackSpell)
-      {
-         Send(self,@CommandMinionAttack,#oTarget=First(lTargets));
       }
 
       if piFlags & PFLAG_TRANCE

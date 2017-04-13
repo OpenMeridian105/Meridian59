@@ -326,8 +326,13 @@ messages:
 
       // If we are already engaged in combat, we don't switch to assist an attacker,
       // only to defend ourselves or a victim. In that case, act immediately.
-      if (state & STATE_ENGAGE) AND (iType < 6)
-         AND Send(self,@AttemptTargetSwitch,#what=what,#event=iType,#mob=mob)
+      // If we already had the same target before (proximity aggro) but have yet
+      // to act on it, we'll act now!
+      if (state & STATE_ENGAGE)
+         AND (iType < 6)
+         AND (Send(self,@AttemptTargetSwitch,#what=what,#event=iType,#mob=mob)
+            OR ((Send(mob,@GetTarget) = what)
+               AND NOT Send(what,@GetHurtMeRecentlyAmount,#who=mob)))
       {
          Send(mob,@EnterStateEngage,#target=what,#actnow=TRUE);
       }

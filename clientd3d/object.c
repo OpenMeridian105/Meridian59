@@ -198,20 +198,20 @@ list_type RoomObjectListDestroy(list_type obj_list)
  */
 void RoomObjectSetHeight(room_contents_node *r)
 {
-   int floor,ceiling;
+   int floor, ceiling;
 
-   GetPointHeights(r->motion.x,r->motion.y,&floor,&ceiling);
+   GetPointHeights(r->motion.x, r->motion.y, &floor, &ceiling);
    if (r->obj.flags & OF_HANGING)
    {
       if (r->obj.boundingHeight == 0)
       {
-	 int width,height;
-	 if(GetObjectSize(r->obj.icon_res, r->obj.animate->group, 0, *(r->obj.overlays), 
-			 &width, &height))
-	 {
-	    r->obj.boundingHeight = height;
-	    r->obj.boundingWidth = width;
-	 }
+         int width, height;
+         if (GetObjectSize(r->obj.icon_res, r->obj.animate->group, 0, *(r->obj.overlays),
+            &width, &height))
+         {
+            r->obj.boundingHeight = height;
+            r->obj.boundingWidth = width;
+         }
       }
       r->motion.z = ceiling - r->obj.boundingHeight;
    }
@@ -221,24 +221,37 @@ void RoomObjectSetHeight(room_contents_node *r)
       int depth = GetPointDepth(r->motion.x, r->motion.y);
       switch (depth) {
       case SF_DEPTH1:
-	 if (ROOM_OVERRIDE_DEPTH1 & GetRoomFlags())
-	    height = GetOverrideRoomDepth(SF_DEPTH1);
-	 break;
+         if (ROOM_OVERRIDE_DEPTH1 & GetRoomFlags())
+            height = GetOverrideRoomDepth(SF_DEPTH1);
+         break;
       case SF_DEPTH2:
-	 if (ROOM_OVERRIDE_DEPTH2 & GetRoomFlags())
-	    height = GetOverrideRoomDepth(SF_DEPTH2);
-	 break;
+         if (ROOM_OVERRIDE_DEPTH2 & GetRoomFlags())
+            height = GetOverrideRoomDepth(SF_DEPTH2);
+         break;
       case SF_DEPTH3:
-	 if (ROOM_OVERRIDE_DEPTH3 & GetRoomFlags())
-	    height = GetOverrideRoomDepth(SF_DEPTH3);
-	 break;
+         if (ROOM_OVERRIDE_DEPTH3 & GetRoomFlags())
+            height = GetOverrideRoomDepth(SF_DEPTH3);
+         break;
       }
-      r->motion.z = height;
+      // Only set height if the vertical velocity is 0 (not falling)
+      // or the object is below the floor height.
+      if (r->motion.v_z == 0
+         || r->motion.z < height)
+      {
+         r->motion.z = height;
+      }
+
    }
    else
    {
       int depth = GetPointDepth(r->motion.x, r->motion.y);
-      r->motion.z = floor - sector_depths[depth];
+      // Only set height if the vertical velocity is 0 (not falling)
+      // or the object is below the floor height.
+      if (r->motion.v_z == 0
+         || r->motion.z < floor - sector_depths[depth])
+      {
+         r->motion.z = floor - sector_depths[depth];
+      }
    }
 }
 

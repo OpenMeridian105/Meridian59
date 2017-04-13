@@ -36,7 +36,7 @@ classvars:
    viSpeed = SPEED_FASTER
    viAttack_type = ATCK_WEAP_SLASH
    viAttributes = 0
-   viDefault_behavior = AI_FIGHT_NEWBIESAFE | AI_MOVE_REGROUP
+   viDefault_behavior = AI_FIGHT_NEWBIESAFE
 
    viColorTranslate1 = XLAT_TO_RED     // Shirt
    viColorTranslate2 = XLAT_TO_BLACK   // Pants
@@ -51,6 +51,12 @@ classvars:
 
    viCashMin = 200
    viCashMax = 600
+
+   viWimpy = 20
+
+   vbCanRally = TRUE
+
+   viSocial = 70
 
 properties:
 
@@ -224,13 +230,13 @@ messages:
       propagate;
    }
 
-   IsAlly(target = $, regroup = FALSE)
+   IsAlliedClass(what=$)
    {
       local iFaction;
 
-      if IsClass(target,&Battler)
+      if IsClass(what,&Battler)
       {
-         iFaction = Send(target,@GetFaction);
+         iFaction = Send(what,@GetFaction);
 
          // Players or mobs could be same faction.
          if (iFaction = viFaction)
@@ -238,10 +244,10 @@ messages:
             return TRUE;
          }
 
-         if IsClass(target,&User)
+         if IsClass(what,&User)
          {
             // Players not of same faction.
-            if (NOT regroup) AND (iFaction = FACTION_NEUTRAL)
+            if (iFaction = FACTION_NEUTRAL)
             {
                return TRUE;
             }
@@ -251,7 +257,7 @@ messages:
          }
       }
 
-      propagate;
+      return FALSE;
    }
 
    SpecialHatredBehavior(what=$)
@@ -277,6 +283,20 @@ messages:
       }
 
       return 0;
+   }
+
+   // Troops don't follow their leader to the next zone.
+   SomethingLeft(what = $, iRow=0, iCol=0)
+   {
+
+     // Our leader may have left. Good riddance.
+      if poLeader <> $ AND what = poLeader
+      {
+         // SetLeader sets leader to nil if none is passed.
+         Send(self,@SetLeader);
+      }
+
+      propagate;
    }
 
 end

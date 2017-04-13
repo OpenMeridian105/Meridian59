@@ -50,7 +50,6 @@ resources:
    lich_sound_death = lich_dth.ogg
    lich_sound_aware = lich_awr.ogg
 
-   lich_cast_spell = "The lich queen summons forth the darkness!!"
    lich_cast_sound = necro01.ogg
 
    lich_death_blow = \
@@ -65,9 +64,6 @@ resources:
    lich_helper_killer = \
       "The foul Lich Queen has been driven from this plane of reality, "
       "thanks to you and your comrades!"
-   lich_no_truce = \
-      "The Lich Queen's evil presence dispels your truce before you "
-      "can even cast it."
 
    lich_blank = ""
    lich_comma = ", "
@@ -132,11 +128,13 @@ classvars:
    viDifficulty = 9
    viVisionDistance = 60
    // Attack range of 192, or 3 row/col.
-   viAttackRange = 192
+   viMeleeRange = 128
+   viFireRange = 320
+   vbSpin = TRUE
    viKarma = -100
    vbIsUndead = TRUE
    viDefault_behavior = \
-      AI_FIGHT_AGGRESSIVE |  AI_FIGHT_WIZARD_KILLER | AI_FIGHT_HYPERAGGRESSIVE \
+      AI_FIGHT_AGGRESSIVE | AI_FIGHT_HYPERAGGRESSIVE \
       | AI_MOVE_FLEE_FRIGHTENERS | AI_FIGHT_THROUGH_WALLS | AI_FIGHT_SWITCHALOT
 
    viAttributes = MOB_LISTEN | MOB_RECEIVE | MOB_TEACHER
@@ -149,6 +147,25 @@ classvars:
    vrTributeTrigger = lich_tribute_trigger
    vrHungerTrigger = lich_hunger_trigger
 
+   // Some monster classes may cause drain effects or poison their enemy.
+   viPoisonChance = 5
+   viPoisonStrength = 1000
+   viPoisonDuration = 3600000
+   // Percentage of poison strength affecting each resource.
+   viPoisonHealth = 100
+   viPoisonVigor = 20
+   viBleedChance = 20
+   viBleedStrength = 4000
+   viBleedDuration = 4000
+   viMovePriority = 300
+   viPowerLevel = 200
+
+   vbCanPoison = FALSE
+   vbCanBleed = FALSE
+
+   // Very, very used to dark places.
+   viNightVision = 255
+
 properties:
 
    piAnimation = ANIM_NONE
@@ -159,15 +176,12 @@ properties:
    pbIllusioned = TRUE
    ptGoIllusioned = $
 
-   piBlindAttackChance = 15    // Chance she'll attack with blind
-   piBlindCounterChance = 7    // Chance she'll counter a spell or arrow with blind
-   piBlindDurationMin = 20000  // Milliseconds.
-   piBlindDurationMax = 30000  // Milliseconds.
-
    ptDeathSequence = $
    piDeathSequenceTimestep = 200  // milliseconds
 
    piReputationGroup = REP_LICH
+
+   piSkeleton = 0
 
 messages:
 
@@ -194,6 +208,12 @@ messages:
                       ];
 
       plReputationEnemies = [REP_FAROL];
+
+      plActions =  [ [SID_VAMPIRIC_DRAIN,100,0,65536,0,200,99],
+                     [SID_HOLD,100,0,16384,0,600,99],
+                     [SID_BLIND,500,0,MAX_KOD_INT,0,1200,99],
+                     [SID_CURSE_WEAPON,200,0,16384,0,600,99],
+                     [SID_DARKNESS,0,0,MAX_KOD_INT,1000,0,99] ];
 
       propagate;
    }
@@ -340,25 +360,529 @@ messages:
       propagate;
    }
 
-   MonsterAttack(what = $)
+   MonsterCombatAction(distance=0,sight=TRUE)
+   "Figure out what the monster is going to attack with."
+   "Depending on our action, return an appropriate delay."
    {
-      piAnimation = ANIM_ATTACK;
-      Send(poOwner,@SomethingChanged,#what=self);
-      piAnimation = ANIM_NONE;
+      local i, iPriority, lActions, lAction, iNum, oSpell, iAttacks,
+         iMana, iVigor, iFactor, iSpellPower, lTargets, iDelay, iPowerLevel,
+         oTarget, iAction;
+
+      lActions = $;
+
+      // If we have sight, proceed as usual, else, only allow moving.
+      if sight
+      {
+         // Sort out any actions in our action list that can't reach the
+         // target or that we don't have the resources for.
+         foreach i in plActions
+         {
+            if Nth(i,2) < piMana
+               AND Nth(i,4) > distance
+            {
+               lActions = Cons(i,lActions);
+            }
+         }
+      }
+      else
+      {
+         // Can't see the target, let's try to move towards it.
+         foreach i in plActions
+         {
+            if First(i) = SKID_MINIMUM
+            {
+               lActions = Cons(i,lActions);
+            }
+         }
+      }
+
+      // Double check if the monster can perform basic actions.
+      foreach i in lActions
+      {
+         iNum = First(i);
+
+         if iNum = SKID_MINIMUM
+         {
+            if (piBehavior & AI_NOMOVE) OR (piBehavior & AI_CORNERED)
+            {
+               lActions = DelListElem(lActions,i);
+               Send(self,@SetBehaviorFlag,#flag=AI_CORNERED,#value=FALSE);
+            }
+         }
+         else if (piBehavior & AI_NOFIGHT)
+         {
+            lActions = DelListElem(lActions,i);
+         }
+         else if ((iNum = SKID_FIRE) AND (distance <= piMeleeRange*piMeleeRange))
+            AND NOT (IsClass(self,&Reflection) OR IsClass(self,&EvilTwin))
+         {
+            lActions = DelListElem(lActions,i);
+         }
+         else if ((iNum = SKID_SPIN) AND (Length(Send(self,@GetTargetsInRange)) < 2))
+         {
+            lActions = DelListElem(lActions,i);
+         }
+      }
+
+      // Check the actual spells in our action list for castability.
+      foreach i in lActions
+      {
+         iNum = First(i);
+         if iNum < 400
+         {
+            oSpell = Send(SYS,@FindSpellByNum,#num=iNum);
+            lTargets = [poTarget];
+            lTargets = Send(oSpell,@GetTargets,#who=self,#lTargets=lTargets);
+            if NOT Send(oSpell,@CanPayMonsterCosts,#who=self,#lTargets=lTargets,#iSpellPower=iSpellPower)
+               OR NOT Send(poOwner,@ReqSpellCast,#who=self,#oSpell=oSpell,#lItems=lTargets)
+            {
+               lActions = DelListElem(lActions,i);
+            }
+         }
+      }
+
+      // If no actions made it through our check, quit here.
+      if lActions = $
+      {
+         return FALSE;
+      }
+
+      // Time for an attack check.
+      if iNum <> SKID_MINIMUM
+         AND NOT Send(poOwner,@ReqSomethingAttack,#what=self,#victim=poTarget,#use_weapon=self)
+      {
+         return FALSE;
+      }
+
+      // We are allowed to attack and got a pool of actions.
+      // Compare priorities to decide for one.
+      iPriority = MIN_KOD_INT;
+      foreach i in lActions
+      {
+         if Nth(i,5) >= iPriority
+         {
+            lAction = i;
+            iPriority = Nth(i,5);
+         }
+      }
+
+      // We have our action at this point, let's check its ID.
+      iNum = First(lAction);
+
+      // It's clear we will be acting now. Get our action delay.
+      iDelay = Send(self,@GetAttackTime);
+
+      // Standard melee attack. Let's initiate the attack.
+      if (iNum = SKID_SLASH) OR (iNum = SKID_PUNCH)
+      {
+         iAttacks = 100 + viBonusSwing;
+         i = 0;
+
+         while (iAttacks > 0) AND poTarget <> $ AND Send(poTarget,@GetOwner) <> $
+         {
+            if (Random(1,100) <= iAttacks)
+               AND Send(self,@TryAttack,#what=poTarget,#stroke_obj=self,#factor=Nth(lAction,7))
+            {
+               ++i;
+            }
+
+            iAttacks -= 100;
+         }
+
+         if i = 0
+         {
+            return FALSE;
+         }
+         else if poOwner <> $
+         {
+            // We actually attack. Do the animation if we're still around.
+            Send(self,@DoMeleeAttack,#swings=i);
+         }
+      }
+      // If we are a ranged attack, shoot something.
+      else if (iNum = SKID_FIRE)
+      {
+         iAttacks = 100 + viBonusShot;
+         i = 0;
+
+         while (iAttacks > 0) AND poTarget <> $ AND Send(poTarget,@GetOwner) <> $
+         {
+            if (Random(1,100) <= iAttacks)
+               AND Send(self,@TryAttack,#what=poTarget,#stroke_obj=self,#factor=Nth(lAction,7))
+            {
+               ++i;
+            }
+
+            iAttacks -= 100;
+         }
+
+         if i = 0
+         {
+            return FALSE;
+         }
+         else if poOwner <> $
+         {
+            // We actually attack. Do the animation if we're still around.
+            Send(self,@DoMissileAttack,#shots=i);
+         }
+      }
+      // We're doing a spinning area effect attack! Fancy!
+      else if (iNum = SKID_SPIN)
+      {
+         iAttacks = 100 + viBonusSpin;
+         i = 0;
+         lTargets = Send(self,@GetTargetsInRange);
+
+         while (iAttacks > 0)
+         {
+            if (Random(1,100) <= iAttacks)
+            {
+               Send(poOwner,@SomeoneSaid,#what=self,#string=Lm_monster_spin,
+                  #type=SAY_MESSAGE,#parm1=Send(self,@GetCapDef),
+                  #parm2=Send(self,@GetName));
+
+               foreach oTarget in lTargets
+               {
+                  if oTarget <> $ AND Send(oTarget,@GetOwner) <> $
+                  {
+                     Send(self,@TryAttack,#what=oTarget,#stroke_obj=self,#factor=Nth(lAction,7));
+                  }
+               }
+
+               ++i;
+            }
+
+            iAttacks -= 100;
+         }
+
+         if poOwner <> $
+         {
+            // We spun around i times. Let's animate it.
+            Send(self,@DoSpinAttack,#spins=i);
+         }
+
+         iDelay *= 2;
+      }
+      // Looks like we are casting something. How exciting!
+      // Time to set our local variables.
+      else if iNum < 400
+      {
+         oSpell = Send(SYS,@FindSpellByNum,#num=iNum);
+         lTargets = [poTarget];
+         lTargets = Send(oSpell,@GetTargets,#who=self,#lTargets=lTargets);
+         iSpellPower = piSpellPower + Nth(lAction,7);
+
+         // Do any special cast animations; send spell for specific ones.
+         // Also, make sure we're still around.
+         if poOwner <> $
+         {
+            // Not facing the target when casting at them is rude. Let's be polite.
+            Send(self,@MonsterOrient,#new_row=Send(poTarget,@GetRow),
+                  #new_col=Send(poTarget,@GetCol),#new_finerow=Send(poTarget,@GetFineRow),
+                  #new_finecol=Send(poTarget,@GetFineCol),#face_target=TRUE);
+            Send(self,@MonsterCastAnimation,#iSpellNum=iNum);
+         }
+
+         // We are almost ready to cast the spell, only a spell resist can
+         // save the victim now.
+         if (Length(lTargets) = 1)
+            AND NOT Send(poTarget,@SpellResist,#oSpell=oSpell,#who=self,#iSpellpower=iSpellPower)
+         {
+            // Monsters don't necessarily cast at the same power level as
+            // players. Calculate power percentage here.
+            if viPowerLevel <> $
+            {
+               iPowerLevel = viPowerLevel;
+            }
+            else
+            {
+               iPowerLevel = bound(piMysticism + piIntellect + viLevel,$,300) / 3;
+            }
+
+            // Cast the spell.
+            Send(oSpell,@CastSpell,#who=self,#lTargets=lTargets,
+               #iSpellPower=iSpellPower,#iPowerLevel=iPowerLevel);
+         }
+
+         // Speed caster!
+         iDelay = 1500;
+
+         // We cast something. Let's check if we want to switch targets.
+         if poTarget <> $
+         {
+            Send(self,@FindNewTarget);
+         }
+      }
+      // If none of the above was true, we simply moved.
+      else
+      {
+         iDelay = FALSE;
+      }
+
+      // We did something. Pay the cost.
+      iMana = Nth(lAction,2);
+      iVigor = Nth(lAction,3);
+      Send(self,@LoseMana,#amount=iMana,#precision=TRUE);
+      Send(self,@LoseVigor,#amount=iVigor,#precision=TRUE);
+
+      // If we made it this far, we acted in some way. Adjust our priorities.
+      iFactor = Nth(lAction,6);
+
+      foreach i in plActions
+      {
+         iAction = First(i);
+
+         // Spells lose priorty when cast and gain priority
+         // when another action is taken. Amount of priority
+         // lost is unique to each spell, amount of priority
+         // gained depends on mysticism.
+         if iAction < 400
+         {
+            if iAction = iNum
+            {
+               SetNth(i,5,Bound(iPriority - iFactor,-10000,$));
+            }
+            else
+            {
+               SetNth(i,5,Bound(Nth(i,5)+(iDelay/50)+(distance/1000),$,1000));
+            }
+         }
+      }
+
+      return iDelay;
+   }
+
+   DoSpinAnimation()
+   "Handles spin attack animation."
+   {
+      local iDiff, iAngle;
+
+      ptAction = $;
+
+      if poOwner <> $
+      {
+         iAngle = Send(self,@GetAngle);
+         if piAction % 8 < 4
+         {
+            iAngle += (MAX_ANGLE / 4);
+         }
+         else
+         {
+            iAngle -= (MAX_ANGLE / 4);
+         }
+
+         if piAction % 4 = 0
+         {
+            piAnimation = ANIM_ATTACK;
+            Send(poOwner,@SomethingChanged,#what=self);
+            piAnimation = ANIM_NONE;
+         }
+
+         Send(poOwner,@SomethingTurned,#what=self,#new_angle=iAngle);
+
+         --piAction;
+
+         if piAction > 0
+         {
+            ptAction = CreateTimer(self,@DoSpinAnimation,200);
+         }
+      }
 
       return;
    }
 
-   DoCast()
+   ////  Action Routines
+   EngageTimer( timer = $ )
+   "We're trying to engage our target, so either we keep"
+   "chasing, or we attack. Note that even if we can't move,"
+   "we can still be 'engaging'...."
    {
-      piAnimation = ANIM_ATTACK;
-      Send(poOwner,@SomethingChanged,#what=self);
-      Send(poOwner,@SomethingShot,#who=self,#target=poTarget,#projectile=self);
-      piAnimation = ANIM_NONE;
+      local i,oVictim, iDistance, iChaseRange, iDelay, bSight;
+      oVictim = poTarget;
+
+      Send(self,@ClearBehavior,#timer=timer);
+
+      // Sanity checks
+      if poOwner = $
+      {
+         Debug("Unreachable. Null owner.");
+         Send(self,@EnterStateLimbo);
+
+         return;
+      }
+
+      // If target left, we should already know
+      if oVictim = $
+      {
+         //Debug("Unreachable. Null victim.");
+         Send(self,@EnterStateWait);
+
+         return;
+      }
+
+      // Victim phased out or is now in spectator mode, break aggro.
+      if IsClass(oVictim,&User)
+         AND Send(oVictim,@IsInCannotInteractMode)
+      {
+         Send(self,@EnterStateMove);
+
+         return;
+      }
+
+      // Get distance to target.
+      iDistance = Send(self,@SquaredFineDistanceTo3D,#what=oVictim);
+      bSight = Send(poOwner,@LineOfSight,#obj1=self,#obj2=oVictim);
+      iChaseRange =  20 * FINENESS;
+      iChaseRange = iChaseRange * Random(40,50) / 100;
+      if NOT bSight
+      {
+         iChaseRange /= 5;
+      }
+      iChaseRange *= iChaseRange;
+
+      // Mobs may lose interest if the target is too far away or out of sight.
+      if (NOT (piBehavior & AI_FIGHT_SINGLEMINDED)) AND (iDistance > iChaseRange)
+      {
+         Send(self,@EnterStateMove);
+
+         return;
+      }
+
+      if Send(self,@MonsterCombatCheck)
+      {
+         iDelay = Send(self,@MonsterCombatAction,#distance=iDistance,#sight=bSight);
+      }
+      else
+      {
+         iDelay = 0;
+      }
+
+      // Got gassed after acting and is currently resting. Quit.
+      if (piState & STATE_REST)
+      {
+         return;
+      }
+
+      // If we can move, we physically try to get closer.
+      if iDelay = 0
+      {
+         Send(poBrain,@GetEngageBehavior,#mob=self,#target=poTarget,#behavior=piBehavior);
+      }
+
+      // 50% chance to move away from the target.
+      Send(self,@RandomCombatMove,#direction=-5);
+
+      // Monster acted. Pass on the appriopriate delay.
+      if poTarget <> $
+      {
+         Send(poBrain,@PostEngageTimer,#mob=self,#delay=Abs(iDelay));
+      }
+      else
+      {
+         // Target died. Move on.
+         Send(self,@EnterStateMove);
+      }
 
       return;
    }
 
+   MonsterCastAnimation(iSpellNum=$)
+   "Give ghost a chance to create fog and zombies on spell cast."
+   {
+      local i, iRandom, iPick, oElement, iMRow, iMCol, iMRowFine, iMColFine;
+
+      iRandom = Random(10,20);
+      i = 0;
+
+      while i < iRandom
+      {
+         if GetRandomPointBSP(Send(poOwner,@GetRoomData), 15, *iMRow, *iMCol, *iMRowFine, *iMColFine)
+         {
+            if iMRow < 4 OR iMRow > 19 OR iMCol < 7 OR iMCol > 20
+               AND NOT (iMRow <= 14 AND iMRow >= 12 AND iMCol <= 29 AND iMCol >= 20)
+            {
+               ++i;
+               continue;
+            }
+
+            iPick = Random (1,iRandom);
+
+            if iPick = 1
+            {
+               if Send(poOwner,@CountHoldingHowMany,#class=&Skeleton) < 3
+               {
+                  ++piSkeleton;
+
+                  if piSkeleton < 9
+                  {
+                     oElement = Create(&DaemonSkeleton,#DropsTreasure=FALSE,#Level=100);
+                  }
+                  else
+                  {
+                     piSkeleton = 0;
+
+                     oElement = Create(&GiantDaemonSkeleton,#DropsTreasure=FALSE,#Level=300);
+                  }
+
+                  Send(poOwner,@NewHold,#what=oElement,#new_row=iMRow,#new_col=iMCol,
+                       #fine_row=iMRowFine,#fine_col=iMColFine);
+
+                  Send(oElement,@SetMaster,#oMaster=self);
+
+                  if poTarget <> $
+                  {
+                     Send(oElement,@SetBehaviorFlag,#flag=AI_MOVE_FOLLOW_MASTER,#value=FALSE);
+                     Send(oElement,@TargetSwitch,#what=poTarget,#iHatred=100);
+                     Send(oElement,@EnterStateEngage,#target=poTarget,#actnow=TRUE);
+                  }
+               }
+            }
+            else if Send(poOwner,@CountHoldingSummoned) < 50
+            {
+               if iPick < 4
+               {
+                  oElement = Create(&Web,#Caster=self,#Duration=15,#MaxHoldTime=10);
+                  Send(poOwner,@NewHold,#what=oElement,#new_row=iMRow,#new_col=iMCol,
+                       #fine_row=iMRowFine,#fine_col=iMColFine);
+               }
+               else if iPick < 8
+               {
+                  oElement = Create(&WallofFire,#Caster=self,#Duration=15,#MaxDamage=20);
+                  Send(poOwner,@NewHold,#what=oElement,#new_row=iMRow,#new_col=iMCol,
+                       #fine_row=iMRowFine,#fine_col=iMColFine);
+               }
+               else if iPick < 10
+               {
+                  oElement = Create(&WallofLightning,#Caster=self,#Duration=15,#MaxDamage=20);
+                  Send(poOwner,@NewHold,#what=oElement,#new_row=iMRow,#new_col=iMCol,
+                       #fine_row=iMRowFine,#fine_col=iMColFine);
+               }
+               else if iPick < 11
+               {
+                  oElement = Create(&PoisonFogCloud,#Caster=self,#Duration=15,#Odds=101);
+                  Send(poOwner,@NewHold,#what=oElement,#new_row=iMRow,#new_col=iMCol,
+                       #fine_row=iMRowFine,#fine_col=iMColFine);
+               }
+               else if iPick < 12
+               {
+                  oElement = Create(&ActiveSporeCloud,#Caster=self,#Duration=15,#iSpellPower=99);
+                  Send(poOwner,@NewHold,#what=oElement,#new_row=iMRow,#new_col=iMCol,
+                       #fine_row=iMRowFine,#fine_col=iMColFine);
+               }
+               else
+               {
+                  oElement = Create(&FogCloud,#Caster=self,#Duration=15);
+                  Send(poOwner,@NewHold,#what=oElement,#new_row=iMRow,#new_col=iMCol,
+                       #fine_row=iMRowFine,#fine_col=iMColFine);
+               }
+            }
+         }
+
+         ++i;
+      }
+
+      propagate;
+   }
 
    GetProjectileIcon()
    {
@@ -411,140 +935,6 @@ messages:
       propagate;
    }
 
-   ReqSpellCast(who = $, oSpell = $, lItems = $)
-   {
-      if oSpell = Send(SYS,@FindSpellByNum,#num=SID_TRUCE)
-      {
-         Send(who,@MsgSendUser,#message_rsc=lich_no_truce);
-
-         return FALSE;
-      }
-
-      if Random(1,piBlindCounterChance) = 1
-         AND Send(self,@CanSee,#what=who)
-      {
-         Send(self,@MonsterCastAttackSpell,#what=who);
-
-         return FALSE;
-      }
-
-      propagate;
-   }
-
-   ReqSomethingAttack(what = $,victim = $,use_weapon = $)
-   {
-      if use_weapon <> $
-      {
-         if IsClass(use_weapon,&RangedWeapon)
-            AND victim = self
-            AND Send(self,@CanSee,#what=what)
-            AND Random(1,piBlindCounterChance) = 1 
-         {
-            Send(self,@MonsterCastAttackSpell,#what=what);
-
-            return FALSE;
-         }
-      }
-
-      propagate;
-   }
-
-   MonsterCastAttackSpell(what=$)
-   {
-      local oSpell, iRandom, oTarget;
-
-      if what = $
-      {
-         oTarget = poTarget;
-      }
-      else
-      {
-         oTarget = what;
-      }
-
-      if NOT Send(self,@CanSee,#what=poTarget)
-      {
-         return;
-      }
-
-      oSpell = Send(SYS,@FindSpellByNum,#num=SID_BLIND);
-      iRandom = Random(piBlindDurationMin,piBlindDurationMax);
-
-      if NOT Send(poOwner,@ReqSomethingAttack,#what=self,
-                  #victim=poTarget,#use_weapon=self)
-      {
-         return;
-      }
-
-      Send(poOwner,@SomethingWaveRoom,#what=self,#wave_rsc=lich_cast_sound);
-      Send(poOwner,@SomeoneSaid,#type=SAY_MESSAGE,#string=lich_cast_spell,#what=self);
-      Send(self,@DoCast);
-      Send(oSpell,@DoSpell,#what=self,#oTarget=oTarget,#iDuration=iRandom);
-
-      return;
-   }
-
-   AttackTimer( timer = $ )
-   "We were bashing on something before, and now its time to hit it again."
-   {
-      local oSpell, iRandom;
-
-      iRandom = Random(1,piBlindAttackChance);
-      oSpell = Send(SYS,@FindSpellByNum,#num=SID_BLIND);
-      Send(self,@ClearBehavior,#timer=timer);
-
-      // Sanity checks.
-      if poOwner = $
-      {
-         Debug("Unreachable. Null Owner");
-         Send(self,@EnterStateLimbo);
-
-         return;
-      }
-
-      if poTarget = $
-      {
-         Debug("Unreachable. Null poTarget","monster",self); 
-         Send(self,@EnterStateWait);
-
-         return;
-      }
-
-      Send(self,@FindNewTarget);
-
-      if NOT Send(self,@CanReach,#what=poTarget)
-         AND Send(poTarget,@IsEnchanted,#what=oSpell)
-      {
-         Send(self,@EnterStateChase,#Target=poTarget);
-
-         return;
-      }
-      else
-      {
-         if NOT Send(self,@CanReach,#what=poTarget)
-         {
-            Send(self,@MonsterCastAttackSpell);
-            Send(poBrain,@PostAttackTimer,#mob=self,#state=piState);
-
-            return;
-         }
-      }
-
-      if NOT Send(poTarget,@IsEnchanted,#what=oSpell)
-         AND iRandom = 1
-      {
-         Send(self,@MonsterCastAttackSpell);
-      }
-      else
-      {
-         Send(self,@TryAttack,#what=poTarget);
-      }
-
-      Send(poBrain,@PostAttackTimer,#mob=self,#state=piState);
-
-      return;
-   }
-
    FindNewTarget()
    {
       local oBlind, lActive, iRandom, iDistance, iBestDistance, i, each_obj;
@@ -559,7 +949,7 @@ messages:
       iRandom = Random(1,30);
       iBestDistance = 10000;
 
-      if Send(poTarget,@IsEnchanted,#what=oBlind)
+      if poTarget = $ OR Send(poTarget,@IsEnchanted,#what=oBlind)
       {
          foreach i in lActive
          {
@@ -578,13 +968,13 @@ messages:
 
                if iRandom < 5
                {
-                  return;
+                  return TRUE;
                }
             }
          }
       }
 
-      return;
+      return FALSE;
    }
 
    Killed(what=$, resetScenario=TRUE, guildDisbandDeath=FALSE)
@@ -757,7 +1147,36 @@ messages:
          if iSpellPower < 30
             OR Random(0,100) < iResistChance
          {
+            // Unsuccessful spells make the Queen more likely to cast.
+            if IsClass(oSpell,&Dazzle)
+            {
+               Send(self,@AdjustActionPriority,#num=SID_BLIND,#amount=1000);
+            }
+            else if IsClass(oSpell,&AttackSpell)
+            {
+               Send(self,@AdjustActionPriority,#num=SID_VAMPIRIC_DRAIN,#amount=1000);
+            }
+            else if Send(oSpell,@GetSchool) = SS_KRAANAN
+            {
+               Send(self,@AdjustActionPriority,#num=SID_CURSE_WEAPON,#amount=1000);
+            }
+            else if Send(oSpell,@GetSchool) = SS_SHALILLE
+            {
+               Send(self,@AdjustActionPriority,#num=SID_HOLD,#amount=1000);
+            }
+
+            // Unsuccessful spells may incur the Queen's wrath.
+            if Random(1,3) = 1
+            {
+               Send(self,@TargetSwitch,#what=who,#iHatred=10);
+            }
+
             return TRUE;
+         }
+         else
+         {
+            // Successful spells will definitely incur the Queen's wrath.
+            Send(self,@TargetSwitch,#what=who,#iHatred=100);
          }
       }
 
@@ -889,8 +1308,13 @@ messages:
       return;
    }
 
-   IsAlly(target = $, regroup = FALSE)
+   IsAlly(target = $)
    {
+      if NOT IsClass(target,&Battler)
+      {
+         return FALSE;
+      }
+
       if IsClass(target,&User)
       { 
          if Send(target,@IsUsingA,#class=&NecromancerAmulet)
@@ -900,6 +1324,17 @@ messages:
       }
 
       if IsClass(target,&DM)
+      {
+         return TRUE;
+      }
+
+      propagate;
+   }
+
+   IsAlliedClass(what=$)
+   {
+      if IsClass(what,&DarkAngel)
+         OR Send(what,@IsUndead)
       {
          return TRUE;
       }
@@ -1030,6 +1465,45 @@ messages:
    CanEvilTwin()
    {
       return FALSE;
+   }
+
+   MoveTimer( timer = $ )
+   "Queen mercilessly chases targets when any are around."
+   {
+      // Sanity checks
+      if poOwner = $
+      {
+         Send(self,@EnterStateLimbo);
+
+         return;
+      }
+
+      if Send(self,@FindNewTarget)
+      {
+         Send(self,@ClearBehavior,#timer=timer);
+         Send(self,@EnterStateEngage,#target=poTarget,#actnow=TRUE);
+
+         return;
+      }
+
+      propagate;
+   }
+
+   ReqMonsterMove(new_row = $,new_col = $)
+   "Called by monster moving code to check if we really want to go"
+   "to <new_row>,<new_col>."
+   {
+      if poOwner <> $
+         AND Send(poOwner,@GetRoomNum) = RID_GUILDH15
+         AND (new_col > 28 OR new_col < 8)
+      {
+         if NOT (piCol > 28 OR piCol < 8)
+         {
+            return FALSE;
+         }
+      }
+
+      propagate;
    }
 
 end

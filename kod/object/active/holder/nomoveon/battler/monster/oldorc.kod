@@ -64,6 +64,15 @@ classvars:
    vrSound_aware = oldorc_sound_aware
    vrSound_death = oldorc_sound_death
 
+   viBleedChance = 15
+   viBleedStrength = 1000
+   viBleedDuration = 5000
+
+   vbCanSiphon = FALSE
+
+   // Quite used to dark places.
+   viNightVision = 100
+
 properties:
 
    piAnimation = ANIM_NONE
@@ -94,22 +103,6 @@ messages:
       }
 
       return (viDifficulty*10)/2;
-   }
-
-   MonsterAttack(what = $)
-   {
-      Send(self,@DoSlash);
-
-      return;
-   }
-
-   DoSlash()
-   {
-      piAnimation = ANIM_ATTACK;
-      Send(poOwner,@SomethingChanged,#what=self);
-      piAnimation = ANIM_NONE;
-
-      return;
    }
 
    SendLookAnimation()
@@ -144,6 +137,19 @@ messages:
    IsFrightenedOf(target=$)
    {
       return IsClass(target,&GiantRat);
+   }
+
+   IsAlliedClass(what=$)
+   {
+      if IsClass(what,&Orc)
+         OR IsClass(what,&CaveOrc)
+         OR IsClass(what,&OrcWizard)
+         OR IsClass(what,&OrcPitBoss)
+      {
+         return TRUE;
+      }
+
+      propagate;
    }
 
 end

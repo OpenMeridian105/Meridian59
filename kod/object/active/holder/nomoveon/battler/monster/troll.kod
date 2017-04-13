@@ -49,7 +49,7 @@ classvars:
    viDifficulty = 8
    viVisionDistance = 18
    // Attack range of 192, or 3 row/col.
-   viAttackRange = 192
+   viMeleeRange = 192
    viKarma = -75
    viDefault_behavior = AI_FIGHT_AGGRESSIVE
    viCashmin = 300
@@ -63,6 +63,14 @@ classvars:
    viBonusAgility = -40
    viBonusStamina = 300
    viBonusIntellect = -40
+
+   vbCanBleed = FALSE
+   vbCanFatigue = FALSE
+   vbCanSiphon = FALSE
+
+   viBleedChance = 30
+   viBleedStrength = 2000
+   viBleedDuration = 3000
 
 properties:
 
@@ -82,15 +90,6 @@ messages:
       plReputationEnemies = [REP_ORC];
 
       propagate;
-   }
-
-   MonsterAttack(what = $)
-   {
-      piAnimation = ANIM_ATTACK;
-      Send(poOwner,@SomethingChanged,#what=self);
-      piAnimation = ANIM_NONE;
-
-      return;
    }
 
    SendLookAnimation()
@@ -118,6 +117,16 @@ messages:
       }
 
       // if no body animation
+      propagate;
+   }
+
+   IsAlliedClass(what=$)
+   {
+      if IsClass(what,&StoneTroll)
+      {
+         return TRUE;
+      }
+
       propagate;
    }
 

@@ -67,16 +67,24 @@ classvars:
    vrDead_name = Xeochicatl_dead_name_rsc
 
    viTreasure_type = TID_NONE
-   viDefault_behavior = AI_FIGHT_AGGRESSIVE | AI_FIGHT_SWITCHALOT \
-                        | AI_MOVE_REGROUP | AI_MOVE_WALKTHROUGH_WALLS
+   viDefault_behavior = AI_FIGHT_AGGRESSIVE | AI_FIGHT_SWITCHALOT | AI_MOVE_WALKTHROUGH_WALLS
    viAttack_type = ATCK_WEAP_MAGIC
    viLevel = 150
    viDifficulty = 8
    viVisionDistance = 60
    // Attack range of 192, or 3 row/col.
-   viAttackRange = 3 * FINENESS
+   viMeleeRange = 3 * FINENESS
    viSpeed = SPEED_FASTER
    viKarma = 0
+
+   viSiphonChance = 50
+   viSiphonStrength = 4000
+   viSiphonDuration = 5000
+
+   vbCanPoison = FALSE
+   vbCanBleed = FALSE
+   vbCanFatigue = FALSE
+   vbCanBurn = TRUE
 
    vrSound_hit = Xeochicatl_sound_attack
    vrSound_miss = Xeochicatl_sound_attack
@@ -86,15 +94,12 @@ classvars:
    viCashMin = 0
    viCashMax = 0
 
-   // 1 in x chance to cast a spell.
-   viSpellChance = 4
-
    viAttributes = MOB_ONE_TREASURE
 
 properties:
 
    piAnimation = ANIM_NONE
-   piMax_Mana = 20
+   piMax_Mana = 60
 
    piSpellPower = 99
 
@@ -102,9 +107,6 @@ properties:
    pbNodeAttack = FALSE
 
    piColor_Translation = 0
-
-   // percent of victim's max mana it will try to drain.
-   piDrainAmount = 5
 
    piReputationGroup = REP_HERETIC
 
@@ -117,37 +119,6 @@ messages:
       pbDontDispose = InAttack;
 
       propagate;
-   }
-
-   MonsterAttack(what=$)
-   {
-      local iAmount;
-
-      piAnimation = ANIM_ATTACK;
-      Send(poOwner,@SomethingChanged,#what=self);
-      piAnimation = ANIM_NONE;
-
-      if IsClass(what,&Player)
-      {
-         if Random(1,100) < DRAIN_CHANCE
-         {
-            iAmount = Send(what,@GetMaxMana);
-            iAmount = ((iAmount * piDrainAmount)/100) + 1;
-            iAmount = Bound(iAmount,0,Send(what,@GetMana));
-
-            Send(what,@LoseMana,#amount=iAmount);
-            piMana = piMana + iAmount;
-            Send(what,@MsgSendUser,#message_rsc=Xeochicatl_drain_rsc,
-                  #parm1=vrName);
-            Send(self,@GainMana,#amount=iAmount);
-         }
-         else
-         {
-            Send(self,@MonsterCastSpell);
-         }
-      }
-
-      return;
    }
 
    SendMoveAnimation()
@@ -198,14 +169,13 @@ messages:
       return;
    }
 
-   IsAlly(target=$)
+   IsAlliedClass(what=$)
    {
-      if IsClass(target,&Xeochicatl)
+      if IsClass(what,&Xeochicatl)
       {
          return TRUE;
       }
 
-      // Charm checks up higher.
       propagate;
    }
 
@@ -239,16 +209,6 @@ messages:
       piAnimation = ANIM_NONE;
 
       return;
-   }
-
-   CanCastWallSpell()
-   {
-      if (Send(poOwner,@CountHoldingSummoned) + 6) > (MAX_WALLS * 6)
-      {
-         return FALSE;
-      }
-
-      return TRUE;
    }
 
    CanMorphTo()

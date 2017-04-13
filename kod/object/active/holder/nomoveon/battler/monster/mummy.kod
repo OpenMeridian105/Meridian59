@@ -52,6 +52,7 @@ classvars:
 
    // Larger distance since we want them to seek out the newbies.
    viVisionDistance = 16
+   viSocial = 1
    viKarma = 0
    vbIsUndead = TRUE
    viDefault_behavior = AI_FIGHT_AGGRESSIVE | AI_MOVE_FLEE_FRIGHTENERS
@@ -61,6 +62,14 @@ classvars:
    vrSound_miss = mummy_sound_miss
    vrSound_aware = mummy_sound_aware
    vrSound_death = mummy_sound_death
+
+   vbCanPoison = FALSE
+   vbCanBleed = FALSE
+   vbCanSiphon = FALSE
+   vbCanFatigue = FALSE
+
+   // Quite used to dark places.
+   viNightVision = 100
 
 properties:
 
@@ -75,15 +84,6 @@ messages:
                         [-ATCK_SPELL_FIRE, -60],
                         [ATCK_WEAP_ALL, -20 ] ];
       propagate;
-   }
-
-   MonsterAttack(what = $)
-   {
-      piAnimation = ANIM_ATTACK;
-      Send(poOwner,@SomethingChanged,#what=self);
-      piAnimation = ANIM_NONE;
-
-      return;
    }
 
    SendMoveAnimation()
@@ -107,6 +107,16 @@ messages:
          AddPacket(1,ANIMATE_ONCE,4,200,2,6,2,9,2,1);
 
          return;
+      }
+
+      propagate;
+   }
+
+   IsAlliedClass(what=$)
+   {
+      if Send(what,@IsUndead)
+      {
+         return TRUE;
       }
 
       propagate;

@@ -26,41 +26,10 @@ constants:
    KARMA_TUNE_A_INVERSE = 20
    KARMA_TUNE_B_INVERSE = 5
 
-   //// COMBAT PACING PARAMETERS
-   // These parameters control how often it is possible to have combat
-   // assuming readily available opponents.   Xian 4/3/96
-   //
-   // Parameter: Base Regeneration Time (sec)
-   // Meaning:   Time needed for a nearly-killed player of stamina 25 
-   //             to rest fully or player of intelligence 25 to recover mana
-   // Formula:   BASE_REGEN_TIME / 1000
-   // Currently: 150 sec = 2.5 min
-   // Note:      The fastest time scale
-   //
-   // Parameter: Vigor Recovery Time (sec)
-   // Meaning:   Time needed to fully rest after complete vigor depletion
-   // Formula:   REST_THRESHOLD * REST_TIME / 1000
-   // Currently: 200 sec = 3.3 min
-   // Note:      Should be slower than health and mana refresh
-   // 
-   // Parameter: Food Digestion Time (sec)
    // Meaning:   Time needed to completely empty a full stomach
    // Formula:   10000 / FOOD_USE_RATE
    // Currently: 833 sec = 13.9 min
-   // Note:      Need empty stomach to get vigor boost from food
-   BASE_REGEN_TIME = 150000
-
-   // Rate at which stomach empties.
    FOOD_USE_RATE = 12
-
-   // Smallest worthwhile change to vigor (X 10e-4)
-   MIN_VIGOR_CHANGE = 20000
-
-   // Effective vigor debit per attack (X 10e-4)
-   ATTACK_EXERTION = 5000
-
-   // Number of ms to lose one boosted health or mana point.
-   BOOST_DECAY_TIME = 30000 
 
    // Currently: 10 improves every 15-22 minutes.
    ADVANCE_TIMER_MIN =   900000
@@ -1108,6 +1077,9 @@ properties:
    piRemainingPhaseTime = 60000 * 8
    ptCanPhaseTimer = $
 
+   // Our current sidekick
+   poMercenary = $
+
 messages:
 
    Constructor()
@@ -1197,6 +1169,12 @@ messages:
       Send(Send(SYS,@GetAssassinGame),@RemoveFromGame,#who=self);
       Send(Send(SYS,@GetLore),@PlayerSuicides,#who=self);
       plSchools = $;
+
+      if poMercenary <> $ AND IsTimer(poMercenary)
+      {
+         DeleteTimer(poMercenary);
+         poMercenary = $;
+      }
 
       propagate;
    }
@@ -1420,7 +1398,7 @@ messages:
 
       now = GetTime();
       piStomach = piStomach-(now-piTimeLastStomachUpdate)*FOOD_USE_RATE/100;
-      piStomach = bound(piStomach,1,100);
+      piStomach = Bound(piStomach,1,100);
       piTimeLastStomachUpdate = now;
 
       return;
@@ -1642,7 +1620,7 @@ messages:
    SetAge(age = 0)
    "Admin supported."
    {
-      age = bound(age, 0, Send(SYS,@GetYear));
+      age = Bound(age, 0, Send(SYS,@GetYear));
       piBorn_year = Send(SYS,@GetYear) - age;
 
       return age;
@@ -3736,7 +3714,7 @@ messages:
    }
 
    TryBroadcast()
-   "Called when the user wants to broadcast a string.  Return True/False, "
+   "Called when the user wants to broadcast a string.  Return TRUE/FALSE, "
    "and use some mana too."
    {
       local iCost;
@@ -3765,7 +3743,7 @@ messages:
 
    TrySayGroup(users=$)
    "Called when the user wants to say a string to a list of people.  "
-   "Return True/False."
+   "Return TRUE/FALSE."
    {
       if piFlags2 & PFLAG2_SQUELCHED_TELLS
       {
@@ -4137,26 +4115,29 @@ messages:
    {
       local oRoom, oGuild, oSpell, oVictimGuild;
 
-      // Default location to check is where we are.
-      oRoom = poOwner;
-
-      // If the victim is in a room, then check that location instead.  This
-      // allows distance attacks (like wall spells) to work properly.
-      if victim <> $
-         AND Send(victim,@GetOwner) <> poOwner
+      // Must have a target.
+      if (victim = $)
       {
+         return FALSE;
+      }
+
+      // Default location to check is the room the victim is in.
+      // This allows X-room atacks (such as firewalls) to work.
+      oRoom = Send(victim,@GetOwner);
+
+      // Check if we are in the same room as our victim.
+      if oRoom <> poOwner
+      {
+         // If we are not, check if we have been fed an override.
          if (oRoomOverride <> $)
          {
             oRoom = oRoomOverride;
          }
-         else
-         {
-            oRoom = Send(victim,@GetOwner);
-         }
       }
 
-      // No attacking logged out players under any circumstances
-      if Send(victim,@GetOwner) = $
+      // Our victim has left the world of the living since we started plotting
+      // our attack. Let's leave it in peace.
+      if oRoom = $
       {
          return FALSE;
       }
@@ -4490,14 +4471,19 @@ messages:
    {
       local oEnemyGuild, oSoldierShield;
 
-      // Don't care about monsters.
-      // And, free attacks on token holders.
+      // Don't care about monsters or token holders...
       if IsClass(victim,&Monster)
          OR (Send(victim,@FindUsing,#class=&Token) <> $)
       {
-         // Unless they're factioned.
+         // ...unless they're factioned...
          if NOT Send(self,@CheckFactionAttack,#what=victim,#report=report,
                      #stroke_obj=stroke_obj)
+         {
+            return FALSE;
+         }
+
+         // ...or our side kick.
+         if NOT Send(self,@CheckMercAttack,#what=victim,#report=report)
          {
             return FALSE;
          }
@@ -4711,6 +4697,28 @@ messages:
       return TRUE;
    }
 
+   CheckMercAttack(what=$,report=TRUE)
+   "Checks attacks against mercenaries."
+   {
+      local oLeader;
+
+      oLeader = Send(what,@GetLeader);
+
+      if oLeader = self
+         AND NOT Send(self,@CheckPlayerPreference,#flag=CF_SAFETY_OFF)
+      {
+         if report
+         {
+            Send(self,@MsgSendUser,#message_rsc=player_safety_caught,
+                 #parm1=Send(what,@GetDef),#parm2=Send(what,@GetName));
+         }
+
+         return FALSE;
+      }
+
+      return TRUE;
+   }
+
    GetLastPlayerAttackTime()
    "Returns the last time the player attacked another player."
    {
@@ -4758,9 +4766,6 @@ messages:
       {
          return FALSE;
       }
-
-      // If we have minions, see if they can attack too
-      Send(self,@CommandMinionAttack,#oTarget=what);
 
       // Can pay costs?  Only check for skills, spells have already been cast.
       if IsClass(stroke_obj,&Skill)
@@ -4909,7 +4914,7 @@ messages:
       // Give offensive buffs a small chance to improve each swing!
       foreach i in plPassiveImprovement
       {
-         if Nth(i,3) AND random(1,50) = 50
+         if Nth(i,3) AND Random(1,50) = 50
          {
             Send(First(i),@ImproveAbility,#who=self,#target=what);
          }
@@ -5381,13 +5386,6 @@ messages:
       origdamage = damage/100;
       color_rsc = player_hit_color_none;
 
-      // Attacks against a minion master will cause minions to defend the master.
-      if what <> $
-         AND IsClass(what,&Battler)
-      {
-         Send(self,@CommandMinionAttack,#oTarget=what);
-      }
-
       if what <> $ AND IsClass(what,&monster)
       {
          color_rsc = player_hit_color_blue;
@@ -5488,7 +5486,7 @@ messages:
          }
 
          // maximum of 30 damage per hit
-         damage = bound(damage,$,MAX_DAMAGE_PER_HIT*100);
+         damage = Bound(damage,$,MAX_DAMAGE_PER_HIT*100);
       }
 
       // Faction enemies an extra 15// damage to each other, above caps.
@@ -5890,7 +5888,7 @@ messages:
                            Create(&Revenant,#target=self,#location=poOwner,
                                  #level=Bound((((Send(self,@GetBaseMaxHealth)*110)/100)+
                                     (7*piKill_Count_decay)),95,180),
-                                 #diff=bound(Send(self,@GetBaseMaxHealth)/12,4,9),
+                                 #diff=Bound(Send(self,@GetBaseMaxHealth)/12,4,9),
                                  #karmic=-piKarma/100);
                         }
                      }
@@ -6721,7 +6719,7 @@ messages:
       //
       //     if this becomes undesirable, use this new code:
       //if piHealth > iPrev_max { piHealth = piMax_health + (piHealth - iPrev_max); }
-      //else { piHealth = bound(piHealth, $, piMax_health); }
+      //else { piHealth = Bound(piHealth, $, piMax_health); }
 
       Send(self,@NewHealth); // in case need heal timer
 
@@ -7108,62 +7106,62 @@ messages:
 
    GetMight()
    {
-      return bound((piMight + piMightMod),1,MAXIMUM_STAT);
+      return Bound((piMight + piMightMod),1,MAXIMUM_STAT);
    }
 
    GetIntellect()
    {
-      return bound((piIntellect + piIntellectMod),1,MAXIMUM_STAT);
+      return Bound((piIntellect + piIntellectMod),1,MAXIMUM_STAT);
    }
 
    GetAgility()
    {
-      return bound((piAgility + piAgilityMod),1,MAXIMUM_STAT);
+      return Bound((piAgility + piAgilityMod),1,MAXIMUM_STAT);
    }
 
    GetAim()
    {
-      return bound((piAim + piAimMod),1,MAXIMUM_STAT);
+      return Bound((piAim + piAimMod),1,MAXIMUM_STAT);
    }
 
    GetStamina()
    {
-      return bound((piStamina + piStaminaMod),1,MAXIMUM_STAT);
+      return Bound((piStamina + piStaminaMod),1,MAXIMUM_STAT);
    }
 
    GetMysticism()
    {
-      return bound((piMysticism + piMysticismMod),1,MAXIMUM_STAT);
+      return Bound((piMysticism + piMysticismMod),1,MAXIMUM_STAT);
    }
 
    GetRawMight()
    {
-      return bound(piMight,1,50);
+      return Bound(piMight,1,50);
    }
 
    GetRawIntellect()
    {
-      return bound(piIntellect,1,50);
+      return Bound(piIntellect,1,50);
    }
 
    GetRawAgility()
    {
-      return bound(piAgility,1,50);
+      return Bound(piAgility,1,50);
    }
 
    GetRawAim()
    {
-      return bound(piAim,1,50);
+      return Bound(piAim,1,50);
    }
 
    GetRawStamina()
    {
-      return bound(piStamina,1,50);
+      return Bound(piStamina,1,50);
    }
 
    GetRawMysticism()
    {
-      return bound(piMysticism,1,50);
+      return Bound(piMysticism,1,50);
    }
 
    GetRawStatisticsTotal()
@@ -7257,7 +7255,7 @@ messages:
       iChange = - ((iBase*iBase*ibase)/2500 + (5*iBase));
 
       // Swing factor must be a number from 1 to 10
-      swing_factor = bound(swing_factor,1,10);
+      swing_factor = Bound(swing_factor,1,10);
 
       return (iChange / (11 - swing_factor));
    }
@@ -7505,7 +7503,7 @@ messages:
       }
 
       iAbility = Send(self,@DecodeSpellAbility,#compound=i);
-      newAbility = bound(iAbility+amount,1,99);
+      newAbility = Bound(iAbility+amount,1,99);
       iChange = newAbility-iAbility;
 
       SetNth(plSpells,elemNum,Send(self,@EncodeSpell,
@@ -7743,7 +7741,7 @@ messages:
 
       // Spell format: [ num * 100 + ability ]
 
-      iBoundAbility = bound(iAbility,0,99);
+      iBoundAbility = Bound(iAbility,0,99);
       
       if iBoundAbility = 0
       {
@@ -8042,7 +8040,7 @@ messages:
       }
 
       iability = Send(self,@DecodeSkillAbility,#compound=i);
-      newability = bound(iability+amount,1,99);
+      newability = Bound(iability+amount,1,99);
       iChange = newability - iability;
 
       // If we advance a stroke or a proficiency, then
@@ -8166,12 +8164,12 @@ messages:
       if (oSkill = $)
       {
          // System has no info on this skill.
-         return False;
+         return FALSE;
       }
 
       // Skill format: [ num * 100 + ability ]
 
-      iBoundAbility = bound(iAbility,0,99);
+      iBoundAbility = Bound(iAbility,0,99);
       
       if iBoundAbility = 0
       {
@@ -8204,7 +8202,7 @@ messages:
                #change=iBoundAbility);
       }
 
-      return True;
+      return TRUE;
    }
 
    RemoveAllSkills()
@@ -8962,7 +8960,7 @@ messages:
       {
          if piTraining_points <= 1000
          {
-            points = bound(points,-piTraining_points,1000 - piTraining_points);
+            points = Bound(points,-piTraining_points,1000 - piTraining_points);
          }
          else if points > 0
          {
@@ -10169,8 +10167,8 @@ messages:
 
       if rand
       {
-         pants_color = random(XLAT_TO_SKIN1, XLAT_TO_SKIN4);
-         shirt_color = random(XLAT_TO_ORANGE, XLAT_HIGH_VALUE);
+         pants_color = Random(XLAT_TO_SKIN1, XLAT_TO_SKIN4);
+         shirt_color = Random(XLAT_TO_ORANGE, XLAT_HIGH_VALUE);
          if shirt_color = XLAT_TO_SKIN4
          {
             shirt_color = XLAT_TO_RED;
@@ -11408,7 +11406,7 @@ messages:
       return;
    }
 
-   GetPlayerLightLevel()
+   GetLightLevel()
    "Calls RecalcLight and returns the light level."
    {
       Send(self,@RecalcLight);
@@ -12046,7 +12044,7 @@ messages:
       // mean that the need is greater than 99// in three of the previous
       // level's spells, or 297 (most of the time).  Levels with fewer than
       // three spells are a special instance.
-      if iNeed > (99*(bound(prev_level,1,3)))
+      if iNeed > (99*(Bound(prev_level,1,3)))
       {
          if scryer <> $
          {
@@ -12423,7 +12421,7 @@ messages:
    // When players join, and subsequently log on, the
    // updated time gets set and the timer gets started.
 
-   UpdateFactionService(full=False,middle=False,front=False,adjust=True)
+   UpdateFactionService(full=FALSE,middle=FALSE,front=FALSE,adjust=TRUE)
    {
       local tyme, oSoldierShield;
 
@@ -12582,7 +12580,7 @@ messages:
       if wasint AND Send(oParl,@IsShutdown)
       {
          Send(self,@MsgSendUser,#message_rsc=player_intrigue_shut);
-         Send(self,@SetPlayerFlag,#flag=PFLAG_INTRIGUING,#value=False);
+         Send(self,@SetPlayerFlag,#flag=PFLAG_INTRIGUING,#value=FALSE);
          Send(oParl,@UpdateEffects,#who=self);
          if ptFactionTimer<>$
          {
@@ -13436,7 +13434,7 @@ messages:
 
    IsShadowForm()
    {
-      return (piDrawFX & DRAWFX_BLACK);
+      return (piDrawFX = DRAWFX_BLACK);
    }
 
    IsMorphed()
@@ -14320,7 +14318,7 @@ messages:
       return;
    }
 
-   // This section deals with minion code.
+   // Not in use anymore (2017-04-12)
    CommandMinionAttack(oTarget=$)
    {
       local oActive;
@@ -14365,11 +14363,42 @@ messages:
                      #flag=AI_MOVE_FOLLOW_MASTER,#value=FALSE);
                Send(oActive,@TargetSwitch,#what=oTarget,
                      #iHatred=100);
-               Send(oActive,@EnterStateChase,#target=oTarget,
+               Send(oActive,@EnterStateEngage,#target=oTarget,
                      #actnow=TRUE);
             }
          }
       }
+
+      return;
+   }
+
+   // Mercenary related messages...
+   GetMercenary()
+   {
+      return poMercenary;
+   }
+
+   // Validity checks are handled on the side of the mercenary.
+   SetMercenary(oMercenary=$)
+   {
+      poMercenary = oMercenary;
+
+      return;
+   }
+
+   MercenarySentAway()
+   {
+      if poMercenary = $
+      {
+         poMercenary = CreateTimer(self,@MercenaryTimer,300000);
+      }
+
+      return;
+   }
+
+   MercenaryTimer()
+   {
+      poMercenary = $;
 
       return;
    }
@@ -14718,6 +14747,117 @@ messages:
       }
 
       return;
+   }
+
+   GetStealth(what=$)
+   {
+      local iStealth, iLight;
+
+      if (what = $) OR (poOwner = $)
+      {
+         return FALSE;
+      }
+
+      // Stealth is primarily based on our agility and intellect.
+      iStealth = 2 * Send(self,@GetAgility) + Send(self,@GetIntellect);
+
+      // Sneaking increases stealth.
+      if (Send(self,@GetSpeed) < 1000)
+      {
+         iStealth += 100;
+      }
+
+      // Invisibility grants greatly increased stealth.
+      if Send(self,@IsInvisible)
+      {
+         iStealth += 200;
+      }
+
+      // Shadowform grants slightly increased stealth.
+      if Send(self,@IsShadowForm)
+      {
+         iStealth += 50;
+      }
+
+      // A blind target has a very hard time spotting enemies.
+      if Send(what,@IsEnchanted,#byClass=&Blind)
+         OR Send(what,@IsEnchanted,#byClass=&Dazzle)
+      {
+         iStealth += 200;
+      }
+
+      iLight = Send(poOwner,@GetRoomLight);
+      iLight += Send(what,@GetLightLevel);
+
+      iStealth += Bound(155 - iLight,-100,150);
+
+      return Bound(iStealth,0,300);
+   }
+
+   IsAlly(target=$)
+   {
+      local oTargetMaster;
+
+      if target = $
+      {
+         return FALSE;
+      }
+
+      if NOT IsClass(target,&Battler)
+      {
+         return FALSE;
+      }
+
+      if target = self
+      {
+         return TRUE;
+      }
+
+      oTargetMaster = Send(target,@GetMaster);
+
+      if oTargetMaster <> $
+      {
+         if Send(oTargetMaster,@IsAlly,#target=self)
+         {
+            return TRUE;
+         }
+      }
+      else if Send(target,@IsAlliedClass,#what=self)
+      {
+         return TRUE;
+      }
+
+      return FALSE;
+   }
+
+   IsAlliedClass(what=$)
+   {
+      local iFaction;
+
+      if IsClass(what,&Battler)
+      {
+         // Let's get the target's faction.
+         iFaction = Send(what,@GetFaction);
+
+         // If we aren't neutral ourselves, we are
+         // allied with targets of the same faction.
+         if piFaction <> FACTION_NEUTRAL
+         {
+            if (iFaction = piFaction)
+            {
+               return TRUE;
+            }
+         }
+         // If we are neutral, we are allied with all
+         // troops, as long as they aren't necromancers.
+         else if IsClass(what,&FactionTroop)
+            AND (iFaction <> FACTION_NECROMANCER)
+         {
+            return TRUE;
+         }
+      }
+
+      return FALSE;
    }
 
 end

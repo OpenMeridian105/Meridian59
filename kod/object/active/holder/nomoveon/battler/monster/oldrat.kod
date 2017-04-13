@@ -59,6 +59,13 @@ classvars:
    vrSound_aware = oldrat_sound_aware
    vrSound_death = oldrat_sound_death
 
+   viPoisonChance = 8
+   viPoisonStrength = 1000
+   viPoisonDuration = 15000
+   viPoisonVigor = 25
+
+   vbCanSiphon = FALSE
+
 properties:
 
    piAnimation = ANIM_NONE
@@ -71,23 +78,6 @@ messages:
                         [ATCK_WEAP_BLUDGEON, -10],
                         [ATCK_WEAP_SLASH, 20] ];
       propagate;
-   }
-
-   MonsterAttack(what = $)
-   {
-      // add in any attack animation calls
-      Send(self,@DoSlash);
-
-      return;
-   }
-
-   DoSlash()
-   {
-      piAnimation = ANIM_ATTACK;
-      Send(poOwner,@SomethingChanged,#what=self);
-      piAnimation = ANIM_NONE;
-
-      return;
    }
 
    SendLookAnimation()
@@ -121,6 +111,17 @@ messages:
    IsAlly(target = $)
    {
       return IsClass(target,&GiantRat) OR IsClass(target,&OldRat);
+   }
+
+   IsAlliedClass(what=$)
+   {
+      if IsClass(what,&GiantRat)
+         OR IsClass(what,&OldRat)
+      {
+         return TRUE;
+      }
+
+      propagate;
    }
 
 end

@@ -20,14 +20,14 @@ classvars:
 
 properties:
 
-   piMana = 100
+   piMana = 10000
    piMax_Mana = 100
 
 messages:
 
    SetEquipment()
    {
-      local oEquipmentItem, iBonusModifier, oSpell;
+      local oEquipmentItem, iBonusModifier, oSpell, lSpellList;
 
       oEquipmentItem = Create(&Mace);
       iBonusModifier = 3;
@@ -40,15 +40,16 @@ messages:
          oEquipmentItem = Create(&LeatherArmor);
          iBonusModifier = Random(30,60);
       }
-      else if plSpellBook = $
+      else if plActions = $
       {
          oEquipmentItem = Create(&Robe,#color=Random(XLAT_TO_RED,XLAT_TO_SKY));
          iBonusModifier = Random(20,40);
       }
       else
       {
+         lSpellList = Send(self,@GetSpellList);
          oSpell = Send(SYS,@FindSpellByNum,
-                        #num=First(Nth(plSpellBook,Random(1,Length(plSpellBook)))));
+                        #num=Nth(lSpellList,Random(1,Length(lSpellList))));
          oEquipmentItem = Create(&DiscipleRobe,#school=Send(oSpell,@GetSchool));
          iBonusModifier = Random(40,60);
       }

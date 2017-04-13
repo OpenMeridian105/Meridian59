@@ -70,6 +70,11 @@ classvars:
    viCashmin = 150
    viCashmax = 500
 
+   vbCanPoison = FALSE
+   vbCanBleed = FALSE
+   vbCanSiphon = FALSE
+   vbCanFatigue = FALSE
+
 properties:
 
    vrName = LivingStatue_name_rsc
@@ -84,7 +89,7 @@ properties:
    viDifficulty = 5
    viVisionDistance = 3
    // Attack range of 192, or 3 row/col.
-   viAttackRange = 192
+   viMeleeRange = 192
    viKarma = -40
    viGender = GENDER_MALE
 
@@ -430,7 +435,7 @@ messages:
       if poOwner <> $
       {
          Send(poOwner,@SomethingChanged,#what=self);
-         Send(self,@EnterStateChase,#target=poTarget,#actnow=TRUE);
+         Send(self,@EnterStateEngage,#target=poTarget,#actnow=TRUE);
       }
 
       // Now, fix our name!
@@ -490,6 +495,33 @@ messages:
       poOriginalShield = $;
 
       propagate;
+   }
+
+   // Statues don't regenerate health.
+   CalculateHealthPerTick()
+   {
+      local iHealthPerTick, iBoost, i;
+
+      iHealthPerTick = 0;
+
+      // Additional effects may cause our health to decay.
+      iHealthPerTick += piHealth_Rate;
+
+      iHealthPerTick = Bound(iHealthPerTick,$,0);
+
+      // Add a decay of 1 point per 5 seconds if sitting above the max.
+      if piHealth > 100*piMax_health
+      {
+         iHealthPerTick -= 200;
+      }
+
+      // Stop any decay if we are already sitting at 0 health.
+      if piHealth = 0
+      {
+         iHealthPerTick = Bound(iHealthPerTick,0,$);
+      }
+
+      return iHealthPerTick;
    }
 
 end

@@ -60,6 +60,20 @@ classvars:
    vrSound_aware = zombie_sound_aware
    vrSound_death = zombie_sound_death
 
+   vbCanPoison = FALSE
+   vbCanBleed = FALSE
+   vbCanSiphon = FALSE
+   vbCanFatigue = FALSE
+
+   viPoisonChance = 10
+   viPoisonStrength = 1000
+   viPoisonDuration = 5000
+   viPoisonHealth = 100
+   viPoisonVigor = 50
+
+   // Quite used to dark places.
+   viNightVision = 100
+
 properties:
 
    // our private data
@@ -100,15 +114,6 @@ messages:
       }
 
       propagate;
-   }
-
-   MonsterAttack(what = $)
-   {
-      piAnimation = ANIM_ATTACK;
-      Send(poOwner,@SomethingChanged,#what=self);
-      piAnimation = ANIM_NONE;
-
-      return;
    }
 
    SendLookAnimation()
@@ -190,6 +195,16 @@ messages:
       }
 
       return;
+   }
+
+   IsAlliedClass(what=$)
+   {
+      if Send(what,@IsUndead)
+      {
+         return TRUE;
+      }
+
+      propagate;
    }
 
 end

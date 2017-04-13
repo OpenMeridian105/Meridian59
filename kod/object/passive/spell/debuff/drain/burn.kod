@@ -1,0 +1,79 @@
+// Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+// All rights reserved.
+//
+// This software is distributed under a license that is described in
+// the LICENSE file that accompanies it.
+//
+// Meridian is a registered trademark.
+
+
+/////////////////////////////////////////////////////////////////////////////////
+Burn is Drain
+
+constants:
+
+   include blakston.khd
+
+resources:
+
+   include burn.lkod
+
+   burn_on = "~k~IYour clothes have caught fire!"
+   burn_off  = "~k~IYou stop burning."
+   burn_icon = iburn.bgf
+   burn_name = "burning"
+
+   burn_desc = \
+      "Your calm and collected response to the predicament in which you "
+      "currently find yourself is a testament to your admirable resolve in "
+      "the face of danger.  Most people tend to run around in circles and "
+      "scream when they are on fire."
+
+   burn_sound = fireplac.ogg
+
+classvars:
+
+   vrIcon = burn_icon
+   viShow_enchantment_icon = 0x02
+   vrName = burn_name
+   vrDesc = burn_desc
+
+   vrEnchantment_On = burn_on
+   vrEnchantment_Off = burn_off
+   vrSucceed_wav = burn_sound
+
+   viSpell_num = SID_BURN
+   viSchool = SS_FAREN
+
+properties:
+
+   // Infrastructure for burn drain effect only.
+   pbCanBeLearned = FALSE
+
+messages:
+
+   StartBurn(who=$,source=0,strength=0,duration=0)
+   "Health loss is in units of 10^-3 health points per second."
+   "Duration is in milliseconds."
+   {
+      local iFlash;
+
+      Send(who,@StartOverTimeEffect,#strength=-strength,#duration=duration,
+            #what=self,#who=source,#state=100,#type=TYPE_HEALTH,
+            #removable=REMOVE_INTERNAL);
+
+      if IsClass(who,&Player)
+      {
+         Send(who,@MsgSendUser,#message_rsc=vrEnchantment_On);
+
+         // Visual indication of drain effect.
+         iFlash = Bound(strength / 2,100,2000);
+         Send(who,@EffectSendUserDurationAndXlat,#effect=EFFECT_FLASHXLAT,
+               #duration=iFlash,#xlat=81);
+      }
+
+      return;
+   }
+
+end
+////////////////////////////////////////////////////////////////////////////////

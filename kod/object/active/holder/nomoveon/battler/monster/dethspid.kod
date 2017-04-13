@@ -62,7 +62,7 @@ classvars:
    viDifficulty = 5
    viVisionDistance = 12
    viKarma = -30
-   viDefault_behavior = AI_MOVE_REGROUP | AI_FIGHT_AGGRESSIVE
+   viDefault_behavior = AI_FIGHT_AGGRESSIVE
    viWimpy = 30
    viCashmin = 375
    viCashmax = 950
@@ -70,6 +70,11 @@ classvars:
    vrSound_miss = DeathSpider_sound_miss
    vrSound_aware = DeathSpider_sound_aware
    vrSound_death = DeathSpider_sound_death
+
+   vbCanSiphon = FALSE
+
+   // Quite used to dark places.
+   viNightVision = 50
 
 properties:
 
@@ -91,13 +96,6 @@ messages:
       Send(self,@DoLegSpasm);
 
       propagate;
-   }
-
-   MonsterAttack()
-   {
-      Send(self,@DoLegSpasm);
-
-      return;
    }
 
    DoLegSpasm()
@@ -136,21 +134,15 @@ messages:
       propagate;
    }
 
-   IsAlly(target = $)
+   IsAlliedClass(what=$)
    {
-      if target = $
-      {
-         return FALSE;
-      }
-
-      if IsClass(target,&Spider)
-         OR isClass(target,&SpiderBaby)
-         OR isClass(target,&SpiderQueen)
+      if IsClass(what,&SpiderBaby)
+         OR IsClass(what,&Spider)
+         OR IsClass(what,&SpiderQueen)
       {
          return TRUE;
       }
 
-      // Charm checks up higher.
       propagate;
    }
 

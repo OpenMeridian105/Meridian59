@@ -51,11 +51,9 @@ classvars:
    viDifficulty = 7
    viVisionDistance = 16
    // Attack range of 192, or 3 row/col.
-   viAttackRange = 192
+   viMeleeRange = 192
    viKarma = -55
-   viDefault_behavior = \
-      AI_FIGHT_AGGRESSIVE | AI_MOVE_FLEE_FRIGHTENERS \
-      | AI_FIGHT_HYPERAGGRESSIVE | AI_FIGHT_SWITCHALOT
+   viDefault_behavior = AI_FIGHT_AGGRESSIVE | AI_MOVE_FLEE_FRIGHTENERS | AI_FIGHT_SWITCHALOT
    viCashmin = 250
    viCashmax = 650
    viWimpy = 4
@@ -64,6 +62,15 @@ classvars:
    vrSound_miss = CaveOrc_sound_miss
    vrSound_aware = CaveOrc_sound_aware
    vrSound_death = CaveOrc_sound_death
+
+   vbCanSiphon = FALSE
+
+   viBleedChance = 15
+   viBleedStrength = 1500
+   viBleedDuration = 5000
+
+   // Very used to dark places.
+   viNightVision = 150
 
 properties:
 
@@ -94,22 +101,6 @@ messages:
       }
 
       return (viDifficulty*10)/4;
-   }
-
-   MonsterAttack(what = $)
-   {
-      Send(self,@DoSlash);
-
-      return;
-   }
-
-   DoSlash()
-   {
-      piAnimation = ANIM_ATTACK;
-      Send(poOwner,@SomethingChanged,#what=self);
-      piAnimation = ANIM_NONE;
-
-      return;
    }
 
    SendLookAnimation()
@@ -145,6 +136,19 @@ messages:
    IsFrightenedOf(target=$)
    {
       return IsClass(target,&GiantRat);
+   }
+
+   IsAlliedClass(what=$)
+   {
+      if IsClass(what,&Orc)
+         OR IsClass(what,&OldOrc)
+         OR IsClass(what,&OrcWizard)
+         OR IsClass(what,&OrcPitBoss)
+      {
+         return TRUE;
+      }
+
+      propagate;
    }
 
 end

@@ -68,9 +68,13 @@ classvars:
    vrSound_death = EvilTwin_sound_death
    vrMinion_trouble = EvilTwin_trouble
 
-   viDefault_behavior = \
-      AI_FIGHT_SINGLEMINDED | AI_FIGHT_MONSTERS \
-      | AI_FIGHT_NEWBIESAFE | AI_FIGHT_AGGRESSIVE
+   viDefault_behavior = AI_FIGHT_SINGLEMINDED | AI_FIGHT_NEWBIESAFE | AI_FIGHT_AGGRESSIVE
+
+   vbCanPoison = FALSE
+   vbCanBleed = FALSE
+   vbCanSiphon = FALSE
+   vbCanFatigue = FALSE
+   vbCanBurn = FALSE
 
 properties:
 
@@ -104,6 +108,13 @@ messages:
       piDamagePercent = viDamagePercent;
       piSpellpower = iSpellpower;
       poArrow = Create(&Arrow);
+
+      propagate;
+   }
+
+   Constructed()
+   {
+      Post(self,@SomethingChanged,#what=poOriginal);
 
       propagate;
    }
@@ -144,7 +155,7 @@ messages:
       }
 
       Send(self,@TargetSwitch,#what=oTarget,#iHatred=1000);
-      Send(self,@EnterStateChase);
+      Send(self,@EnterStateEngage,#actnow=TRUE);
 
       return;
    }
@@ -441,7 +452,7 @@ messages:
       if poOriginal <> poMaster
       {
          Send(self,@TargetSwitch,#what=poOriginal,#iHatred=1000);
-         Send(self,@EnterStateChase,#actnow=FALSE);
+         Send(self,@EnterStateEngage,#actnow=TRUE);
       }
 
       return;
@@ -690,9 +701,53 @@ messages:
 
    SomethingChanged(what=$)
    {
+      local oWeapon, iRange, i;
+
       if what = poOriginal
       {
          piDrawfx = Send(poOriginal,@GetDrawingEffects);
+
+         foreach i in plActions
+         {
+            plActions = DelListElem(plActions,i);
+         }
+
+         plActions = Cons ([SKID_MINIMUM,0,0,MAX_KOD_INT,50,1,99],plActions);
+
+         // Gotta get the evil twin's correct action list.
+         if IsClass(poOriginal,&User)
+         {
+            oWeapon = Send(poOriginal,@GetWeapon);
+
+            if oWeapon <> $
+            {
+               iRange = Send(oWeapon,@GetRange);
+               iRange *= iRange;
+
+               if IsClass(oWeapon,&RangedWeapon)
+               {
+                  plActions = Cons([SKID_FIRE,0,0,iRange,100,1,99],plActions);
+               }
+               else
+               {
+                  plActions = Cons([SKID_SLASH,0,0,iRange,100,1,99],plActions);
+               }
+            }
+            else
+            {
+               plActions = Cons([SKID_SLASH,0,0,4096,100,1,99],plActions);
+            }
+         }
+         else
+         {
+            iRange = Send(poOriginal,@GetMeleeRange);
+            iRange *= iRange;
+            plActions = Cons([SKID_SLASH,0,0,iRange,100,1,99],plActions);
+
+            iRange = Send(poOriginal,@GetFireRange);
+            iRange *= iRange;
+            plActions = Cons([SKID_FIRE,0,0,iRange,100,1,99],plActions);
+         }
 
          if IsClass(poOriginal,&User)
          {
@@ -773,10 +828,135 @@ messages:
       return Send(poOriginal,@GetIcon);
    }
 
-   MonsterAttack(what=$)
+   DoMeleeAnimation()
+   "Handles melee attack animation."
    {
-      // Do the animation!
-      Send(self,@DoAttack);
+      local oWeapon, oAmmo, i;
+
+      Send(self,@GetOriginalInfo);
+
+      if IsClass(poOriginal,&User)
+      {
+         oWeapon = Send(poOriginal,@GetWeapon);
+
+         if oWeapon <> $
+         {
+            if IsClass(oWeapon,&TouchAttackSpell)
+            {
+               piAnimation = PANM_CAST;
+            }
+            else
+            {
+               piAnimation = PANM_WEAPON_ATTACK;
+            }
+         }
+         else
+         {
+            piAnimation = PANM_FIST_ATTACK;
+         }
+      }
+      else
+      {
+         piAnimation = Send(poOriginal,@GetMeleeAnimation);
+      }
+
+      Send(poOwner,@SomethingChanged,#what=self);
+
+      if IsClass(poOriginal,&User)
+      {
+         piAnimation = PANM_NONE;
+      }
+      else
+      {
+         piAnimation = ANIM_NONE;
+      }
+
+      return;
+   }
+
+   DoMissileAnimation()
+   "Handles ranged attack animation. Default is same as melee."
+   {
+      local oWeapon, oAmmo, i;
+
+      Send(self,@GetOriginalInfo);
+
+      if IsClass(poOriginal,&User)
+      {
+         oWeapon = Send(poOriginal,@GetWeapon);
+         oAmmo = poArrow;
+
+
+         if IsClass(oWeapon,&Bow)
+         {
+            piAnimation = PANM_BOW_FIRE;
+
+            foreach i in Send(poOriginal,@GetPlayerUsing)
+            {
+               if Send(i,@GetItemUseType) = ITEM_USE_QUIVER
+               {
+                  oAmmo = i;
+               }
+            }
+
+            Send(poOwner,@SomethingShot,#who=self,#target=poTarget,#projectile=oAmmo);
+         }
+         else
+         {
+            piAnimation = PANM_FIST_ATTACK;
+         }
+      }
+      else
+      {
+         piAnimation = Send(poOriginal,@GetFireAnimation);
+
+         // If original fires a projectile, we send one too.
+         if Send(poOriginal,@GetProjectileIcon) <> $
+         {
+            Send(poOwner,@SomethingShot,#who=self,#target=poTarget,#projectile=poOriginal);
+         }
+      }
+
+      Send(poOwner,@SomethingChanged,#what=self);
+
+      if IsClass(poOriginal,&User)
+      {
+         piAnimation = PANM_NONE;
+      }
+      else
+      {
+         piAnimation = ANIM_NONE;
+      }
+
+      return;
+   }
+
+   MonsterCastAnimation(iSpellNum=$)
+   "If a monster has a special cast animation, call this."
+   {
+      local oWeapon, oAmmo, i;
+
+      Send(self,@GetOriginalInfo);
+
+      if IsClass(poOriginal,&User)
+      {
+         piAnimation = PANM_CAST;
+      }
+      else
+      {
+         piAnimation = Send(poOriginal,@GetCastAnimation);
+      }
+
+      Send(poOwner,@SomethingChanged,#what=self);
+
+      if IsClass(poOriginal,&User)
+      {
+         piAnimation = PANM_NONE;
+      }
+      else
+      {
+         piAnimation = ANIM_NONE;
+      }
 
       return;
    }
@@ -797,76 +977,6 @@ messages:
    GetDodgeAbility(stroke_obj=$)
    {
       return Send(poOriginal,@GetDodgeAbility,#stroke_obj=stroke_obj);
-   }
-
-   DoAttack()
-   {
-      local oWeapon, oAmmo, i;
-
-      Send(self,@GetOriginalInfo);
-
-      if IsClass(poOriginal,&User)
-      {
-         oWeapon = Send(poOriginal,@GetWeapon);
-         oAmmo = poArrow;
-
-         if oWeapon <> $
-         {
-            if IsClass(oWeapon,&Bow)
-            {
-               piAnimation = PANM_BOW_FIRE;
-
-               foreach i in Send(poOriginal,@GetPlayerUsing)
-               {
-                  if Send(i,@GetItemUseType) = ITEM_USE_QUIVER
-                  {
-                     oAmmo = i;
-                  }
-               }
-
-               Send(poOwner,@SomethingShot,#who=self,#target=poTarget,
-                     #projectile=oAmmo);
-            }
-            else if IsClass(oWeapon,&TouchAttackSpell)
-            {
-               piAnimation = PANM_CAST;
-            }
-            else
-            {
-               piAnimation = PANM_WEAPON_ATTACK;
-            }
-         }
-         else
-         {
-            piAnimation = PANM_FIST_ATTACK;
-         }
-      }
-      else
-      {
-         piAnimation = ANIM_ATTACK;
-         Send(poOriginal,@SetAnimation,#animation=piAnimation);
-
-         // If original fires a projectile, we send one too.
-         if Send(poOriginal,@GetProjectileIcon) <> $
-         {
-            Send(poOwner,@SomethingShot,#who=self,#target=poTarget,
-                  #projectile=poOriginal);
-         }
-      }
-
-      Send(poOwner,@SomethingChanged,#what=self);
-
-      if IsClass(poOriginal,&User)
-      {
-         piAnimation = PANM_NONE;
-      }
-      else
-      {
-         piAnimation = ANIM_NONE;
-         Send(poOriginal,@SetAnimation,#animation=piAnimation);
-      }
-
-      return;
    }
 
    ShowDesc()

@@ -15,8 +15,6 @@ constants:
    include blakston.khd
 
    SEC_PER_FRAME = 150
-   EXERTION_DAMAGE_MIN = 0
-   EXERTION_DAMAGE_MAX = 3
 
 resources:
 
@@ -57,15 +55,29 @@ classvars:
    viLevel = 130
    viDifficulty = 7
    viVisionDistance = 20
+   viSocial = 1
    // Attack range of 192, or 3 row/col.
-   viAttackRange = 192
+   viMeleeRange = 192
    viKarma = -70
-   viDefault_behavior = AI_FIGHT_AGGRESSIVE | AI_FIGHT_HYPERAGGRESSIVE
+   viDefault_behavior = AI_FIGHT_AGGRESSIVE
    viCashmin = -3600
    viCashmax = 1250
    vrSound_miss = NarthylWorm_sound_miss
    vrSound_aware = NarthylWorm_sound_aware
    vrSound_death = NarthylWorm_sound_death
+
+   viFatigueChance = 100
+   viFatigueStrength = 500
+   viFatigueDuration = 4000
+
+   vbCanPoison = FALSE
+   vbCanSiphon = FALSE
+
+   // Airborne. Don't care if hovering above water or not.
+   vbAquatic = TRUE
+
+   // Very used to dark places.
+   viNightVision = 150
 
 properties:
 
@@ -85,14 +97,7 @@ messages:
       propagate;
    }
 
-   MonsterAttack(what=$)
-   {
-      Send(self,@DoSlash);
-
-      return;
-   }
-
-   DoSlash()
+   DoMeleeAnimation(what=$)
    {
       if poOwner <> $
       {
@@ -155,16 +160,6 @@ messages:
       else
       {
          AddPacket(1,ANIMATE_CYCLE,4,SEC_PER_FRAME,2,1,2,4); // that's the standing one.
-      }
-
-      return;
-   }
-
-   HitSideEffect(what=$)
-   {
-      if IsClass(what,&Player)
-      {
-         Send(what,@LoseVigor,#precision=TRUE,#amount=Random(EXERTION_DAMAGE_MIN*100,EXERTION_DAMAGE_MAX*100));
       }
 
       return;

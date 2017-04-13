@@ -80,8 +80,8 @@ classvars:
    viAttack_type = ATCK_WEAP_PIERCE
    viLevel = 145
    viDifficulty = 6
-   // Attack range of 192, or 3 row/col.
-   viAttackRange = 192
+   viMeleeRange = 0
+   viFireRange = 192
    viVisionDistance = 18
    viKarma = 40
    viDefault_behavior = AI_FIGHT_AGGRESSIVE
@@ -97,6 +97,8 @@ classvars:
    vrSound_death = DragonFlyQueen_sound_death
 
    vrUnwanted_give = DragonFlyQueen_unwanted_give
+
+   vbCanSiphon = FALSE
 
 properties:
 
@@ -127,14 +129,8 @@ messages:
       propagate;
    }
 
-   MonsterAttack(what = $)
-   {
-      Send(self,@DoSpit);
-
-      return;
-   }
-
-   DoSpit()
+   DoMissileAnimation()
+   "Handles ranged attack animation. Default is same as melee."
    {
       piAnimation = ANIM_ATTACK;
       piDrawEffectFlag = piDrawEffectFlag | OF_BOUNCING;
@@ -391,7 +387,6 @@ messages:
          Send(self,@SetBehaviorFlag,#flag=AI_MOVE_FOLLOW_MASTER,#value=TRUE);
          Send(self,@SetBehaviorFlag,#flag=AI_FIGHT_AGGRESSIVE,#value=FALSE);
          Send(self,@SetBehaviorFlag,#flag=AI_FIGHT_NEWBIESAFE);
-         Send(self,@SetBehaviorFlag,#flag=AI_FIGHT_MONSTERS);
       }
 
       return;

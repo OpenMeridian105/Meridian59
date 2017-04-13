@@ -58,6 +58,12 @@ classvars:
    vrSound_aware = spiderbaby_sound_aware
    vrSound_death = spiderbaby_sound_death
 
+   viPoisonChance = 20
+   viPoisonStrength = 200
+   viPoisonDuration = 10000
+
+   vbCanSiphon = FALSE
+
 properties:
 
    piAnimation = ANIM_NONE
@@ -76,15 +82,6 @@ messages:
       Send(self,@DoLegSpasm);
 
       propagate;
-   }
-
-   MonsterAttack(what = $)
-   {
-      piAnimation = ANIM_ATTACK;
-      Send(poOwner,@SomethingChanged,#what=self);
-      piAnimation = ANIM_NONE;
-
-      return;
    }
 
    DoLegSpasm()
@@ -123,10 +120,16 @@ messages:
       propagate;
    }
 
-   IsAlly(target = $)
-   "Newbie monster has no allies."
+   IsAlliedClass(what=$)
    {
-      return FALSE;
+      if IsClass(what,&DeathSpider)
+         OR IsClass(what,&Spider)
+         OR IsClass(what,&SpiderQueen)
+      {
+         return TRUE;
+      }
+
+      propagate;
    }
 
 end

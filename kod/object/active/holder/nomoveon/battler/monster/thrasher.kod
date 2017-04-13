@@ -65,33 +65,35 @@ classvars:
    viNormalSpeed = SPEED_FAST
    viAttack_type = ATCK_WEAP_BLUDGEON
    viVisionDistance = 25
+   viSocial = 1
    // Attack range of 192, or 3 row/col.
-   viAttackRange = 192
+   viMeleeRange = 192
    viAttributes = 0
    viKarma = -75
    vbIsUndead = TRUE
-   viDefault_behavior = AI_FIGHT_AGGRESSIVE | AI_FIGHT_HYPERAGGRESSIVE \
-                        | AI_FIGHT_LASHOUT | AI_MOVE_FLEE_FRIGHTENERS
+   viDefault_behavior = AI_FIGHT_AGGRESSIVE | AI_FIGHT_LASHOUT | AI_MOVE_FLEE_FRIGHTENERS
 
    vrSound_hit = thrasher_sound_attack
    vrSound_miss = thrasher_sound_attack
    vrSound_aware = thrasher_sound_aware
    vrSound_death = thrasher_sound_death
 
+   vbCanSiphon = FALSE
+
+   // Doesn't have eyes, senses prey some other way.
+   viNightVision = 255
+
 properties:
 
    viSpeed = SPEED_FAST
    viLevel = 150
    viDifficulty = 8
+   viBonusSwing = 0
+   vbSpin = TRUE
 
    piAnimation = ANIM_NONE
    // Default shield or $ for default.
    prShieldOverlay = $
-   pbFirstAttack = TRUE
-   ptSecondAttack = $
-   piSpinDelay = 75
-   ptSpin = $
-   piSpinAngle = ANGLE_EAST
 
 messages:
 
@@ -120,6 +122,11 @@ messages:
 
       Send(self,@SelectAdditionalWeapon);
       Send(self,@TweakBehavior);
+
+      if prShieldOverlay <> thrasher_shield_overlay
+      {
+         viBonusSwing = 100;
+      }
 
       propagate;
    }
@@ -209,90 +216,7 @@ messages:
       viSpeed = viNormalSpeed;
       piBehavior &= ~(AI_NOMOVE | AI_NOFIGHT | AI_NPC);
       Send(poOwner,@SomethingChanged,#what=self);
-      Send(self,@EnterStateChase,#target=poTarget,#actnow=TRUE);
-
-      return;
-   }
-
-   //// Thrasher attack code
-
-   TryAttack(what=$,stroke_obj=$)
-   {
-      local lFinalTargets, oRoom;
-
-      oRoom = Send(self,@GetOwner);
-
-      // Don't attack while spinning.
-      if piAnimation = ANIM_SPIN
-      {
-         return;
-      }
-
-      lFinalTargets = Send(self,@GetFinalTargets);
-      if Length(lFinalTargets) > 1
-         AND NOT Send(oRoom,@CheckRoomFlag,#flag=ROOM_NO_COMBAT)
-         AND NOT Send(oRoom,@CheckRoomFlag,#flag=ROOM_NO_MOB_COMBAT)
-      {
-         Send(self,@StartSpin);
-
-         return;
-      }
-
-      propagate;
-   }
-
-   MonsterAttack(what = $)
-   {
-      // The thrasher has a dual attack, like the Pit Boss...
-      // but only if the thrasher has a secondary weapon on 
-      // in its prShieldOverlay.
-
-      if pbFirstAttack
-      {
-         Send(self,@DoBludgeon);
-         if ptSecondAttack = $
-         {
-            ptSecondAttack = CreateTimer(self,@SecondAttackTimer,400);
-            pbFirstAttack = FALSE;
-
-            return;
-         }
-
-         pbFirstAttack = TRUE;
-      }
-
-      return;
-   }
-
-   SecondAttackTimer()
-   {
-      if pbFirstAttack
-      {
-         return;
-      }
-
-      ptSecondAttack = $;
-      if poTarget <> $ AND Send(self,@GetOwner) = Send(poTarget,@GetOwner)
-      {  
-         // We only want one extra attack if the thrasher is armed with weapon.
-         if prShieldOverlay <> thrasher_shield_overlay
-         {
-            // Create another timer here so it doesn't blend so well.
-            Send(self,@TryAttack,#what=poTarget);
-
-         }
-
-         pbFirstAttack = TRUE;
-      }
-
-      return;
-   }
-
-   DoBludgeon()
-   {
-      piAnimation = ANIM_ATTACK;
-      Send(poOwner,@SomethingChanged,#what=self);
-      piAnimation = ANIM_NONE;
+      Send(self,@EnterStateEngage,#target=poTarget,#actnow=TRUE);
 
       return;
    }
@@ -309,99 +233,6 @@ messages:
       }
 
       return 0;
-   }
-
-   //// Thrasher spin attack
-
-   GetFinalTargets()
-   {
-      local oRoom, i, each_obj, lValidTargets;
-
-      oRoom = Send(self,@GetOwner);
-      foreach i in Send(oRoom,@GetHolderActive)
-      {
-         each_obj = First(i);
-         if IsClass(each_obj,&User)
-            AND Send(self,@CanReach,#what=each_obj)
-            AND (NOT Send(each_obj,@IsInCannotInteractMode))
-         {
-            lValidTargets = Cons(each_obj,lValidTargets);
-         }
-      }
-
-      return lValidTargets;
-   }
-
-   DoSpinAttack(lFinalTargets=$)
-   {
-      local i, lTargets, iDamage;
-
-      iDamage = Random(SPIN_DAMAGE_MIN,SPIN_DAMAGE_MAX);
-
-      lTargets = lFinalTargets;
-
-      if lTargets = $
-      {
-         lTargets = Send(self,@GetFinalTargets);
-      }
-
-      foreach i in lTargets
-      {
-         if Send(i,@AssessDamage,#what=self,#damage=iDamage,
-                  #atype=viAttack_type,#aspell=viAttack_spell,
-                  #absolute=TRUE,#precision=TRUE) = $
-         {
-            Send(self,@KilledSomething,#what=i,#use_weapon=self);
-         }
-
-         Send(i,@MsgSendUser,#message_rsc=thrasher_spin_message);
-         Send(i,@WaveSendUser,#wave_rsc=thrasher_sound_attack);
-      }
-
-      return;
-   }
-
-   //// Animation for spin attack
-
-   StartSpin(delay = 200)
-   {
-      if poOwner = $
-      {
-         return;
-      }
-
-      piSpinDelay = delay;
-      piSpinAngle = ANGLE_EAST;
-      Send(self,@SpinTimer);
-
-      return;
-   }
-
-   SpinTimer()
-   {
-      ptSpin = $;
-
-      piAnimation = ANIM_SPIN;
-
-      if piSpinAngle > MAX_ANGLE
-      {
-         // We have spun all the way around.
-         piAnimation = ANIM_NONE;
-         Send(poOwner,@SomethingChanged,#what=self);
-
-         // Now do our damage!
-         Send(self,@DoSpinAttack);
-
-         return;
-      }
-
-      Send(poOwner,@SomethingTurned,#what=self,#new_angle=piSpinAngle);
-      Send(poOwner,@SomethingChanged,#what=self);
-      piSpinAngle += (MAX_ANGLE / 4);
-
-      ptSpin = CreateTimer(self,@SpinTimer,piSpinDelay);
-
-      return;
    }
 
    //// Animation and overlays
@@ -476,23 +307,6 @@ messages:
       AddPacket(4,prShieldOverlay, 1,HS_HEAD, 1,ANIMATE_NONE, 2,1);
 
       return;
-   }
-
-   Delete()
-   {
-      if ptSecondAttack <> $
-      {
-         DeleteTimer(ptSecondAttack);
-         ptSecondAttack = $;
-      }
-
-      if ptSpin <> $
-      {
-         DeleteTimer(ptSpin);
-         ptSpin = $;
-      }
-
-      propagate;
    }
 
 end

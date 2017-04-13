@@ -21,14 +21,19 @@ resources:
    forgetspell_name_rsc = "forget"
    forgetspell_icon_rsc = iforget.bgf
    forgetspell_desc_rsc = \
-      "Causes the victim to forget his or her own abilities."
+      "Causes the victim to forget his or her own abilities and at times, "
+      "even their enemies."
    forgetspell_already_enchanted = \
       "You can't seem to make %s%s any more forgetful."
    forgetspell_on = "The art of %s slips from your mind."
    forgetspell_off = \
       "You suddenly recall what it was that you had forgotten."
    forgetspell_caster = \
-      "You glare at %s%s and they appear momentarily confused."
+      "%s%s blinks a few times and seems quite distracted."
+   forgetspell_memory_wipe_caster = \
+      "It seems as though %s%s has forgotten about you."
+   forgetspell_memory_wipe_full = \
+      "It seems as though %s%s has lost all recollection of previous events."
    forgetspell_cast_self = \
       "It occurs to you that casting forget on yourself may cause you to "
        "forget forgetting what you had forgotten, and thus you might forget "
@@ -71,8 +76,7 @@ messages:
    ResetReagents()
    {
       plReagents = $;
-      plReagents = Cons([&FireSand,1],plReagents);
-      plReagents = Cons([&UncutSeraphym,2],plReagents);
+      plReagents = Cons([&UncutSeraphym,1],plReagents);
 
       return;
    }
@@ -92,19 +96,39 @@ messages:
 
    DoSpell(what=$,oTarget=$,iDuration=0,iSpellPower=0)
    {
-      local iPowerLeft,i,lSkills,lSpells,lState,
-            iCompound,iAbilityNum,oAbility,iSkillLength,iSpellLength;
+      local iPowerLeft,i,lSkills,lSpells,lState,iCompound,
+         iAbilityNum,oAbility,iSkillLength,iSpellLength;
 
       if IsClass(oTarget,&Monster)
       {
          // Lasts quarter duration on mobs, 7.5-15 seconds. 
          // Makes them enter the waiting state, 'forgetting' the target.
          iDuration = iDuration/4;
-         Send(oTarget,@EnterStateWait,#delay=iDuration);
+
          Send(oTarget,@StartEnchantment,#what=self,#time=iDuration);
          Send(what,@MsgSendUser,#message_rsc=forgetspell_caster,
-               #parm1=Send(oTarget,@GetDef),
+               #parm1=Send(oTarget,@GetCapDef),
                #parm2=Send(oTarget,@GetName));
+
+         // Put the mob on timeout for the duration. Any aggression towards the
+         // mob will wake it, however.
+         Send(oTarget,@EnterStateWait,#delay=iDuration);
+
+         // If we managed to perform a memory wipe, the mob will have lost its target
+         // upon waking. Inform the caster.
+         if IsClass(what,&DM) AND Send(what,@PlayerIsImmortal)
+         {
+            if Send(oTarget,@MemoryWipe,#bFull=TRUE)
+            {
+               Send(what,@MsgSendUser,#message_rsc=forgetspell_memory_wipe_full,
+                  #parm1=Send(oTarget,@GetDef),#parm2=Send(oTarget,@GetName));
+            }
+         }
+         else if Send(oTarget,@MemoryWipe,#who=what,#iMemoryWipe=iSpellPower)
+         {
+            Send(what,@MsgSendUser,#message_rsc=forgetspell_memory_wipe_caster,
+               #parm1=Send(oTarget,@GetDef),#parm2=Send(oTarget,@GetName));
+         }
 
          propagate;
       }
@@ -243,6 +267,12 @@ messages:
       }
 
       return FindListElem(lState,what);
+   }
+
+   // Will not cause aggro.
+   CausesAggression(iSpellpower=0)
+   {
+      return FALSE;
    }
 
 end

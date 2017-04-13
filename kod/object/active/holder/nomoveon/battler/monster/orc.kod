@@ -60,10 +60,22 @@ classvars:
 
    viWimpy = 10
 
+   // Orcs have an area attack spin.
+   vbSpin = TRUE
+
    vrSound_hit = orc_sound_hit
    vrSound_miss = orc_sound_miss
    vrSound_aware = orc_sound_aware
    vrSound_death = orc_sound_death
+
+   viBleedChance = 15
+   viBleedStrength = 700
+   viBleedDuration = 5000
+
+   vbCanSiphon = FALSE
+
+   // Quite used to dark places.
+   viNightVision = 100
 
 properties:
 
@@ -95,22 +107,6 @@ messages:
       }
 
       return (viDifficulty*10)/2;
-   }
-
-   MonsterAttack(what = $)
-   {
-      Send(self,@DoSlash);
-
-      return;
-   }
-
-   DoSlash()
-   {
-      piAnimation = ANIM_ATTACK;
-      Send(poOwner,@SomethingChanged,#what=self);
-      piAnimation = ANIM_NONE;
-
-      return;
    }
 
    SendLookAnimation()
@@ -146,6 +142,19 @@ messages:
    IsFrightenedOf(target=$)
    {
       return IsClass(target,&GiantRat);
+   }
+
+   IsAlliedClass(what=$)
+   {
+      if IsClass(what,&OldOrc)
+         OR IsClass(what,&CaveOrc)
+         OR IsClass(what,&OrcWizard)
+         OR IsClass(what,&OrcPitBoss)
+      {
+         return TRUE;
+      }
+
+      propagate;
    }
 
 end

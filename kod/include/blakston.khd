@@ -60,7 +60,7 @@
    OF_PLAYER         = 0x00000004
    OF_ATTACKABLE     = 0x00000008
    OF_GETTABLE       = 0x00000010
-   // careful--only one's user is ALLOWED to put/get in.
+   // careful - only the ones user are ALLOWED to put/get in.
    OF_CONTAINER      = 0x00000020
    OF_NOEXAMINE      = 0x00000040
    OF_ITEM_MAGIC     = 0x00000080
@@ -118,6 +118,9 @@
    MM_BOSS                 = 0x00000800
    MM_RARE_ITEM            = 0x00001000
    MM_NO_PVP               = 0x00002000
+   MM_AGGRO_SELF           = 0x00004000
+   MM_AGGRO_OTHER          = 0x00008000
+   MM_MERCENARY            = 0x00010000
 
    // Player name color sent as hex RGB value. Define constants
    // for ease of use as needed. Requires OF_PLAYER boolean flag
@@ -1612,8 +1615,8 @@
 
    // Monster behaviors, or "states"
    STATE_LIMBO       = 0x00001
-   STATE_ATTACK      = 0x00002
-   STATE_CHASE       = 0x00004
+   STATE_ENGAGE      = 0x00002
+   STATE_REST        = 0x00004
    STATE_WAIT        = 0x00008
    STATE_MOVE        = 0x00010
    STATE_ZERO_MASK   = 0xFF000
@@ -1651,8 +1654,8 @@
    AI_MOVE_FOLLOW_MASTER      = 0x0000010
    // Monster will flee any defined 'frighteners'
    AI_MOVE_FLEE_FRIGHTENERS   = 0x0000020
-   // When wounded, monster will seek the closest ally and move to them
-   AI_MOVE_REGROUP            = 0x0000040
+   // Mob is on the run.
+   AI_FLEEING                 = 0x0000040
    AI_MOVE_WALKTHROUGH_WALLS  = 0x0000080
    // monster will continue moving even if the room has no users
    AI_MOVE_WHEN_ALONE         = 0x0000100
@@ -1660,8 +1663,8 @@
    AI_HAS_TARGET_LOCATION     = 0x0000400
    AI_LOOPING_PATROL          = 0x0000800
    AI_NOFIGHT                 = 0x0001000
-   // monster will fight other monsters
-   AI_FIGHT_MONSTERS          = 0x0002000
+   // Monster is on its way to the flagpole.
+   AI_RALLY                   = 0x0002000
    AI_FIGHT_AGGRESSIVE        = 0x0004000
    AI_FIGHT_KARMA_AGGRESSIVE  = 0x0008000
    AI_FIGHT_MURDERERS         = 0x0010000
@@ -1670,17 +1673,21 @@
    // monster won't change targets unless current target is gone
    AI_FIGHT_SINGLEMINDED      = 0x0040000
    // monster attacks the aggressor in a room.
-   AI_FIGHT_DEFENDER          = 0x0080000
+   AI_FIGHT_THROUGH_WALLS     = 0x0080000
    // monster chooses a new target that's in range randomly.
    AI_FIGHT_LASHOUT           = 0x0100000
-   // monster will search for the toughest wizard in the room.
-   AI_FIGHT_WIZARD_KILLER     = 0x0200000
+   // currently free...
+
    // monster will attack almost anything.
    AI_FIGHT_HYPERAGGRESSIVE   = 0x0400000
    // monster will check for new enemies a lot.
    AI_FIGHT_SWITCHALOT        = 0x0800000
    // monster may strike through walls (revenants)
-   AI_FIGHT_THROUGH_WALLS     = 0x1000000
+   AI_CORNERED                = 0x1000000
+   // Monster is cornered and will fight back.
+   AI_SOCIALIZER              = 0x2000000
+   // Monster likes to meet up with other monsters for a chat.
+   AI_STROLLING               = 0x4000000
 
    // Battlers need this much vigor to be able to run.
    VIGOR_RUN_THRESHOLD = 1000
@@ -2039,6 +2046,7 @@
    SKID_DEFAULT = 420
    SKID_SLASH = 421
    SKID_THRUST = 422
+   SKID_SPIN = 423
 
    // Missile weapon strokes here.
    SKID_FIRE = 425
@@ -2161,7 +2169,6 @@
    SID_BLEED = 96
    SID_SIPHON = 97
    SID_FATIGUE = 98
-
    SID_REFLECTION = 99
    SID_SPIRITUAL_HAMMER = 100
    SID_APPARITION = 101
@@ -2253,6 +2260,9 @@
    SID_MEDITATE = 187
    SID_UNHOLY_TOUCH = 188
    SID_CREATE_SCROLL = 189
+
+   SID_BURN = 199
+   SID_LULLABY = 200
 
    // Depreciated spell IDs
    SID_LIGHTNING = 1                   // use SID_LIGHTNING_BOLT

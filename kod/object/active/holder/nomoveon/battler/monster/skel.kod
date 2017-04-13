@@ -52,8 +52,11 @@ classvars:
    viLevel = 75
    viDifficulty = 5
    viVisionDistance = 10
-   vbCanBleed = FALSE
+   viSocial = 1
    vbCanPoison = FALSE
+   vbCanBleed = FALSE
+   vbCanSiphon = FALSE
+   vbCanFatigue = FALSE
    viKarma = -50
    vbIsUndead = TRUE
    viDefault_behavior = AI_FIGHT_AGGRESSIVE | AI_FIGHT_SWITCHALOT \
@@ -64,6 +67,13 @@ classvars:
    vrSound_death = skeleton_sound_death
 
    vrHeadIcon = skeleton_head
+
+   viBleedChance = 10
+   viBleedStrength = 1000
+   viBleedDuration = 7000
+
+   // Undead, doesn't even have eyeballs.
+   viNightVision = 255
 
 properties:
 
@@ -106,22 +116,6 @@ messages:
       }
 
       return (viDifficulty*10)/2;
-   }
-
-   MonsterAttack(what = $)
-   {
-      Send(self,@DoSlash);
-
-      return;
-   }
-
-   DoSlash()
-   {
-      piAnimation = ANIM_ATTACK;
-      Send(poOwner,@SomethingChanged,#what=self);
-      piAnimation = ANIM_NONE;
-
-      return;
    }
 
    SendMoveAnimation()
@@ -197,6 +191,16 @@ messages:
       }
 
       return oBody;
+   }
+
+   IsAlliedClass(what=$)
+   {
+      if Send(what,@IsUndead)
+      {
+         return TRUE;
+      }
+
+      propagate;
    }
 
 end

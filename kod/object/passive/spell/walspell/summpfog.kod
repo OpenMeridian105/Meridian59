@@ -195,6 +195,95 @@ messages:
       propagate;
    }
 
+   PlaceRingOnCaster(who=$,iSpellPower=1,bStun=FALSE)
+   {
+      local oRoom, iRow, iCol, iAngle, iOdds, iDuration, oElement;
+
+      iAngle = Send(who,@GetAngle);
+
+      iOdds = 50+(iSpellPower/2);
+      iOdds = Bound(iOdds,50,90);
+
+      iDuration = (iSpellPower) / 4 + 5;
+      iDuration = Bound(iDuration,5,30);
+
+      oRoom = Send(who,@GetOwner);
+
+      iRow = Send(who,@GetRow);
+      iCol = Send(who,@GetCol);
+
+      if bStun
+      {
+         // Active element, placed in the center of it all.
+         oElement = Create(&ActiveSporeCloud,#Caster=who,#duration=iDuration,
+                             #range=2,#iSpellPower=iSpellPower);
+         Send(oRoom,@NewHold,#what=oElement,#new_row=iRow,#new_col=iCol);
+      }
+
+      // Create fire in eight cardinal directions
+      oElement = Create(&PoisonFogCloud,#Caster=who,#Odds=iOdds,
+                        #Duration=iDuration);
+      Send(oRoom,@NewHold,#what=oElement,#new_row=(iRow+1),#new_col=(iCol+1),
+           #fine_row=FINENESS_HALF,#fine_col=FINENESS_HALF);
+
+      oElement = Create(&PoisonFogCloud,#Odds=iOdds,#Caster=who,
+                        #Duration=iDuration);
+      Send(oRoom,@NewHold,#what=oElement,#new_row=(iRow+1),#new_col=iCol,
+           #fine_row=FINENESS_HALF,#fine_col=FINENESS_HALF);
+
+      oElement = Create(&PoisonFogCloud,#Odds=iOdds,#Caster=who,
+                        #Duration=iDuration);
+      Send(oRoom,@NewHold,#what=oElement,#new_row=(iRow+1),#new_col=(iCol-1),
+           #fine_row=FINENESS_HALF,#fine_col=FINENESS_HALF);
+
+      oElement = Create(&PoisonFogCloud,#Odds=iOdds,#Caster=who,
+                        #Duration=iDuration);
+      Send(oRoom,@NewHold,#what=oElement,#new_row=iRow,#new_col=(iCol+1),
+           #fine_row=FINENESS_HALF,#fine_col=FINENESS_HALF);
+
+      oElement = Create(&PoisonFogCloud,#Odds=iOdds,#Caster=who,
+                        #Duration=iDuration);
+      Send(oRoom,@NewHold,#what=oElement,#new_row=iRow,#new_col=(iCol-1),
+           #fine_row=FINENESS_HALF,#fine_col=FINENESS_HALF);
+
+      oElement = Create(&PoisonFogCloud,#Odds=iOdds,#Caster=who,
+                        #Duration=iDuration);
+      Send(oRoom,@NewHold,#what=oElement,#new_row=(iRow-1),#new_col=(iCol+1),
+           #fine_row=FINENESS_HALF,#fine_col=FINENESS_HALF);
+
+      oElement = Create(&PoisonFogCloud,#Odds=iOdds,#Caster=who,
+                        #Duration=iDuration);
+      Send(oRoom,@NewHold,#what=oElement,#new_row=(iRow-1),#new_col=iCol,
+           #fine_row=FINENESS_HALF,#fine_col=FINENESS_HALF);
+
+      oElement = Create(&PoisonFogCloud,#Odds=iOdds,#Caster=who,
+                        #Duration=iDuration);
+      Send(oRoom,@NewHold,#what=oElement,#new_row=(iRow-1),#new_col=(iCol-1),
+           #fine_row=FINENESS_HALF,#fine_col=FINENESS_HALF);
+
+      oElement = Create(&PoisonFogCloud,#Caster=who,#Odds=iOdds,
+                        #Duration=iDuration,#Illusionary=FALSE);
+      Send(oRoom,@NewHold,#what=oElement,#new_row=iRow,#new_col=iCol,
+           #fine_row=0,#fine_col=0);
+
+      oElement = Create(&PoisonFogCloud,#Caster=who,#Odds=iOdds,
+                        #Duration=iDuration,#Illusionary=FALSE);
+      Send(oRoom,@NewHold,#what=oElement,#new_row=iRow,#new_col=iCol,
+           #fine_row=0,#fine_col=FINENESS);
+
+      oElement = Create(&PoisonFogCloud,#Caster=who,#Odds=iOdds,
+                        #Duration=iDuration,#Illusionary=FALSE);
+      Send(oRoom,@NewHold,#what=oElement,#new_row=iRow,#new_col=iCol,
+           #fine_row=FINENESS,#fine_col=0);
+
+      oElement = Create(&PoisonFogCloud,#Caster=who,#Odds=iOdds,
+                        #Duration=iDuration,#Illusionary=FALSE);
+      Send(oRoom,@NewHold,#what=oElement,#new_row=iRow,#new_col=iCol,
+           #fine_row=FINENESS,#fine_col=FINENESS);
+
+      return;
+   }
+
    GetScrollClass()
    {
       return &SummonPoisonFogScroll;

@@ -64,6 +64,16 @@ classvars:
       AI_FIGHT_AGGRESSIVE | AI_FIGHT_SINGLEMINDED \
       | AI_MOVE_WALKTHROUGH_WALLS | AI_FIGHT_THROUGH_WALLS
 
+   viFatigueChance = 10
+   viFatigueStrength = 2000
+   viFatigueDuration = 10000
+
+   vbCanPoison = FALSE
+   vbCanBleed = FALSE
+   vbCanSiphon = FALSE
+   vbCanFatigue = FALSE
+   vbCanBurn = FALSE
+
 properties:
 
    viSpeed = SPEED_FASTER
@@ -71,10 +81,11 @@ properties:
    viDifficulty = 5
    viVisionDistance = 100
    // Attack range of 192, or 3 row/col.
-   viAttackRange = 192
+   viMeleeRange = 192
    viKarma = 20
    viCashmin = 0
    viCashmax = 0
+
    // our private data
 
    piAnimation = ANIM_NONE
@@ -222,25 +233,8 @@ messages:
 
       Send(poRoom,@NewHold,#what=self,#new_row=iRow,#new_col=iCol);
       poTarget = poHauntee;
-      Send(self,@EnterStateChase);
+      Send(self,@EnterStateEngage);
       Post(poHauntee,@MsgSendUser,#message_rsc=Rev_coming_to_get_ya);
-
-      return;
-   }
-
-   MonsterAttack(what = $)
-   {
-      piAnimation = ANIM_ATTACK;
-      Send(poOwner,@SomethingChanged,#what=self);
-      piAnimation = ANIM_NONE;
-
-      //Extra revenant penalty.. each time it hits, it drains away vigor
-      //The 10% drain might be too high, but we'll see. *cackle*
-      if Random(0,9) = 0
-      {
-         Send(what,@MsgSendUser,#message_rsc=Rev_draining_effect);
-         Send(what,@LoseVigor,#precision=TRUE,#amount=Send(what,@GetVigor)*10);
-      }
 
       return;
    }
@@ -403,7 +397,7 @@ messages:
    EnterStateMove( actnow=FALSE )
    {
       // We don't just hang around, go straight back into state chase.
-      Send(self,@SetState,#bit=STATE_CHASE);
+      Send(self,@SetState,#bit=STATE_ENGAGE);
 
       if poTarget <> poHauntee
       {
@@ -415,11 +409,11 @@ messages:
 
       if actnow
       {
-         Send(self,@ChaseTimer);
+         Send(self,@EngageTimer);
       }
       else
       {
-         ptBehavior = CreateTimer(self,@ChaseTimer,Send(self,@GetMoveTime));
+         ptBehavior = CreateTimer(self,@EngageTimer,Send(self,@GetMoveTime));
       }
 
       return;

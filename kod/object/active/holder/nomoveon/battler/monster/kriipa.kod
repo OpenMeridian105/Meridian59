@@ -69,12 +69,13 @@ classvars:
    viAttack_type = ATCK_WEAP_SLASH
 
    viSpeed = SPEED_FAST
-   viDefault_behavior = AI_FIGHT_AGGRESSIVE | AI_FIGHT_HYPERAGGRESSIVE
+   viDefault_behavior = AI_FIGHT_AGGRESSIVE
    viLevel = 160
    viDifficulty = 6
-   // Attack range of 192, or 3 row/col.
-   viAttackRange = 192
+   viBonusAgility = 20
+   viMeleeRange = 128
    viVisionDistance = 20
+   viSocial = 1
    viKarma = -50
    viWimpy = 2
    viCashmin = 500
@@ -84,12 +85,16 @@ classvars:
    vrSound_aware = Kriipa_sound_aware
    vrSound_death = Kriipa_sound_death
 
+   viBleedChance = 20
+   viBleedStrength = 2500
+   viBleedDuration = 8000
+   vbCanSiphon = FALSE
+
 properties:
 
    piAnimation = ANIM_NONE
    piRoofState = STATE_ONROOF
-
-   ptDrop = $
+   ptCanopy = $
 
 messages:
 
@@ -125,44 +130,13 @@ messages:
       propagate;
    }
 
-   TryAttack()
-   {
-      if poOwner = $
-      {
-         Debug("Unreachable. Null Owner");
-         Send(self,@EnterStateLimbo);
-
-         return; 
-      }
-
-      if poTarget=$
-      {
-         Send(self,@EnterStateWait);
-
-         return;
-      }
-
-      if piRoofState <> STATE_READY
-      {
-         return FALSE;
-      }
-
-      if NOT Send(self,@CanReach,#what=poTarget)
-      {
-         Send(self,@EnterStateChase);
-
-         return;
-      }
-
-      propagate;
-   }
-
    CanMonsterFight(who=$,oStroke=$)
    {
       if piRoofState = STATE_ONROOF
       {
-         if oStroke = $
-            OR NOT Send(oStroke,@IsRangedAttack)
+         if (oStroke = $)
+            OR NOT (Send(oStroke,@IsRangedAttack)
+               OR IsClass(oStroke,&Spell))
          {
             if IsClass(who,&User)
             {
@@ -174,52 +148,6 @@ messages:
       }
 
       return TRUE;
-   }
-
-   DropTimer()
-   {
-      ptDrop = $;
-
-      if poOwner = $
-      {
-         // We died and this still went off. Do nothing.
-         return;
-      }
-
-      if piRoofState = STATE_JUMPINGDOWN
-      {
-         piRoofState = STATE_READY;
-         Send(self,@TryAttack,#what=poTarget);
-         ptDrop=CreateTimer(self,@DropTimer,2000);
-
-         return;
-      }
-
-      if piRoofState = STATE_READY
-      {
-         piRoofState = STATE_JUMPINGUP;
-         Send(self,@MonsterJumpUp);
-         ptDrop=CreateTimer(self,@DropTimer,950);
-         Send(poBrain,@PostAttackTimer,#mob=self,#state=piState);
-      }
-
-      if piRoofState = STATE_JUMPINGUP
-      {
-         piRoofState = STATE_ONROOF;
-         piBehavior = (piBehavior & ~AI_NOMOVE);
-         Send(poOwner,@SomethingChanged,#what=self);
-      }
-
-      return;
-   }
-
-   MonsterAttack(what = $)
-   {
-      piAnimation = ANIM_ATTACK;
-      Send(poOwner,@SomethingChanged,#what=self);
-      piAnimation = ANIM_NONE;
-
-      return;
    }
 
    MonsterJumpUp(what = $)
@@ -247,66 +175,209 @@ messages:
       return;
    }
 
-   AttackTimer(timer = $)
-   "We were bashing on something before, and now its time to hit it again."
+   MonsterCombatAction(distance=0,sight=TRUE)
+   "Kriipas have special attack patterns, which are handled here."
    {
-      Send(self,@ClearBehavior,#timer=timer);
+      local i, iPriority, lActions, lAction, iNum, oSpell, 
+         iMana, iVigor, iFactor, iSpellPower, lTargets, iDelay, bStateChange;
 
-      // Sanity checks.
-      if poOwner = $
+      lActions = $;
+
+      // If we have sight, proceed as usual, else, only allow moving.
+      if sight
       {
-         Debug("Unreachable. Null Owner");
-         Send(self,@EnterStateLimbo);
-
-         return;
-      }
-
-      if poTarget = $
-      {
-         Send(self,@EnterStateWait);
-
-         return;
-      }
-
-      Send(poBrain,@GetAttackBehavior,#mob=self,#target=poTarget,
-            #behavior=piBehavior);
-
-      if poTarget = $
-      {
-         Send(self,@EnterStateMove);
-
-         return;
-      }
-
-      if NOT Send(self,@CanReach,#what=poTarget) 
-      {
-         Send(self,@EnterStateChase);
-
-         return;
-      }
-
-      // We're close enough and in range.  Now, normally, we move 
-      // around the player to keep him guessing.   Let's zigzag around,
-      // instead of consistently moving to that player's right.
-      if Random(1,100) < 50
-      {
-         piState = piState | ESTATE_CLOCKWISE;
+         // Sort out any actions in our action list that can't reach the
+         // target or that we don't have the resources for.
+         foreach i in plActions
+         {
+            if Nth(i,2) < piMana
+               AND Nth(i,4) > distance
+            {
+               lActions = Cons(i,lActions);
+            }
+         }
       }
       else
       {
-         piState = piState & ESTATE_CCLK_MASK;
+         // Can't see the target, let's try to move towards it.
+         foreach i in plActions
+         {
+            if First(i) = SKID_MINIMUM
+            {
+               lActions = Cons(i,lActions);
+            }
+         }
       }
 
-      if ptDrop = $
+      // Double check if the monster can perform basic actions.
+      foreach i in lActions
       {
-         // Carry out attack.
-         piRoofState = STATE_JUMPINGDOWN;
-         piBehavior = (piBehavior | AI_NOMOVE);
-         Send(self,@MonsterJumpDown);
-         ptDrop=CreateTimer(self,@DropTimer,1200);
+         iNum = First(i);
+
+         if iNum = SKID_MINIMUM
+         {
+            if (piBehavior & AI_NOMOVE) OR (piBehavior & AI_CORNERED)
+            {
+               lActions = DelListElem(lActions,i);
+               Send(self,@SetBehaviorFlag,#flag=AI_CORNERED,#value=FALSE);
+            }
+         }
+         else if (piBehavior & AI_NOFIGHT)
+         {
+            lActions = DelListElem(lActions,i);
+         }
+         else if ((iNum = SKID_FIRE) AND (distance <= piMeleeRange*piMeleeRange))
+            AND NOT (IsClass(self,&Reflection) OR IsClass(self,&EvilTwin))
+         {
+            lActions = DelListElem(lActions,i);
+         }
+      }
+
+      // If no actions made it through our check, quit here.
+      if lActions = $
+      {
+         return FALSE;
+      }
+
+      // Time for an attack check.
+      if iNum <> SKID_MINIMUM
+         AND NOT Send(poOwner,@ReqSomethingAttack,#what=self,#victim=poTarget,#use_weapon=self)
+      {
+         return FALSE;
+      }
+
+      // We are allowed to attack and got a pool of actions.
+      // Compare priorities to decide for one.
+      iPriority = MIN_KOD_INT;
+      foreach i in lActions
+      {
+         if Nth(i,5) >= iPriority
+         {
+            lAction = i;
+            iPriority = Nth(i,5);
+         }
+      }
+
+      // We have our action at this point, let's check its ID.
+      iNum = First(lAction);
+
+      // If we are on the roof and attacking, jump down.
+      // If we are on the ground and moving, jump up.
+      bStateChange = FALSE;
+
+      if iNum = SKID_MINIMUM
+      {
+         if piRoofState = STATE_READY AND ptCanopy = $
+         {
+            Send(Self,@MonsterJumpUp);
+            bStateChange = TRUE;
+            ptCanopy = CreateTimer(self,@CanopySwitch,600);
+         }
+      }
+      else
+      {
+         if piRoofState = STATE_ONROOF
+         {
+            Send(Self,@MonsterJumpDown);
+            bStateChange = TRUE;
+            Send(Self,@CanopySwitch);
+         }
+      }
+
+      // It's clear we will be acting now. Get our action delay.
+      iDelay = Send(self,@GetAttackTime);
+
+      // We move. No delay passed on.
+      if (iNum = SKID_MINIMUM)
+      {
+         iDelay = bStateChange * 600;
+      }
+      // Standard melee attack. Let's initiate the attack.
+      else
+      {
+         if NOT Send(self,@TryAttack,#what=poTarget,#stroke_obj=self,#ambush=bStateChange)
+         {
+            return FALSE;
+         }
+         // We actually attack. Do the animation if we're still around.
+         else if poOwner <> $
+         {
+            Send(self,@DoMeleeAnimation);
+         }
+      }
+
+      // We did something. Pay the cost.
+      iVigor = Nth(lAction,3);
+      Send(self,@LoseVigor,#amount=iVigor,#precision=TRUE);
+
+      return iDelay;
+   }
+
+   CanopySwitch()
+   {
+      ptCanopy = $;
+
+      if poOwner <> $
+      {
+         if piRoofState = STATE_ONROOF
+         {
+            piRoofState = STATE_READY;
+         }
+         else
+         {
+            piRoofState = STATE_ONROOF;
+         }
+
+         Send(poOwner,@SomethingChanged,#what=self);
       }
 
       return;
+   }
+
+   ////  State Transition Functions
+   
+   EnterStateLimbo()
+   {
+      if piRoofState = STATE_READY AND ptCanopy = $
+      {
+         Send(Self,@MonsterJumpUp);
+         ptCanopy = CreateTimer(self,@CanopySwitch,600);
+      }
+
+      propagate;
+   }
+
+   EnterStateWait()
+   {
+      if piRoofState = STATE_READY AND ptCanopy = $
+      {
+         Send(Self,@MonsterJumpUp);
+         ptCanopy = CreateTimer(self,@CanopySwitch,600);
+      }
+
+      propagate;
+   }
+
+   EnterStateMove()
+   {
+      if piRoofState = STATE_READY AND ptCanopy = $
+      {
+         Send(Self,@MonsterJumpUp);
+         ptCanopy = CreateTimer(self,@CanopySwitch,600);
+      }
+
+      propagate;
+   }
+
+   EnterStateRest()
+   {
+      if piRoofState = STATE_READY AND ptCanopy = $
+      {
+         Send(Self,@MonsterJumpUp);
+         ptCanopy = CreateTimer(self,@CanopySwitch,600);
+      }
+
+      propagate;
    }
 
    SendAnimation()
@@ -348,20 +419,20 @@ messages:
       return;
    }
 
-   Delete()
-   {
-      if ptDrop <> $
-      {
-         DeleteTimer(ptDrop);
-         ptDrop = $;
-      }
-
-      propagate;
-   }
-
    CanMorphTo()
    {
       return FALSE;
+   }
+
+   Delete()
+   {
+      if ptCanopy <> $
+      {
+         DeleteTimer(ptCanopy);
+         ptCanopy = $;
+      }
+
+      propagate;
    }
 
 end

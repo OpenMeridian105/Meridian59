@@ -1,0 +1,145 @@
+// Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+// All rights reserved.
+//
+// This software is distributed under a license that is described in
+// the LICENSE file that accompanies it.
+//
+// Meridian is a registered trademark.
+
+
+/////////////////////////////////////////////////////////////////////////////////
+Lullaby is Jala
+
+constants:
+
+   include blakston.khd
+
+resources:
+
+   include lullaby.lkod
+
+   Lullaby_name_rsc = "lullaby"
+   Lullaby_icon_rsc = ilullaby.bgf
+   Lullaby_desc_rsc = \
+      "This is the perfect song to ease your audience to sleep!  "
+      "It is also known to make monsters more docile and less likely "
+      "to rip bypassing adventurers to shreds."
+
+   Lullaby_song = main.ogg
+
+   Lullaby_cast = "You begin to play a lullaby."
+   Lullaby_starts = "%s%s begins to play a lullaby."
+   Lullaby_ends = "The lullaby played by %s%s fades away."
+   Lullaby_caster_ends = "Your lullaby fades."
+   Lullaby_caster_enter = "You feel a little sleepy."
+   Lullaby_enter = "%s%s's lullaby makes you feel a little sleepy."
+   Lullaby_leave = "You can no longer hear %s%s's lullaby."
+
+classvars:
+
+   vrEnchantmentOn = Lullaby_cast
+   vrEnchantmentOnOther = Lullaby_starts
+   vrEnchantmentOff = Lullaby_caster_ends
+   vrEnchantmentOffOther = Lullaby_ends
+   vrEnterRadiusCaster = Lullaby_caster_enter
+   vrEnterRadius = Lullaby_enter
+   vrLeaveRadius = Lullaby_leave
+
+   vrName = Lullaby_name_rsc
+   vrIcon = Lullaby_icon_rsc
+   vrDesc = Lullaby_desc_rsc
+
+   viSpell_num = SID_LULLABY
+   viSchool = SS_JALA
+   viSpell_level = 1
+
+   viMana = 20
+   viManaDrain = 0
+
+   viSpellExertion = 0
+   viChance_To_Increase = 10
+   viMeditate_ratio = 20
+
+   viBaseRange = 5 * FINENESS
+
+   viAffectsEveryone = TRUE
+
+properties:
+
+   prMusic = Lullaby_song
+
+messages:
+
+   ResetReagents()
+   {
+      plReagents = $;
+
+      return;
+   }
+
+   CalculateRange(who=$, iSpellPower=25)
+   {
+      // Up to three times base range
+      return viBaseRange + ((viBaseRange * iSpellPower) / 49);
+   }
+
+   AddEnchantmentEffects(who=$,state=$)
+   {
+      if IsClass(who,&User)
+      {
+         Send(who,@SetAction,#action=UA_NORMAL);
+      }
+
+      if IsClass(who,&Monster)
+      {
+         Send(who,@StartLullaby,#iSpellPower=Nth(state,5));
+      }
+
+      propagate;
+   }
+
+   RemoveEnchantmentEffects(who=$,iPower=0,source=$)
+   {
+      if IsClass(who,&User)
+         AND Send(who,@GetAction) = UA_NORMAL
+      {
+         Send(who,@SetAction,#action=UA_WRY);
+      }
+
+      if IsClass(who,&Monster)
+      {
+         Send(who,@EndLullaby,#iSpellPower=iPower);
+      }
+
+      propagate;
+   }
+
+   GetScrollClass()
+   {
+      return &LullabyScroll;
+   }
+
+   PeriodicEffect(who=$,state=$)
+   {
+      if IsClass(who,&Monster)
+      {
+         if Send(First(state),@PlayerIsImmortal)
+         {
+            Send(who,@StartLullaby,#iSpellPower=$);
+         }
+         else
+         {
+            Send(who,@StartLullaby,#iSpellPower=Nth(state,5));
+         }
+      }
+
+      propagate;
+   }
+
+   GetStateDuration(state = $)
+   {
+      return 500;
+   }
+
+end
+////////////////////////////////////////////////////////////////////////////////

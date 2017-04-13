@@ -66,11 +66,10 @@ classvars:
    viLevel = 90
    viDifficulty = 6
    // Attack range of 192, or 3 row/col.
-   viAttackRange = 192
+   viMeleeRange = 192
    viVisionDistance = 11
    viKarma = -40
-   viDefault_behavior = \
-      AI_FIGHT_AGGRESSIVE | AI_FIGHT_SWITCHALOT | AI_MOVE_REGROUP
+   viDefault_behavior = AI_FIGHT_AGGRESSIVE | AI_FIGHT_SWITCHALOT
    viLight_Penalty = 3
    viCashmin = 250
    viCashmax = 750
@@ -83,6 +82,11 @@ classvars:
    viPoisonVisualEffect = EFFECT_WAVER
    viPoisonVisualEffectDuration = 10000
    vrPoisonVisualEffectMessage = duskrat_poisoned_add_rsc
+
+   vbCanSiphon = FALSE
+
+   // Very used to dark places.
+   viNightVision = 150
 
 properties:
 
@@ -99,22 +103,6 @@ messages:
                       ];
 
       propagate;
-   }
-
-   MonsterAttack(what=$)
-   {
-      Send(self,@DoSlash);
-
-      return;
-   }
-
-   DoSlash()
-   {
-      piAnimation = ANIM_ATTACK;
-      Send(poOwner,@SomethingChanged,#what=self);
-      piAnimation = ANIM_NONE;
-
-      return;
    }
 
    SendLookAnimation()
@@ -159,12 +147,6 @@ messages:
       }
 
       propagate;
-   }
-
-   IsAlly(target=$)
-   {
-      // Qor Characters?
-      return FALSE;
    }
 
    Killed()

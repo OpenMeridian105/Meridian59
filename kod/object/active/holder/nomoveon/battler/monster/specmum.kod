@@ -63,6 +63,18 @@ classvars:
    vrSound_aware = SpectralMummy_sound_aware
    vrSound_death = SpectralMummy_sound_death
 
+   viSiphonChance = 20
+   viSiphonStrength = 2000
+   viSiphonDuration = 5000
+
+   vbCanPoison = FALSE
+   vbCanBleed = FALSE
+   vbCanSiphon = FALSE
+   vbCanFatigue = FALSE
+
+   // Quite used to dark places.
+   viNightVision = 100
+
 properties:
 
    piDrawfx = DRAWFX_TRANSLUCENT_50
@@ -84,15 +96,6 @@ messages:
       plReputationEnemies = [REP_FAROL];
 
       propagate;
-   }
-
-   MonsterAttack(what = $)
-   {
-      piAnimation = ANIM_ATTACK;
-      Send(poOwner,@SomethingChanged,#what=self);
-      piAnimation = ANIM_NONE;
-
-      return;
    }
 
    SendMoveAnimation()
@@ -130,6 +133,16 @@ messages:
       AddPacket(2,LIGHT_SPECTRAL);
 
       return;
+   }
+
+   IsAlliedClass(what=$)
+   {
+      if Send(what,@IsUndead)
+      {
+         return TRUE;
+      }
+
+      propagate;
    }
 
 end

@@ -135,7 +135,7 @@ classvars:
    viSpeed = SPEED_FASTER
    viAttack_type = ATCK_WEAP_SLASH
    viAttributes = 0
-   viDefault_behavior = AI_FIGHT_NEWBIESAFE | AI_MOVE_REGROUP
+   viDefault_behavior = AI_FIGHT_NEWBIESAFE
 
    viChanceFemale = 50  // percentage chance to be female
 
@@ -231,7 +231,7 @@ messages:
    Constructed()
    {
       // Have to set attack range for mobs with weapon.
-      piAttackRange = Send(self,@GetAttackRange);
+      piMeleeRange = Send(self,@GetAttackRange);
 
       propagate;
    }
@@ -823,7 +823,7 @@ messages:
       return Send(oWeapon,@GetAttackSpell);
    }
 
-   MonsterAttack(what = $)
+   DoMeleeAnimation(what = $)
    "Add in any attack animation calls."
    {
       local oWeapon;
@@ -2097,16 +2097,19 @@ messages:
    {
       local i, lSpells;
 
-      if plSpellBook = $
+      if plActions = $
       {
          return $;
       }
 
       lSpells = $;
 
-      foreach i in plSpellBook
+      foreach i in plActions
       {
-         lSpells = Cons(First(i),lSpells);
+         if First(i) < 400
+         {
+            lSpells = Cons(First(i),lSpells);
+         }
       }
 
       return lSpells;
@@ -2115,6 +2118,18 @@ messages:
    DecodeSpellNum(compound = 0)
    {
       return compound;
+   }
+
+   // Humans may listen to mercenary commands.
+   SomeoneSaid(what = $,type = $,string = $)
+   {
+      // Mercenary hook. Maybe our leader has special orders for us.
+      if poLeader <> $ AND Send(self,@MercenaryCommand,#what=what,#message=string)
+      {
+         return;
+      }
+
+      propagate;
    }
 
 end

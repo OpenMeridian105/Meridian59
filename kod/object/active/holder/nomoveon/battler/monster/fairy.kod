@@ -50,15 +50,14 @@ classvars:
 
    viSpeed = SPEED_VERY_FAST
    viAttack_type = 0
-   viAttack_spell = ATCK_SPELL_SHOCK
-   viDefault_behavior = \
-      AI_MOVE_REGROUP | AI_FIGHT_MONSTERS | AI_FIGHT_KARMA_AGGRESSIVE
+   viAttack_spell = ATCK_SPELL_HOLY
+   viDefault_behavior = AI_FIGHT_KARMA_AGGRESSIVE
    viWimpy = 10
 
-   viLevel = 60
+   viLevel = 80
    viDifficulty = 5
    // Attack range of 192, or 3 row/col.
-   viAttackRange = 192
+   viMeleeRange = 192
    viVisionDistance = 15
    viCashmin = 300
    viCashmax = 600
@@ -67,14 +66,23 @@ classvars:
    vrSound_aware = fairy_sound_aware
    vrSound_death = fairy_sound_death
 
+   // Airborne. Don't care if hovering above water or not.
+   vbAquatic = TRUE
+
+   // Used to dark places.
+   viNightVision = 100
+
 properties:
 
    piDrawEffectFlag = OF_BOUNCING
    viKarma = 50
    piAnimation = ANIM_NONE
 
+   piMana = 6000
+   piMax_Mana = 60
+
    piReputationGroup = REP_FEY_GOOD
-   
+
 messages:
 
    Constructor()
@@ -90,21 +98,23 @@ messages:
       propagate;
    }
 
-   MonsterAttack(what = $)
+   Constructed()
    {
-      // add in any attack animation calls
-      Send(self,@DoSlash);
-      Send(poOwner,@SomethingShot,#who=self,#target=what,#projectile=self,
-            #flags=PROJ_FLAG_LIGHT_SOURCE);
+      plActions = [ [SID_HOLY_BLAZE],
+                    [SID_FORCES_OF_LIGHT],
+                    [SID_LIGHT] ];
 
-      return;
+      propagate;
    }
 
-   DoSlash()
+   DoMissileAnimation()
+   "Handles ranged attack animation. Default is same as melee."
    {
       piAnimation = ANIM_ATTACK;
       Send(poOwner,@SomethingChanged,#what=self);
       piAnimation = ANIM_NONE;
+      Send(poOwner,@SomethingShot,#who=self,#target=poTarget,
+         #projectile=self,#flags=PROJ_FLAG_LIGHT_SOURCE);
 
       return;
    }
@@ -172,16 +182,6 @@ messages:
       return LIGHT_ORANGE;
    }
 
-   AssessDamage(what=$)
-   {
-      if IsClass(what,&EvilFairy)
-      {
-         return 1;
-      }
-
-      propagate;
-   }
-
    SendLightingInformation()
    {
       AddPacket(2,(LIGHT_FLAG_ON | LIGHT_FLAG_DYNAMIC));
@@ -196,6 +196,17 @@ messages:
    CanMorphTo()
    {
       return FALSE;
+   }
+
+   IsEnemy(what=$)
+   {
+      /// Fey Dirhai hate Fey Elhai.
+      if IsClass(what,&EvilFairy)
+      {
+         return TRUE;
+      }
+
+      propagate;
    }
 
 end

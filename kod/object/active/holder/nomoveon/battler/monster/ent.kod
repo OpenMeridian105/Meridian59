@@ -60,8 +60,9 @@ classvars:
    viCashmin = 100
    viCashmax = 500
 
-   // 1 in x chance to cast a spell.
-   viSpellChance = 9
+   viMeleePriority = 1100
+
+   viPowerLevel = 100
 
    vrSound_hit = ent_sound_hit
    vrSound_miss = ent_sound_miss
@@ -70,6 +71,10 @@ classvars:
 
    vrLeaves = ent_leaves_full_rsc
    vrDead_leaves =ent_dead_leaves_full_rsc
+
+   vbCanPoison = FALSE
+   vbCanBleed = FALSE
+   vbCanFatigue = FALSE
 
 properties:
 
@@ -116,20 +121,11 @@ messages:
                         [ATCK_WEAP_SLASH, -10 ],
                         [-ATCK_SPELL_FIRE, -10 ] ];
                         
-      plSpellBook = [ [SID_LIGHTNING, 5, 100] ];
+      plActions = [ [SID_LIGHTNING] ];
 
       plReputationEnemies = [REP_UNDEAD];
 
       propagate;
-   }
-
-   MonsterAttack(what=$)
-   {
-      piAnimation = ANIM_ATTACK;
-      Send(poOwner,@SomethingChanged,#what=self);
-      piAnimation = ANIM_NONE;
-
-      return;
    }
 
    SendMoveAnimation()
@@ -208,9 +204,10 @@ messages:
    {
       // Living trees get more dangerous if you burn 'em.
 
-      if (aSpell & ATCK_SPELL_FIRE) AND piSpellChance > 2
+      if (aSpell & ATCK_SPELL_FIRE)
       {
-         piSpellChance = piSpellChance - 1;
+         piSpellPower += 20;
+         piSpellPower = Bound(piSpellPower,$,99);
       }
 
       propagate;

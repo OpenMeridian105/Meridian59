@@ -60,7 +60,7 @@ classvars:
    viVisionDistance = 6
 
    // Attack range of 256 (4 row/col units).
-   viAttackRange = 256
+   viMeleeRange = 256
 
    viKarma = -90
    viDefault_behavior = AI_NOMOVE | AI_FIGHT_AGGRESSIVE | AI_FIGHT_SWITCHALOT
@@ -71,6 +71,11 @@ classvars:
    vrSound_miss = spiderqueen_sound_miss
    vrSound_aware = spiderqueen_sound_aware
    vrSound_death = spiderqueen_sound_death
+
+   vbCanSiphon = FALSE
+
+   // Very, very used to dark places.
+   viNightVision = 200
 
 properties:
 
@@ -88,15 +93,6 @@ messages:
                       ];
 
       propagate;
-   }
-
-   MonsterAttack(what = $)
-   {
-      piAnimation = ANIM_ATTACK;
-      Send(poOwner,@SomethingChanged,#what=self);
-      piAnimation = ANIM_NONE;
-
-      return;
    }
 
    SendLookAnimation()
@@ -146,16 +142,11 @@ messages:
       propagate;
    }
 
-   IsAlly(target = $)
+   IsAlliedClass(what=$)
    {
-      if target = $
-      {
-         return FALSE;
-      }
-
-      if IsClass(target,&Spider)
-         OR IsClass(target,&SpiderBaby)
-         OR IsClass(target,&SpiderQueen)
+      if IsClass(what,&DeathSpider)
+         OR IsClass(what,&SpiderBaby)
+         OR IsClass(what,&Spider)
       {
          return TRUE;
       }

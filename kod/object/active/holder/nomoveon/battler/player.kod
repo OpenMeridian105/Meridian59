@@ -839,6 +839,11 @@ properties:
    // hours of online time.
    ptReward_timer = $
 
+   // Flags for various character attributes.
+   piFlags = 0
+   piFlags2 = 0
+   piFlags3 = 0
+
    // Set of flags with player preferences.
    piPreferences = CF_DEFAULT_PREF
 
@@ -9644,7 +9649,7 @@ messages:
          }
       }
 
-      if pbResting
+      if (piBattlerFlags & BFLAG_RESTING)
       {
          Send(self,@MsgSendUser,#message_rsc=player_cant_dance_resting);
 
@@ -11173,7 +11178,7 @@ messages:
    StartResting()
    {
       Send(self,@BreakTrance,#event=EVENT_REST);
-      pbResting = TRUE;
+      piBattlerFlags |= BFLAG_RESTING;
       Send(self,@ResetPlayerFlagList);
       Send(self,@NewVigor);
 
@@ -11182,8 +11187,7 @@ messages:
 
    StopResting()
    {
-
-      pbResting = FALSE;
+      piBattlerFlags &= ~BFLAG_RESTING;
       Send(self,@ResetPlayerFlagList);
       Send(self,@NewVigor);
 

@@ -204,6 +204,10 @@ properties:
    plEnchantments = $
    plOverTimeEffects = $
 
+   // Flags for keeping track of booleans for health, vigor, mana, resting.
+   // By default, regen flags are set (i.e. positive regen).
+   piBattlerFlags = BFLAG_REGEN_MASK
+
    // Default resource values.
    // Current health, mana and vigor are stored in centiunits (10^-2)
    // for increased accuracy. Max values are stored as usual.
@@ -214,10 +218,6 @@ properties:
    ptHealth = $
    // The current health regeneration rate. 1000 > 1 hp per sec.
    piHealth_Rate = 0
-   // Some effects may stop our regeneration.
-   pbHealthCurse = FALSE
-   // Keeps track of the polarity of our regen. Increases accuracy.
-   pbHealth = TRUE
 
    // Default mana values.
    piMana = 1500
@@ -225,10 +225,6 @@ properties:
    ptMana = $
    // The current mana regeneration rate. 1000 > 1 hp per sec.
    piMana_Rate = 0
-   // Some effects may stop our regeneration.
-   pbManaCurse = FALSE
-   // Keeps track of the polarity of our regen. Increases accuracy.
-   pbMana = TRUE
 
    // Default vigor values.
    piVigor = 10000
@@ -237,19 +233,6 @@ properties:
    ptVigor = $
    // The current vigor regeneration rate. 1000 > 1 hp per sec.
    piVigor_Rate = 0
-   // Some effects may stop our regeneration.
-   pbVigorCurse = FALSE
-   // Keeps track of the polarity of our regen. Increases accuracy.
-   pbVigor = TRUE
-
-   // Keeps track of resting.
-   pbResting = FALSE
-
-   // Originially found in player. Moved to battler 2017/02/26.
-   // Flags for various character attributes.
-   piFlags = 0
-   piFlags2 = 0
-   piFlags3 = 0
 
    // Reputation hashtable for monster territory/influence system
    phReputation = $
@@ -712,7 +695,8 @@ messages:
          piHealth -= amount;
       }
 
-      if piFlags & PFLAG_TRANCE
+      if (IsClass(self,&Player)
+         AND Send(self,@CheckPlayerFlag,#flag=PFLAG_TRANCE))
       {
          Send(self,@BreakTrance,#event=EVENT_DAMAGE);
       }
@@ -795,7 +779,7 @@ messages:
    // Curses stop natural regeneration of the specified resource.
    GetHealthCurse()
    {
-      return pbHealthCurse;
+      return piBattlerFlags & BFLAG_HEALTH_CURSE;
    }
 
    NewHealth()
@@ -828,10 +812,10 @@ messages:
                // We reset the current timer if:
                // a) The rate swings (+ to - or vice versa).
                // b) Time left on the timer exceeds updated time.
-               if NOT pbHealth
+               if (NOT (piBattlerFlags & BFLAG_HEALTH_REGEN))
                   OR iTime < GetTimeRemaining(ptHealth)
                {
-                  pbHealth = TRUE;
+                  piBattlerFlags |= BFLAG_HEALTH_REGEN;
                   DeleteTimer(ptHealth);
                   ptHealth = CreateTimer(self,@HealthRegen,iTime);
                }
@@ -850,10 +834,10 @@ messages:
                // We reset the current timer if:
                // a) The rate swings (+ to - or vice versa).
                // b) Time left on the timer exceeds updated time.
-               if pbHealth
-                  OR iTime < GetTimeRemaining(ptHealth)
+               if ((piBattlerFlags & BFLAG_HEALTH_REGEN)
+                  OR iTime < GetTimeRemaining(ptHealth))
                {
-                  pbHealth = FALSE;
+                  piBattlerFlags &= ~BFLAG_HEALTH_REGEN;
                   DeleteTimer(ptHealth);
                   ptHealth = CreateTimer(self,@HealthDecay,iTime);
                }
@@ -891,13 +875,13 @@ messages:
       }
 
       // Resting helps us recover health.
-      if pbResting
+      if (piBattlerFlags & BFLAG_RESTING)
       {
-         iHealthPerTick = iHealthPerTick * 2;
+         iHealthPerTick *= 2;
       }
 
       // A curse will stop our natural regeneration.
-      if pbHealthCurse
+      if (piBattlerFlags & BFLAG_HEALTH_CURSE)
       {
          iHealthPerTick = Bound(iHealthPerTick,$,0);
       }
@@ -1121,7 +1105,7 @@ messages:
    // Curses stop natural regeneration of the specified resource.
    GetManaCurse()
    {
-      return pbManaCurse;
+      return piBattlerFlags & BFLAG_MANA_CURSE;
    }
 
    NewMana()
@@ -1154,10 +1138,10 @@ messages:
                // We reset the current timer if:
                // a) The rate swings (+ to - or vice versa).
                // b) Time left on the timer exceeds updated time.
-               if NOT pbMana
-                  OR iTime < GetTimeRemaining(ptMana)
+               if ((NOT (piBattlerFlags & BFLAG_MANA_REGEN))
+                  OR iTime < GetTimeRemaining(ptMana))
                {
-                  pbMana = TRUE;
+                  piBattlerFlags |= BFLAG_MANA_REGEN;
                   DeleteTimer(ptMana);
                   ptMana = CreateTimer(self,@ManaRegen,iTime);
                }
@@ -1176,10 +1160,10 @@ messages:
                // We reset the current timer if:
                // a) The rate swings (+ to - or vice versa).
                // b) Time left on the timer exceeds updated time.
-               if pbMana
-                  OR iTime < GetTimeRemaining(ptMana)
+               if ((piBattlerFlags & BFLAG_MANA_REGEN)
+                  OR iTime < GetTimeRemaining(ptMana))
                {
-                  pbMana = FALSE;
+                  piBattlerFlags &= ~BFLAG_MANA_REGEN;
                   DeleteTimer(ptMana);
                   ptMana = CreateTimer(self,@ManaDecay,iTime);
                }
@@ -1209,13 +1193,13 @@ messages:
       }
 
       // Resting helps us recover mana.
-      if pbResting
+      if (piBattlerFlags & BFLAG_RESTING)
       {
-         iManaPerTick = iManaPerTick * 2;
+         iManaPerTick *= 2;
       }
 
       // A curse will stop our natural regeneration.
-      if pbManaCurse
+      if (piBattlerFlags & BFLAG_MANA_CURSE)
       {
          iManaPerTick = Bound(iManaPerTick,$,0);
       }
@@ -1494,7 +1478,7 @@ messages:
    // Curses stop natural regeneration of the specified resource.
    GetVigorCurse()
    {
-      return pbVigorCurse;
+      return piBattlerFlags & BFLAG_VIGOR_CURSE;
    }
 
    NewVigor()
@@ -1527,10 +1511,10 @@ messages:
                // We reset the current timer if:
                // a) The rate swings (+ to - or vice versa).
                // b) Time left on the timer exceeds updated time.
-               if NOT pbVigor
-                  OR iTime < GetTimeRemaining(ptVigor)
+               if ((NOT (piBattlerFlags & BFLAG_VIGOR_REGEN))
+                  OR iTime < GetTimeRemaining(ptVigor))
                {
-                  pbVigor = TRUE;
+                  piBattlerFlags |= BFLAG_VIGOR_REGEN;
                   DeleteTimer(ptVigor);
                   ptVigor = CreateTimer(self,@VigorRegen,iTime);
                }
@@ -1549,10 +1533,10 @@ messages:
                // We reset the current timer if:
                // a) The rate swings (+ to - or vice versa).
                // b) Time left on the timer exceeds updated time.
-               if pbVigor
-                  OR iTime < GetTimeRemaining(ptVigor)
+               if ((piBattlerFlags & BFLAG_VIGOR_REGEN)
+                  OR iTime < GetTimeRemaining(ptVigor))
                {
-                  pbVigor = FALSE;
+                  piBattlerFlags &= ~BFLAG_VIGOR_REGEN;
                   DeleteTimer(ptVigor);
                   ptVigor = CreateTimer(self,@VigorDecay,iTime);
                }
@@ -1586,13 +1570,13 @@ messages:
 
       // Natural regeneration through resting and second wind only occurs
       // if we aren't suffering from a vigor curse.
-      if NOT pbVigorCurse
+      if (NOT (piBattlerFlags & BFLAG_VIGOR_CURSE))
       {
          iStamina = Send(self,@GetStamina);
 
          // Resting is the most traditional way of replenishing vigor.
          // Rate is based on stamina (up to a point per second).
-         if pbResting
+         if (piBattlerFlags & BFLAG_RESTING)
          {
             iBonus = 500 + 10 * iStamina;
 
@@ -1652,7 +1636,7 @@ messages:
          iExertion = EXERTION_PER_MOVE * 9 * piSpeed / 2500;
 
          // If we are hasted, our vigor drain will be reduced.
-         if (piFlags2 & PFLAG2_HASTED)
+         if (Send(self,@CheckPlayerFlag,#flag=PFLAG2_HASTED,#flagset=2))
          {
             iHaste = Send(self,@GetEnchantedState,#what=Send(SYS,@FindSpellByNum,#num=SID_HASTE));
 
@@ -1753,7 +1737,7 @@ messages:
 
       // Grant a chance to improve Second Wind if regenerating below threshold.
       // No improvement if we don't have the skill or are regenerating from rest.
-      if piWind AND NOT pbResting
+      if (piWind AND NOT (piBattlerFlags & BFLAG_RESTING))
       {
          // Since regeneration speeds up progressively with low vigor, factor that in.
          iLimit = 100 * piVigor_rest_threshold + 20 * (piWind + 1);
@@ -1763,7 +1747,7 @@ messages:
 
          if piVigor < iLimit AND Random(0,30*iPenalty) = 0
          {
-            Send(Send(sys,@FindSkillByNum,#num=SKID_SECOND_WIND),@ImproveAbility,#who=self);
+            Send(Send(SYS,@FindSkillByNum,#num=SKID_SECOND_WIND),@ImproveAbility,#who=self);
          }
       }
 
@@ -1838,9 +1822,9 @@ messages:
       piHealth_Rate = 0;
       piMana_Rate = 0;
       piVigor_Rate = 0;
-      pbHealthCurse = FALSE;
-      pbManaCurse = FALSE;
-      pbVigorCurse = FALSE;
+
+      // Unset curse flags.
+      piBattlerFlags &= ~BFLAG_CURSE_MASK;
 
       foreach i in plOverTimeEffects
       {
@@ -1868,15 +1852,15 @@ messages:
             switch(iCurse)
             {
                case 0:
-                  pbHealthCurse = TRUE;
+                  piBattlerFlags |= BFLAG_HEALTH_CURSE;
                   break;
 
                case 1:
-                  pbManaCurse = TRUE;
+                  piBattlerFlags |= BFLAG_MANA_CURSE;
                   break;
 
                case 2:
-                  pbVigorCurse = TRUE;
+                  piBattlerFlags |= BFLAG_VIGOR_CURSE;
                   break;
             }
          }
@@ -1894,8 +1878,8 @@ messages:
       if effect <> $
       {
          // Set our values appropriately.
-         setnth(effect,3,strength);
-         setnth(effect,4,state);
+         SetNth(effect,3,strength);
+         SetNth(effect,4,state);
 
          // No more effect. Prepare for deletion.
          if state = 0
@@ -3343,14 +3327,12 @@ messages:
 
    GetHurtMeRecentlyAmount(who=$)
    {
-      local i;
+      local lNode;
 
-      foreach i in plHurtMeRecently
+      lNode = GetListNode(plHurtMeRecently,1,who);
+      if (lNode <> $)
       {
-         if First(i) = who
-         {
-            return Nth(i,2);
-         }
+         return Nth(lNode,2);
       }
 
       return 0;
@@ -3445,7 +3427,7 @@ messages:
 
    IsResting()
    {
-      return pbResting;
+      return piBattlerFlags & BFLAG_RESTING;
    }
 
    SetSecondWind(i=$,bReset=FALSE)

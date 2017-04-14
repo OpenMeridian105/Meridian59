@@ -471,6 +471,7 @@ classvars:
    viMovePriority = 500
    viFirePriority = 550
    vbSpin = FALSE
+   viSpinAnimationTime = 100
 
    // How well can the monster see in the dark? Default: 5
    // Counteracts low room light level (0-255)
@@ -604,13 +605,12 @@ messages:
    Constructor(template=FALSE, color=0, piSurvivalLevel=0, iBrain = 0)
    "Simple enough, we create a monster. If they are questworthy, we note it."
    {
-      local iStatPoints, iRandom, iTotal, iDiff, lTemp, lStats, i, lSpellbook, oSpell;
+      local iStatPoints, iRandom, iTotal, iDiff, lTemp, lStats, i,
+            lSpellbook, oSpell;
 
       // First things first: Create stats.
       // Creating random stats. Currently 6 stats, if you want to add more,
       // change i to a different number and assign accordingly below.
-      lStats = $;
-      lTemp = $;
       i = 6;
 
       // The total amount of stat points distributed. A couple points may
@@ -620,12 +620,11 @@ messages:
       iDiff = 0;
 
       // Create a stat list with random entries between 1 and 50
-      while i > 0
+      while i-- > 0
       {
          iRandom = Random(1,50);
          lStats = Cons(iRandom,lStats);
          iTotal += iRandom;
-         i -= 1;
       }
 
       // Scale stats so they approach the desired stat total.
@@ -671,13 +670,6 @@ messages:
          lStats = DelListElem(lStats,Nth(lStats,iRandom));
       }
 
-      piAgility = Bound(Nth(lTemp,1)+viBonusAgility,1,MONSTER_STAT_CAP);
-      piAim = Bound(Nth(lTemp,2)+viBonusAim,1,MONSTER_STAT_CAP);
-      piMight = Bound(Nth(lTemp,3)+viBonusMight,1,MONSTER_STAT_CAP);
-      piStamina = Bound(Nth(lTemp,4)+viBonusStamina,1,MONSTER_STAT_CAP);
-      piIntellect = Bound(Nth(lTemp,5)+viBonusIntellect,1,MONSTER_STAT_CAP);
-      piMysticism = Bound(Nth(lTemp,6)+viBonusMysticism,1,MONSTER_STAT_CAP);
-
       // No randomization for templates, just straight values scaled with viDifficulty.
       if template
       {
@@ -688,21 +680,31 @@ messages:
          piIntellect = Bound((viDifficulty+1)*5+viBonusIntellect,1,MONSTER_STAT_CAP);
          piMysticism = Bound((viDifficulty+1)*5+viBonusMysticism,1,MONSTER_STAT_CAP);
       }
+      else
+      {
+         piAgility = Bound(First(lTemp)+viBonusAgility,1,MONSTER_STAT_CAP);
+         piAim = Bound(Nth(lTemp,2)+viBonusAim,1,MONSTER_STAT_CAP);
+         piMight = Bound(Nth(lTemp,3)+viBonusMight,1,MONSTER_STAT_CAP);
+         piStamina = Bound(Nth(lTemp,4)+viBonusStamina,1,MONSTER_STAT_CAP);
+         piIntellect = Bound(Nth(lTemp,5)+viBonusIntellect,1,MONSTER_STAT_CAP);
+         piMysticism = Bound(Nth(lTemp,6)+viBonusMysticism,1,MONSTER_STAT_CAP);
+      }
 
       // Set the monsters resources based on the stats we just created.
       // Health
-      piMax_health = viLevel * Bound(80 + piStamina,$,120) / 100 + piSurvivalLevel * viDifficulty + viBonusHealth;
+      piMax_health = viLevel * Bound(80 + piStamina,$,120) / 100
+                     + piSurvivalLevel * viDifficulty + viBonusHealth;
       piMax_health = Bound(piMax_health,1,$);
-      piHealth = piMax_health*100;
+      piHealth = piMax_health * 100;
 
       // Mana
-      piMax_mana = piMysticism*2 + viBonusMana;
-      piMana = piMax_mana*100;
+      piMax_mana = piMysticism * 2 + viBonusMana;
+      piMana = piMax_mana * 100;
 
       // Vigor
-      piMax_vigor = 100 + piStamina*2 + viBonusVigor;
-      piVigor_rest_threshold = 40 + piStamina*4/5 + viBonusVigor/2;
-      piVigor = Random(piVigor_rest_threshold,piMax_vigor)*100;
+      piMax_vigor = 100 + piStamina * 2 + viBonusVigor;
+      piVigor_rest_threshold = 40 + piStamina * 4 / 5 + viBonusVigor / 2;
+      piVigor = Random(piVigor_rest_threshold,piMax_vigor) * 100;
 
       piMeleeRange = viMeleeRange;
       piFireRange = viFireRange * (75 + piAim) / 100;
@@ -713,12 +715,12 @@ messages:
 
       if Send(self,@MobIsSeller)
       {
-         Send(Self,@SetForSale);
+         Send(self,@SetForSale);
       }
 
       if Send(self,@MobIsCondSeller)
       {
-         Send(Self,@InitCondSale);
+         Send(self,@InitCondSale);
       }
 
       if (viDefault_behavior & AI_NPC) = AI_NPC
@@ -744,8 +746,8 @@ messages:
       {
          poBrain = Send(SYS,@FindBrainByNum,#num=viBrain_type);
       }
-      
-      piState = piState & ESTATE_ZERO_MASK;
+
+      piState &= ESTATE_ZERO_MASK;
       Send(poBrain,@MobConstructor,#mob=self);
 
       piEnch_flags = 0;
@@ -757,11 +759,11 @@ messages:
 
       if piSurvivalLevel > 0
       {
-         piOffense = Send(self,@GetOffense) + piSurvivalLevel*viDifficulty;
-         piDefense = Send(self,@GetDefense) + piSurvivalLevel*viDifficulty;
-         piMinDamage = viLevel/15 + piSurvivalLevel/2;
-         piMaxDamage = viLevel/10 + piSurvivalLevel/2;
-         piArmor = piSurvivalLevel/5;
+         piOffense = Send(self,@GetOffense) + piSurvivalLevel * viDifficulty;
+         piDefense = Send(self,@GetDefense) + piSurvivalLevel * viDifficulty;
+         piMinDamage = viLevel / 15 + piSurvivalLevel / 2;
+         piMaxDamage = viLevel / 10 + piSurvivalLevel / 2;
+         piArmor = piSurvivalLevel / 5;
       }
 
       if color <> 0
@@ -777,7 +779,7 @@ messages:
 
    Constructed()
    {
-      local lActions, lMove, lMelee, lFire, lSpin, i, oSpell;
+      local lActions, lTemp, i, oSpell;
 
       // Any entry in the monster's spell book needs to have the
       // following form: [SID,Mana,Vigor,Range,Priority,P-Factor,SP].
@@ -830,29 +832,31 @@ messages:
 
       // Add default actions to the list:
       // Movement.
-      lMove = [SKID_MINIMUM,0,20,MAX_KOD_INT,viMovePriority,0,100];
-      plActions = Cons(lMove,plActions);
+      lTemp = [SKID_MINIMUM,0,20,MAX_KOD_INT,viMovePriority,0,100];
+      plActions = Cons(lTemp,plActions);
+
       // Melee attacks.
-      lMelee = [SKID_SLASH,0,100,piMeleeRange*piMeleeRange,viMeleePriority,0,100];
-      plActions = Cons(lMelee,plActions);
+      lTemp = [SKID_SLASH,0,100,piMeleeRange*piMeleeRange,viMeleePriority,0,100];
+      plActions = Cons(lTemp,plActions);
 
       // Only add fire, if we can attack at range.
       if piFireRange > 0
       {
-         lFire = [SKID_FIRE,0,100,piFireRange*piFireRange,viFirePriority,0,100];
-         plActions = Cons(lFire,plActions);
+         lTemp = [SKID_FIRE,0,100,piFireRange*piFireRange,viFirePriority,0,100];
+         plActions = Cons(lTemp,plActions);
       }
+
       // Only add spin, if we have an area effect attack.
       if vbSpin
       {
-         lSpin = [SKID_SPIN,0,500,piMeleeRange*piMeleeRange,viMeleePriority+1,0,75];
-         plActions = Cons(lSpin,plActions);
+         lTemp = [SKID_SPIN,0,500,piMeleeRange*piMeleeRange,viMeleePriority+1,0,75];
+         plActions = Cons(lTemp,plActions);
       }
 
       // Check if the monster starts out socializing or minding their own business.
       if Random(1,100) <= viSocial
       {
-         piBehavior = piBehavior | AI_SOCIALIZER ;
+         piBehavior |= AI_SOCIALIZER;
       }
 
       propagate;
@@ -1035,11 +1039,11 @@ messages:
             foreach j in Send(Send(SYS,@GetLibrary),@GetSignetRings)
             {
                if Send(j,@GetRingOwner) = self
-                 {
-                    Send(Send(SYS,@GetLibrary),@UnregisterSignet,#newring=j);
-                    Send(j,@Delete);
-                 }
-             }
+               {
+                  Send(Send(SYS,@GetLibrary),@UnregisterSignet,#newring=j);
+                  Send(j,@Delete);
+               }
+            }
          }
       }
 
@@ -1362,7 +1366,7 @@ messages:
 
       propagate;
    }
-   
+
    LastUserLeft()
    "All our users just left, so lets stop all our timers. If we were a"
    "seller of some conditional goods, we hide them again so the next"
@@ -1392,7 +1396,7 @@ messages:
       //  if the attack is valid.
       if what = self OR what = poTarget
       {
-         piState = (piState & VSTATE_VALIDITY_MASK);
+         piState &= VSTATE_VALIDITY_MASK;
       }
 
       if poBrain <> $
@@ -1682,12 +1686,7 @@ messages:
 
    CanPatrol()
    {
-      if (plPatrolPath <> $)
-      {
-         return TRUE;
-      }
-
-      return FALSE;
+      return (plPatrolPath <> $);
    }
 
    GetChanceToPatrol()
@@ -1735,7 +1734,7 @@ messages:
 
    IncrementPatrolAttempts()
    {
-      piPatrolAttempts = piPatrolAttempts + 1;
+      ++piPatrolAttempts;
 
       return;
    }
@@ -1852,14 +1851,16 @@ messages:
 
       if Send(self,@MonsterCombatCheck)
       {
-         iDelay = Send(self,@MonsterCombatAction,#distance=iDistance,#sight=bSight);
+         iDelay = Send(self,@MonsterCombatAction,#distance=iDistance,
+                        #sight=bSight);
       }
       else
       {
          iDelay = 0;
       }
 
-      // We may no longer be around after the attack (e.g. evil twin killing a target).
+      // We may no longer be around after the attack
+      // (e.g. evil twin killing a target).
       if poOwner = $
       {
          return;
@@ -1874,7 +1875,8 @@ messages:
       // If we can move, we physically try to get closer.
       if iDelay = 0
       {
-         Send(poBrain,@GetEngageBehavior,#mob=self,#target=poTarget,#behavior=piBehavior);
+         Send(poBrain,@GetEngageBehavior,#mob=self,#target=poTarget,
+               #behavior=piBehavior);
       }
 
       // Monster acted in some way. Let's figure out what to do next.
@@ -1905,7 +1907,7 @@ messages:
          // Mighty monsters tend to stick to themselves.
          if (Random(1,500) < piMight) AND (Random(1,100) >= viSocial)
          {
-            piBehavior = piBehavior & ~AI_SOCIALIZER ;
+            piBehavior &= ~AI_SOCIALIZER;
          }
       }
       else
@@ -1913,7 +1915,7 @@ messages:
          // Smart monsters tend to stick together.
          if (Random(1,500) < piIntellect) AND (Random(1,100) <= viSocial)
          {
-            piBehavior = piBehavior | AI_SOCIALIZER ;
+            piBehavior |= AI_SOCIALIZER;
          }
       }
 
@@ -2035,8 +2037,7 @@ messages:
       local iOrigAim;
 
       iOrigAim = piAim;
-      piAim = piAim + points;
-      piAim = Bound(piAim,1,MONSTER_STAT_CAP);
+      piAim = Bound(piAim + points,1,MONSTER_STAT_CAP);
 
       return piAim - iOrigAim;
    }
@@ -2051,8 +2052,7 @@ messages:
       local iOrigAgil;
 
       iOrigAgil = piAgility;
-      piAgility = piAgility + points;
-      piAgility = Bound(piAgility,1,MONSTER_STAT_CAP);
+      piAgility = Bound(piAgility + points,1,MONSTER_STAT_CAP);
 
       return piAgility - iOrigAgil;
    }
@@ -2067,8 +2067,7 @@ messages:
       local iOrigMight;
 
       iOrigMight = piMight;
-      piMight = piMight + points;
-      piMight = Bound(piMight,1,MONSTER_STAT_CAP);
+      piMight = Bound(piMight + points,1,MONSTER_STAT_CAP);
 
       return piMight - iOrigMight;
    }
@@ -2083,8 +2082,7 @@ messages:
       local iOrigStamina;
 
       iOrigStamina = piStamina;
-      piStamina = piStamina + points;
-      piStamina = Bound(piStamina,1,MONSTER_STAT_CAP);
+      piStamina = Bound(piStamina + points,1,MONSTER_STAT_CAP);
 
       return piStamina - iOrigStamina;
    }
@@ -2099,8 +2097,7 @@ messages:
       local iOrigIntellect;
 
       iOrigIntellect = piIntellect;
-      piIntellect = piIntellect + points;
-      piIntellect = Bound(piIntellect,1,MONSTER_STAT_CAP);
+      piIntellect = Bound(piIntellect + points,1,MONSTER_STAT_CAP);
 
       return piIntellect - iOrigIntellect;
    }
@@ -2115,8 +2112,7 @@ messages:
       local iOrigMysticism;
 
       iOrigMysticism = piMysticism;
-      piMysticism = piMysticism + points;
-      piMysticism = Bound(piMysticism,1,MONSTER_STAT_CAP);
+      piMysticism = Bound(piMysticism + points,1,MONSTER_STAT_CAP);
 
       return piMysticism - iOrigMysticism;
    }
@@ -2165,7 +2161,7 @@ messages:
       if (piEnch_flags & ENCH_DEMENTIA)
       {
          // Halve the chance by doubling the base
-         base = base * 2;
+         base *= 2;
       }
 
       return base;
@@ -2184,7 +2180,7 @@ messages:
       {
          return;
       }
-      
+
       // start with old coordinates
       iNew_row = piRow;
       iNew_col = piCol;
@@ -2196,22 +2192,22 @@ messages:
       {
          if (Random(0,1) = 0)
          {
-            iNew_finerow = iNew_finerow + 16;
+            iNew_finerow += 16;
          }
          else
          {
-            iNew_finerow = iNew_finerow - 16;
+            iNew_finerow -= 16;
          }
       }
       else
       {
          if (Random(0,1) = 0)
          {
-            iNew_finecol = iNew_finecol + 16;
+            iNew_finecol += 16;
          }
          else
          {
-            iNew_finecol = iNew_finecol - 16;
+            iNew_finecol -= 16;
          }
       }
 
@@ -2219,7 +2215,7 @@ messages:
       if iNew_finerow >= FINENESS
       {
          iNew_row = piRow + (iNew_finerow / FINENESS);
-         iNew_finerow = iNew_finerow % FINENESS;
+         iNew_finerow %= FINENESS;
       }
       else if iNew_finerow < 0
       {
@@ -2232,7 +2228,7 @@ messages:
       if iNew_finecol >= FINENESS
       {
          iNew_col = piCol + (iNew_finecol / FINENESS);
-         iNew_finecol = iNew_finecol % FINENESS;
+         iNew_finecol %= FINENESS;
       }
       else if iNew_finecol < 0
       {
@@ -2253,7 +2249,7 @@ messages:
             if Send(poOwner,@ReqSomethingMoved,#what=self,
                      #new_row=iNew_row,#new_col=iNew_col,
                      #new_finerow=iNew_finerow,#new_finecol=iNew_finecol,
-                     #server_validate=(NOT(piBehavior&AI_MOVE_WALKTHROUGH_WALLS)))
+                     #server_validate=(NOT(piBehavior & AI_MOVE_WALKTHROUGH_WALLS)))
             {
                Send(poOwner,@SomethingMoved,#what=self,
                      #new_row=iNew_row,#new_col=iNew_col,
@@ -2279,8 +2275,8 @@ messages:
       // calculate distance in highres-grid squares (steps we can still make)
       drow = ((Send(poMaster,@GetRow) * FINENESS) + Send(poMaster,@GetFineRow)) / 16;
       dcol = ((Send(poMaster,@GetCol) * FINENESS) + Send(poMaster,@GetFineCol)) / 16;
-      drow = abs(drow - (((piRow * FINENESS) + piFine_row) / 16));
-      dcol = abs(dcol - (((piCol * FINENESS) + piFine_col) / 16));
+      drow = Abs(drow - (((piRow * FINENESS) + piFine_row) / 16));
+      dcol = Abs(dcol - (((piCol * FINENESS) + piFine_col) / 16));
 
       // Try step closer to the master, if we're not yet close enough.
       // The move-timer is configured to make this movement seamless.
@@ -2295,7 +2291,7 @@ messages:
          // We will do 8 seamless steps, before we again decide
          // to stop or to go on.
             Send(self,@MoveTowards,#oTarget=poMaster,#face_target=TRUE);
-            piKeepWalkingSteps = piKeepWalkingSteps + 1;
+            ++piKeepWalkingSteps;
       }
       else if Random(1,100) < 5
       {
@@ -2319,8 +2315,8 @@ messages:
       // calculate distance in highres-grid squares (steps we can still make)
       drow = (Send(poLeader,@GetRow) * FINENESS) + Send(poLeader,@GetFineRow);
       dcol = (Send(poLeader,@GetCol) * FINENESS) + Send(poLeader,@GetFineCol);
-      drow = abs(drow - (piRow * FINENESS + piFine_row));
-      dcol = abs(dcol - (piCol * FINENESS + piFine_col));
+      drow = Abs(drow - (piRow * FINENESS + piFine_row));
+      dcol = Abs(dcol - (piCol * FINENESS + piFine_col));
 
       // Let's move up to the leader unless we are close enough already.
       if drow * drow + dcol * dcol > 50000
@@ -2336,7 +2332,7 @@ messages:
       local iDist2;
 
       // see how far away we are (2D only)
-      iDist2 = Send(self, @SquaredFineDistanceToLocation,
+      iDist2 = Send(self,@SquaredFineDistanceToLocation,
                     #row=piTargetLocationRow,
                     #col=piTargetLocationCol,
                     #fine_row=piTargetLocationFineRow,
@@ -2353,7 +2349,7 @@ messages:
               #iFineRow=piTargetLocationFineRow,
               #iFineCol=piTargetLocationFineCol);
 
-         piPatrolAttempts = piPatrolAttempts + 1;
+         ++piPatrolAttempts;
       }
       else
       {
@@ -2641,7 +2637,7 @@ messages:
 
       if NOT precision
       {
-         damage = damage * 100;
+         damage *= 100;
       }
 
       if (piBehavior & AI_NPC)
@@ -2658,7 +2654,7 @@ messages:
             #aspell=aspell,#damage=damage);
          iResist = Send(self,@ResistanceCheck,#atype=atype,#aspell=aspell);
          iDamage = Send(self,@GetDamageFromResistance,#what=iDamage,#value=iResist);
-         iDamage = iDamage + bonus;
+         iDamage += bonus;
          iDamage = iDamage * scalefactor / 1000;
       }
       else
@@ -2676,17 +2672,17 @@ messages:
       if what = poTarget
       {
          // Should scale based on damage?
-         piHatred = piHatred + 1;
+         ++piHatred;
       }
 
-      piHealth = piHealth - iDamage;
+      piHealth -= iDamage;
 
       if poOwner = $
       {
          return 0;
       }
 
-      if piHealth <= 0 
+      if piHealth <= 0
       {
          foreach i in Send(poOwner,@GetHolderActive)
          {
@@ -2986,14 +2982,13 @@ messages:
       if who = poTarget
       {
          // Range in FINENESS units.
-         if Send(self,@SquaredFineDistanceTo3D,#what=who)
-               > (iRange * iRange)
+         if Send(self,@SquaredFineDistanceTo3D,#what=who) > (iRange * iRange)
          {
             return;
          }
 
-         piState = (piState & VSTATE_VALIDITY_MASK);
-         piState = (piState | VSTATE_VALID_ATTACK);
+         piState &= VSTATE_VALIDITY_MASK;
+         piState |= VSTATE_VALID_ATTACK;
       }
 
       return;
@@ -3016,7 +3011,7 @@ messages:
       {
          if what = poTarget
          {
-            piState = (piState | VSTATE_INVALID_ATTACK);
+            piState |= VSTATE_INVALID_ATTACK;
          }
 
          return FALSE;
@@ -3042,7 +3037,7 @@ messages:
       {
          if what = poTarget
          {
-            piState = (piState | VSTATE_VALID_ATTACK);
+            piState |= VSTATE_VALID_ATTACK;
          }
 
          return TRUE;
@@ -3053,14 +3048,15 @@ messages:
       {
          if what = poTarget
          {
-            piState = (piState | VSTATE_VALID_ATTACK);
+            piState |= VSTATE_VALID_ATTACK;
          }
 
          return TRUE;
       }
+
       if what = poTarget
       {
-         piState = (piState | VSTATE_INVALID_ATTACK);
+         piState |= VSTATE_INVALID_ATTACK;
       }
 
       return FALSE;
@@ -3087,10 +3083,11 @@ messages:
    MoveTowards(oTarget = $, face_target=FALSE, face_away=FALSE,
                to_master=FALSE)
    {
-      if oTarget = $ 
-      { 
+      if oTarget = $
+      {
          Debug("Bad info passed to MoveTowards!");
-         return FALSE; 
+
+         return FALSE;
       }
 
       return Send(self, @MoveTowardsCoords,
@@ -3105,11 +3102,12 @@ messages:
 
    MoveAway(oTarget = $, face_target=FALSE, face_away=FALSE)
    {
-      local drow,dcol;
+      local drow, dcol;
   
       if oTarget = $
       {
          Debug("Bad info passed to MoveAway!");
+
          return FALSE;
       }
 
@@ -3154,11 +3152,13 @@ messages:
       {
          if direction > 0 AND Random(direction,10) = 10
          {
-            Send(self,@MoveTowards,#oTarget=poTarget,#face_target=TRUE,#face_away=FALSE);
+            Send(self,@MoveTowards,#oTarget=poTarget,#face_target=TRUE,
+                  #face_away=FALSE);
          }
          else if direction < 0 AND Random(-10,direction) = -10
          {
-            Send(self,@MoveAway,#oTarget=poTarget,#face_target=TRUE,#face_away=FALSE);
+            Send(self,@MoveAway,#oTarget=poTarget,#face_target=TRUE,
+                  #face_away=FALSE);
          }
          else
          {
@@ -3171,10 +3171,12 @@ messages:
       }
 
       if (NOT direction)
-         AND GetRandomPointBSP(Send(poOwner,@GetRoomData),15,*iMRow,*iMCol,*iMRowFine,*iMColFine)
+         AND GetRandomPointBSP(Send(poOwner,@GetRoomData),15,*iMRow,*iMCol,
+                  *iMRowFine,*iMColFine)
       {
          Send(self,@MoveTowardsCoords,#iRow=iMRow,#iCol=iMCol,
-            #iFineRow=iMRowFine,#iFineCol=iMColFine,#face_target=TRUE,#face_away=FALSE);
+               #iFineRow=iMRowFine,#iFineCol=iMColFine,
+               #face_target=TRUE,#face_away=FALSE);
       }
 
       return;
@@ -3190,12 +3192,14 @@ messages:
       // Not actively chasing anyone. Let's avoid getting our feet wet.
       // If we are already wading through water, we might as well keep
       // going.
-      if (piState & STATE_MOVE) AND (piBehavior & AI_STROLLING) AND NOT vbAquatic
+      if (piState & STATE_MOVE)
+         AND (piBehavior & AI_STROLLING)
+         AND NOT vbAquatic
          AND (Send(poOwner,@GetSectorIDAtLocation,#row=new_row,#col=new_col,
-            #fine_row=new_finerow,#fine_col=new_finecol) = 10)
+                  #fine_row=new_finerow,#fine_col=new_finecol) = 10)
       {
          if Send(poOwner,@GetSectorIDAtLocation,#row=piRow,#col=piCol,
-            #fine_row=piFine_row,#fine_col=piFine_col) <> 10
+                  #fine_row=piFine_row,#fine_col=piFine_col) <> 10
          {
             return FALSE;
          }
@@ -3222,7 +3226,7 @@ messages:
 
       return TRUE;
    }
-    
+
    MonsterOrient(new_row = $,new_col = $,new_finerow = FINENESS_HALF,
                new_finecol=FINENESS_HALF,face_target = FALSE, face_away=FALSE)
    "Called by monster moving code before and after a real move"
@@ -3249,8 +3253,8 @@ messages:
       {
          drow = (new_row * FINENESS) + new_finerow;
          dcol = (new_col * FINENESS) + new_finecol;
-         drow = drow - ((piRow * FINENESS) + piFine_row);
-         dcol = dcol - ((piCol * FINENESS) + piFine_col);
+         drow -= ((piRow * FINENESS) + piFine_row);
+         dcol -= ((piCol * FINENESS) + piFine_col);
       }
 
       if poOwner <> $
@@ -3278,7 +3282,7 @@ messages:
       iMoveFlags = 0;
       if (piBehavior & AI_MOVE_WALKTHROUGH_WALLS)
       {
-         iMoveFlags = iMoveFlags | MSTATE_MOVE_OUTSIDE_BSP;
+         iMoveFlags |= MSTATE_MOVE_OUTSIDE_BSP;
       }
 
       // query where to step next
@@ -3295,7 +3299,7 @@ messages:
          piState = iState;
 
          if Send(self,@ReqMonsterMove,#new_row=iRow,#new_col=iCol,
-                     #new_finerow=iFineRow,#new_finecol=iFineCol)
+                  #new_finerow=iFineRow,#new_finecol=iFineCol)
          {
             Send(self,@MonsterOrient,#new_row=iRow,#new_col=iCol,
                  #new_finerow=iFineRow,#new_finecol=iFineCol,
@@ -3344,9 +3348,10 @@ messages:
    {
       local iMRow,iMCol,iMRowFine,iMColFine;
 
-      if (NOT GetRandomPointBSP(Send(poOwner,@GetRoomData), 15, *iMRow, *iMCol, *iMRowFine, *iMColFine))
+      if (NOT GetRandomPointBSP(Send(poOwner,@GetRoomData), 15, *iMRow,
+                     *iMCol, *iMRowFine, *iMColFine))
          OR (Send(poOwner,@GetSectorIDAtLocation,#row=iMRow,#col=iMCol,
-            #fine_row=iMRowFine,#fine_col=iMColFine) = 10)
+                  #fine_row=iMRowFine,#fine_col=iMColFine) = 10)
          OR (piBehavior & AI_HAS_TARGET_LOCATION)
          OR (piBehavior & AI_CAN_PATROL)
       {
@@ -3490,20 +3495,17 @@ messages:
             return FALSE;
          }
 
-         if plActiveQuestNodes <> $
+         foreach oQuestNode in plActiveQuestNodes
          {
-            foreach oQuestNode in plActiveQuestNodes
+            if Send(oQuestNode,@CheckCompletionCriteria,#who_tried=what,
+                    #item_offered=i)
             {
-               if Send(oQuestNode,@CheckCompletionCriteria,#who_tried=what,
-                       #item_offered=i)
-               {
-                  return FALSE;
-               }
+               return FALSE;
             }
          }
-      } 
+      }
 
-      bIsBuyer = Send(self, @MobIsBuyer);
+      bIsBuyer = Send(self,@MobIsBuyer);
       if (viAttributes & MOB_RECEIVE)
       {
          // If we also buy items, don't complain about being offered something
@@ -3515,7 +3517,7 @@ messages:
          {
             return FALSE;
          }
-         
+
          // If we both buy items and receive them, fall through to the buy case.
          if NOT bIsBuyer
          {
@@ -3547,13 +3549,12 @@ messages:
 
             if NOT Send(self,@ObjectDesired,#what=i)
             {
-               Send(self,@SayToOne,#target=what,
-                    #message_rsc=Lm_buyer_unwanted);
+               Send(self,@SayToOne,#target=what,#message_rsc=Lm_buyer_unwanted);
 
                return FALSE;
             }
 
-            iValueOffered = iValueOffered + Send(i,@GetValue);
+            iValueOffered += Send(i,@GetValue);
          }
 
          if iValueOffered = 0
@@ -3598,17 +3599,14 @@ messages:
          }
 
          // If there are active quest nodes, notify them   -AJM
-         if plActiveQuestNodes <> $
+         foreach oQuestNode in plActiveQuestNodes
          {
-            foreach oQuestNode in plActiveQuestNodes
+            if Send(oQuestNode,@CheckCompletionCriteria,#who_tried=what,
+                    #item_offered=i)
             {
-               if Send(oQuestNode,@CheckCompletionCriteria,#who_tried=what,
-                       #item_offered=i)
-               {
-                  return TRUE;
-               }
+               return TRUE;
             }
-         } 
+         }
 
          bWanted = FALSE;
          bAllWanted = FALSE;
@@ -3617,7 +3615,7 @@ messages:
             if IsClass(i,j)
             {
                // We were offered something we want.
-               Send(Self,@GotWantedItem,#obj=i,#who=what);
+               Send(self,@GotWantedItem,#obj=i,#who=what);
                bWanted = TRUE;
 
                break;
@@ -3627,20 +3625,21 @@ messages:
          // Were we offered something we dont want?
          if (NOT bWanted) AND notify_about_unwanted_items
          {
-            Send(Self,@GotUnwantedItem,#obj=i,#who=what);
+            Send(self,@GotUnwantedItem,#obj=i,#who=what);
          }
       }
-      
+
       // Last chance.  Am I a vaultman?
       if Send(self,@MobIsVaultman)
-      {            
+      {
          Send(self,@VaultDeposit,#who=what,#lItems=item_list);
+
          return TRUE;
       }
 
       return bAllWanted;
    }
-   
+
    GotWantedItem(obj = $, who = $)
    "We have been given an item on our wanted list. This is either a banker"
    "type, or a quest completion of some kind or an intrigue token."
@@ -3769,20 +3768,16 @@ messages:
       }
 
       // Quest engine hook: if there are active quest nodes, notify them   -AJM
-      if plActiveQuestNodes <> $
+      foreach oQuestNode in plActiveQuestNodes
       {
-         foreach oQuestNode in plActiveQuestNodes
+         if Send(oQuestNode,@CheckCompletionCriteria,#who_tried=what,
+                 #message=string)
          {
-            if Send(oQuestNode,@CheckCompletionCriteria,#who_tried=what,
-                    #message=string)
-            {
-               return;
-            }
+            return;
          }
       }
 
       // Maybe it was just a simple speech trigger. So, we check and parse.
-      lActionList = $;
       lActionList = Send(oLibrary,@SearchSpeechLib,#mob=self,#string=string);
       if lActionList <> $
       {
@@ -3793,7 +3788,7 @@ messages:
       }
 
       // Last but not least, is the player asking about one of my spells/skills?
-      if (viAttributes & MOB_TEACHER) 
+      if (viAttributes & MOB_TEACHER)
       {
          Send(self,@SomeoneSaidLevel,#what=what,#string=string);
       }
@@ -3849,11 +3844,9 @@ messages:
    {
       local i, oAbility, iNum, lAvailable;
 
-      lAvailable = $;
-
       iNum = 0;
-      foreach i in nth(plFor_Sale,2)
-      {         
+      foreach i in Nth(plFor_Sale,2)
+      {
          oAbility = Send(SYS,@FindSkillByNum,#num=i);
          if iLevel = Send(oAbility,@GetLevel)
             AND Send(oAbility,@IsAccessible)
@@ -3865,8 +3858,8 @@ messages:
          }
       }
 
-      foreach i in nth(plFor_Sale,3)
-      {         
+      foreach i in Nth(plFor_Sale,3)
+      {
          oAbility = Send(SYS,@FindSpellByNum,#num=i);
          if iLevel = Send(oAbility,@GetLevel)
             AND Send(oAbility,@IsAccessible)
@@ -3895,7 +3888,7 @@ messages:
       AddPacket(1,BP_SAID, 4,self, 4,Send(self,@GetName), 1,SAY_RESOURCE,
                 4,monster_said_resource_str, 4,Send(self,@GetCapDef),
                 4,Send(self,@GetName));
-                
+
       if lAvailable = $
       {
          AddPacket(4, vrTeach_nothing);
@@ -3932,7 +3925,7 @@ messages:
             }
             else
             {
-               iNumRsc = iNumRsc + 2;
+               iNumRsc += 2;
                AddPacket(4,Send(i,@GetName), 4,monster_teach_comma);
             }
          }
@@ -4034,7 +4027,7 @@ messages:
       }
 
       // This has to stay >0 or things go bad in library.
-      iNum = Random(1,100);   
+      iNum = Random(1,100);
 
       oLibrary = Send(SYS,@GetLibrary);
       lAction = Send(oLibrary,@SearchRandomLib,#mob=self,#percent=iNum);
@@ -4052,7 +4045,7 @@ messages:
                   oTarget = First(i);
                }
 
-               iNum = iNum + 1;
+               ++iNum;
             }
          }
 
@@ -4066,7 +4059,7 @@ messages:
 
          Send(oLibrary,@ParseAction,#action=lAction,#mob=self,#target=oTarget);
       }
-      
+
       if NOT test
       {
          ptRandom=CreateTimer(self,@RandomTimer,
@@ -4083,6 +4076,7 @@ messages:
    "trigger time-of-day mood changes."
    {
       local iHour, iMoodMod;
+
       iHour = Send(SYS,@GetHour);
 
       if iHour = 6
@@ -4090,8 +4084,7 @@ messages:
          Send(self,@AffectMood,#why=MOODMOD_DAWN);
          piSweepCounter = 0;
       }
-
-      if iHour = 18
+      else if iHour = 18
       {
          Send(self,@AffectMood,#why=MOODMOD_DUSK);
       }
@@ -4106,7 +4099,7 @@ messages:
          }
 
          // otherwise move halfway to [-5, 5]
-         iMoodMod = ((abs(piMood) - 5) / 2) * (piMood / abs(piMood));
+         iMoodMod = ((Abs(piMood) - 5) / 2) * (piMood / Abs(piMood));
          Send(self,@SetMood,#new_mood=piMood-iMoodMod);
       }
 
@@ -4226,26 +4219,24 @@ messages:
       {
          rAmount = monster_illusion_damage_blank;
 
-         if num = SID_POISON
+         switch(num)
          {
+         case SID_POISON:
             rMessage = vrIllusionPoison;
-         }
-         if num = SID_BLEED
-         {
+            break;
+         case SID_BLEED:
             rMessage = vrIllusionBleed;
             rAmount = amount;
-         }
-         if num = SID_SIPHON
-         {
+            break;
+         case SID_SIPHON:
             rMessage = vrIllusionSiphon;
-         }
-         if num = SID_FATIGUE
-         {
+            break;
+         case SID_FATIGUE:
             rMessage = vrIllusionFatigue;
-         }
-         if num = SID_BURN
-         {
+            break;
+         case SID_BURN:
             rMessage = vrIllusionBurn;
+            break;
          }
 
          if rMessage <> $
@@ -4460,15 +4451,10 @@ messages:
    {
       local oBody;
 
-      oBody = $;
-
       if vrDead_icon <> $
       {
-         oBody = Create(&DeadBody,
-                        #victim=self,
-                        #killer=killer,
-                        #drawfx=viDead_drawfx,
-                        #BodyTranslation = piColor_translation);
+         oBody = Create(&DeadBody,#victim=self,#killer=killer,
+                     #drawfx=viDead_drawfx,#BodyTranslation=piColor_translation);
       }
 
       return oBody;
@@ -4478,12 +4464,12 @@ messages:
    {
       return vrDead_name;
    }
-   
+
    GetDeadIcon()
    {
       return vrDead_Icon;
    }
-   
+
    Killed(what=$)
    "The mob was just killed."
    {
@@ -4673,6 +4659,7 @@ messages:
             factionRSC = monster_faction_unspecified;
             break;
       }
+
       return factionRSC;
    }
 
@@ -4701,7 +4688,7 @@ messages:
             x = Send(i,@GetValue) * (100 - 10*viMerchant_markup) / 100;
             iAdd = Bound(x,1,$);
 
-            iValue_offered = iValue_offered + iAdd;
+            iValue_offered += iAdd;
          }
 
          poCustomer = what;
@@ -4783,7 +4770,7 @@ messages:
    {
       local i, oVault, iFee, oMoney, iCash;
 
-      if not Send(self,@MobIsVaultman)
+      if NOT Send(self,@MobIsVaultman)
       {
          return;
       }
@@ -4813,7 +4800,7 @@ messages:
             Send(self,@SayToOne,#message_rsc=vaultman_nocursed,#target=who,
                  #parm1=Send(i,@GetDef),#parm2=Send(i,@GetName));
 
-            return FALSE;            
+            return FALSE;
          }
 
          if NOT Send(i,@CanBeStoredInVault)
@@ -4821,10 +4808,10 @@ messages:
             Send(self,@SayToOne,#message_rsc=vaultman_cant_part,#target=who,
                  #parm1=Send(i,@GetName));
 
-            return FALSE;            
+            return FALSE;
          }
 
-         iFee = iFee + Send(self,@GetVaultDepositFee,#what=i,#who=who);
+         iFee += Send(self,@GetVaultDepositFee,#what=i,#who=who);
       }
 
       oMoney = Send(who,@GetMoneyObject);
@@ -4844,22 +4831,22 @@ messages:
               #parm1=iFee);
 
          return;
-      }               
+      }
 
       // this checks bulk of deposited items.
       if NOT Send(oVault,@CanDepositItems,#who=who,#lItems=lItems)
       {
          Send(self,@SayToOne,#message_rsc=vaultman_fullvault,#target=who);
 
-         return FALSE;            
+         return FALSE;
       }
 
-      // passed all checks.  put the stuff in.      
+      // passed all checks.  put the stuff in.
       Send(oVault,@DepositItems,#lItems=lItems,#who=who);
 
       if iFee <> 0
       {
-         Send(oMoney,@SubtractNumber,#number=iFee);  
+         Send(oMoney,@SubtractNumber,#number=iFee);
          Send(self,@SayToOne,#message_rsc=vaultman_Thanks_amount,#target=who,
               #parm1=iFee);
       }
@@ -4969,12 +4956,12 @@ messages:
             AND number_list <> $
             AND Length(number_list) >= iCount
          {
-            iBulk = iBulk + ((Send(i,@GetBulk) * nth(number_list,iCount))
-                             / Send(i,@GetNumber));
+            iBulk += ((Send(i,@GetBulk) * Nth(number_list,iCount))
+                        / Send(i,@GetNumber));
          }
          else
          {
-            iBulk = iBulk + Send(i,@GetBulk);
+            iBulk += Send(i,@GetBulk);
          }
       }
 
@@ -4985,7 +4972,7 @@ messages:
               #message_rsc=vaultman_nowithdraw_cash);
 
          return;
-      }         
+      }
 
       //if Send(what, @GetBulkMax) <> $ AND
       //   (iBulk + Send(what,@GetBulkHold)) > Send(what,@GetBulkMax)
@@ -4993,13 +4980,13 @@ messages:
       //   Send(self,@SayToOne,#target=what,#message_rsc=vaultman_no_room);
       //
       //   return;
-      //}   
-      
+      //}
+
       // The next line added to handle player specified amounts
       lNumbers = number_list;
       bFailed = FALSE;
 
-      // At this point, we're pretty sure it's all legal.      
+      // At this point, we're pretty sure it's all legal.
       foreach i in lItems
       {
          // Don't bother calling ReqMewHold.  It just checks weight,
@@ -5008,7 +4995,7 @@ messages:
          if Send(i,@ReqNewOwner,#what=what)
          {
             if IsClass(i,&NumberItem)
-            {               
+            {
                if NOT Send(oVault,@WithdrawFromStorage,#what=i,#who=what,
                     #count=First(lNumbers))
                {
@@ -5026,7 +5013,6 @@ messages:
                   break;
                }
             }
-            
          }
       }
 
@@ -5040,7 +5026,7 @@ messages:
          else
          {
             Send(self,@SayToOne,#message_rsc=vaultman_Thanks_amount,#target=what,
-              #parm1=iFee);
+                  #parm1=iFee);
          }
       }
       else
@@ -5586,7 +5572,7 @@ messages:
       local iPrev_max;
 
       iPrev_max = piMax_mana;
-      piMax_mana = piMax_mana + amount;
+      piMax_mana += amount;
 
       return (piMax_mana - iPrev_max);
    }
@@ -5610,12 +5596,12 @@ messages:
          iMana, iVigor, iFactor, iSpellPower, lTargets, iDelay, iPowerLevel,
          oTarget, iAction;
 
-      lActions = $;
-
       // If we have don't have sight, and we can't attack through walls,
       // only allow moving. Same if we are scared and not cornered.
-      if (NOT sight AND NOT (piBehavior & AI_FIGHT_THROUGH_WALLS))
-         OR (Send(self,@HealthBelowWimpy) AND NOT (piBehavior & AI_CORNERED))
+      if (NOT sight
+            AND NOT (piBehavior & AI_FIGHT_THROUGH_WALLS))
+         OR (Send(self,@HealthBelowWimpy)
+            AND NOT (piBehavior & AI_CORNERED))
       {
          foreach i in plActions
          {
@@ -5672,13 +5658,14 @@ messages:
       foreach i in lActions
       {
          iNum = First(i);
-         if iNum < 400
+         if iNum < SKID_MINIMUM
          {
             oSpell = Send(SYS,@FindSpellByNum,#num=iNum);
-            lTargets = [poTarget];
-            lTargets = Send(oSpell,@GetTargets,#who=self,#lTargets=lTargets);
-            if NOT Send(oSpell,@CanPayMonsterCosts,#who=self,#lTargets=lTargets,#iSpellPower=iSpellPower)
-               OR NOT Send(poOwner,@ReqSpellCast,#who=self,#oSpell=oSpell,#lItems=lTargets)
+            lTargets = Send(oSpell,@GetTargets,#who=self,#lTargets=[poTarget]);
+            if NOT Send(oSpell,@CanPayMonsterCosts,#who=self,#lTargets=lTargets,
+                        #iSpellPower=iSpellPower)
+               OR NOT Send(poOwner,@ReqSpellCast,#who=self,#oSpell=oSpell,
+                           #lItems=lTargets)
             {
                lActions = DelListElem(lActions,i);
             }
@@ -5693,7 +5680,8 @@ messages:
 
       // Time for an attack check.
       if iNum <> SKID_MINIMUM
-         AND NOT Send(poOwner,@ReqSomethingAttack,#what=self,#victim=poTarget,#use_weapon=self)
+         AND NOT Send(poOwner,@ReqSomethingAttack,#what=self,#victim=poTarget,
+                     #use_weapon=self)
       {
          return FALSE;
       }
@@ -5722,10 +5710,13 @@ messages:
          iAttacks = 100 + viBonusSwing;
          i = 0;
 
-         while (iAttacks > 0) AND poTarget <> $ AND Send(poTarget,@GetOwner) <> $
+         while (iAttacks > 0)
+            AND poTarget <> $
+            AND Send(poTarget,@GetOwner) <> $
          {
             if (Random(1,100) <= iAttacks)
-               AND Send(self,@TryAttack,#what=poTarget,#stroke_obj=self,#factor=Nth(lAction,7))
+               AND Send(self,@TryAttack,#what=poTarget,#stroke_obj=self,
+                        #factor=Nth(lAction,7))
             {
                ++i;
             }
@@ -5749,10 +5740,13 @@ messages:
          iAttacks = 100 + viBonusShot;
          i = 0;
 
-         while (iAttacks > 0) AND poTarget <> $ AND Send(poTarget,@GetOwner) <> $
+         while (iAttacks > 0)
+            AND poTarget <> $
+            AND Send(poTarget,@GetOwner) <> $
          {
             if (Random(1,100) <= iAttacks)
-               AND Send(self,@TryAttack,#what=poTarget,#stroke_obj=self,#factor=Nth(lAction,7))
+               AND Send(self,@TryAttack,#what=poTarget,#stroke_obj=self,
+                        #factor=Nth(lAction,7))
             {
                ++i;
             }
@@ -5782,14 +5776,15 @@ messages:
             if (Random(1,100) <= iAttacks)
             {
                Send(poOwner,@SomeoneSaid,#what=self,#string=Lm_monster_spin,
-                  #type=SAY_MESSAGE,#parm1=Send(self,@GetCapDef),
-                  #parm2=Send(self,@GetName));
+                     #type=SAY_MESSAGE,#parm1=Send(self,@GetCapDef),
+                     #parm2=Send(self,@GetName));
 
                foreach oTarget in lTargets
                {
                   if oTarget <> $ AND Send(oTarget,@GetOwner) <> $
                   {
-                     Send(self,@TryAttack,#what=oTarget,#stroke_obj=self,#factor=Nth(lAction,7));
+                     Send(self,@TryAttack,#what=oTarget,#stroke_obj=self,
+                           #factor=Nth(lAction,7));
                   }
                }
 
@@ -5807,11 +5802,10 @@ messages:
       }
       // Looks like we are casting something. How exciting!
       // Time to set our local variables.
-      else if iNum < 400
+      else if iNum < SKID_MINIMUM
       {
          oSpell = Send(SYS,@FindSpellByNum,#num=iNum);
-         lTargets = [poTarget];
-         lTargets = Send(oSpell,@GetTargets,#who=self,#lTargets=lTargets);
+         lTargets = Send(oSpell,@GetTargets,#who=self,#lTargets=[poTarget]);
          iSpellPower = piSpellPower + Nth(lAction,7);
 
          // Do any special cast animations; send spell for specific ones.
@@ -5820,7 +5814,8 @@ messages:
          {
             // Not facing the target when casting at them is rude. Let's be polite.
             Send(self,@MonsterOrient,#new_row=Send(poTarget,@GetRow),
-                  #new_col=Send(poTarget,@GetCol),#new_finerow=Send(poTarget,@GetFineRow),
+                  #new_col=Send(poTarget,@GetCol),
+                  #new_finerow=Send(poTarget,@GetFineRow),
                   #new_finecol=Send(poTarget,@GetFineCol),#face_target=TRUE);
             Send(self,@MonsterCastAnimation,#iSpellNum=iNum);
          }
@@ -5828,7 +5823,8 @@ messages:
          // We are almost ready to cast the spell, only a spell resist can
          // save the victim now.
          if (Length(lTargets) = 1)
-            AND NOT Send(poTarget,@SpellResist,#oSpell=oSpell,#who=self,#iSpellpower=iSpellPower)
+            AND NOT Send(poTarget,@SpellResist,#oSpell=oSpell,#who=self,
+                        #iSpellpower=iSpellPower)
          {
             // Monsters don't necessarily cast at the same power level as
             // players. Calculate power percentage here.
@@ -5838,12 +5834,12 @@ messages:
             }
             else
             {
-               iPowerLevel = bound(piMysticism + piIntellect + viLevel,$,300) / 3;
+               iPowerLevel = Bound(piMysticism + piIntellect + viLevel,$,300) / 3;
             }
 
             // Cast the spell.
             Send(oSpell,@CastSpell,#who=self,#lTargets=lTargets,
-               #iSpellPower=iSpellPower,#iPowerLevel=iPowerLevel);
+                  #iSpellPower=iSpellPower,#iPowerLevel=iPowerLevel);
          }
 
          iDelay = iDelay * Bound(150 - piIntellect,50,$) / 100;
@@ -5871,7 +5867,7 @@ messages:
          // when another action is taken. Amount of priority
          // lost is unique to each spell, amount of priority
          // gained depends on mysticism.
-         if iAction < 400
+         if iAction < SKID_MINIMUM
          {
             if iAction = iNum
             {
@@ -5885,7 +5881,7 @@ messages:
 
          // Attack routines gain priority with every unit of distance
          // travelled. Gain depends on aim (1 to 5 points).
-         if iAction > 400
+         if iAction > SKID_MINIMUM
          {
             if iNum = SKID_MINIMUM
             {
@@ -5956,9 +5952,7 @@ messages:
          Send(poOwner,@SomethingChanged,#what=self);
          piAnimation = ANIM_NONE;
 
-         --piAction;
-
-         if piAction > 0
+         if --piAction > 0
          {
             ptAction = CreateTimer(self,@DoMeleeAnimation,400);
          }
@@ -6007,11 +6001,9 @@ messages:
 
          Send(poOwner,@SomethingTurned,#what=self,#new_angle=iAngle);
 
-         --piAction;
-
-         if piAction > 0
+         if --piAction > 0
          {
-            ptAction = CreateTimer(self,@DoSpinAnimation,100);
+            ptAction = CreateTimer(self,@DoSpinAnimation,viSpinAnimationTime);
          }
       }
 
@@ -6042,9 +6034,7 @@ messages:
          piAnimation = ANIM_NONE;
          Send(poOwner,@SomethingShot,#who=self,#target=poTarget,#projectile=self);
 
-         --piAction;
-
-         if piAction > 0
+         if --piAction > 0
          {
             ptAction = CreateTimer(self,@DoMissileAnimation,400);
          }
@@ -6371,16 +6361,15 @@ messages:
       }
 
       iPlayer_karma = Send(who,@GetKarma);
-      
+
       // Second clause is to give newbies a break
       if (viKarma * Send(who,@GetKarma)) < 0
-         AND abs(iPlayer_karma) >= 10
+         AND Abs(iPlayer_karma) >= 10
       {
          return FALSE;
       }
 
       return TRUE;
-      
    }
 
    StartBasicTimers()
@@ -6451,13 +6440,13 @@ messages:
    "tokens rather than as independent flags."
    {
       // ESTATE gets erased when we change states
-      if not(piState & bit)  
+      if NOT (piState & bit)
       {
-         piState = piState & ESTATE_ZERO_MASK;
+         piState &= ESTATE_ZERO_MASK;
       }
 
-      piState = piState & STATE_ZERO_MASK;
-      piState = piState | bit;
+      piState &= STATE_ZERO_MASK;
+      piState |= bit;
 
       return;
    }
@@ -6539,7 +6528,7 @@ messages:
          // is reached. This prevents cases of stuttering if our message was a 
          // bit late in transmission. the client has a dynamic playout which 
          // will compensate this.
-         iTime = iTime - 5;
+         iTime -= 5;
 
          // make sure timer interval does not get negative
          // and also not like "run all the time"
@@ -6571,7 +6560,7 @@ messages:
             //  (esp signet rings).
             plWantedItems = DelListElem(plWantedItems,i);
 
-            return;   
+            return;
          }
       }
 
@@ -6585,7 +6574,7 @@ messages:
        return;
       }
 
-      plWantedItems = cons(class,plWantedItems);
+      plWantedItems = Cons(class,plWantedItems);
 
       return;
    }
@@ -6593,7 +6582,7 @@ messages:
    DeleteForSaleList()
    {
       local i;
-      
+
       if plFor_sale = $
       {
          return;
@@ -6629,28 +6618,14 @@ messages:
 
    CanAddSkill(who = $, num = 0)
    {
-      local rval;
-
-      rval = Send(who,@PlayerCanLearn,#skill_num=num,#spell_num=0);
-      if rval = PLAYER_LEARN_SUCCESS
-      {
-         return TRUE;
-      }
-
-      return FALSE;
+      return Send(who,@PlayerCanLearn,#skill_num=num,#spell_num=0)
+                  = PLAYER_LEARN_SUCCESS;
    }
 
    CanAddSpell(who = $, num = 0)
    {
-      local rval;
-
-      rval = Send(who,@PlayerCanLearn,#skill_num=0,#spell_num=num);
-      if rval = PLAYER_LEARN_SUCCESS
-      {
-         return TRUE;
-      }
-
-      return FALSE;
+      return Send(who,@PlayerCanLearn,#skill_num=0,#spell_num=num)
+                  = PLAYER_LEARN_SUCCESS;
    }
 
    HasDoneLearnQuest(who=$)
@@ -6675,12 +6650,11 @@ messages:
 
    CanDoTeach(who = $, sid = 0, bSkill = FALSE)
    {
-      local oAbility, iVal, iReason, iAmount, rAmount, bitSchools, i, tmp,
-            lSchools;
+      local oAbility, iVal, iReason, iAmount, rAmount;
 
       if sid = 0 OR who = $
       { 
-         Debug("Invalid data sent to CanDoTeach!");  
+         Debug("Invalid data sent to CanDoTeach!");
 
          return FALSE; 
       }
@@ -6713,7 +6687,6 @@ messages:
       {
          // Player needs to do a quest for the priestess to gain this spell or
          //  skill.
-         
          Send(poOwner,@SomeoneSaid,#type=SAY_RESOURCE,#what=self,
               #string=vrTeach_quest_needed,#parm1=Send(oAbility,@GetName));
 
@@ -6728,7 +6701,6 @@ messages:
       {
          // Player needs to do a quest for the seller to gain this spell or
          //  skill.
-         
          Send(poOwner,@SomeoneSaid,#type=SAY_RESOURCE,#what=self,
               #string=vrTeach_quest_needed,#parm1=Send(oAbility,@GetName));
 
@@ -6791,11 +6763,10 @@ messages:
 
       // Of we're below here, then the 1's column stores the reason, and the
       //  10s and 100s stores by how much.
-      
       iReason = iVal % 10;
-      iAmount = iVal/10;     
-      rAmount = Send(self,@LearnHowMuchFurther,#iAmount = iAmount);
-      
+      iAmount = iVal / 10;
+      rAmount = Send(self,@LearnHowMuchFurther,#iAmount=iAmount);
+
       if iReason = PLAYER_LEARN_BASE
       {
          Send(poOwner,@SomeoneSaid,#type=SAY_RESOURCE,#what=self,
@@ -6805,8 +6776,6 @@ messages:
 
          return FALSE;
       }
-      
-      lSchools = $;              
 
       Debug("Oops, fell through in our testing for learning.");
 
@@ -6819,39 +6788,27 @@ messages:
 
       if iAmount < MONSTER_LEARN_GRADIENT
       {
-         temp_rsc=monster_little;
+         temp_rsc = monster_little;
+      }
+      else if iAmount < 2 * MONSTER_LEARN_GRADIENT
+      {
+         temp_rsc = monster_nothing;
+      }
+      else if iAmount < 3 * MONSTER_LEARN_GRADIENT
+      {
+         temp_rsc = monster_some;
+      }
+      else if iAmount < 4 * MONSTER_LEARN_GRADIENT
+      {
+         temp_rsc = monster_much;
+      }
+      else if iAmount < 5 * MONSTER_LEARN_GRADIENT
+      {
+         temp_rsc = monster_significantly;
       }
       else
       {
-         if iAmount < 2 * MONSTER_LEARN_GRADIENT
-         {
-            temp_rsc=monster_nothing;
-         }
-         else
-         {
-            if iAmount < 3 * MONSTER_LEARN_GRADIENT
-            {
-               temp_rsc=monster_some;
-            }
-            else
-            {
-               if iAmount < 4 * MONSTER_LEARN_GRADIENT
-               {
-                  temp_rsc=monster_much;
-               }
-               else
-               {
-                  if iAmount < 5 * MONSTER_LEARN_GRADIENT
-                  {
-                     temp_rsc=monster_significantly;
-                  }
-                  else
-                  {
-                     temp_rsc=monster_drastically;
-                  }
-               }
-            }
-         }
+         temp_rsc = monster_drastically;
       }
 
       return temp_rsc;
@@ -6938,7 +6895,7 @@ messages:
    {
       local i;
 
-      if plFor_sale=$ OR Length(plFor_sale) < 4
+      if plFor_sale = $ OR Length(plFor_sale) < 4
       {
          return;
       }
@@ -6965,7 +6922,7 @@ messages:
 
       foreach i in Nth(plFor_sale,4)
       {
-         if First(i)=obj
+         if First(i) = obj
          {
             SetNth(plFor_sale,4,DelListElem(Nth(plFor_sale,4),i)); 
 
@@ -7023,6 +6980,7 @@ messages:
                Create(&FireArrow,#number=150),
                Create(&AcidArrow,#number=150),
                Create(&Helm),
+               Create(&DaemonHelm),
                Create(&Mint,#number=100),
                Create(&NeruditeBow),
                Create(&Gift),
@@ -7051,7 +7009,7 @@ messages:
          return $;
       }
 
-      return Send(oVault,@GetItemsStored,#who=who);      
+      return Send(oVault,@GetItemsStored,#who=who);
    }
 
    GetCostPer100Bulk()
@@ -7065,24 +7023,22 @@ messages:
    {
       local i,lForSale;
 
-      if Send(self,@MobIsVaultman) 
+      if Send(self,@MobIsVaultman)
       {
          return Send(self,@AssembleVaultList,#who=who);
       }
-    
+
       if plFor_sale = $
       {
          return;
       }
-
-      lForSale = $;
 
       // first do conditional items
       if Length(plFor_sale) = 4
       {
          foreach i in Nth(plFor_sale,4)
          {
-            lForSale = cons(First(i),lForSale);
+            lForSale = Cons(First(i),lForSale);
          }
       }
 
@@ -7092,7 +7048,7 @@ messages:
          if Send(self,@CanAddSpell,#who=who,#num=i)
             AND (Send(who,@GetSpellAbility,#spell_num=i) = 0)
          {
-            lForSale = cons(Send(SYS,@FindSpellByNum,#num=i),lForSale);
+            lForSale = Cons(Send(SYS,@FindSpellByNum,#num=i),lForSale);
          }
       }
 
@@ -7102,25 +7058,25 @@ messages:
          if Send(self,@CanAddSkill,#who=who,#num=i)
             AND (Send(who,@GetSkillAbility,#skill_num=i) = 0)
          {
-            lForSale = cons(Send(SYS,@FindSkillByNum,#num=i),lForSale);
+            lForSale = Cons(Send(SYS,@FindSkillByNum,#num=i),lForSale);
          }
       }
 
       // now do the items
       foreach i in First(plFor_sale)
       {
-         lForSale = cons(i,lForSale);
+         lForSale = Cons(i,lForSale);
       }
 
-      if lForSale=$ 
+      if lForSale = $
       {
          Send(poOwner,@SomeoneSaid,#what=self,#type=SAY_RESOURCE,
                #string=vrNothing_for_sale);
-      }  
+      }
 
       return lForSale;
    }
-   
+
    GetPrice(what = $, who = $)
    "Returns the value of an item, or the cost of a skill or spell"
    "No markup for skills or spells"
@@ -7131,14 +7087,14 @@ messages:
       {
          foreach i in Nth(plFor_sale,4)
          {
-            if what=First(i)
+            if what = First(i)
             {
                return Nth(i,2);
             }
          }
       }
 
-      if IsClass(what,&Item) 
+      if IsClass(what,&Item)
       {
          x = Send(what,@GetInitValue) * (100 + 20*viMerchant_markup) / 100;
          y = Send(Send(SYS,@GetParliament),@GetFactionPriceBonus,#who=who,
@@ -7170,14 +7126,14 @@ messages:
          //  monsters like Xeos and admin-created beasties.
          return 0;
       }
-      
+
       // A survival mob
       if poOwner <> $
          AND IsClass(poOwner,&SurvivalRoom)
       {
          return 0;
       }
-      
+
       return viKarma;
    }
 
@@ -7191,7 +7147,7 @@ messages:
       local i, j, oReagent, iNumberItems, oTreasure, oTreasure_type,
             lTreasureItems, iNumberOfItemsDropped, iNumberOfItemsLooted,
             iRandomCashAmount, oMoney, iGetResult, bCapacityFailure,
-            bRangeFailure, iSurvivalLoot, bPlayer, oHurter, oMaster;
+            bRangeFailure, iSurvivalLoot, bPlayer, oHurter;
 
       bPlayer = FALSE;
 
@@ -7206,17 +7162,12 @@ messages:
       {
          oHurter = First(i);
 
-         if IsClass(oHurter,&Player)
+         if (IsClass(oHurter,&Player)
+            OR Send(oHurter,@IsOwnedByPlayer))
          {
             bPlayer = TRUE;
-         }
-         else
-         {
-            oMaster = Send(oHurter,@GetMaster);
-            if (oMaster <> $) AND IsClass(oMaster,&Player)
-            {
-               bPlayer = TRUE;
-            }
+
+            break;
          }
       }
 
@@ -7503,19 +7454,19 @@ messages:
 
       if (piBehavior & AI_NPC)
       {
-         iFlags = iFlags & ~OF_ATTACKABLE;
+         iFlags &= ~OF_ATTACKABLE;
       }
 
       if Send(Self,@MobIsSeller)
       {
-         iFlags = iFlags | OF_BUYABLE;
+         iFlags |= OF_BUYABLE;
       }
 
       if ((viAttributes & MOB_BUYER
          OR viAttributes & MOB_RECEIVE)
          OR what <> $ AND IsClass(what,&DM))
       {
-         iFlags = iFlags | OF_OFFERABLE;
+         iFlags |= OF_OFFERABLE;
       }
 
       return iFlags;
@@ -7560,7 +7511,7 @@ messages:
    IsIllusion()
    {
       return pbIllusion;
-   }  
+   }
 
    // TRUE if mob can have evil twin cast on it
    CanEvilTwin()
@@ -7660,12 +7611,10 @@ messages:
             AND Send(oActive,@GetMaster) = self
             AND Send(oActive,@GetTarget) <> oTarget
          {
-            Send(oActive,@SetBehaviorFlag,
-                  #flag=AI_MOVE_FOLLOW_MASTER,#value=FALSE);
-            Send(oActive,@TargetSwitch,#what=oTarget,
-                  #iHatred=100);
-            Send(oActive,@EnterStateEngage,#target=oTarget,
-                  #actnow=TRUE);
+            Send(oActive,@SetBehaviorFlag,#flag=AI_MOVE_FOLLOW_MASTER,
+                  #value=FALSE);
+            Send(oActive,@TargetSwitch,#what=oTarget,#iHatred=100);
+            Send(oActive,@EnterStateEngage,#target=oTarget,#actnow=TRUE);
          }
       }
 
@@ -7845,8 +7794,8 @@ messages:
    {
       local i, oSpell, each_obj;
 
-      foreach i in plEnchantments 
-      {                       
+      foreach i in plEnchantments
+      {
          oSpell = Nth(i,2);
          if Send(oSpell,@IsIllusion)
             AND Random(1,100) <= iChance
@@ -7862,8 +7811,8 @@ messages:
    {
       local i, oSpell, each_obj;
 
-      foreach i in plEnchantments 
-      {                       
+      foreach i in plEnchantments
+      {
          oSpell = Nth(i,2);
          if Send(oSpell,@GetSchool) = school
          {
@@ -7876,8 +7825,8 @@ messages:
 
    GetClosestFrightener()
    {
-      local lActive, iRangeSquared, oTarget, iThisRangeSquared, i,
-            iDistRow, iDistCol, oIllusion, oObject, oBodyType;
+      local iRangeSquared, oTarget, iThisRangeSquared, i, iDistRow, iDistCol,
+            oIllusion, oObject, oBodyType;
 
       if poOwner = $
       {
@@ -7886,10 +7835,7 @@ messages:
 
       iRangeSquared = piVisionDistance * piVisionDistance;
 
-      oTarget = $;
-
-      lActive = Send(poOwner,@GetHolderActive);
-      foreach i in lActive
+      foreach i in Send(poOwner,@GetHolderActive)
       {
          oObject = First(i);
 
@@ -7949,20 +7895,17 @@ messages:
 
    GetClosestAlly()
    {
-      local lActive, iRangeSquared, oTarget, iThisRangeSquared, i,
-            iDistRow, iDistCol, oIllusion, oObject, oBodyType;
+      local iRangeSquared, oTarget, iThisRangeSquared, i, iDistRow, iDistCol,
+            oIllusion, oObject, oBodyType;
 
       if poOwner = $
       {
          return $;
       }
 
-      oTarget = $;
-
       iRangeSquared = piVisionDistance * piVisionDistance;
 
-      lActive = Send(poOwner,@GetHolderActive);
-      foreach i in lActive
+      foreach i in Send(poOwner,@GetHolderActive)
       {
          oObject = First(i);
 
@@ -8014,11 +7957,7 @@ messages:
       local oTargetMaster;
 
       if target = $
-      {
-         return FALSE;
-      }
-
-      if NOT IsClass(target,&Battler)
+         OR NOT IsClass(target,&Battler)
       {
          return FALSE;
       }
@@ -8067,20 +8006,17 @@ messages:
 
    GetClosestEnemy()
    {
-      local lActive, iRangeSquared, oTarget, iThisRangeSquared, i,
-            iDistRow, iDistCol, oIllusion, oObject, oBodyType;
+      local iRangeSquared, oTarget, iThisRangeSquared, i, iDistRow, iDistCol,
+            oIllusion, oObject, oBodyType;
 
       if poOwner = $
       {
          return $;
       }
 
-      oTarget = $;
-
       iRangeSquared = piVisionDistance * piVisionDistance;
 
-      lActive = Send(poOwner,@GetHolderActive);
-      foreach i in lActive
+      foreach i in Send(poOwner,@GetHolderActive)
       {
          oObject = First(i);
 
@@ -8134,7 +8070,7 @@ messages:
          iDistCol = (piCol * FINENESS + piFine_col)
                      - (Send(oObject,@GetCol) * FINENESS + Send(oObject,@GetFineCol));
 
-         iThisRangeSquared = bound((iDistRow * iDistRow + iDistCol * iDistCol)
+         iThisRangeSquared = Bound((iDistRow * iDistRow + iDistCol * iDistCol)
             / FINENESS_SQUARED,0,iThisRangeSquared);
 
          if iThisRangeSquared <= iRangeSquared
@@ -8164,7 +8100,6 @@ messages:
          return $;
       }
 
-      oTop = $;
       iTop = 0;
 
       foreach i in plHurtMeRecently
@@ -8246,16 +8181,16 @@ messages:
    {
       if value
       {
-         piBehavior=piBehavior | flag ;
+         piBehavior |= flag;
       }
       else
       {
-         piBehavior=piBehavior & ~flag ;
+         piBehavior &= ~flag;
       }
 
       return;
    }
-   
+
    IsWizard()
    {
       return FALSE;
@@ -8293,7 +8228,7 @@ messages:
       // SetTarget handles the rest.
       Send(self,@SetTarget,#what=what);
 
-      piState = (piState & VSTATE_VALIDITY_MASK);
+      piState &= VSTATE_VALIDITY_MASK;
 
       // 'lock' sound
       if vrSound_aware <> $
@@ -8545,12 +8480,7 @@ messages:
 
    InCombat()
    {
-      if (piState & STATE_ENGAGE)
-      {
-         return TRUE;
-      }
-
-      return FALSE;
+      return (piState & STATE_ENGAGE);
    }
 
    GetFaction()
@@ -8573,9 +8503,7 @@ messages:
       if plFor_sale = $ OR Length(plFor_sale) < 3
       {
          return;
-      }  
-
-      lDialogue = $;
+      }
 
       foreach sid in nth(plFor_sale,2)
       {
@@ -8585,10 +8513,10 @@ messages:
          {
             oName = Send(oAbility,@GetName);
          }
-         
-         lDialogue = cons([[oName],0,[LIBACT_LEARN, sid, TRUE]],lDialogue);
+
+         lDialogue = Cons([[oName],0,[LIBACT_LEARN, sid, TRUE]],lDialogue);
       }
-      
+
       foreach sid in nth(plFor_sale,3)
       {
          // spells next
@@ -8597,14 +8525,14 @@ messages:
          {
             oName = Send(oAbility,@GetName);
          }
-         
-         lDialogue = cons([[oName],0,[LIBACT_LEARN, sid, FALSE]],lDialogue);
+
+         lDialogue = Cons([[oName],0,[LIBACT_LEARN, sid, FALSE]],lDialogue);
       }
-      
+
       lFinal = [ GetClass(self), lDialogue ];
 
       Send(Send(SYS,@GetLibrary),@AppendSpeechLibrary,#lDialogue=lFinal);
-      
+
       return;
    }
 
@@ -8643,7 +8571,7 @@ messages:
       }
 
       ptUnturn = CreateTimer(self,@UnTurn,TURN_TIME/viDifficulty);
-      
+
       return;
    }
 
@@ -8678,16 +8606,17 @@ messages:
          Post(oRoom,@SomeoneSaid,#what=self,#string=Monster_Sweep_Reward,
               #type=SAY_RESOURCE,#parm1=Send(who,@GetDef),
               #parm2=Send(who,@GetName));
-              
-         piSweepCounter = piSweepCounter + 1;
-         
+
+         ++piSweepCounter;
+
          if Send(who,@ReqNewHold,#what=oMoney)
          {
             Send(who,@NewHold,#what=oMoney);
-            Send(Send(SYS,@GetStatistics),@MoneyCreated,#amount=Send(oMoney,@GetNumber));
+            Send(Send(SYS,@GetStatistics),@MoneyCreated,
+                  #amount=Send(oMoney,@GetNumber));
          }
       }
-      
+
       return;
    }
 
@@ -8705,7 +8634,7 @@ messages:
    {
       return plResistances;
    }
-   
+
    GetBoostedLevel()
    {
       return piBoostedLevel;
@@ -8887,10 +8816,14 @@ messages:
    ZeroVigor()
    "Uh oh! Are we in trouble?"
    {
-      Send(self,@EnterStateRest,#target=poTarget,#delay=Bound(10000-100*piStamina,5000,10000));
+      Send(self,@EnterStateRest,#target=poTarget,
+            #delay=Bound(10000-100*piStamina,5000,10000));
       Send(self,@GainVigor,#amount=piVigor_rest_threshold);
-      Post(poOwner,@SomeoneSaid,#what=self,#string=Lm_monster_winded,#type=SAY_MESSAGE,
-           #parm1=Send(self,@GetCapDef),#parm2=Send(self,@GetName),#parm3=Send(self,@GetHisHer));
+
+      Post(poOwner,@SomeoneSaid,#what=self,#string=Lm_monster_winded,
+            #type=SAY_MESSAGE,#parm1=Send(self,@GetCapDef),
+            #parm2=Send(self,@GetName),#parm3=Send(self,@GetHisHer));
+
       return;
    }
 
@@ -9035,10 +8968,8 @@ messages:
          iRange /= 10;
       }
 
-      //All range checks are handled squared.
-      iRange *= iRange;
-
-      return iRange;
+      // All range checks are handled squared.
+      return iRange * iRange;
    }
 
    GetSocial()
@@ -9055,7 +8986,7 @@ messages:
          Send(self,@RandomCombatMove,#direction=-distance);
       }
 
-      return ;
+      return;
    }
 
    // Some mobs may have a special trick up their sleeves.
@@ -9069,8 +9000,8 @@ messages:
    {
       if NOT (piBehavior & AI_FIGHT_HYPERAGGRESSIVE)
       {
-         piBehavior = piBehavior & ~AI_FIGHT_AGGRESSIVE;
-         piBehavior = piBehavior & ~AI_FIGHT_KARMA_AGGRESSIVE;
+         piBehavior &= ~AI_FIGHT_AGGRESSIVE;
+         piBehavior &= ~AI_FIGHT_KARMA_AGGRESSIVE;
       }
 
       // Max spell power allows aggro wipe on monsters
@@ -9091,12 +9022,12 @@ messages:
    {
       if (viDefault_behavior & AI_FIGHT_AGGRESSIVE)
       {
-         piBehavior = piBehavior | AI_FIGHT_AGGRESSIVE;
+         piBehavior |= AI_FIGHT_AGGRESSIVE;
       }
 
       if (viDefault_behavior & AI_FIGHT_KARMA_AGGRESSIVE)
       {
-         piBehavior = piBehavior | AI_FIGHT_KARMA_AGGRESSIVE;
+         piBehavior |= AI_FIGHT_KARMA_AGGRESSIVE;
       }
 
       return;
@@ -9172,8 +9103,7 @@ messages:
          iStealth += 200;
       }
 
-      iLight = Send(poOwner,@GetRoomLight);
-      iLight += Send(what,@GetLightLevel);
+      iLight = Send(poOwner,@GetRoomLight) + Send(what,@GetLightLevel);
 
       iStealth += Bound(155 - iLight,-100,150);
 

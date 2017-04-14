@@ -138,22 +138,28 @@ messages:
    }
 
    MonsterCastAnimation(iSpellNum=$)
-   "Give ghost a chance to create fog and zombies on spell cast."
+   "Give ghost a chance to create zombies on spell cast."
    {
-      local i, iRandom, oElement, iMRow, iMCol, iMRowFine, iMColFine;
+      local i, iRandom, oElement, iNum, iMRow, iMCol, iMRowFine, iMColFine;
+
+      // Don't make an infinite number.
+      iNum = Send(poOwner,@CountHoldingHowMany,#class=&Zombie);
+      if (iNum > 16)
+      {
+         propagate;
+      }
 
       iRandom = Random(3,8);
-      i = 0;
-
-      while i < iRandom
+      for (i = 0; i < iRandom; ++i)
       {
-         if GetRandomPointBSP(Send(poOwner,@GetRoomData), 15, *iMRow, *iMCol, *iMRowFine, *iMColFine)
+         if GetRandomPointBSP(Send(poOwner,@GetRoomData), 15, *iMRow, *iMCol,
+                  *iMRowFine, *iMColFine)
          {
             if Random (1,iRandom) = 1
             {
                oElement = Create(&Zombie,#DropsTreasure=FALSE,#Level=15);
                Send(poOwner,@NewHold,#what=oElement,#new_row=iMRow,#new_col=iMCol,
-                    #fine_row=iMRowFine,#fine_col=iMColFine);
+                     #fine_row=iMRowFine,#fine_col=iMColFine);
 
                if poTarget <> $
                {
@@ -161,15 +167,7 @@ messages:
                   Send(oElement,@EnterStateEngage,#target=poTarget,#actnow=TRUE);
                }
             }
-            else
-            {
-               oElement = Create(&FogCloud,#Caster=self,#Duration=5);
-               Send(poOwner,@NewHold,#what=oElement,#new_row=iMRow,#new_col=iMCol,
-                    #fine_row=iMRowFine,#fine_col=iMColFine);
-            }
          }
-
-         ++i;
       }
 
       propagate;

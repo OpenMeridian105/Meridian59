@@ -105,7 +105,7 @@ resources:
       "~kQueen Venya'cyr says, \"~rOnly my servants are granted this "
       "mighty boon.\""
 
-   lich_darkbolt = gob.bgf
+   lich_darkbolt = gob_low.bgf
 
 classvars:
 
@@ -131,6 +131,7 @@ classvars:
    viMeleeRange = 128
    viFireRange = 320
    vbSpin = TRUE
+   viSpinAnimationTime = 200
    viKarma = -100
    vbIsUndead = TRUE
    viDefault_behavior = \
@@ -334,17 +335,10 @@ messages:
    AssessDamage(what = $,damage = $,atype = 0, aspell = 0,bonus = 0)
    "This is called when something causes damage to us."
    {
-      local i;
-
-      foreach i in plAttackers
+      if (NOT FindListElem(plAttackers,what))
       {
-         if i = what
-         {
-            propagate;
-         }
+         plAttackers = Cons(what,plAttackers);
       }
-
-      plAttackers = Cons(what,plAttackers);
 
       propagate;
    }
@@ -367,8 +361,6 @@ messages:
       local i, iPriority, lActions, lAction, iNum, oSpell, iAttacks,
          iMana, iVigor, iFactor, iSpellPower, lTargets, iDelay, iPowerLevel,
          oTarget, iAction;
-
-      lActions = $;
 
       // If we have sight, proceed as usual, else, only allow moving.
       if sight
@@ -414,7 +406,6 @@ messages:
             lActions = DelListElem(lActions,i);
          }
          else if ((iNum = SKID_FIRE) AND (distance <= piMeleeRange*piMeleeRange))
-            AND NOT (IsClass(self,&Reflection) OR IsClass(self,&EvilTwin))
          {
             lActions = DelListElem(lActions,i);
          }
@@ -428,13 +419,14 @@ messages:
       foreach i in lActions
       {
          iNum = First(i);
-         if iNum < 400
+         if iNum < SKID_MINIMUM
          {
             oSpell = Send(SYS,@FindSpellByNum,#num=iNum);
-            lTargets = [poTarget];
-            lTargets = Send(oSpell,@GetTargets,#who=self,#lTargets=lTargets);
-            if NOT Send(oSpell,@CanPayMonsterCosts,#who=self,#lTargets=lTargets,#iSpellPower=iSpellPower)
-               OR NOT Send(poOwner,@ReqSpellCast,#who=self,#oSpell=oSpell,#lItems=lTargets)
+            lTargets = Send(oSpell,@GetTargets,#who=self,#lTargets=[poTarget]);
+            if NOT Send(oSpell,@CanPayMonsterCosts,#who=self,#lTargets=lTargets,
+                        #iSpellPower=iSpellPower)
+               OR NOT Send(poOwner,@ReqSpellCast,#who=self,#oSpell=oSpell,
+                           #lItems=lTargets)
             {
                lActions = DelListElem(lActions,i);
             }
@@ -449,7 +441,8 @@ messages:
 
       // Time for an attack check.
       if iNum <> SKID_MINIMUM
-         AND NOT Send(poOwner,@ReqSomethingAttack,#what=self,#victim=poTarget,#use_weapon=self)
+         AND NOT Send(poOwner,@ReqSomethingAttack,#what=self,#victim=poTarget,
+                     #use_weapon=self)
       {
          return FALSE;
       }
@@ -478,10 +471,13 @@ messages:
          iAttacks = 100 + viBonusSwing;
          i = 0;
 
-         while (iAttacks > 0) AND poTarget <> $ AND Send(poTarget,@GetOwner) <> $
+         while (iAttacks > 0)
+            AND poTarget <> $
+            AND Send(poTarget,@GetOwner) <> $
          {
             if (Random(1,100) <= iAttacks)
-               AND Send(self,@TryAttack,#what=poTarget,#stroke_obj=self,#factor=Nth(lAction,7))
+               AND Send(self,@TryAttack,#what=poTarget,#stroke_obj=self,
+                        #factor=Nth(lAction,7))
             {
                ++i;
             }
@@ -505,10 +501,13 @@ messages:
          iAttacks = 100 + viBonusShot;
          i = 0;
 
-         while (iAttacks > 0) AND poTarget <> $ AND Send(poTarget,@GetOwner) <> $
+         while (iAttacks > 0)
+            AND poTarget <> $
+            AND Send(poTarget,@GetOwner) <> $
          {
             if (Random(1,100) <= iAttacks)
-               AND Send(self,@TryAttack,#what=poTarget,#stroke_obj=self,#factor=Nth(lAction,7))
+               AND Send(self,@TryAttack,#what=poTarget,#stroke_obj=self,
+                        #factor=Nth(lAction,7))
             {
                ++i;
             }
@@ -545,7 +544,8 @@ messages:
                {
                   if oTarget <> $ AND Send(oTarget,@GetOwner) <> $
                   {
-                     Send(self,@TryAttack,#what=oTarget,#stroke_obj=self,#factor=Nth(lAction,7));
+                     Send(self,@TryAttack,#what=oTarget,#stroke_obj=self,
+                           #factor=Nth(lAction,7));
                   }
                }
 
@@ -586,7 +586,8 @@ messages:
          // We are almost ready to cast the spell, only a spell resist can
          // save the victim now.
          if (Length(lTargets) = 1)
-            AND NOT Send(poTarget,@SpellResist,#oSpell=oSpell,#who=self,#iSpellpower=iSpellPower)
+            AND NOT Send(poTarget,@SpellResist,#oSpell=oSpell,#who=self,
+                        #iSpellpower=iSpellPower)
          {
             // Monsters don't necessarily cast at the same power level as
             // players. Calculate power percentage here.
@@ -596,7 +597,7 @@ messages:
             }
             else
             {
-               iPowerLevel = bound(piMysticism + piIntellect + viLevel,$,300) / 3;
+               iPowerLevel = Bound(piMysticism + piIntellect + viLevel,$,300) / 3;
             }
 
             // Cast the spell.
@@ -650,45 +651,6 @@ messages:
       }
 
       return iDelay;
-   }
-
-   DoSpinAnimation()
-   "Handles spin attack animation."
-   {
-      local iDiff, iAngle;
-
-      ptAction = $;
-
-      if poOwner <> $
-      {
-         iAngle = Send(self,@GetAngle);
-         if piAction % 8 < 4
-         {
-            iAngle += (MAX_ANGLE / 4);
-         }
-         else
-         {
-            iAngle -= (MAX_ANGLE / 4);
-         }
-
-         if piAction % 4 = 0
-         {
-            piAnimation = ANIM_ATTACK;
-            Send(poOwner,@SomethingChanged,#what=self);
-            piAnimation = ANIM_NONE;
-         }
-
-         Send(poOwner,@SomethingTurned,#what=self,#new_angle=iAngle);
-
-         --piAction;
-
-         if piAction > 0
-         {
-            ptAction = CreateTimer(self,@DoSpinAnimation,200);
-         }
-      }
-
-      return;
    }
 
    ////  Action Routines
@@ -796,7 +758,8 @@ messages:
 
       while i < iRandom
       {
-         if GetRandomPointBSP(Send(poOwner,@GetRoomData), 15, *iMRow, *iMCol, *iMRowFine, *iMColFine)
+         if GetRandomPointBSP(Send(poOwner,@GetRoomData), 15, *iMRow, *iMCol,
+                  *iMRowFine, *iMColFine)
          {
             if iMRow < 4 OR iMRow > 19 OR iMCol < 7 OR iMCol > 20
                AND NOT (iMRow <= 14 AND iMRow >= 12 AND iMCol <= 29 AND iMCol >= 20)
@@ -1316,14 +1279,7 @@ messages:
       }
 
       if IsClass(target,&User)
-      { 
-         if Send(target,@IsUsingA,#class=&NecromancerAmulet)
-         {
-            return TRUE;
-         }
-      }
-
-      if IsClass(target,&DM)
+         AND Send(target,@IsUsingA,#class=&NecromancerAmulet)
       {
          return TRUE;
       }

@@ -902,15 +902,15 @@ messages:
       iHealthPerTick += piHealth_Rate;
 
       // Disable regeneration when sitting at or above max health.
-      if piHealth >= 100*piMax_health
+      if piHealth >= 100 * piMax_health
       {
          iHealthPerTick = Bound(iHealthPerTick,$,0);
-      }
 
-      // Add a decay of 1 point per 5 seconds if sitting above the max.
-      if piHealth > 100*piMax_health
-      {
-         iHealthPerTick -= 200;
+         // Add a decay of 1 point per 5 seconds if sitting above the max.
+         if piHealth > 100 * piMax_health
+         {
+            iHealthPerTick -= 200;
+         }
       }
 
       // Stop any decay if we are already sitting at 0 health.
@@ -929,13 +929,14 @@ messages:
 
       iHealthPerTick = Send(Self,@CalculateHealthPerTick);
 
-      // Let's set reasonable limits for how small the minimum health gained per tick can be.
-      // If it is greater than 0.01 per second, let's calculate the time it takes to gain one hp.
-      if abs(iHealthPerTick) > 10
+      // Let's set reasonable limits for how small the minimum health
+      // gained per tick can be. If it is greater than 0.01 per second,
+      // let's calculate the time it takes to gain one hp.
+      if Abs(iHealthPerTick) > 10
       {
          iTime = 1000000 / iHealthPerTick;
       }
-      // If it is smaller, return a nil, so that NewHealth knows not to start a timer.
+      // If it's smaller, return $ so that NewHealth knows not to start a timer.
       else
       {
          return $;
@@ -1223,12 +1224,12 @@ messages:
       if piMana >= 100 * piMax_mana
       {
          iManaPerTick = Bound(iManaPerTick,$,0);
-      }
 
-      // Add a decay of 1 point per 5 seconds if sitting above the max.
-      if piMana > 100 * piMax_mana
-      {
-         iManaPerTick -= 200;
+         // Add a decay of 1 point per 5 seconds if sitting above the max.
+         if piMana > 100 * piMax_mana
+         {
+            iManaPerTick -= 200;
+         }
       }
 
       // Stop any decay if we are already sitting at 0 mana.
@@ -1239,7 +1240,7 @@ messages:
 
       return iManaPerTick;
    }
-   
+
    CalculateManaTime()
    "Calculate # of milliseconds until user will gain a Mana point."
    {
@@ -1247,13 +1248,14 @@ messages:
 
       iManaPerTick = Send(Self,@CalculateManaPerTick);
 
-      // Let's set reasonable limits for how small the minimum Mana gained per tick can be.
-      // If it is greater than 0.01 per second, let's calculate the time it takes to gain one hp.
-      if abs(iManaPerTick) > 10
+      // Let's set reasonable limits for how small the minimum Mana gained
+      // per tick can be. If it is greater than 0.01 per second, let's
+      // calculate the time it takes to gain one hp.
+      if Abs(iManaPerTick) > 10
       {
          iTime = 1000000 / iManaPerTick;
       }
-      // If it is smaller, return a nil, so that NewMana knows not to start a timer.
+      // If it's smaller, return $ so that NewMana knows not to start a timer.
       else
       {
          return $;
@@ -1349,7 +1351,8 @@ messages:
       // Faction discount of up to 30% for players.
       if IsClass(self,&Player)
       {
-         amount = Send(Send(SYS,@GetParliament),@ModifyVigorCost,#who=self,#amount=amount);
+         amount = Send(Send(SYS,@GetParliament),@ModifyVigorCost,
+                        #who=self,#amount=amount);
       }
 
       if piVigor > 0 AND amount >= piVigor
@@ -1420,12 +1423,7 @@ messages:
          amount *= 100;
       }
 
-      if piVigor >= amount
-      {
-         return TRUE;
-      }
-
-      return FALSE;
+      return piVigor >= amount;
    }
 
    SetVigor(amount=$)
@@ -1631,14 +1629,16 @@ messages:
       // visual feedback and keep the vigor bar steady.
       // Exertion is handled separately for non-players.
       // (Each move action taken by the monster costs vigor.)
-      if IsClass(self,&Player) AND Abs(piLastMoveUpdateTime - GetTickCount()) < 1000
+      if IsClass(self,&Player)
+         AND Abs(piLastMoveUpdateTime - GetTickCount()) < 1000
       {
          iExertion = EXERTION_PER_MOVE * 9 * piSpeed / 2500;
 
          // If we are hasted, our vigor drain will be reduced.
          if (Send(self,@CheckPlayerFlag,#flag=PFLAG2_HASTED,#flagset=2))
          {
-            iHaste = Send(self,@GetEnchantedState,#what=Send(SYS,@FindSpellByNum,#num=SID_HASTE));
+            iHaste = Send(self,@GetEnchantedState,
+                           #what=Send(SYS,@FindSpellByNum,#num=SID_HASTE));
 
             if iHaste <> $
             {
@@ -1683,12 +1683,12 @@ messages:
       if iVigor >= piMax_vigor
       {
          iVigorPerTick = Bound(iVigorPerTick,$,0);
-      }
 
-      // Add a decay of 1 point per 5 seconds if sitting above the max.
-      if iVigor > piMax_vigor
-      {
-         iVigorPerTick -= 200;
+         // Add a decay of 1 point per 5 seconds if sitting above the max.
+         if iVigor > piMax_vigor
+         {
+            iVigorPerTick -= 200;
+         }
       }
 
       // Stop any decay if we are already sitting at 0 vigor.
@@ -1707,13 +1707,14 @@ messages:
 
       iVigorPerTick = Send(Self,@CalculateVigorPerTick);
 
-      // Let's set reasonable limits for how small the minimum Vigor gained per tick can be.
-      // If it is greater than 0.01 per second, let's calculate the time it takes to gain one point.
-      if abs(iVigorPerTick) > 10
+      // Let's set reasonable limits for how small the minimum Vigor gained
+      // per tick can be. If it is greater than 0.01 per second, let's
+      // calculate the time it takes to gain one point.
+      if Abs(iVigorPerTick) > 10
       {
          iTime = 1000000 / iVigorPerTick;
       }
-      // If it is smaller, return a nil, so that NewVigor knows not to start a timer.
+      // If it's smaller, return $ so that NewVigor knows not to start a timer.
       else
       {
          return $;
@@ -1747,7 +1748,8 @@ messages:
 
          if piVigor < iLimit AND Random(0,30*iPenalty) = 0
          {
-            Send(Send(SYS,@FindSkillByNum,#num=SKID_SECOND_WIND),@ImproveAbility,#who=self);
+            Send(Send(SYS,@FindSkillByNum,#num=SKID_SECOND_WIND),
+                  @ImproveAbility,#who=self);
          }
       }
 
@@ -1908,21 +1910,19 @@ messages:
       {
          oEffect = what;
       }
+      else if num < SKID_MINIMUM
+      {
+         oEffect = Send(SYS,@FindSpellByNum,#num=num);
+      }
       else
       {
-         if num < 400
-         {
-            oEffect = Send(sys,@FindSpellByNum,#num=num);
-         }
-         else
-         {
-            oEffect = Send(sys,@FindSkillByNum,#num=num);
-         }
+         oEffect = Send(SYS,@FindSkillByNum,#num=num);
       }
 
       foreach i in plOverTimeEffects
       {
-         if Nth(i,5) = oEffect AND (who = $ OR who = Nth(i,6))
+         if Nth(i,5) = oEffect
+            AND (who = $ OR who = Nth(i,6))
          {
             return TRUE;
          }
@@ -1959,8 +1959,10 @@ messages:
    // 'showicon' keeps track of whether an effect comes with an associated icon.
    // 'curse' means that the effect stops natural resource regeneration. $ means no
    // curse, 0 is a health curse, 1 a mana curse and 2 a vigor curse.
-   // Template: Send(who,@StartOverTimeEffect,#duration=,#type=,#strength=,#state=,#what=,#who=,#removable=,#showicon=,#curse=);
-   StartOverTimeEffect(duration=$,type=TYPE_HEALTH,strength=0,state=100,what=0,who=0,removable=REMOVE_PLAYER,showicon=TRUE,curse=$)
+   // Template: Send(who,@StartOverTimeEffect,#duration=,#type=,#strength=,
+   // #state=,#what=,#who=,#removable=,#showicon=,#curse=);
+   StartOverTimeEffect(duration=$,type=TYPE_HEALTH,strength=0,state=100,what=0,
+                       who=0,removable=REMOVE_PLAYER,showicon=TRUE,curse=$)
    {
       local tTimer, lEffect;
 
@@ -1972,13 +1974,15 @@ messages:
       {
          tTimer = duration;
       }
+
       lEffect = [tTimer,type,strength,state,what,who,removable,showicon,curse];
 
-      plOverTimeEffects = cons(lEffect,plOverTimeEffects);
+      plOverTimeEffects = Cons(lEffect,plOverTimeEffects);
 
       if what <> 0
       {
-         if IsClass(self,&Player) AND showicon
+         if IsClass(self,&Player)
+            AND showicon
          {
             Send(self,@ShowAddEnchantment,#what=what,#type=ENCHANTMENT_PLAYER);
          }
@@ -1989,7 +1993,9 @@ messages:
       // If 'who' cast a damage over time, set their flags accordingly.
       if who <> 0
       {
-         if IsClass(who,&Player) AND strength < 0 AND NOT type
+         if IsClass(who,&Player)
+            AND strength < 0
+            AND NOT type
          {
             Send(who,@SetPlayerFlag,#flag=PFLAG_DID_DAMAGE,#value=TRUE);
             Send(who,@SetKillTarget,#target=self);
@@ -2002,7 +2008,8 @@ messages:
    }
 
    // Deletes over time effects. Further explanation on conditions below.
-   DeleteOverTimeEffect(what=$,who=$,timer=0,clear=FALSE,removal=REMOVE_PLAYER,curse=FALSE)
+   DeleteOverTimeEffect(what=$,who=$,timer=0,clear=FALSE,removal=REMOVE_PLAYER,
+                        curse=FALSE)
    {
       local i, oSpell, oCaster, bRemoved;
 
@@ -2053,6 +2060,7 @@ messages:
             bRemoved = TRUE;
          }
       }
+
       if bRemoved
       {
          Send(self,@UpdateRates);
@@ -2153,7 +2161,8 @@ messages:
 
          if iDamage = $
          {
-            Send(self,@KilledSomething,#what=what,#use_weapon=oWeapon,#stroke_obj=stroke_obj);
+            Send(self,@KilledSomething,#what=what,#use_weapon=oWeapon,
+                  #stroke_obj=stroke_obj);
          }
          else
          {
@@ -2646,7 +2655,7 @@ messages:
          return battler_wound;
       }
 
-            if damage > 99
+      if damage > 99
       {
          return battler_nick;
       }
@@ -3442,14 +3451,6 @@ messages:
          piWind = Send(self,@GetSkillAbility,#skill_num=SKID_SECOND_WIND);
       }
 
-      if IsClass(self,&User)
-      {
-         if NOT Send(self,@IsLoggedOn)
-         {
-            return;
-         }
-      }
-
       Send(self,@NewVigor);
 
       return;
@@ -3494,7 +3495,8 @@ messages:
 
    GetTerrain()
    {
-      return Send(poOwner,@GetSectorIDAtLocation,#row=piRow,#col=piCol,#fine_row=piFine_row,#fine_col=piFine_col);
+      return Send(poOwner,@GetSectorIDAtLocation,#row=piRow,#col=piCol,
+                  #fine_row=piFine_row,#fine_col=piFine_col);
    }
 
 end

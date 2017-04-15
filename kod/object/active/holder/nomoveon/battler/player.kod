@@ -175,7 +175,8 @@ resources:
       "Hey!  You almost hit %s%s's minion! Good thing your safety was on!"
    player_own_minion = \
       "You cannot attack your own minion!"
-
+   player_cannot_attack_follower = \
+      "You cannot attack this poor sould in need of guidance!"
    player_safe_server = \
       "You are not allowed to attack other players in this world."
    player_no_enter = \
@@ -791,7 +792,11 @@ resources:
    bad_line_of_sight = \
       "Your hindered line of sight makes a successful hit more difficult."
 
-      
+   player_already_leader = \
+      "You already have a mercenary under your command.  You will have to "
+      "let them know that you need to ~Ipart ways~I, before you can take "
+      "another under your tutelage.  "
+
    pvp_notify_wav = gong.ogg
 
 classvars:
@@ -1175,10 +1180,17 @@ messages:
       Send(Send(SYS,@GetLore),@PlayerSuicides,#who=self);
       plSchools = $;
 
-      if poMercenary <> $ AND IsTimer(poMercenary)
+      if poMercenary <> $
       {
-         DeleteTimer(poMercenary);
-         poMercenary = $;
+         if IsTimer(poMercenary)
+         {
+            DeleteTimer(poMercenary);
+            poMercenary = $;
+         }
+         else
+         {
+            Send(poMercenary,@Delete);
+         }
       }
 
       propagate;
@@ -1520,6 +1532,15 @@ messages:
          {
             Send(self,@MsgSendUser,#message_rsc=phase_fatigue_cleared);
             Send(self,@RefreshPhaseTimeToBase);
+         }
+
+         if poMercenary <> $
+            AND NOT IsTimer(poMercenary)
+            AND IsClass(poMercenary,&Follower)
+            AND Send(poMercenary,@IsAbsent)
+            AND Send(poOwner,@IsAccessibleForFollowers)
+         {
+            Send(poMercenary,@FollowerReturn);
          }
       }
 
@@ -2239,6 +2260,15 @@ messages:
       {
          Send(poOwner,@SomethingWaveRoom,#what=self,
                #wave_rsc=player_logged_off_wav_rsc);
+      }
+
+      // Make our follower linger for a while, then poof.
+      if poMercenary <> $
+         AND NOT IsTimer(poMercenary)
+         AND IsClass(poMercenary,&Follower)
+         AND NOT Send(poMercenary,@IsAbsent)
+      {
+         Send(poMercenary,@FollowerAbsence,#iDelay=30000);
       }
 
       return;
@@ -4362,6 +4392,16 @@ messages:
             {
                Send(self,@MsgSendUser,#message_rsc=Jig_cannot_attack,
                      #parm1=Send(victim,@GetDef),#parm2=Send(victim,@GetName));
+            }
+
+            return FALSE;
+         }
+
+         if IsClass(victim,&Follower)
+         {
+            if report
+            {
+               Send(self,@MsgSendUser,#message_rsc=player_cannot_attack_follower);
             }
 
             return FALSE;
@@ -8829,6 +8869,14 @@ messages:
             Send(self,@AddTrainingPoints,#points=iMaxHealth * 3,#bCap=FALSE);
          }
 
+         // Allow our mercenary to gain a level as well.
+         if poMercenary <> $
+            AND NOT IsTimer(poMercenary)
+            AND IsClass(poMercenary,&Follower)
+         {
+            Send(poMercenary,@FollowerDing);
+         }
+
          return TRUE;
       }
 
@@ -9334,9 +9382,16 @@ messages:
          Send(self,@WaveSendUser,#what=self,#wave_rsc=i);
       }
 
+      if poMercenary <> $ 
+         AND NOT IsTimer(poMercenary)
+         AND (Send(poMercenary,@GetOwner) = poOwner)
+      {
+         Send(poMercenary,@Killed);
+      }
+
       // Teleport to the Underworld.
       Send(self,@UserGotoDeadRoom);
-      
+
       // Change health, mana, vigor.
       if Send(SYS,@GetChaosNight)
       {
@@ -14903,7 +14958,56 @@ messages:
          }
       }
 
+      if IsClass(what,&Follower)
+         AND ((what = poMercenary)
+            OR (piBase_max_health < Send(SETTINGS_OBJECT,@GetPKillEnableHP)))
+      {
+         return TRUE;
+      }
+
       return FALSE;
+   }
+
+   CreateFollower(iDifficulty=$,iGender=$,bContracted=FALSE)
+   {
+      local oFollower;
+
+      if (poMercenary <> $)
+      {
+         if IsTimer(poMercenary)
+         {
+            DeleteTimer(poMercenary);
+            poMercenary = $;
+         }
+         else
+         {
+            Send(self,@MsgSendUser,#message_rsc=player_already_leader);
+
+            return FALSE;
+         }
+      }
+
+      oFollower = Create(&Follower,#oLeader=self,#iLevel=piBase_Max_Health,
+                     #iDifficulty=iDifficulty,#iGender=iGender);
+
+      Send(poOwner,@NewHold,#what=oFollower,#new_row=piRow+1,#new_col=piCol+1,
+                          #fine_row=piFine_row,#fine_col=piFine_col);
+
+      Send(oFollower,@SetLeader,#oLeader=self,#bContracted=bContracted);
+
+      Send(oFollower,@FollowerDing,#bCreation=TRUE);
+
+      return TRUE;
+   }
+
+   CreateMercenaryContract(iDifficulty=$,iGender=$)
+   {
+      local oContract;
+
+      oContract = Create(&MercenaryContract,#iLevel=iDifficulty,#iGender=iGender);
+      Send(self,@NewHold,#what=oContract);
+
+      return;
    }
 
 end

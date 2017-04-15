@@ -1,0 +1,889 @@
+// Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+// All rights reserved.
+//
+// This software is distributed under a license that is described in
+// the LICENSE file that accompanies it.
+//
+// Meridian is a registered trademark.
+
+
+////////////////////////////////////////////////////////////////////////////////
+Follower is Human
+
+constants:
+
+   include blakston.khd
+
+resources:
+
+   include follower.lkod
+
+   follower_name_rsc = "follower"
+   follower_dead_name_rsc = "unconscious follower"
+   follower_desc_rsc = \
+      "A trustworthy soul that has decided to join you on your adventures."
+   follower_join = \
+      "Hey, friend!  I'll join you for a bit if you don't mind.  It's "
+      "dangerous out there and it would really put my mind at ease if I "
+      "didn't have to travel alone.  Just let me know when it's time to "
+      "~Ipart ways~I again."
+   follower_leave = \
+      "Alright, friend.  Don't worry, I'm sure I can make it on my own from "
+      "here on and perhaps, we will meet again one day.  I'll just drop the "
+      "loot that you shared with me on the floor - be sure to pick it up!  "
+      "Anyway... thanks for the great run and stay safe out there!"
+   follower_learn = \
+      "Nice! I think I've finally figured out how to cast this new ~I%s~I spell "
+      "I've been trying to learn. I think it might come in handy..."
+   follower_no_spell_inform = "So far, I haven't learned any spells"
+   follower_one_spell_inform = "So far, I've learned the spell "
+   follower_spell_inform = "So far, I've learned the spells "
+   follower_and = " and "
+   follower_comma = ", "
+   follower_spell = "~I%s~I"
+   follower_say_start = "~wYour follower tells you, \""
+   follower_say_end = ".~n~w\""
+
+classvars:
+
+   vrDesc = follower_desc_rsc
+
+   viSpeed = SPEED_VERY_FAST
+   viAttributes = MOB_LISTEN | MOB_RECEIVE
+   vrMercenaryJoin = follower_join
+   vrMercenaryLeave = follower_leave
+
+properties:
+
+   vrName = follower_name_rsc
+   vrDead_name = follower_dead_name_rsc
+   vrSound_aware = $
+   viChanceFemale = 50
+   viKarma = 0
+   viLevel = 250
+   viDifficulty = 5
+   ptAbsence = $
+   poBody = $
+   piLightCheck = 0
+
+messages:
+
+   Constructor(iLevel=0,iDifficulty=$,iGender=$)
+   {
+      if iLevel > 0
+      {
+         viLevel = iLevel;
+      }
+
+      if iDifficulty <> $
+      {
+         viDifficulty = iDifficulty;
+      }
+
+      if iGender <> $
+      {
+         if iGender = GENDER_MALE
+         {
+            viChanceFemale = 0;
+         }
+         else
+         {
+            viChanceFemale = 100;
+         }
+      }
+
+      propagate;
+   }
+
+   Constructed()
+   {
+      propagate;
+   }
+
+   Delete()
+   {
+      if ptAbsence <> $
+      {
+         DeleteTimer(ptAbsence);
+         ptAbsence = $;
+      }
+
+      propagate;
+   }
+
+   SetEquipment()
+   {
+      local oItem;
+
+      // Armor
+      oItem = Create(&LeatherArmor);
+      Send(self,@AddEquipmentObject,#what=oItem);
+
+      // Weapon
+      if Random(0,1)
+      {
+         oItem = Create(&Mace);
+      }
+      else
+      {
+         oItem = Create(&ShortSword);
+      }
+      Send(self,@AddEquipmentObject,#what=oItem);
+
+      // Shield
+      if Random(0,1)
+      {
+         oItem = Create(&WoodenShield);
+      }
+      else
+      {
+         oItem = Create(&MetalShield);
+      }
+      Send(self,@AddEquipmentObject,#what=oItem);
+
+      // Pants/Skirt
+      if Random(0,1)
+      {
+         oItem = Create(&PantsC);
+      }
+      else
+      {
+         oItem = Create(&Skirt);
+      }
+      Send(self,@AddEquipmentObject,#what=oItem);
+
+      // Shirt
+      if Random(0,1)
+      {
+         oItem = Create(&Tanktop);
+      }
+      else
+      {
+         oItem = Create(&Shirt);
+      }
+      Send(self,@AddEquipmentObject,#what=oItem);
+
+      // Torch
+      // Just pack one in case. Not using it just yet.
+      oItem = Create(&Torch);
+      Send(self,@NewHold,#what=oItem);
+
+
+      return;
+   }
+
+   CreateTreasure()
+   {
+      return;
+   }
+
+   // Friend of all newbies and our leader of course.
+   IsAlliedClass(what=$)
+   {
+      if IsClass(what,&Player)
+         AND ((what = poLeader)
+            OR (Send(what,@GetBaseMaxHealth) < Send(SETTINGS_OBJECT,@GetPKillEnableHP)))
+      {
+         return TRUE;
+      }
+
+      return FALSE;
+   }
+
+   // Can't attack players.
+   AllowBattlerAttack(victim=$)
+   {
+      // Must be in a room to attack, must have target.
+      if (poOwner = $
+         OR victim = $)
+      {
+         return FALSE;
+      }
+
+      if IsClass(victim,&Player)
+      {
+         return FALSE;
+      }
+
+      propagate;
+   }
+
+   // Followers can be given items to use.
+   CanAcceptOffer(who=$)
+   {
+      return (who = poLeader) OR IsClass(who,&DM);
+   }
+
+   ReqOffer(what = $)
+   {
+      if (what = poLeader) OR IsClass(what,&DM)
+      {
+         return TRUE;
+      }
+
+      return FALSE;
+   }
+
+   Offer(what = $)
+   {
+      if (what = poLeader) OR IsClass(what,&DM)
+      {
+         Send(what,@CounterOffer,#item_list=$);
+      }
+
+      return;
+   }
+
+   // Put items to use or store them for future use.
+   AcceptOffer()
+   {
+      local i,oHolder,lTake_items;
+
+      // take stuff the user put there
+      oHolder = Send(SYS,@GetSystemHolder1);
+      foreach lTake_items in [ Send(oHolder,@GetHolderActive),
+                           Send(oHolder,@GetHolderPassive) ]
+      {
+         foreach i in lTake_items
+         {
+            Send(self,@NewHold,#what=i);
+
+            // Try to put on any received items.
+            // No ranged weapons or lutes though. Possibly later.
+            if IsClass(i,&RangedWeapon)
+               OR IsClass(i,&Ammo)
+               OR IsClass(i,&Lute)
+               OR IsClass(i,&Torch)
+               OR (IsClass(i,&Shield)
+                  AND GetListElemByClass(plUsing,&Torch) <> $)
+               OR NOT Send(self,@TryUseItem,#what=i)
+            {
+               // If we can't, return them.
+               Send(poLeader,@NewHold,#what=i);
+            }
+         }
+      }
+
+      // kill the cancel offer timer
+      Send(self,@OfferCanceled);
+
+      return TRUE;
+   }
+
+   UnuseItem(what=$,bDrop=TRUE)
+   {
+      local i;
+
+      foreach i in plUsing
+      {
+         if i = what
+         {
+            plUsing = DelListElem(plUsing,i);
+
+            Send(what,@NewUnused,#what=self);
+
+            if bDrop
+            {
+               Send(poOwner,@NewHold,#what=what,#new_row=piRow,#new_col=piCol,
+                     #fine_row=piFine_row+2,#fine_col=piFine_col+2);
+            }
+
+            return TRUE;
+         }
+      }
+
+      return FALSE;
+   }
+
+   SetLeader(oLeader=$,report=TRUE,bContracted=FALSE)
+   {
+      local i, oObject;
+
+      // Time for a farewell...
+      if (poLeader <> $) AND (oLeader = $)
+      {
+         // Let's return all the stuff.
+         foreach i in plUsing
+         {
+            if NOT (IsClass(i,&ShirtBase)
+               OR IsClass(i,&Pants)
+               OR IsClass(i,&Torch))
+            {
+               plUsing = DelListElem(plUsing,i);
+
+               Send(i,@NewUnused,#what=self);
+
+               Send(poOwner,@NewHold,#what=i,#new_row=piRow,#new_col=piCol,
+                     #fine_row=piFine_row+2,#fine_col=piFine_col+2);
+            }
+         }
+
+         // Check if we still have a shield stashed somewhere.
+         foreach i in plPassive
+         {
+            oObject = Send(self,@HolderExtractObject,#data=i);
+
+            if IsClass(oObject,&Shield)
+               AND NOT IsClass(oObject,&Torch)
+            {
+               break;
+            }
+            else
+            {
+               oObject = $;
+            }
+         }
+
+         if oObject <> $
+         {
+            Send(poOwner,@NewHold,#what=oObject,#new_row=piRow,#new_col=piCol,
+                  #fine_row=piFine_row+2,#fine_col=piFine_col+2);
+         }
+
+         if ptAction <> $
+         {
+            DeleteTimer(ptAction);
+         }
+
+         ptAction = CreateTimer(self,@FareWellCruelWorld,10000);
+      }
+
+      propagate;
+   }
+
+   FareWellCruelWorld()
+   {
+      ptAction = $;
+
+      Post(self,@Delete);
+
+      return;
+   }
+
+   // Follower was knocked out. Let's put him on a timeout before
+   // he rejoins his leader. If the leader is nowhere in sight,
+   // return to him the next time he enters a safe room.
+   Killed(what=$)
+   {
+      local oBody;
+
+      if poOwner <> $
+      {
+         oBody = Send(self,@CreateDeadBody,#killer=self);
+
+         if oBody <> $
+         {
+            Send(poOwner,@NewHold,#what=oBody,#new_row=piRow,#new_col=piCol,
+                  #fine_row=piFine_row,#fine_col=piFine_col,
+                  #new_angle=Send(self,@GetAngle));
+
+            // Let's keep track of our body in case we are summoned.
+            poBody = oBody;
+         }
+
+         if vrSound_death <> $
+         {
+            Send(poOwner,@SomethingWaveRoom,#what=oBody,#wave_rsc=vrSound_death,
+                  #flags=SOUND_RANDOM_PITCH);
+         }
+
+         Send(self,@FollowerAbsence);
+      }
+
+      return;
+   }
+
+   // Followers don't decompose and create a special body.
+   CreateDeadBody(killer=$)
+   {
+      // Send current pant/shirt color to body only if they both use
+      // the new two-color xlats. Otherwise, Send default colors.
+      if Send(SYS,@IsTwoColorXLAT,#xlat=Send(self,@GetBodyTranslation))
+         AND Send(SYS,@IsTwoColorXLAT,#xlat=Send(self,@GetLegsTranslation))
+      {
+         return Create(&DeadBody,#victim=self,#killer=killer,#Decomposes=FALSE,
+                     #bFollower=TRUE,#PlayerBodyOverlay=vrDead_Legs,
+                     #BodyTranslation=Send(self,@GetBodyTranslation),
+                     #LegsTranslation=Send(self,@GetLegsTranslation));
+      }
+
+      return Create(&DeadBody,#victim=self,#killer=killer,#Decomposes=FALSE,
+                     #bFollower=TRUE,#PlayerBodyOverlay=vrDead_Legs,
+                  #BodyTranslation=Send(self,@GetDefaultShirtTranslation),
+                  #LegsTranslation=Send(self,@GetDefaultPantsTranslation));
+   }
+
+   FollowerAbsence(iDelay=FALSE,timer = $)
+   {
+      local i;
+
+      if (ptAbsence <> $) AND (ptAbsence <> timer)
+      {
+         DeleteTimer(ptAbsence);
+      }
+
+      ptAbsence = $;
+
+      if iDelay
+      {
+         ptAbsence = CreateTimer(self,@FollowerAbsence,iDelay);
+
+         return;
+      }
+
+      // Enchantments must be removed before brain gets set to $.
+      Send(self,@RemoveAllEnchantments);
+
+      // Same goes for over time effects.
+      Send(self,@DeleteAllOverTimeEffects);
+
+      // If the follower has an Evil Twin, delete it too.
+      Send(self,@RemoveAttackingEvilTwin);
+
+      // If the follower has Apparitions attacking it, delete them.
+      Send(self,@RemoveAllApparitions);
+
+      if plHurtMeRecently <> $
+      {
+         foreach i in plHurtMeRecently
+         {
+            if IsTimer(Nth(i,3))
+            {
+               DeleteTimer(Nth(i,3));
+            }
+            SetFirst(i,$);
+            SetNth(i,2,$);
+            SetNth(i,3,$);
+            plHurtMeRecently = DelListElem(plHurtMeRecently,i);
+         }
+      }
+
+      // Delete our resource timers.
+      if ptHealth <> $
+      {
+         DeleteTimer(ptHealth);
+         ptHealth = $;
+      }
+
+      if ptMana <> $
+      {
+         DeleteTimer(ptMana);
+         ptMana = $;
+      }
+
+      if ptVigor <> $
+      {
+         DeleteTimer(ptVigor);
+         ptVigor = $;
+      }
+
+      Send(self,@EnterStateLimbo);
+
+      Send(self,@ClearBasicTimers);
+
+      if ptAction <> $
+      {
+         DeleteTimer(ptAction);
+         ptAction = $;
+      }
+
+      poLastAttacker = $;
+
+      // Let's get out of here!
+      if poOwner <> $
+      {
+         Send(poOwner,@LeaveHold,#what=self);
+         poOwner = $;
+      }
+
+      return;
+   }
+
+   FollowerReturn(oBody=$)
+   {
+      local oOwner;
+
+      // Got a body, so we must have died somewhere along the road.
+      if oBody <> $
+      {
+         oOwner = Send(oBody,@GetOwner);
+
+         // Let's check if our master had the decency to stick around our
+         // unconscious body. If so, revive at our body.
+         if (oOwner = Send(poLeader,@GetOwner))
+         {
+            Send(oOwner,@NewHold,#what=self,
+               #new_row=Send(oBody,@GetRow),#new_col=Send(oBody,@GetCol));
+
+            Send(self,@GainHealth,#amount=piMax_health*50/100);
+
+            Send(self,@UpdateRates);
+
+            Send(self,@MercenaryReturnMessage,#what=poLeader,#bDeath=TRUE);
+         }
+      }
+      // Not called by our corpse. That means our leader has entered a
+      // safe house. Let's join him again.
+      else
+      {
+         // If we meet up with our follower in a safe place
+         // before his corpse has poofed, tie up loose ends
+         // and dispose of the corpse and it's revival timer.
+         if poBody <> $
+         {
+            Send(poBody,@DeleteTimerMessage);
+         }
+
+         oOwner = Send(poLeader,@GetOwner);
+
+         Send(oOwner,@NewHold,#what=self,
+            #new_row=Send(oOwner,@GetTeleportRow),
+            #new_col=Send(oOwner,@GetTeleportCol));
+
+         Send(self,@GainHealth,#amount=piMax_health*50/100);
+
+         Send(self,@UpdateRates);
+
+         Send(self,@MercenaryReturnMessage,#what=poLeader);
+      }
+
+      poBody = $;
+
+      return;
+   }
+
+   SomethingEntered(what = $,where=$)
+   {
+      if what = poLeader
+      {
+         if ptAbsence <> $
+         {
+            DeleteTimer(ptAbsence);
+            ptAbsence = $;
+         }
+      }
+
+      propagate;
+   }
+
+   IsAbsent()
+   {
+      return (poOwner = $);
+   }
+
+   FollowerDing(bCreation=FALSE)
+   {
+      local iSpell, oSpell, lSpell;
+      viLevel = Send(poLeader,@GetBaseMaxHealth);
+      piMax_health = viLevel * Bound(80 + piStamina,$,120) / 100;
+      piMax_mana = viLevel * Bound(80 + piMysticism,$,120) / 100;
+
+      // Automatic capping takes care of the rest.
+      Send(self,@GainHealth,#amount=200);
+      Send(self,@GainMana,#amount=200);
+      Send(self,@GainVigor,#amount=200);
+
+      while (viLevel / 5 > Length(plActions) + 2)
+      {
+         iSpell = Send(self,@GetRandomSpellID,#iRank=Length(plActions)-1);
+
+         if iSpell > 0
+         {
+            oSpell = Send(SYS,@FindSpellByNum,#num=iSpell);
+            lSpell = [iSpell,
+                      Send(oSpell,@GetTrueManaCost)*100,
+                      Send(oSpell,@GetTrueExertion)*100,
+                      Send(oSpell,@GetSquaredRange),
+                      Random(0,700),
+                      Random(250,2000),
+                      Bound(Random(viDifficulty*5,viDifficulty*11),1,99)];
+
+            plActions = Cons(lSpell,plActions);
+
+            if NOT bCreation
+            {
+               Send(self,@FollowerLearnMessage,#iNum=iSpell);
+            }
+         }
+         else
+         {
+            break;
+         }
+      }
+
+      return;
+   }
+
+   GetRandomSpellID(iRank=0)
+   {
+      local iRandom, iSpell;
+
+      iRandom = Random(1,3);
+      iSpell = 0;
+
+      switch(iRank)
+      {
+         case 1:
+            switch(iRandom)
+            {
+               case 1:
+                  iSpell = SID_LIGHT;
+                  break;
+               case 2:
+                  iSpell = SID_LIGHT;
+                  break;
+               case 3:
+                  iSpell = SID_LIGHT;
+                  break;
+            }
+            break;
+         case 2:
+            switch(iRandom)
+            {
+               case 1:
+                  iSpell = SID_ENFEEBLE;
+                  break;
+               case 2:
+                  iSpell = SID_ENFEEBLE;
+                  break;
+               case 3:
+                  iSpell = SID_ENFEEBLE;
+                  break;
+            }
+            break;
+         case 3:
+            switch(iRandom)
+            {
+               case 1:
+                  iSpell = SID_VERTIGO;
+                  break;
+               case 2:
+                  iSpell = SID_VERTIGO;
+                  break;
+               case 3:
+                  iSpell = SID_VERTIGO;
+                  break;
+            }
+            break;
+         case 4:
+            switch(iRandom)
+            {
+               case 1:
+                  iSpell = SID_DAZZLE;
+                  break;
+               case 2:
+                  iSpell = SID_MARK_OF_DISHONOR;
+                  break;
+               case 3:
+                  iSpell = SID_BLAST_OF_FIRE;
+                  break;
+            }
+            break;
+         case 5:
+            switch(iRandom)
+            {
+               case 1:
+                  iSpell = SID_LIGHTNING_BOLT;
+                  break;
+               case 2:
+                  iSpell = SID_REFLECTION;
+                  break;
+               case 3:
+                  iSpell = SID_KILLING_FIELDS;
+                  break;
+            }
+            break;
+      }
+
+      return iSpell;
+   }
+
+   FollowerLearnMessage(iNum=$)
+   {
+      local oSpell;
+
+      oSpell = Send(SYS,@FindSpellByNum,#num=iNum);
+
+      Post(self,@SayToOne,#target=poLeader,#message_rsc=follower_learn,
+      #parm1=Send(oSpell,@GetName));
+
+      return;
+   }
+
+   FollowerSpellInform()
+   {
+      local i, iNum, oSpell, iSpells, iResources;
+
+      iSpells = 0;
+
+      // Figure the number of spells to pick the according resources.
+      foreach i in plActions
+      {
+         iNum = First(i);
+
+         if iNum < 400
+         {
+            ++iSpells;
+         }
+      }
+
+      if iSpells = 0
+      {
+         iResources = 3;
+      }
+      else
+      {
+         iResources = 2* iSpells + 2;
+      }
+
+      AddPacket(4,Send(SYS,@AddResourceTemplate,#iNum=iResources));
+      AddPacket(4,follower_say_start);
+
+      if iSpells = 0
+      {
+         AddPacket(4,follower_no_spell_inform);
+      }
+      else if iSpells = 1
+      {
+         AddPacket(4,follower_one_spell_inform);
+      }
+      else
+      {
+         AddPacket(4,follower_spell_inform);
+      }
+
+      iSpells = 0;
+
+      // Actually get the name of each spell and add each individually.
+      foreach i in plActions
+      {
+         iNum = First(i);
+
+         if iNum < 400
+         {
+            oSpell = Send(SYS,@FindSpellByNum,#num=iNum);
+
+            // The last two entries are move and slash.
+            if (i = Nth(plActions,Length(plActions)-2))
+               AND iSpells > 0
+            {
+               AddPacket(4,follower_and);
+            }
+            else if i <> First(plActions)
+            {
+               AddPacket(4,follower_comma);
+            }
+
+            AddPacket(4,follower_spell);
+            AddPacket(4,Send(oSpell,@GetName));
+
+            ++iSpells;
+         }
+      }
+
+      AddPacket(4,follower_say_end);
+
+      return TRUE;
+   }
+
+   MercenaryAdjustLight(bRequest=FALSE)
+   {
+      local iLight, i, oObject, oSpell, iSpellPower;
+
+      iLight = Send(poOwner,@GetRoomLight);
+      iLight += Send(poLeader,@GetLightLevel);
+
+      if (iLight >= LIGHT_NICE) AND NOT bRequest
+      {
+         foreach i in plUsing
+         {
+            if IsClass(i,&Torch)
+            {
+               Send(self,@UnuseItem,#what=i,#bDrop=FALSE);
+               break;
+            }
+         }
+
+         foreach i in plPassive
+         {
+            oObject = Send(self,@HolderExtractObject,#data=i);
+
+            if IsClass(oObject,&Shield)
+               AND NOT IsClass(oObject,&Torch)
+            {
+               break;
+            }
+            else
+            {
+               oObject = $;
+            }
+         }
+
+         if oObject <> $
+         {
+            Send(self,@TryUseItem,#what=oObject);
+         }
+      }
+      else
+      {
+         oSpell = $;
+         iSpellPower = 0;
+
+         foreach i in plActions
+         {
+            if First(i) = SID_LIGHT
+            {
+               oSpell = Send(SYS,@FindSpellByNum,#num=SID_LIGHT);
+               iSpellPower = piSpellPower + Nth(i,7);
+               break;
+            }
+         }
+
+         if (oSpell <> $)
+            AND NOT Send(poOwner,@IsEnchanted,#what=oSpell)
+         {
+            Send(oSpell,@CastSpell,#who=self,#lTargets=[self],#iSpellPower=iSpellPower);
+            return TRUE;
+         }
+
+         oObject = Send(self,@FindHolding,#class=&Torch);
+
+         if oObject <> $
+         {
+            foreach i in plUsing
+            {
+               if IsClass(i,&Shield)
+               {
+                  Send(self,@UnuseItem,#what=i,#bDrop=FALSE);
+                  break;
+               }
+            }
+
+            if Send(self,@TryUseItem,#what=oObject)
+            {
+               return TRUE;
+            }
+         }
+      }
+
+      return FALSE;
+   }
+
+   EnterStateMove()
+   {
+      if (Abs(piLightCheck - GetTickCount()) > 5000)
+      {
+         if poLeader <> $
+            AND (Send(poLeader,@GetOwner) = poOwner)
+         {
+            Send(self,@MercenaryAdjustLight);
+         }
+
+         piLightCheck = GetTickCount();
+      }
+
+      propagate;
+   }
+
+end
+////////////////////////////////////////////////////////////////////////////////

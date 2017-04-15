@@ -866,6 +866,13 @@ messages:
       // Give user the logon delay
       Send(self,@LogonDelay);
 
+      // Give a new user a buddy upon first login. Has to happen
+      // after the user has arrived in poOwner.
+      if (piXP_total = 0) AND (poMercenary = $)
+      {
+         Post(self,@CreateFollower,#iDifficulty=5);
+      }
+
       if (poEvilTwin <> $)
       {
          Send(poEvilTwin,@PlaceEvilTwin,#who=self);
@@ -3358,6 +3365,11 @@ messages:
          if Send(what,@GetLeader) = self
          {
             iFlags |= MM_MERCENARY;
+         }
+         else if IsClass(what,&Follower)
+         {
+            // For anyone but the leader, followers are simply NPCs.
+            return MM_NPC;
          }
 
          if IsClass(poOwner,&SurvivalRoom)
@@ -6646,6 +6658,13 @@ messages:
       {
          Send(self,@DoWave);
 
+         if poMercenary <> $ 
+            AND NOT IsTimer(poMercenary)
+            AND (Send(poMercenary,@GetOwner) = poOwner)
+         {
+            Send(poMercenary,@DoWave);
+         }
+
          return;
       }
 
@@ -6653,12 +6672,26 @@ messages:
       {
          Send(self,@DoPoint);
 
+         if poMercenary <> $ 
+            AND NOT IsTimer(poMercenary)
+            AND (Send(poMercenary,@GetOwner) = poOwner)
+         {
+            Send(poMercenary,@DoPoint);
+         }
+
          return;
       }
 
       if action = UA_DANCE
       {
          Send(self,@DoDance);
+
+         if poMercenary <> $ 
+            AND NOT IsTimer(poMercenary)
+            AND (Send(poMercenary,@GetOwner) = poOwner)
+         {
+            Send(poMercenary,@DoDance);
+         }
 
          return;
       }

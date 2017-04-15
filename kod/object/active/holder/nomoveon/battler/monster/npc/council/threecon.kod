@@ -26,7 +26,11 @@ resources:
       "of combat.  Dressed in light armor and military formal regalia, he "
       "lounges at his hut as a general during disgusting peacetime.  Cylill "
       "has had a long past serving with the Duke's forces in protecting "
-      "the world from Trolls and has many war stories to tell.."
+      "the world from Trolls and has many war stories to tell...\n\nMore "
+      "recently, the General has begun to teach young and eager cadets in the "
+      "art of combat, so that they may hope to be hired as a mercenary to one "
+      "of the illustrious adventurers of the land one day.  Obviously, the "
+      "mentorship of a general does not come cheap."
 
    threecon_true_ideal_rsc = \
       "It is impressive to meet another who knows so much about combat skills."
@@ -54,6 +58,9 @@ classvars:
    viMyRow = 27
    viMyCol = 9
    viMyAngle = ANGLE_NORTH
+
+   viMerchant_markup = 0
+   vbSellFromInventory = TRUE
 
    vrUnwanted_give = threecon_unwanted_give
 
@@ -91,7 +98,17 @@ messages:
 
    SetForSale()
    {
-      plFor_Sale = [$,[ SKID_DISARM ],$,$];
+      plFor_Sale = [
+                    [
+                       Create(&MercenaryContract,#iLevel=4,#iGender=GENDER_FEMALE),
+                       Create(&MercenaryContract,#iLevel=4,#iGender=GENDER_MALE),
+                       Create(&MercenaryContract,#iLevel=3,#iGender=GENDER_FEMALE),
+                       Create(&MercenaryContract,#iLevel=3,#iGender=GENDER_MALE),
+                       Create(&MercenaryContract,#iLevel=2,#iGender=GENDER_FEMALE),
+                       Create(&MercenaryContract,#iLevel=2,#iGender=GENDER_MALE),
+                       Create(&MercenaryContract,#iLevel=1,#iGender=GENDER_FEMALE),
+                       Create(&MercenaryContract,#iLevel=1,#iGender=GENDER_MALE)
+                    ],[ SKID_DISARM ],$,$];
 
       return;
    }
@@ -110,6 +127,15 @@ messages:
       {
          return threeCon_half_ideal_rsc;
       }
+
+      return;
+   }
+
+   // The general resets his inventory after each purchase.
+   ItemBoughtHook(buyer = $)
+   {
+      Send(self,@DeleteForSaleList);
+      Send(self,@SetForSale);
 
       return;
    }

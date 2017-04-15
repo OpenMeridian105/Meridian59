@@ -166,8 +166,21 @@ resources:
       "I swear, if I gave you a shilling more than %i you'd topple right over!"
    Lm_bnkr_player_all_full = "You can't hold even a single shilling more!"
 
-   Lm_mercenary_join = "You shouldn't go alone.  It's dangerous out there..."
+   Lm_mercenary_join = \
+      "You shouldn't go alone, it's dangerous out there...  Let me join you "
+      "until it's time to ~Ipart ways~I again."
+   Lm_mercenary_join_contracted = "Reporting for duty!"
    Lm_mercenary_leave = "I've got to get back to my squad.  Stay safe out there!"
+   Lm_mercenary_return_death = \
+      "Whoa!  What happened?  For a moment, everything went black there..."
+   Lm_mercenary_return_lost = \
+      "Sorry about that.  I must have gotten lost somewhere along the way...  "
+      "Good thing I knew that you were going to come here sooner or later!"
+   Lm_mercenary_light = "You are right, it ~Iis~I a bit dark around these parts."
+
+   Lm_mercenary_leave_trigger = "part ways"
+   Lm_mercenary_spells_trigger = "spells"
+   Lm_mercenary_light_trigger = "light"
 
    vaultman_nogold = "You may not use my services to store %s%s."
    vaultman_nocursed = "I cannot take %s%s from you."
@@ -451,7 +464,10 @@ classvars:
    vrIllusionBurn = monster_illusion_burn
 
    vrMercenaryJoin = Lm_mercenary_join
+   vrMercenaryJoinContracted = Lm_mercenary_join_contracted
    vrMercenaryLeave = Lm_mercenary_leave
+   vrMercenaryReturnDeath = Lm_mercenary_return_death
+   vrMercenaryReturnLost = Lm_mercenary_return_lost
 
    // Obsolete, but still included here for safety's sake.
    vrSound_hit = $
@@ -1458,10 +1474,6 @@ messages:
    }
 
    SomethingEntered(what = $,where=$)
-   "If we're not fighting, and the person is right near us, lets reset our "
-   "timers so we dont attack unless we're attacked for the first few seconds "
-   "This means that chasing mobs will get reset too, but we dont want em to "
-   "hit someome in a room transition."
    {
       local oQuestNode;
 
@@ -1529,10 +1541,19 @@ messages:
       if poLeader <> $ AND what = poLeader
       {
          // If we can follow him, let's do that.
-         if (iRow <> 0) AND (iCol <> 0) AND (Send(poLeader,@GetOwner) <> $)
-            AND ((piRow - iRow <= 6) AND (piCol - iCol <= 6))
+         if (iRow <> 0) 
+            AND (iCol <> 0) 
+            AND (Send(poLeader,@GetOwner) <> $)
+            AND ((piRow - iRow <= 6) 
+            AND (piCol - iCol <= 6))
          {
             Post(self,@GotoLeader);
+         }
+         // Followers are quite loyal and won't just call it quits.
+         // Instead, they wait at the next safe spot the leader visits.
+         else if IsClass(self,&Follower)
+         {
+            Send(self,@FollowerAbsence,#iDelay=30000);
          }
          else
          {
@@ -1646,8 +1667,12 @@ messages:
       }
 
       oNewRoom = Send(poLeader,@GetOwner);
+
       if oNewRoom = $
+         OR NOT Send(oNewRoom,@IsAccessibleForFollowers)
       {
+         Send(self,@FollowerAbsence,#iDelay=30000);
+
          return;
       }
 
@@ -2319,7 +2344,7 @@ messages:
       dcol = Abs(dcol - (piCol * FINENESS + piFine_col));
 
       // Let's move up to the leader unless we are close enough already.
-      if drow * drow + dcol * dcol > 50000
+      if drow * drow + dcol * dcol > 30000
       {
         Send(self,@MoveTowards,#oTarget=poLeader,#face_target=TRUE);
       }
@@ -5929,6 +5954,21 @@ messages:
       return;
    }
 
+   MonsterHasAbility(iNum=0)
+   {
+      local i;
+
+      foreach i in plActions
+      {
+         if (First(i) = iNum)
+         {
+            return TRUE;
+         }
+      }
+
+      return FALSE;
+   }
+
    DoMeleeAttack(swings=0)
    "Calls melee attack animation as often as needed."
    {
@@ -6203,7 +6243,7 @@ messages:
 
       if iHit_Percent > 80
       {
-         if piBehavior & AI_NPC
+         if (piBehavior & AI_NPC) OR IsClass(self,&Follower)
          {
             AddPacket(4,vrCondition_healthy, 4,vrDesc, 4,monster_nothing);
          }
@@ -6232,7 +6272,7 @@ messages:
          rMonster_condition = vrCondition_bad;
       }
 
-      if piBehavior & AI_NPC
+      if (piBehavior & AI_NPC) OR IsClass(self,&Follower)
       {
          AddPacket(4,rMonster_Condition, 4,vrDesc, 4,monster_nothing,
                    4,Send(self,@GetCapDef), 4,Send(self,@GetName));
@@ -6470,12 +6510,6 @@ messages:
       if poLeader <> $
       {
          piSpeed *= 2;
-      }
-
-      // Out of breath, can't run.
-      if piVigor < VIGOR_RUN_THRESHOLD
-      {
-         piSpeed /= 2;
       }
 
       // If our monster is able to move in general, then other
@@ -7671,7 +7705,7 @@ messages:
       return poLeader;
    }
 
-   SetLeader(oLeader=$,report=TRUE)
+   SetLeader(oLeader=$,report=TRUE,bContracted=FALSE)
    {
       // We don't have a leader thus far.
       if (poLeader = $)
@@ -7689,8 +7723,8 @@ messages:
             {
                if report
                {
-                  // Let the lucky leader know.
-                  Send(self,@MercenaryJoinMessage,#what=oLeader);
+                  // Reporting for duty!
+                  Send(self,@MercenaryJoinMessage,#what=oLeader,#bContracted=bContracted);
                }
 
                Send(oLeader,@SetMercenary,#oMercenary=self);
@@ -7731,9 +7765,59 @@ messages:
       return TRUE;
    }
 
-   MercenaryJoinMessage(what=$)
+   // It's impolite not to face your leader when addressing him.
+   FaceLeader()
    {
-      Post(self,@SayToOne,#target=what,#message_rsc=vrMercenaryJoin);
+      if (poOwner <> $)
+         AND (poLeader <> $)
+         AND (Send(poLeader,@GetOwner) = poOwner)
+      {
+         Send(self,@MonsterOrient,#new_row=Send(poLeader,@GetRow),
+               #new_col=Send(poLeader,@GetCol),#new_finerow=Send(poLeader,@GetFineRow),
+               #new_finecol=Send(poLeader,@GetFineCol),#face_target=TRUE);
+      }
+
+      return;
+   }
+
+   MercenaryJoinMessage(what=$,bContracted=FALSE)
+   {
+      if bContracted
+      {
+         Post(self,@SayToOne,#target=what,#message_rsc=vrMercenaryJoinContracted);
+      }
+      else
+      {
+         Post(self,@SayToOne,#target=what,#message_rsc=vrMercenaryJoin);
+      }
+
+      Send(self,@FaceLeader);
+
+      if IsClass(self,&Human)
+      {
+         Send(self,@DoWave);
+      }
+
+      return;
+   }
+
+   MercenaryReturnMessage(what=$,bDeath=FALSE)
+   {
+      if bDeath
+      {
+         Post(self,@SayToOne,#target=what,#message_rsc=vrMercenaryReturnDeath);
+      }
+      else
+      {
+         Post(self,@SayToOne,#target=what,#message_rsc=vrMercenaryReturnLost);
+
+         Send(self,@FaceLeader);
+
+         if IsClass(self,&Human)
+         {
+            Send(self,@DoWave);
+         }
+      }
 
       return;
    }
@@ -7742,16 +7826,44 @@ messages:
    {
       Post(self,@SayToOne,#target=what,#message_rsc=vrMercenaryLeave);
 
+      Send(self,@FaceLeader);
+
+      if IsClass(self,&Human)
+      {
+         Send(self,@DoWave);
+      }
+
       return;
    }
 
    MercenaryCommand(what=$,message=$)
    {
-      if StringEqual(message,"bye")
+      if StringContain(message,Lm_mercenary_leave_trigger)
          AND (what = poLeader)
          AND Send(self,@SetLeader)
       {
          Send(what,@MercenarySentAway);
+
+         return TRUE;
+      }
+
+      if StringContain(message,Lm_mercenary_spells_trigger)
+         AND (what = poLeader)
+      {
+         Post(poLeader,@MsgSendUserCallback,#what=self,#sCallback=SetString($,@FollowerSpellInform));
+         Send(self,@FaceLeader);
+
+         return TRUE;
+      }
+
+      if StringContain(message,Lm_mercenary_light_trigger)
+         AND (what = poLeader)
+      {
+         if Send(self,@MercenaryAdjustLight,#bRequest=TRUE)
+         {
+            Post(self,@SayToOne,#target=what,#message_rsc=Lm_mercenary_light);
+            Send(self,@FaceLeader);
+         }
 
          return TRUE;
       }
@@ -7985,7 +8097,7 @@ messages:
             return TRUE;
          }
       }
-      else if Send(target,@IsAlliedClass,#what=self)
+      else if Send(self,@IsAlliedClass,#what=target)
       {
          return TRUE;
       }
@@ -9113,6 +9225,11 @@ messages:
    GetLightLevel()
    {
       return viNightVision;
+   }
+
+   MercenaryAdjustLight()
+   {
+      return FALSE;
    }
 
 end

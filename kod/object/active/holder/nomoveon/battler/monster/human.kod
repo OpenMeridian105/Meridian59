@@ -122,7 +122,6 @@ resources:
    human_male_sound_death = pdeath.ogg
    human_female_sound_death = pdeathf.ogg
    human_sound_aware = trps1awr.ogg
-   human_sound_attack = trpsatk.ogg
 
 classvars:
 
@@ -256,7 +255,7 @@ messages:
 
    SetGender()
    {
-      if Random(1,100) < viChanceFemale
+      if Random(1,100) <= viChanceFemale
       {
          viGender = GENDER_FEMALE;
          vrIcon = human_female_icon_rsc;
@@ -293,7 +292,35 @@ messages:
       return;
    }
 
-   UnuseItem(what = $, Recalibrate = FALSE)
+   TryUnuseItem(what = $)
+   {
+      local bFound, i;
+
+      bFound = FALSE;
+
+      //check and see if item disallows
+      foreach i in plUsing
+      {
+         if i = what
+         {
+            bFound = TRUE;
+         }
+      }
+
+      if NOT bFound
+      {
+         return FALSE;
+      }
+
+      if Send(what,@ReqUnuse)
+      {
+         return Send(self,@UnuseItem,#what=what);
+      }
+
+      return FALSE;
+   }
+
+   UnuseItem(what = $)
    {
       local i;
 
@@ -303,14 +330,7 @@ messages:
          {
             plUsing = DelListElem(plUsing,i);
 
-            if Recalibrate
-            {
-               Send(what,@NewUnused,#what=self,#Recalibrate=TRUE);
-            }
-            else
-            {
-               Send(what,@NewUnused,#what=self);
-            }
+            Send(what,@NewUnused,#what=self);
 
             return TRUE;
          }
@@ -898,6 +918,43 @@ messages:
       piAnimation = PANM_NONE;
 
       return;
+   }
+
+   DoWave()
+   {
+      piAnimation = PANM_WAVE;
+      Send(poOwner,@SomethingChanged,#what=self);
+      piAnimation = PANM_NONE;
+
+      return;
+   }
+
+   DoPoint()
+   {
+      piAnimation = PANM_POINT;
+      Send(poOwner,@SomethingChanged,#what=self);
+      piAnimation = PANM_NONE;
+
+      return;
+   }
+
+   DoDance()
+   {
+      local i;
+
+      foreach i in plUsing
+      {
+         if Send(i,@GetItemUseType) & ITEM_USE_HAND
+         {
+            return FALSE;
+         }
+      }
+
+      piAnimation = PANM_DANCE;
+      Send(poOwner,@SomethingChanged,#what=self);
+      piAnimation = PANM_NONE;
+
+      return TRUE;
    }
 
    GetAttackRange()
@@ -1571,7 +1628,7 @@ messages:
 
       if iUse_type & ITEM_SINGLE_USE
       {
-         return Send(self,@TryApplyItem,#what=what,#apply_on=self);
+         return FALSE;
       }
 
       if iUse_type & ITEM_BROKEN

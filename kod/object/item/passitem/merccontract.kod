@@ -1,0 +1,189 @@
+// Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+// All rights reserved.
+//
+// This software is distributed under a license that is described in
+// the LICENSE file that accompanies it.
+//
+// Meridian is a registered trademark.
+
+
+////////////////////////////////////////////////////////////////////////////////
+MercenaryContract is PassiveItem
+
+constants:
+
+   include blakston.khd
+
+resources:
+
+   include merccontract.lkod
+
+   mercenary_contract_name_rsc = "mercenary contract"
+   mercenary_contract_icon_rsc = scr05.bgf
+
+   mercenary_contract_desc_rsc = \
+      "This is a mercenary contract for %r %r warrior, who is willing to "
+      "offer %r services for the %r price of %i shillings.\n\n"
+      "Use this contract, to call your new mercenary to your side."
+
+   mercenary_contract_skill_one = "an untrained"
+   mercenary_contract_skill_two = "a somewhat competent"
+   mercenary_contract_skill_three = "a fairly skilled"
+   mercenary_contract_skill_four = "an expert"
+
+   mercenary_contract_gender_male = "male"
+   mercenary_contract_gender_female = "female"
+
+   mercenary_contract_his = "his"
+   mercenary_contract_her = "her"
+
+   mercenary_contract_price_one = "low"
+   mercenary_contract_price_two = "fair"
+   mercenary_contract_price_three = "hefty"
+   mercenary_contract_price_four = "exorbitant"
+
+classvars:
+
+   vrName = mercenary_contract_name_rsc
+   vrIcon = mercenary_contract_icon_rsc
+   vrDesc = mercenary_contract_desc_rsc
+
+   viUse_type = ITEM_SINGLE_USE
+   viUse_amount = 1
+
+   viIndefinite = ARTICLE_A
+
+   viBulk = 1
+   viWeight = 1
+
+properties:
+   piHits = 1
+   viValue_average = 10000
+   piMerc_level = 1
+   piMerc_gender = GENDER_MALE
+   piLabelColor = 0
+   piColor = $
+
+messages:
+
+   Constructor(iLevel=$,iGender=$)
+   {
+      local iValue;
+
+      iValue = 5000;
+      if iLevel <> $
+      {
+         piMerc_level = iLevel;
+
+         while iLevel > 0
+         {
+            iValue *= 2;
+
+            --iLevel;
+         }
+      }
+      else
+      {
+         iValue = 1000;
+      }
+
+      viValue_average = iValue;
+
+      if iGender <> $
+      {
+         piMerc_gender = iGender;
+      }
+
+      switch(piMerc_level)
+      {
+         case 1:
+            piLabelColor = XLAT_TO_GREEN;
+            break;
+         case 2:
+            piLabelColor = XLAT_TO_YELLOW;
+            break;
+         case 3:
+            piLabelColor = XLAT_TO_PURPLE;
+            break;
+         case 4:
+            piLabelColor = XLAT_TO_RED;
+            break;
+      }
+
+      switch(piMerc_gender)
+      {
+         case GENDER_MALE:
+            piColor = XLAT_TO_BLUE;
+            break;
+         case GENDER_FEMALE:
+            piColor = XLAT_TO_RED;
+            break;
+      }
+
+      piItem_flags = Send(SYS,@EncodeTwoColorXLAT,#color1=piColor,#color2=piLabelColor);
+
+      return;
+   }
+
+   ShowDesc()
+   {
+      local rSkill, rGender, rPos, rPrice;
+
+      switch(piMerc_level)
+      {
+         case 1:
+            rSkill = mercenary_contract_skill_one;
+            rPrice = mercenary_contract_price_one;
+            break;
+         case 2:
+            rSkill = mercenary_contract_skill_two;
+            rPrice = mercenary_contract_price_two;
+            break;
+         case 3:
+            rSkill = mercenary_contract_skill_three;
+            rPrice = mercenary_contract_price_three;
+            break;
+         case 4:
+            rSkill = mercenary_contract_skill_four;
+            rPrice = mercenary_contract_price_four;
+            break;
+      }
+
+      switch(piMerc_gender)
+      {
+         case GENDER_MALE:
+            rGender = mercenary_contract_gender_male;
+            rPos = mercenary_contract_his;
+            break;
+         case GENDER_FEMALE:
+            rGender = mercenary_contract_gender_female;
+            rPos = mercenary_contract_her;
+            break;
+      }
+
+      AddPacket(4,vrDesc,4,rSkill,4,rGender,4,rPos,4,rPrice,4,viValue_average);
+
+      return;
+   }
+
+   ReqNewApply(what=$)
+   {
+      if Send(what,@CreateFollower,#iDifficulty=piMerc_level,#iGender=piMerc_gender,
+         #bContracted=TRUE)
+      {
+         return TRUE;
+      }
+
+      return FALSE;
+   }
+
+   NewApplied(what = $)
+   {
+      Post(self,@Delete);
+
+      return;
+   }
+
+end
+////////////////////////////////////////////////////////////////////////////////
+

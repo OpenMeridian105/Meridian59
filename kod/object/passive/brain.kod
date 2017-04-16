@@ -82,12 +82,13 @@ messages:
          return;
       }
 
-      if NOT state & STATE_LIMBO
+      // Mobs can move between screens when not in STATE_LIMBO.
+      /*if NOT (state & STATE_LIMBO)
       {
          Debug("Unreachable. Not in state LIMBO.");
 
          return;
-      }
+      }*/
 
       oFormerRoom = Send(mob,@GetOwner);
       if oFormerRoom = $
@@ -153,17 +154,13 @@ messages:
 
    SomethingLeft(mob=$, state=$, what=$)
    {
-      local oTarget;
-
-      oTarget = Send(mob,@GetTarget);
-
       // This happens because LastUserLeft is sent before SomethingLeft.
       if state & STATE_LIMBO
       {
          return;
       }
 
-      if what = oTarget
+      if what = Send(mob,@GetTarget)
       {
          Send(mob,@EnterStateMove);
       }
@@ -181,10 +178,10 @@ messages:
    SomethingAttacked(mob=$, state=$, what=$, victim=$, use_weapon=$)
    {
       local iType, iDelay, iDistance, iAggroRange, iPercentage,
-         oLeader, oMaster, bAssist;
+            oLeader, oMaster, bAssist;
 
       // Check if we have an attacker. If we don't that's a bit odd.
-      if what=$ OR NOT IsClass(what,&Battler)
+      if what = $
       {
          Debug("BAD: null <what> in SomethingAttacked.");
       }
@@ -192,6 +189,13 @@ messages:
       // If we did the attack ourselves or some dummy hurt themselves,
       // we don't care.
       if what = mob OR what = victim
+      {
+         return;
+      }
+
+      // Don't care about attacks from rooms or items,
+      // e.g. lupogg king EQ or nerudite armor exploding.
+      if (NOT IsClass(what,&Battler))
       {
          return;
       }
@@ -386,10 +390,12 @@ messages:
       if bSwitch
       {
          // Check if we wanna club it.
-         if Send(self,@AttemptTargetSwitch,#what=oTarget,#event=TS_FIGHT_DEFEND_SELF,#mob=mob)
+         if Send(self,@AttemptTargetSwitch,#what=oTarget,
+                  #event=TS_FIGHT_DEFEND_SELF,#mob=mob)
          {
             // Yeah, we do.
-            Send(mob,@EnterStateEngage,#target=oTarget,#actnow=FALSE,#delay=delay);
+            Send(mob,@EnterStateEngage,#target=oTarget,#actnow=FALSE,
+                  #delay=delay);
          }
          else
          {
@@ -419,7 +425,8 @@ messages:
          return;
       }
 
-      if Send(self,@AttemptTargetSwitch,#what=oTarget,#event=TS_FIGHT_DEFEND_SELF,#mob=mob)
+      if Send(self,@AttemptTargetSwitch,#what=oTarget,
+               #event=TS_FIGHT_DEFEND_SELF,#mob=mob)
       {
          Send(mob,@EnterStateEngage,#target=oTarget,#actnow=TRUE);
       }
@@ -444,7 +451,8 @@ messages:
          return;
       }
 
-      if Send(self,@AttemptTargetSwitch,#what=oTarget,#event=TS_FIGHT_DEFEND_SELF,#mob=mob)
+      if Send(self,@AttemptTargetSwitch,#what=oTarget,
+               #event=TS_FIGHT_DEFEND_SELF,#mob=mob)
       {
          Send(mob,@EnterStateEngage,#target=oTarget,#actnow=TRUE);
       }
@@ -472,7 +480,8 @@ messages:
 
       if oTarget = $
       {
-         if Send(self,@AttemptTargetSwitch,#what=oHurter,#event=TS_FIGHT_DEFEND_SELF,#mob=mob)
+         if Send(self,@AttemptTargetSwitch,#what=oHurter,
+                  #event=TS_FIGHT_DEFEND_SELF,#mob=mob)
          {
             Send(mob,@EnterStateEngage,#target=oHurter,#actnow=TRUE);
          }
@@ -485,7 +494,8 @@ messages:
       {
          Send(mob,@EnterStateEngage,#target=oTarget,#actnow=TRUE);
       }
-      else if Send(self,@AttemptTargetSwitch,#what=oHurter,#event=TS_FIGHT_DEFEND_SELF,#mob=mob)
+      else if Send(self,@AttemptTargetSwitch,#what=oHurter,
+                  #event=TS_FIGHT_DEFEND_SELF,#mob=mob)
       {
          Send(mob,@EnterStateEngage,#target=oHurter,#actnow=TRUE);
       }
@@ -525,8 +535,8 @@ messages:
    "5. If we feel chatty, move up to a buddy."
    "6. Otherwise, wander aimlessly."
    {
-      local oMaster, oOwner, oMasterRoom, oFrightener, oSocial,
-         iDistance, iVision, iAttack, oEnemy, iDelay;
+      local oMaster, oFrightener, oSocial, iDistance, iVision, iAttack,
+            oEnemy, iDelay;
 
       if mob = $
       {
@@ -585,9 +595,7 @@ messages:
          oMaster = Send(mob,@GetMaster);
          if oMaster <> $
          {
-            oOwner = Send(mob,@GetOwner);
-            oMasterRoom = Send(oMaster,@GetOwner);
-            if oOwner = oMasterRoom
+            if Send(mob,@GetOwner) = Send(oMaster,@GetOwner)
             {
                /// Attempt to move towards master.
                Send(mob,@MoveToMaster);
@@ -612,16 +620,17 @@ messages:
       // If we got a leader, follow him.
       if Send(mob,@GetLeader) <> $
       {
-            Send(mob,@MoveToLeader);
+         Send(mob,@MoveToLeader);
 
-            return;
+         return;
       }
 
 
       // We don't have any pressing matters to attend to. However, we are
       // still prepared to bash some skulls in if we should encounter any.
       // Only if we are aggressive though.
-      if (behavior & AI_FIGHT_AGGRESSIVE) OR (behavior & AI_FIGHT_KARMA_AGGRESSIVE)
+      if (behavior & AI_FIGHT_AGGRESSIVE)
+         OR (behavior & AI_FIGHT_KARMA_AGGRESSIVE)
       {
          oEnemy = Send(mob,@GetClosestEnemy);
          if oEnemy <> $
@@ -630,14 +639,14 @@ messages:
 
             // Well, look what we have here. A skull!
             if iDistance < Send(mob,@GetAggroRange,#what=oEnemy,#bStrolling=TRUE)
+               AND Send(self,@AttemptTargetSwitch,#what=oEnemy,#event=TS_MOVE,
+                        #mob=mob)
             {
-               if Send(self,@AttemptTargetSwitch,#what=oEnemy,#event=TS_MOVE,#mob=mob)
-               {
-                  iDelay = Bound(100 - Send(mob,@GetAgility),25,100) * 40;
-                  Send(mob,@EnterStateEngage,#target=oEnemy,#actnow=FALSE,#delay=iDelay);
+               iDelay = Bound(100 - Send(mob,@GetAgility),25,100) * 40;
+               Send(mob,@EnterStateEngage,#target=oEnemy,#actnow=FALSE,
+                     #delay=iDelay);
 
-                  return FALSE;
-               }
+               return FALSE;
             }
          }
       }
@@ -689,7 +698,7 @@ messages:
             // Check if ally is within sight. It would be a pity if we had a friend
             // nearby but couldn't see them. Sometimes life is cruel like that.
             iDistance = Send(mob,@SquaredFineDistanceTo3D,#what=oSocial);
-            iVision = Send(mob,@GetVisionDistance)*64;
+            iVision = Send(mob,@GetVisionDistance) * FINENESS;
             if NOT Send(Send(mob,@GetOwner),@LineOfSight,#obj1=mob,#obj2=oSocial)
             {
                iVision /= 5;
@@ -716,24 +725,28 @@ messages:
                   // So far, it doesn't look like any blows have been traded. Else
                   // we would probably already be assisting our buddy because
                   // SomethingAttacked would have alerted us.
-                  if Send(oSocial,@InCombat) AND (Random(1,iVision) > iDistance * 2)
+                  if Send(oSocial,@InCombat)
+                     AND (Random(1,iVision) > iDistance * 2)
                   {
                      oEnemy = Send(oSocial,@GetTarget);
 
                      if oEnemy <> $
-                        AND Send(self,@AttemptTargetSwitch,#mob=mob,#what=oEnemy,#event=TS_MOVE)
+                        AND Send(self,@AttemptTargetSwitch,#mob=mob,
+                                 #what=oEnemy,#event=TS_MOVE)
                      {
                         iDelay = Bound(100 - Send(mob,@GetAgility),25,100) * 40;
-                        Send(mob,@EnterStateEngage,#target=oEnemy,#actnow=FALSE,#delay=iDelay);
+                        Send(mob,@EnterStateEngage,#target=oEnemy,
+                              #actnow=FALSE,#delay=iDelay);
 
                         // Return FALSE so MoveTimer knows not to start a PostMoveTimer.
                         return FALSE;
                      }
                   }
-                  // Guess our buddy is fine. If we are a friendly soul, we might still
-                  // stroll over and chat them up. It's so important to have good friends.
-                  // Let's make sure we keep enough distance though. Wouldn't want to make
-                  // them feel uncomfortable now would we?
+                  // Guess our buddy is fine. If we are a friendly soul, we
+                  // might still stroll over and chat them up. It's so
+                  // important to have good friends. Let's make sure we keep
+                  // enough distance though. Wouldn't want to make them feel
+                  // uncomfortable now would we?
                   else if (iDistance > 10000) AND (behavior & AI_SOCIALIZER)
                   {
                      Send(mob,@MoveTowards,#oTarget=oSocial,#face_target=TRUE);
@@ -744,9 +757,11 @@ messages:
             }
          }
 
-         // Either we didn't find a friend or we didn't feel like a chat. Let's see if 
-         // we want to go for a walk. Small and agile mobs tend to scamper around more.
-         if (Random(1,piStroll_chance) < (Send(mob,@GetAgility)+10) * 150 / Send(mob,@GetLevel))
+         // Either we didn't find a friend or we didn't feel like a chat.
+         // Let's see if we want to go for a walk. Small and agile mobs
+         // tend to scamper around more.
+         if (Random(1,piStroll_chance)
+            < (Send(mob,@GetAgility)+10) * 150 / Send(mob,@GetLevel))
          {
             // If we want to go rally and can do so, rally. If not, go strolling.
             if NOT ((Random(1,1000) <= piRally_chance) AND Send(mob,@GoRally))
@@ -768,8 +783,8 @@ messages:
    "5. If wounded below viWimpy, either run away, or towards closest ally."
    "6. Otherwise, move towards target."
    {
-      local oMaster, oOwner, oMasterRoom, oFrightener, oAlly, iRange, iOpt_range,
-            iSquaredVision, iSquaredDistance, iAlly;
+      local oMaster, oFrightener, oAlly, iRange, iOpt_range, iSquaredVision,
+            iSquaredDistance, iAlly;
 
       if mob = $ OR target = $
       {
@@ -1203,29 +1218,20 @@ messages:
       }
 
       oTarget = Send(mob,@GetTarget);
+
+      // Don't switch to ourselves, non-battlers, invalid victims or revenants.
       if what = oTarget
-      {
-         return FALSE;
-      }
-
-      if NOT IsClass(what,&Battler)
-      {
-         return FALSE;
-      }
-
-      if NOT Send(what,@IsLikelyVictim)
-      {
-         return FALSE;
-      }
-
-      if IsClass(mob,&Revenant)
+         OR NOT IsClass(what,&Battler)
+         OR NOT Send(what,@IsLikelyVictim)
+         OR IsClass(mob,&Revenant)
       {
          return FALSE;
       }
 
       behavior = Send(mob,@GetBehavior);
-      iHatred = Send(self,@GetHatred,#what=what,#mob=mob,#event=event,#behavior=behavior,
-                  #percentage=percentage,#modifier=modifier);
+      iHatred = Send(self,@GetHatred,#what=what,#mob=mob,#event=event,
+                     #behavior=behavior,#percentage=percentage,
+                     #modifier=modifier);
 
       if behavior & AI_FIGHT_SWITCHALOT
          AND (oTarget <> $ AND NOT Send(mob,@CanReach,#what=oTarget,#bRanged=TRUE))

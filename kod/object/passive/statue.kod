@@ -71,6 +71,12 @@ properties:
    prShield = statue_default_shield
    prBowTop = $
 
+   // Statue could also have a helm, a circlet or both. Some headgear doesn't
+   // remove the hair, in which case it uses prHelm rather than prHair_remove.
+   prHair_remove = $
+   prHelm = $
+   prCirclet = $
+
    piIcon_frame = 1
    piLegs_frame = 1
    piLeft_frame = 1
@@ -125,23 +131,21 @@ messages:
          /// no one with this name exists in the database.  Let's grab someone
          /// of the same gender at random
 
-         tries = 0;
          lUsers = Send(SYS,@GetUsers);
-         while tries < 10
+         if (Length(lUsers) >= 1)
          {
-            if length(lUsers) >= 1
+            for (tries = 0; tries < 10; ++tries)
             {
-               iRand = random(1,length(lUsers));
-               oUser = nth(lUsers,iRand);
-               if (Send(oUser,@getGender) = gender) and not (IsClass(oUser,&DM) and Send(oUser,@IsMorphed))
+               iRand = Random(1,Length(lUsers));
+               oUser = Nth(lUsers,iRand);
+               if (Send(oUser,@GetGender) = gender)
+                  AND NOT (IsClass(oUser,&DM) AND Send(oUser,@IsMorphed))
                {
                   Send(self,@SetStatue,#original=oUser,#name=name);
 
                   break;
                }
             }
-
-            tries = tries + 1;
          }
 
          /// Last ditch, use defaults.  May be necessary for some statues.
@@ -169,16 +173,20 @@ messages:
                specialname = $, specialgender = GENDER_MALE)
    {
       local i;
-      
+
       if special
       {
-         Send(self,@ConstructorSpecial,#desc=desc,#name=specialname,#gender=specialgender,#color = special);
+         Send(self,@ConstructorSpecial,#desc=desc,#name=specialname,
+               #gender=specialgender,#color = special);
 
          propagate;
       }
 
-      if desc <> $  { vrDesc = desc; }
-      
+      if desc <> $
+      {
+         vrDesc = desc;
+      }
+
       if bDefault
       {
          if Send(SYS,@GetUsers) <> $
@@ -219,8 +227,7 @@ messages:
             piOverlays = piOverlays + 1;
          }
       }
-
-      if piPose = POSE_CAST
+      else if piPose = POSE_CAST
       {
          piIcon_frame = 1;
          piLeft_frame = 8;
@@ -228,8 +235,7 @@ messages:
          piLegs_frame = 1;
          piOverlays = 8;
       }
-
-      if piPose = POSE_NONE
+      else if piPose = POSE_NONE
       {
          piIcon_frame = 1;
          piLeft_frame = 1;
@@ -268,8 +274,7 @@ messages:
             piOverlays = piOverlays + 1;
          }
       }
-
-      if piPose = POSE_WEAPON_ATTACK
+      else if piPose = POSE_WEAPON_ATTACK
       {
          if prWeapon = $
          {
@@ -299,8 +304,7 @@ messages:
 
          piWeapon_frame = 2;
       }
-
-      if piPose = POSE_BOW_ATTACK
+      else if piPose = POSE_BOW_ATTACK
       {
          if prBowTop = $
          {
@@ -330,6 +334,20 @@ messages:
          }
       }
 
+      // prHair_remove uses prToupee's overlay spot, but if we have a helm
+      // that doesn't remove the hair (some masks) then add an overlay.
+      if (prHelm <> $
+         AND prHair_remove = $)
+      {
+         ++piOverlays;
+      }
+
+      // Add an overlay for circlet.
+      if (prCirclet <> $)
+      {
+         ++piOverlays;
+      }
+
       return;
    }
 
@@ -346,7 +364,7 @@ messages:
       piIcon_translation = Send(poOriginal,@GetBodyTranslation);
       piLegs_translation = Send(poOriginal,@GetLegsTranslation);
       piArms_translation = Send(poOriginal,@GetArmsTranslation);
-      piHair_translation = Send(poOriginal,@getHairColor);
+      piHair_translation = Send(poOriginal,@GetHairColor);
       piSkin_Translation = Send(poOriginal,@GetSkinColor);
 
       piExpression = Send(poOriginal,@GetExpression);
@@ -446,7 +464,7 @@ messages:
 
    SetStatue(original = $)
    {
-      local oWeapon;
+      local i, oWeapon, oHairRemove;
 
       if original = $ OR NOT IsClass(original,&User)
       {
@@ -454,7 +472,7 @@ messages:
       }
 
       poOriginal = original;
-      piPose = random(1,4);
+      piPose = Random(1,4);
       vrName = Statue_name_rsc;
 
       vrIcon = Send(poOriginal,@GetIcon,#trueicon=TRUE);
@@ -492,11 +510,45 @@ messages:
          prWeapon = $;
       }
 
+      // Check for headgear.
+      prHair_remove = $;
+      prCirclet = $;
+      prHelm = $;
+
+      // Set circlet/helm first.
+      foreach i in Send(poOriginal,@GetOverlays)
+      {
+         if (Send(i,@GetItemUseType) & ITEM_USE_HEAD)
+         {
+            // Assume player only has one item at each layer.
+            // Valid layers are 0 and 1.
+            if (Send(i,@GetLayer) = 0)
+            {
+               // Layer 0 is for helms.
+               prHelm = Send(i,@GetOverlay);
+            }
+            else
+            {
+               // Layer 1 is for circlets.
+               prCirclet = Send(i,@GetOverlay);
+            }
+         }
+      }
+
+      // If the helm slot removes the hair, use prHair_remove instead of prHelm.
+      oHairRemove = Send(poOriginal,@GetRemoveHair);
+
+      if (oHairRemove <> $)
+      {
+         prHelm = $;
+         prHair_remove = Send(oHairRemove,@GetOverlay);
+      }
+
       Send(self,@ResetPose,#pose=piPose);
 
       return;
    }
-   
+
    SendAnimation()
    {
       if (piIcon_translation) <> 0
@@ -554,8 +606,28 @@ messages:
       AddPacket(4,prMouth,1,HS_MOUTH,1,ANIMATE_TRANSLATION,1,iSkin_xlat,1,ANIMATE_NONE,2,piExpression);
       AddPacket(4,prEyes,1,HS_EYES,1,ANIMATE_TRANSLATION,1,iSkin_xlat,1,ANIMATE_NONE,2,piExpression);
       AddPacket(4,prNose,1,HS_NOSE,1,ANIMATE_TRANSLATION,1,iSkin_xlat,1,ANIMATE_NONE,2,1);
-      AddPacket(4,prToupee,1,HS_TOUPEE,1,ANIMATE_TRANSLATION,1,piHair_translation);
-      AddPacket(1,ANIMATE_NONE,2,1); 
+
+      // Hair or helm.
+      if (prHair_remove = $)
+      {
+         AddPacket(4,prToupee,1,HS_TOUPEE,1,ANIMATE_TRANSLATION,1,piHair_translation,1,ANIMATE_NONE,2,1);
+      }
+      else
+      {
+         AddPacket(4,prHair_remove,1,HS_TOUPEE,1,ANIMATE_NONE,2,1);
+      }
+
+      // This case is likely a mask.
+      if (prHelm <> $
+         AND prHair_remove = $)
+      {
+         AddPacket(4,prHelm,1,HS_TOUPEE,1,ANIMATE_NONE,2,1);
+      }
+
+      if (prCirclet <> $)
+      {
+         AddPacket(4,prCirclet,1,HS_TOUPEE,1,ANIMATE_NONE,2,1);
+      }
 
       if prShield <> $ and piPose <> POSE_CAST
       {

@@ -144,6 +144,17 @@ messages:
 
    ResetLore()
    {
+      // Create the Hall of Heroes statue lists.
+      Send(self,@LoreCreateHoHLists);
+
+      // Create the arena lists.
+      Send(self,@LoreCreateArenaLists);
+
+      return;
+   }
+
+   LoreCreateHoHLists()
+   {
       // Hall of Heroes lists.  These are lists of two element lists:  player, score.
       // Note:  later lists need more elements to help prevent duplicate statues.
       plOverall = [[$,0],[$,0],[$,0],[$,0],[$,0]];
@@ -175,9 +186,6 @@ messages:
            [$,0],[$,0],[$,0],[$,0],[$,0],[$,0],[$,0] ];
 
       plCurrentBest = [ $,$,$,$,$,$,$,$,$,$,$,$,$,$,$ ];
-
-      // Create the arena lists.
-      Send(self,@LoreCreateArenaLists);
 
       return;
    }
@@ -301,7 +309,7 @@ messages:
          return;
       }
 
-      Send(Self,@CheckForWorthiness,#lList=plOverall,#who=who,
+      Send(self,@CheckForWorthiness,#lList=plOverall,#who=who,
            #score=(faren+qor+riija+shalille+kraanan+sjala+(skills*2)),
            #index=POS_BEST);
 
@@ -535,14 +543,14 @@ messages:
    }
 
    ChooseCurrentBests()
-   "This finds the best player in each list, and makes an effort to go to the second "
-   "best player if duplicates are found."
+   "This finds the best player in each list, and makes an effort to go to the "
+   "second best player if duplicates are found."
    {
       local index, oHall;
 
       // Set them all to nil.
       index = piSomethingChanged;
-      while index <= length(plCurrentBest)
+      while index <= Length(plCurrentBest)
       {
          SetNth(plCurrentBest,index,$);
          ++index;

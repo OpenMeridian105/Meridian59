@@ -140,6 +140,14 @@ properties:
    prShield = logoffghost_default_shield
    prBowTop = $
 
+   // Ghost could also have a helm, a circlet or both.
+   prHair_remove = $
+   piHair_removeTranslation = 0
+   prCirclet = $
+   piCircletTranslation = 0
+   prHelm = $
+   piHelmTranslation = 0
+
    piIcon_frame = 1
    piLegs_frame = 1
    piLeft_frame = 1
@@ -419,6 +427,20 @@ messages:
          piOverlays = piOverlays + 1;
       }
 
+      // prHair_remove uses prToupee's overlay spot, but if we have a helm
+      // that doesn't remove the hair (some masks) then add an overlay.
+      if (prHelm <> $
+         AND prHair_remove = $)
+      {
+         ++piOverlays;
+      }
+
+      // Add an overlay for circlet.
+      if (prCirclet <> $)
+      {
+         ++piOverlays;
+      }
+
       return;
    }
 
@@ -429,7 +451,7 @@ messages:
       piIcon_translation = Send(poGhostedPlayer,@GetBodyTranslation);
       piLegs_translation = Send(poGhostedPlayer,@GetLegsTranslation);
       piArms_translation = Send(poGhostedPlayer,@GetArmsTranslation);
-      piHair_translation = Send(poGhostedPlayer,@getHairColor);
+      piHair_translation = Send(poGhostedPlayer,@GetHairColor);
       piSkin_Translation = Send(poGhostedPlayer,@GetSkinColor);
       piExpression = Send(poGhostedPlayer,@GetExpression);
 
@@ -443,7 +465,7 @@ messages:
 
    SetLogoffGhost(GhostedPlayer = $)
    {
-      local oWeapon;
+      local i, oHairRemove, oWeapon;
 
       if GhostedPlayer = $
          OR NOT IsClass(GhostedPlayer,&User)
@@ -470,7 +492,7 @@ messages:
       prShield = Send(poGhostedPlayer,@GetShieldRsc);
       piShield_translation = Send(poGhostedPlayer,@GetShieldTranslation);
       oWeapon = Send(poGhostedPlayer,@LookUpPlayerWeapon);
-      
+
       if Send(poGhostedPlayer,@FindUsing,#class=&SoldierShield) <> $
       {
          piSoldierShieldOverlay = Send(poGhostedPlayer,@GetShieldOverlayHotspot);
@@ -496,6 +518,44 @@ messages:
       else
       {
          prWeapon = $;
+      }
+
+      // Check for headgear.
+      prHair_remove = $;
+      prCirclet = $;
+      prHelm = $;
+
+      // Set circlet/helm first.
+      foreach i in Send(poGhostedPlayer,@GetOverlays)
+      {
+         if (Send(i,@GetItemUseType) & ITEM_USE_HEAD)
+         {
+            // Assume player only has one item at each layer.
+            // Valid layers are 0 and 1.
+            if (Send(i,@GetLayer) = 0)
+            {
+               // Layer 0 is for helms.
+               prHelm = Send(i,@GetOverlay);
+               piHelmTranslation = Send(i,@GetPaletteTranslation);
+            }
+            else
+            {
+               // Layer 1 is for circlets.
+               prCirclet = Send(i,@GetOverlay);
+               piCircletTranslation = Send(i,@GetPaletteTranslation);
+            }
+         }
+      }
+
+      // If the helm slot removes the hair, use prHair_remove instead of prHelm.
+      oHairRemove = Send(poGhostedPlayer,@GetRemoveHair);
+
+      if (oHairRemove <> $)
+      {
+         prHelm = $;
+         prHair_remove = Send(oHairRemove,@GetOverlay);
+         piHair_removeTranslation = piHelmTranslation;
+         piHelmTranslation = 0;
       }
 
       Send(self,@ResetPose);
@@ -565,8 +625,32 @@ messages:
                 1,ANIMATE_NONE, 2,piExpression);
       AddPacket(4,prNose, 1,HS_NOSE, 1,ANIMATE_TRANSLATION, 1,iSkin_xlat,
                 1,ANIMATE_NONE, 2,1);
-      AddPacket(4,prToupee, 1,HS_TOUPEE, 1,ANIMATE_TRANSLATION,
-                1,piHair_translation, 1,ANIMATE_NONE, 2,1);
+
+      // Hair or helm.
+      if (prHair_remove = $)
+      {
+         AddPacket(4,prToupee,1,HS_TOUPEE,1,ANIMATE_TRANSLATION,
+                   1,piHair_translation,1,ANIMATE_NONE,2,1);
+      }
+      else
+      {
+         AddPacket(4,prHair_remove,1,HS_TOUPEE,1,ANIMATE_TRANSLATION,
+                   1,piHair_removeTranslation,1,ANIMATE_NONE,2,1);
+      }
+
+         // This case is likely a mask.
+      if (prHelm <> $
+         AND prHair_remove = $)
+      {
+         AddPacket(4,prHelm,1,HS_TOUPEE,1,ANIMATE_TRANSLATION,
+                   1,piHelmTranslation,1,ANIMATE_NONE,2,1);
+      }
+
+      if (prCirclet <> $)
+      {
+         AddPacket(4,prCirclet,1,HS_TOUPEE,1,ANIMATE_TRANSLATION,
+                   1,piCircletTranslation,1,ANIMATE_NONE,2,1);
+      }
 
       if prShield <> $
       {

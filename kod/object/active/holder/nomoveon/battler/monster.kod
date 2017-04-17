@@ -584,7 +584,6 @@ properties:
    piSweepCounter = 0
 
    // List of spells this monster can cast. Has the format:
-   // [ Spell num, mana cost, number req. from Random(1,100) to cast ]
    plActions = $
 
    // Monster's spellpower.
@@ -819,28 +818,30 @@ messages:
          {
             oSpell = Send(SYS,@FindSpellByNum,#num=First(i));
             i = [First(i),
-                 Send(oSpell,@GetTrueManaCost)*100,
-                 Send(oSpell,@GetTrueExertion)*100,
+                 Send(oSpell,@GetMonsterManaCost)*100,
+                 Send(oSpell,@GetMonsterExertion)*100,
                  Send(oSpell,@GetSquaredRange),
-                 Random(0,700),
-                 Random(250,2000),
-                 Bound(Random(viDifficulty*5,viDifficulty*11),1,99)];
+                 Send(oSpell,@GetStartingPriority),
+                 Send(oSpell,@GetPriorityAdjustment),
+                 Bound(Random(viDifficulty*5,viDifficulty*11),1,99),
+                 Send(oSpell,@GetCombatType)];
          }
          // Spell, priority, P-factor and spellpower provided.
          if Length(i) = 4
          {
             oSpell = Send(SYS,@FindSpellByNum,#num=First(i));
             i = [First(i),
-                 Send(oSpell,@GetTrueManaCost)*100,
-                 Send(oSpell,@GetTrueExertion)*100,
+                 Send(oSpell,@GetMonsterManaCost)*100,
+                 Send(oSpell,@GetMonsterExertion)*100,
                  Send(oSpell,@GetSquaredRange),
                  Nth(i,2),
                  Nth(i,3),
-                 Nth(i,4)];
+                 Nth(i,4),
+                 Send(oSpell,@GetCombatType)];
          }
-         // At this stage, our list should have 7 entries. If it
+         // At this stage, our list should have 8 entries. If it
          // doesn't, skip.
-         if  Length(i) = 7
+         if  Length(i) = 8
          {
             plActions = Cons(i,plActions);
          }
@@ -848,24 +849,24 @@ messages:
 
       // Add default actions to the list:
       // Movement.
-      lTemp = [SKID_MINIMUM,0,20,MAX_KOD_INT,viMovePriority,0,100];
+      lTemp = [SKID_MINIMUM,0,20,MAX_KOD_INT,viMovePriority,0,100,COMBAT_ACTION_NEUTRAL];
       plActions = Cons(lTemp,plActions);
 
       // Melee attacks.
-      lTemp = [SKID_SLASH,0,100,piMeleeRange*piMeleeRange,viMeleePriority,0,100];
+      lTemp = [SKID_SLASH,0,100,piMeleeRange*piMeleeRange,viMeleePriority,0,100,COMBAT_ACTION_HARM];
       plActions = Cons(lTemp,plActions);
 
       // Only add fire, if we can attack at range.
       if piFireRange > 0
       {
-         lTemp = [SKID_FIRE,0,100,piFireRange*piFireRange,viFirePriority,0,100];
+         lTemp = [SKID_FIRE,0,100,piFireRange*piFireRange,viFirePriority,0,100,COMBAT_ACTION_HARM];
          plActions = Cons(lTemp,plActions);
       }
 
       // Only add spin, if we have an area effect attack.
       if vbSpin
       {
-         lTemp = [SKID_SPIN,0,500,piMeleeRange*piMeleeRange,viMeleePriority+1,0,75];
+         lTemp = [SKID_SPIN,0,500,piMeleeRange*piMeleeRange,viMeleePriority+1,0,75,COMBAT_ACTION_HARM];
          plActions = Cons(lTemp,plActions);
       }
 
@@ -876,6 +877,48 @@ messages:
       }
 
       propagate;
+   }
+
+   AddCombatAction(iNum=0)
+   {
+      local oSpell, lSpell;
+
+      if (iNum > 0)
+         AND NOT Send(self,@MonsterHasAbility,#iNum=iNum)
+      {
+         oSpell = Send(SYS,@FindSpellByNum,#num=iNum);
+         lSpell = [iNum,
+                   Send(oSpell,@GetMonsterManaCost)*100,
+                   Send(oSpell,@GetMonsterExertion)*100,
+                   Send(oSpell,@GetSquaredRange),
+                   Send(oSpell,@GetStartingPriority),
+                   Send(oSpell,@GetPriorityAdjustment),
+                   Bound(Random(viDifficulty*5,viDifficulty*11),1,99),
+                   Send(oSpell,@GetCombatType)];
+
+         plActions = Cons(lSpell,plActions);
+
+         return TRUE;
+      }
+
+      return FALSE;
+   }
+
+   RemoveCombatAction(iNum=0)
+   {
+      local i;
+
+      foreach i in plActions
+      {
+         if (First(i) = iNum)
+         {
+            plActions = DelListElem(plActions,i);
+
+            return TRUE;
+         }
+      }
+
+      return FALSE;
    }
 
    SetPatrolPath(lPath = $)
@@ -1439,25 +1482,13 @@ messages:
    }
 
    RecordTimeAttacked(who=$)
-   "This records the last time the monster was attacked, "
-   "and the player or monster that did it."
+   "This records the last time the monster attacked someone, "
+   "and the player or monster it attacked."
    {
       local oMaster;
 
-      piLastTimeAttacked = GetTime();
+      piLastTimeAttacked = GetTickCount();
 
-      if who <> $
-      {
-         if IsClass(who,&Monster)
-         {
-            // Check if the monster has a master. If so, use the master here.
-            oMaster = Send(who,@GetMaster);
-            if oMaster <> $
-            {
-               who = oMaster;
-            }
-         }
-      }
       poLastAttacker = who;
 
       return;
@@ -1471,6 +1502,11 @@ messages:
    GetLastAttacker()
    {
       return poLastAttacker;
+   }
+
+   CanAttackNow()
+   {
+      return Abs(piLastTimeAttacked - GetTickCount()) > Send(self,@GetAttackTime);
    }
 
    SomethingEntered(what = $,where=$)
@@ -1544,8 +1580,6 @@ messages:
          if (iRow <> 0) 
             AND (iCol <> 0) 
             AND (Send(poLeader,@GetOwner) <> $)
-            AND ((piRow - iRow <= 6) 
-            AND (piCol - iCol <= 6))
          {
             Post(self,@GotoLeader);
          }
@@ -1876,8 +1910,7 @@ messages:
 
       if Send(self,@MonsterCombatCheck)
       {
-         iDelay = Send(self,@MonsterCombatAction,#distance=iDistance,
-                        #sight=bSight);
+         iDelay = Send(self,@MonsterCombatAction,#distance=iDistance,#sight=bSight);
       }
       else
       {
@@ -5619,14 +5652,18 @@ messages:
    {
       local i, iPriority, lActions, lAction, iNum, oSpell, iAttacks,
          iMana, iVigor, iFactor, iSpellPower, lTargets, iDelay, iPowerLevel,
-         oTarget, iAction;
+         oSpin, iAction, oTarget, oInjured, iHealthPercent, bAttack;
 
-      // If we have don't have sight, and we can't attack through walls,
-      // only allow moving. Same if we are scared and not cornered.
-      if (NOT sight
-            AND NOT (piBehavior & AI_FIGHT_THROUGH_WALLS))
-         OR (Send(self,@HealthBelowWimpy)
-            AND NOT (piBehavior & AI_CORNERED))
+      bAttack = FALSE;
+
+      // Let's get the attack check out of the way.
+      if Send(poOwner,@ReqSomethingAttack,#what=self,#victim=poTarget,#use_weapon=self)
+      {
+         bAttack = TRUE;
+      }
+
+      // We are scared but not cornered. Cast a heal or run!
+      if (Send(self,@HealthBelowWimpy) AND NOT (piBehavior & AI_CORNERED))
       {
          foreach i in plActions
          {
@@ -5634,17 +5671,37 @@ messages:
             {
                lActions = Cons(i,lActions);
             }
+            else if Nth(i,8) = COMBAT_ACTION_HEAL
+               AND (Nth(i,2) < piMana)
+            {
+               lActions = Cons(i,lActions);
+            }
          }
       }
-      // Running is not required or not an option. Attack!
+      // We're not scared but we've lost sight of our target or can't attack it
+      // directly. We are free to do anything else though.
+      else if NOT (sight OR (piBehavior & AI_FIGHT_THROUGH_WALLS)) OR NOT bAttack
+      {
+         foreach i in plActions
+         {
+            if Nth(i,8) <> COMBAT_ACTION_HARM
+               AND (Nth(i,2) < piMana)
+               AND (Nth(i,4) > distance)
+            {
+               lActions = Cons(i,lActions);
+            }
+         }
+      }
+      // We got a clear target and we're not scared! Use any tool at our disposal!
       else
       {
          // Sort out any actions in our action list that can't reach the
          // target or that we don't have the resources for.
          foreach i in plActions
          {
-            if Nth(i,2) < piMana
-               AND Nth(i,4) > distance
+            if (Nth(i,2) < piMana)
+               AND ((Nth(i,4) > distance)
+                  OR (Nth(i,8) <> COMBAT_ACTION_HARM))
             {
                lActions = Cons(i,lActions);
             }
@@ -5679,20 +5736,61 @@ messages:
          }
       }
 
-      // Check the actual spells in our action list for castability.
+      // It's time to look at other potential targets. Check if we or a loved one are injured.
+      iHealthPercent = Send(self,@GetExactHealth)/Send(self,@GetMaxHealth);
+      oInjured = Send(self,@GetClosestInjured);
+
+      if (oInjured <> $)
+      {
+         if (iHealthPercent < Send(oInjured,@GetExactHealth)/Send(oInjured,@GetMaxHealth))
+         {
+            oInjured = self;
+         }
+      }
+      else if (iHealthPercent < 75)
+      {
+         oInjured = self;
+      }
+
+      // Check the actual spells in our action list for castability. Provide the matching
+      // target depending on the spell chosen.
       foreach i in lActions
       {
          iNum = First(i);
+
          if iNum < SKID_MINIMUM
          {
-            oSpell = Send(SYS,@FindSpellByNum,#num=iNum);
-            lTargets = Send(oSpell,@GetTargets,#who=self,#lTargets=[poTarget]);
-            if NOT Send(oSpell,@CanPayMonsterCosts,#who=self,#lTargets=lTargets,
-                        #iSpellPower=iSpellPower)
-               OR NOT Send(poOwner,@ReqSpellCast,#who=self,#oSpell=oSpell,
-                           #lItems=lTargets)
+            switch(Nth(i,8))
+            {
+               case COMBAT_ACTION_HEAL:
+                  oTarget = oInjured;
+                  break;
+               case COMBAT_ACTION_BUFF:
+                  oTarget = poLeader;
+                  break;
+               case COMBAT_ACTION_NEUTRAL:
+                  oTarget = self;
+                  break;
+               default:
+                  oTarget = poTarget;
+                  break;
+            }
+
+            if oTarget = $
             {
                lActions = DelListElem(lActions,i);
+            }
+            else
+            {
+               oSpell = Send(SYS,@FindSpellByNum,#num=iNum);
+               lTargets = Send(oSpell,@GetTargets,#who=self,#lTargets=[oTarget]);
+               if NOT Send(oSpell,@CanPayMonsterCosts,#who=self,#lTargets=lTargets,
+                           #iSpellPower=iSpellPower)
+                  OR NOT Send(poOwner,@ReqSpellCast,#who=self,#oSpell=oSpell,
+                              #lItems=lTargets)
+               {
+                  lActions = DelListElem(lActions,i);
+               }
             }
          }
       }
@@ -5703,15 +5801,7 @@ messages:
          return FALSE;
       }
 
-      // Time for an attack check.
-      if iNum <> SKID_MINIMUM
-         AND NOT Send(poOwner,@ReqSomethingAttack,#what=self,#victim=poTarget,
-                     #use_weapon=self)
-      {
-         return FALSE;
-      }
-
-      // We are allowed to attack and got a pool of actions.
+      // We are allowed to act and got a pool of actions.
       // Compare priorities to decide for one.
       iPriority = MIN_KOD_INT;
       foreach i in lActions
@@ -5726,6 +5816,23 @@ messages:
       // We have our action at this point, let's check its ID.
       iNum = First(lAction);
 
+      // Let's also set our target depending on the action.
+      switch(Nth(lAction,8))
+      {
+         case COMBAT_ACTION_HEAL:
+            oTarget = oInjured;
+            break;
+         case COMBAT_ACTION_BUFF:
+            oTarget = poLeader;
+            break;
+         case COMBAT_ACTION_NEUTRAL:
+            oTarget = self;
+            break;
+         default:
+            oTarget = poTarget;
+            break;
+      }
+
       // It's clear we will be acting now. Get our action delay.
       iDelay = Send(self,@GetAttackTime);
 
@@ -5736,11 +5843,11 @@ messages:
          i = 0;
 
          while (iAttacks > 0)
-            AND poTarget <> $
-            AND Send(poTarget,@GetOwner) <> $
+            AND oTarget <> $
+            AND Send(oTarget,@GetOwner) <> $
          {
             if (Random(1,100) <= iAttacks)
-               AND Send(self,@TryAttack,#what=poTarget,#stroke_obj=self,
+               AND Send(self,@TryAttack,#what=oTarget,#stroke_obj=self,
                         #factor=Nth(lAction,7))
             {
                ++i;
@@ -5766,11 +5873,11 @@ messages:
          i = 0;
 
          while (iAttacks > 0)
-            AND poTarget <> $
-            AND Send(poTarget,@GetOwner) <> $
+            AND oTarget <> $
+            AND Send(oTarget,@GetOwner) <> $
          {
             if (Random(1,100) <= iAttacks)
-               AND Send(self,@TryAttack,#what=poTarget,#stroke_obj=self,
+               AND Send(self,@TryAttack,#what=oTarget,#stroke_obj=self,
                         #factor=Nth(lAction,7))
             {
                ++i;
@@ -5804,11 +5911,11 @@ messages:
                      #type=SAY_MESSAGE,#parm1=Send(self,@GetCapDef),
                      #parm2=Send(self,@GetName));
 
-               foreach oTarget in lTargets
+               foreach oSpin in lTargets
                {
-                  if oTarget <> $ AND Send(oTarget,@GetOwner) <> $
+                  if oSpin <> $ AND Send(oSpin,@GetOwner) <> $
                   {
-                     Send(self,@TryAttack,#what=oTarget,#stroke_obj=self,
+                     Send(self,@TryAttack,#what=oSpin,#stroke_obj=self,
                            #factor=Nth(lAction,7));
                   }
                }
@@ -5830,7 +5937,7 @@ messages:
       else if iNum < SKID_MINIMUM
       {
          oSpell = Send(SYS,@FindSpellByNum,#num=iNum);
-         lTargets = Send(oSpell,@GetTargets,#who=self,#lTargets=[poTarget]);
+         lTargets = Send(oSpell,@GetTargets,#who=self,#lTargets=[oTarget]);
          iSpellPower = piSpellPower + Nth(lAction,7);
 
          // Do any special cast animations; send spell for specific ones.
@@ -5838,18 +5945,18 @@ messages:
          if poOwner <> $
          {
             // Not facing the target when casting at them is rude. Let's be polite.
-            Send(self,@MonsterOrient,#new_row=Send(poTarget,@GetRow),
-                  #new_col=Send(poTarget,@GetCol),
-                  #new_finerow=Send(poTarget,@GetFineRow),
-                  #new_finecol=Send(poTarget,@GetFineCol),#face_target=TRUE);
+            Send(self,@MonsterOrient,#new_row=Send(oTarget,@GetRow),
+                  #new_col=Send(oTarget,@GetCol),
+                  #new_finerow=Send(oTarget,@GetFineRow),
+                  #new_finecol=Send(oTarget,@GetFineCol),#face_target=TRUE);
             Send(self,@MonsterCastAnimation,#iSpellNum=iNum);
          }
 
          // We are almost ready to cast the spell, only a spell resist can
-         // save the victim now.
-         if (Length(lTargets) = 1)
-            AND NOT Send(poTarget,@SpellResist,#oSpell=oSpell,#who=self,
-                        #iSpellpower=iSpellPower)
+         // get into our way now.
+         if NOT ((Length(lTargets) = 1)
+            AND (Nth(lAction,8) = COMBAT_ACTION_HARM)
+            AND Send(oTarget,@SpellResist,#oSpell=oSpell,#who=self,#iSpellpower=iSpellPower))
          {
             // Monsters don't necessarily cast at the same power level as
             // players. Calculate power percentage here.
@@ -8030,6 +8137,7 @@ messages:
          // is what it looks like, an ally?
          oBodyType = oObject;
          if IsClass(oObject,&User)
+            AND NOT IsClass(self,&Follower)
          {
             oIllusion = Send(oObject,@GetIllusionForm); 
             if oIllusion <> $
@@ -8040,6 +8148,72 @@ messages:
 
          // If not an ally, we don't care.
          if NOT Send(self,@IsAlly,#target=oBodyType)
+         {
+            continue;
+         }
+
+         iDistRow = (piRow * FINENESS + piFine_row)
+                     - (Send(oObject,@GetRow) * FINENESS + Send(oObject,@GetFineRow));
+
+         iDistCol = (piCol * FINENESS + piFine_col)
+                     - (Send(oObject,@GetCol) * FINENESS + Send(oObject,@GetFineCol));
+
+         iThisRangeSquared = (iDistRow * iDistRow + iDistCol * iDistCol)
+                              / FINENESS_SQUARED;
+
+         if iThisRangeSquared <= iRangeSquared
+         {
+            iRangeSquared = iThisRangeSquared;
+            oTarget = oObject;
+         }
+      }
+
+      // oTarget = nil if none are in range.
+      return oTarget;
+   }
+
+   GetClosestInjured()
+   {
+      local iRangeSquared, oTarget, iThisRangeSquared, i, iDistRow, iDistCol,
+            oIllusion, oObject, oBodyType;
+
+      if poOwner = $
+      {
+         return $;
+      }
+
+      iRangeSquared = piVisionDistance * piVisionDistance;
+
+      foreach i in Send(poOwner,@GetHolderActive)
+      {
+         oObject = First(i);
+
+         // Pass if we're looking at ourself here.
+         if oObject = self
+         {
+            continue;
+         }
+
+         // is what it looks like, an ally?
+         oBodyType = oObject;
+         if IsClass(oObject,&User)
+            AND NOT IsClass(self,&Follower)
+         {
+            oIllusion = Send(oObject,@GetIllusionForm); 
+            if oIllusion <> $
+            {
+               oBodyType = oIllusion;
+            }
+         }
+
+         // If not an ally, we don't care.
+         if NOT Send(self,@IsAlly,#target=oBodyType)
+         {
+            continue;
+         }
+
+         // If not injured below 75% of our social rating, we don't care.
+         if Send(oObject,@GetExactHealth) > viSocial * Send(oObject,@GetMaxHealth) * 75 / 100
          {
             continue;
          }
@@ -8256,6 +8430,22 @@ messages:
          // If the hurter was stealthy, we might not notice him.
          iStealth = Send(oHurter,@GetStealth,#what=self);
          iHurt = Bound((iHurt*(300-iStealth)/300)-1000,0,$);
+
+         // If the pain was negligible and the hurter wasn't
+         // noticed, remove him from our list.
+         if (iHurt = 0)
+         {
+            if IsTimer(Nth(i,3))
+            {
+               DeleteTimer(Nth(i,3));
+            }
+
+            SetFirst(i,$);
+            SetNth(i,2,$);
+            SetNth(i,3,$);
+
+            plHurtMeRecently = DelListElem(plHurtMeRecently,i);
+         }
 
          if iHurt > iTop
          {

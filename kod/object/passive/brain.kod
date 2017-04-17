@@ -181,15 +181,23 @@ messages:
             oLeader, oMaster, bAssist;
 
       // Check if we have an attacker. If we don't that's a bit odd.
-      if what = $
+      if (what = $)
       {
          Debug("BAD: null <what> in SomethingAttacked.");
       }
 
-      // If we did the attack ourselves or some dummy hurt themselves,
-      // we don't care.
-      if what = mob OR what = victim
+      // If some dummy nuked themselves, we don't care. It's a free realm.
+      if (what = victim)
       {
+         return;
+      }
+
+      // We were the attacker. Let's record it so we can tell our buddies
+      // at home. No further notice taken though.
+      if (what = mob)
+      {
+         Send(mob,@RecordTimeAttacked,#who=victim);
+
          return;
       }
 
@@ -215,7 +223,6 @@ messages:
       if victim = mob
       {
          iType = TS_FIGHT_DEFEND_SELF;
-         Send(mob,@RecordTimeAttacked,#who=what);
       }
       // Case 2: Someone else is being attacked.
       else
@@ -335,10 +342,9 @@ messages:
       if (state & STATE_ENGAGE)
          AND (iType < 6)
          AND (Send(self,@AttemptTargetSwitch,#what=what,#event=iType,#mob=mob)
-            OR ((Send(mob,@GetTarget) = what)
-               AND NOT Send(what,@GetHurtMeRecentlyAmount,#who=mob)))
+            OR ((Send(mob,@GetTarget) = what) AND Send(mob,@CanAttackNow)))
       {
-         Send(mob,@EnterStateEngage,#target=what,#actnow=TRUE);
+         Send(mob,@EnterStateEngage,#target=what,#actnow=FALSE,#delay=300);
       }
 
       return;

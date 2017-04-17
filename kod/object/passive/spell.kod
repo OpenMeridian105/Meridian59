@@ -237,6 +237,10 @@ classvars:
    viOffensive = FALSE
    viResistanceType = 0
 
+   // Adjusts the casting frequency of monster casts of the spell.
+   viStartingPriority = 700
+   viPriorityAdjustment = 1000
+
 properties:
 
    // Format of reagents:  Each element of plReagents is a list, describing a
@@ -1509,8 +1513,17 @@ messages:
       // Add a mana drain if applicable.
       if IsClass(who,&Battler) AND viManaDrain > 0
       {
-         Send(who,@StartOverTimeEffect,#strength=-viManaDrain,#what=self,#who=who,
-            #removable=REMOVE_INTERNAL,#showicon=FALSE,#type=TYPE_MANA);
+         if IsClass(who,&Player)
+         {
+            Send(who,@StartOverTimeEffect,#strength=-viManaDrain,#what=self,#who=who,
+               #removable=REMOVE_INTERNAL,#showicon=FALSE,#type=TYPE_MANA);
+         }
+         // Monsters can maintain draining spells more easily.
+         else
+         {
+            Send(who,@StartOverTimeEffect,#strength=-viManaDrain/2,#what=self,#who=who,
+               #removable=REMOVE_INTERNAL,#showicon=FALSE,#type=TYPE_MANA);
+         }
       }
 
       if IsClass(who,&DM)
@@ -2812,6 +2825,47 @@ messages:
    CausesAggression(iSpellpower=0)
    {
       return viHarmful;
+   }
+
+   GetCombatType()
+   {
+      if viHarmful AND NOT vbIsAreaEffect
+      {
+         return COMBAT_ACTION_HARM;
+      }
+
+      if IsClass(self,&Heal)
+      {
+         return COMBAT_ACTION_HEAL;
+      }
+
+      if IsClass(self,&PersonalEnchantment)
+      {
+         return COMBAT_ACTION_BUFF;
+      }
+
+      return COMBAT_ACTION_NEUTRAL;
+   }
+
+   // Adjustments for monster casting
+   GetStartingPriority()
+   {
+      return Random(0,viStartingPriority);
+   }
+
+   GetPriorityAdjustment()
+   {
+      return viPriorityAdjustment;
+   }
+
+   GetMonsterManaCost()
+   {
+      return viMana;
+   }
+
+   GetMonsterExertion()
+   {
+      return viSpellExertion;
    }
 
 end

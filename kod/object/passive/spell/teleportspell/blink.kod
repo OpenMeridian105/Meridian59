@@ -62,33 +62,53 @@ messages:
 
    CastSpell(who = $, lTargets = $)
    {
-      local owner, oRoom;
+      local oOwner, oRoom, oFollower;
 
-      owner = Send(who,@GetOwner);
+      oOwner = Send(who,@GetOwner);
+      oFollower = Send(who,@GetMercenary);
+      if NOT IsClass(oFollower,&Follower)
+      {
+         oFollower = $;
+      }
 
-      if Send(owner,@GetRoomNum) = RID_KOC_HALL_OF_HEROES
+      if Send(oOwner,@GetRoomNum) = RID_KOC_HALL_OF_HEROES
       {
          oRoom = Send(SYS,@FindRoomByNum,#num=RID_TOS_FORGET);
          if oRoom <> $
          {
             Post(oRoom,@Teleport,#what=who);
 
+            if oFollower <> $
+            {
+               Post(oRoom,@Teleport,#what=oFollower);
+            }
+
             propagate;
          }
       }
 
-      if Send(owner,@GetRoomNum) = RID_BAZMANS_ROOM
+      if Send(oOwner,@GetRoomNum) = RID_BAZMANS_ROOM
       {
          oRoom = Send(SYS,@FindRoomByNum,#num=RID_FORGOTTEN_TOO);
          if oRoom <> $
          {
             Post(oRoom,@Teleport,#what=who);
 
+            if oFollower <> $
+            {
+               Post(oRoom,@Teleport,#what=oFollower);
+            }
+
             propagate;
          }
       }
 
-      Send(owner,@Teleport,#what=who);
+      Send(oOwner,@Teleport,#what=who);
+
+      if oFollower <> $
+      {
+         Post(oOwner,@Teleport,#what=oFollower);
+      }
 
       propagate;
    }

@@ -68,7 +68,7 @@ messages:
       }
 
       oTarget = First(lTargets);
-      if NOT IsClass(oTarget,&User)
+      if NOT (IsClass(oTarget,&User) OR IsClass(oTarget,&Follower))
       {
          if NOT bItemCast
          {
@@ -119,7 +119,8 @@ messages:
                      #iSpellPower=iSpellPower);
 
       // A little boost for casting on newbies, even if you're the newbie!
-      if NOT Send(oTarget,@CheckPlayerFlag,#flag=PFLAG_PKILL_ENABLE)
+      if IsClass(oTarget,&Player)
+         AND NOT Send(oTarget,@CheckPlayerFlag,#flag=PFLAG_PKILL_ENABLE)
       {
          iHeal += Random(200,500);
       }
@@ -238,7 +239,8 @@ messages:
                #parm3=iHeal/100);
 
          // Give them a little boost if they help someone of higher Karma.
-         if Send(who,@GetKarma) < Send(oTarget,@GetKarma)
+         if IsClass(who,&Player)
+            AND Send(who,@GetKarma) < Send(oTarget,@GetKarma)
          {
             Send(who,@AddKarma,#amount=Send(who,@CalculateKarmaChangeFromAct,
                   #karma_doer=Send(who,@GetKarma),

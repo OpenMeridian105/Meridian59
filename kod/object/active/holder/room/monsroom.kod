@@ -14,7 +14,7 @@ constants:
 
    include blakston.khd
 
-   DEFAULT_GEN_TIME = 15000
+   DEFAULT_GEN_TIME = 5000
    DEFAULT_GEN_PERCENT = 100
    
 resources:
@@ -22,7 +22,7 @@ resources:
 classvars:
 
    // If true, reduce monster spawn rate when there are few players in the room
-   vbScaleSpawnRateWithPlayers = FALSE
+   vbScaleSpawnRateWithPlayers = TRUE
    
 properties:
 
@@ -35,7 +35,7 @@ properties:
    // Timer makes 'em wait before new batch loads.
 
    // This is how long they have to wait before room resets, in ms.
-   piReload_Wait_Time = 90000
+   piReload_Wait_Time = 20000
 
    // Only loads the first monster in list plMonsters if set to true.
    pbLoad_first_monster_only = FALSE
@@ -52,6 +52,9 @@ properties:
 
    // maximum number of total monsters a room can hold       
    piMonster_count_max = 10
+
+   // maximum number of total monsters adjusted to number of players
+   piMonster_adjusted_max = 5
 
    // Number of monsters currently in room
    piMonster_count = 0
@@ -92,34 +95,25 @@ messages:
 
    GetMonsterGenTime()
    {
-      local iWaitTime, iNumberOfPlayers, iMaxPlayers;
-      // GetSpawnRate =  100
-      // iWaitTime = (20000 * (100 / 100));
-      // iWaitTime = 20000
+      local iWaitTime, iHeroCount, iMaxHeroes;
 
-      // GetSpawnRate =  300
-      // iWaitTime = (20000 * (300 / 100));
-      // iWaitTime = 60000
-     
-      // GetSpawnRate =  1
-      // iWaitTime = (20000 * (300 / 100));
-      // iWaitTime = 200
-      iWaitTime = (piGen_Time * Send(SETTINGS_OBJECT,@GetSpawnRate)) / 100;
+      iWaitTime = piGen_Time * 100 / Send(SETTINGS_OBJECT,@GetSpawnRate);
 
-      // Reduce spawn time for up to 5 people.
-      iNumberOfPlayers = Send(self,@CountHoldingHowMany,#class=&Player);
+      // Reduce spawn time for up to 5 heroes. Followers count half.
+      iHeroCount = Send(self,@CountHoldingHowMany,#class=&Player)*2;
+      iHeroCount += Send(self,@CountHoldingHowMany,#class=&Follower);
 
-      iMaxPlayers = 5;
+      iMaxHeroes = 10;
       if vbScaleSpawnRateWithPlayers
       {
-         iNumberOfPlayers = Bound(iNumberOfPlayers,1,iMaxPlayers);
+         iHeroCount = Bound(iHeroCount,1,iMaxHeroes);
       }
       else
       {
          // Always have max spawn rate
-         iNumberOfPlayers = iMaxPlayers;
+         iHeroCount = iMaxHeroes;
       }
-      iWaitTime = iWaitTime / iNumberOfPlayers;
+      iWaitTime = 2 * iWaitTime / iHeroCount;
 
       return iWaitTime;
    }
@@ -151,10 +145,16 @@ messages:
    "Will try to create a monster in the room.  Initroom=TRUE means it's"
    "being called when first player enters."
    {
-      local oMonster,iRoll,iTotal,lMonster_info,iRow,iCol,lPos;
+      local oMonster,iRoll,iTotal,lMonster_info,iRow,iCol,lPos,iMax;
 
-      if NOT Send(self,@IsMonsterCountBelowMax)
-         OR NOT pbGenerateMonsters
+      iMax = piMonster_adjusted_max;
+
+      if initroom
+      {
+         iMax = piMonster_count_max;
+      }
+
+      if (piMonster_Count >= iMax) OR NOT pbGenerateMonsters
       {
          return FALSE;
       }
@@ -174,6 +174,10 @@ messages:
          iRoll = 1;
       }
 
+      // This spawns mobs according to their spawn percentages, which are
+      // the second entry of lMonster_info. If a roll doesn't satisfy a
+      // percentage, the next percentage is added and the roll now checks
+      // against the sum of all previous percentages and so forth.
       iTotal = 0;
       foreach lMonster_info in plMonsters
       {
@@ -202,16 +206,13 @@ messages:
       return TRUE;
    }
 
-   IsMonsterCountBelowMax()
-   {
-      return (piMonster_count < piMonster_count_max); 
-   }
-
    NewHold(what = $)
    {
       if IsClass(what,&Monster)
+         AND Send(what,@GetMaster) = $
+         AND Send(what,@GetLeader) = $
       {
-         piMonster_count = piMonster_count + 1;
+         ++piMonster_count;
       }
 
       propagate;
@@ -220,9 +221,25 @@ messages:
    LeaveHold(what = $)
    {
       if IsClass(what,&Monster)
+         AND Send(what,@GetMaster) = $
+         AND Send(what,@GetLeader) = $
       {
-         piMonster_count = piMonster_count - 1;
+         --piMonster_count;
       }
+
+      propagate;
+   }
+
+   SomethingEntered(what=$)
+   {
+      Send(self,@AdjustHeroCount,#what=what);
+
+      propagate;
+   }
+
+   SomethingLeft(what=$)
+   {
+      Send(self,@AdjustHeroCount,#what=what);
 
       propagate;
    }
@@ -232,9 +249,7 @@ messages:
    "of critters to keep things lively.  Loads no monsters if there"
    "are already monsters here or if area cleaned out recently"
    {
-      local iHowMany, oMonster, iLength, i, bFound;
-
-      iLength = Length(plGenerators);
+      local iSpawnCount, oMonster, iLength, i, bFound;
 
       if NOT pbGenerateMonsters
       {
@@ -248,46 +263,54 @@ messages:
          propagate;
       }
 
-      // Find a monster in the room, and update our count of monsters in the
-      // in the room.  Sometimes this becomes inaccurate.
+      // Check if any monsters are present in the room at the time of entry
+      // and count their number.
       bFound = FALSE;
       piMonster_Count = 0;
       foreach i in plActive
       {
          oMonster = Send(self,@HolderExtractObject,#data=i);
-         // Count monsters, but not NPCs.
+
+         // Count monsters, but not NPCs or Followers.
          if IsClass(oMonster,&Monster)
-            AND NOT Send(oMonster,@HasAttribute,#mask=MOB_NOFIGHT)
+            AND NOT IsClass(oMonster,&NonPlayerCharacter)
+            AND NOT IsClass(oMonster,&Follower)
          {
             bFound = TRUE;
 
-            // Increment our monster count.
-            piMonster_Count = piMonster_Count + 1;
+            ++piMonster_Count;
          }
       }
 
+      // We had some leftover mobs from a previous visit or not enough
+      // time has passed since the latest clearing. Start regular spawn timer.
       if bFound OR NOT pbOkay_To_Load
       {
-         ptGen = CreateTimer(self,@MonsterGenTimer,
-                                    Send(self,@GetMonsterGenTime));
+         ptGen = CreateTimer(self,@MonsterGenTimer,Send(self,@GetMonsterGenTime));
 
          propagate;
       }
 
-      iHowMany = Random(piInit_count_min,piInit_count_max); 
+      // We actually have a fresh room to repopulate. Acquire population goal.
+      // We fill the room up at the start, not adjusting for players.
+      iSpawnCount = Random(piInit_count_min,piInit_count_max);
 
-      if iHowMany > iLength
+      // If a mob wasn't placed for some reason, we don't just give up.
+      // Instead, subtract a fraction of a spawn instead of a full spawn.
+      iSpawnCount *= 10;
+      while iSpawnCount > 0
       {
-         iHowMany = iLength;
+         if Send(self,@TryCreateMonster,#initroom=TRUE,#loadfirst=pbLoad_First_Monster_Only)
+         {
+            iSpawnCount -= 10;
+         }
+         else
+         {
+            --iSpawnCount;
+         }
       }
 
-      while iHowMany > 0 AND piMonster_Count < piMonster_count_max
-      {
-         Send(self,@TryCreateMonster,#initroom=TRUE,
-               #loadfirst=pbLoad_First_Monster_Only);
-         --iHowMany;
-      }
-
+      // Initial creation process finalized. Initiate sustained generation process.
       ptGen = CreateTimer(self,@MonsterGenTimer,Send(self,@GetMonsterGenTime));
 
       propagate;
@@ -421,7 +444,7 @@ messages:
       return piGen_Time;
    }
 
-   SetGenTIme(time = DEFAULT_GEN_TIME)
+   SetGenTime(time = DEFAULT_GEN_TIME)
    {
       piGen_Time = time;
 
@@ -455,6 +478,40 @@ messages:
       foreach i in plMonsters
       {
          GodLog(First(i),", ",Nth(i,2),"\%");
+      }
+
+      return;
+   }
+
+   AdjustHeroCount(what=$)
+   {
+      local iPercentage, iLength;
+
+      if IsClass(what,&Player) OR IsClass(what,&Follower)
+      {
+         iLength = Length(plGenerators);
+
+         if vbScaleSpawnRateWithPlayers
+         {
+            iPercentage = Send(self,@CountHoldingHowMany,#class=&Player)*20;
+            iPercentage += Send(self,@CountHoldingHowMany,#class=&Follower)*10;
+            iPercentage = Bound(iPercentage + 30,50,100);
+
+            piMonster_adjusted_max = piMonster_count_max * iPercentage / 100;
+
+            if iLength > 0
+            {
+               piMonster_adjusted_max = Bound(piMonster_adjusted_max,0,iLength);
+            }
+         }
+         else if iLength > 0
+         {
+            piMonster_adjusted_max = Bound(piMonster_count_max,0,iLength);
+         }
+         else
+         {
+            piMonster_adjusted_max = piMonster_count_max;
+         }
       }
 
       return;

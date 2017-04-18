@@ -118,11 +118,13 @@ messages:
 
    DoCurePoison(who=$,iSpellPower=0)
    {
-      local i, iState, iNewState, iStrength;
+      local i, iState, iNewState, iStrength, oEffect;
 
       foreach i in Send(who,@GetOverTimeEffects)
       {
-         if IsClass(Nth(i,5),&Poison) AND iSpellPower > 0
+         oEffect = Nth(i,5);
+
+         if (oEffect <> 0) AND IsClass(oEffect,&Poison) AND iSpellPower > 0
          {
             iState = Nth(i,4);
             iNewState = iState - iSpellPower;
@@ -155,6 +157,11 @@ messages:
    GetPotionClass()
    {
       return &CurePoisonPotion;
+   }
+
+   GetCombatType()
+   {
+      return COMBAT_ACTION_BUFF;
    }
 
 end

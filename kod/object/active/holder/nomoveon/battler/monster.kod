@@ -170,17 +170,37 @@ resources:
       "You shouldn't go alone, it's dangerous out there...  Let me join you "
       "until it's time to ~Ipart ways~I again."
    Lm_mercenary_join_contracted = "Reporting for duty!"
-   Lm_mercenary_leave = "I've got to get back to my squad.  Stay safe out there!"
+   Lm_mercenary_leave = "I'll be getting back to my squad.  Stay safe out there!"
    Lm_mercenary_return_death = \
       "Whoa!  What happened?  For a moment, everything went black there..."
    Lm_mercenary_return_lost = \
       "Sorry about that.  I must have gotten lost somewhere along the way...  "
       "Good thing I knew that you were going to come here sooner or later!"
+   Lm_mercenary_break = "Alright. See you later, friend!"
    Lm_mercenary_light = "You are right, it ~Iis~I a bit dark around these parts."
+   Lm_mercenary_close = "Very well. I'll stick really close."
+   Lm_mercenary_closer = "Very well. I'll follow a bit more closely."
+   Lm_mercenary_far = "Fine, I'll stay far back..."
+   Lm_mercenary_farther = "Fine, staying a bit farther back..."
+   Lm_mercenary_help = \
+      "Need help with something? You can ask me to...\n"
+      "...tell you what ~Ispells~I I have learned so far.\n"
+      "...make some ~Ilight~I, so we can see better in dark places.\n"
+      "...move in a little ~Icloser~I, or really ~Iclose~I so I don't fall behind.\n"
+      "...stay a bit ~Ifarther~I back or stay ~Ifar~I back to stay out of trouble.\n"
+      "...~Imeet up~I with you later in case you don't need me at the moment.\n"
+      "...~Ipart ways~I and follow my own destiny.  I'd think twice about that if I "
+      "were you though.  I bet you'd never find good company like me again!"
 
-   Lm_mercenary_leave_trigger = "part ways"
    Lm_mercenary_spells_trigger = "spells"
+   Lm_mercenary_leave_trigger = "part ways"
+   Lm_mercenary_break_trigger = "meet up"
    Lm_mercenary_light_trigger = "light"
+   Lm_mercenary_close_trigger = "close"
+   Lm_mercenary_closer_trigger = "closer"
+   Lm_mercenary_far_trigger = "far"
+   Lm_mercenary_farther_trigger = "farther"
+   Lm_mercenary_help_trigger = "help"
 
    vaultman_nogold = "You may not use my services to store %s%s."
    vaultman_nocursed = "I cannot take %s%s from you."
@@ -620,10 +640,71 @@ messages:
    Constructor(template=FALSE, color=0, piSurvivalLevel=0, iBrain = 0)
    "Simple enough, we create a monster. If they are questworthy, we note it."
    {
-      local iStatPoints, iRandom, iTotal, iDiff, lTemp, lStats, i,
-            lSpellbook, oSpell;
+      // Creates stats based on a mobs viDifficulty and randomization.
+      Send(self,@CreateStats,#template=template);
 
-      // First things first: Create stats.
+      // Sets a mobs derived stats such as resources based on stats.
+      Send(self,@SetResources,#piSurvivalLevel=piSurvivalLevel);
+
+      if Send(self,@MobIsSeller)
+      {
+         Send(self,@SetForSale);
+      }
+
+      if Send(self,@MobIsCondSeller)
+      {
+         Send(self,@InitCondSale);
+      }
+
+      if (viDefault_behavior & AI_NPC) = AI_NPC
+      {
+         Send(Send(SYS,@GetLibrary),@AddNPC,#who=self);
+      }
+
+      if viOccupation <> 0
+         AND NOT template
+      {
+         // template set to TRUE means this monster is in the System
+         // monster template list, so we shouldn't add it.
+         Send(Send(SYS,@GetLibrary),@AddToOccupationList,#who=self);
+      }
+
+      Send(self,@TryAddToLibrary);
+
+      if (iBrain > 0 AND iBrain <= BRAIN_MAX_NUM)
+      {
+         poBrain = Send(SYS,@FindBrainByNum,#num=iBrain);
+      }
+      else
+      {
+         poBrain = Send(SYS,@FindBrainByNum,#num=viBrain_type);
+      }
+
+      piState &= ESTATE_ZERO_MASK;
+      Send(poBrain,@MobConstructor,#mob=self);
+
+      piEnch_flags = 0;
+
+      Send(self,@ClearActiveQuests);
+      Send(self,@ResetBehaviorFlags);
+
+      piMood = 0;
+
+      if color <> 0
+      {
+         piColor_translation = color;
+      }
+
+      // Start timers...
+      Send(self,@NewVigor);
+
+      propagate;
+   }
+
+   CreateStats(template=FALSE)
+   {
+      local iStatPoints, iRandom, iTotal, iDiff, lTemp, lStats, i;
+
       // Creating random stats. Currently 6 stats, if you want to add more,
       // change i to a different number and assign accordingly below.
       i = 6;
@@ -705,7 +786,11 @@ messages:
          piMysticism = Bound(Nth(lTemp,6)+viBonusMysticism,1,MONSTER_STAT_CAP);
       }
 
-      // Set the monsters resources based on the stats we just created.
+      return;
+   }
+
+   SetResources(piSurvivalLevel=0)
+   {
       // Health
       piMax_health = viLevel * Bound(80 + piStamina,$,120) / 100
                      + piSurvivalLevel * viDifficulty + viBonusHealth;
@@ -723,54 +808,10 @@ messages:
 
       piMeleeRange = viMeleeRange;
       piFireRange = viFireRange * (75 + piAim) / 100;
-      piSpellPower = Bound(viSpellPower + (piIntellect + piMysticism) / 2, 0, 99);
+      piSpellPower = Bound((piIntellect + piMysticism) / 2, 0, 50) + viSpellPower;
       piVisionDistance = viVisionDistance + piSurvivalLevel + (piIntellect + piAim) / 20;
       piChanceToPatrol = 50 + piAgility + piStamina;
       piBoostedLevel = piSurvivalLevel;
-
-      if Send(self,@MobIsSeller)
-      {
-         Send(self,@SetForSale);
-      }
-
-      if Send(self,@MobIsCondSeller)
-      {
-         Send(self,@InitCondSale);
-      }
-
-      if (viDefault_behavior & AI_NPC) = AI_NPC
-      {
-         Send(Send(SYS,@GetLibrary),@AddNPC,#who=self);
-      }
-
-      if viOccupation <> 0
-         AND NOT template
-      {
-         // template set to TRUE means this monster is in the System
-         // monster template list, so we shouldn't add it.
-         Send(Send(SYS,@GetLibrary),@AddToOccupationList,#who=self);
-      }
-
-      Send(self,@TryAddToLibrary);
-
-      if (iBrain > 0 AND iBrain <= BRAIN_MAX_NUM)
-      {
-         poBrain = Send(SYS,@FindBrainByNum,#num=iBrain);
-      }
-      else
-      {
-         poBrain = Send(SYS,@FindBrainByNum,#num=viBrain_type);
-      }
-
-      piState &= ESTATE_ZERO_MASK;
-      Send(poBrain,@MobConstructor,#mob=self);
-
-      piEnch_flags = 0;
-
-      Send(self,@ClearActiveQuests);
-      Send(self,@ResetBehaviorFlags);
-
-      piMood = 0;
 
       if piSurvivalLevel > 0
       {
@@ -781,15 +822,7 @@ messages:
          piArmor = piSurvivalLevel / 5;
       }
 
-      if color <> 0
-      {
-         piColor_translation = color;
-      }
-
-      // Start timers...
-      Send(self,@NewVigor);
-
-      propagate;
+      return;
    }
 
    Constructed()
@@ -823,7 +856,7 @@ messages:
                  Send(oSpell,@GetSquaredRange),
                  Send(oSpell,@GetStartingPriority),
                  Send(oSpell,@GetPriorityAdjustment),
-                 Bound(Random(viDifficulty*5,viDifficulty*11),1,99),
+                 Bound(Random(viDifficulty*3,viDifficulty*6),1,49),
                  Send(oSpell,@GetCombatType)];
          }
          // Spell, priority, P-factor and spellpower provided.
@@ -893,7 +926,7 @@ messages:
                    Send(oSpell,@GetSquaredRange),
                    Send(oSpell,@GetStartingPriority),
                    Send(oSpell,@GetPriorityAdjustment),
-                   Bound(Random(viDifficulty*5,viDifficulty*11),1,99),
+                   Bound(Random(viDifficulty*3,viDifficulty*6),1,49),
                    Send(oSpell,@GetCombatType)];
 
          plActions = Cons(lSpell,plActions);
@@ -1281,6 +1314,9 @@ messages:
 
       Send(self,@ClearBehavior);
 
+      // Unset our resting flag.
+      piBattlerFlags &= ~BFLAG_RESTING;
+
       piHatred = 0;
 
       // The whole point of the limbo state is that there are no timers to set.
@@ -1298,6 +1334,11 @@ messages:
       Send(self,@ClearBehavior);
 
       piHatred = 0;
+
+      if delay = $
+      {
+         return;
+      }
 
       if actnow
       {
@@ -1345,6 +1386,9 @@ messages:
 
       Send(self,@SetState,#bit=STATE_ENGAGE);
       Send(self,@ClearBehavior);
+
+      // Unset our resting flag.
+      piBattlerFlags &= ~BFLAG_RESTING;
 
       // If we have a leader and we are about to smack him, it's probably
       // a good time to tell him that we are no longer convinced of his
@@ -2377,7 +2421,7 @@ messages:
       dcol = Abs(dcol - (piCol * FINENESS + piFine_col));
 
       // Let's move up to the leader unless we are close enough already.
-      if drow * drow + dcol * dcol > 30000
+      if (drow * drow + dcol * dcol > Send(self,@HowCloseToLeader))
       {
         Send(self,@MoveTowards,#oTarget=poLeader,#face_target=TRUE);
       }
@@ -2621,11 +2665,12 @@ messages:
    GetDodgeAbility(stroke_obj=$)
    {
       if (stroke_obj <> $) AND NOT Send(stroke_obj,@CanDodge)
+         OR (piBehavior & AI_NOMOVE) OR (piBehavior & AI_MOVE_RANDOM)
       {
          return 0;
       }
 
-      return (viDifficulty * 10);
+      return (viDifficulty * 11);
    }
 
    // This returns the damage done to target "what"
@@ -5938,7 +5983,7 @@ messages:
       {
          oSpell = Send(SYS,@FindSpellByNum,#num=iNum);
          lTargets = Send(oSpell,@GetTargets,#who=self,#lTargets=[oTarget]);
-         iSpellPower = piSpellPower + Nth(lAction,7);
+         iSpellPower = Bound(Send(self,@GetSpellPower,#oSpell=oSpell) + Nth(lAction,7),0,99);
 
          // Do any special cast animations; send spell for specific ones.
          // Also, make sure we're still around.
@@ -7898,13 +7943,6 @@ messages:
          Post(self,@SayToOne,#target=what,#message_rsc=vrMercenaryJoin);
       }
 
-      Send(self,@FaceLeader);
-
-      if IsClass(self,&Human)
-      {
-         Send(self,@DoWave);
-      }
-
       return;
    }
 
@@ -7954,6 +7992,17 @@ messages:
          return TRUE;
       }
 
+      if StringContain(message,Lm_mercenary_break_trigger)
+         AND (what = poLeader)
+      {
+         Send(self,@FollowerAbsence,#iDelay=3000);
+         Post(self,@SayToOne,#target=what,#message_rsc=Lm_mercenary_break);
+         Send(self,@FaceLeader);
+         Send(self,@DoWave);
+
+         return TRUE;
+      }
+
       if StringContain(message,Lm_mercenary_spells_trigger)
          AND (what = poLeader)
       {
@@ -7971,6 +8020,63 @@ messages:
             Post(self,@SayToOne,#target=what,#message_rsc=Lm_mercenary_light);
             Send(self,@FaceLeader);
          }
+
+         return TRUE;
+      }
+
+      if StringContain(message,Lm_mercenary_closer_trigger)
+         AND (what = poLeader)
+      {
+         if Send(self,@StayCloseToLeader)
+         {
+            Post(self,@SayToOne,#target=what,#message_rsc=Lm_mercenary_closer);
+            Send(self,@FaceLeader);
+            Send(self,@DoPoint);
+         }
+
+         return TRUE;
+      }
+
+      if StringContain(message,Lm_mercenary_close_trigger)
+         AND (what = poLeader)
+      {
+         if Send(self,@StayCloseToLeader,#bMin=TRUE)
+         {
+            Post(self,@SayToOne,#target=what,#message_rsc=Lm_mercenary_close);
+            Send(self,@FaceLeader);
+            Send(self,@DoPoint);
+         }
+
+         return TRUE;
+      }
+
+      if StringContain(message,Lm_mercenary_farther_trigger)
+         AND (what = poLeader)
+      {
+         if Send(self,@KeepDistanceFromLeader)
+         {
+            Post(self,@SayToOne,#target=what,#message_rsc=Lm_mercenary_farther);
+         }
+
+         return TRUE;
+      }
+
+      if StringContain(message,Lm_mercenary_far_trigger)
+         AND (what = poLeader)
+      {
+         if Send(self,@KeepDistanceFromLeader,#bMax=TRUE)
+         {
+            Post(self,@SayToOne,#target=what,#message_rsc=Lm_mercenary_far);
+         }
+
+         return TRUE;
+      }
+
+      if StringContain(message,Lm_mercenary_help_trigger)
+         AND (what = poLeader)
+      {
+         Post(self,@SayToOne,#target=what,#message_rsc=Lm_mercenary_help);
+         Send(self,@FaceLeader);
 
          return TRUE;
       }
@@ -9420,6 +9526,39 @@ messages:
    MercenaryAdjustLight()
    {
       return FALSE;
+   }
+
+   GetSpellPower()
+   {
+      return piSpellPower;
+   }
+
+   StartResting()
+   {
+      piBattlerFlags |= BFLAG_RESTING;
+      Send(self,@EnterStateWait,#delay=$);
+      Send(self,@NewVigor);
+
+      return;
+   }
+
+   StopResting()
+   {
+      piBattlerFlags &= ~BFLAG_RESTING;
+      Send(self,@WaitTimer);
+      Send(self,@NewVigor);
+
+      return;
+   }
+
+   CheckMonsterBehavior(flag=$)
+   {
+      return piBehavior & flag;
+   }
+
+   HowCloseToLeader()
+   {
+      return 30000;
    }
 
 end

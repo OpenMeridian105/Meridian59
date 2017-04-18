@@ -584,7 +584,7 @@ messages:
             plActions = DelListElem(plActions,i);
          }
 
-         plActions = Cons ([SKID_MINIMUM,0,0,MAX_KOD_INT,50,1,99],plActions);
+         plActions = Cons ([SKID_MINIMUM,0,0,MAX_KOD_INT,50,1,99,COMBAT_ACTION_NEUTRAL],plActions);
 
          // Gotta get the reflection's correct action list.
          if IsClass(poOriginal,&User)
@@ -598,27 +598,27 @@ messages:
 
                if IsClass(oWeapon,&RangedWeapon)
                {
-                  plActions = Cons([SKID_FIRE,0,0,iRange,100,1,99],plActions);
+                  plActions = Cons([SKID_FIRE,0,0,iRange,100,1,99,COMBAT_ACTION_HARM],plActions);
                }
                else
                {
-                  plActions = Cons([SKID_SLASH,0,0,iRange,100,1,99],plActions);
+                  plActions = Cons([SKID_SLASH,0,0,iRange,100,1,99,COMBAT_ACTION_HARM],plActions);
                }
             }
             else
             {
-               plActions = Cons([SKID_SLASH,0,0,4096,100,1,99],plActions);
+               plActions = Cons([SKID_SLASH,0,0,4096,100,1,99,COMBAT_ACTION_HARM],plActions);
             }
          }
          else
          {
             iRange = Send(poOriginal,@GetMeleeRange);
             iRange *= iRange;
-            plActions = Cons([SKID_SLASH,0,0,iRange,100,1,99],plActions);
+            plActions = Cons([SKID_SLASH,0,0,iRange,100,1,99,COMBAT_ACTION_HARM],plActions);
 
             iRange = Send(poOriginal,@GetFireRange);
             iRange *= iRange;
-            plActions = Cons([SKID_FIRE,0,0,iRange,100,1,99],plActions);
+            plActions = Cons([SKID_FIRE,0,0,iRange,100,1,99,COMBAT_ACTION_HARM],plActions);
          }
 
          if IsClass(poOriginal,&User)
@@ -940,7 +940,7 @@ messages:
          OR IsClass(what,&Revenant)
          OR IsClass(what,&EvilTwin)
       {
-         return -1000;
+         return -10000;
       }
 
       // Check if our master can attack the target, if not, we don't want
@@ -948,7 +948,7 @@ messages:
       if (NOT Send(poMaster,@AllowBattlerAttack,#victim=what,#actual=FALSE,
                   #report=FALSE))
       {
-         return -1000;
+         return -10000;
       }
 
       return 0;

@@ -34,19 +34,22 @@ properties:
 
    // Direct counter to chase factor. This allows aggressive
    // monsters to aggro a target regardless of other chasers.
-   piHyperAggressive_factor = 60
+   piHyperAggressive_factor = 600
 
    // The higher this is, the less likely monsters will 'swarm'.
-   piChaser_factor = 10
+   // A chase factor of 100 means that a mob will not join an
+   // assault on a player, if he already has one mob of his
+   // level on him.
+   piChaser_factor = 100
 
-   // THe higher this number, the more likely a karma hater
-   // will choose someone of the opposite karma.
-   piKarma_factor = 25
+   // Hatred below this level won't count. Currently equal to 1
+   // point of damage.
+   piCut_off = 10
 
    // These two variables control how much hatred is removed
    // by invisibility and shadow form.
-   piInvis_reduction = 100
-   piShadForm_reduction = 60
+   piInvis_reduction = 1000
+   piShadForm_reduction = 600
 
    // These properties control mob idle movement.
    // High numbers mean low chance.
@@ -115,7 +118,7 @@ messages:
 
       if state & STATE_LIMBO
       {
-         Send(mob,@EnterStateWait);
+         Send(mob,@EnterStateMove,#actnow=TRUE);
 
          return;
       }
@@ -645,8 +648,7 @@ messages:
 
             // Well, look what we have here. A skull!
             if iDistance < Send(mob,@GetAggroRange,#what=oEnemy,#bStrolling=TRUE)
-               AND Send(self,@AttemptTargetSwitch,#what=oEnemy,#event=TS_MOVE,
-                        #mob=mob)
+               AND Send(self,@AttemptTargetSwitch,#what=oEnemy,#event=TS_MOVE,#mob=mob)
             {
                iDelay = Bound(100 - Send(mob,@GetAgility),25,100) * 40;
                Send(mob,@EnterStateEngage,#target=oEnemy,#actnow=FALSE,
@@ -718,7 +720,7 @@ messages:
                {
                   if Send(mob,@SetLeader,#oLeader=oSocial)
                   {
-                     /// Attempt to move towards leader.
+                     // Attempt to move towards leader.
                      Send(mob,@MoveToLeader);
 
                      return;
@@ -958,8 +960,8 @@ messages:
       iHatred = 0;
 
       //// Convert recent damage taken to hatred.
-      // 1 point of damage converts to 1 point of hatred.
-      iHatred += Send(mob,@GetHurtMeRecentlyAmount,#who=what) / 100;
+      // 1 point of damage converts to 10 point of hatred.
+      iHatred += Send(mob,@GetHurtMeRecentlyAmount,#who=what) / 10;
 
       // ...mob tries to attack an ally. 
       if Send(mob,@IsAlly,#target=what)
@@ -993,11 +995,13 @@ messages:
             return 0;
          }
 
-         // Mob is already fighting a target and may be a
-         // bit reluctant to switch targets.
+         // Mob is already fighting a target and may be a bit reluctant
+         // to switch targets. Since one point of damage equals 10 hatred,
+         // subtracting the mobs level means that a mob needs to be dealt
+         // an extra 10% of its total health in damage to switch targets.
          if oMobTarget <> what
          {
-            iHatred -= Send(mob,@GetLevel) / 10;
+            iHatred -= Send(mob,@GetLevel);
          }
       }
 
@@ -1036,13 +1040,13 @@ messages:
          if Send(oMaster,@GetTarget) = what
             OR Send(what,@GetTarget) = oMaster
          {
-            iHatred += 1000;
+            iHatred += 10000;
          }
 
          // Master under attack! Defend them!
          if Send(what,@GetTarget) = oMaster
          {
-            iHatred += 500;
+            iHatred += 5000;
          }
       }
 
@@ -1076,32 +1080,32 @@ messages:
       //// Adjustments for event types.
       if event = TS_FIGHT_DEFEND_SELF
       {
-         iHatred += 40;
+         iHatred += 400;
       }
 
       if event = TS_MURDER
       {
-         iHatred += 30;
+         iHatred += 350;
       }
 
       if event = TS_FIGHT_DEFEND_VICTIM
       {
-         iHatred += 25;
+         iHatred += 300;
       }
 
       if event = TS_FIGHT_ASSIST_VICTIM
       {
-         iHatred += 20;
+         iHatred += 300;
       }
 
       if event = TS_FIGHT_DEFEND_ATTACKER
       {
-         iHatred += 15;
+         iHatred += 200;
       }
 
       if event = TS_FIGHT_ASSIST_ATTACKER
       {
-         iHatred += 10;
+         iHatred += 200;
       }
 
       // The target-to-be might be an illusion.
@@ -1125,7 +1129,8 @@ messages:
       }
 
       //// Special mob behavior...
-      // Some mobs will hunt enemies of opposite karma.
+      // Some mobs will hunt enemies of opposite karma. Up to 200
+      // points of hatred for a target with max karma.
       if (behavior & AI_FIGHT_KARMA_AGGRESSIVE)
       {
          iKarma1 = Send(mob,@GetKarma);
@@ -1140,7 +1145,7 @@ messages:
          {
             if (Abs(iKarma1)/iKarma1) <> (Abs(iKarma2)/iKarma2)
             {
-               iHatred += (Abs(iKarma2)* piKarma_factor) / 100;
+               iHatred += Abs(iKarma2) * 2;
             }
          }
       }
@@ -1160,7 +1165,7 @@ messages:
       // Teach that trespasser some respect!
       if (event = TS_MOVE)
       {
-         iHatred += 5;
+         iHatred += 200;
       }
 
       //// Adjust hatred generated based on target level...
@@ -1181,12 +1186,23 @@ messages:
       // Every mob that chases a player adds its viLevel to the player's chase
       // counter. A high chase counter prevents additional mobs from joining
       // the fight, unless they have been attacked directly.
-      if IsClass(what,&Player) AND NOT (event = TS_FIGHT_DEFEND_SELF)
+      if NOT (event = TS_FIGHT_DEFEND_SELF)
       {
-         // The power of the swarm is calculated in relation to a player's level.
-         iSwarm = Send(what,@GetMonsterChasers) * 20 / iLevel;
-         iSwarm = iSwarm * piChaser_factor / 100;
-         iHatred -= iSwarm;
+         if IsClass(what,&Player)
+         {
+            // The power of the swarm is relative to the player's level.
+            iSwarm = Send(what,@GetMonsterChasers) * 200 / iLevel;
+            // Before scaling, each mob of the player's level subtracts 200 hatred.
+            iSwarm = iSwarm * piChaser_factor / 100;
+            iHatred -= iSwarm;
+         }
+         else if IsClass(what,&Follower)
+         {
+            // Followers use their leader's swarm.
+            iSwarm = Send(Send(what,@GetLeader),@GetMonsterChasers) * 200 / iLevel;
+            iSwarm = iSwarm * piChaser_factor / 100;
+            iHatred -= iSwarm;
+         }
       }
 
       //// Allow increased swarming for some mobs...
@@ -1207,6 +1223,12 @@ messages:
       // Finally, factor in percentage and flat modifiers.
       iHatred = iHatred * percentage / 100;
       iHatred += modifier;
+
+      // Cutoff prevents negligible aggro from counting.
+      if iHatred < piCut_off
+      {
+         return 0;
+      }
 
       return iHatred;
    }
@@ -1247,7 +1269,7 @@ messages:
       }
       else
       {
-         oldHatred = Send(mob,@GetHatred,#what=what);
+         oldHatred = Send(mob,@GetHatred);
       }
 
       if iHatred > oldHatred

@@ -5301,8 +5301,6 @@ messages:
          iModBonus = Send(i,@ModifyDamage,#who=self,#what=what,#damage=iDamage,
                           #stroke_obj=oStroke);
          iDamageBonus += (iModBonus - iDamage);
-
-         Send(i,@WeaponHitTarget);
       }
 
       foreach i in plRadiusEnchantments
@@ -5629,7 +5627,7 @@ messages:
       return damage;
    }
 
-   // This message kicks in when damage is done to the opponent.
+   // This message kicks in when damage has been dealt to the opponent.
    DidDamage(what = $, amount = 0)
    {
       local oWeapon, i, shrunken;
@@ -5764,6 +5762,24 @@ messages:
    {
       local bReflection, i, oSoldierShield, monstkarma, iChance, oEnemyGuild,
             oVictimRoom, oObject;
+
+      // Killed something with a weapon, damage weapon.
+      if use_weapon <> $
+      {
+         Send(use_weapon,@WeaponHitTarget);
+      }
+
+      // Killed something by holding down the attack key. Damage
+      // any gear that might have helped our attack.
+      if (stroke_obj <> $)
+         AND (IsClass(stroke_obj,&Skill)
+            OR IsClass(stroke_obj,&TouchAttackSpell))
+      {
+         foreach i in plAttack_modifiers
+         {
+            Send(i,@WeaponHitTarget);
+         }
+      }
 
       // If we killed someone or something, we did damage.
       Send(self,@SetPlayerFlag,#flag=PFLAG_DID_DAMAGE,#value=TRUE);
@@ -11264,6 +11280,15 @@ messages:
       Send(self,@ResetPlayerFlagList);
       Send(self,@NewVigor);
 
+      // If we have a follower, make them take a break, too.
+      if (poMercenary <> $)
+         AND NOT IsTimer(poMercenary)
+         AND IsClass(poMercenary,&Follower)
+         AND (Send(poMercenary,@GetOwner) = poOwner)
+      {
+         Send(poMercenary,@StartResting);
+      }
+
       return;
    }
 
@@ -11272,6 +11297,15 @@ messages:
       piBattlerFlags &= ~BFLAG_RESTING;
       Send(self,@ResetPlayerFlagList);
       Send(self,@NewVigor);
+
+      // Followers gotta follow.
+      if (poMercenary <> $)
+         AND NOT IsTimer(poMercenary)
+         AND IsClass(poMercenary,&Follower)
+         AND (Send(poMercenary,@GetOwner) = poOwner)
+      {
+         Send(poMercenary,@StopResting);
+      }
 
       return;
    }
@@ -11687,8 +11721,9 @@ messages:
          }
 
          // Is this in the same school?
-         if Send(nObj,@GetSchool) = school
-            AND Send(nobj,@GetLevel) = level
+         if (Send(nObj,@GetSchool) = school)
+            AND ((level = $)
+               OR (Send(nObj,@GetLevel) = level))
          {
             count = count + 1;
          }
@@ -11711,7 +11746,8 @@ messages:
 
          // Is this in the same school?
          if (Send(nObj,@GetSchool) = school)
-            AND (Send(nobj,@GetLevel)) = level
+            AND ((level = $)
+               OR (Send(nObj,@GetLevel) = level))
          {
             count = count + 1;
          }
@@ -14990,12 +15026,16 @@ messages:
       oFollower = Create(&Follower,#oLeader=self,#iLevel=piBase_Max_Health,
                      #iDifficulty=iDifficulty,#iGender=iGender);
 
-      Send(poOwner,@NewHold,#what=oFollower,#new_row=piRow+1,#new_col=piCol+1,
+      Send(poOwner,@NewHold,#what=oFollower,#new_row=piRow+2,#new_col=piCol+2,
                           #fine_row=piFine_row,#fine_col=piFine_col);
 
       Send(oFollower,@SetLeader,#oLeader=self,#bContracted=bContracted);
 
       Send(oFollower,@FollowerDing,#bCreation=TRUE);
+
+      Send(oFollower,@FaceLeader);
+
+      Send(oFollower,@DoWave);
 
       return TRUE;
    }

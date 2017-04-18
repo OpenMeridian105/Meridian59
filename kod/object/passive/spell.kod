@@ -238,8 +238,8 @@ classvars:
    viResistanceType = 0
 
    // Adjusts the casting frequency of monster casts of the spell.
-   viStartingPriority = 700
-   viPriorityAdjustment = 1000
+   viStartingPriority = $
+   viPriorityAdjustment = $
 
 properties:
 
@@ -2850,11 +2850,21 @@ messages:
    // Adjustments for monster casting
    GetStartingPriority()
    {
-      return Random(0,viStartingPriority);
+      if viStartingPriority = $
+      {
+         return Random(0,700);
+      }
+
+      return viStartingPriority;
    }
 
    GetPriorityAdjustment()
    {
+      if viPriorityAdjustment = $
+      {
+         return 200 + (viMana*5 + viSpellExertion*20)*viSpell_Level;
+      }
+
       return viPriorityAdjustment;
    }
 

@@ -98,7 +98,7 @@ messages:
 
    CastSpell(who = $, lTargets = $, iSpellPower = 0)
    {
-      local i, iHeal, iDamage, iStrength, iTime, oTarget;
+      local i, iHeal, iDamage, iStrength, iTime, oTarget, oEffect;
 
       // Skip standard heal code if it's an area effect.
       if vbIsAreaEffect
@@ -133,7 +133,9 @@ messages:
 
          foreach i in Send(oTarget,@GetOverTimeEffects)
          {
-            if IsClass(Nth(i,5),&Bleed)
+            oEffect = Nth(i,5);
+
+            if (oEffect <> 0) AND IsClass(oEffect,&Bleed)
             {
                iTime = GetTimeRemaining(First(i));
                iStrength = Nth(i,3);

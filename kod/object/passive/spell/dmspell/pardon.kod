@@ -11,6 +11,7 @@
 Pardon is DMSpell
 
 constants:
+
    include blakston.khd
 
 resources:
@@ -23,7 +24,8 @@ resources:
 
    pardon_msg_DM = "You pardon %s%s."
    pardon_msg_target = "You have been pardoned by %s%s."
-   pardon_failed = "%s%s is not a murderer or an outlaw, and cannot be pardoned."
+   pardon_failed = \
+      "%s%s is not a murderer or an outlaw, and cannot be pardoned."
 
 classvars:
 
@@ -38,7 +40,6 @@ properties:
 
 messages:
 
-
    GetNumSpellTargets()
    {
       return 1;
@@ -46,43 +47,52 @@ messages:
 
    CanPayCosts(who = $, lTargets = $)
    {
-      if not IsClass(First(lTargets),&User)
+      local oTarget;
+
+      oTarget = First(lTargets);
+
+      if NOT IsClass(oTarget,&User)
       {
-	 send(who,@MsgSendUser,#message_rsc=pardon_failed,
-	      #parm1=Send(First(lTargets),@GetDef),#parm2=Send(First(lTargets),@getname));
-	 return False;
+         Send(who,@MsgSendUser,#message_rsc=pardon_failed,
+               #parm1=Send(oTarget,@GetDef),#parm2=Send(oTarget,@GetName));
+
+         return FALSE;
       }
+
       propagate;
    }
 
    CastSpell(who = $, lTargets = $)
    {
       local i;
-      
+
       foreach i in lTargets
       {
-	 if send(i,@checkplayerflag,#flag=PFLAG_MURDERER)
-         or send(i,@checkplayerflag,#flag=PFLAG_OUTLAW)
-	 {
-	    send(who,@MsgSendUser,#message_rsc=pardon_msg_DM,
-		#parm1=Send(i,@getdef),#parm2=Send(i,@getname));
-	    send(i,@MsgSendUser,#message_rsc=pardon_msg_target,
-		#parm1=Send(who,@getindef),#parm2=Send(who,@getname));      
-	    
-	    Send(i,@setplayerflag,#flag=PFLAG_MURDERER,#value=false); 
-            Send(i,@setplayerflag,#flag=PFLAG_OUTLAW,#value=false); 
-            post(i,@evaluatePKstatus);
-	 }
-	 else
-	 {
-	    send(who,@MsgSendUser,#message_rsc=pardon_failed,
-		 #parm1=Send(i,@GetDef),#parm2=Send(i,@getname));
+         if Send(i,@CheckPlayerFlag,#flag=PFLAG_MURDERER)
+            OR Send(i,@CheckPlayerFlag,#flag=PFLAG_OUTLAW)
+         {
+            Send(who,@MsgSendUser,#message_rsc=pardon_msg_DM,
+                  #parm1=Send(i,@GetDef),#parm2=Send(i,@GetName));
+            Send(i,@MsgSendUser,#message_rsc=pardon_msg_target,
+                  #parm1=Send(who,@GetIndef),#parm2=Send(who,@GetName));
+
+            Send(i,@SetPlayerFlag,#flag=PFLAG_MURDERER,#value=FALSE);
+            Send(i,@SetPlayerFlag,#flag=PFLAG_OUTLAW,#value=FALSE);
+            // Reset phase/ghost time.
+            Send(i,@RefreshPhaseTimeToBase);
+            Post(i,@EvaluatePKStatus);
+         }
+         else
+         {
+            Send(who,@MsgSendUser,#message_rsc=pardon_failed,
+                  #parm1=Send(i,@GetDef),#parm2=Send(i,@GetName));
+
             return;
          }
       }
+
       propagate;
    }
 
 end
-
 ////////////////////////////////////////////////////////////////////////////////

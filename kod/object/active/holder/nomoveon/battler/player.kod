@@ -14636,14 +14636,14 @@ messages:
          DeleteTimer(ptPhaseVisualEffectTimer);
          ptPhaseVisualEffectTimer = $;
       }
-      
+
+      Send(self,@RefreshPhaseTimeToBase);
+
       oPhase = Send(SYS,@FindSpellByNum,#num=SID_PHASE);
       Send(self,@RemoveEnchantment,#what=oPhase);
       Send(oPhase,@InflictPenalties,#who=self);
 
       Post(self,@AdminGoToLastSafeRoom);
-
-      Send(self,@RefreshPhaseTimeToBase);
 
       return;
    }
@@ -14694,6 +14694,11 @@ messages:
       }
 
       return;
+   }
+
+   IsAtMaxPhaseTime()
+   {
+      return piRemainingPhaseTime = Send(self,@GetBasePhaseTime);
    }
 
    CanPhaseAgain(time=$)

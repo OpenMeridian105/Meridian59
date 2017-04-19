@@ -246,7 +246,7 @@ messages:
 
    EndEnchantment(who = $,report = TRUE,state = $)
    {
-      local oRoom;
+      local oRoom, bTeleport;
 
       Send(who,@EffectSendUserXlat,#xlat=0);
       Send(who,@SetPlayerFlag,#flag=PFLAG_PHASED,#value=FALSE);
@@ -270,9 +270,15 @@ messages:
       oRoom = Send(who,@GetOwner);
       if (oRoom <> $)
       {
+         // If they are at max phase time, they penned and were teleported.
+         // Holds because of the phase delay meaning anyone who has phase
+         // removed without teleporting must have less than max time
+         // remaining.
+         bTeleport = Send(who,@IsAtMaxPhaseTime);
+
          // Post so it gets processed after enchantment is fully removed
          // from the player.
-         Post(oRoom,@SomethingPhasedIn,#what=who);
+         Post(oRoom,@SomethingPhasedIn,#what=who,#bTeleport=bTeleport);
       }
 
       Send(who,@LogonDelay);

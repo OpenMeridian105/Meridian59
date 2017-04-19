@@ -5648,7 +5648,7 @@ messages:
          if oWeapon <> $
          {
             // The spell object is the second element of the list. Get that.
-            oWeapon = Nth(first(oWeapon),2);
+            oWeapon = Nth(First(oWeapon),2);
          }
       }
 
@@ -11301,7 +11301,7 @@ messages:
       {
          if IsClass(i,&Torch)
             OR IsClass(i,&DaemonHelm)
-            OR (IsClass(i,&Weapon)
+            OR ((IsClass(i,&Weapon) OR IsClass(i,&Lute))
                AND Send(i,@HasAttribute,#ItemAtt=WA_GLOWING))
          {
             piDrawEffectFlag |= OF_FLICKERING;
@@ -11390,21 +11390,31 @@ messages:
 
    RecalcLight()
    {
-      local i, iLight, iState, oWeapon, oItemAtt;
+      local i, iLight, iState;
 
       // TODO: Make this into a general check.
 
       // Default base value
       iLight = 5;
 
-      // Torch, Amulet
       foreach i in plUsing
       {
+         // Torch, Amulet
          if IsClass(i,&Torch)
-         OR IsClass(i,&ShadowAmulet)
-         OR IsClass(i,&DaemonHelm)
+            OR IsClass(i,&ShadowAmulet)
+            OR IsClass(i,&DaemonHelm)
          {
-            iLight = iLight + Send(i,@GetLightEffect);
+            iLight += Send(i,@GetLightEffect);
+         }
+         // Glowing weapons?
+         else if ((IsClass(i,&Weapon) OR IsClass(i,&Lute))
+            AND Send(i,@HasAttribute,#ItemAtt=WA_GLOWING))
+         {
+            iState = Send(i,@GetAttributeData,#ItemAtt=WA_GLOWING);
+            if (iState <> $)
+            {
+               iLight += Nth(iState,3);
+            }
          }
       }
 
@@ -11412,18 +11422,13 @@ messages:
                     #what=Send(SYS,@FindSpellByNum,#num=SID_NIGHTVISION));
       if iState <> $
       {
-         iLight = iLight + iState;
+         iLight += iState;
       }
 
-      // Glowing weapons?
-      oWeapon = Send(self,@LookupPlayerWeapon);
-      if oWeapon <> $
+      // Touch attacks can add or remove light.
+      foreach i in Send(self,@GetEnchantmentsByClass,#EnchClass=&TouchAttackSpell)
       {
-         iState = Send(oWeapon,@GetAttributeData,#ItemAtt=WA_GLOWING);
-         if iState <> $
-         {
-            iLight = iLight + Nth(iState,3);
-         }
+         iLight += Send(Nth(i,2),@GetEnchantmentLight);
       }
 
       if piLight <> iLight
@@ -13979,7 +13984,7 @@ messages:
       foreach i in plUsing
       {
          if IsClass(i,&Torch)
-            OR (IsClass(i,&Weapon)
+            OR ((IsClass(i,&Weapon) OR IsClass(i,&Lute))
                AND Send(i,@HasAttribute,#ItemAtt=WA_GLOWING))
          {
             iIntensity = 60;

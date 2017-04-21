@@ -172,7 +172,7 @@ messages:
 
    ResetBoss()
    {
-      local i, oTempMonster, oTempTreasure;
+      local i, oTempMonster, oTempTreasure, iRow, iCol, iIndex;
 
       // These are unnecessary, but just to be safe...
       piWaitingToStartBossResetTimer = FALSE;
@@ -207,14 +207,20 @@ messages:
          return;
       }
 
+      // Boss spawn IDs follow generator IDs.
+      iIndex = Length(plGenerators);
+
       foreach i in plBossTemplate
       {
          oTempMonster = Create(First(i));
+         iRow = Nth(i,2);
+         iCol = Nth(i,3);
+         ++iIndex;
          // For now, assume no problems with ReqSomethingEntered failing
          // (another monster blocking creation site).
-         Send(self,@NewHold,#what=oTempMonster,
-               #new_row=nth(i,2),#new_col=nth(i,3),
+         Send(self,@NewHold,#what=oTempMonster,#new_row=iRow,#new_col=iCol,
                #fine_row=FINENESS/2,#fine_col=FINENESS/2);
+         Send(oTempMonster,@SetSpawnLoc,#iRow=iRow,#iCol=iCol,#iIndex=iIndex);
          plBoss = Cons(oTempMonster, plBoss);
       }
 
@@ -223,11 +229,15 @@ messages:
          foreach i in plHenchmenTemplate
          {
             oTempMonster = Create(First(i));
+            iRow = Nth(i,2);
+            iCol = Nth(i,3);
+            ++iIndex;
             // For now, assume no problems with ReqSomethingEntered failing
             // (another monster blocking creation site).
-            Send(self,@NewHold,#what=oTempMonster,
-                  #new_row=nth(i,2),#new_col=nth(i,3),
-                  #fine_row=FINENESS/2,#fine_col=FINENESS/2);
+         Send(self,@NewHold,#what=oTempMonster,#new_row=iRow,#new_col=iCol,
+               #fine_row=FINENESS/2,#fine_col=FINENESS/2);
+         Send(oTempMonster,@SetMaster,#oMaster=First(plBoss));
+         Send(oTempMonster,@SetSpawnLoc,#iRow=iRow,#iCol=iCol,#iIndex=iIndex);
             plHenchmen = Cons(oTempMonster, plHenchmen);
          }
       }

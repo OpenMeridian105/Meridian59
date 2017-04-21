@@ -267,23 +267,6 @@ messages:
    {
       local i;
 
-      // Clear minion control list. Delete each of our minions
-      // unless they are reflections, which are handled separately.
-      // Deleted minions will remove themselves from our list, we
-      // just need to let them know they're to be deleted.
-      if plControlledMinions <> $
-      {
-         foreach i in plControlledMinions
-         {
-            if IsClass(i,&Monster)
-               AND NOT IsClass(i,&Reflection)
-            {
-               Send(i,@Delete);
-            }
-         }
-         plControlledMinions = $;
-      }
-
       // If this Battler has created any evil twins, delete them.
       Send(self,@RemoveAllCreatedEvilTwins);
 
@@ -3146,12 +3129,6 @@ messages:
                Send(self,@RemoveControlledMinion,#what=i);
 
                continue;
-            }
-
-            if Send(i,@GetTarget) = $
-            {
-               Send(i,@SetBehaviorFlag,#flag=AI_MOVE_FOLLOW_MASTER,
-                     #value=TRUE);
             }
          }
          ptMinionControlCheck = CreateTimer(self,@MinionControlCheck,2000);

@@ -5120,8 +5120,8 @@ messages:
    "put at a gen point.  This is now in Room, as all rooms can use it for "
    "placing either a monster or a random item."
    {
-      local oOldOwner, iMRow, iMCol, iMRowFine, iMColFine, lPos, iRoll, iCount, lPatrolPath,
-            iQflags, iRflags, iHeightF, iHeightFWD, iHeightC, iServerID, iCheck;
+      local oOldOwner, iMRow, iMCol, iMRowFine, iMColFine, lPos, iIndex, iCount, lPatrolPath,
+            iQflags, iRflags, iHeightF, iHeightFWD, iHeightC, iServerID, iCheck, iSpawnLoc;
 
       iMRow = iRow;
       iMCol = iCol;
@@ -5178,16 +5178,23 @@ messages:
          }
          else
          {
-            iRoll = Random(1,Length(plGenerators));
-            lPos = Nth(plGenerators,iRoll);
-            iMRow = First(lPos);
-            iMCol = Nth(lPos,2);
-            
-            if (plPatrolPaths <> $)
-               AND (Length(plPatrolPaths) >= iRoll)
-               AND (Nth(plPatrolPaths,iRoll) <> $)
+            iSpawnLoc = Send(self,@FindFreeGenerator);
+            if NOT iSpawnLoc
             {
-               lPatrolPath = Nth(plPatrolPaths,iRoll);
+               return FALSE;
+            }
+
+            iIndex = iSpawnLoc / 1000000;
+            iMRow = (iSpawnLoc / 1000) % 1000;
+            iMCol = iSpawnLoc % 1000;
+
+            Send(oMonster,@SetSpawnLoc,#iRow=iMRow,#iCol=iMCol,#iIndex=iIndex);
+
+            if (plPatrolPaths <> $)
+               AND (Length(plPatrolPaths) >= iIndex)
+               AND (Nth(plPatrolPaths,iIndex) <> $)
+            {
+               lPatrolPath = Nth(plPatrolPaths,iIndex);
             }
          }
       }
@@ -5237,6 +5244,52 @@ messages:
       }
 
       return TRUE;
+   }
+
+   FindFreeGenerator()
+   {
+      local i, j, iRow, iCol, iIndex, oMonster, iSpawnLoc, bOccupied;
+
+      iIndex = 0;
+
+      foreach i in plGenerators
+      {
+         iRow = First(i);
+         iCol = Nth(i,2);
+         ++iIndex;
+
+         bOccupied = FALSE;
+
+         foreach j in plActive
+         {
+            oMonster = Send(self,@HolderExtractObject,#data=j);
+            if NOT IsClass(oMonster,&Monster)
+            {
+               continue;
+            }
+
+            iSpawnLoc = Send(oMonster,@GetSpawnLoc);
+
+            if iSpawnLoc = $
+            {
+               continue;
+            }
+
+            if ((iSpawnLoc / 1000) % 1000 = iRow)
+               AND (iSpawnLoc % 1000 = iCol)
+            {
+               bOccupied = TRUE;
+               break;
+            }
+         }
+
+         if NOT bOccupied
+         {
+            return iIndex*1000000+iRow*1000+iCol;
+         }
+      }
+
+      return FALSE;
    }
 
    TryCreateMonster()
@@ -5527,6 +5580,13 @@ messages:
    IsAccessibleForFollowers()
    {
       return vbAccessibleForFollowers;
+   }
+
+   // Occasionally this may be called if monsters are spawned in a
+   // non monster room.
+   GetNumGenerators()
+   {
+      return 0;
    }
 
 end

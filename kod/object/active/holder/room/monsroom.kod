@@ -62,11 +62,20 @@ properties:
    // List of monsters we spawn, if for: [monster class, chance to spawn]
    plMonsters = $
 
-   // Should we generate monsters?
+   // Should we generate monsters at all?
    pbGenerateMonsters = TRUE
+
+   // Should we replace killed monsters with new ones after initial generation?
+   pbRespawnMonsters = TRUE
 
    // Is this a room where monsters grow in strength?
    piLevel = 0
+
+   // How far will spawned mobs roam from their spawnpoint?
+   piPatrolRadius = 0
+
+   // How far will spawned mobs fight away from their spawn point before they reset?
+   piLeashRadius = 0
 
 messages:
 
@@ -284,7 +293,7 @@ messages:
 
       // We had some leftover mobs from a previous visit or not enough
       // time has passed since the latest clearing. Start regular spawn timer.
-      if bFound OR NOT pbOkay_To_Load
+      if (bFound OR NOT pbOkay_To_Load) AND pbRespawnMonsters 
       {
          ptGen = CreateTimer(self,@MonsterGenTimer,Send(self,@GetMonsterGenTime));
 
@@ -295,23 +304,19 @@ messages:
       // We fill the room up at the start, not adjusting for players.
       iSpawnCount = Random(piInit_count_min,piInit_count_max);
 
-      // If a mob wasn't placed for some reason, we don't just give up.
-      // Instead, subtract a fraction of a spawn instead of a full spawn.
-      iSpawnCount *= 10;
       while iSpawnCount > 0
       {
-         if Send(self,@TryCreateMonster,#initroom=TRUE,#loadfirst=pbLoad_First_Monster_Only)
-         {
-            iSpawnCount -= 10;
-         }
-         else
-         {
-            --iSpawnCount;
-         }
+         Send(self,@TryCreateMonster,#initroom=TRUE,#loadfirst=pbLoad_First_Monster_Only);
+
+         --iSpawnCount;
       }
 
       // Initial creation process finalized. Initiate sustained generation process.
-      ptGen = CreateTimer(self,@MonsterGenTimer,Send(self,@GetMonsterGenTime));
+      // Only if respawns are enabled though.
+      if pbRespawnMonsters
+      {
+         ptGen = CreateTimer(self,@MonsterGenTimer,Send(self,@GetMonsterGenTime));
+      }
 
       propagate;
    }
@@ -337,7 +342,7 @@ messages:
          DeleteTimer(ptGen);
          ptGen = $;
       }
-      else if pbGenerateMonsters
+      else if pbGenerateMonsters AND pbRespawnMonsters
       {
          Debug("Monster room had $ ptGen timer in LastUserLeft, room ",
                Send(self,@GetName));
@@ -515,6 +520,21 @@ messages:
       }
 
       return;
+   }
+
+   GetPatrolRadius()
+   {
+      return piPatrolRadius*piPatrolRadius;
+   }
+
+   GetLeashRadius()
+   {
+      return piLeashRadius*piLeashRadius;
+   }
+
+   GetNumGenerators()
+   {
+      return Length(plGenerators);
    }
 
 end

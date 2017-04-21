@@ -533,16 +533,6 @@ messages:
    }
 
    GetMoveBehavior(behavior=0, mob = $)
-   "This is called before the monster has a target.  Logic as follows: "
-   "NOTE: With the new movement timer, this is called often enough to allow a"
-   "      seamless move by calling MoveTowards/MoveToMaster in here."
-   "      This means it runs more often and e.g. RandomWalks must be limited"
-   "1. Do nothing if immobile."
-   "2. If blind, wander aimlessly."
-   "3. If frightened, run for your life."
-   "4. If you have a master, go to his side."
-   "5. If we feel chatty, move up to a buddy."
-   "6. Otherwise, wander aimlessly."
    {
       local oMaster, oFrightener, oSocial, iDistance, iVision, iAttack,
             oEnemy, iDelay;
@@ -550,6 +540,14 @@ messages:
       if mob = $
       {
          Debug("Unreachable!  Called without argument!");
+
+         return;
+      }
+
+      // We reset an encounter and walk back to our spawn location.
+      if (behavior & AI_RETURN_TO_SPAWN) AND (behavior & AI_NPC)
+      {
+         Send(mob,@DoGoTowardsLocation);
 
          return;
       }
@@ -599,31 +597,25 @@ messages:
          }
       }
 
-      if (behavior & AI_MOVE_FOLLOW_MASTER)
-      {
-         oMaster = Send(mob,@GetMaster);
-         if oMaster <> $
-         {
-            if Send(mob,@GetOwner) = Send(oMaster,@GetOwner)
-            {
-               /// Attempt to move towards master.
-               Send(mob,@MoveToMaster);
-            }
-            else
-            {
-               // Master is not in room.  If master is a player,
-               // teleport to player, to look like we're following
-               // but only if we're a reflection or undead. Other cases
-               // handled in monster.kod.
-               if IsClass(mob,&Reflection) // Flecs follow.
-                  OR Send(mob,@IsUndead) // So do undead (Animate).
-               {
-                  Post(mob,@GotoMaster);
-               }
-            }
+      oMaster = Send(mob,@GetMaster);
 
-            return;
+      if oMaster <> $
+      {
+         if (Send(mob,@GetOwner) = Send(oMaster,@GetOwner))
+         {
+            Send(mob,@MoveToMaster);
          }
+         // Master is not in room.  If master is a player,
+         // teleport to player, to look like we're following
+         // but only if we're a reflection or undead. Other cases
+         // handled in monster.kod.
+         else if IsClass(mob,&Reflection) // Flecs follow.
+            OR Send(mob,@IsUndead) // So do undead (Animate).
+         {
+            Post(mob,@GotoMaster);
+         }
+
+         return;
       }
 
       // If we got a leader, follow him.
@@ -633,7 +625,6 @@ messages:
 
          return;
       }
-
 
       // We don't have any pressing matters to attend to. However, we are
       // still prepared to bash some skulls in if we should encounter any.
@@ -657,6 +648,15 @@ messages:
                return FALSE;
             }
          }
+      }
+
+      // If we had a fixed spawn point, let's move to it if we need to.
+      if oMaster = $
+         AND ((behavior & AI_RETURN_TO_SPAWN) OR Send(mob,@ReturnToSpawn))
+      {
+         Send(mob,@DoGoTowardsLocation);
+
+         return;
       }
 
       // If we had a real target location, we wouldn't be strolling anymore.
@@ -791,7 +791,7 @@ messages:
    "5. If wounded below viWimpy, either run away, or towards closest ally."
    "6. Otherwise, move towards target."
    {
-      local oMaster, oFrightener, oAlly, iRange, iOpt_range, iSquaredVision,
+      local oFrightener, oAlly, iRange, iOpt_range, iSquaredVision,
             iSquaredDistance, iAlly;
 
       if mob = $ OR target = $
@@ -801,9 +801,9 @@ messages:
          return;
       }
 
+      // Monster is immobile.
       if (behavior & AI_NOMOVE)
       {
-         // Monster is immobile.
          return;
       }
 
@@ -811,7 +811,7 @@ messages:
       // over everything else.
       if (behavior & AI_MOVE_RANDOM)
       {
-         // skip steps depending on agility
+         // Skip steps depending on agility.
          if Random(1,100) < Send(mob,@GetAgility)
          {
            Send(mob,@DoRandomWalk);
@@ -828,27 +828,6 @@ messages:
             Send(mob,@MoveAway,#oTarget=oFrightener,#face_away=TRUE);
 
             return;
-         }
-      }
-
-      if (behavior & AI_MOVE_FOLLOW_MASTER)
-      {
-         // No cross room travel. Target is assumed closer
-         // if master is in another room.
-         oMaster = Send(mob,@GetMaster);
-         if oMaster <> $
-         {
-            // Only move towards master if he's closer, and
-            // if he's in the same room.
-            if Send(mob,@GetOwner) = Send(oMaster,@GetOwner)
-               AND Send(mob,@SquaredDistanceTo,#what=oMaster)
-                     < Send(mob,@SquaredDistanceTo,#what=target)
-            {
-               // Attempt to move towards master.
-               Send(mob,@MoveToMaster);
-
-               return;
-            }
          }
       }
 
@@ -926,25 +905,27 @@ messages:
       if mob = $ OR what = $
       {
          Debug("BadInfo passed to GetHatred!");
-
          return FALSE;
       }
 
       // ...mob tries to attack itself.
       if what = mob
       {
+         // Debug("Target equals self!");
          return 0;
       }
 
       // ...mob can't fight or is an NPC.
       if (behavior & AI_NOFIGHT) OR (behavior & AI_NPC)
       {
+         // Debug("Mob can't fight or is NPC!");
          return 0;
       }
 
       // ...mob and target don't share a room.
       if Send(mob,@GetOwner) <> Send(what,@GetOwner)
       {
+         // Debug("Not in the same room as target!");
          return 0;
       }
 
@@ -953,6 +934,7 @@ messages:
          AND IsClass(what,&Player)
          AND NOT Send(what,@CheckPlayerFlag,#flag=PFLAG_PKILL_ENABLE)
       {
+         // Debug("Mob won't aggro on newbies!");
          return 0;
       }
 
@@ -962,13 +944,16 @@ messages:
       //// Convert recent damage taken to hatred.
       // 1 point of damage converts to 10 point of hatred.
       iHatred += Send(mob,@GetHurtMeRecentlyAmount,#who=what) / 10;
+      // Debug("Hatred from Damage is: ",iHatred);
 
       // ...mob tries to attack an ally. 
       if Send(mob,@IsAlly,#target=what)
       {
+         // Debug("Mob is attacking an ally!");
          // If the mob hasn't been hurt by the ally, quit.
          if iHatred = 0
          {
+            // Debug("Mob hasn't been hurt by ally!");
             return 0;
          }
          // If the mob's ally is a monster and isn't directly targeting
@@ -976,12 +961,14 @@ messages:
          // friendly fire from AE attacks.
          else if IsClass(what,&Monster) AND (Send(what,@GetTarget) <> mob)
          {
+            // Debug("Ally has damaged mob but isn't targeting it!");
             return 0;
          }
          // If none of the above is true, cut hatred in half at least.
          else
          {
             iHatred /= 2;
+            // Debug("Hatred halved to: ",iHatred);
          }
       }
 
@@ -992,6 +979,7 @@ messages:
       {
          if (behavior & AI_FIGHT_SINGLEMINDED)
          {
+            // Debug("Mob is singleminded!");
             return 0;
          }
 
@@ -1002,6 +990,7 @@ messages:
          if oMobTarget <> what
          {
             iHatred -= Send(mob,@GetLevel);
+            // Debug("Mob already has another target! Hatred reduced to: ",iHatred);
          }
       }
 
@@ -1010,6 +999,7 @@ messages:
 
       if oMaster <> $
       {
+         // Debug("Mob has a master!");
          // Minions do not attack players unless provoked.
          if IsClass(oMaster,&User)
             AND IsClass(what,&User)
@@ -1017,6 +1007,7 @@ messages:
          {
             if NOT Send(SYS,@IsPKAllowed)
             {
+               // Debug("Mob's master is a player. Mob won't attack other players unless hit!");
                return 0;
             }
          }
@@ -1024,6 +1015,7 @@ messages:
          // Minions will never attack their master.
          if oMaster = what
          {
+            // Debug("The mob's target was its master!");
             return 0;
          }
 
@@ -1032,21 +1024,23 @@ messages:
          if IsClass(what,&FactionTroop)
             AND oMaster <> Send(what,@GetTarget)
          {
+            // Debug("Mob tried to attack a faction soldier that was not in combat with master!");
             return 0;
          }
 
          // If my master wants to kill this guy, so do I.
          // Basic courtesy, really.
          if Send(oMaster,@GetTarget) = what
-            OR Send(what,@GetTarget) = oMaster
          {
-            iHatred += 10000;
+            iHatred += 5000;
+            // Debug("Master has same target! Hatred increased to: ",iHatred);
          }
 
          // Master under attack! Defend them!
          if Send(what,@GetTarget) = oMaster
          {
-            iHatred += 5000;
+            iHatred += 10000;
+            // Debug("Master is being attacked by target! Hatred increased to: ",iHatred);
          }
       }
 
@@ -1054,26 +1048,31 @@ messages:
       // Will only work if mobs isn't attacked directly.
       if event <> TS_FIGHT_DEFEND_SELF
       {
+         // Debug("Mob is not defending itself but joining an attack!");
          // A pacified mob will only fight back if smacked.
          if Send(mob,@IsPacified)
          {
+            // Debug("Monster is pacfied and won't join!");
             return 0;
          }
          // Feigning death may throw our attacker off.
-         if Send(mob,@IsEnchanted,#byClass=&FeignDeath)
+         if Send(what,@IsEnchanted,#byClass=&FeignDeath)
             AND (Random(0,300) > Send(mob,@GetMaxHealth))
          {
+            // Debug("Monster was thrown off by Feign Death!");
             return 0;
          }
          // Invisible targets have low priority.
          if Send(what,@IsInvisible)
          {
             iHatred -= piInvis_reduction;
+            // Debug("Target invisible! Hatred reduced to: ",iHatred);
          }
          // Shadowform may also save the target from aggression.
          else if Send(what,@IsShadowForm)
          {
             iHatred -= piShadForm_reduction;
+            // Debug("Target in shadow form! Hatred reduced to: ",iHatred);
          }
       }
 
@@ -1081,37 +1080,44 @@ messages:
       if event = TS_FIGHT_DEFEND_SELF
       {
          iHatred += 400;
+         // Debug("400 Hatred gained from event: self defense! Hatred now: ",iHatred);
       }
 
       if event = TS_MURDER
       {
          iHatred += 350;
+         // Debug("350 Hatred gained from event: criminal! Hatred now: ",iHatred);
       }
 
       if event = TS_FIGHT_DEFEND_VICTIM
       {
          iHatred += 300;
+         // Debug("300 Hatred gained from event: victim defense! Hatred now: ",iHatred);
       }
 
       if event = TS_FIGHT_ASSIST_VICTIM
       {
          iHatred += 300;
+         // Debug("300 Hatred gained from event: victim assist! Hatred now: ",iHatred);
       }
 
       if event = TS_FIGHT_DEFEND_ATTACKER
       {
          iHatred += 200;
+         // Debug("200 Hatred gained from event: attacker defend! Hatred now: ",iHatred);
       }
 
       if event = TS_FIGHT_ASSIST_ATTACKER
       {
          iHatred += 200;
+         // Debug("200 Hatred gained from event: attacker assist! Hatred now: ",iHatred);
       }
 
       // The target-to-be might be an illusion.
       oApparentForm = Send(what,@GetIllusionForm);
       if oApparentForm = $
       {
+         // Debug("Target does not have an illusion!");
          oApparentForm = what;
       }
 
@@ -1120,12 +1126,14 @@ messages:
       if IsClass(oApparentForm,&Reflection)
       {
          iHatred = iHatred * 200 / 100;
+         // Debug("Target is a reflection! Hatred doubled to: ",iHatred);
       }
 
       // Evil twins tend to be ignored.
       if IsClass(oApparentForm,&EvilTwin)
       {
          iHatred = iHatred * 50 / 100;
+         // Debug("Target is an Evil Twin! Hatred halved to: ",iHatred);
       }
 
       //// Special mob behavior...
@@ -1133,19 +1141,25 @@ messages:
       // points of hatred for a target with max karma.
       if (behavior & AI_FIGHT_KARMA_AGGRESSIVE)
       {
+         // Debug("Mob is karma aggressive!");
          iKarma1 = Send(mob,@GetKarma);
+         // Debug("Mob's karma is: ",iKarma1);
          iKarma2 = 0;
 
          // What does mob THINK its target's karma is?
          if oApparentForm <> $ AND IsClass(oApparentForm,&Battler)
          {
             iKarma2 = Send(oApparentForm,@GetKarma);
+            // Debug("Target appears to be ",oApparentForm," with ",iKarma2," Karma!");
          }
          if iKarma1 <> 0 AND iKarma2 <> 0
          {
+            // Debug("Both targets have non-neutral karma!");
             if (Abs(iKarma1)/iKarma1) <> (Abs(iKarma2)/iKarma2)
             {
+               // Debug("Targets have opposite karma!");
                iHatred += Abs(iKarma2) * 2;
+               // Debug("Hatred increased to: ",iHatred);
             }
          }
       }
@@ -1153,11 +1167,13 @@ messages:
       // This covers special hatred towards racial enemies that
       // are specified in the individual monster's code.
       iHatred += Send(mob,@SpecialHatredBehavior,#what=what);
+      // Debug("Special behaviour has modified hatred to: ",iHatred);
 
       // Looks like we don't have any real reason to attack. Let's
       // quit unless we are deliberately looking for a fight.
       if iHatred <= 0 AND NOT (behavior & AI_FIGHT_AGGRESSIVE)
       {
+         // Debug("Hatred was smaller or equal to 0 and mob is not aggressive!");
          return 0;
       }
 
@@ -1166,6 +1182,7 @@ messages:
       if (event = TS_MOVE)
       {
          iHatred += 200;
+         // Debug("Hatred increased to: ",iHatred," by event move!");
       }
 
       //// Adjust hatred generated based on target level...
@@ -1173,14 +1190,17 @@ messages:
       if IsClass(what,&Monster)
       {
          iLevel = Send(what,@GetLevel);
+         // Debug("Target is a monster with level: ",iLevel);
       }
       else
       {
          iLevel = Send(what,@GetMaxHealth);
+         // Debug("Target is a player with ",iLevel," HPs!");
       }
 
       // Stronger targets are more likely to draw our attention.
       iHatred += iHatred * Bound((iLevel - 85)/3,-20,20) / 100;
+      // Debug("Hatred modified to: ",iHatred," by target level!");
 
       //// Prevent excessive player swarming...
       // Every mob that chases a player adds its viLevel to the player's chase
@@ -1188,20 +1208,28 @@ messages:
       // the fight, unless they have been attacked directly.
       if NOT (event = TS_FIGHT_DEFEND_SELF)
       {
+         // Debug("Mob was not attacked! Checking target's chasers!");
          if IsClass(what,&Player)
          {
             // The power of the swarm is relative to the player's level.
             iSwarm = Send(what,@GetMonsterChasers) * 200 / iLevel;
+            // Debug("Target has chasers worth ",iSwarm/2," percent of his HP on him!");
             // Before scaling, each mob of the player's level subtracts 200 hatred.
             iSwarm = iSwarm * piChaser_factor / 100;
+            // Debug("Swarm was adjusted to ",iSwarm/2," by chase factor ",piChaser_factor,"!");
             iHatred -= iSwarm;
+            // Debug("Hatred has been adjusted to ",iHatred," by Swarm of size ",iSwarm/2,"!");
          }
          else if IsClass(what,&Follower)
          {
+            // Debug("Target is a follower! Using leader's swarm for calculations!");
             // Followers use their leader's swarm.
             iSwarm = Send(Send(what,@GetLeader),@GetMonsterChasers) * 200 / iLevel;
+            // Debug("Leader has chasers worth ",iSwarm/2," percent of his HP on him!");
             iSwarm = iSwarm * piChaser_factor / 100;
+            // Debug("Swarm was adjusted to ",iSwarm," by chase factor ",piChaser_factor,"!");
             iHatred -= iSwarm;
+            // Debug("Hatred has been adjuste to ",iHatred," by Swarm of size ",iSwarm/2,"!");
          }
       }
 
@@ -1211,6 +1239,7 @@ messages:
       if (behavior & AI_FIGHT_HYPERAGGRESSIVE)
       {
          iHatred += piHyperAggressive_factor;
+         // Debug("Mob is hyperaggressive! Hatred increased to: ",iHatred);
       }
 
       //// Check if the mob can reach it's intended target.
@@ -1218,17 +1247,23 @@ messages:
       if NOT Send(mob,@CanReach,#what=what,#bRanged=TRUE)
       {
          iHatred /= 2;
+         // Debug("Target is out of reach! Hatred halved to: ",iHatred);
       }
 
       // Finally, factor in percentage and flat modifiers.
       iHatred = iHatred * percentage / 100;
+      // Debug("Hatred modified to ",iHatred," by percentage modifier!");
       iHatred += modifier;
+      // Debug("Hatred modified to ",iHatred," by additive modifier!");
 
       // Cutoff prevents negligible aggro from counting.
       if iHatred < piCut_off
       {
+         // Debug("Hatred didn't make it past cut off! (",piCut_off,")!");
          return 0;
       }
+
+      // Debug("Resulting hatred of: ",iHatred);
 
       return iHatred;
    }

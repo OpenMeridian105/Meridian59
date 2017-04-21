@@ -1193,6 +1193,23 @@ messages:
          }
       }
 
+      // Clear minion control list. Delete each of our minions
+      // unless they are reflections, which are handled separately.
+      // Deleted minions will remove themselves from our list, we
+      // just need to let them know they're to be deleted.
+      if plControlledMinions <> $
+      {
+         foreach i in plControlledMinions
+         {
+            if IsClass(i,&Monster)
+               AND NOT IsClass(i,&Reflection)
+            {
+               Send(i,@Delete);
+            }
+         }
+         plControlledMinions = $;
+      }
+
       propagate;
    }
 
@@ -5764,7 +5781,8 @@ messages:
             oVictimRoom, oObject;
 
       // Killed something with a weapon, damage weapon.
-      if use_weapon <> $
+      if (use_weapon <> $)
+         AND IsClass(use_weapon,&Weapon)
       {
          Send(use_weapon,@WeaponHitTarget);
       }
@@ -14491,8 +14509,6 @@ messages:
                AND Send(oActive,@GetMaster) = self
                AND Send(oActive,@GetTarget) <> oTarget
             {
-               Send(oActive,@SetBehaviorFlag,
-                     #flag=AI_MOVE_FOLLOW_MASTER,#value=FALSE);
                Send(oActive,@TargetSwitch,#what=oTarget,
                      #iHatred=100);
                Send(oActive,@EnterStateEngage,#target=oTarget,
@@ -14935,36 +14951,25 @@ messages:
    {
       local oTargetMaster;
 
-      if target = $
+      if (target = $)
+         OR NOT IsClass(target,&Battler)
       {
          return FALSE;
       }
 
-      if NOT IsClass(target,&Battler)
-      {
-         return FALSE;
-      }
-
-      if target = self
+      if (target = self)
       {
          return TRUE;
       }
 
       oTargetMaster = Send(target,@GetMaster);
 
-      if oTargetMaster <> $
+      if (oTargetMaster <> $)
       {
-         if Send(oTargetMaster,@IsAlly,#target=self)
-         {
-            return TRUE;
-         }
-      }
-      else if Send(target,@IsAlliedClass,#what=self)
-      {
-         return TRUE;
+         return Send(self,@IsAlly,#target=oTargetMaster);
       }
 
-      return FALSE;
+      return Send(self,@IsAlliedClass,#what=target);
    }
 
    IsAlliedClass(what=$)

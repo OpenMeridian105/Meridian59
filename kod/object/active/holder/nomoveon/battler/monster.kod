@@ -297,6 +297,9 @@ resources:
       "~k~I%s%s flails around wildly as your attack sets %s clothes on fire.%s"
    monster_illusion_damage_blank = ""
 
+   monster_leash_reset = \
+      "~o~BTired of chasing, %s%s calls off the hunt."
+
    monster_projectile_icon = rocksm.bgf
 
 classvars:
@@ -634,6 +637,13 @@ properties:
    // or spinning.
    piAction = 0
    ptAction = $
+
+   // Allows tracing a monster to its generator.
+   // $ if not spawned on a generator. If spawned by a generator (or as part
+   // of a boss encounter: piSpawnLoc = IIIRRRCCC
+   // III: Index of the Generator or Boss Spawn
+   // RRR: Row of the spawn   CCC: Col of the spawn.
+   piSpawnLoc = $
 
 messages:
 
@@ -1352,7 +1362,7 @@ messages:
       return;
    }
 
-   EnterStateMove( actnow=FALSE )
+   EnterStateMove(actnow=FALSE)
    {
       // SetTarget without a 'what' passed sets target to nil.
       Send(self,@SetTarget);
@@ -1887,6 +1897,17 @@ messages:
       return;
    }
 
+   ClearSpawnReturnLocation()
+   {
+      Send(self,@SetBehaviorFlag,#flag=AI_RETURN_TO_SPAWN,#value=FALSE);
+      piTargetLocationRow  = 0;
+      piTargetLocationCol  = 0;
+      piTargetLocationFineRow = 0;
+      piTargetLocationFineCol = 0;
+
+      return;
+   }
+
    ////  Action Routines
    EngageTimer( timer = $ )
    "We're trying to engage our target, so either we keep"
@@ -1920,6 +1941,34 @@ messages:
          AND Send(poTarget,@IsInCannotInteractMode)
       {
          Send(self,@EnterStateMove);
+
+         return;
+      }
+
+      // If we were dragged too far from our spawn point, reset.
+      if Send(self,@ReturnToSpawn)
+      {
+         Send(self,@MonsterLeashReset);
+
+         // Also reset our minions. 
+         foreach i in plControlledMinions
+         {
+            Send(i,@MonsterLeashReset);
+         }
+
+         return;
+      }
+
+      // If we have too much distance to our commander, return to them.
+      if Send(self,@ReturnToCommander)
+      {
+         Send(self,@MonsterEndCombat);
+
+         // Have our minions follow us, too.
+         foreach i in plControlledMinions
+         {
+            Send(i,@MonsterEndCombat);
+         }
 
          return;
       }
@@ -2085,16 +2134,17 @@ messages:
       {
          Send(self,@ClearPatrolLocation);
       }
+      if piBehavior & AI_RETURN_TO_SPAWN
+      {
+         lBehavior = Cons(AI_RETURN_TO_SPAWN,lBehavior);
+      }
+      else
+      {
+         Send(self,@ClearSpawnReturnLocation);
+      }
       if piBehavior & AI_LOOPING_PATROL
       {
          lBehavior = Cons(AI_LOOPING_PATROL,lBehavior);
-      }
-
-      // Go back to the master if we don't have a target.
-      if (poMaster <> $
-         AND poTarget = $)
-      {
-         lBehavior = Cons(AI_MOVE_FOLLOW_MASTER,lBehavior);
       }
 
       piBehavior = viDefault_behavior;
@@ -2366,12 +2416,12 @@ messages:
 
    MoveToMaster()
    {
-      local drow, dcol;
+      local iRadius, drow, dcol;
 
       if poMaster = $
       {
          Debug("MovetoMaster Called with nil master!",Send(self,@GetName));
-         return;
+         return FALSE;
       }
 
       // calculate distance in highres-grid squares (steps we can still make)
@@ -2380,53 +2430,49 @@ messages:
       drow = Abs(drow - (((piRow * FINENESS) + piFine_row) / 16));
       dcol = Abs(dcol - (((piCol * FINENESS) + piFine_col) / 16));
 
+      iRadius = Send(self,@HowCloseToCommander) * 4;
+
       // Try step closer to the master, if we're not yet close enough.
       // The move-timer is configured to make this movement seamless.
-      if drow > 3 OR dcol > 3
+      if (drow * drow + dcol * dcol > iRadius * iRadius)
       {
-        Send(self,@MoveTowards,#oTarget=poMaster,#face_target=TRUE);
-      }
-      else if piKeepWalkingSteps < 8
-      {
-         // If we're close, we start a move around the master based on a probability.
-         // To do so we just need to try to step closer, he will block us.
-         // We will do 8 seamless steps, before we again decide
-         // to stop or to go on.
-            Send(self,@MoveTowards,#oTarget=poMaster,#face_target=TRUE);
-            ++piKeepWalkingSteps;
-      }
-      else if Random(1,100) < 5
-      {
-         // roll a dice to see if we want to start a new movement
-         piKeepWalkingSteps = 0;
+         // Clear any other move commands we might have.
+         Send(self,@MoveTowards,#oTarget=poMaster,#face_target=TRUE);
+
+         return TRUE;
       }
 
-      return;
+      return FALSE;
    }
 
    MoveToLeader()
    {
-      local drow, dcol;
+      local drow, dcol, iRadius;
 
       if poLeader = $
       {
          Debug("MovetoLeader Called with nil leader!",Send(self,@GetName));
-         return;
+         return FALSE;
       }
 
       // calculate distance in highres-grid squares (steps we can still make)
-      drow = (Send(poLeader,@GetRow) * FINENESS) + Send(poLeader,@GetFineRow);
-      dcol = (Send(poLeader,@GetCol) * FINENESS) + Send(poLeader,@GetFineCol);
-      drow = Abs(drow - (piRow * FINENESS + piFine_row));
-      dcol = Abs(dcol - (piCol * FINENESS + piFine_col));
+      drow = ((Send(poLeader,@GetRow) * FINENESS) + Send(poLeader,@GetFineRow)) / 16;
+      dcol = ((Send(poLeader,@GetCol) * FINENESS) + Send(poLeader,@GetFineCol)) / 16;
+      drow = Abs(drow - (((piRow * FINENESS) + piFine_row) / 16));
+      dcol = Abs(dcol - (((piCol * FINENESS) + piFine_col) / 16));
+
+      iRadius = Send(self,@HowCloseToCommander) * 4;
 
       // Let's move up to the leader unless we are close enough already.
-      if (drow * drow + dcol * dcol > Send(self,@HowCloseToLeader))
+      if (drow * drow + dcol * dcol > iRadius * iRadius)
       {
-        Send(self,@MoveTowards,#oTarget=poLeader,#face_target=TRUE);
+         // Clear any other move commands we might have.
+         Send(self,@MoveTowards,#oTarget=poLeader,#face_target=TRUE);
+
+         return TRUE;
       }
 
-      return;
+      return FALSE;
    }
 
    DoGoTowardsLocation()
@@ -2441,25 +2487,61 @@ messages:
                     #fine_col=piTargetLocationFineCol);
 
       // more than 64 fine-units far away (64*64=4096)
-      // and not yet reached maxappempts
+      // and not yet reached maxattempts
       if iDist2 > 4096 AND piPatrolAttempts < 500
       {
-         // try get closer
-         Send(self,@MoveTowardsCoords,
-              #iRow=piTargetLocationRow,
-              #iCol=piTargetLocationCol,
-              #iFineRow=piTargetLocationFineRow,
-              #iFineCol=piTargetLocationFineCol);
+         // Try to get closer...
+         Send(self,@MoveTowardsTargetLocation);
 
          ++piPatrolAttempts;
       }
       else
       {
-         // close enough
-         Send(self,@SetBehaviorFlag,#flag=AI_HAS_TARGET_LOCATION,#value=FALSE);
-         Send(self,@SetBehaviorFlag,#flag=AI_STROLLING,#value=FALSE);
-         Send(self,@SetBehaviorFlag,#flag=AI_RALLY,#value=FALSE);
-         piPatrolAttempts = 0;
+         // Close enough...
+         Send(self,@ClearLocation);
+      }
+
+      return;
+   }
+
+   MoveTowardsTargetLocation()
+   {
+      return Send(self,@MoveTowardsCoords,#iRow=piTargetLocationRow,#iCol=piTargetLocationCol,
+         #iFineRow=piTargetLocationFineRow,#iFineCol=piTargetLocationFineCol);
+   }
+
+   // Time to stop walking and reset temporary behavior modifications.
+   ClearLocation()
+   {
+      local i;
+
+      // Clear all flags that may have prompted us to start walking.
+      Send(self,@SetBehaviorFlag,#flag=AI_HAS_TARGET_LOCATION,#value=FALSE);
+      Send(self,@SetBehaviorFlag,#flag=AI_STROLLING,#value=FALSE);
+      Send(self,@SetBehaviorFlag,#flag=AI_RALLY,#value=FALSE);
+      Send(self,@SetBehaviorFlag,#flag=AI_RETURN_TO_SPAWN,#value=FALSE);
+
+      // Revoke temporary NPC status if necessary.
+      if (piBehavior & AI_NPC)
+         AND NOT (viDefault_behavior & AI_NPC)
+      {
+         Send(self,@SetBehaviorFlag,#flag=AI_NPC,#value=FALSE);
+         Send(poOwner,@SomethingChanged,#what=self);
+      }
+
+      // Revoke temporary go through walls status if necessary.
+      if (piBehavior & AI_MOVE_WALKTHROUGH_WALLS)
+         AND NOT (viDefault_behavior & AI_MOVE_WALKTHROUGH_WALLS)
+      {
+         Send(self,@SetBehaviorFlag,#flag=AI_MOVE_WALKTHROUGH_WALLS,#value=FALSE);
+      }
+
+      piPatrolAttempts = 0;
+
+      // Also tell our minions that we've arrived.
+      foreach i in plControlledMinions
+      {
+         Send(i,@ClearLocation);
       }
 
       return;
@@ -2546,10 +2628,12 @@ messages:
       }
 
       // If we're hitting another monster, check if we can reach or attack it.
+      // We also don't hit allies. Total no go. Seriously.
       if IsClass(victim,&Monster)
       {
-         if NOT Send(victim,@CanMonsterFight,#who=self,#oStroke=stroke_obj,
-                     #use_weapon=stroke_obj)
+         if NOT Send(victim,@CanMonsterFight,#who=self,
+               #oStroke=stroke_obj,#use_weapon=stroke_obj)
+            OR Send(self,@IsAlly,#target=victim)
          {
             return FALSE;
          }
@@ -3494,9 +3578,97 @@ messages:
          piTargetLocationFineCol = FINENESS_HALF;
 
          Send(self,@SetBehaviorFlag,#flag=AI_RALLY,#value=TRUE);
+
+         return TRUE;
       }
 
-      return TRUE;
+      return FALSE;
+   }
+
+   ReturnToSpawn()
+   "Return to our spawn point if we have one and we have strayed too far."
+   {
+      local iRow, iCol, iRadius;
+
+      if piSpawnLoc = $
+      {
+         return FALSE;
+      }
+
+      if (piState & STATE_ENGAGE)
+      {
+         // Only leash bosses and their mercenaries.  Those have
+         // spawn IDs greater than the number of generators.
+         if piSpawnLoc / 1000000 <= Send(poOwner,@GetNumGenerators)
+         {
+            return FALSE;
+         }
+
+         iRadius = Send(poOwner,@GetLeashRadius);
+      }
+      else
+      {
+         iRadius = Send(poOwner,@GetPatrolRadius);
+      }
+
+      if (iRadius > 0)
+      {
+         iRow = (piSpawnLoc / 1000) % 1000;
+         iCol = piSpawnLoc % 1000;
+
+         if (Send(self,@SquaredDistanceToLocation,#row=iRow,#col=iCol) > iRadius)
+         {
+            Send(self,@ClearLocation);
+            piTargetLocationRow = iRow;
+            piTargetLocationCol = iCol;
+            piTargetLocationFineRow = FINENESS_HALF;
+            piTargetLocationFineCol = FINENESS_HALF;
+
+            Send(self,@SetBehaviorFlag,#flag=AI_RETURN_TO_SPAWN,#value=TRUE);
+
+            return TRUE;
+         }
+      }
+
+      return FALSE;
+   }
+
+   ReturnToCommander()
+   "Return to our commander if we have one and we have strayed too far."
+   {
+      local iRow, iCol, iRadius, oCommander;
+
+      // Usually, our leader is in command.
+      oCommander = poLeader;
+
+      // If we (also) have a master, his orders are to be obeyed.
+      // This also takes care of the case of a follower being seduced.
+      if poMaster <> $
+      {
+         oCommander = poMaster;
+      }
+
+      if (oCommander = $)
+      {
+         return FALSE;
+      }
+
+      iRadius = Send(self,@HowCloseToCommander);
+
+      // If our commander doesn't have vision of the target, return sooner.
+      if Send(poOwner,@LineOfSight,#obj1=poTarget,#obj2=oCommander)
+      {
+         iRadius *= 9;
+      }
+      else
+      {
+         iRadius *= 3;
+      }
+
+      iRadius *= iRadius;
+
+      return ((Send(poTarget,@SquaredDistanceTo,#what=oCommander) > iRadius)
+         AND (Send(self,@SquaredDistanceTo,#what=oCommander) > iRadius));
    }
 
    GetTargetLocationRow()
@@ -5907,6 +6079,11 @@ messages:
          }
          else if poOwner <> $
          {
+            // Not facing the target when slapping them is rude. Let's be polite.
+            Send(self,@MonsterOrient,#new_row=Send(oTarget,@GetRow),
+                  #new_col=Send(oTarget,@GetCol),
+                  #new_finerow=Send(oTarget,@GetFineRow),
+                  #new_finecol=Send(oTarget,@GetFineCol),#face_target=TRUE);
             // We actually attack. Do the animation if we're still around.
             Send(self,@DoMeleeAttack,#swings=i);
          }
@@ -5937,6 +6114,11 @@ messages:
          }
          else if poOwner <> $
          {
+            // Same goes for shooting them in the face...
+            Send(self,@MonsterOrient,#new_row=Send(oTarget,@GetRow),
+                  #new_col=Send(oTarget,@GetCol),
+                  #new_finerow=Send(oTarget,@GetFineRow),
+                  #new_finecol=Send(oTarget,@GetFineCol),#face_target=TRUE);
             // We actually attack. Do the animation if we're still around.
             Send(self,@DoMissileAttack,#shots=i);
          }
@@ -5973,6 +6155,11 @@ messages:
 
          if poOwner <> $
          {
+            // Gotta get in position for a good spinning first.
+            Send(self,@MonsterOrient,#new_row=Send(oTarget,@GetRow),
+                  #new_col=Send(oTarget,@GetCol),
+                  #new_finerow=Send(oTarget,@GetFineRow),
+                  #new_finecol=Send(oTarget,@GetFineCol),#face_target=TRUE);
             // We spun around i times. Let's animate it.
             Send(self,@DoSpinAttack,#spins=i);
          }
@@ -5989,7 +6176,7 @@ messages:
          // Also, make sure we're still around.
          if poOwner <> $
          {
-            // Not facing the target when casting at them is rude. Let's be polite.
+            // And let's not forget splashing acid on them. Also gotta face 'em.
             Send(self,@MonsterOrient,#new_row=Send(oTarget,@GetRow),
                   #new_col=Send(oTarget,@GetCol),
                   #new_finerow=Send(oTarget,@GetFineRow),
@@ -6654,7 +6841,9 @@ messages:
       piSpeed = Bound(viSpeed + (piAgility/10) - 2,0,30);
 
       // Strolling, not in a rush, unless we are under orders.
-      if (piState & STATE_MOVE) AND (poMaster = $) AND (poLeader = $)
+      if (piState & STATE_MOVE) 
+         AND ((poMaster = $) OR IsClass(poMaster,&Monster))
+         AND (poLeader = $)
       {
          piSpeed = Bound(piSpeed * viStrollSpeed / 100,$,piSpeed);
       }
@@ -7797,8 +7986,6 @@ messages:
             AND Send(oActive,@GetMaster) = self
             AND Send(oActive,@GetTarget) <> oTarget
          {
-            Send(oActive,@SetBehaviorFlag,#flag=AI_MOVE_FOLLOW_MASTER,
-                  #value=FALSE);
             Send(oActive,@TargetSwitch,#what=oTarget,#iHatred=100);
             Send(oActive,@EnterStateEngage,#target=oTarget,#actnow=TRUE);
          }
@@ -8348,41 +8535,30 @@ messages:
    {
       local oTargetMaster;
 
-      if target = $
+      if (target = $)
          OR NOT IsClass(target,&Battler)
       {
          return FALSE;
       }
 
-      if target = self
+      if (target = self)
       {
          return TRUE;
+      }
+
+      if (poMaster <> $)
+      {
+         return Send(poMaster,@IsAlly,#target=target);
       }
 
       oTargetMaster = Send(target,@GetMaster);
 
-      if poMaster <> $
+      if (oTargetMaster <> $)
       {
-         if (target = poMaster)
-            OR (oTargetMaster = poMaster)
-         {
-            return TRUE;
-         }
+         return Send(self,@IsAlly,#target=oTargetMaster);
       }
 
-      if oTargetMaster <> $
-      {
-         if Send(oTargetMaster,@IsAlly,#target=self)
-         {
-            return TRUE;
-         }
-      }
-      else if Send(self,@IsAlliedClass,#what=target)
-      {
-         return TRUE;
-      }
-
-      return FALSE;
+      return Send(self,@IsAlliedClass,#what=target);
    }
 
    IsAlliedClass(what=$)
@@ -8771,11 +8947,6 @@ messages:
       if (piBehavior & AI_MOVE_OPTIMAL_RANGE)
       {
          Debug(self,"is in AI_MOVE_OPTIMAL_RANGE");
-      }
-
-      if (piBehavior & AI_MOVE_FOLLOW_MASTER)
-      {
-         Debug(self,"is in AI_MOVE_FOLLOW_MASTER.");
       }
 
       if (piBehavior & AI_MOVE_FLEE_FRIGHTENERS)
@@ -9556,9 +9727,123 @@ messages:
       return piBehavior & flag;
    }
 
-   HowCloseToLeader()
+   HowCloseToCommander()
    {
-      return 30000;
+      return 2;
+   }
+
+   SetSpawnLoc(iRow=0,iCol=0,iIndex=0)
+   {
+      if (iRow <> 0) OR (iCol <> 0)
+      {
+         piSpawnLoc = iIndex*1000000 + iRow*1000 + iCol;
+      }
+
+      return;
+   }
+
+   GetSpawnLoc()
+   {
+      return piSpawnLoc;
+   }
+
+   GetSpawnIndex()
+   {
+      return piSpawnLoc/1000000;
+   }
+
+   GetSpawnRow()
+   {
+      return (piSpawnLoc/1000)%1000;
+   }
+
+   GetSpawnCol()
+   {
+      return piSpawnLoc%1000;
+   }
+
+   MonsterLeashReset()
+   {
+      local i, oHurter, bMinion;
+
+      bMinion = (poMaster <> $);
+
+      if NOT bMinion
+      {
+         Send(poTarget,@MsgSendUser,#message_rsc=monster_leash_reset,
+            #parm1=Send(self,@GetDef),#parm2=Send(self,@GetName));
+      }
+
+      foreach i in plHurtMeRecently
+      {
+         oHurter = First(i);
+
+         // Tell all hurters if they haven't already been told, because
+         // they were our target.
+         if (oHurter <> poTarget) AND NOT bMinion
+         {
+            Send(oHurter,@MsgSendUser,#message_rsc=monster_leash_reset,
+               #parm1=Send(self,@GetDef),#parm2=Send(self,@GetName));
+         }
+
+         // Proceed to delete the list entry.
+         if IsTimer(Nth(i,3))
+         {
+            DeleteTimer(Nth(i,3));
+         }
+         SetFirst(i,$);
+         SetNth(i,2,$);
+         SetNth(i,3,$);
+
+         plHurtMeRecently = DelListElem(plHurtMeRecently,i);
+      }
+
+      // Reset our resources...
+      piHealth = piMax_health * 100;
+      piMana = piMax_mana * 100;
+      piVigor = piMax_vigor * 100;
+
+      // Cancel maintained spells, such as reflections...
+      Send(self,@CancelMaintainedSpells);
+
+      // Delete any enchantments...
+      Send(self,@RemoveAllEnchantments);
+
+      // ...or over time effects the monster may have.
+      Send(self,@DeleteAllOverTimeEffects);
+
+      // Gramt temporary NPC status while returning to spawn.
+      Send(self,@SetBehaviorFlag,#flag=AI_NPC,#value=TRUE);
+      Send(self,@SetBehaviorFlag,#flag=AI_MOVE_WALKTHROUGH_WALLS,#value=TRUE);
+      Send(poOwner,@SomethingChanged,#what=self);
+
+      // Start moving...
+      Send(self,@EnterStateMove);
+
+      return;
+   }
+
+   MonsterEndCombat()
+   {
+      local i, oHurter, bMinion;
+
+      // Clear our hurter list...
+      foreach i in plHurtMeRecently
+      {
+         if IsTimer(Nth(i,3))
+         {
+            DeleteTimer(Nth(i,3));
+         }
+         SetFirst(i,$);
+         SetNth(i,2,$);
+         SetNth(i,3,$);
+         plHurtMeRecently = DelListElem(plHurtMeRecently,i);
+      }
+
+      // Start moving...
+      Send(self,@EnterStateMove);
+
+      return;
    }
 
 end

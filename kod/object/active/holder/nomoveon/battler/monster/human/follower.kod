@@ -14,6 +14,9 @@ constants:
 
    include blakston.khd
 
+   // Follower chat lockout time in ms.
+   FOLLOWER_CHAT_DELAY = 4000
+
 resources:
 
    include follower.lkod
@@ -22,6 +25,9 @@ resources:
    follower_dead_name_rsc = "unconscious follower"
    follower_desc_rsc = \
       "A trustworthy soul that has decided to join you on your adventures."
+
+   // Mercenary messages adjusted specifically for followers
+   // Triggered upon hiring and firing a mecenary/follower
    follower_join = \
       "Hey, friend!  I'll join you for a bit if you don't mind.  It's "
       "dangerous out there and it would really put my mind at ease if I "
@@ -33,17 +39,136 @@ resources:
       "here on and perhaps, we will meet again one day.  I'll just drop the "
       "loot that you shared with me on the floor - be sure to pick it up!  "
       "Anyway... thanks for the great run and stay safe out there!"
+
+   // Messages triggered by the follower's return after dying or being left behind.
+   follower_return_death = \
+      "Whoa!  What happened?  For a moment, everything went black there..."
+   follower_return_lost = \
+      "Sorry about that.  I must have gotten lost somewhere along the way...  "
+      "Good thing I knew that you were going to come here sooner or later!"
+
+   // Message triggered by FollowerDing()
    follower_learn = \
       "Nice! I think I've finally figured out how to cast this new ~I%s~I spell "
       "I've been trying to learn. I think it might come in handy..."
+
+   // Messages triggered by KilledSomething()
+   follower_killed_something_a = "And yet another foe has met it's timely end..."
+   follower_killed_something_b = "Are they even trying?!"
+   follower_killed_something_c = "That one had it coming!"
+   follower_killed_something_d = "My %s really loved that last one..."
+   follower_killed_something_e = "Won't they ever learn?"
+   follower_killed_something_f = "Ahh... I don't believe my %s and I shall ever tire of this!"
+
+   // Messages triggered by LeaderKilledSomething()
+   follower_leader_killed_something_a = "Ohh!  Nice one, friend!"
+   follower_leader_killed_something_b = "You really make it look easy..."
+   follower_leader_killed_something_c = "Leave me some, will ya?"
+   follower_leader_killed_something_d = "By Kraanan, you and your %s really are a match made in heaven!"
+   follower_leader_killed_something_e = "Hah!  That was fun to watch!"
+   follower_leader_killed_something_f = "Ouch!!  Did you see what your %s did to that poor bastard?!"
+
+   // Messages triggered by FollowerRetreat()
+   follower_retreat_a = "Time to fall back a bit!"
+   follower_retreat_b = "Orderly retreat!"
+   follower_retreat_c = "I'm right with you!"
+   follower_retreat_d = "Ouch! This %s really hurts!"
+
+   // Messages triggered by FollowerInjured()
+   follower_injured_a = "Hrngh!  I don't think... I'll make it..."
+   follower_injured_b = "Augh!  I'm afraid I'm injured pretty badly!"
+   follower_injured_c = "Could use some healing, friend."
+   follower_injured_d = "Need a bit of help over here!"
+
+   // Messages triggered by FollowerRecovered()
+   follower_recovered_a = "Ohh the pain... For a moment there, I thought I was a goner."
+   follower_recovered_b = "Phew...  Feeling a bit better again!"
+   follower_recovered_c = "Ahh, that's much better."
+   follower_recovered_d = "I think I'm all better again!"
+
+   //// Messages triggered by FollowerEnteredCombat()
+   // 5 seconds mark
+   follower_entered_combat_a_a = "It never ends, does it?"
+   follower_entered_combat_a_b = "Is there no end to them?"
+   follower_entered_combat_a_c = "Where are they all coming from?!"
+   follower_entered_combat_a_d = "If they keep coming, we'll just keep smacking them down..."
+   follower_entered_combat_a_e = "You'd think they'd run out of reinforcements at some point."
+   follower_entered_combat_a_f = "Keep 'em coming!"
+   // 15 seconds mark
+   follower_entered_combat_b_a = "Looks like they're coming for more..."
+   follower_entered_combat_b_b = "Back into the thick of battle!"
+   follower_entered_combat_b_c = "I guess they haven't had enough yet..."
+   // 60 seconds mark
+   follower_entered_combat_c_a = "That was a nice rest...  Back to breaking some bones!"
+   follower_entered_combat_c_b = "Time for some more slaughter!"
+   follower_entered_combat_c_c = "Hah!  ...and there I thought we were about to have some peace and quiet."
+   // 10 minutes mark
+   follower_entered_combat_d_a = "It's about time we got back to business!"
+   follower_entered_combat_d_b = "Finally!  I'm not one for waiting around..."
+   follower_entered_combat_d_c = "Ahh...  I was starting to worry that we were done for the day."
+   // > 10 minutes mark
+   follower_entered_combat_e_a = "Hah!  At long last, we get to taste battle again!"
+   follower_entered_combat_e_b = \
+      "Oh boy!  I can't wait to bash some skulls in!  It feels like it's been forever..."
+   follower_entered_combat_e_c = \
+      "BATTLE!  I hope I haven't forgotten how to deliver a good beating after all this time..."
+   follower_entered_combat_e_d = \
+      "Foes ahead!  After all this time! ...brings a tear to my eye.  Really does!"
+   follower_entered_combat_e_e = "I can't believe it!  An actual battle!"
+   follower_entered_combat_e_f = "Enemies! Wait! Does that mean I finally get to actually do something?"
+   follower_entered_combat_e_g = \
+      "AMBUSH!  I'm not entirely clear on whether we're the ambushers or the ambushees, but I just love "
+      "yelling it..."
+   // Generic battle cries that pop up instead of 5, 15 and 60 seconds quotes.
+   follower_entered_combat_f_a = "Ahh!  The glory of battle!"
+   follower_entered_combat_f_b = "Into the frey!"
+   follower_entered_combat_f_c = "For Kraanan!"
+   follower_entered_combat_f_d = "For glory!"
+   follower_entered_combat_f_e = "I'll cut them down where they stand!"
+   follower_entered_combat_f_f = "Hah! There is no escaping my wrath!"
+   follower_entered_combat_f_g = "Come at me, foes!"
+   follower_entered_combat_f_h = "Into battle!"
+   follower_entered_combat_f_i = "There is glory to be won!"
+   follower_entered_combat_f_j = "Today's a good day to die!  It's just not mine..."
+
+   // Messages triggered by MercenaryCommand()
+   follower_break = "Alright. See you later, friend!"
+   follower_light = "You are right, it ~Iis~I a bit dark around these parts."
+   follower_close = "Very well. I'll stick really close."
+   follower_closer = "Very well. I'll follow a bit more closely."
+   follower_not_closer = "No offense, but I'm fairly sure I don't want to get ~Ithat~I close."
+   follower_far = "Fine, I'll stay far back..."
+   follower_farther = "Fine, staying a bit farther back..."
+   follower_not_farther = "Are you trying to ditch me?!"
+   follower_help = \
+      "Need help with something? You can ask me to...\n"
+      "...tell you what ~Ispells~I I have learned so far.\n"
+      "...make some ~Ilight~I, so we can see better in dark places.\n"
+      "...move in a little ~Icloser~I, or really ~Iclose~I so I don't fall behind.\n"
+      "...stay a bit ~Ifarther~I back or stay ~Ifar~I back to stay out of trouble.\n"
+      "...~Imeet up~I with you later in case you don't need me at the moment.\n"
+      "...~Ipart ways~I and follow my own destiny.  I'd think twice about that if I "
+      "were you though.  I bet you'd never find good company like me again!"
+
+   // Messages used by FollowerSpellInform() triggered by MercenaryCommand()
    follower_no_spell_inform = "So far, I haven't learned any spells"
    follower_one_spell_inform = "So far, I've learned the spell "
    follower_spell_inform = "So far, I've learned the spells "
    follower_and = " and "
    follower_comma = ", "
    follower_spell = "~I%s~I"
-   follower_say_start = "~wYour follower tells you, \""
-   follower_say_end = ".~n~w\""
+   follower_say_start = "~kYour follower tells you, \""
+   follower_say_end = ".~n~k\""
+
+   // Triggers for MercenaryCommand()
+   follower_spells_trigger = "spells"
+   follower_break_trigger = "meet up"
+   follower_light_trigger = "light"
+   follower_close_trigger = "close"
+   follower_closer_trigger = "closer"
+   follower_far_trigger = "far"
+   follower_farther_trigger = "farther"
+   follower_help_trigger = "help"
 
 classvars:
 
@@ -53,6 +178,8 @@ classvars:
    viAttributes = MOB_LISTEN | MOB_RECEIVE
    vrMercenaryJoin = follower_join
    vrMercenaryLeave = follower_leave
+   vrFollowerReturnDeath = follower_return_death
+   vrFollowerReturnLost = follower_return_lost
    viSocial = 100
 
 properties:
@@ -69,7 +196,8 @@ properties:
    piLightCheck = 0
    piCombatCheck = 0
    viNaturalVigorRegeneration = 0
-   piStayClose = 15000
+   piStayClose = 2
+   ptChat = $
 
 messages:
 
@@ -529,7 +657,7 @@ messages:
 
             Send(self,@UpdateRates);
 
-            Send(self,@MercenaryReturnMessage,#what=poLeader,#bDeath=TRUE);
+            Send(self,@FollowerReturnMessage,#what=poLeader,#bDeath=TRUE);
          }
       }
       // Not called by our corpse. That means our leader has entered a
@@ -554,10 +682,31 @@ messages:
 
          Send(self,@UpdateRates);
 
-         Send(self,@MercenaryReturnMessage,#what=poLeader);
+         Send(self,@FollowerReturnMessage,#what=poLeader);
       }
 
       poBody = $;
+
+      return;
+   }
+
+   FollowerReturnMessage(what=$,bDeath=FALSE)
+   {
+      if bDeath
+      {
+         Post(self,@SayToOne,#target=what,#message_rsc=vrFollowerReturnDeath);
+      }
+      else
+      {
+         Post(self,@SayToOne,#target=what,#message_rsc=vrFollowerReturnLost);
+
+         Send(self,@FaceLeader);
+
+         if IsClass(self,&Human)
+         {
+            Send(self,@DoWave);
+         }
+      }
 
       return;
    }
@@ -811,7 +960,7 @@ messages:
       }
       else
       {
-         iResources = 2* iSpells + 2;
+         iResources = 2 * iSpells + 2;
       }
 
       AddPacket(4,Send(SYS,@AddResourceTemplate,#iNum=iResources));
@@ -864,7 +1013,7 @@ messages:
       return TRUE;
    }
 
-   MercenaryAdjustLight(bRequest=FALSE)
+   FollowerAdjustLight(bRequest=FALSE)
    {
       local iLight, i, oObject, oSpell, iSpellPower;
 
@@ -928,7 +1077,8 @@ messages:
 
          oObject = Send(self,@FindHolding,#class=&Torch);
 
-         if oObject <> $
+         if (oObject <> $)
+            AND (GetListElemByClass(plUsing,&Torch) = $)
          {
             foreach i in plUsing
             {
@@ -957,19 +1107,26 @@ messages:
          if poLeader <> $
             AND (Send(poLeader,@GetOwner) = poOwner)
          {
-            Send(self,@MercenaryAdjustLight);
-         }
+            Send(self,@FollowerAdjustLight);
 
-         // REs are no longer maintained when out of combat for 30 secs.
-         if (Abs(piCombatCheck - GetTickCount()) > 30000)
-         {
-            foreach i in plRadiusEnchantments
+            // Try to say something smart.
+            if (Abs(piCombatCheck - GetTickCount()) > 300000)
+               AND NOT Random(0,500)
             {
-               oEnch = Nth(i,2);
-               state = Nth(i,3);
-               if (Send(oEnch,@GetCaster,#state=state) = self)
+               Send(poBrain,@FollowerPhilosophicalChat,#who=poLeader);
+            }
+
+            // REs are no longer maintained when out of combat for 30 secs.
+            if (Abs(piCombatCheck - GetTickCount()) > 30000)
+            {
+               foreach i in plRadiusEnchantments
                {
-                  Send(oEnch,@BreakTrance,#who=self,#state=state,#event=EVENT_REST);
+                  oEnch = Nth(i,2);
+                  state = Nth(i,3);
+                  if (Send(oEnch,@GetCaster,#state=state) = self)
+                  {
+                     Send(oEnch,@BreakTrance,#who=self,#state=state,#event=EVENT_REST);
+                  }
                }
             }
          }
@@ -982,6 +1139,8 @@ messages:
 
    EnterStateEngage( target = $, actnow = TRUE, delay = 0)
    {
+      Send(self,@FollowerEnterCombat);
+
       piCombatCheck = GetTickCount();
 
       propagate;
@@ -1028,10 +1187,472 @@ messages:
       return FALSE;
    }
 
+   MercenaryCommand(what=$,message=$)
+   {
+      //// Follower Chat Commands
+      // Send follower away temporarily
+      if StringContain(message,follower_break_trigger)
+         AND (what = poLeader)
+      {
+         Send(self,@FollowerAbsence,#iDelay=3000);
+         Post(self,@SayToOne,#target=what,#message_rsc=follower_break);
+         Send(self,@FaceLeader);
+         Send(self,@DoWave);
+
+         return TRUE;
+      }
+
+      // Ask follower to say what spells they know
+      if StringContain(message,follower_spells_trigger)
+         AND (what = poLeader)
+      {
+         Post(poLeader,@MsgSendUserCallback,#what=self,#sCallback=SetString($,@FollowerSpellInform));
+         Send(self,@FaceLeader);
+
+         return TRUE;
+      }
+
+      // Ask follower for more light
+      if StringContain(message,follower_light_trigger)
+         AND (what = poLeader)
+      {
+         if Send(self,@FollowerAdjustLight,#bRequest=TRUE)
+         {
+            Post(self,@SayToOne,#target=what,#message_rsc=follower_light);
+            Send(self,@FaceLeader);
+         }
+
+         return TRUE;
+      }
+
+      // Ask follower to come closer
+      if StringContain(message,follower_closer_trigger)
+         AND (what = poLeader)
+      {
+         if Send(self,@StayCloseToLeader)
+         {
+            Post(self,@SayToOne,#target=what,#message_rsc=follower_closer);
+            Send(self,@FaceLeader);
+            Send(self,@DoPoint);
+         }
+         else
+         {
+            Post(self,@SayToOne,#target=what,#message_rsc=follower_not_closer);
+         }
+
+         return TRUE;
+      }
+
+      // Ask follower to keep min distance
+      if StringContain(message,follower_close_trigger)
+         AND (what = poLeader)
+      {
+         if Send(self,@StayCloseToLeader,#bMin=TRUE)
+         {
+            Post(self,@SayToOne,#target=what,#message_rsc=follower_close);
+            Send(self,@FaceLeader);
+            Send(self,@DoPoint);
+         }
+
+         return TRUE;
+      }
+
+      // Ask follower to move farther away
+      if StringContain(message,follower_farther_trigger)
+         AND (what = poLeader)
+      {
+         if Send(self,@KeepDistanceFromLeader)
+         {
+            Post(self,@SayToOne,#target=what,#message_rsc=follower_farther);
+         }
+         else
+         {
+            Post(self,@SayToOne,#target=what,#message_rsc=follower_not_farther);
+         }
+
+         return TRUE;
+      }
+
+      // Ask follower to keep max distance
+      if StringContain(message,follower_far_trigger)
+         AND (what = poLeader)
+      {
+         if Send(self,@KeepDistanceFromLeader,#bMax=TRUE)
+         {
+            Post(self,@SayToOne,#target=what,#message_rsc=follower_far);
+         }
+
+         return TRUE;
+      }
+
+      // Ask follower what commands he accepts
+      if StringContain(message,follower_help_trigger)
+         AND (what = poLeader)
+      {
+         Post(self,@SayToOne,#target=what,#message_rsc=follower_help);
+         Send(self,@FaceLeader);
+
+         return TRUE;
+      }
+
+      propagate;
+   }
+
    // No nuking poor followers!
    DMCanArmageddon()
    {
       return FALSE;
+   }
+
+   //// The following messages deal with follower chatter.
+   // Every time the follower wants to chat, he asks ChatTimer.
+   // This prevents the follower from excessive spamming of messages.
+   ChatTimer(timer=FALSE)
+   {
+      if (ptChat = timer)
+      {
+         ptChat = $;
+
+         return;
+      }
+
+      if (ptChat <> $)
+      {
+         return FALSE;
+      }
+
+      ptChat = CreateTimer(self,@ChatTimer,FOLLOWER_CHAT_DELAY);
+
+      return TRUE;
+   }
+
+   // Called upon the follower killing something.
+   // Currently every third kill in average will be commented on.
+   KilledSomething(what=$,use_weapon=$)
+   {
+      if (use_weapon <> $)
+         AND IsClass(use_weapon,&Weapon)
+         AND Send(self,@ChatTimer)
+         AND NOT Random(0,2)
+      {
+         switch(Random(1,6))
+         {
+            case 1:
+               Post(self,@SayToOne,#target=poLeader,#message_rsc=follower_killed_something_a);
+               break;
+            case 2:
+               Post(self,@SayToOne,#target=poLeader,#message_rsc=follower_killed_something_b);
+               break;
+            case 3:
+               Post(self,@SayToOne,#target=poLeader,#message_rsc=follower_killed_something_c);
+               break;
+            case 4:
+               Post(self,@SayToOne,#target=poLeader,#message_rsc=follower_killed_something_d,
+                  #parm1=Send(use_weapon,@GetName));
+               break;
+            case 5:
+               Post(self,@SayToOne,#target=poLeader,#message_rsc=follower_killed_something_e);
+               break;
+            case 6:
+               Post(self,@SayToOne,#target=poLeader,#message_rsc=follower_killed_something_f,
+                  #parm1=Send(use_weapon,@GetName));
+               break;
+         }
+      }
+
+      propagate;
+   }
+
+   // Called upon the leader killing something.
+   // Currently every fourth kill in average will be commented on.
+   LeaderKilledSomething(what=$,use_weapon=$)
+   {
+      if (use_weapon <> $)
+         AND IsClass(use_weapon,&Weapon)
+         AND Send(self,@ChatTimer)
+         AND NOT Random(0,3)
+      {
+         switch(Random(1,6))
+         {
+            case 1:
+               Post(self,@SayToOne,#target=poLeader,#message_rsc=follower_leader_killed_something_a);
+               break;
+            case 2:
+               Post(self,@SayToOne,#target=poLeader,#message_rsc=follower_leader_killed_something_b);
+               break;
+            case 3:
+               Post(self,@SayToOne,#target=poLeader,#message_rsc=follower_leader_killed_something_c);
+               break;
+            case 4:
+               Post(self,@SayToOne,#target=poLeader,#message_rsc=follower_leader_killed_something_d,
+                  #parm1=Send(use_weapon,@GetName));
+               break;
+            case 5:
+               Post(self,@SayToOne,#target=poLeader,#message_rsc=follower_leader_killed_something_e);
+               break;
+            case 6:
+               Post(self,@SayToOne,#target=poLeader,#message_rsc=follower_leader_killed_something_f,
+                  #parm1=Send(use_weapon,@GetName));
+               break;
+         }
+      }
+
+      return;
+   }
+
+   MonsterEndCombat()
+   {
+      Send(self,@FollowerRetreat);
+
+      propagate;
+   }
+
+   // Called when the leader runs for it.
+   // Currently triggered every time.
+   FollowerRetreat()
+   {
+      if Send(self,@ChatTimer)
+      {
+         switch(Random(1,4))
+         {
+            case 1:
+               Send(self,@SayToOne,#target=poLeader,#message_rsc=follower_retreat_a);
+               break;
+            case 2:
+               Send(self,@SayToOne,#target=poLeader,#message_rsc=follower_retreat_b);
+               break;
+            case 3:
+               Send(self,@SayToOne,#target=poLeader,#message_rsc=follower_retreat_c);
+               break;
+            case 4:
+               Send(self,@SayToOne,#target=poLeader,#message_rsc=follower_retreat_d,
+                  #parm1=Send(poTarget,@GetName));
+               break;
+         }
+      }
+
+      return;
+   }
+
+   // Called when the follower is injured beyond a threshold.
+   // Currently triggered every time.
+   FollowerInjured(iThreshold=$)
+   {
+      if Send(self,@ChatTimer)
+      {
+         switch(iThreshold)
+         {
+            case 0:
+               Send(self,@SayToOne,#target=poLeader,#message_rsc=follower_injured_a);
+               break;
+            case 1:
+               Send(self,@SayToOne,#target=poLeader,#message_rsc=follower_injured_b);
+               break;
+            case 2:
+               Send(self,@SayToOne,#target=poLeader,#message_rsc=follower_injured_c);
+               break;
+            case 3:
+               Send(self,@SayToOne,#target=poLeader,#message_rsc=follower_injured_d);
+               Send(self,@DoWave);
+               break;
+         }
+      }
+
+      return;
+   }
+
+   // Called when the follower recovers beyond a threshold.
+   // Currently triggered every time.
+   FollowerRecovered(iThreshold=$)
+   {
+      if Send(self,@ChatTimer)
+      {
+         switch(iThreshold)
+         {
+            case 1:
+               Send(self,@SayToOne,#target=poLeader,#message_rsc=follower_recovered_a);
+               break;
+            case 2:
+               Send(self,@SayToOne,#target=poLeader,#message_rsc=follower_recovered_b);
+               break;
+            case 3:
+               Send(self,@SayToOne,#target=poLeader,#message_rsc=follower_recovered_c);
+               break;
+            case 4:
+               Send(self,@SayToOne,#target=poLeader,#message_rsc=follower_recovered_d);
+               break;
+         }
+      }
+
+      return;
+   }
+
+   // Called when the follower enters combat.
+   // Currently triggered every time, if enough time has passed.
+   FollowerEnterCombat()
+   {
+      if Send(self,@ChatTimer)
+      {
+         // 5 seconds check. Continuous combat. Only comment 1 in 5 times.
+         if (Abs(piCombatCheck - GetTickCount()) < 5000)
+         {
+            if NOT Random(0,4)
+            {
+               switch(Random(1,6))
+               {
+                  case 1:
+                     Send(self,@SayToOne,#target=poLeader,#message_rsc=follower_entered_combat_a_a);
+                     break;
+                  case 2:
+                     Send(self,@SayToOne,#target=poLeader,#message_rsc=follower_entered_combat_a_b);
+                     break;
+                  case 3:
+                     Send(self,@SayToOne,#target=poLeader,#message_rsc=follower_entered_combat_a_c);
+                     break;
+                  case 4:
+                     Send(self,@SayToOne,#target=poLeader,#message_rsc=follower_entered_combat_a_d);
+                     break;
+                  case 5:
+                     Send(self,@SayToOne,#target=poLeader,#message_rsc=follower_entered_combat_a_e);
+                     break;
+                  case 6:
+                     Send(self,@SayToOne,#target=poLeader,#message_rsc=follower_entered_combat_a_f);
+                     break;
+               }
+               return;
+            }
+         }
+         // 15 seconds check. Little hold up. Only comment 1 in 3 times.
+         else if  (Abs(piCombatCheck - GetTickCount()) < 15000)
+         {
+            if NOT Random(0,2)
+            {
+               switch(Random(1,3))
+               {
+                  case 1:
+                     Send(self,@SayToOne,#target=poLeader,#message_rsc=follower_entered_combat_b_a);
+                     break;
+                  case 2:
+                     Send(self,@SayToOne,#target=poLeader,#message_rsc=follower_entered_combat_b_b);
+                     break;
+                  case 3:
+                     Send(self,@SayToOne,#target=poLeader,#message_rsc=follower_entered_combat_b_c);
+                     break;
+               }
+               return;
+            }
+         }
+         // 60 seconds check. Taken a break. Only comment 1 in 3 times.
+         else if  (Abs(piCombatCheck - GetTickCount()) < 60000) AND Random(0,1)
+         {
+            if NOT Random(0,2)
+            {
+               switch(Random(1,3))
+               {
+                  case 1:
+                     Send(self,@SayToOne,#target=poLeader,#message_rsc=follower_entered_combat_c_a);
+                     break;
+                  case 2:
+                     Send(self,@SayToOne,#target=poLeader,#message_rsc=follower_entered_combat_c_b);
+                     break;
+                  case 3:
+                     Send(self,@SayToOne,#target=poLeader,#message_rsc=follower_entered_combat_c_c);
+                     break;
+               }
+               return;
+            }
+         }
+         // 10 minutes check. Longer break. Comment every other time.
+         else if  (Abs(piCombatCheck - GetTickCount()) < 600000)
+         {
+            if NOT Random(0,1)
+            {
+               switch(Random(1,3))
+               {
+                  case 1:
+                     Send(self,@SayToOne,#target=poLeader,#message_rsc=follower_entered_combat_d_a);
+                     break;
+                  case 2:
+                     Send(self,@SayToOne,#target=poLeader,#message_rsc=follower_entered_combat_d_b);
+                     break;
+                  case 3:
+                     Send(self,@SayToOne,#target=poLeader,#message_rsc=follower_entered_combat_d_c);
+                     break;
+               }
+               return;
+            }
+         }
+         // Inactive for an extended period of time. Comment every time.
+         else
+         {
+            switch(Random(1,7))
+            {
+               case 1:
+                  Send(self,@SayToOne,#target=poLeader,#message_rsc=follower_entered_combat_e_a);
+                  break;
+               case 2:
+                  Send(self,@SayToOne,#target=poLeader,#message_rsc=follower_entered_combat_e_b);
+                  break;
+               case 3:
+                  Send(self,@SayToOne,#target=poLeader,#message_rsc=follower_entered_combat_e_c);
+                  break;
+               case 4:
+                  Send(self,@SayToOne,#target=poLeader,#message_rsc=follower_entered_combat_e_d);
+                  break;
+               case 5:
+                  Send(self,@SayToOne,#target=poLeader,#message_rsc=follower_entered_combat_e_e);
+                  break;
+               case 6:
+                  Send(self,@SayToOne,#target=poLeader,#message_rsc=follower_entered_combat_e_f);
+                  break;
+               case 7:
+                  Send(self,@SayToOne,#target=poLeader,#message_rsc=follower_entered_combat_e_g);
+                  break;
+            }
+            return;
+         }
+
+         // These are generic battle cries that don't depend on time and that come up when
+         // a time dependent trigger doesn't pass its random check. Simply for variety.
+         if NOT Random(0,5)
+         {
+            switch(Random(1,10))
+            {
+               case 1:
+                  Send(self,@SayToOne,#target=poLeader,#message_rsc=follower_entered_combat_f_a);
+                  break;
+               case 2:
+                  Send(self,@SayToOne,#target=poLeader,#message_rsc=follower_entered_combat_f_b);
+                  break;
+               case 3:
+                  Send(self,@SayToOne,#target=poLeader,#message_rsc=follower_entered_combat_f_c);
+                  break;
+               case 4:
+                  Send(self,@SayToOne,#target=poLeader,#message_rsc=follower_entered_combat_f_d);
+                  break;
+               case 5:
+                  Send(self,@SayToOne,#target=poLeader,#message_rsc=follower_entered_combat_f_e);
+                  break;
+               case 6:
+                  Send(self,@SayToOne,#target=poLeader,#message_rsc=follower_entered_combat_f_f);
+                  break;
+               case 7:
+                  Send(self,@SayToOne,#target=poLeader,#message_rsc=follower_entered_combat_f_g);
+                  break;
+               case 8:
+                  Send(self,@SayToOne,#target=poLeader,#message_rsc=follower_entered_combat_f_h);
+                  break;
+               case 9:
+                  Send(self,@SayToOne,#target=poLeader,#message_rsc=follower_entered_combat_f_i);
+                  break;
+               case 10:
+                  Send(self,@SayToOne,#target=poLeader,#message_rsc=follower_entered_combat_f_j);
+                  break;
+            }
+         }
+      }
+
+      return;
    }
 
 end

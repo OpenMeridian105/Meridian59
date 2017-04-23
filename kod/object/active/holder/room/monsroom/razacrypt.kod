@@ -151,8 +151,6 @@ properties:
    prRoom = room_razacrypt
    piRoom_num = RID_RAZA_MAUSOLEUM
 
-   piGenTime = 15000        // Need to regen faster since some monsters thrown out
-
    piBaseLight = LIGHT_DARK
    piOutside_factor = OUTDOORS_NONE
 
@@ -160,7 +158,7 @@ properties:
 
    piInit_count_min = 12
    piInit_count_max = 15
-   piMonster_count_max = 35
+   piMonster_count_max = 25
 
    piPit_Monsters = 0        // Number of monsters currently in the pit area
 
@@ -178,10 +176,6 @@ messages:
    Constructed()
    {
       plMonsters = [ [&Mummy, 50], [&MummyNoTreasure, 50] ];
-
-      plGenerators = [ [viPit_row, viPit_col], [5, 21], [5, 36], [9, 28],
-                       [17, 35], [21, 23], [25, 11], [29, 18], [37, 35], [38, 19]
-                     ];
 
       propagate;
    }
@@ -298,26 +292,11 @@ messages:
       return;
    }
 
-   ReqNewHold(what = $, new_row = $, new_col = $)
-   // Only allow a certain # of monsters in the pit
+   IsValidSpawnLocation(iRow=0,iCol=0,iFineRow=0,iFineCol=0)
    {
-      if IsClass(what,&MummyNoTreasure)
-         AND piPit_Monsters >= viPit_Monsters_max
-      {
-         return FALSE;
-      }
-
-      // Allow only wimpy mummies in the pit
-      if NOT IsClass(what, &MummyNoTreasure)
-         AND new_row = viPit_row
-         AND new_col = viPit_col
-      {
-         return FALSE;
-      }
-
-      // Wimpy mummies appear only in the pit
-      if IsClass(what, &MummyNoTreasure)
-      AND (new_row <> viPit_row OR new_col <> viPit_col)
+      if ((iCol < 3)
+         OR ((iCol < 20) AND (iRow < 15) AND (iRow > 7))
+         OR ((iCol < 10) AND (iRow > 27)))
       {
          return FALSE;
       }
@@ -629,6 +608,13 @@ messages:
       
       Send(self,@NewHold,#what=Create(&BlackMummy),#new_row=37,#new_col=5,
             #fine_row=0,#fine_col=0);
+
+      return;
+   }
+
+   AdjustHeroCount(what=$)
+   {
+      piMonster_adjusted_max = piMonster_count_max;
 
       return;
    }

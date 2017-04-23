@@ -171,36 +171,7 @@ resources:
       "until it's time to ~Ipart ways~I again."
    Lm_mercenary_join_contracted = "Reporting for duty!"
    Lm_mercenary_leave = "I'll be getting back to my squad.  Stay safe out there!"
-   Lm_mercenary_return_death = \
-      "Whoa!  What happened?  For a moment, everything went black there..."
-   Lm_mercenary_return_lost = \
-      "Sorry about that.  I must have gotten lost somewhere along the way...  "
-      "Good thing I knew that you were going to come here sooner or later!"
-   Lm_mercenary_break = "Alright. See you later, friend!"
-   Lm_mercenary_light = "You are right, it ~Iis~I a bit dark around these parts."
-   Lm_mercenary_close = "Very well. I'll stick really close."
-   Lm_mercenary_closer = "Very well. I'll follow a bit more closely."
-   Lm_mercenary_far = "Fine, I'll stay far back..."
-   Lm_mercenary_farther = "Fine, staying a bit farther back..."
-   Lm_mercenary_help = \
-      "Need help with something? You can ask me to...\n"
-      "...tell you what ~Ispells~I I have learned so far.\n"
-      "...make some ~Ilight~I, so we can see better in dark places.\n"
-      "...move in a little ~Icloser~I, or really ~Iclose~I so I don't fall behind.\n"
-      "...stay a bit ~Ifarther~I back or stay ~Ifar~I back to stay out of trouble.\n"
-      "...~Imeet up~I with you later in case you don't need me at the moment.\n"
-      "...~Ipart ways~I and follow my own destiny.  I'd think twice about that if I "
-      "were you though.  I bet you'd never find good company like me again!"
-
-   Lm_mercenary_spells_trigger = "spells"
    Lm_mercenary_leave_trigger = "part ways"
-   Lm_mercenary_break_trigger = "meet up"
-   Lm_mercenary_light_trigger = "light"
-   Lm_mercenary_close_trigger = "close"
-   Lm_mercenary_closer_trigger = "closer"
-   Lm_mercenary_far_trigger = "far"
-   Lm_mercenary_farther_trigger = "farther"
-   Lm_mercenary_help_trigger = "help"
 
    vaultman_nogold = "You may not use my services to store %s%s."
    vaultman_nocursed = "I cannot take %s%s from you."
@@ -489,8 +460,6 @@ classvars:
    vrMercenaryJoin = Lm_mercenary_join
    vrMercenaryJoinContracted = Lm_mercenary_join_contracted
    vrMercenaryLeave = Lm_mercenary_leave
-   vrMercenaryReturnDeath = Lm_mercenary_return_death
-   vrMercenaryReturnLost = Lm_mercenary_return_lost
 
    // Obsolete, but still included here for safety's sake.
    vrSound_hit = $
@@ -818,7 +787,7 @@ messages:
 
       piMeleeRange = viMeleeRange;
       piFireRange = viFireRange * (75 + piAim) / 100;
-      piSpellPower = Bound((piIntellect + piMysticism) / 2, 0, 50) + viSpellPower;
+      piSpellPower = Bound((piIntellect + piMysticism) / 2, 25, 50) + viSpellPower;
       piVisionDistance = viVisionDistance + piSurvivalLevel + (piIntellect + piAim) / 20;
       piChanceToPatrol = 50 + piAgility + piStamina;
       piBoostedLevel = piSurvivalLevel;
@@ -6170,7 +6139,8 @@ messages:
       {
          oSpell = Send(SYS,@FindSpellByNum,#num=iNum);
          lTargets = Send(oSpell,@GetTargets,#who=self,#lTargets=[oTarget]);
-         iSpellPower = Bound(Send(self,@GetSpellPower,#oSpell=oSpell) + Nth(lAction,7),0,99);
+         iSpellPower = Bound(Send(self,@GetSpellPower,#oSpell=oSpell) + Nth(lAction,7),
+                        SPELLPOWER_MINIMUM,SPELLPOWER_MAXIMUM);
 
          // Do any special cast animations; send spell for specific ones.
          // Also, make sure we're still around.
@@ -6485,6 +6455,13 @@ messages:
          }
       }
 
+      // Let our leader know we are in need of some help.
+      if (poLeader <> $)
+         AND (Send(poLeader,@GetOwner) = poOwner)
+      {
+         Send(self,@FollowerInjured,#iThreshold=iThreshold);
+      }
+
       return;
    }
 
@@ -6524,6 +6501,13 @@ messages:
             Post(each_obj,@MsgSendUser,#what=self,#message_rsc=rHeal_report,
                   #parm1=Send(self,@GetCapDef),#parm2=Send(self,@GetName));
          }
+      }
+
+      // Let our leader know that we're doing better again.
+      if (poLeader <> $)
+         AND (Send(poLeader,@GetOwner) = poOwner)
+      {
+         Send(self,@FollowerRecovered,#iThreshold=iThreshold);
       }
 
       return;
@@ -8133,27 +8117,6 @@ messages:
       return;
    }
 
-   MercenaryReturnMessage(what=$,bDeath=FALSE)
-   {
-      if bDeath
-      {
-         Post(self,@SayToOne,#target=what,#message_rsc=vrMercenaryReturnDeath);
-      }
-      else
-      {
-         Post(self,@SayToOne,#target=what,#message_rsc=vrMercenaryReturnLost);
-
-         Send(self,@FaceLeader);
-
-         if IsClass(self,&Human)
-         {
-            Send(self,@DoWave);
-         }
-      }
-
-      return;
-   }
-
    MercenaryLeaveMessage(what=$)
    {
       Post(self,@SayToOne,#target=what,#message_rsc=vrMercenaryLeave);
@@ -8170,6 +8133,8 @@ messages:
 
    MercenaryCommand(what=$,message=$)
    {
+      //// General Merc Chat Commands
+      // Get rid of mercenary
       if StringContain(message,Lm_mercenary_leave_trigger)
          AND (what = poLeader)
          AND Send(self,@SetLeader)
@@ -8179,94 +8144,7 @@ messages:
          return TRUE;
       }
 
-      if StringContain(message,Lm_mercenary_break_trigger)
-         AND (what = poLeader)
-      {
-         Send(self,@FollowerAbsence,#iDelay=3000);
-         Post(self,@SayToOne,#target=what,#message_rsc=Lm_mercenary_break);
-         Send(self,@FaceLeader);
-         Send(self,@DoWave);
-
-         return TRUE;
-      }
-
-      if StringContain(message,Lm_mercenary_spells_trigger)
-         AND (what = poLeader)
-      {
-         Post(poLeader,@MsgSendUserCallback,#what=self,#sCallback=SetString($,@FollowerSpellInform));
-         Send(self,@FaceLeader);
-
-         return TRUE;
-      }
-
-      if StringContain(message,Lm_mercenary_light_trigger)
-         AND (what = poLeader)
-      {
-         if Send(self,@MercenaryAdjustLight,#bRequest=TRUE)
-         {
-            Post(self,@SayToOne,#target=what,#message_rsc=Lm_mercenary_light);
-            Send(self,@FaceLeader);
-         }
-
-         return TRUE;
-      }
-
-      if StringContain(message,Lm_mercenary_closer_trigger)
-         AND (what = poLeader)
-      {
-         if Send(self,@StayCloseToLeader)
-         {
-            Post(self,@SayToOne,#target=what,#message_rsc=Lm_mercenary_closer);
-            Send(self,@FaceLeader);
-            Send(self,@DoPoint);
-         }
-
-         return TRUE;
-      }
-
-      if StringContain(message,Lm_mercenary_close_trigger)
-         AND (what = poLeader)
-      {
-         if Send(self,@StayCloseToLeader,#bMin=TRUE)
-         {
-            Post(self,@SayToOne,#target=what,#message_rsc=Lm_mercenary_close);
-            Send(self,@FaceLeader);
-            Send(self,@DoPoint);
-         }
-
-         return TRUE;
-      }
-
-      if StringContain(message,Lm_mercenary_farther_trigger)
-         AND (what = poLeader)
-      {
-         if Send(self,@KeepDistanceFromLeader)
-         {
-            Post(self,@SayToOne,#target=what,#message_rsc=Lm_mercenary_farther);
-         }
-
-         return TRUE;
-      }
-
-      if StringContain(message,Lm_mercenary_far_trigger)
-         AND (what = poLeader)
-      {
-         if Send(self,@KeepDistanceFromLeader,#bMax=TRUE)
-         {
-            Post(self,@SayToOne,#target=what,#message_rsc=Lm_mercenary_far);
-         }
-
-         return TRUE;
-      }
-
-      if StringContain(message,Lm_mercenary_help_trigger)
-         AND (what = poLeader)
-      {
-         Post(self,@SayToOne,#target=what,#message_rsc=Lm_mercenary_help);
-         Send(self,@FaceLeader);
-
-         return TRUE;
-      }
+      //// Follower chat commands can be found in follower.kod
 
       return FALSE;
    }
@@ -9692,11 +9570,6 @@ messages:
    GetLightLevel()
    {
       return viNightVision;
-   }
-
-   MercenaryAdjustLight()
-   {
-      return FALSE;
    }
 
    GetSpellPower()

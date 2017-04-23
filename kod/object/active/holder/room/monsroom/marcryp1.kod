@@ -72,7 +72,6 @@ properties:
    prRoom = room_MarionCrypt1
    piRoom_num = RID_MAR_CRYPT1
 
-   piGenTime = 15000
    piInit_count_min = 10
    piInit_count_max = 12
    piMonster_count_max = 25
@@ -97,9 +96,6 @@ messages:
    Constructed()
    {
       plMonsters = [ [&SpectralMummy, 100] ];
-
-      plGenerators = [ [5, 21], [5, 36], [9, 28], [17, 35], [21, 23],
-                       [25, 11], [29, 18], [37, 35], [38, 19] ];
 
       Post(self,@DoMartyr);
 
@@ -603,6 +599,25 @@ messages:
       if IsClass(oSpellSkill,&Discordance)
       {
          return (chance / 10);
+      }
+
+      propagate;
+   }
+
+   AdjustHeroCount(what=$)
+   {
+      piMonster_adjusted_max = piMonster_count_max;
+
+      return;
+   }
+
+   IsValidSpawnLocation(iRow=0,iCol=0,iFineRow=0,iFineCol=0)
+   {
+      if ((iCol < 3)
+         OR ((iCol < 20) AND (iRow < 15) AND (iRow > 7))
+         OR ((iCol < 10) AND (iRow > 27)))
+      {
+         return FALSE;
       }
 
       propagate;

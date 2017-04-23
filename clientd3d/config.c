@@ -193,8 +193,8 @@ void ConfigLoad(void)
    config.save_settings = GetConfigInt(misc_section, INISaveOnExit, True, ini_file);
    config.play_music    = GetConfigInt(misc_section, INIPlayMusic, True, ini_file);
    config.play_sound    = GetConfigInt(misc_section, INIPlaySound, True, ini_file);
-   config.music_volume    = GetConfigInt(misc_section, INIMusicVolume, 100, ini_file);
-   config.sound_volume    = GetConfigInt(misc_section, INISoundVolume, 100, ini_file);
+   config.music_volume    = GetConfigInt(misc_section, INIMusicVolume, 75, ini_file); // 100 is potentially too loud, err on the side of caution.
+   config.sound_volume    = GetConfigInt(misc_section, INISoundVolume, 75, ini_file); // 100 is potentially too loud, err on the side of caution.
    config.play_loop_sounds    = GetConfigInt(misc_section, INIPlayLoopSounds, True, ini_file);
    config.play_random_sounds    = GetConfigInt(misc_section, INIPlayRandomSounds, True, ini_file);
    config.large_area    = GetConfigInt(misc_section, INIArea, True, ini_file);

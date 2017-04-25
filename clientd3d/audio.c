@@ -326,6 +326,16 @@ BOOL MusicPlayFile(char* file)
 
 BOOL MusicPlayResource(ID rsc)
 {
+   // 0 is used for 'no music'.
+   if (rsc == 0)
+   {
+      MusicStop();
+      // Don't save currently playing song.
+      lastmusicname[0] = 0;
+
+      return TRUE;
+   }
+
    // try get filename for resource id
    char* file = LookupNameRsc(rsc);
 

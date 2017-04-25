@@ -4478,7 +4478,8 @@ messages:
    //  For looping sounds, cutoff_radius and max_volume are used set
    //  attenuation parameters
    {
-      if (wave_rsc <> $) and (pbLogged_on)
+      if (wave_rsc <> $
+         AND pbLogged_on)
       {
          AddPacket(1,BP_PLAY_WAVE, 4,wave_rsc, 4,source_obj, 1,flags,
                    4,row, 4,col, 4,cutoff_radius, 4,max_volume);
@@ -4491,7 +4492,8 @@ messages:
    WaveSendUserStop(wave_rsc = $, source_obj = 0)
    // Sends a message to the client to stop playing a wav using the resource ID.
    {
-      if (wave_rsc <> $) and (pbLogged_on)
+      if (wave_rsc <> $
+         AND pbLogged_on)
       {
          AddPacket(1,BP_STOP_WAVE, 4,wave_rsc, 4,source_obj);
          SendPacket(poSession);
@@ -4502,18 +4504,16 @@ messages:
 
    SendRoomMusic(music_rsc = $)
    {
-      if pbLogged_on
+      if (pbLogged_on)
       {
-         AddPacket(1,BP_PLAY_MUSIC);
-         if music_rsc = $
+         if (music_rsc <> $)
          {
-            AddPacket(4,0);
+            AddPacket(1,BP_PLAY_MUSIC, 4,music_rsc);
          }
          else
          {
-            AddPacket(4,music_rsc);
+            AddPacket(1,BP_PLAY_MUSIC, 4,0);
          }
-
          SendPacket(poSession);
       }
 
@@ -4522,18 +4522,10 @@ messages:
 
    MidiSendUser(midi_rsc = $)
    {
-      if (midi_rsc <> $) AND (pbLogged_on)
+      if (midi_rsc <> $
+         AND pbLogged_on)
       {
-         AddPacket(1,BP_PLAY_MIDI);
-         if midi_rsc = $
-         {
-            AddPacket(4,0);
-         }
-         else
-         {
-            AddPacket(4,midi_rsc);
-         }
-
+         AddPacket(1,BP_PLAY_MIDI, 4,midi_rsc);
          SendPacket(poSession);
       }
 

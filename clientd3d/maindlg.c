@@ -337,17 +337,7 @@ BOOL CALLBACK PreferencesDialogProc(HWND hDlg, UINT message, UINT wParam, LONG l
          lagbox_changed = (temp != config.lagbox);
          config.lagbox = temp;
 
-         if (IsDlgButtonChecked(hDlg, IDC_MUSIC) != config.play_music)
-            UserToggleMusic(config.play_music);
-         config.play_music = IsDlgButtonChecked(hDlg, IDC_MUSIC);
-         config.play_sound = IsDlgButtonChecked(hDlg, IDC_SOUNDFX);
-         config.play_loop_sounds = IsDlgButtonChecked(hDlg, IDC_LOOPSOUNDS);
-         config.play_random_sounds = IsDlgButtonChecked(hDlg, IDC_RANDSOUNDS);
-         if (!config.play_sound)
-            SoundStopAll();
-
-         UserToggleMusic(config.play_music);
-
+         // Set music volume first, music might be turned off.
          new_val = Trackbar_GetPos(GetDlgItem(hDlg, IDC_MUSIC_VOLUME));
          if (new_val != config.music_volume)
          {
@@ -355,12 +345,31 @@ BOOL CALLBACK PreferencesDialogProc(HWND hDlg, UINT message, UINT wParam, LONG l
             MusicSetVolume();
          }
 
+         // Possibly turn music on/off.
+         temp = IsDlgButtonChecked(hDlg, IDC_MUSIC);
+         if (temp != config.play_music)
+         {
+            config.play_music = temp;
+            UserToggleMusic(config.play_music);
+         }
+
+         // Sound effects volume.
          new_val = Trackbar_GetPos(GetDlgItem(hDlg, IDC_SOUND_VOLUME));
          if (new_val != config.sound_volume)
          {
             config.sound_volume = new_val;
             SoundSetVolume();
          }
+
+         // TODO: Update specific sounds based on the loop/random flags.
+         // Need to keep track of these flags in audio.c, and also keep track
+         // of which sounds should be playing but aren't due to one of these
+         // values unset (currently they aren't added at all).
+         config.play_sound = IsDlgButtonChecked(hDlg, IDC_SOUNDFX);
+         config.play_loop_sounds = IsDlgButtonChecked(hDlg, IDC_LOOPSOUNDS);
+         config.play_random_sounds = IsDlgButtonChecked(hDlg, IDC_RANDSOUNDS);
+         if (!config.play_sound)
+            SoundStopAll();
 
          new_val = Trackbar_GetPos(GetDlgItem(hDlg, IDC_PARTICLENUM));
          if (new_val != config.particles)

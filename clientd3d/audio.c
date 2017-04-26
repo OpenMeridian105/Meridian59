@@ -33,7 +33,7 @@ typedef struct
 BOOL          initialized   = FALSE;  // switch for Init/Shutdown
 char*         musicname     = NULL;   // filename of current background music
 ISound*       music         = NULL;   // soundid of current background music
-char*         lastmusicname = NULL;   // saves the last played music for restart
+char         lastmusicname[MAX_PATH + 1];   // saves the last played music for restart
 ISoundEngine* soundengine   = NULL;   // the irrklang engine object
 
 AudioInfo *sounds;
@@ -60,6 +60,8 @@ BOOL AudioInit()
 {
    if (initialized)
       return FALSE;
+
+   memset(lastmusicname, 0, sizeof(lastmusicname));
 
    // get devicelist
    ISoundDeviceList* deviceList = 
@@ -123,7 +125,6 @@ BOOL AudioShutdown()
    soundengine   = NULL;
    music         = NULL;
    musicname     = NULL;
-   lastmusicname = NULL;
 
    // erase sounds data
    for (int i = 0; i < MAXSOUNDS; i++)
@@ -274,7 +275,7 @@ BOOL MusicStop()
    AudioStop(music);
 
    // keep last played file for restart
-   lastmusicname = musicname;
+   strcpy(lastmusicname, musicname);
 
    // reset tracked values
    musicname = NULL;
@@ -325,15 +326,29 @@ BOOL MusicPlayFile(char* file)
 
 BOOL MusicPlayResource(ID rsc)
 {
-   // nothing to do if music disabled
-   if (!config.play_music) 
+   // 0 is used for 'no music'.
+   if (rsc == 0)
+   {
+      MusicStop();
+      // Don't save currently playing song.
+      lastmusicname[0] = 0;
+
       return TRUE;
+   }
 
    // try get filename for resource id
    char* file = LookupNameRsc(rsc);
 
    if (!file)
       return FALSE;
+
+   // If music is disabled, still save the filename.
+   // Might need it if user turns music back on.
+   if (!config.play_music)
+   {
+      strcpy(lastmusicname, file);
+      return TRUE;
+   }
 
    // call variant with filename parameter
    return MusicPlayFile(file);

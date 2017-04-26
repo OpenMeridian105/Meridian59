@@ -12,6 +12,7 @@
 
 #ifdef BLAK_PLATFORM_WINDOWS
 #include <io.h>
+#include <direct.h>
 #endif
 
 #ifdef BLAK_PLATFORM_LINUX
@@ -26,6 +27,8 @@
 #include <stdarg.h>
 #include <fcntl.h>
 #include <sys/stat.h>
+#include <sys/types.h>
+#include <time.h>
 #include <ctype.h>
 #include "util.h"
 #include "table.h"
@@ -338,6 +341,8 @@ void include_file(char *filename);
 const char * get_function_name_by_opcode(int opcode);
 
 /* action handlers */
+int include_const_file_parse(char *);
+void action_save_constants(char *);
 const_type make_numeric_constant(int);
 const_type make_nil_constant(void);
 const_type make_string_constant(char *);
@@ -402,6 +407,7 @@ void action_error(const char *fmt, ...);
 void simple_error(const char *fmt, ...);
 void simple_warning(const char *fmt, ...);
 void initialize_parser(void);
+void compile_file_list(char *path, list_type l); // also used in dircompile.c
 
 int id_hash(const void *info, int table_size);
 int id_compare(void *info1, void *info2);
@@ -422,6 +428,7 @@ extern SymbolTable st;          /* Compiler's symbol table */
 /**************************** Include files ***************************/
 #include "sort.h"
 #include "optimize.h"
+#include "dircompile.h"
 
 #endif /* #ifdef _BLAKCOMP_H */
 

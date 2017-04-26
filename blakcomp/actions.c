@@ -23,6 +23,22 @@ extern int lineno;
 
 static int loop_depth = 0;
 SymbolTable st;
+static const_struct nil_const;
+
+typedef struct {
+   char *filename;
+   list_type constants;
+} include_constant_file;
+
+list_type const_files;
+
+// Variable used to keep track of existing constants
+// when saving another included constants file.
+// Records the number of constants in st.constants
+// at the start of parsing the new file, so that many
+// can be skipped when moving them to the const_files
+// list.
+int constant_counter;
 
 typedef struct {
   char   *two_letter_code;
@@ -225,6 +241,8 @@ void initialize_parser(void)
 {
    int i;
 
+   nil_const.type = C_NIL;
+
    st.globalvars = table_create(TABLESIZE);
    st.classvars = table_create(TABLESIZE);
    st.localvars = table_create(TABLESIZE);
@@ -274,6 +292,68 @@ void initialize_parser(void)
    st.num_strings = 0;
    st.strings = NULL;
    st.override_classvars = NULL;
+   const_files = NULL;
+}
+/************************************************************************/
+/* include_const_file_parse: Determine if we have to parse this file.
+ *   Also set a boolean so after parsing the file, the original can use it.
+ */
+int include_const_file_parse(char *filename)
+{
+   for (list_type l = const_files; l != NULL; l = l->next)
+   {
+      include_constant_file* f = (include_constant_file*)l->data;
+      if (stricmp(f->filename, filename) == 0)
+      {
+         // Not parsing file, but add all constants to the list.
+         for (list_type c = f->constants; c != NULL; c = c->next)
+         {
+            id_type id = (id_type)c->data;
+            id->ownernum = st.curclass;
+            add_identifier(id, id->type);
+            st.constants = list_add_item(st.constants, id);
+         }
+
+         return False;
+      }
+   }
+
+   // st.constants might already have constants in it, and we only want to add
+   // new ones to our saved include file. Get the number of constants in
+   // st.constants now, and skip that many later.
+
+   constant_counter = list_length(st.constants);
+   // Add the new constant file to the list.
+   include_constant_file *i = (include_constant_file *)SafeMalloc(sizeof(include_constant_file));
+   i->filename = strdup(filename);
+   const_files = list_add_item(const_files, i);
+
+   return True;
+}
+/************************************************************************/
+/* action_save_constants: Potentially save the current st.constants list.
+*/
+void action_save_constants(char *filename)
+{
+   for (list_type l = const_files; l != NULL; l = l->next)
+   {
+      include_constant_file* f = (include_constant_file*)l->data;
+      if (stricmp(f->filename, filename) == 0)
+      {
+         if (list_length(st.constants) <= constant_counter)
+         {
+            simple_warning("Error handling constant lists in action_save_constants.\n");
+            return;
+         }
+
+         for (list_type c = list_get_nth(st.constants, constant_counter + 1); c != NULL; c = c->next)
+         {
+            f->constants = list_add_item(f->constants, c->data);
+         }
+
+         return;
+      }
+   }
 }
 /************************************************************************/
 /* Hash on an indentifier's name */
@@ -494,10 +574,11 @@ const_type make_numeric_constant(int num)
 /************************************************************************/
 const_type make_nil_constant(void)
 {
-   const_type c = (const_type) SafeMalloc(sizeof(const_struct));
-
-   c->type = C_NIL;
-   return c;
+   // Return a global nil object here, as this function is called many times.
+   // As there is no deleting of IDs anywhere, this is safe (for now).
+   //const_type c = (const_type) SafeMalloc(sizeof(const_struct));
+   //c->type = C_NIL;
+   return &nil_const;
 }
 /************************************************************************/
 const_type make_number_from_constant_id(id_type id)

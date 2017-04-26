@@ -16,17 +16,33 @@ int yywrap(void);
 
 extern int yyparse(void);
 static FILE *open_file(char *fname);
+
+static void compile_file_mode();
 static void usage(void);
+static void usage_directory(void);
 
 int lineno;
 Bool generate_code = True; /* True if we should generate code */
+extern int codegen_ok;     // True if codegen completed without errors
 extern int yydebug;        /* Set to nonzero to get yacc debug info */
+int directory_mode;        /* Whether we are compiling in directory mode or not */
+list_type directory_list;  /* If compiling in directory mode, the list of dirs */
 list_type file_list;       /* List of files to compile */
 char *current_fname;
+char current_path[_MAX_PATH];
 char *bof_fname;           /* Object code filename */
 int debug_bof;             /* Should we put debugging info in .bof file? */
 int add_eol = 0;           /* Hack to deal with EOL being significant in INITIAL */
 int comment_depth = 0;     /* Allow nested comments */
+
+// Keep track of whether we are processing constants or not, because we can
+// handle constant include files in a much faster way.
+Bool in_constants = False;
+
+// bofs go into /output_dir/loadkod/
+// rscs go into /output_dir/rsc/
+char bof_output_dir[_MAX_PATH];
+char rsc_output_dir[_MAX_PATH];
 
 struct file_state {
    YY_BUFFER_STATE buffer;
@@ -34,6 +50,7 @@ struct file_state {
    int lineno;
    FILE *file_ptr;
 };
+
 
 #define MAX_INCLUDE_DEPTH 10
 #define MAX_INCLUDE_DIRS  20
@@ -151,11 +168,11 @@ strline  (([^\"\n\\]|\\.)*\")[ \t\r]*
 	/* reserved words */
 and		{ return AND; }
 break		{ return BREAK; }
-classvars	{ return CLASSVARS; }
+classvars	{ in_constants = False; return CLASSVARS; }
 continue	{ return CONTINUE; }
-constants	{ return CONSTANTS; }
+constants	{ in_constants = True; return CONSTANTS; }
 else            { return ELSE;}
-end		{ yy_push_state(INITIAL); return END; } 
+end		{ in_constants = False; yy_push_state(INITIAL); return END; } 
 for		{ return FOR; }
 foreach	{ return FOREACH; }
 if		{ return IF; }
@@ -163,12 +180,12 @@ in		{ return IN; }
 is		{ return IS; }
 isclass { return ISCLASS; }
 local		{ return LOCAL; }
-messages	{ yy_push_state(CODE); return MESSAGES; }
+messages	{ in_constants = False; yy_push_state(CODE); return MESSAGES; }
 not		{ return NOT; }
 or		{ return OR; }
 propagate	{ return PROPAGATE; }
-properties	{ return PROPERTIES; }
-resources	{ return RESOURCES; }
+properties	{ in_constants = False; return PROPERTIES; }
+resources	{ in_constants = False;  return RESOURCES; }
 return	        { return RETURN; }
 while		{ return WHILE; }
 include         { return INCLUDE; }
@@ -373,13 +390,14 @@ char *assemble_string(char *str)
  */
 void recompile_warnings(list_type l)
 {
-   int column = 0;
-
    if (l == NULL)
       return;
 
-   simple_warning("Need to recompile these subclasses:");
+   // Too much spam.
+   simple_warning("Recompiling child classes...");
 
+   /*
+   int column = 0;
    for (; l != NULL; l = l->next)
    {
       const char *name = ((recompile_type) (l->data))->class_id->name;
@@ -391,10 +409,10 @@ void recompile_warnings(list_type l)
       }
       printf("%s  ", name);
       column += strlen(name) + 2;
-      
-      /* ((recompile_type) (l->data))->superclass->name); */
+
+      // ((recompile_type) (l->data))->superclass->name); 
    }
-   printf("\n");
+   printf("\n");*/
 }
 /************************************************************************/
 int yywrap(void)
@@ -409,10 +427,15 @@ int yywrap(void)
    /* If in an included file, move back to including file */
    if (include_depth > 0)
    {
+      if (directory_mode && in_constants)
+      {
+         action_save_constants(current_fname);
+      }
       include_depth--;
       lineno = include_stack[include_depth].lineno;
       current_fname = include_stack[include_depth].filename;
       yy_switch_to_buffer(include_stack[include_depth].buffer);
+
       return 0;
    }
 
@@ -466,7 +489,8 @@ FILE *open_include_file(char *filename)
    }
 
    /* Finally, just try current directory */
-   fin = fopen(filename, "r");
+   sprintf(tempbuf, "%s/%s", current_path, filename);
+   fin = fopen(tempbuf, "r");
 
    return fin;
 }
@@ -489,6 +513,18 @@ void include_file(char *filename)
    {
       action_error("Can't find include file %s", filename);
       return;
+   }
+
+   if (directory_mode && in_constants)
+   {
+      // Record which constants files are parsed in directory mode
+      // because we only need to parse them once. Constants are saved
+      // in the ID table so we can access them again.
+      if (!include_const_file_parse(filename))
+      {
+         fclose(fin);
+         return;
+      }
    }
 
    /* Save away current state, and move on to included file */
@@ -520,6 +556,44 @@ void add_include_directory(char *dirname)
    }
 }
 /************************************************************************/
+/*
+* check_output_directory:  Create given directory if it doesn't exist.
+*   Also create the two child directories we need (loadkod, rsc).
+*/
+void check_output_directory(char *dirname)
+{
+   sprintf(bof_output_dir, "%s\\loadkod", dirname);
+   sprintf(rsc_output_dir, "%s\\rsc", dirname);
+
+   if (access(dirname, 4) != 0)
+   {
+      // Try create it.
+      if (_mkdir(dirname) != 0)
+      {
+         printf("Failed to create output directory %s!\n", dirname);
+         exit(1);
+      }
+   }
+   if (access(bof_output_dir, 4) != 0)
+   {
+      // Try create it.
+      if (_mkdir(bof_output_dir) != 0)
+      {
+         printf("Failed to create output directory %s!\n", bof_output_dir);
+         exit(1);
+      }
+   }
+   if (access(rsc_output_dir, 4) != 0)
+   {
+      // Try create it.
+      if (_mkdir(rsc_output_dir) != 0)
+      {
+         printf("Failed to create output directory %s!\n", rsc_output_dir);
+         exit(1);
+      }
+   }
+}
+/************************************************************************/
 void usage(void)
 {
    fprintf(stderr, "usage: bc <options> filename ...\n");
@@ -529,20 +603,36 @@ void usage(void)
    fprintf(stderr, "     -I dir        Add dir to include path\n");
 }
 /************************************************************************/
+void usage_directory(void)
+{
+#ifdef BLAK_PLATFORM_WINDOWS
+   fprintf(stderr, "\nOR to compile a directory recursively:\n\n");
+   fprintf(stderr, "usage: bc -r <options> directory ...\n");
+   fprintf(stderr, "     possible options are:\n");
+   fprintf(stderr, "     -d            Put debugging info in .bof file\n");
+   fprintf(stderr, "     -K file       Specify kodbase file\n");
+   fprintf(stderr, "     -I dir        Add dir to include path\n");
+#endif
+}
+/************************************************************************/
 int main(int argc, char **argv)
 {
    int i;
-   list_type current_file_ptr;
    char *arg;
 
    if (argc == 1)
    {
       usage();
+      usage_directory();
       exit(1);
    }
 
    file_list = NULL;
+   directory_list = NULL;
    debug_bof = False;
+   directory_mode = False;
+   bof_output_dir[0] = 0;
+   rsc_output_dir[0] = 0;
 
    num_include_dirs = 0;
 
@@ -551,97 +641,134 @@ int main(int argc, char **argv)
    {
       arg = argv[i];
       if (*arg == '-' || *arg == '/')
-	 /* Switch on command-line options */
-	 switch(toupper(*(arg + 1)))
-	 {
-	 case 'D':               /* Debugging on */
-	    debug_bof = True;
-	    break;
-	    
-	 case 'K' :              /* Specify kodbase filename */
-	    if (i == argc - 1)
-	       printf("Switch -%c needs a filename (ignoring)\n",*(arg+1));
-	    else
-	    {
-	       i++;
-	       arg = argv[i];
-	       set_kodbase_filename(arg);
-	    }
-	    break;
-	    
-	 case 'I':               /* Specify include file directory */
-	    if (i == argc - 1)
-	       printf("Switch -%c needs a directory (ignoring)\n",*(arg+1));
-	    else
-	    {
-	       i++;
-	       arg = argv[i];
-	       if (access(arg,4) == 0) /* 4 means read access */
-		  add_include_directory(arg);
-	       else
-	       {
-		  printf("Unable to read include file directory %s\n",arg);
-		  exit(1);
-	       }
-	    }
-	    break;
+      {
+         /* Switch on command-line options */
+         switch(toupper(*(arg + 1)))
+         {
+         case 'D':               /* Debugging on */
+            debug_bof = True;
+            break;
 
+         case 'K' :              /* Specify kodbase filename */
+            if (i == argc - 1)
+               printf("Switch -%c needs a filename (ignoring)\n",*(arg+1));
+            else
+            {
+               i++;
+               arg = argv[i];
+               set_kodbase_filename(arg);
+            }
+            break;
 
-	 default:
-	    printf("Ignoring unknown switch -%c.\n", *(arg + 1));
-	    
-	 }
-      else file_list = list_add_item(file_list, argv[i]);
+         case 'I':               /* Specify include file directory */
+            if (i == argc - 1)
+               printf("Switch -%c needs a directory (ignoring)\n",*(arg+1));
+            else
+            {
+               i++;
+               arg = argv[i];
+               if (access(arg,4) == 0) /* 4 means read access */
+                  add_include_directory(arg);
+               else
+               {
+                  printf("Unable to read include file directory %s\n",arg);
+                  exit(1);
+               }
+            }
+            break;
+         case 'R': /* Compiling using a directory instead of a filename */
+            directory_mode = True;
+            break;
+         case 'O': /* Output directory */
+            if (i == argc - 1)
+               printf("Switch -%c needs a directory (ignoring)\n",*(arg+1));
+            else
+            {
+               i++;
+               arg = argv[i];
+               // Will exit if it doesn't succeed.
+               check_output_directory(arg);
+            }
+            break;
+         default:
+            printf("Ignoring unknown switch -%c.\n", *(arg + 1));
+         }
+      }
+      else
+      {
+         if (directory_mode)
+            directory_list = list_add_item(directory_list, argv[i]);
+         else
+            file_list = list_add_item(file_list, argv[i]);
+      }
    }
 
-   if (file_list == NULL)
+#ifdef BLAK_PLATFORM_WINDOWS
+   if (directory_mode)
+      compile_directory_mode();
+   else
+#endif
+   compile_file_list(".\\", file_list);
+
+   return !generate_code;
+}
+
+void compile_file_list(char *path, list_type l)
+{
+   if (l == NULL)
    {
       printf("No files specified!\n");
-      exit(1);
+      return;
    }
-
-   current_file_ptr = file_list;
 
    /* Uncomment the next line to get parser trace */
    /* yydebug = 1; */
 
-   initialize_parser();
+   // In directory mode, these are handled once before compilation.
+   if (!directory_mode)
+   {
+      initialize_parser();
 
-   /* Read in database file */
-   if (!load_kodbase())
-      simple_error("Error loading database; continuing with compilation");
-      
+      /* Read in database file */
+      if (!load_kodbase())
+         simple_error("Error loading database; continuing with compilation");
+   }
 
-   for (current_file_ptr = file_list; current_file_ptr != NULL; 
-      current_file_ptr = current_file_ptr->next)
+   // Save current path for include files.
+   sprintf(current_path,"%s",path);
+
+   for (; l != NULL; l = l->next)
    {
       // Reset per-file counts
       include_depth = 0;
       st.num_strings = 0;
       st.strings = NULL;
 
-      include_stack[0].file_ptr = open_file( (char *) current_file_ptr->data);
-      include_stack[0].buffer = yy_create_buffer(include_stack[0].file_ptr, 
-                                                   YY_BUF_SIZE);
+      include_stack[0].file_ptr = open_file((char *)l->data);
+      include_stack[0].buffer = yy_create_buffer(include_stack[0].file_ptr,
+         YY_BUF_SIZE);
       include_stack[0].filename = current_fname;
       yy_switch_to_buffer(include_stack[0].buffer);
-/*
+      /*
       printf("File %s:\n", (char *) current_file_ptr->data);
-*/
+      */
       lineno = 1;
-      
+
       yyparse();
 
       /* Get rid of buffer for original file */
-/*      yy_delete_buffer(include_stack[0].buffer); */
+      // yy_delete_buffer(include_stack[0].buffer);
 
-      if (generate_code) 
-         codegen(current_fname, bof_fname); 
+      if (generate_code)
+         codegen(current_fname, bof_fname);
       generate_code = True;
    }
 
+   // Kodbase saves once at the end (much faster). Also, incremental kodbase
+   // with compile errors can lead to failed future builds.
+   if (codegen_ok && !directory_mode)
+      save_kodbase();
+
    /* Give warnings for classes that should be recompiled */
    recompile_warnings(st.recompile_list);
-
-   return !generate_code;
 }

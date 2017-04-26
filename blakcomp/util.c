@@ -187,6 +187,32 @@ list_type list_delete_first(list_type l)
 }
 /************************************************************************/
 /*
+* list_destroy_first: delete the first node from the given list; return
+*    the newly modified list. Frees data associated with the list node.
+*/
+list_type list_destroy_first(list_type l)
+{
+   if (l == NULL)
+   {
+      return NULL;
+   }
+
+   if (l->next == NULL)
+   {
+      SafeFree(l->data);
+      SafeFree(l);
+      return NULL;
+   }
+
+   list_type next = l->next;
+   l->next->last = l->last;
+   SafeFree(l->data);
+   SafeFree(l);
+
+   return next;
+}
+/************************************************************************/
+/*
  * list_first_item: Return the first item in the given list.
  */
 void *list_first_item(list_type l)
@@ -272,7 +298,40 @@ list_type list_destroy(list_type l)
    }
    return NULL;
 }
+/************************************************************************/
+/* list_get_nth: Returns the (1-based) nth list node.
+*/
+list_type list_get_nth(list_type l, int count)
+{
+   list_type next = NULL;
 
+   if (l == NULL)
+      return NULL;
+
+   if (count < 0)
+   {
+      simple_warning("Called list_get_nth with invalid count %i.\n", count);
+
+      return NULL;
+   }
+
+   if (count == 1)
+      return l;
+
+   --count;
+
+   do
+   {
+      next = l->next;
+   } while (next != NULL && count-- > 0);
+
+   if (next == NULL)
+   {
+      simple_warning("list_get_nth tried to read past end of list, %i reads remaining.\n", count);
+   }
+
+   return next;
+}
 /************************************************************************/
 /*
  * get_statement_line:  Return line number that should be associated with given statement.

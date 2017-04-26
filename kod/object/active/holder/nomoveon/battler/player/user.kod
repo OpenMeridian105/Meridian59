@@ -8093,7 +8093,7 @@ messages:
       propagate;
    }
 
-   SomethingPhasedIn(what = $)
+   SomethingPhasedIn(what = $,bTeleport=FALSE)
    {
       if (what = self)
       {
@@ -8106,7 +8106,9 @@ messages:
          Send(self,@MsgSendUser,#message_rsc=user_self_phase_in,
                #parm1=(Send(self,@GetRemainingPhaseTime)/1000));
       }
-      else
+      // Don't send the 'phase in' message if the user teleported.
+      // Phase sends a different message in that case.
+      else if (NOT bTeleport)
       {
          Send(self,@MsgSendUser,#message_rsc=user_phase_in,
                #parm1=Send(what,@GetName));

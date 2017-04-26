@@ -4474,7 +4474,7 @@ messages:
    "CF_SAFETY_OFF prevents accidental attacks. You can always successfully "
    "hit a murderer or outlaw, though."
    {
-      local oEnemyGuild, oSoldierShield;
+      local oEnemyGuild, oSoldierShield, iPenTime;
 
       // Don't care about monsters or token holders...
       if IsClass(victim,&Monster)
@@ -4585,6 +4585,11 @@ messages:
                   Send(self,@MsgSendUser,#message_rsc=player_aggressor);
                }
                Send(self,@SetPlayerFlag,#flag=PFLAG_OUTLAW,#value=TRUE);
+
+               // Make sure phase/ghost time is below new upper bound.
+               iPenTime = Send(SETTINGS_OBJECT,@GetOutlawMurdererLogPenGhostTime);
+               piRemainingPhaseTime = Bound(piRemainingPhaseTime,0,iPenTime);
+
                Send(self,@EvaluatePKStatus,#dbug=TRUE);
             }
          }
@@ -5643,7 +5648,7 @@ messages:
          if oWeapon <> $
          {
             // The spell object is the second element of the list. Get that.
-            oWeapon = Nth(first(oWeapon),2);
+            oWeapon = Nth(First(oWeapon),2);
          }
       }
 
@@ -5857,23 +5862,9 @@ messages:
                      }
                      else
                      {
-                        Send(self,@MsgSendUser,#message_rsc=player_wanted_now,
-                              #parm1=Send(what,@GetDef),#parm2=Send(what,@GetName));
-                        Send(self,@SetPlayerFlag,#flag=PFLAG_MURDERER,#value=TRUE);
-
-                        // If scaling pens are enabled for murderers, but not
-                        // for innocents/outlaws, reset our logoff pen count.
-                        // Fair because play styles are different when scaling
-                        // pens are in effect.
-                        if (Send(SETTINGS_OBJECT,@GetFlatPenaltiesEnable)
-                           <> Send(SETTINGS_OBJECT,@GetFlatPenaltiesEnable,
-                                    #flag=PFLAG_MURDERER))
-                        {
-                           Send(self,@ResetLogoffPenaltyCount);
-                        }
+                        // Handles flag changes/message for killing.
+                        Send(self,@MakePlayerMurderer,#what=what);
                         piTimeLastMurder = GetTime();
-                        Send(self,@SetPlayerFlag,#flag=PFLAG_OUTLAW,#value=FALSE);
-                        Send(self,@EvaluatePKStatus,#dbug=TRUE);
                      }
 
                      // Does the lucky murderer win a Revenant?
@@ -5922,6 +5913,37 @@ messages:
       {
          Send(oObject,@OpponentKilled,#what=what,#stroke_obj=stroke_obj);
       }
+
+      return;
+   }
+
+   MakePlayerMurderer(what = $)
+   "Called by anything that turns the player into a murderer (killing "
+   "an innocent or the vilify spell.  If this happened as a result of "
+   "a kill, 'what' is the victim."
+   {
+      if (what <> $)
+      {
+         Send(self,@MsgSendUser,#message_rsc=player_wanted_now,
+               #parm1=Send(what,@GetDef),#parm2=Send(what,@GetName));
+      }
+
+      // Use SetPlayerFlag for PFLAG_MURDERER.
+      piFlags &= ~PFLAG_OUTLAW;
+      Send(self,@SetPlayerFlag,#flag=PFLAG_MURDERER,#value=TRUE);
+
+      // If scaling pens are enabled for murderers, but not
+      // for innocents/outlaws, reset our logoff pen count.
+      // Fair because play styles are different when scaling
+      // pens are in effect.
+      if (Send(SETTINGS_OBJECT,@GetFlatPenaltiesEnable)
+         <> Send(SETTINGS_OBJECT,@GetFlatPenaltiesEnable,
+                  #flag=PFLAG_MURDERER))
+      {
+         Send(self,@ResetLogoffPenaltyCount);
+      }
+
+      Send(self,@EvaluatePKStatus,#dbug=TRUE);
 
       return;
    }
@@ -11279,7 +11301,7 @@ messages:
       {
          if IsClass(i,&Torch)
             OR IsClass(i,&DaemonHelm)
-            OR (IsClass(i,&Weapon)
+            OR ((IsClass(i,&Weapon) OR IsClass(i,&Lute))
                AND Send(i,@HasAttribute,#ItemAtt=WA_GLOWING))
          {
             piDrawEffectFlag |= OF_FLICKERING;
@@ -11368,21 +11390,31 @@ messages:
 
    RecalcLight()
    {
-      local i, iLight, iState, oWeapon, oItemAtt;
+      local i, iLight, iState;
 
       // TODO: Make this into a general check.
 
       // Default base value
       iLight = 5;
 
-      // Torch, Amulet
       foreach i in plUsing
       {
+         // Torch, Amulet
          if IsClass(i,&Torch)
-         OR IsClass(i,&ShadowAmulet)
-         OR IsClass(i,&DaemonHelm)
+            OR IsClass(i,&ShadowAmulet)
+            OR IsClass(i,&DaemonHelm)
          {
-            iLight = iLight + Send(i,@GetLightEffect);
+            iLight += Send(i,@GetLightEffect);
+         }
+         // Glowing weapons?
+         else if ((IsClass(i,&Weapon) OR IsClass(i,&Lute))
+            AND Send(i,@HasAttribute,#ItemAtt=WA_GLOWING))
+         {
+            iState = Send(i,@GetAttributeData,#ItemAtt=WA_GLOWING);
+            if (iState <> $)
+            {
+               iLight += Nth(iState,3);
+            }
          }
       }
 
@@ -11390,18 +11422,13 @@ messages:
                     #what=Send(SYS,@FindSpellByNum,#num=SID_NIGHTVISION));
       if iState <> $
       {
-         iLight = iLight + iState;
+         iLight += iState;
       }
 
-      // Glowing weapons?
-      oWeapon = Send(self,@LookupPlayerWeapon);
-      if oWeapon <> $
+      // Touch attacks can add or remove light.
+      foreach i in Send(self,@GetEnchantmentsByClass,#EnchClass=&TouchAttackSpell)
       {
-         iState = Send(oWeapon,@GetAttributeData,#ItemAtt=WA_GLOWING);
-         if iState <> $
-         {
-            iLight = iLight + Nth(iState,3);
-         }
+         iLight += Send(Nth(i,2),@GetEnchantmentLight);
       }
 
       if piLight <> iLight
@@ -13957,7 +13984,7 @@ messages:
       foreach i in plUsing
       {
          if IsClass(i,&Torch)
-            OR (IsClass(i,&Weapon)
+            OR ((IsClass(i,&Weapon) OR IsClass(i,&Lute))
                AND Send(i,@HasAttribute,#ItemAtt=WA_GLOWING))
          {
             iIntensity = 60;
@@ -14609,14 +14636,14 @@ messages:
          DeleteTimer(ptPhaseVisualEffectTimer);
          ptPhaseVisualEffectTimer = $;
       }
-      
+
+      Send(self,@RefreshPhaseTimeToBase);
+
       oPhase = Send(SYS,@FindSpellByNum,#num=SID_PHASE);
       Send(self,@RemoveEnchantment,#what=oPhase);
       Send(oPhase,@InflictPenalties,#who=self);
 
       Post(self,@AdminGoToLastSafeRoom);
-
-      Send(self,@RefreshPhaseTimeToBase);
 
       return;
    }
@@ -14667,6 +14694,11 @@ messages:
       }
 
       return;
+   }
+
+   IsAtMaxPhaseTime()
+   {
+      return piRemainingPhaseTime = Send(self,@GetBasePhaseTime);
    }
 
    CanPhaseAgain(time=$)

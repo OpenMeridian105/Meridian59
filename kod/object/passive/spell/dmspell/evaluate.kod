@@ -60,6 +60,29 @@ messages:
       return 1;
    }
 
+   CanPayCosts(who = $, lTargets = $)
+   {
+      local oTarget;
+
+      if Length(lTargets) <> 1
+      {
+         return FALSE;
+      }
+
+      oTarget = First(lTargets);
+
+      if (NOT IsClass(oTarget,&Battler))
+      {
+         Send(who,@MsgSendUser,#message_rsc=spell_bad_target,
+               #parm1=vrName,#parm2=Send(oTarget,@GetDef),
+               #parm3=Send(oTarget,@GetName));
+
+         return FALSE;
+      }
+
+      propagate;
+   }
+
    CastSpell(who = $, lTargets = $)
    {
       local i, oTarget, each_obj;

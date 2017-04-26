@@ -96,20 +96,25 @@ messages:
          // from outlaw to murderer
          if Send(i,@CheckPlayerFlag,#flag=PFLAG_OUTLAW)
          {
-            Send(who,@MsgSendUser,#message_rsc=villify_msg_DM,#parm1=Send(i,@GetTrueName));
-            Send(i,@MsgSendUser,#message_rsc=villify_msg_target,#parm1=Send(who,@GetTrueName));
-            Send(i,@SetPlayerFlag,#flag=PFLAG_OUTLAW,#value=False);
-            Send(i,@SetPlayerFlag,#flag=PFLAG_MURDERER,#value=True);
-            Post(i,@EvaluatePKStatus);
+            Send(who,@MsgSendUser,#message_rsc=villify_msg_DM,
+                  #parm1=Send(i,@GetTrueName));
+            Send(i,@MsgSendUser,#message_rsc=villify_msg_target,
+                  #parm1=Send(who,@GetTrueName));
+            Send(i,@MakePlayerMurderer);
 
             continue;
          }
 
          // from lawful to outlaw
-         Send(who,@MsgSendUser,#message_rsc=villify_msg_DM,#parm1=Send(i,@GetTrueName));		
-         Send(i,@MsgSendUser,#message_rsc=villify_msg_target,#parm1=Send(who,@GetTrueName));
-         Send(i,@SetPlayerFlag,#flag=PFLAG_OUTLAW,#value=True);
-         Send(i,@SetPlayerFlag,#flag=PFLAG_MURDERER,#value=False);
+         Send(who,@MsgSendUser,#message_rsc=villify_msg_DM,
+               #parm1=Send(i,@GetTrueName));
+         Send(i,@MsgSendUser,#message_rsc=villify_msg_target,
+               #parm1=Send(who,@GetTrueName));
+         Send(i,@SetPlayerFlag,#flag=PFLAG_OUTLAW,#value=TRUE);
+         Send(i,@SetPlayerFlag,#flag=PFLAG_MURDERER,#value=FALSE);
+         // Reset phase/ghost time.
+         Send(who,@RefreshPhaseTimeToBase);
+
          Post(i,@EvaluatePKStatus);
       }
 

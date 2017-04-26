@@ -36,6 +36,9 @@ classvars:
 
    viAttack_spell = ATCK_SPELL_ALL
 
+   // No delay.
+   viPostCast_time = 0
+
    viMana = 0
    viSpell_level = 50
    viSpellExertion = 0
@@ -51,8 +54,8 @@ classvars:
 
 properties:
 
-   piDamageMin = 500000
-   piDamageMax = 500000
+   piDamageMin = 5000
+   piDamageMax = 5000
    prSpellHit = smite_hit_rsc
    pbAbsolute = TRUE
 
@@ -64,20 +67,20 @@ messages:
    CanPayCosts(who=$, lTargets = $)
    "Checks to be sure that only DMs use this command."
    {
-      if NOT isClass(who,&DM)
+      if NOT IsClass(who,&DM)
       {
-         send(who,@RemoveSpell,#num=viSpell_num);
-         debug("Player",send(who,@GetName),"had",send(self,@GetName),"--removed");
+         Send(who,@RemoveSpell,#num=viSpell_num);
+         Debug("Player",Send(who,@GetName),"had",Send(self,@GetName),"--removed");
 
          return FALSE;
       }
 
-      if NOT (send(who,@GreenNamed)
-              OR send(SYS,@GetChaosNight)
-              OR isClass(first(lTargets),&Monster)
-              OR isClass(first(lTargets),&DM))
+      if NOT (Send(who,@GreenNamed)
+         OR Send(SYS,@GetChaosNight)
+         OR IsClass(First(lTargets),&Monster)
+         OR IsClass(First(lTargets),&DM))
       {
-         send(who,@DontInterfere);
+         Send(who,@DontInterfere);
 
          return FALSE;
       }
@@ -115,7 +118,6 @@ messages:
    {
       return FALSE;
    }
-
 
 end
 ////////////////////////////////////////////////////////////////////////////////

@@ -2170,9 +2170,8 @@ messages:
 
    DMSayPlain()
    {
-      local i, lObjects, oObject;
+      local i, oObject;
 
-      Send(self,@ResetPlayerIcon,#alldone=FALSE);
       pbMorph = FALSE;
 
       // For characters we want to have a non-standard icon
@@ -2187,16 +2186,16 @@ messages:
       Send(self,@SetPlayerFlag,#flag=PFLAG_ANONYMOUS,#value=FALSE);
       Send(self,@ResetPlayerDrawfx,#drawfx=DRAWFX_NONE);
 
-      piDMFlags = piDMFlags & ~DMFLAG_INVISIBLE;
-      piDMFlags = piDMFlags & ~DMFLAG_SHADOW;
+      piDMFlags &= ~DMFLAG_INVISIBLE;
+      piDMFlags &= ~DMFLAG_SHADOW;
 
       Send(self,@ResetPlayerFlagList);
 
-      lObjects = Send(poOwner,@GetHolderActive);
+      Send(self,@ResetPlayerIcon);
 
-      foreach i in lObjects
+      foreach i in Send(poOwner,@GetHolderActive)
       {
-         oObject = Send(poOwner,@HolderExtractObject,#data=i);
+         oObject = First(i);
 
          if IsClass(oObject,&User)
          {
@@ -2624,9 +2623,8 @@ messages:
    {
       if pbMorph
       {
-         piBody_translations = piBody_translations & ~DM_TRANSLATION_BODY_MASK;
-         piBody_translations = piBody_translations | 
-                               (Send(self,@GetDefaultShirtTranslation)
+         piBody_translations &= ~DM_TRANSLATION_BODY_MASK;
+         piBody_translations |= (Send(self,@GetDefaultShirtTranslation)
                                 * DM_TRANSLATION_BODY_MUL);
 
          if poOwner <> $ AND alldone

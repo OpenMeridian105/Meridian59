@@ -296,7 +296,7 @@ int recompile_check(char *name, dir_data d, int recompiled_parent)
    // Kod must exist, others don't have to.
    if (stat(kodname, &time_kod) != 0)
    {
-      printf("stat() failed with file %s\n", kodname);
+      simple_error("Found makefile entry with missing kod file %s", strrchr(kodname,'\\') + 1);
       return False;
    }
 

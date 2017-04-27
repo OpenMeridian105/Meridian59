@@ -252,16 +252,23 @@ void handle_error(void)
 /* yyerror should be used for lexing & parsing errors. */
 void yyerror(const char *s)
 {
+   // Kod files store full path, include files don't.
+   char *fname = strrchr(current_fname, '\\');
+   if (fname)
+      fname++; // Move past the slash.
+   else
+      fname = current_fname;
+
    /* If token is EOL, give useful error message */
    if (!strcmp(yytext, "\n"))
    {
       printf("%s(%d): fatal error: Premature end of line\n",
-         current_fname, lineno - 1);
+         fname, lineno - 1);
    }
    else
    {
       printf("%s(%d): fatal error: %s on token %s\n",
-         current_fname, lineno, s, yytext);
+         fname, lineno, s, yytext);
    }
 
    // These are critical errors, so just exit. Continuing will potentially
@@ -279,7 +286,12 @@ void action_error(const char *fmt, ...)
    if (!strcmp(yytext, "\n"))
       errline--;
 
-   fprintf(stderr, "%s(%d): error: ", current_fname, errline);  
+   // Kod files store full path, include files don't.
+   char *fname = strrchr(current_fname, '\\');
+   if (fname)
+      fprintf(stderr, "%s(%d): error: ", fname + 1, errline);
+   else
+      fprintf(stderr, "%s(%d): error: ", current_fname, errline);
 
    va_start(marker, fmt);
    vprintf(fmt, marker);
@@ -306,7 +318,6 @@ void simple_error(const char *fmt, ...)
 /* simple_warning should be used for all warnings. */
 void simple_warning(const char *fmt, ...)
 {
-
    va_list marker;
 
    printf("  warning: ");
@@ -609,6 +620,7 @@ void usage_directory(void)
    fprintf(stderr, "     -d            Put debugging info in .bof file\n");
    fprintf(stderr, "     -K file       Specify kodbase file\n");
    fprintf(stderr, "     -I dir        Add dir to include path\n");
+   fprintf(stderr, "     -O dir        Output directory for bof/rsc (e.g. \\run\\server)\n");
 #endif
 }
 /************************************************************************/
@@ -730,6 +742,11 @@ void compile_file_list(char *path, list_type l)
       if (!load_kodbase())
          simple_error("Error loading database; continuing with compilation");
    }
+
+   // Set to True here in case any start-up processes used simple_error.
+   // If compilation shouldn't be performed at this stage, blakcomp
+   // should be exited at the appropriate point.
+   generate_code = True;
 
    // Save current path for include files.
    sprintf(current_path,"%s",path);

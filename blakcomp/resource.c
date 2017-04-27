@@ -10,6 +10,12 @@
  */
 #include "blakcomp.h"
 
+ // See codegen.c for explanation.
+extern char *codegen_buffer;
+extern int codegen_buffer_position;
+extern int codegen_buffer_size;
+extern int codegen_buffer_warning_size;
+
 static const int RSC_VERSION = 5;
 static char rsc_magic[] = {0x52, 0x53, 0x43, 0x01};
 
@@ -92,14 +98,21 @@ void write_resources(char *fname)
       simple_error("Unable to open resource file %s!", fname);
       return;
    }
-   
-   /* Write out header information */
-   for (i=0; i < 4; i++)
-      fwrite(&rsc_magic[i], 1, 1, f);
 
+   codegen_buffer_position = 0;
+
+   /* Write out header information */
+   for (i = 0; i < 4; i++)
+   {
+      memcpy(&(codegen_buffer[codegen_buffer_position]), &rsc_magic[i], 1);
+      codegen_buffer_position++;
+   }
+   
    temp = RSC_VERSION;
-   fwrite(&temp, 4, 1, f);
-   fwrite(&num_resources, 4, 1, f);
+   memcpy(&(codegen_buffer[codegen_buffer_position]), &temp, 4);
+   codegen_buffer_position += 4;
+   memcpy(&(codegen_buffer[codegen_buffer_position]), &num_resources, 4);
+   codegen_buffer_position += 4;
 
    /* Loop through classes in this source file, and then their resources */
    for (c = st.classes; c != NULL; c = c->next)
@@ -120,16 +133,25 @@ void write_resources(char *fname)
                if (r->resource[j])
                {
                   // Write out id #
-                  fwrite(&r->lhs->idnum, 4, 1, f);
+                  memcpy(&(codegen_buffer[codegen_buffer_position]), &r->lhs->idnum, 4);
+                  codegen_buffer_position += 4;
 
-                  fwrite(&j, 4, 1, f);
+                  // Language ID
+                  memcpy(&(codegen_buffer[codegen_buffer_position]), &j, 4);
+                  codegen_buffer_position += 4;
+
+                  // String
                   str = GetStringFromResource(r, j);
-                  fwrite(str, strlen(str) + 1, 1, f);
+                  int len = strlen(str) + 1;
+                  memcpy(&(codegen_buffer[codegen_buffer_position]), str, len);
+                  codegen_buffer_position += len;
                }
             }
          }
    }
 
+   // Write the file in one call.
+   fwrite(codegen_buffer, codegen_buffer_position, 1, f);
    fclose(f);
 }
 /******************************************************************************/

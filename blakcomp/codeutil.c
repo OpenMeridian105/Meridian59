@@ -18,7 +18,6 @@ extern char *current_fname;
 
 // See codegen.c for explanation.
 extern char *codegen_buffer;
-extern int codegen_buffer_position;
 extern int codegen_buffer_size;
 extern int codegen_buffer_warning_size;
 

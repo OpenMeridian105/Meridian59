@@ -1382,9 +1382,6 @@ void codegen(char *kod_fname, char *bof_fname)
 
    close(outfile);
 
-   if (!directory_mode)
-      codegen_exit();
-
    /* If code generation failed, delete partial bof file */
    if (!codegen_ok)
    {
@@ -1405,6 +1402,9 @@ void codegen(char *kod_fname, char *bof_fname)
       dircompile_copy_files(bof_fname, temp, strrchr(bof_fname, '\\'),
          strrchr(temp, '\\'));
    }
+
+   if (!directory_mode)
+      codegen_exit();
 
    /* Mark all classes as done */
    for (c = st.classes; c != NULL; c = c->next)

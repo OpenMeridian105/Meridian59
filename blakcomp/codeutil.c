@@ -15,6 +15,13 @@
 // to many functions in this file.
 extern int outfile;
 extern char *current_fname;
+
+// See codegen.c for explanation.
+extern char *codegen_buffer;
+extern int codegen_buffer_position;
+extern int codegen_buffer_size;
+extern int codegen_buffer_warning_size;
+
 /************************************************************************/
 /*
  * codegen_warning: Print a warning message during code generation.
@@ -51,23 +58,32 @@ void codegen_error(const char *fmt, ...)
 /************************************************************************/
 void OutputOpcode(int outfile, opcode_data opcode)
 {
-   BYTE datum;
+   memcpy(&(codegen_buffer[codegen_buffer_position]), &opcode, 1);
+   codegen_buffer_position++;
 
-   /* Write out a 1 byte opcode--need to memcpy since opcode is bitfield structure */
-   memcpy(&datum, &opcode, 1);
-   write(outfile, &datum, 1);
+   // Resize buffer at 90%.
+   if (codegen_buffer_position > codegen_buffer_warning_size)
+      codegen_resize_buffer();
 }
 /************************************************************************/
 void OutputByte(int outfile, BYTE datum)
 {
-   /* Write out a 1 byte # */
-   write(outfile, &datum, sizeof(datum));
+   memcpy(&(codegen_buffer[codegen_buffer_position]), &datum, 1);
+   codegen_buffer_position++;
+
+   // Resize buffer at 90%.
+   if (codegen_buffer_position > codegen_buffer_warning_size)
+      codegen_resize_buffer();
 }
 /************************************************************************/
 void OutputInt(int outfile, int datum)
 {
-   /* Write out a 4 byte # */
-   write(outfile, &datum, sizeof(datum)); 
+   memcpy(&(codegen_buffer[codegen_buffer_position]), &datum, 4);
+   codegen_buffer_position += 4;
+
+   // Resize buffer at 90%.
+   if (codegen_buffer_position > codegen_buffer_warning_size)
+      codegen_resize_buffer();
 }
 /************************************************************************/
 /*
@@ -249,7 +265,13 @@ int const_to_int(const_type c)
 void OutputConstant(int outfile, const_type c)
 {
    int outnum = const_to_int(c);
-   write(outfile, &outnum, sizeof(outnum));
+
+   memcpy(&(codegen_buffer[codegen_buffer_position]), &outnum, sizeof(outnum));
+   codegen_buffer_position += sizeof(outnum);
+
+   // Resize buffer at 90%.
+   if (codegen_buffer_position > codegen_buffer_warning_size)
+      codegen_resize_buffer();
 }
 /************************************************************************/
 /*

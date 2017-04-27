@@ -14,6 +14,8 @@
 
 static BYTE bof_magic[] = { 0x42, 0x4F, 0x46, 0xFF };
 
+int codegen_initialised = False;
+
 int codegen_ok;
 extern int debug_bof;  /* Should we put debugging info into .bof? */
 extern int directory_mode;
@@ -28,6 +30,44 @@ int outfile; /* File handle of output file */
 static list_type loop_stack;    /* Info for all current (possibly nested) loops */
 static loop_type current_loop;  /* Info for current loop */
 
+
+// Buffer used to store info for writing bof files in one call.
+// About 50% faster than constant writes.
+#define OUTFILE_BUFFER 1048576
+
+// buffer is used for buffering data to write at one time, vs writing
+// multiple times with small amount of data.
+char *codegen_buffer;
+
+// buffer_position is the current position of buffer we're writing
+// to, and the length that will be written to file if flushed.
+int codegen_buffer_position;
+
+// buffer_size is the size of the currently allocated memory for buffer.
+int codegen_buffer_size;
+
+// buffer_warning_size is used to check if we need to flush the buffer.
+// Equal to 90% buffer_size.
+int codegen_buffer_warning_size;
+
+// Keep track of end position while we are 'seeking' around the buffer.
+int codegen_buffer_end;
+
+void codegen_resize_buffer()
+{
+   // Buffer too small, double allocated memory.
+   // In practice very very unlikely, but still safer to implement it.
+   codegen_buffer_size *= 2;
+   codegen_buffer_warning_size = (codegen_buffer_size / 10) * 9;
+   codegen_buffer = (char *)realloc(codegen_buffer, codegen_buffer_size);
+}
+
+void codegen_write_buffer()
+{
+   write(outfile, codegen_buffer, codegen_buffer_position);
+   codegen_buffer_position = 0;
+   codegen_buffer_end = 0;
+}
 /************************************************************************/
 /*
  * codegen_header: Write out header stuff before class info.
@@ -119,7 +159,9 @@ void codegen_string_table(void)
    for (i=0; i < st.num_strings; i++)
    {
       str = (char *) (l->data);
-      write(outfile, str, strlen(str));
+      int len = strlen(str);
+      memcpy(&(codegen_buffer[codegen_buffer_position]), str, len);
+      codegen_buffer_position += len;
       OutputByte(outfile, 0);    // null terminate
       l = l->next;
    }
@@ -150,14 +192,20 @@ void codegen_debug_info(void)
  */
 void codegen_filename(char *filename)
 {
+   int len;
+
    if (directory_mode)
    {
       char *fname = strrchr(filename, '\\') + 1;
-      write(outfile, fname, strlen(fname));
+      len = strlen(fname);
+      memcpy(&(codegen_buffer[codegen_buffer_position]), fname, len);
+      codegen_buffer_position += len;
    }
    else
    {
-      write(outfile, filename, strlen(filename));
+      len = strlen(filename);
+      memcpy(&(codegen_buffer[codegen_buffer_position]), filename, len);
+      codegen_buffer_position += len;
    }
    OutputByte(outfile, 0);    // null terminate
 }
@@ -1229,6 +1277,29 @@ void codegen_class(class_type c)
 	 break;
    }
 }
+
+void codegen_init()
+{
+   if (codegen_initialised)
+   {
+      simple_warning("Calling codegen_init when codegen already initialised!");
+      return;
+   }
+   codegen_initialised = True;
+
+   // Buffer for buffering data to call write() once.
+   codegen_buffer_end = 0;
+   codegen_buffer_position = 0;
+   codegen_buffer = (char *)SafeMalloc(OUTFILE_BUFFER);
+   codegen_buffer_size = OUTFILE_BUFFER;
+   codegen_buffer_warning_size = (OUTFILE_BUFFER / 10) * 9;
+}
+
+void codegen_exit()
+{
+   SafeFree(codegen_buffer);
+   codegen_initialised = False;
+}
 /************************************************************************/
 /* 
  * codegen: Generate code for all the classes in the symbol table.
@@ -1247,6 +1318,16 @@ void codegen(char *kod_fname, char *bof_fname)
    {
       simple_error("Unable to open bof file %s!", bof_fname);
       return;
+   }
+
+   if (directory_mode)
+   {
+      codegen_buffer_end = 0;
+      codegen_buffer_position = 0;
+   }
+   else
+   {
+      codegen_init();
    }
 
    /* Write out header info */
@@ -1296,14 +1377,21 @@ void codegen(char *kod_fname, char *bof_fname)
       codegen_filename(kod_fname);
    }
 
+   if (codegen_buffer_position > 0)
+      codegen_write_buffer();
+
    close(outfile);
+
+   if (!directory_mode)
+      codegen_exit();
 
    /* If code generation failed, delete partial bof file */
    if (!codegen_ok)
    {
       if (unlink(bof_fname))
-	 codegen_error("Couldn't delete file %s", bof_fname);
-      else simple_warning("Deleted file %s", bof_fname);
+         codegen_error("Couldn't delete file %s", bof_fname);
+      else
+         simple_warning("Deleted file %s", bof_fname);
    }
 
    /* Write out resources if we compiled ok */

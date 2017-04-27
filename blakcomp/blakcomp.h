@@ -416,6 +416,8 @@ int class_compare(void *info1, void *info2);
 int add_identifier(id_type id, int type);
 int get_statement_line(stmt_type s, int curline);
 
+void codegen_init(void);
+void codegen_exit(void);
 void codegen(char *current_fname, char *bof_fname);
 void set_kodbase_filename(char *filename);
 int load_kodbase(void);

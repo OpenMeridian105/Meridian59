@@ -101,6 +101,9 @@ void compile_directory_mode()
    if (!load_kodbase())
       simple_error("Error loading database; continuing with compilation");
 
+   // Initial setup before codegen runs. Only need to do it once.
+   codegen_init();
+
    // Compile by directory.
    for (list_type dirs = directory_list; dirs != NULL; dirs = dirs->next)
    {
@@ -150,6 +153,9 @@ void compile_directory_mode()
    // Partially failed build is still a broken build.
    if (codegen_ok)
       save_kodbase();
+
+   // Codegen cleanup.
+   codegen_exit();
 
    // Print some stats.
    timeEnd = time(NULL);

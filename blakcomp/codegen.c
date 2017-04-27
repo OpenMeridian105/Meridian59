@@ -14,8 +14,11 @@
 
 static BYTE bof_magic[] = { 0x42, 0x4F, 0x46, 0xFF };
 
+int codegen_initialised = False;
+
 int codegen_ok;
 extern int debug_bof;  /* Should we put debugging info into .bof? */
+extern int directory_mode;
 
 typedef struct {
    int lineno;   // Kod line number
@@ -27,6 +30,44 @@ int outfile; /* File handle of output file */
 static list_type loop_stack;    /* Info for all current (possibly nested) loops */
 static loop_type current_loop;  /* Info for current loop */
 
+
+// Buffer used to store info for writing bof files in one call.
+// About 50% faster than constant writes.
+#define OUTFILE_BUFFER 1048576
+
+// buffer is used for buffering data to write at one time, vs writing
+// multiple times with small amount of data.
+char *codegen_buffer;
+
+// buffer_position is the current position of buffer we're writing
+// to, and the length that will be written to file if flushed.
+int codegen_buffer_position;
+
+// buffer_size is the size of the currently allocated memory for buffer.
+int codegen_buffer_size;
+
+// buffer_warning_size is used to check if we need to flush the buffer.
+// Equal to 90% buffer_size.
+int codegen_buffer_warning_size;
+
+// Keep track of end position while we are 'seeking' around the buffer.
+int codegen_buffer_end;
+
+void codegen_resize_buffer()
+{
+   // Buffer too small, double allocated memory.
+   // In practice very very unlikely, but still safer to implement it.
+   codegen_buffer_size *= 2;
+   codegen_buffer_warning_size = (codegen_buffer_size / 10) * 9;
+   codegen_buffer = (char *)realloc(codegen_buffer, codegen_buffer_size);
+}
+
+void codegen_write_buffer()
+{
+   write(outfile, codegen_buffer, codegen_buffer_position);
+   codegen_buffer_position = 0;
+   codegen_buffer_end = 0;
+}
 /************************************************************************/
 /*
  * codegen_header: Write out header stuff before class info.
@@ -118,10 +159,14 @@ void codegen_string_table(void)
    for (i=0; i < st.num_strings; i++)
    {
       str = (char *) (l->data);
-      write(outfile, str, strlen(str));
+      int len = strlen(str);
+      memcpy(&(codegen_buffer[codegen_buffer_position]), str, len);
+      codegen_buffer_position += len;
       OutputByte(outfile, 0);    // null terminate
       l = l->next;
    }
+   st.strings = list_destroy(st.strings);
+   st.num_strings = 0;
 }
 /************************************************************************/
 /*
@@ -147,7 +192,21 @@ void codegen_debug_info(void)
  */
 void codegen_filename(char *filename)
 {
-   write(outfile, filename, strlen(filename));
+   int len;
+
+   if (directory_mode)
+   {
+      char *fname = strrchr(filename, '\\') + 1;
+      len = strlen(fname);
+      memcpy(&(codegen_buffer[codegen_buffer_position]), fname, len);
+      codegen_buffer_position += len;
+   }
+   else
+   {
+      len = strlen(filename);
+      memcpy(&(codegen_buffer[codegen_buffer_position]), filename, len);
+      codegen_buffer_position += len;
+   }
    OutputByte(outfile, 0);    // null terminate
 }
 /************************************************************************/
@@ -463,9 +522,9 @@ int codegen_switch(switch_stmt_type s, int numlocals)
    expr_type temp_expr; // Used for comparison of the switch condition with each case.
 
    id_type temp_id; // Temp ID for non-ID switch condition expressions.
-   expr_type switch_condition; // Switch condition expression.
-   stmt_type temp_stmt; // Temp assign statement for non-ID switch conditions.
-   assign_stmt_type assign_stmt; // Temp assign statement for non-ID switch conditions. 
+   expr_struct switch_condition; // Switch condition expression.
+   stmt_struct temp_stmt; // Temp assign statement for non-ID switch conditions.
+   assign_stmt_struct assign_stmt; // Temp assign statement for non-ID switch conditions. 
 
    // First iterate through case list and check that none are duplicate constants or IDs.
    for (case_list = s->body; case_list != NULL; case_list = case_list->next)
@@ -501,22 +560,20 @@ int codegen_switch(switch_stmt_type s, int numlocals)
    }
 
    if (s->condition->type == E_IDENTIFIER || s->condition->type == E_CONSTANT)
-      switch_condition = s->condition;
+      switch_condition = *s->condition;
    else
    {
       // Make a temp ID for switch condition expression, assign the expr to it.
       temp_id = make_temp_var(numlocals + 1);
 
       // Assign the expression to the ID
-      assign_stmt = (assign_stmt_type)SafeMalloc(sizeof(assign_stmt_struct));
-      assign_stmt->lhs = temp_id;
-      assign_stmt->rhs = s->condition;
-      
-      temp_stmt = (stmt_type)SafeMalloc(sizeof(stmt_struct));
-      temp_stmt->type = S_ASSIGN;
-      temp_stmt->value.assign_stmt_val = assign_stmt;
-      temp_stmt->lineno = 0;
-      numtemps = codegen_statement(temp_stmt, numlocals);
+      assign_stmt.lhs = temp_id;
+      assign_stmt.rhs = s->condition;
+
+      temp_stmt.type = S_ASSIGN;
+      temp_stmt.value.assign_stmt_val = &assign_stmt;
+      temp_stmt.lineno = 0;
+      numtemps = codegen_statement(&temp_stmt, numlocals);
 
       /* Reserve variable "temp" through entire loop by incrementing numlocals */
       our_maxlocal = ++numlocals;
@@ -524,14 +581,13 @@ int codegen_switch(switch_stmt_type s, int numlocals)
          our_maxlocal = numtemps;
 
       // Make the completed ID into an expression.
-      switch_condition = (expr_type)SafeMalloc(sizeof(expr_struct));
-      switch_condition->type = E_IDENTIFIER;
-      switch_condition->value.idval = temp_id;
-      switch_condition->lineno = 0;
+      switch_condition.type = E_IDENTIFIER;
+      switch_condition.value.idval = temp_id;
+      switch_condition.lineno = 0;
    }
 
    /* Generate code for conditions */
-   numtemps = simplify_expr(switch_condition, numlocals);
+   numtemps = simplify_expr(&switch_condition, numlocals);
    if (numtemps > our_maxlocal)
       our_maxlocal = numtemps;
 
@@ -556,7 +612,7 @@ int codegen_switch(switch_stmt_type s, int numlocals)
       if (numtemps > our_maxlocal)
          our_maxlocal = numtemps;
       // Make an equality check expression from switch condition and current case condition.
-      temp_expr = make_bin_op(switch_condition, EQ_OP, case_stmt->value.case_stmt_val->condition);
+      temp_expr = make_bin_op(&switch_condition, EQ_OP, case_stmt->value.case_stmt_val->condition);
       numtemps = simplify_expr(temp_expr, numlocals);
       if (numtemps > our_maxlocal)
          our_maxlocal = numtemps;
@@ -665,13 +721,15 @@ void codegen_exit_loop(void)
    /* Backpatch break statements to jump to end of loop */
    for (p = current_loop->break_list; p != NULL; p = p->next)
       BackpatchGotoUnconditional(outfile, (int) p->data, FileCurPos(outfile));
+   current_loop->break_list = list_delete(current_loop->break_list);
 
    /* Backpatch conditional goto statements to jump to end of loop */
    for (p = current_loop->conditional_goto_list; p != NULL; p = p->next)
       BackpatchGotoConditional(outfile, (int)p->data, FileCurPos(outfile));
+   current_loop->conditional_goto_list = list_delete(current_loop->conditional_goto_list);
 
    /* Remove current list from loop "stack" */
-   loop_stack = list_delete_first(loop_stack);
+   loop_stack = list_destroy_first(loop_stack);
    
    /* Restore current_loop to correct state */
    current_loop = (loop_type) list_first_item(loop_stack);
@@ -853,11 +911,11 @@ int codegen_for(for_stmt_type s, int numlocals)
 int codegen_foreach(foreach_stmt_type s, int numlocals)
 {
    int our_maxlocal, numtemps;
-   stmt_type temp_stmt = (stmt_type)SafeMalloc(sizeof(stmt_struct));
-   expr_type temp_expr = (expr_type)SafeMalloc(sizeof(expr_struct));
-   assign_stmt_type assign_stmt = (assign_stmt_type)SafeMalloc(sizeof(assign_stmt_struct));
-   call_stmt_type call_stmt = (call_stmt_type)SafeMalloc(sizeof(call_stmt_struct));
-   arg_type arg = (arg_type)SafeMalloc(sizeof(arg_struct));
+   stmt_struct temp_stmt;
+   expr_struct temp_expr;
+   assign_stmt_struct assign_stmt;
+   call_stmt_struct call_stmt;
+   arg_struct arg;
    id_type temp_id;
    long toppos;
    list_type p;
@@ -866,12 +924,12 @@ int codegen_foreach(foreach_stmt_type s, int numlocals)
    temp_id = make_temp_var(numlocals + 1);
 
    /**** Statement #1:   temp = list ****/
-   assign_stmt->lhs = temp_id;
-   assign_stmt->rhs = s->condition;
-   temp_stmt->type = S_ASSIGN;
-   temp_stmt->value.assign_stmt_val = assign_stmt;
-   temp_stmt->lineno = 0;
-   numtemps = codegen_statement(temp_stmt, numlocals);
+   assign_stmt.lhs = temp_id;
+   assign_stmt.rhs = s->condition;
+   temp_stmt.type = S_ASSIGN;
+   temp_stmt.value.assign_stmt_val = &assign_stmt;
+   temp_stmt.lineno = 0;
+   numtemps = codegen_statement(&temp_stmt, numlocals);
 
    /* Reserve variable "temp" through entire loop by incrementing numlocals */
    our_maxlocal = ++numlocals;
@@ -892,14 +950,14 @@ int codegen_foreach(foreach_stmt_type s, int numlocals)
    OutputInt(outfile, temp_id->idnum);
 
    /**** Statement #3:    i = First(temp) ****/
-   temp_expr->type = E_IDENTIFIER;
-   temp_expr->value.idval = temp_id;
-   arg->type = ARG_EXPR;
-   arg->value.expr_val = temp_expr;
-   call_stmt->store_required = STORE_REQUIRED;
-   call_stmt->function = FIRST;
-   call_stmt->args = list_create(arg);
-   codegen_call(call_stmt, s->id, s->condition->lineno, numlocals);  /* Won't require more temps */
+   temp_expr.type = E_IDENTIFIER;
+   temp_expr.value.idval = temp_id;
+   arg.type = ARG_EXPR;
+   arg.value.expr_val = &temp_expr;
+   call_stmt.store_required = STORE_REQUIRED;
+   call_stmt.function = FIRST;
+   call_stmt.args = list_create(&arg);
+   codegen_call(&call_stmt, s->id, s->condition->lineno, numlocals);  /* Won't require more temps */
 
    /* Write code for loop body */
    for (p = s->body; p != NULL; p = p->next)
@@ -915,14 +973,16 @@ int codegen_foreach(foreach_stmt_type s, int numlocals)
 
    /**** Statement #4:    temp = Rest(temp) ****/
    /* Can reuse most of statement #3 above */
-   call_stmt->function = REST;
-   codegen_call(call_stmt, temp_id, s->condition->lineno, numlocals);  /* Won't require more temps */
+   call_stmt.function = REST;
+   codegen_call(&call_stmt, temp_id, s->condition->lineno, numlocals);  /* Won't require more temps */
 
    /**** Statement #5:    goto top ****/
    OutputGotoOpcode(outfile, GOTO_UNCONDITIONAL, 0);
    OutputGotoOffset(outfile, FileCurPos(outfile), toppos);
 
    codegen_exit_loop();  /* Takes care of break statements */
+
+   list_delete(call_stmt.args);
 
    return our_maxlocal;
 }
@@ -1217,6 +1277,29 @@ void codegen_class(class_type c)
 	 break;
    }
 }
+
+void codegen_init()
+{
+   if (codegen_initialised)
+   {
+      simple_warning("Calling codegen_init when codegen already initialised!");
+      return;
+   }
+   codegen_initialised = True;
+
+   // Buffer for buffering data to call write() once.
+   codegen_buffer_end = 0;
+   codegen_buffer_position = 0;
+   codegen_buffer = (char *)SafeMalloc(OUTFILE_BUFFER);
+   codegen_buffer_size = OUTFILE_BUFFER;
+   codegen_buffer_warning_size = (OUTFILE_BUFFER / 10) * 9;
+}
+
+void codegen_exit()
+{
+   SafeFree(codegen_buffer);
+   codegen_initialised = False;
+}
 /************************************************************************/
 /* 
  * codegen: Generate code for all the classes in the symbol table.
@@ -1235,6 +1318,16 @@ void codegen(char *kod_fname, char *bof_fname)
    {
       simple_error("Unable to open bof file %s!", bof_fname);
       return;
+   }
+
+   if (directory_mode)
+   {
+      codegen_buffer_end = 0;
+      codegen_buffer_position = 0;
+   }
+   else
+   {
+      codegen_init();
    }
 
    /* Write out header info */
@@ -1284,24 +1377,34 @@ void codegen(char *kod_fname, char *bof_fname)
       codegen_filename(kod_fname);
    }
 
+   if (codegen_buffer_position > 0)
+      codegen_write_buffer();
+
    close(outfile);
 
    /* If code generation failed, delete partial bof file */
    if (!codegen_ok)
    {
       if (unlink(bof_fname))
-	 codegen_error("Couldn't delete file %s", bof_fname);
-      else simple_warning("Deleted file %s", bof_fname);
+         codegen_error("Couldn't delete file %s", bof_fname);
+      else
+         simple_warning("Deleted file %s", bof_fname);
    }
 
-   /* Write out resources & new database if we compiled ok */
+   /* Write out resources if we compiled ok */
    if (codegen_ok)
    {
       char temp[256];
       set_extension(temp, bof_fname, ".rsc");
       write_resources(temp);
-      save_kodbase();
+
+      // Copy bof to output dir (like old instbofrsc.bat).
+      dircompile_copy_files(bof_fname, temp, strrchr(bof_fname, '\\'),
+         strrchr(temp, '\\'));
    }
+
+   if (!directory_mode)
+      codegen_exit();
 
    /* Mark all classes as done */
    for (c = st.classes; c != NULL; c = c->next)

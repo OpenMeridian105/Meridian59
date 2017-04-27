@@ -12,10 +12,18 @@
 #ifndef _CODEGEN_H
 #define _CODEGEN_H
 
+ // See codegen.c for explanation.
+extern int codegen_buffer_end;
+extern int codegen_buffer_position;
+
 /* Macros to move around a file */
-#define FileCurPos(f) lseek(f, 0, SEEK_CUR)
-#define FileGoto(f, pos) lseek(f, pos, SEEK_SET)
-#define FileGotoEnd(f) lseek(f, 0, SEEK_END)
+#define FileCurPos(f) \
+   codegen_buffer_position
+#define FileGoto(f, pos) \
+   codegen_buffer_end = codegen_buffer_position; \
+   codegen_buffer_position = pos
+#define FileGotoEnd(f) \
+   codegen_buffer_position = codegen_buffer_end
 
 typedef unsigned char BYTE;
 enum { SOURCE1 = 1, SOURCE2 = 2 };  /* See set_source_id */
@@ -39,6 +47,7 @@ typedef struct {
 
 extern int codegen_ok;          /* Did codegen complete successfully? */
 
+void codegen_resize_buffer(void);
 void OutputOpcode(int outfile, opcode_data opcode);
 void OutputByte(int outfile, BYTE datum);
 void OutputInt(int outfile, int datum);

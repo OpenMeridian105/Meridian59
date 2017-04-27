@@ -12,6 +12,7 @@
 
 #ifdef BLAK_PLATFORM_WINDOWS
 #include <io.h>
+#include <direct.h>
 #endif
 
 #ifdef BLAK_PLATFORM_LINUX
@@ -26,6 +27,8 @@
 #include <stdarg.h>
 #include <fcntl.h>
 #include <sys/stat.h>
+#include <sys/types.h>
+#include <time.h>
 #include <ctype.h>
 #include "util.h"
 #include "table.h"
@@ -66,7 +69,7 @@
 
 #define MAXARGS         30      /* Maximum # of arguments to a function */
 
-#define TABLESIZE       1023    /* Size of symbol tables */
+#define TABLESIZE       3037    /* Size of symbol tables */
 
 #define MAX_LANGUAGE_ID 184
 
@@ -315,7 +318,7 @@ typedef struct {
    int curclass;         /* Current class id # */
    int curmessage;       /* Current message handler id # */
    list_type recompile_list; /* List of classes that need to be recompiled */
-   list_type constants;  /* List of constants declared in current class */
+   Table constants;      /* Table of constants declared in current class */
 
    int num_strings;      /* Number of debugging strings encountered so far */
    list_type strings;    /* List of pointers to debugging strings */ 
@@ -338,6 +341,8 @@ void include_file(char *filename);
 const char * get_function_name_by_opcode(int opcode);
 
 /* action handlers */
+int include_const_file_parse(char *);
+void include_const_file_parse_finished(void);
 const_type make_numeric_constant(int);
 const_type make_nil_constant(void);
 const_type make_string_constant(char *);
@@ -402,6 +407,7 @@ void action_error(const char *fmt, ...);
 void simple_error(const char *fmt, ...);
 void simple_warning(const char *fmt, ...);
 void initialize_parser(void);
+void compile_file_list(char *path, list_type l); // also used in dircompile.c
 
 int id_hash(const void *info, int table_size);
 int id_compare(void *info1, void *info2);
@@ -410,6 +416,8 @@ int class_compare(void *info1, void *info2);
 int add_identifier(id_type id, int type);
 int get_statement_line(stmt_type s, int curline);
 
+void codegen_init(void);
+void codegen_exit(void);
 void codegen(char *current_fname, char *bof_fname);
 void set_kodbase_filename(char *filename);
 int load_kodbase(void);
@@ -422,6 +430,7 @@ extern SymbolTable st;          /* Compiler's symbol table */
 /**************************** Include files ***************************/
 #include "sort.h"
 #include "optimize.h"
+#include "dircompile.h"
 
 #endif /* #ifdef _BLAKCOMP_H */
 

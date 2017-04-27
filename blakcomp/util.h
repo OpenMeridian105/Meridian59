@@ -30,12 +30,14 @@ list_type list_create(void *newdata);
 list_type list_add_item(list_type l, void *newdata);
 list_type list_append(list_type l1, list_type l2);
 list_type list_delete_item(list_type l, void *deldata, int (*compare)(void *, void *));
+list_type list_destroy_first(list_type l);
 list_type list_delete_first(list_type l);
 void     *list_first_item(list_type l);
 void     *list_last_item(list_type l);
 void     *list_find_item(list_type l, void *deldata, int (*compare)(void *, void *));
 list_type list_delete(list_type l);
 list_type list_destroy(list_type l);
+list_type list_get_nth(list_type l, int count);
 int       list_length(list_type l);
 
 #endif /* #ifndef _UTIL_H */

@@ -23,6 +23,22 @@ extern int lineno;
 
 static int loop_depth = 0;
 SymbolTable st;
+static const_struct nil_const;
+
+typedef struct {
+   int in_use; // True if this file is in use.
+   char *filename;
+   Table constants;
+} include_constant_file;
+
+// A list of parsed included constant files (containing only constants)
+// saved so that they don't have to be parsed again. If they are encountered
+// in future files, the constants can be added from this list instead.
+list_type const_files;
+
+// If this is set to true, we are parsing an included constants file.
+// Used so that constants can be saved to the constants list.
+int parsing_included_constants;
 
 typedef struct {
   char   *two_letter_code;
@@ -225,10 +241,13 @@ void initialize_parser(void)
 {
    int i;
 
+   nil_const.type = C_NIL;
+
    st.globalvars = table_create(TABLESIZE);
    st.classvars = table_create(TABLESIZE);
    st.localvars = table_create(TABLESIZE);
    st.missingvars = table_create(TABLESIZE);
+   st.constants = table_create(TABLESIZE);
 
    /* Add function names to table of global identifiers */
    for (i=0; i < numfuncs; i++)
@@ -270,10 +289,53 @@ void initialize_parser(void)
 #endif
 
    st.recompile_list = NULL;
-   st.constants = NULL;
    st.num_strings = 0;
    st.strings = NULL;
    st.override_classvars = NULL;
+   const_files = NULL;
+}
+/************************************************************************/
+/* include_const_file_parse: Determine if we have to parse this file.
+ *   Also set a boolean so after parsing the file, the original can use it.
+ */
+int include_const_file_parse(char *filename)
+{
+   for (list_type l = const_files; l != NULL; l = l->next)
+   {
+      include_constant_file* f = (include_constant_file*)l->data;
+      if (stricmp(f->filename, filename) == 0)
+      {
+         // Mark this constants file as in use so it can be searched.
+         f->in_use = True;
+
+         // Return false == do not open/parse file.
+         return False;
+      }
+   }
+
+   // Add the new constant file to the list.
+   // Must be at the beginning.
+   include_constant_file *i = (include_constant_file *)SafeMalloc(sizeof(include_constant_file));
+   i->filename = strdup(filename);
+   i->constants = table_create(TABLESIZE);
+
+   // Parsing this one now so must be using it.
+   i->in_use = True;
+
+   list_type new_file = list_create(i);
+   const_files = list_append(new_file, const_files);
+
+   // Set parsing_included_constants so we save the constants.
+   parsing_included_constants = True;
+
+   return True;
+}
+/************************************************************************/
+/* include_const_file_parse_finished: Unset the var used to track parsing.
+*/
+void include_const_file_parse_finished()
+{
+   parsing_included_constants = False;
 }
 /************************************************************************/
 /* Hash on an indentifier's name */
@@ -396,6 +458,35 @@ id_type lookup_id(id_type id)
       return record;
    }
 
+   /* Check constants table */
+   record = (id_type)table_lookup(st.constants, (void *)id, id_hash, id_compare);
+   if (record != NULL)
+   {
+      id->type = record->type;
+      id->idnum = record->idnum;
+      id->ownernum = record->ownernum;
+      id->source = record->source;
+      return record;
+   }
+
+   // Check any include constants files in use.
+   for (list_type l = const_files; l != NULL; l = l->next)
+   {
+      include_constant_file* f = (include_constant_file*)l->data;
+      if (f->in_use)
+      {
+         record = (id_type)table_lookup(f->constants, (void *)id, id_hash, id_compare);
+         if (record != NULL)
+         {
+            id->type = record->type;
+            id->idnum = record->idnum;
+            id->ownernum = record->ownernum;
+            id->source = record->source;
+            return record;
+         }
+      }
+   }
+
    /* Couldn't find the identifier name */
    id->type = I_UNDEFINED;
    return NULL;
@@ -429,7 +520,7 @@ int add_identifier(id_type id, int type)
 
    case I_CONSTANT:
       /* Don't give constants id #s */
-      if (table_insert(st.classvars, (void *) id, id_hash, id_compare) != 0)
+      if (table_insert(st.constants, (void *) id, id_hash, id_compare) != 0)
 	 return 1;
       break;
       
@@ -494,10 +585,11 @@ const_type make_numeric_constant(int num)
 /************************************************************************/
 const_type make_nil_constant(void)
 {
-   const_type c = (const_type) SafeMalloc(sizeof(const_struct));
-
-   c->type = C_NIL;
-   return c;
+   // Return a global nil object here, as this function is called many times.
+   // As there is no deleting of IDs anywhere, this is safe (for now).
+   //const_type c = (const_type) SafeMalloc(sizeof(const_struct));
+   //c->type = C_NIL;
+   return &nil_const;
 }
 /************************************************************************/
 const_type make_number_from_constant_id(id_type id)
@@ -684,13 +776,11 @@ expr_type make_expr_from_id(id_type id)
    case I_CONSTANT:
    {
       const_type c = (const_type) SafeMalloc(sizeof(const_struct));
-      id_type temp;
 
       /* Turn constant id reference into the constant itself */
       c->type = C_NUMBER;
 
-      temp = (id_type) list_find_item(st.constants, id, id_compare);
-      c->value.numval = temp->source; /* Value is stored in source field */
+      c->value.numval = id->source; /* Value is stored in source field */
 
       e->type = E_CONSTANT;
       e->value.constval = c;
@@ -893,8 +983,13 @@ id_type make_constant_id(id_type id, expr_type expr)
       break;
    }
 
-   /* Add to list of constants in this class */
-   st.constants = list_add_item(st.constants, id);
+   // If this is a parsed include file, also save the constant to the const_files
+   // table so we don't have to parse this file again.
+   if (parsing_included_constants)
+   {
+      include_constant_file* f = (include_constant_file*)const_files->data;
+      table_insert(f->constants, (void *)id, id_hash, id_compare);
+   }
 
    return id;
 }
@@ -1965,8 +2060,15 @@ class_type make_class(class_type c, list_type resources, list_type classvars,
    table_delete(st.classvars);
    st.override_classvars = NULL;
 
-   /* Erase constant list */
-   st.constants = list_delete(st.constants);
+   /* Clean out constant table */
+   table_delete(st.constants);
+
+   // Set all constant files to not in use.
+   for (list_type l = const_files; l != NULL; l = l->next)
+   {
+      include_constant_file* f = (include_constant_file*)l->data;
+      f->in_use = False;
+   }
 
    st.maxproperties = 0;  // Property #0 is reserved for SELF
    st.maxclassvars  = -1;

@@ -29,7 +29,8 @@ OBJS = \
     $(OUTDIR)\util.obj \
     $(OUTDIR)\sort.obj \
     $(OUTDIR)\optimize.obj \
-    $(OUTDIR)\resource.obj
+    $(OUTDIR)\resource.obj \
+    $(OUTDIR)\dircompile.obj
 
 all: makedirs $(OUTDIR)\bc.exe
 

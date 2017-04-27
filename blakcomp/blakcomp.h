@@ -69,7 +69,7 @@
 
 #define MAXARGS         30      /* Maximum # of arguments to a function */
 
-#define TABLESIZE       1023    /* Size of symbol tables */
+#define TABLESIZE       3037    /* Size of symbol tables */
 
 #define MAX_LANGUAGE_ID 184
 
@@ -318,7 +318,7 @@ typedef struct {
    int curclass;         /* Current class id # */
    int curmessage;       /* Current message handler id # */
    list_type recompile_list; /* List of classes that need to be recompiled */
-   list_type constants;  /* List of constants declared in current class */
+   Table constants;      /* Table of constants declared in current class */
 
    int num_strings;      /* Number of debugging strings encountered so far */
    list_type strings;    /* List of pointers to debugging strings */ 
@@ -342,7 +342,7 @@ const char * get_function_name_by_opcode(int opcode);
 
 /* action handlers */
 int include_const_file_parse(char *);
-void action_save_constants(char *);
+void include_const_file_parse_finished(void);
 const_type make_numeric_constant(int);
 const_type make_nil_constant(void);
 const_type make_string_constant(char *);

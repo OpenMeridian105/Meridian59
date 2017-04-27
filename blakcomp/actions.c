@@ -30,15 +30,14 @@ typedef struct {
    list_type constants;
 } include_constant_file;
 
+// A list of parsed included constant files (containing only constants)
+// saved so that they don't have to be parsed again. If they are encountered
+// in future files, the constants can be added from this list instead.
 list_type const_files;
 
-// Variable used to keep track of existing constants
-// when saving another included constants file.
-// Records the number of constants in st.constants
-// at the start of parsing the new file, so that many
-// can be skipped when moving them to the const_files
-// list.
-int constant_counter;
+// If this is set to true, we are parsing an included constants file.
+// Used so that constants can be saved to the constants list.
+int parsing_included_constants;
 
 typedef struct {
   char   *two_letter_code;
@@ -247,6 +246,7 @@ void initialize_parser(void)
    st.classvars = table_create(TABLESIZE);
    st.localvars = table_create(TABLESIZE);
    st.missingvars = table_create(TABLESIZE);
+   st.constants = table_create(TABLESIZE);
 
    /* Add function names to table of global identifiers */
    for (i=0; i < numfuncs; i++)
@@ -288,7 +288,6 @@ void initialize_parser(void)
 #endif
 
    st.recompile_list = NULL;
-   st.constants = NULL;
    st.num_strings = 0;
    st.strings = NULL;
    st.override_classvars = NULL;
@@ -311,49 +310,32 @@ int include_const_file_parse(char *filename)
             id_type id = (id_type)c->data;
             id->ownernum = st.curclass;
             add_identifier(id, id->type);
-            st.constants = list_add_item(st.constants, id);
+            table_insert(st.constants, (void *)id, id_hash, id_compare);
          }
 
          return False;
       }
    }
 
-   // st.constants might already have constants in it, and we only want to add
-   // new ones to our saved include file. Get the number of constants in
-   // st.constants now, and skip that many later.
-
-   constant_counter = list_length(st.constants);
    // Add the new constant file to the list.
+   // Must be at the beginning.
    include_constant_file *i = (include_constant_file *)SafeMalloc(sizeof(include_constant_file));
    i->filename = strdup(filename);
-   const_files = list_add_item(const_files, i);
+   i->constants = NULL;
+   list_type new_file = list_create(i);
+   const_files = list_append(new_file, const_files);
+
+   // Set parsing_included_constants so we save the constants.
+   parsing_included_constants = True;
 
    return True;
 }
 /************************************************************************/
-/* action_save_constants: Potentially save the current st.constants list.
+/* include_const_file_parse_finished: Unset the var used to track parsing.
 */
-void action_save_constants(char *filename)
+void include_const_file_parse_finished()
 {
-   for (list_type l = const_files; l != NULL; l = l->next)
-   {
-      include_constant_file* f = (include_constant_file*)l->data;
-      if (stricmp(f->filename, filename) == 0)
-      {
-         if (list_length(st.constants) <= constant_counter)
-         {
-            simple_warning("Error handling constant lists in action_save_constants.\n");
-            return;
-         }
-
-         for (list_type c = list_get_nth(st.constants, constant_counter + 1); c != NULL; c = c->next)
-         {
-            f->constants = list_add_item(f->constants, c->data);
-         }
-
-         return;
-      }
-   }
+   parsing_included_constants = False;
 }
 /************************************************************************/
 /* Hash on an indentifier's name */
@@ -770,7 +752,7 @@ expr_type make_expr_from_id(id_type id)
       /* Turn constant id reference into the constant itself */
       c->type = C_NUMBER;
 
-      temp = (id_type) list_find_item(st.constants, id, id_compare);
+      temp = (id_type)table_lookup(st.constants, (void *)id, id_hash, id_compare);
       c->value.numval = temp->source; /* Value is stored in source field */
 
       e->type = E_CONSTANT;
@@ -974,8 +956,13 @@ id_type make_constant_id(id_type id, expr_type expr)
       break;
    }
 
-   /* Add to list of constants in this class */
-   st.constants = list_add_item(st.constants, id);
+   /* Add to table of constants for this class */
+   table_insert(st.constants, (void *)id, id_hash, id_compare);
+   if (parsing_included_constants)
+   {
+      include_constant_file* f = (include_constant_file*)const_files->data;
+      f->constants = list_add_item(f->constants, id);
+   }
 
    return id;
 }
@@ -2046,8 +2033,8 @@ class_type make_class(class_type c, list_type resources, list_type classvars,
    table_delete(st.classvars);
    st.override_classvars = NULL;
 
-   /* Erase constant list */
-   st.constants = list_delete(st.constants);
+   /* Clean out constant table */
+   table_delete(st.constants);
 
    st.maxproperties = 0;  // Property #0 is reserved for SELF
    st.maxclassvars  = -1;

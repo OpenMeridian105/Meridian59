@@ -26,9 +26,12 @@ extern char bof_output_dir[_MAX_PATH];
 extern char rsc_output_dir[_MAX_PATH];
 
 typedef struct {
-   char *dir_name;
+   char *dir_name; // Name of this directory.
+   char *parent_file_name; // Parent file, if present.
    list_type dir_file_list;
 } *dir_data, dir_struct;
+
+list_type failed_compile_files;
 
 // Local function prototypes.
 void fill_lists_from_makefile(char *full_path, int recompiled_parent);
@@ -46,6 +49,9 @@ typedef struct
 BOOL MappedFileOpen(char *filename, file_node *f);
 void MappedFileClose(file_node *f);
 int blakdiff_check(char *fname1, char *fname2);
+
+int rsctime = 0;
+int timecounter = 0;
 
 void compile_directory_mode()
 {
@@ -73,8 +79,10 @@ void compile_directory_mode()
       exit(1);
    }
 
-   time_t s1, s2;
-   s1 = time(NULL);
+   time_t timeStart, timeEnd;
+   timeStart = time(NULL);
+
+   failed_compile_files = NULL;
 
    // Remove trailing \ if we have one.
    int len = strlen(full_path) - 1;
@@ -83,6 +91,7 @@ void compile_directory_mode()
 
    // Remove directory (should now be null).
    directory_list = list_delete_first(directory_list);
+   directory_list = NULL;
 
    // Read makefiles, fill dir/file lists for all directories.
    fill_lists_from_makefile(full_path, 0);
@@ -97,15 +106,42 @@ void compile_directory_mode()
    {
       // For each directory, compile files.
       dir_data d = (dir_data)dirs->data;
-      if (d->dir_name)
-         printf("Building %s\n",strrchr(d->dir_name, '\\') + 1);
+
+      int compile = True;
       if (d->dir_file_list)
       {
-         compile_file_list(d->dir_name, d->dir_file_list);
-         d->dir_file_list = list_destroy(d->dir_file_list);
+         for (list_type f = failed_compile_files; f != NULL; f = f->next)
+         {
+            if (stricmp(d->parent_file_name, (char *)f->data) == 0)
+            {
+               // Compile of the parent failed, so we don't compile any
+               // of the children.
+               compile = False;
+               failed_compile_files = list_append(failed_compile_files, d->dir_file_list);
+               d->dir_file_list = NULL;
+
+               break;
+            }
+         }
+         if (compile)
+         {
+            if (d->dir_name)
+               printf("Building %s\n", strrchr(d->dir_name, '\\') + 1);
+
+            compile_file_list(d->dir_name, d->dir_file_list);
+
+            d->dir_file_list = list_destroy(d->dir_file_list);
+
+         }
       }
+
       SafeFree(d->dir_name);
       d->dir_name = NULL;
+      if (d->parent_file_name)
+      {
+         SafeFree(d->parent_file_name);
+         d->parent_file_name = NULL;
+      }
       SafeFree(d);
    }
 
@@ -116,8 +152,8 @@ void compile_directory_mode()
       save_kodbase();
 
    // Print some stats.
-   s2 = time(NULL);
-   printf("Elapsed time: %lld seconds\n",s2 - s1);
+   timeEnd = time(NULL);
+   printf("Elapsed time: %lld seconds\n", timeEnd - timeStart);
 
    PROCESS_MEMORY_COUNTERS pmc;
    GetProcessMemoryInfo(GetCurrentProcess(), &pmc, sizeof(pmc));
@@ -151,6 +187,13 @@ void fill_lists_from_makefile(char *full_path, int recompiled_parent)
 
    dir_data d = (dir_data) SafeMalloc(sizeof(dir_struct));
    d->dir_name = strdup(full_path);
+
+   // Have to allocate based on size here, no strdup.
+   // Length of parent dir string, plus 4 for .kod, plus 1 for \0
+   d->parent_file_name = (char *)SafeMalloc(strlen(full_path) + 4 + 1);
+   strcpy(d->parent_file_name, full_path);
+   strcat(d->parent_file_name, ".kod");
+
    d->dir_file_list = NULL;
    // Add our directory to the list to compile.
    directory_list = list_add_item(directory_list, d);
@@ -224,6 +267,13 @@ void fill_lists_from_makefile(char *full_path, int recompiled_parent)
       }
    }
    fclose(makefile);
+}
+
+// Compilation failed on a file. Prevents all descendents from being compiled.
+void compile_failed(char *filename)
+{
+   if (filename)
+      failed_compile_files = list_add_item(failed_compile_files, filename);
 }
 
 // Checks whether we should recompile, adds to file list.

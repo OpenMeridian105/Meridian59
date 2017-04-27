@@ -1312,6 +1312,7 @@ void codegen(char *kod_fname, char *bof_fname)
       char temp[256];
       set_extension(temp, bof_fname, ".rsc");
       write_resources(temp);
+
       // Copy bof to output dir (like old instbofrsc.bat).
       dircompile_copy_files(bof_fname, temp, strrchr(bof_fname, '\\'),
          strrchr(temp, '\\'));
@@ -1320,6 +1321,4 @@ void codegen(char *kod_fname, char *bof_fname)
    /* Mark all classes as done */
    for (c = st.classes; c != NULL; c = c->next)
       ((class_type) (c->data))->is_new = False;
-
-   return;
 }

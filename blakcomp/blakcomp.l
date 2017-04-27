@@ -394,7 +394,6 @@ void recompile_warnings(list_type l)
       return;
 
    // Too much spam.
-   simple_warning("Recompiling child classes...");
 
    /*
    int column = 0;
@@ -427,10 +426,9 @@ int yywrap(void)
    /* If in an included file, move back to including file */
    if (include_depth > 0)
    {
-      if (directory_mode && in_constants)
-      {
-         action_save_constants(current_fname);
-      }
+      // Could be parsing a constants include file.
+      if (include_depth == 1)
+         include_const_file_parse_finished();
       include_depth--;
       lineno = include_stack[include_depth].lineno;
       current_fname = include_stack[include_depth].filename;
@@ -509,12 +507,6 @@ void include_file(char *filename)
       return;
    }
 
-   if ((fin = open_include_file(filename)) == NULL)
-   {
-      action_error("Can't find include file %s", filename);
-      return;
-   }
-
    if (directory_mode && in_constants)
    {
       // Record which constants files are parsed in directory mode
@@ -522,9 +514,14 @@ void include_file(char *filename)
       // in the ID table so we can access them again.
       if (!include_const_file_parse(filename))
       {
-         fclose(fin);
          return;
       }
+   }
+
+   if ((fin = open_include_file(filename)) == NULL)
+   {
+      action_error("Can't find include file %s", filename);
+      return;
    }
 
    /* Save away current state, and move on to included file */
@@ -761,6 +758,10 @@ void compile_file_list(char *path, list_type l)
 
       if (generate_code)
          codegen(current_fname, bof_fname);
+
+      if (!generate_code || !codegen_ok)
+         compile_failed(current_fname);
+
       generate_code = True;
    }
 

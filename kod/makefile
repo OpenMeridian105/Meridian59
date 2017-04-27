@@ -29,7 +29,7 @@ all :
 
 clean :
 	@-$(RM) *.bof *.rsc kodbase.txt >nul 2>&1
-	@-for %i in ($(BOFS:.bof=.)) do @if EXIST %i (cd %i & $(MAKE) /$(MAKEFLAGS) TOPDIR=..\$(TOPDIR) clean & cd .. )
+	@-clean
 	@-$(RM) $(BLAKSERVRUNDIR)\rsc\*.rsc >nul 2>&1
 	@-$(RM) $(BLAKSERVRUNDIR)\loadkod\*.bof >nul 2>&1
 	@-$(RM) $(BLAKSERVRUNDIR)\memmap\*.bof >nul 2>&1

@@ -556,8 +556,16 @@ properties:
 
    // A list of quest nodes for which this monster is the destination NPC
    plActiveQuestNodes = $
+
+   //// Monster flags that keep track of irregularities in a mobs existence.
+   //// If a monster has any of the flags below, it won't count towards the
+   //// room's monster count.
+   // Mob is an illusion.
    pbIllusion = FALSE
+   // Mob has been summoned.
    vbSummoned = FALSE
+   // Mob belongs to a predefined spawn event. (e.g. mummies in trasure room)
+   pbEvent = FALSE
 
    // Apparition object (caster)
    poApparitionCaster = $
@@ -616,7 +624,7 @@ properties:
 
 messages:
 
-   Constructor(template=FALSE, color=0, piSurvivalLevel=0, iBrain = 0)
+   Constructor(template=FALSE,color=0,piSurvivalLevel=0,iBrain=0,bEvent=FALSE)
    "Simple enough, we create a monster. If they are questworthy, we note it."
    {
       // Creates stats based on a mobs viDifficulty and randomization.
@@ -673,6 +681,8 @@ messages:
       {
          piColor_translation = color;
       }
+
+      pbEvent = bEvent;
 
       // Start timers...
       Send(self,@NewVigor);
@@ -2433,10 +2443,12 @@ messages:
       iRadius = Send(self,@HowCloseToCommander) * 4;
 
       // Let's move up to the leader unless we are close enough already.
+      // If we are more than 3 times the desired range, cut corners.
       if (drow * drow + dcol * dcol > iRadius * iRadius)
       {
          // Clear any other move commands we might have.
-         Send(self,@MoveTowards,#oTarget=poLeader,#face_target=TRUE);
+         Send(self,@MoveTowards,#oTarget=poLeader,#face_target=TRUE,#to_master=TRUE,
+            #post_haste=(drow * drow + dcol * dcol > iRadius * iRadius * 9));
 
          return TRUE;
       }
@@ -3237,7 +3249,7 @@ messages:
    //// Movement messages
 
    MoveTowards(oTarget = $, face_target=FALSE, face_away=FALSE,
-               to_master=FALSE)
+               to_master=FALSE,post_haste=FALSE)
    {
       if oTarget = $
       {
@@ -3253,7 +3265,8 @@ messages:
                    #iFineCol=Send(oTarget,@GetFineCol),
                    #face_target=face_target,
                    #face_away=face_away,
-                   #to_master=to_master);
+                   #to_master=to_master,
+                   #post_haste=post_haste);
    }
 
    MoveAway(oTarget = $, face_target=FALSE, face_away=FALSE)
@@ -3422,10 +3435,10 @@ messages:
       return;
    }
 
-   MoveTowardsCoords(iRow=$, iCol=$, iFineRow=FINENESS_HALF, iFineCol=FINENESS_HALF,
-                     face_target=FALSE, face_away=FALSE, to_master=FALSE)
+   MoveTowardsCoords(iRow=$,iCol=$,iFineRow=FINENESS_HALF,iFineCol=FINENESS_HALF,
+                     face_target=FALSE,face_away=FALSE,to_master=FALSE,post_haste=FALSE)
    {
-      local iState, iMoveFlags, iSpeed;
+      local iState, iMoveFlags, iSpeed, oCommander;
 
       if (iRow = $ or iCol = $)
       {
@@ -3436,9 +3449,22 @@ messages:
       // combined with the state flags and sent to GetStepTowardsBSP. These
       // moves aren't checked against room geometry.
       iMoveFlags = 0;
-      if (piBehavior & AI_MOVE_WALKTHROUGH_WALLS)
+      if (piBehavior & AI_MOVE_WALKTHROUGH_WALLS) OR post_haste
       {
          iMoveFlags |= MSTATE_MOVE_OUTSIDE_BSP;
+      }
+      else if to_master
+      {
+         oCommander = poLeader;
+         if poMaster <> $
+         {
+            oCommander = poMaster;
+         }
+
+         if Send(oCommander,@GetHeightFloorAtObjectBSP) - Send(self,@GetHeightFloorAtObjectBSP) > 0
+         {
+            iMoveFlags |= MSTATE_MOVE_OUTSIDE_BSP;
+         }
       }
 
       // query where to step next
@@ -9717,6 +9743,26 @@ messages:
       Send(self,@EnterStateMove);
 
       return;
+   }
+
+   CountsAsMonster()
+   {
+      return TRUE;
+   }
+
+   CountsAsHero()
+   {
+      return FALSE;
+   }
+
+   IsEventSpawn()
+   {
+      return pbEvent;
+   }
+
+   IsLegitimateSpawn()
+   {
+      return NOT (pbIllusion OR vbSummoned OR pbEvent);
    }
 
 end

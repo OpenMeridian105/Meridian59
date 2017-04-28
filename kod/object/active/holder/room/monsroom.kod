@@ -59,6 +59,9 @@ properties:
    // Number of monsters currently in room
    piMonster_count = 0
 
+   // Number of heroes currently in room
+   piHero_count = 0
+
    // List of monsters we spawn, if for: [monster class, chance to spawn]
    plMonsters = $
 
@@ -104,25 +107,21 @@ messages:
 
    GetMonsterGenTime()
    {
-      local iWaitTime, iHeroCount, iMaxHeroes;
+      local iWaitTime, iMaxHeroes;
 
       iWaitTime = piGen_Time * 100 / Send(SETTINGS_OBJECT,@GetSpawnRate);
 
-      // Reduce spawn time for up to 5 heroes. Followers count half.
-      iHeroCount = Send(self,@CountHoldingHowMany,#class=&Player)*2;
-      iHeroCount += Send(self,@CountHoldingHowMany,#class=&Follower);
+      iMaxHeroes = 5;
 
-      iMaxHeroes = 10;
       if vbScaleSpawnRateWithPlayers
       {
-         iHeroCount = Bound(iHeroCount,1,iMaxHeroes);
+         iWaitTime = iWaitTime / Bound(piHero_count,1,iMaxHeroes);
       }
       else
       {
          // Always have max spawn rate
-         iHeroCount = iMaxHeroes;
+         iWaitTime = iWaitTime / iMaxHeroes;
       }
-      iWaitTime = 2 * iWaitTime / iHeroCount;
 
       return iWaitTime;
    }
@@ -217,11 +216,11 @@ messages:
 
    NewHold(what = $)
    {
-      if IsClass(what,&Monster)
-         AND Send(what,@GetMaster) = $
-         AND Send(what,@GetLeader) = $
+      if IsClass(what,&Battler)
       {
-         ++piMonster_count;
+         Post(self,@CountMonsters);
+         Post(self,@CountHeroes);
+         Post(self,@AdjustMaxMonsters);
       }
 
       propagate;
@@ -229,28 +228,92 @@ messages:
 
    LeaveHold(what = $)
    {
-      if IsClass(what,&Monster)
-         AND Send(what,@GetMaster) = $
-         AND Send(what,@GetLeader) = $
+      if IsClass(what,&Battler)
       {
-         --piMonster_count;
+         Post(self,@CountMonsters);
+         Post(self,@CountHeroes);
+         Post(self,@AdjustMaxMonsters);
       }
 
       propagate;
    }
 
-   SomethingEntered(what=$)
+   CountMonsters()
    {
-      Send(self,@AdjustHeroCount,#what=what);
+      local i, oObject;
 
-      propagate;
+      piMonster_Count = 0;
+
+      foreach i in plActive
+      {
+         oObject = Send(self,@HolderExtractObject,#data=i);
+
+         if IsClass(oObject,&Battler)
+         {
+            // Count monsters, but only if they're meanies.
+            if Send(oObject,@CountsAsMonster)
+               AND Send(oObject,@IsLegitimateSpawn)
+            {
+               ++piMonster_Count;
+            }
+         }
+      }
+
+      return piMonster_Count;
    }
 
-   SomethingLeft(what=$)
+   CountHeroes()
    {
-      Send(self,@AdjustHeroCount,#what=what);
+      local i, oObject;
 
-      propagate;
+      piHero_count = 0;
+
+      foreach i in plActive
+      {
+         oObject = Send(self,@HolderExtractObject,#data=i);
+
+         if IsClass(oObject,&Battler)
+         {
+            // Count heroes, include friendly monsters.
+            if Send(oObject,@CountsAsHero)
+               AND Send(oObject,@IsLegitimateSpawn)
+            {
+               ++piHero_count;
+            }
+         }
+      }
+
+      return piHero_count;
+   }
+
+   AdjustMaxMonsters()
+   {
+      local iPercentage, iLength;
+
+      iLength = Length(plGenerators);
+
+      if vbScaleSpawnRateWithPlayers
+      {
+         iPercentage = piHero_count*20;
+         iPercentage = Bound(iPercentage + 20,40,100);
+
+         piMonster_adjusted_max = piMonster_count_max * iPercentage / 100;
+
+         if iLength > 0
+         {
+            piMonster_adjusted_max = Bound(piMonster_adjusted_max,0,iLength);
+         }
+      }
+      else if iLength > 0
+      {
+         piMonster_adjusted_max = Bound(piMonster_count_max,0,iLength);
+      }
+      else
+      {
+         piMonster_adjusted_max = piMonster_count_max;
+      }
+
+      return piMonster_adjusted_max;
    }
 
    FirstUserEntered(what = $)
@@ -273,23 +336,9 @@ messages:
       }
 
       // Check if any monsters are present in the room at the time of entry
-      // and count their number.
-      bFound = FALSE;
-      piMonster_Count = 0;
-      foreach i in plActive
-      {
-         oMonster = Send(self,@HolderExtractObject,#data=i);
-
-         // Count monsters, but not NPCs or Followers.
-         if IsClass(oMonster,&Monster)
-            AND NOT IsClass(oMonster,&NonPlayerCharacter)
-            AND NOT IsClass(oMonster,&Follower)
-         {
-            bFound = TRUE;
-
-            ++piMonster_Count;
-         }
-      }
+      // and count their number. The numer is stored in piMonster_Count for
+      // later checks. If a monster has been found, bFound is TRUE.
+      bFound = Send(self,@CountMonsters);
 
       // We had some leftover mobs from a previous visit or not enough
       // time has passed since the latest clearing. Start regular spawn timer.
@@ -483,40 +532,6 @@ messages:
       foreach i in plMonsters
       {
          GodLog(First(i),", ",Nth(i,2),"\%");
-      }
-
-      return;
-   }
-
-   AdjustHeroCount(what=$)
-   {
-      local iPercentage, iLength;
-
-      if IsClass(what,&Player) OR IsClass(what,&Follower)
-      {
-         iLength = Length(plGenerators);
-
-         if vbScaleSpawnRateWithPlayers
-         {
-            iPercentage = Send(self,@CountHoldingHowMany,#class=&Player)*20;
-            iPercentage += Send(self,@CountHoldingHowMany,#class=&Follower)*10;
-            iPercentage = Bound(iPercentage + 30,50,100);
-
-            piMonster_adjusted_max = piMonster_count_max * iPercentage / 100;
-
-            if iLength > 0
-            {
-               piMonster_adjusted_max = Bound(piMonster_adjusted_max,0,iLength);
-            }
-         }
-         else if iLength > 0
-         {
-            piMonster_adjusted_max = Bound(piMonster_count_max,0,iLength);
-         }
-         else
-         {
-            piMonster_adjusted_max = piMonster_count_max;
-         }
       }
 
       return;

@@ -751,7 +751,7 @@ messages:
       piFireRange = viFireRange * (75 + piAim) / 100;
       piSpellPower = Bound((piIntellect + piMysticism) / 2, 0, 50) + viSpellPower;
       piVisionDistance = viVisionDistance + (piIntellect + piAim) / 20;
-      viNaturalVigorRegeneration = 500 + piStamina * 20;
+      viNaturalVigorRegeneration = 500 + piStamina * 10;
 
       return;
    }
@@ -1109,12 +1109,12 @@ messages:
          {
             Send(self,@FollowerAdjustLight);
 
-            // Try to say something smart.
-            if (Abs(piCombatCheck - GetTickCount()) > 300000)
-               AND NOT Random(0,500)
-            {
-               Send(poBrain,@FollowerPhilosophicalChat,#who=poLeader);
-            }
+            //// Try to say something smart.
+            //if (Abs(piCombatCheck - GetTickCount()) > 300000)
+            //   AND NOT Random(0,500)
+            //{
+            //   Send(poBrain,@FollowerPhilosophicalChat,#who=poLeader);
+            //}
 
             // REs are no longer maintained when out of combat for 30 secs.
             if (Abs(piCombatCheck - GetTickCount()) > 30000)
@@ -1139,7 +1139,10 @@ messages:
 
    EnterStateEngage( target = $, actnow = TRUE, delay = 0)
    {
-      Send(self,@FollowerEnterCombat);
+      if (piState & STATE_MOVE)
+      {
+         Send(self,@FollowerEnterCombat);
+      }
 
       piCombatCheck = GetTickCount();
 
@@ -1438,24 +1441,21 @@ messages:
    // Currently triggered every time.
    FollowerInjured(iThreshold=$)
    {
-      if Send(self,@ChatTimer)
+      switch(iThreshold)
       {
-         switch(iThreshold)
-         {
-            case 0:
-               Send(self,@SayToOne,#target=poLeader,#message_rsc=follower_injured_a);
-               break;
-            case 1:
-               Send(self,@SayToOne,#target=poLeader,#message_rsc=follower_injured_b);
-               break;
-            case 2:
-               Send(self,@SayToOne,#target=poLeader,#message_rsc=follower_injured_c);
-               break;
-            case 3:
-               Send(self,@SayToOne,#target=poLeader,#message_rsc=follower_injured_d);
-               Send(self,@DoWave);
-               break;
-         }
+         case 0:
+            Send(self,@SayToOne,#target=poLeader,#message_rsc=follower_injured_a);
+            break;
+         case 1:
+            Send(self,@SayToOne,#target=poLeader,#message_rsc=follower_injured_b);
+            break;
+         case 2:
+            Send(self,@SayToOne,#target=poLeader,#message_rsc=follower_injured_c);
+            break;
+         case 3:
+            Send(self,@SayToOne,#target=poLeader,#message_rsc=follower_injured_d);
+            Send(self,@DoWave);
+            break;
       }
 
       return;
@@ -1653,6 +1653,11 @@ messages:
       }
 
       return;
+   }
+
+   CountsAsHero()
+   {
+      return TRUE;
    }
 
 end

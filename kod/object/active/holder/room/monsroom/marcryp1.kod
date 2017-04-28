@@ -74,7 +74,7 @@ properties:
 
    piInit_count_min = 10
    piInit_count_max = 12
-   piMonster_count_max = 25
+   piMonster_count_max = 20
 
    piBaseLight = LIGHT_DARK
    piOutside_factor = OUTDOORS_NONE
@@ -506,9 +506,9 @@ messages:
       {
          each_obj = First(i);
          if count = COUNT_MONSTERS
-               AND IsClass(each_obj,&Monster)
+               AND Send(each_obj,@CountsAsMonster)
             OR count = COUNT_PLAYERS
-               AND IsClass(each_obj,&User)
+               AND Send(each_obj,@CountsAsHero)
          {
             iRow = Send(each_obj,@GetRow);
             iCol = Send(each_obj,@GetCol);
@@ -552,7 +552,7 @@ messages:
          }
       }
 
-      oStatue = Create(&LivingStatue);
+      oStatue = Create(&LivingStatue,#bEvent=TRUE);
       Send(self,@NewHold,#what=oStatue,#new_row=32,#new_col=7,#fine_row=0,#fine_col=0);
       Send(self,@SomethingTurned,#what=oStatue,#new_angle=ANGLE_NORTH);
 
@@ -561,7 +561,7 @@ messages:
       {
          iRow = Random(MIN_GEN_ROW,MAX_GEN_ROW);
          iCol = Random(MIN_GEN_COL,MAX_GEN_COL);
-         Send(self,@NewHold,#what=Create(&SpectralMummy),#new_row=iRow,#new_col=iCol);
+         Send(self,@NewHold,#what=Create(&SpectralMummy,#bEvent=TRUE),#new_row=iRow,#new_col=iCol);
       }
 
       return;
@@ -569,7 +569,7 @@ messages:
 
    OpenDoorDown()
    {
-      send(self,@CloseFinalDoor);
+      Send(self,@CloseFinalDoor);
 
       Send(self,@SetSector,#sector=SECTOR_EXIT1,#animation=ANIMATE_CEILING_LIFT,
             #height=273,#speed=4);
@@ -604,7 +604,7 @@ messages:
       propagate;
    }
 
-   AdjustHeroCount(what=$)
+   AdjustMaxMonsters(what=$)
    {
       piMonster_adjusted_max = piMonster_count_max;
 

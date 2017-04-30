@@ -37,7 +37,7 @@ void LoadKodbase(void)
    FILE *kodbase;
    int lineno;
    char line[MAX_LINE + 1];
-   char *type_char, *t1, *t2, *t3, *t4;
+   char *type_char, *line_ptr, t1[MAX_LINE + 1], t2[MAX_LINE + 1], t3[MAX_LINE + 1], t4[MAX_LINE + 1];
    char load_name[MAX_PATH + FILENAME_MAX];
 
    sprintf(load_name, "%s%s", ConfigStr(PATH_KODBASE), KODBASE_FILE);
@@ -61,10 +61,43 @@ void LoadKodbase(void)
          return;
       }
 
-      t1 = strtok(NULL, " \t\n");
-      t2 = strtok(NULL, " \t\n");
-      t3 = strtok(NULL, " \t\n");
-      t4 = strtok(NULL, " \t\n");
+      t1[0] = 0;
+      t2[0] = 0;
+      t3[0] = 0;
+      t4[0] = 0;
+
+      // Skip type char and \0 from strtok.
+      line_ptr = line + 2;
+
+      char *t_ptr;
+      t_ptr = t1;
+      int t_num = 1;
+      while (*line_ptr)
+      {
+         if (*line_ptr == ' ' || *line_ptr == '\t' || *line_ptr == '\n')
+         {
+            if (t_ptr == t1)
+            {
+               ++line_ptr;
+               continue;
+            }
+
+            t_num++;
+            *t_ptr = 0;
+            if (t_num == 2)
+               t_ptr = t2;
+            else if (t_num == 3)
+               t_ptr = t3;
+            else
+               t_ptr = t4;
+         }
+         else
+         {
+            *t_ptr = *line_ptr;
+            t_ptr++;
+         }
+         ++line_ptr;
+      }
 
       switch (type_char[0])
       {
@@ -72,70 +105,70 @@ void LoadKodbase(void)
          break;
 
       case 'C':
-         if (t1 == NULL || t2 == NULL || atoi(t2) == 0 || t3 == NULL
-            || (atoi(t3) != 0 && t4 == NULL))
+         if (!*t1 || !*t2 || strtol(t2, NULL, 10) == 0 || !*t3
+            || (strtol(t3, NULL, 10) != 0 && !*t4))
          {
             eprintf("LoadKodBase line %i Bad class entry!!!\n", lineno);
             fclose(kodbase);
             return;
          }
 
-         LoadKodbaseClass(t1, atoi(t2));
+         LoadKodbaseClass(t1, strtol(t2, NULL, 10));
 
          break;
 
       case 'M':
-         if (t1 == NULL || t2 == NULL || atoi(t2) == 0)
+         if (!*t1 || !*t2 || strtol(t2, NULL, 10) == 0)
          {
             eprintf("LoadKodBase line %i Bad message entry!!!\n", lineno);
             fclose(kodbase);
             return;
          }
-         LoadKodbaseMessage(t1, atoi(t2));
+         LoadKodbaseMessage(t1, strtol(t2, NULL, 10));
          break;
 
       case 'P':
-         if (t1 == NULL || t2 == NULL || atoi(t2) == 0)
+         if (!*t1 || !*t2 || strtol(t2, NULL, 10) == 0)
          {
             eprintf("LoadKodBase line %i Bad parameter entry!!!\n", lineno);
             fclose(kodbase);
             return;
          }
-         LoadKodbaseParameter(t1, atoi(t2));
+         LoadKodbaseParameter(t1, strtol(t2, NULL, 10));
          break;
 
       case 'R':
-         if (t1 == NULL || t2 == NULL || atoi(t2) == 0)
+         if (!*t1 || !*t2 || strtol(t2, NULL, 10) == 0)
          {
             eprintf("LoadKodBase line %i Bad resource entry!!!\n", lineno);
             fclose(kodbase);
             return;
          }
-         LoadKodbaseResource(t1, atoi(t2));
+         LoadKodbaseResource(t1, strtol(t2, NULL, 10));
          break;
 
       case 'Y':
-         if (t1 == NULL || t2 == NULL)
+         if (!*t1 || !*t2)
          {
             eprintf("LoadKodBase line %i Bad property entry!!!\n", lineno);
             fclose(kodbase);
             return;
          }
-         LoadKodbaseProperty(t1, atoi(t2));
+         LoadKodbaseProperty(t1, strtol(t2, NULL, 10));
          break;
 
       case 'V':
-         if (t1 == NULL || t2 == NULL)
+         if (!*t1 || !*t2)
          {
             eprintf("LoadKodBase line %i Bad classvar entry!!!\n", lineno);
             fclose(kodbase);
             return;
          }
-         LoadKodbaseClassVariable(t1, atoi(t2));
+         LoadKodbaseClassVariable(t1, strtol(t2, NULL, 10));
          break;
 
       case 'c':
-         if (t1 == NULL || t2 == NULL || atoi(t2) == 0)
+         if (!*t1 || !*t2 || strtol(t2, NULL, 10) == 0)
             eprintf("LoadKodBase line %i Unknown type character %c\n",
                lineno, type_char[0]);
          else
@@ -144,7 +177,7 @@ void LoadKodbase(void)
          break;
 
       case 'm':
-         if (t1 == NULL || t2 == NULL || atoi(t2) == 0)
+         if (!*t1 || !*t2 || strtol(t2, NULL, 10) == 0)
             eprintf("LoadKodBase line %i Unknown type character %c\n",
                lineno, type_char[0]);
          else
@@ -153,7 +186,7 @@ void LoadKodbase(void)
          break;
 
       case 'p':
-         if (t1 == NULL || t2 == NULL || atoi(t2) == 0)
+         if (!*t1 || !*t2 || strtol(t2, NULL, 10) == 0)
             eprintf("LoadKodBase line %i Unknown type character %c\n",
                lineno, type_char[0]);
          else

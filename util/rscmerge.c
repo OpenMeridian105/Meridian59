@@ -15,7 +15,10 @@ typedef struct _Resource {
    struct _Resource *next;
 } Resource;
 
-static Resource *resources;
+#define RSC_TABLE_SIZE 1023
+
+static Resource **resources;
+static int num_resources;
 
 static const int RSC_VERSION = 5;
 static char rsc_magic[] = {0x52, 0x53, 0x43, 0x01};
@@ -77,20 +80,9 @@ void Error(char *fmt, ...)
  */
 bool SaveRscFile(char *filename)
 {
-   int num_resources, i, temp;
+   int i, temp;
    Resource *r;
    FILE *f;
-
-   /* Count resources */
-   num_resources = 0;
-   for (r = resources; r != NULL; r = r->next)
-   {
-      for (int j = 0; j < MAX_LANGUAGE_ID; j++)
-      {
-         if (r->string[j])
-            num_resources++;
-      }
-   }
 
    /* If no resources, do nothing */
    if (num_resources == 0)
@@ -108,24 +100,28 @@ bool SaveRscFile(char *filename)
    fwrite(&temp, 4, 1, f);
    fwrite(&num_resources, 4, 1, f);
 
-   /* Loop through classes in this source file, and then their resources */
-   for (r = resources; r != NULL; r = r->next)
+   for (i = 0; i < RSC_TABLE_SIZE; ++i)
    {
-      // For each language string present,
-      // write out language data and string.
-      for (int j = 0; j < MAX_LANGUAGE_ID; j++)
+      r = resources[i];
+      while (r != NULL)
       {
-         if (r->string[j])
+         // For each language string present,
+         // write out language data and string.
+         for (int j = 0; j < MAX_LANGUAGE_ID; j++)
          {
-            // Write out id #
-            fwrite(&r->number, 4, 1, f);
+            if (r->string[j])
+            {
+               // Write out id #
+               fwrite(&r->number, 4, 1, f);
 
-            // Write language id.
-            fwrite(&j,4,1,f);
+               // Write language id.
+               fwrite(&j, 4, 1, f);
 
-            // Write string.
-            fwrite(r->string[j], strlen(r->string[j]) + 1, 1, f);
+               // Write string.
+               fwrite(r->string[j], strlen(r->string[j]) + 1, 1, f);
+            }
          }
+         r = r->next;
       }
    }
 
@@ -141,27 +137,38 @@ bool EachRscCallback(char *filename, int rsc, int lang_id, char *string)
    Resource *r;
 
    // See if we've added this resource already.
-   for (r = resources; r != NULL; r = r->next)
+   r = resources[rsc % RSC_TABLE_SIZE];
+   while (r != NULL)
    {
       if (r->number == rsc)
       {
+         ++num_resources;
          r->string[lang_id] = strdup(string);
-
          return true;
       }
+      r = r->next;
    }
 
    r = (Resource *) SafeMalloc(sizeof(Resource));
    r->number = rsc;
 
    for (int i = 0; i < MAX_LANGUAGE_ID; i++)
+   {
       if (i == lang_id)
+      {
          r->string[i] = strdup(string);
+         ++num_resources;
+      }
       else
+      {
          r->string[i] = NULL;
+      }
+   }
 
-   r->next = resources;
-   resources = r;
+   // add to resources table
+   int hash_num = r->number % RSC_TABLE_SIZE;
+   r->next = resources[hash_num];
+   resources[hash_num] = r;
 
    return true;
 }
@@ -183,13 +190,50 @@ bool LoadRscFiles(int num_files, char **filenames)
 
    return true;
 }
+void InitResourceTable()
+{
+   // Init resource table
+   resources = (Resource **)SafeMalloc(RSC_TABLE_SIZE * sizeof(Resource *));
+
+   for (int i = 0; i < RSC_TABLE_SIZE; i++)
+      resources[i] = NULL;
+
+   // Resources found so far.
+   num_resources = 0;
+}
+void FreeResourceTable()
+{
+   Resource *r, *temp;
+
+   for (int i = 0; i < RSC_TABLE_SIZE; ++i)
+   {
+      r = resources[i];
+      while (r != NULL)
+      {
+         temp = r->next;
+         for (int j = 0; j < MAX_LANGUAGE_ID; j++)
+         {
+            if (r->string[j])
+            {
+               SafeFree(r->string[j]);
+               r->string[j] = NULL;
+            }
+         }
+         SafeFree(r);
+         r = temp;
+      }
+      resources[i] = NULL;
+   }
+   SafeFree(resources);
+   num_resources = 0;
+}
 /***************************************************************************/
 int main(int argc, char **argv)
 {
    int arg, len;
    char *output_filename = NULL;
    int output_file_found = 0;
-   
+
    if (argc < 3)
       Usage();
    
@@ -229,9 +273,13 @@ int main(int argc, char **argv)
    if (arg >= argc)
       Error("No input files specified");
 
+   InitResourceTable();
+
    if (!LoadRscFiles(argc - arg, argv + arg))
       Error("Unable to load rsc files.");
 
    if (!SaveRscFile(output_filename))
       Error("Unable to save rsc file.");
+
+   FreeResourceTable();
 }

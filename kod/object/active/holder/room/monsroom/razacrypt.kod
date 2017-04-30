@@ -359,16 +359,25 @@ messages:
       propagate;
    }
 
-   LeverChanged(what = $)
+   LeverChanged(what=$,who=$)
    {
-      local iSwitched;
+      local iSwitched, oFollower;
 
       Send(self,@SomethingWaveRoom,#wave_rsc=razacrypt_door1_rsc,#what=what);
 
       iSwitched = 0;
+
       if Send(poLever1,@IsSwitched)
       {
          iSwitched = iSwitched + 1;
+
+         oFollower = Send(who,@GetMercenary);
+
+         if (oFollower <> $)
+            AND (Send(oFollower,@GetTriggerObject) = poLever2)
+         {
+            Send(poLever2,@SetSwitched);
+         }
       }
 
       if Send(poLever2,@IsSwitched)
@@ -619,6 +628,39 @@ messages:
       piMonster_adjusted_max = piMonster_count_max;
 
       return;
+   }
+
+   GetMercenaryTriggerObject(who=$)
+   {
+      local oLeader, leverrow, levercol, dleaderrow, dleadercol,
+            dfollowerrow, dfollowercol;
+
+      oLeader = Send(who,@GetLeader);
+
+      if (oLeader = $)
+         OR (Send(oLeader,@GetOwner) <> self)
+      {
+         return;
+      }
+
+      leverrow = Send(poLever2,@GetRow);
+      levercol = Send(poLever2,@GetCol);
+
+      dleaderrow = leverrow - Send(oLeader,@GetRow);
+      dleadercol = levercol - Send(oLeader,@GetCol);
+
+      dfollowerrow = leverrow - Send(who,@GetRow);
+      dfollowercol = levercol - Send(who,@GetCol);
+
+      if (NOT Send(poLever2,@IsSwitched))
+         AND dleaderrow*dleaderrow + dleadercol*dleadercol <= 49
+         AND dfollowerrow*dfollowerrow + dfollowercol*dfollowercol <= 9
+         AND Send(self,@LineOfSight,#obj1=who,#obj2=poLever2)
+      {
+         return poLever2;
+      }
+
+      propagate;
    }
 
 end

@@ -52,6 +52,9 @@ resources:
       "Nice! I think I've finally figured out how to cast this new ~I%s~I spell "
       "I've been trying to learn. I think it might come in handy..."
 
+   // Message triggered by follower acquiring a new trigger object
+   follower_object = "Ready to activate %s%s whenever you are!"
+
    // Messages triggered by KilledSomething()
    follower_killed_something_a = "And yet another foe has met it's timely end..."
    follower_killed_something_b = "Are they even trying?!"
@@ -147,8 +150,9 @@ resources:
       "...move in a little ~Icloser~I, or really ~Iclose~I so I don't fall behind.\n"
       "...stay a bit ~Ifarther~I back or stay ~Ifar~I back to stay out of trouble.\n"
       "...~Imeet up~I with you later in case you don't need me at the moment.\n"
-      "...~Ipart ways~I and follow my own destiny.  I'd think twice about that if I "
-      "were you though.  I bet you'd never find good company like me again!"
+      "You could also tell me that ~Iit's time to part ways again~I.\n"
+      "I'd think twice about that if I were you though.  I bet you'd never "
+      "find good company like me again!"
 
    // Messages used by FollowerSpellInform() triggered by MercenaryCommand()
    follower_no_spell_inform = "So far, I haven't learned any spells"
@@ -198,6 +202,7 @@ properties:
    viNaturalVigorRegeneration = 0
    piStayClose = 2
    ptChat = $
+   pbDontDispose = TRUE
 
 messages:
 
@@ -228,8 +233,17 @@ messages:
       propagate;
    }
 
-   Delete()
+   Delete(bConfirm=FALSE)
    {
+      // No accidential deletions. Go into absence unless
+      // we have a confirmed deletion or are without leader.
+      if NOT (bConfirm OR (poLeader = $))
+      {
+         Send(self,@FollowerAbsence);
+
+         return;
+      }
+
       if ptAbsence <> $
       {
          DeleteTimer(ptAbsence);
@@ -640,6 +654,13 @@ messages:
    FollowerReturn(oBody=$)
    {
       local oOwner;
+
+      // Just a precaution. Followers shouldn't occupy the merc slot
+      // if the feature is disabled.
+      if NOT Send(SETTINGS_OBJECT,@IsFollowerEnabled)
+      {
+         return;
+      }
 
       // Got a body, so we must have died somewhere along the road.
       if oBody <> $
@@ -1101,7 +1122,20 @@ messages:
 
    EnterStateMove()
    {
-      local i, oEnch, state;
+      local oObject, i, oEnch, state;
+
+      // Update our trigger object.
+      oObject = poObject;
+      poObject = Send(poOwner,@GetMercenaryTriggerObject,#who=self);
+
+      if (poObject <> $)
+         AND (oObject <> poObject)
+         AND Send(self,@ChatTimer)
+      {
+         Post(self,@SayToOne,#target=poLeader,#message_rsc=follower_object,
+            #parm1=Send(poObject,@GetDef),#parm2=Send(poObject,@GetName));
+      }
+
       if (Abs(piLightCheck - GetTickCount()) > 5000)
       {
          if poLeader <> $
@@ -1439,7 +1473,7 @@ messages:
 
    // Called when the follower is injured beyond a threshold.
    // Currently triggered every time.
-   FollowerInjured(iThreshold=$)
+   MercenaryInjured(iThreshold=$)
    {
       switch(iThreshold)
       {
@@ -1463,7 +1497,7 @@ messages:
 
    // Called when the follower recovers beyond a threshold.
    // Currently triggered every time.
-   FollowerRecovered(iThreshold=$)
+   MercenaryRecovered(iThreshold=$)
    {
       if Send(self,@ChatTimer)
       {

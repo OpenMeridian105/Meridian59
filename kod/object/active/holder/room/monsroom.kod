@@ -26,7 +26,7 @@ classvars:
    
 properties:
 
-   piGen_Time = DEFAULT_GEN_TIME
+   piGen_time = DEFAULT_GEN_TIME
    ptGen = $
 
    ptOkay_To_Load = $
@@ -75,7 +75,7 @@ properties:
    piLevel = 0
 
    // How far will spawned mobs roam from their spawnpoint?
-   piPatrolRadius = 0
+   piPatrolRadius = 10
 
    // How far will spawned mobs fight away from their spawn point before they reset?
    piLeashRadius = 0
@@ -109,7 +109,7 @@ messages:
    {
       local iWaitTime, iMaxHeroes;
 
-      iWaitTime = piGen_Time * 100 / Send(SETTINGS_OBJECT,@GetSpawnRate);
+      iWaitTime = piGen_time * 100 / Send(SETTINGS_OBJECT,@GetSpawnRate);
 
       iMaxHeroes = 5;
 
@@ -128,9 +128,23 @@ messages:
 
    MonsterGenTimer()
    {
+      local iAttempts;
+
       ptGen = $;
 
-      Send(self,@TryCreateMonster);
+      iAttempts = 10;
+
+      while iAttempts > 0
+      {
+         if Send(self,@TryCreateMonster)
+         {
+            break;
+         }
+         else
+         {
+            --iAttempts;
+         }
+      }
 
       ptGen = CreateTimer(self,@MonsterGenTimer,Send(self,@GetMonsterGenTime));
 
@@ -351,13 +365,20 @@ messages:
 
       // We actually have a fresh room to repopulate. Acquire population goal.
       // We fill the room up at the start, not adjusting for players.
-      iSpawnCount = Random(piInit_count_min,piInit_count_max);
+      iSpawnCount = Random(piInit_count_min,piInit_count_max) * 10;
 
+      // If our spawn failed (for example if a random spawn point was not valid)
+      // try again a few times before giving up.
       while iSpawnCount > 0
       {
-         Send(self,@TryCreateMonster,#initroom=TRUE,#loadfirst=pbLoad_First_Monster_Only);
-
-         --iSpawnCount;
+         if Send(self,@TryCreateMonster,#initroom=TRUE,#loadfirst=pbLoad_First_Monster_Only)
+         {
+            iSpawnCount -= 10;
+         }
+         else
+         {
+            --iSpawnCount;
+         }
       }
 
       // Initial creation process finalized. Initiate sustained generation process.
@@ -495,12 +516,12 @@ messages:
 
    GetGenTime()
    {
-      return piGen_Time;
+      return piGen_time;
    }
 
    SetGenTime(time = DEFAULT_GEN_TIME)
    {
-      piGen_Time = time;
+      piGen_time = time;
 
       return;
    }
@@ -550,6 +571,13 @@ messages:
    GetNumGenerators()
    {
       return Length(plGenerators);
+   }
+
+   RemoveAllGenerators()
+   {
+      plGenerators = $;
+
+      return;
    }
 
 end

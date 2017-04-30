@@ -1090,6 +1090,9 @@ properties:
    // Our current sidekick
    poMercenary = $
 
+   // Our stored follower in case of the feature being disabled temporarily.
+   poSavedFollower = $
+
 messages:
 
    Constructor()
@@ -1189,7 +1192,7 @@ messages:
          }
          else
          {
-            Send(poMercenary,@Delete);
+            Send(poMercenary,@Delete,#bConfirm=TRUE);
          }
       }
 
@@ -14920,6 +14923,12 @@ messages:
          return FALSE;
       }
 
+      if (Abs(piLastMoveUpdateTime - GetTickCount()) > Send(SETTINGS_OBJECT,@GetStealthDelay))
+         AND (ptAttackTimer = $)
+      {
+         return 300;
+      }
+
       // Stealth is primarily based on our agility and intellect.
       iStealth = 2 * Send(self,@GetAgility) + Send(self,@GetIntellect);
 
@@ -15077,6 +15086,33 @@ messages:
    IsLegitimateSpawn()
    {
       return TRUE;
+   }
+
+   StoreFollower()
+   {
+      if (poMercenary <> $)
+         AND IsClass(poMercenary,&Follower)
+      {
+         poSavedFollower = poMercenary;
+         poMercenary = $;
+      }
+
+      return;
+   }
+
+   RestoreFollower()
+   {
+      if (poSavedFollower <> $)
+      {
+         if (poMercenary <> $)
+         {
+            Send(poMercenary,@SetLeader,#report=FALSE);
+         }
+
+         poMercenary = poSavedFollower;
+      }
+
+      return;
    }
 
 end

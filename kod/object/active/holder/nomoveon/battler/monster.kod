@@ -168,10 +168,10 @@ resources:
 
    Lm_mercenary_join = \
       "You shouldn't go alone, it's dangerous out there...  Let me join you "
-      "until it's time to ~Ipart ways~I again."
+      "until ~Iit's time to part ways again~I."
    Lm_mercenary_join_contracted = "Reporting for duty!"
    Lm_mercenary_leave = "I'll be getting back to my squad.  Stay safe out there!"
-   Lm_mercenary_leave_trigger = "part ways"
+   Lm_mercenary_leave_trigger = "it's time to part ways again"
 
    vaultman_nogold = "You may not use my services to store %s%s."
    vaultman_nocursed = "I cannot take %s%s from you."
@@ -621,6 +621,9 @@ properties:
    // III: Index of the Generator or Boss Spawn
    // RRR: Row of the spawn   CCC: Col of the spawn.
    piSpawnLoc = $
+
+   // Mobs may acquire a trigger object in a room that they can interact with.
+   poObject = $
 
 messages:
 
@@ -1624,7 +1627,7 @@ messages:
          }
          else
          {
-            // If we can't, let's stop following.
+            // If we aren't, let's stop following.
             // SetLeader sets leader to nil if none is passed.
             Send(self,@SetLeader);
          }
@@ -2449,6 +2452,29 @@ messages:
          // Clear any other move commands we might have.
          Send(self,@MoveTowards,#oTarget=poLeader,#face_target=TRUE,#to_master=TRUE,
             #post_haste=(drow * drow + dcol * dcol > iRadius * iRadius * 9));
+
+         return TRUE;
+      }
+
+      return FALSE;
+   }
+
+   MoveToTriggerObject()
+   {
+      local leverrow, levercol;
+
+      //// Calculate distance in highres-grid squares (steps we can still make)
+      // Distance to lever
+      leverrow = ((Send(poObject,@GetRow) * FINENESS) + Send(poObject,@GetFineRow)) / 16;
+      levercol = ((Send(poObject,@GetCol) * FINENESS) + Send(poObject,@GetFineCol)) / 16;
+      leverrow = Abs(leverrow - (((piRow * FINENESS) + piFine_row) / 16));
+      levercol = Abs(levercol - (((piCol * FINENESS) + piFine_col) / 16));
+
+      // Let's move up to the object unless we are close enough already.
+      if (leverrow * leverrow + levercol * levercol > 16)
+      {
+         // Clear any other move commands we might have.
+         Send(self,@MoveTowards,#oTarget=poObject,#face_target=TRUE);
 
          return TRUE;
       }
@@ -6485,7 +6511,7 @@ messages:
       if (poLeader <> $)
          AND (Send(poLeader,@GetOwner) = poOwner)
       {
-         Send(self,@FollowerInjured,#iThreshold=iThreshold);
+         Send(self,@MercenaryInjured,#iThreshold=iThreshold);
       }
 
       return;
@@ -6533,7 +6559,7 @@ messages:
       if (poLeader <> $)
          AND (Send(poLeader,@GetOwner) = poOwner)
       {
-         Send(self,@FollowerRecovered,#iThreshold=iThreshold);
+         Send(self,@MercenaryRecovered,#iThreshold=iThreshold);
       }
 
       return;
@@ -8078,7 +8104,12 @@ messages:
 
                Send(oLeader,@SetMercenary,#oMercenary=self);
                poLeader = oLeader;
-               Send(poOwner,@SomethingChanged,#what=self);
+
+               // This may happen when the player isn't even logged on.
+               if poOwner <> $
+               {
+                  Send(poOwner,@SomethingChanged,#what=self);
+               }
             }
          }
          else
@@ -8102,7 +8133,12 @@ messages:
 
             Send(poLeader,@SetMercenary);
             poLeader = $;
-            Send(poOwner,@SomethingChanged,#what=self);
+
+            // This may happen when the player isn't even logged on.
+            if poOwner <> $
+            {
+               Send(poOwner,@SomethingChanged,#what=self);
+            }
          }
          // We won't take a new leader if we already got one. Return FALSE.
          if (oLeader <> $)
@@ -8135,7 +8171,7 @@ messages:
       {
          Post(self,@SayToOne,#target=what,#message_rsc=vrMercenaryJoinContracted);
       }
-      else
+      else if IsClass(self,&Follower) OR NOT Random(0,7)
       {
          Post(self,@SayToOne,#target=what,#message_rsc=vrMercenaryJoin);
       }
@@ -8145,6 +8181,11 @@ messages:
 
    MercenaryLeaveMessage(what=$)
    {
+      if (NOT IsClass(self,&Follower)) AND Random(0,5)
+      {
+         return;
+      }
+
       Post(self,@SayToOne,#target=what,#message_rsc=vrMercenaryLeave);
 
       Send(self,@FaceLeader);
@@ -8161,7 +8202,7 @@ messages:
    {
       //// General Merc Chat Commands
       // Get rid of mercenary
-      if StringContain(message,Lm_mercenary_leave_trigger)
+      if StringEqual(message,Lm_mercenary_leave_trigger)
          AND (what = poLeader)
          AND Send(self,@SetLeader)
       {
@@ -9763,6 +9804,23 @@ messages:
    IsLegitimateSpawn()
    {
       return NOT (pbIllusion OR vbSummoned OR pbEvent);
+   }
+
+   GetTriggerObject()
+   {
+      return poObject;
+   }
+
+   // Called when the mercenary is injured beyond a threshold.
+   MercenaryInjured(iThreshold=$)
+   {
+      return;
+   }
+
+   // Called when the mercenary recovers beyond a threshold.
+   MercenaryRecovered(iThreshold=$)
+   {
+      return;
    }
 
 end

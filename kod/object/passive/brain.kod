@@ -192,8 +192,8 @@ properties:
 
    // These two variables control how much hatred is removed
    // by invisibility and shadow form.
-   piInvis_reduction = 1000
-   piShadForm_reduction = 600
+   piInvis_reduction = 600
+   piShadForm_reduction = 300
 
    // These properties control mob idle movement.
    // High numbers mean low chance.
@@ -466,6 +466,7 @@ messages:
             AND Send(self,@AttemptTargetSwitch,#what=what,#event=iType,#mob=mob)
          {
             iDelay = Bound(100 - Send(mob,@GetAgility),25,100) * 20;
+            iDelay *= Send(SETTINGS_OBJECT,@GetAggroDelayPercentage) / 100;
             Send(mob,@EnterStateEngage,#target=what,#actnow=bAssist,#delay=iDelay);
 
             return;
@@ -476,6 +477,7 @@ messages:
             AND Send(self,@AttemptTargetSwitch,#what=victim,#event=iType,#mob=mob)
          {
             iDelay = Bound(100 - Send(mob,@GetAgility),25,100) * 50;
+            iDelay *= Send(SETTINGS_OBJECT,@GetAggroDelayPercentage) / 100;
             Send(mob,@EnterStateEngage,#target=victim,#actnow=bAssist,#delay=iDelay);
 
             return;
@@ -765,6 +767,15 @@ messages:
       // If we got a leader, follow him.
       if Send(mob,@GetLeader) <> $
       {
+         // If we got a trigger object, move towards it.
+         // This may fail if we have moved too far from our leader.
+         if Send(mob,@GetTriggerObject) <> $
+         {
+            Send(mob,@MoveToTriggerObject);
+
+            return;
+         }
+
          Send(mob,@MoveToLeader);
 
          return;
@@ -786,6 +797,7 @@ messages:
                AND Send(self,@AttemptTargetSwitch,#what=oEnemy,#event=TS_MOVE,#mob=mob)
             {
                iDelay = Bound(100 - Send(mob,@GetAgility),25,100) * 40;
+               iDelay *= Send(SETTINGS_OBJECT,@GetAggroDelayPercentage) / 100;
                Send(mob,@EnterStateEngage,#target=oEnemy,#actnow=FALSE,
                      #delay=iDelay);
 
@@ -887,6 +899,7 @@ messages:
                                  #what=oEnemy,#event=TS_MOVE)
                      {
                         iDelay = Bound(100 - Send(mob,@GetAgility),25,100) * 40;
+                        iDelay *= Send(SETTINGS_OBJECT,@GetAggroDelayPercentage) / 100;
                         Send(mob,@EnterStateEngage,#target=oEnemy,
                               #actnow=FALSE,#delay=iDelay);
 
@@ -1189,10 +1202,12 @@ messages:
       }
 
       //// Checks against aggro lowering mechanics.
-      // Will only work if mobs isn't attacked directly.
-      if event <> TS_FIGHT_DEFEND_SELF
+      // Will only work if 'what' isn't attacking.
+      if (event = TS_MOVE)
+         OR (event = TS_FIGHT_ASSIST_ATTACKER)
+         OR (event = TS_FIGHT_DEFEND_ATTACKER)
       {
-         // Debug("Mob is not defending itself but joining an attack!");
+         // Debug("Target not hostile. Mob is joining an attack!");
          // A pacified mob will only fight back if smacked.
          if Send(mob,@IsPacified)
          {
@@ -1216,6 +1231,47 @@ messages:
          else if Send(what,@IsShadowForm)
          {
             iHatred -= piShadForm_reduction;
+            // Debug("Target in shadow form! Hatred reduced to: ",iHatred);
+         }
+      }
+      // 'what' is acting hostile, but not towards us. Feign death is no longer
+      // very convincing... Aggro reduction is only half as effective. Pacified
+      // mobs still won't react though.
+      else if (event <> TS_FIGHT_DEFEND_SELF)
+      {
+         // Debug("Target is hostile, but not towards us. Mob is helping victim.");
+         // A pacified mob will only fight back if smacked.
+         if Send(mob,@IsPacified)
+         {
+            // Debug("Monster is pacfied and won't join!");
+            return 0;
+         }
+         // Invisible targets have low priority.
+         if Send(what,@IsInvisible)
+         {
+            iHatred -= piInvis_reduction / 2;
+            // Debug("Target invisible! Hatred reduced to: ",iHatred);
+         }
+         // Shadowform may also save the target from aggression.
+         else if Send(what,@IsShadowForm)
+         {
+            iHatred -= piShadForm_reduction / 2;
+            // Debug("Target in shadow form! Hatred reduced to: ",iHatred);
+         }
+      }
+      // 'what' is in the process of smacking us. Pacification and feign death
+      // won't stop us, but aggro reducing mechanics still have a bit of effect.
+      else
+      {
+         // Debug("Target is smacking us, we are defending ourselves.");
+         if Send(what,@IsInvisible)
+         {
+            iHatred -= piInvis_reduction / 4;
+            // Debug("Target invisible! Hatred reduced to: ",iHatred);
+         }
+         else if Send(what,@IsShadowForm)
+         {
+            iHatred -= piShadForm_reduction / 4;
             // Debug("Target in shadow form! Hatred reduced to: ",iHatred);
          }
       }

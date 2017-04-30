@@ -5171,7 +5171,7 @@ messages:
                return FALSE;
             }
             else if NOT Send(self,@IsValidSpawnLocation,#iRow=iMRow,#iCol=iMCol,
-                           #iFineRow=iMRowFine,#iFineCol=iMColFine)
+               #iFineRow=iMRowFine,#iFineCol=iMColFine,#what=oMonster)
             {
                Send(oMonster,@Delete);
 
@@ -5181,6 +5181,9 @@ messages:
             {
                // no need to verify these randompoints again
                iCheck = FALSE;
+
+               // Keep track of our spawn location.
+               Send(oMonster,@SetSpawnLoc,#iRow=iMRow,#iCol=iMCol);
             }
          }
          else
@@ -5253,17 +5256,21 @@ messages:
       return TRUE;
    }
 
-   FindFreeGenerator()
+   FindFreeGenerator(bRandom=TRUE)
    {
-      local i, j, iRow, iCol, iIndex, oMonster, iSpawnLoc, bOccupied;
+      local i, j, iRow, iCol, iIndex, iLength, iShift, bOccupied,
+            oMonster, iSpawnLoc;
 
-      iIndex = 0;
+      iLength = Length(plGenerators);
+      iShift = bRandom * Random(0,iLength-1);
 
-      foreach i in plGenerators
+      iIndex = 1 + iShift;
+
+      while iIndex <> iShift
       {
+         i = Nth(plGenerators,iIndex);
          iRow = First(i);
          iCol = Nth(i,2);
-         ++iIndex;
 
          bOccupied = FALSE;
 
@@ -5293,6 +5300,19 @@ messages:
          if NOT bOccupied
          {
             return iIndex*1000000+iRow*1000+iCol;
+         }
+
+         if iIndex < iLength
+         {
+            ++iIndex;
+         }
+         else if iShift
+         {
+            iIndex = 1;
+         }
+         else
+         {
+            break;
          }
       }
 
@@ -5597,9 +5617,38 @@ messages:
    }
 
    // Used to exempt certain areas from random monster spawning.
-   IsValidSpawnLocation(iRow=0,iCol=0,iFineRow=0,iFineCol=0)
+   // Also double checks a location is valid by checking locations
+   // direcly next to it to prevent wall spawns.
+   IsValidSpawnLocation(iRow=0,iCol=0,iFineRow=0,iFineCol=0,what=$)
    {
+      local iRadius;
+
+      iRadius = Send(self,@GetSpawnRadius);
+
+      if iRadius
+         AND (NOT CanMoveInRoomBSP(prmRoom,iRow,iCol,iFineRow,iFineCol,
+               iRow+iRadius,iCol+iRadius,iFineRow,iFineCol,what,FALSE)
+            OR NOT CanMoveInRoomBSP(prmRoom,iRow,iCol,iFineRow,iFineCol,
+               iRow+iRadius,iCol-iRadius,iFineRow,iFineCol,what,FALSE)
+            OR NOT CanMoveInRoomBSP(prmRoom,iRow,iCol,iFineRow,iFineCol,
+               iRow-iRadius,iCol+iRadius,iFineRow,iFineCol,what,FALSE)
+            OR NOT CanMoveInRoomBSP(prmRoom,iRow,iCol,iFineRow,iFineCol,
+               iRow-iRadius,iCol-iRadius,iFineRow,iFineCol,what,FALSE))
+      {
+         return FALSE;
+      }
+
       return TRUE;
+   }
+
+   GetMercenaryTriggerObject(who=$)
+   {
+      return;
+   }
+
+   GetSpawnRadius()
+   {
+      return 1;
    }
 
 end

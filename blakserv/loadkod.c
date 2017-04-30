@@ -107,52 +107,49 @@ void ResetLoadBof(void)
 
 Bool LoadBofName(char *fname)
 {
-   FILE *f = fopen(fname, "rb");
-	if (f == NULL)
+   int fileno = open(fname, O_BINARY | O_RDONLY);
+
+   if (fileno == -1)
    {
       eprintf("LoadBofName can't open %s\n", fname);
-		return False;
-   }
-
-   for (int i = 0; i < BOF_MAGIC_LEN; ++i)
-   {
-      unsigned char c;
-      if (fread(&c, 1, 1, f) != 1 || c != magic_num[i])
-      {
-         eprintf("LoadBofName %s is not in BOF format\n", fname);
-         fclose(f);
-         return False;
-      }
-   }
-   
-   int version;
-   if (fread(&version, 1, 4, f) != 4 || version != BOF_VERSION)
-	{
-		eprintf("LoadBofName %s can't understand bof version %i\n",
-			fname, version);
-		fclose(f);
-		return False;
-	}
-   
-   // Go back to start of file and read the whole thing into memory.
-   fseek(f, 0, SEEK_SET);
-   
-   struct stat st;
-   stat(fname, &st);
-   int file_size = st.st_size;
-
-	char *ptr = (char *)AllocateMemory(MALLOC_ID_LOADBOF,file_size);
-   if (fread(ptr, 1, file_size, f) != file_size)
-   {
-      fclose(f);
       return False;
    }
 
-   fclose(f);
+   int file_size = lseek(fileno, 0L, SEEK_END);
 
-	AddFileMem(fname,ptr,file_size);
-	
-	return True;
+   // Go back to start of file and read the whole thing into memory.
+   lseek(fileno, 0, SEEK_SET);
+
+   char *ptr = (char *)AllocateMemory(MALLOC_ID_LOADBOF, file_size);
+   if (read(fileno, ptr, file_size) != file_size)
+   {
+      close(fileno);
+      return False;
+   }
+
+   close(fileno);
+
+   for (int i = 0; i < BOF_MAGIC_LEN; ++i)
+   {
+      if ((unsigned char)ptr[i] != magic_num[i])
+      {
+         eprintf("LoadBofName %s is not in BOF format\n", fname);
+         FreeMemory(MALLOC_ID_LOADBOF, ptr, file_size);
+         return False;
+      }
+   }
+   int version = (int)ptr[BOF_MAGIC_LEN];
+   if (version != BOF_VERSION)
+   {
+      eprintf("LoadBofName %s can't understand bof version %i\n",
+         fname, version);
+      FreeMemory(MALLOC_ID_LOADBOF, ptr, file_size);
+      return False;
+   }
+
+   AddFileMem(fname, ptr, file_size);
+
+   return True;
 }
 
 /* add a filename and mapped ptr to the list of loaded files */

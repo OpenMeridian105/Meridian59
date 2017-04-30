@@ -37,19 +37,6 @@ list_type failed_compile_files;
 void fill_lists_from_makefile(char *full_path, int recompiled_parent);
 int recompile_check(char *name, dir_data d, int recompiled_parent);
 
-// Blakdiff-sourced code.
-typedef struct
-{
-   HANDLE fh;
-   HANDLE mapfh;
-   char *mem;
-   int length;
-} file_node;
-
-BOOL MappedFileOpen(char *filename, file_node *f);
-void MappedFileClose(file_node *f);
-int blakdiff_check(char *fname1, char *fname2);
-
 int rsctime = 0;
 int timecounter = 0;
 
@@ -336,77 +323,9 @@ void dircompile_copy_files(char *bof_source, char *rsc_source, char *bofname, ch
 {
    char combine[_MAX_PATH];
 
-   // BOF first, easy - just copy.
    sprintf(combine, "%s\\%s", bof_output_dir, bofname);
    CopyFile(bof_source, combine, FALSE);
 
-   // RSC - diff first then copy.
    sprintf(combine, "%s\\%s", rsc_output_dir, rscname);
-   if (blakdiff_check(rsc_source, combine) == 0)
-      CopyFile(rsc_source, combine, FALSE);
-}
-
-// blakdiff.c, copied with modified main.
-int blakdiff_check(char *fname1, char *fname2)
-{
-   file_node file1, file2;
-   int i;
-
-   if (!MappedFileOpen(fname1, &file1))
-      return 1;
-
-   // Maybe not there, so copy.
-   if (!MappedFileOpen(fname2, &file2))
-      return 0;
-
-   if (file1.length != file2.length)
-      return 1;
-
-   for (i = 0;i<file1.length;i++)
-      if (file1.mem[i] != file2.mem[i])
-      {
-         MappedFileClose(&file1);
-         MappedFileClose(&file2);
-         return 1;
-      }
-
-   MappedFileClose(&file1);
-   MappedFileClose(&file2);
-   return 0;
-}
-
-BOOL MappedFileOpen(char *filename, file_node *f)
-{
-   f->fh = CreateFile(filename, GENERIC_READ, FILE_SHARE_READ, NULL,
-      OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL | FILE_FLAG_SEQUENTIAL_SCAN, NULL);
-   if (f->fh == INVALID_HANDLE_VALUE)
-   {
-      return FALSE;
-   }
-
-   f->length = GetFileSize(f->fh, NULL);
-
-   f->mapfh = CreateFileMapping(f->fh, NULL, PAGE_READONLY, 0, f->length, NULL);
-   if (f->mapfh == NULL)
-   {
-      CloseHandle(f->fh);
-      return FALSE;
-   }
-
-   f->mem = (char *)MapViewOfFile(f->mapfh, FILE_MAP_READ, 0, 0, 0);
-   if (f->mem == NULL)
-   {
-      CloseHandle(f->mapfh);
-      CloseHandle(f->fh);
-      return FALSE;
-   }
-
-   return TRUE;
-}
-
-void MappedFileClose(file_node *f)
-{
-   UnmapViewOfFile(f->mem);
-   CloseHandle(f->mapfh);
-   CloseHandle(f->fh);
+   CopyFile(rsc_source, combine, FALSE);
 }

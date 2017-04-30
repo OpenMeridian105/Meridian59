@@ -2600,7 +2600,7 @@ messages:
                   fine_col = FINENESS/2, cause = CAUSE_UNKNOWN, speed = 0,
                   non_monsters_only = FALSE)
    {
-      local i, temp, each_obj, packet_built, lNode, iQflags, 
+      local i, temp, each_obj, packet_built, lNode, iQflags, bStealth,
             iRflags, iHeightF, iHeightFWD, iHeightC, iServerID;
 
       if new_row = $ OR new_col = $ OR fine_row = $ OR fine_col = $
@@ -2686,6 +2686,9 @@ messages:
       // 2. Get this first user to build up the packet to send
       // 3. Go through all the users and SendCopyPacket 'em
 
+      // But don't send info about hidden DMs.
+      bStealth = (IsClass(what,&DM) AND Send(what,@IsDMStealthed));
+
       packet_built = FALSE;
 
       temp = plActive;
@@ -2696,7 +2699,7 @@ messages:
          each_obj = First(i);
          if IsClass(each_obj,&User)
          {
-            if not packet_built
+            if NOT packet_built
             {
                Send(each_obj,@BuildPacketSomethingMoved,#what=what,
                     #new_row=new_row,#new_col=new_col,
@@ -2717,7 +2720,7 @@ messages:
                     #fine_row=fine_row,#fine_col=fine_col,
                     #cause=cause,#speed=speed);
             }
-            else
+            else if (NOT bStealth)
             {
                // This will be a user's session
                SendCopyPacket(Nth(i,7));
@@ -2761,7 +2764,7 @@ messages:
 
    SomethingTurned(what = $,new_angle = $,cause = CAUSE_UNKNOWN)
    {
-      local i, lNode, each_obj, packet_built, temp;
+      local i, lNode, each_obj, packet_built, temp, bStealth;
 
       // Gets the list node containing what as first element.
       lNode = GetListNode(plActive,1,what);
@@ -2792,6 +2795,9 @@ messages:
       // 2. Get this first user to build up the packet to send
       // 3. Go through all the users and SendCopyPacket 'em
 
+      // But don't send info about hidden DMs.
+      bStealth = (IsClass(what,&DM) AND Send(what,@IsDMStealthed));
+
       packet_built = FALSE;
 
       temp = plActive;
@@ -2810,7 +2816,10 @@ messages:
                packet_built = TRUE;
             }
 
-            if each_obj <> what OR cause <> CAUSE_USER_INPUT
+            if ((each_obj <> what
+                  AND NOT bStealth)
+               OR (cause <> CAUSE_USER_INPUT
+                  AND each_obj = what))
             {
                // Seventh element will be a user's session
                SendCopyPacket(Nth(i,7));
@@ -3551,6 +3560,16 @@ messages:
    SomethingWaveRoom(what = 0,wave_rsc = $)
    "Don't send <what> if not from any particular object"
    {
+      // Don't play sounds made by stealthed DMs.
+      // Handled here because a lot of things might accidentally cause
+      // stealthed DMs to give themselves away by sound.
+      if (what <> 0
+         AND IsClass(what,&DM)
+         AND Send(what,@IsDMStealthed))
+      {
+         return;
+      }
+
       SendListByClass(plActive,1,&User,@WaveSendUser,
             #wave_rsc=wave_rsc,#source_obj=what);
 

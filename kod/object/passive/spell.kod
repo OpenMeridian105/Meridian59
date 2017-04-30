@@ -1515,15 +1515,15 @@ messages:
 
       if IsClass(who,&DM)
       {
-         ClearTempString();
-         if lTargets <> $
+         if (lTargets <> $)
          {
-            AppendTempString(" on target ");
-            AppendTempString(Send(First(lTargets),@GetTrueName));
+            GodLog("DM ",Send(who,@GetTrueName)," cast ", Send(self,@GetName),
+                  " on ",Send(First(lTargets),@GetTrueName));
          }
-
-         GodLog("DM ",Send(who,@GetTrueName)," cast the spell ",
-               Send(self,@GetName),GetTempString());
+         else
+         {
+            GodLog("DM ",Send(who,@GetTrueName)," cast ", Send(self,@GetName));
+         }
       }
 
       if NOT bItemCast
@@ -1620,21 +1620,9 @@ messages:
 
       if oRoom <> $
       {
-         if IsClass(who,&Admin)
-            AND Send(who,@IsHidden)
+         if IsClass(who,&DM)
+            AND Send(who,@IsDMStealthed)
          {
-            if oTarget = $
-            {
-               Debug("ADMIN: ",Send(who,@GetTrueName)," cast ",
-                     Send(Self,@GetName)," while hidden.");
-            }
-            else
-            {
-               Debug("ADMIN: ",Send(who,@GetTrueName)," cast ",
-                     Send(self,@GetName)," on ",Send(oTarget,@GetTrueName),
-                     " while hidden.");
-            }
-
             return;
          }
 

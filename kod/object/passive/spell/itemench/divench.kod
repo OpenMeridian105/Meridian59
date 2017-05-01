@@ -192,15 +192,13 @@ messages:
    PerformItemAtt(who = $,oItem = $, sMessage = $)
    "Realistically, this will usually be called by SomethingSaidDuringTrance."
    {
-      local i, oItemAtt, sTrigger;
+      local i, oItemAtt;
 
       // Try match the name first so we can distinguish an incorrect itematt
       // name versus being unable to apply it to the item for other reasons.
       foreach i in Send(SYS,@GetItemAtts)
       {
-         sTrigger = Send(i,@GetDMTrigger);
-         if (sTrigger <> $
-            AND StringContain(sMessage,sTrigger))
+         if (Send(i,@StringMatchesTrigger,#string=sMessage))
          {
             oItemAtt = i;
 

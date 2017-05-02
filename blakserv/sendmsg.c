@@ -1099,8 +1099,125 @@ void InterpretGotoIfNeqNullClassVar(int object_id, local_var_type *local_vars)
 // need to be bounds checked, as the compiler checks this when it
 // outputs the opcodes.
 
+// 3 opcodes for calls with no settings (named parameters), 3 opcodes
+// for calls with settings.
 // OP_CALL_STORE_NONE: 1 byte instruction, 1 byte call ID, call data.
 void InterpretCallStoreNone(int object_id, local_var_type *local_vars)
+{
+   parm_node normal_parm_array[MAX_C_PARMS];
+   unsigned char info, num_normal_parms;
+   val_type call_return;
+
+   info = get_byte(); /* get function id */
+
+   num_normal_parms = get_byte();
+
+   for (int i = 0; i < num_normal_parms; ++i)
+   {
+      normal_parm_array[i].type = get_byte();
+      normal_parm_array[i].value = get_int();
+   }
+
+   // Time messages.
+   if (kod_stat.debugtime)
+   {
+      double startTime = GetMicroCountDouble();
+      /* increment timed count of the c function, for profiling info */
+      kod_stat.c_count_timed[info]++;
+      call_return.int_val = ccall_table[info](object_id, local_vars, num_normal_parms,
+         normal_parm_array, 0, 0);
+      kod_stat.ccall_total_time[info] += (GetMicroCountDouble() - startTime);
+   }
+   else
+   {
+      /* increment untimed count of the c function, for profiling info */
+      kod_stat.c_count_untimed[info]++;
+      call_return.int_val = ccall_table[info](object_id, local_vars, num_normal_parms,
+         normal_parm_array, 0, 0);
+   }
+}
+// OP_CALL_STORE_L: 1 byte instruction, 1 byte call ID, 4 bytes local ID, call data.
+void InterpretCallStoreLocal(int object_id, local_var_type *local_vars)
+{
+   parm_node normal_parm_array[MAX_C_PARMS];
+   unsigned char info, num_normal_parms;
+   int assign_index;
+   val_type call_return;
+
+   info = get_byte(); /* get function id */
+
+   // Local var ID
+   assign_index = get_int();
+
+   num_normal_parms = get_byte();
+
+   for (int i = 0; i < num_normal_parms; ++i)
+   {
+      normal_parm_array[i].type = get_byte();
+      normal_parm_array[i].value = get_int();
+   }
+
+   // Time messages.
+   if (kod_stat.debugtime)
+   {
+      double startTime = GetMicroCountDouble();
+      /* increment timed count of the c function, for profiling info */
+      kod_stat.c_count_timed[info]++;
+      call_return.int_val = ccall_table[info](object_id, local_vars, num_normal_parms,
+         normal_parm_array, 0, 0);
+      kod_stat.ccall_total_time[info] += (GetMicroCountDouble() - startTime);
+   }
+   else
+   {
+      /* increment untimed count of the c function, for profiling info */
+      kod_stat.c_count_untimed[info]++;
+      call_return.int_val = ccall_table[info](object_id, local_vars, num_normal_parms,
+         normal_parm_array, 0, 0);
+   }
+   StoreLocal(local_vars, assign_index, call_return);
+}
+// OP_CALL_STORE_P: 1 byte instruction, 1 byte call ID, 4 bytes property ID, call data.
+void InterpretCallStoreProperty(int object_id, local_var_type *local_vars)
+{
+   parm_node normal_parm_array[MAX_C_PARMS];
+   unsigned char info, num_normal_parms;
+   int assign_index;
+   val_type call_return;
+
+   info = get_byte(); /* get function id */
+
+   // Property ID
+   assign_index = get_int();
+
+   num_normal_parms = get_byte();
+
+   for (int i = 0; i < num_normal_parms; ++i)
+   {
+      normal_parm_array[i].type = get_byte();
+      normal_parm_array[i].value = get_int();
+   }
+
+   // Time messages.
+   if (kod_stat.debugtime)
+   {
+      double startTime = GetMicroCountDouble();
+      /* increment timed count of the c function, for profiling info */
+      kod_stat.c_count_timed[info]++;
+      call_return.int_val = ccall_table[info](object_id, local_vars, num_normal_parms,
+         normal_parm_array, 0, 0);
+      kod_stat.ccall_total_time[info] += (GetMicroCountDouble() - startTime);
+   }
+   else
+   {
+      /* increment untimed count of the c function, for profiling info */
+      kod_stat.c_count_untimed[info]++;
+      call_return.int_val = ccall_table[info](object_id, local_vars, num_normal_parms,
+         normal_parm_array, 0, 0);
+   }
+   StoreProperty(object_id, assign_index, call_return);
+}
+// OP_CALL_SETTINGS_STORE_NONE: 1 byte instruction, 1 byte call ID, call data.
+void InterpretCallSettingsStoreNone(int object_id, local_var_type *local_vars)
 {
    parm_node normal_parm_array[MAX_C_PARMS], name_parm_array[MAX_NAME_PARMS];
    unsigned char info, num_normal_parms, num_name_parms, initial_type;
@@ -1151,8 +1268,8 @@ void InterpretCallStoreNone(int object_id, local_var_type *local_vars)
          normal_parm_array, num_name_parms, name_parm_array);
    }
 }
-// OP_CALL_STORE_L: 1 byte instruction, 1 byte call ID, 4 bytes local ID, call data.
-void InterpretCallStoreLocal(int object_id, local_var_type *local_vars)
+// OP_CALL_SETTINGS_STORE_L: 1 byte instruction, 1 byte call ID, 4 bytes local ID, call data.
+void InterpretCallSettingsStoreLocal(int object_id, local_var_type *local_vars)
 {
    parm_node normal_parm_array[MAX_C_PARMS], name_parm_array[MAX_NAME_PARMS];
    unsigned char info, num_normal_parms, num_name_parms, initial_type;
@@ -1208,8 +1325,8 @@ void InterpretCallStoreLocal(int object_id, local_var_type *local_vars)
    }
    StoreLocal(local_vars, assign_index, call_return);
 }
-// OP_CALL_STORE_P: 1 byte instruction, 1 byte call ID, 4 bytes property ID, call data.
-void InterpretCallStoreProperty(int object_id, local_var_type *local_vars)
+// OP_CALL_SETTINGS_STORE_P: 1 byte instruction, 1 byte call ID, 4 bytes property ID, call data.
+void InterpretCallSettingsStoreProperty(int object_id, local_var_type *local_vars)
 {
    parm_node normal_parm_array[MAX_C_PARMS], name_parm_array[MAX_NAME_PARMS];
    unsigned char info, num_normal_parms, num_name_parms, initial_type;
@@ -1999,6 +2116,9 @@ void CreateOpcodeTable(void)
    opcode_table[OP_CALL_STORE_NONE] = InterpretCallStoreNone;
    opcode_table[OP_CALL_STORE_L] = InterpretCallStoreLocal;
    opcode_table[OP_CALL_STORE_P] = InterpretCallStoreProperty;
+   opcode_table[OP_CALL_SETTINGS_STORE_NONE] = InterpretCallSettingsStoreNone;
+   opcode_table[OP_CALL_SETTINGS_STORE_L] = InterpretCallSettingsStoreLocal;
+   opcode_table[OP_CALL_SETTINGS_STORE_P] = InterpretCallSettingsStoreProperty;
    opcode_table[OP_UNARY_NOT_L] = InterpretUnaryNot_L;
    opcode_table[OP_UNARY_NOT_P] = InterpretUnaryNot_P;
    opcode_table[OP_UNARY_NEG_L] = InterpretUnaryNeg_L;

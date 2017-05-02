@@ -316,6 +316,17 @@ int codegen_call(call_stmt_type c, id_type destvar, int linenumber, int maxlocal
    /* Build up call instruction */
 
    /* Output the call opcode */
+
+   int has_settings = False;
+   for (p = c->args; p != NULL; p = p->next)
+   {
+      if (((arg_type)(p->data))->type == ARG_SETTING)
+      {
+         has_settings = True;
+         break;
+      }
+   }
+
    if (destvar == NULL)
    {
       // Check if this function is allowed to discard the return value.
@@ -323,18 +334,21 @@ int codegen_call(call_stmt_type c, id_type destvar, int linenumber, int maxlocal
       if (c->store_required == STORE_REQUIRED)
          codegen_warning(linenumber, "Function call %s discarding required return value",
             get_function_name_by_opcode(c->function));
-      OutputByte(outfile, (BYTE)OP_CALL_STORE_NONE);
+      has_settings ? OutputByte(outfile, (BYTE)OP_CALL_SETTINGS_STORE_NONE)
+                   : OutputByte(outfile, (BYTE)OP_CALL_STORE_NONE);
    }
    else
    {
       switch (destvar->type)
       {
       case I_LOCAL:
-         OutputByte(outfile, (BYTE)OP_CALL_STORE_L);
+         has_settings ? OutputByte(outfile, (BYTE)OP_CALL_SETTINGS_STORE_L)
+                      :  OutputByte(outfile, (BYTE)OP_CALL_STORE_L);
          break;
 
       case I_PROPERTY:
-         OutputByte(outfile, (BYTE)OP_CALL_STORE_P);
+         has_settings ? OutputByte(outfile, (BYTE)OP_CALL_SETTINGS_STORE_P)
+                      : OutputByte(outfile, (BYTE)OP_CALL_STORE_P);
          break;
 
       default:
@@ -386,31 +400,35 @@ int codegen_call(call_stmt_type c, id_type destvar, int linenumber, int maxlocal
       }
    }
 
-   /* # of settings */
-   num_settings = list_length(c->args) - normal_args;
-
-   // Error if too many settings in a call.
-   if (normal_args > MAX_NAME_PARMS)
-      codegen_error("Call %s has too many settings, found %i when max is %i.",
-         get_function_name_by_opcode(c->function), num_settings, MAX_NAME_PARMS);
-
-   // Output # of settings.
-   OutputByte(outfile, (BYTE)(num_settings));
-
-   /* Now take care of settings */
-   for (p = c->args; p != NULL; p = p->next)
+   if (has_settings)
    {
-      arg = (arg_type)p->data;
+      /* # of settings */
+      num_settings = list_length(c->args) - normal_args;
 
-      if (arg->type == ARG_SETTING)
+      // Error if too many settings in a call.
+      if (normal_args > MAX_NAME_PARMS)
+         codegen_error("Call %s has too many settings, found %i when max is %i.",
+            get_function_name_by_opcode(c->function), num_settings, MAX_NAME_PARMS);
+
+      // Output # of settings.
+      OutputByte(outfile, (BYTE)(num_settings));
+
+      /* Now take care of settings */
+      for (p = c->args; p != NULL; p = p->next)
       {
-         id = arg->value.setting_val->id;
-         /* Write out parameter #, then rhs of assignment */
-         OutputInt(outfile, id->idnum);
+         arg = (arg_type)p->data;
 
-         OutputBaseExpression(outfile, arg->value.setting_val->expr);
+         if (arg->type == ARG_SETTING)
+         {
+            id = arg->value.setting_val->id;
+            /* Write out parameter #, then rhs of assignment */
+            OutputInt(outfile, id->idnum);
+
+            OutputBaseExpression(outfile, arg->value.setting_val->expr);
+         }
       }
    }
+
    return our_maxlocal;
 }
 /************************************************************************/

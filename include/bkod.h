@@ -42,9 +42,14 @@ enum opcode_id {
    OP_GOTO_IF_NEQ_NULL_P,
    OP_GOTO_IF_NEQ_NULL_V,
    // Call instructions
+   // C calls without settings (First, Nth etc)
    OP_CALL_STORE_NONE,
    OP_CALL_STORE_L,
    OP_CALL_STORE_P,
+   // C calls with settings (Send, Create etc)
+   OP_CALL_SETTINGS_STORE_NONE,
+   OP_CALL_SETTINGS_STORE_L,
+   OP_CALL_SETTINGS_STORE_P,
    // Unary instructions
    OP_UNARY_NOT_L,
    OP_UNARY_NOT_P,

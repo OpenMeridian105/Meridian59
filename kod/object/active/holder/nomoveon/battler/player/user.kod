@@ -545,6 +545,12 @@ properties:
    // Checks for actual changes before drawing. Removes flicker.
    plDraw = $
 
+   // Keeps track of the most recent steps a user has taken.
+   plUserTrail = $
+
+   // Steps the player has taken since their last step was recorded.
+   piTrailSteps = 0
+
 messages:
 
    Constructor(name = $,icon = $)
@@ -4277,6 +4283,20 @@ messages:
       //
 
       Send(self,@SetPlayerFlag,#flag=PFLAG_MOVED_SINCE_ENTRY,#value=TRUE);
+
+      //
+      // 11. Keep track of the most recent steps to facilitate monster pursuit.
+      //
+
+      ++piTrailSteps;
+
+      if piTrailSteps >= Send(poOwner,@GetTrailSteps)
+      {
+         Send(self,@SetUserTrail,#iRow=new_row,#iCol=new_col,
+            #iFineRow=fine_row,#iFineCol=fine_col);
+
+         piTrailSteps = 0;
+      }
 
       return;
    }
@@ -11020,6 +11040,43 @@ messages:
       }
 
       return;
+   }
+
+   SetUserTrail(iRow=$,iCol=$,iFineRow=$,iFineCol=$)
+   {
+      local i;
+
+      if (poOwner = $)
+         OR (iRow = $)
+         OR (iCol = $)
+         OR (iFineRow = $)
+         OR (iFineCol = $)
+      {
+         foreach i in plUserTrail
+         {
+            SetFirst(i,$);
+            SetNth(i,2,$);
+            SetNth(i,3,$);
+            SetNth(i,4,$);
+            plUserTrail = DelListElem(plUserTrail,i);
+         }
+      }
+      else
+      {
+         plUserTrail = Cons([iRow,iCol,iFineRow,iFineCol],plUserTrail);
+
+         if Length(plUserTrail) > Send(poOwner,@GetTrailLength)
+         {
+            plUserTrail = DelLastListElem(plUserTrail);
+         }
+      }
+
+      return;
+   }
+
+   GetUserTrail()
+   {
+      return plUserTrail;
    }
 
 end

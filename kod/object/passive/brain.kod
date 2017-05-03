@@ -939,7 +939,7 @@ messages:
       return;
    }
 
-  GetEngageBehavior(behavior=0, mob = $, target = $)
+  GetEngageBehavior(behavior=0,mob=$,target=$,bSight=TRUE)
    "This is called when monster has a target, but isn't close enough to fight."
    "1. Do nothing if immobile."
    "2. If blind, wander aimlessly."
@@ -1034,7 +1034,11 @@ messages:
 
       if Send(mob,@GetOwner) = Send(target,@GetOwner)
       {
-         Send(mob,@MoveTowards,#oTarget=target,#face_target=TRUE);
+         if bSight
+            OR NOT Send(mob,@FollowTrail,#oTarget=target)
+         {
+            Send(mob,@MoveTowards,#oTarget=target,#face_target=TRUE);
+         }
       }
       else
       {

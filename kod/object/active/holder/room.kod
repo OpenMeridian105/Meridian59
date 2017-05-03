@@ -327,6 +327,13 @@ properties:
    // per room weather conditions
    piWeather = WEATHER_PATTERN_CLEAR
 
+   // Some zones may have tighter turns and require a more narrow step size.
+   // By default, every step will be recorded.
+   piTrailSteps = 1
+
+   // Some zones may require a longer trail than others.
+   piTrailLength = 40
+
 messages:
 
    Constructor()
@@ -2118,6 +2125,9 @@ messages:
       if bUser
       {
          session = Send(what,@GetSession);
+
+         // Reset our user trail.
+         Send(what,@SetUserTrail);
 
          Send(Send(SYS, @GetStatistics), @PlayerEnteredRoom,
               #oRoom = self, #who = what);
@@ -5649,6 +5659,16 @@ messages:
    GetSpawnRadius()
    {
       return 1;
+   }
+
+   GetTrailSteps()
+   {
+      return piTrailSteps;
+   }
+
+   GetTrailLength()
+   {
+      return piTrailLength;
    }
 
 end

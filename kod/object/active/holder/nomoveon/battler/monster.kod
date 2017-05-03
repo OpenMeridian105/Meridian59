@@ -2009,7 +2009,7 @@ messages:
       if iDelay = 0
       {
          Send(poBrain,@GetEngageBehavior,#mob=self,#target=poTarget,
-               #behavior=piBehavior);
+               #behavior=piBehavior,#bSight=bSight);
       }
 
       // Monster acted in some way. Let's figure out what to do next.
@@ -2429,7 +2429,7 @@ messages:
 
    MoveToLeader()
    {
-      local drow, dcol, iRadius;
+      local drow, dcol, iRadius, iRow, iCol, iFineRow, iFineCol, bSight;
 
       if poLeader = $
       {
@@ -2437,23 +2437,77 @@ messages:
          return FALSE;
       }
 
+      iRow = Send(poLeader,@GetRow);
+      iCol = Send(poLeader,@GetCol);
+      iFineRow = Send(poLeader,@GetFineRow);
+      iFineCol = Send(poLeader,@GetFineCol);
+
       // calculate distance in highres-grid squares (steps we can still make)
-      drow = ((Send(poLeader,@GetRow) * FINENESS) + Send(poLeader,@GetFineRow)) / 16;
-      dcol = ((Send(poLeader,@GetCol) * FINENESS) + Send(poLeader,@GetFineCol)) / 16;
+      drow = (iRow * FINENESS + iFineRow) / 16;
+      dcol = (iCol * FINENESS + iFineCol) / 16;
       drow = Abs(drow - (((piRow * FINENESS) + piFine_row) / 16));
       dcol = Abs(dcol - (((piCol * FINENESS) + piFine_col) / 16));
 
       iRadius = Send(self,@HowCloseToCommander) * 4;
+      bSight = LineOfSightBSP(Send(poOwner,@GetRoomData),piRow,piCol,piFine_row,piFine_col,
+               iRow,iCol,iFineRow,iFineCol);
 
       // Let's move up to the leader unless we are close enough already.
-      // If we are more than 3 times the desired range, cut corners.
+      // Also, if the leader moves out of sight, it's really time to check on him.
       if (drow * drow + dcol * dcol > iRadius * iRadius)
+         OR NOT bSight
       {
-         // Clear any other move commands we might have.
-         Send(self,@MoveTowards,#oTarget=poLeader,#face_target=TRUE,#to_master=TRUE,
-            #post_haste=(drow * drow + dcol * dcol > iRadius * iRadius * 9));
+         // If we see the leader or we can't pick up on their trail, try to move
+         // towards them directly.
+         if bSight
+            OR NOT Send(self,@FollowTrail,#oTarget=poLeader)
+         {
+            // Pass through walls if they can be passed in opposite directions.
+            // This allows the follower to make jumps.
+            Send(self,@MoveTowardsCoords,#iRow=iRow,#iCol=iCol,
+               #face_target=TRUE,#post_haste=CanMoveInRoomBSP(
+               Send(poOwner,@GetRoomData),iRow,iCol,iFineRow,iFineCol,
+               piRow,piCol,piFine_row,piFine_col,self,FALSE));
+         }
 
          return TRUE;
+      }
+
+      return FALSE;
+   }
+
+   FollowTrail(oTarget=$)
+   {
+      local lTrail, i, iRow, iCol, iFineRow, iFineCol;
+
+      if NOT IsClass(oTarget,&User)
+      {
+         return FALSE;
+      }
+
+      lTrail = Send(oTarget,@GetUserTrail);
+
+      foreach i in lTrail
+      {
+         iRow = First(i);
+         iCol = Nth(i,2);
+         iFineRow = Nth(i,3);
+         iFineCol = Nth(i,4);
+
+         // Move to the most recent location the user has been in that we can see.
+         if LineOfSightBSP(Send(poOwner,@GetRoomData),piRow,piCol,piFine_row,piFine_col,
+               iRow,iCol,iFineRow,iFineCol)
+         {
+            // Pass through walls if they can be passed in opposite directions.
+            // This allows the follower to make jumps.
+            Send(self,@MoveTowardsCoords,#iRow=iRow,#iCol=iCol,
+               #iFineRow=iFineRow,#iFineCol=iFineCol,#face_target=TRUE,
+               #post_haste=(CanMoveInRoomBSP(Send(poOwner,@GetRoomData),
+               iRow,iCol,iFineRow,iFineCol,piRow,piCol,piFine_row,piFine_col,
+               self,FALSE) AND IsClass(self,&Follower)));
+
+            return TRUE;
+         }
       }
 
       return FALSE;
@@ -3274,8 +3328,7 @@ messages:
 
    //// Movement messages
 
-   MoveTowards(oTarget = $, face_target=FALSE, face_away=FALSE,
-               to_master=FALSE,post_haste=FALSE)
+   MoveTowards(oTarget = $, face_target=FALSE, face_away=FALSE,post_haste=FALSE)
    {
       if oTarget = $
       {
@@ -3291,7 +3344,6 @@ messages:
                    #iFineCol=Send(oTarget,@GetFineCol),
                    #face_target=face_target,
                    #face_away=face_away,
-                   #to_master=to_master,
                    #post_haste=post_haste);
    }
 
@@ -3462,7 +3514,7 @@ messages:
    }
 
    MoveTowardsCoords(iRow=$,iCol=$,iFineRow=FINENESS_HALF,iFineCol=FINENESS_HALF,
-                     face_target=FALSE,face_away=FALSE,to_master=FALSE,post_haste=FALSE)
+                     face_target=FALSE,face_away=FALSE,post_haste=FALSE)
    {
       local iState, iMoveFlags, iSpeed, oCommander;
 
@@ -3478,19 +3530,6 @@ messages:
       if (piBehavior & AI_MOVE_WALKTHROUGH_WALLS) OR post_haste
       {
          iMoveFlags |= MSTATE_MOVE_OUTSIDE_BSP;
-      }
-      else if to_master
-      {
-         oCommander = poLeader;
-         if poMaster <> $
-         {
-            oCommander = poMaster;
-         }
-
-         if Send(oCommander,@GetHeightFloorAtObjectBSP) - Send(self,@GetHeightFloorAtObjectBSP) > 0
-         {
-            iMoveFlags |= MSTATE_MOVE_OUTSIDE_BSP;
-         }
       }
 
       // query where to step next

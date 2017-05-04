@@ -485,6 +485,10 @@ classvars:
    // Counteracts low room light level (0-255)
    viNightVision = 5
 
+   // If nil, chase range is based on vision range.
+   // Else, takes regular full units.
+   viChaseRange = $
+
 properties:
 
    piVisionDistance
@@ -1963,15 +1967,35 @@ messages:
       // Not if it has hurt us recently though.
       if NOT Send(self,@GetHurtMeRecentlyAmount,#who=poTarget)
       {
-         iChaseRange = piVisionDistance * FINENESS;
-         iChaseRange = iChaseRange * (50 + piStamina) / 50;
+         if viChaseRange = $
+         {
+            iChaseRange = piVisionDistance * FINENESS;
+            iChaseRange = iChaseRange * (50 + piStamina) / 50;
+         }
+         else
+         {
+            iChaseRange = viChaseRange * FINENESS;
+         }
 
+         // Modified by the global chase range factor.
+         iChaseRange *= Send(SETTINGS_OBJECT,@GetChaseRangeFactor) / 100;
+
+         // Severely reduce chase range if target is out of sight.
          if NOT bSight
          {
             iChaseRange /= 5;
          }
 
-         iChaseRange *= iChaseRange;
+         // Chase range is below max range. Square result.
+         if iChaseRange < MAX_KOD_INT_SQRT
+         {
+            iChaseRange *= iChaseRange;
+         }
+         // Chase range is maximal. Never stop the chase.
+         else
+         {
+            iChaseRange = iDistance;
+         }
 
          // Mobs may lose interest if the target is too far away or out of sight.
          if (NOT ((piBehavior & AI_FIGHT_SINGLEMINDED) OR (poMaster <> $)))
@@ -2465,7 +2489,7 @@ messages:
             // Pass through walls if they can be passed in opposite directions.
             // This allows the follower to make jumps.
             Send(self,@MoveTowardsCoords,#iRow=iRow,#iCol=iCol,
-               #face_target=TRUE,#post_haste=CanMoveInRoomBSP(
+               #face_target=TRUE,#pass_walls=CanMoveInRoomBSP(
                Send(poOwner,@GetRoomData),iRow,iCol,iFineRow,iFineCol,
                piRow,piCol,piFine_row,piFine_col,self,FALSE));
          }
@@ -2494,17 +2518,16 @@ messages:
          iFineRow = Nth(i,3);
          iFineCol = Nth(i,4);
 
-         // Move to the most recent location the user has been in that we can see.
-         if LineOfSightBSP(Send(poOwner,@GetRoomData),piRow,piCol,piFine_row,piFine_col,
-               iRow,iCol,iFineRow,iFineCol)
+         // Move to the most recent location the user has been in that we can reach.
+         if CanMoveInRoomBSP(Send(poOwner,@GetRoomData),piRow,piCol,piFine_row,
+            piFine_col,iRow,iCol,iFineRow,iFineCol,self,FALSE)
+            OR (CanMoveInRoomBSP(Send(poOwner,@GetRoomData),iRow,iCol,
+            iFineRow,iFineCol,piRow,piCol,piFine_row,piFine_col,self,FALSE)
+               AND IsClass(self,&Follower))
          {
-            // Pass through walls if they can be passed in opposite directions.
-            // This allows the follower to make jumps.
-            Send(self,@MoveTowardsCoords,#iRow=iRow,#iCol=iCol,
-               #iFineRow=iFineRow,#iFineCol=iFineCol,#face_target=TRUE,
-               #post_haste=(CanMoveInRoomBSP(Send(poOwner,@GetRoomData),
-               iRow,iCol,iFineRow,iFineCol,piRow,piCol,piFine_row,piFine_col,
-               self,FALSE) AND IsClass(self,&Follower)));
+            // We already checked for a valid move. Move freely.
+            Send(self,@MoveTowardsCoords,#iRow=iRow,#iCol=iCol,#iFineRow=iFineRow,
+               #iFineCol=iFineCol,#face_target=TRUE,#pass_walls=TRUE);
 
             return TRUE;
          }
@@ -3328,7 +3351,7 @@ messages:
 
    //// Movement messages
 
-   MoveTowards(oTarget = $, face_target=FALSE, face_away=FALSE,post_haste=FALSE)
+   MoveTowards(oTarget = $, face_target=FALSE, face_away=FALSE,pass_walls=FALSE)
    {
       if oTarget = $
       {
@@ -3344,7 +3367,7 @@ messages:
                    #iFineCol=Send(oTarget,@GetFineCol),
                    #face_target=face_target,
                    #face_away=face_away,
-                   #post_haste=post_haste);
+                   #pass_walls=pass_walls);
    }
 
    MoveAway(oTarget = $, face_target=FALSE, face_away=FALSE)
@@ -3514,7 +3537,7 @@ messages:
    }
 
    MoveTowardsCoords(iRow=$,iCol=$,iFineRow=FINENESS_HALF,iFineCol=FINENESS_HALF,
-                     face_target=FALSE,face_away=FALSE,post_haste=FALSE)
+                     face_target=FALSE,face_away=FALSE,pass_walls=FALSE)
    {
       local iState, iMoveFlags, iSpeed, oCommander;
 
@@ -3527,7 +3550,7 @@ messages:
       // combined with the state flags and sent to GetStepTowardsBSP. These
       // moves aren't checked against room geometry.
       iMoveFlags = 0;
-      if (piBehavior & AI_MOVE_WALKTHROUGH_WALLS) OR post_haste
+      if (piBehavior & AI_MOVE_WALKTHROUGH_WALLS) OR pass_walls
       {
          iMoveFlags |= MSTATE_MOVE_OUTSIDE_BSP;
       }

@@ -199,6 +199,10 @@ classvars:
 
    vbAccessibleForFollowers = TRUE
 
+   // How many fine units around a spawn must be clear to allow it?
+   // Default is 3/8th, same as block radius.
+   viSpawnRadius = 24
+
 properties:
 
    piRoom_Flags = 0
@@ -5631,19 +5635,15 @@ messages:
    // direcly next to it to prevent wall spawns.
    IsValidSpawnLocation(iRow=0,iCol=0,iFineRow=0,iFineCol=0,what=$)
    {
-      local iRadius;
-
-      iRadius = Send(self,@GetSpawnRadius);
-
-      if iRadius
+      if viSpawnRadius
          AND (NOT CanMoveInRoomBSP(prmRoom,iRow,iCol,iFineRow,iFineCol,
-               iRow+iRadius,iCol+iRadius,iFineRow,iFineCol,what,FALSE)
+               iRow,iCol,iFineRow+viSpawnRadius,iFineCol+viSpawnRadius,what,FALSE)
             OR NOT CanMoveInRoomBSP(prmRoom,iRow,iCol,iFineRow,iFineCol,
-               iRow+iRadius,iCol-iRadius,iFineRow,iFineCol,what,FALSE)
+               iRow,iCol,iFineRow-viSpawnRadius,iFineCol+viSpawnRadius,what,FALSE)
             OR NOT CanMoveInRoomBSP(prmRoom,iRow,iCol,iFineRow,iFineCol,
-               iRow-iRadius,iCol+iRadius,iFineRow,iFineCol,what,FALSE)
+               iRow,iCol,iFineRow+viSpawnRadius,iFineCol-viSpawnRadius,what,FALSE)
             OR NOT CanMoveInRoomBSP(prmRoom,iRow,iCol,iFineRow,iFineCol,
-               iRow-iRadius,iCol-iRadius,iFineRow,iFineCol,what,FALSE))
+               iRow,iCol,iFineRow-viSpawnRadius,iFineCol-viSpawnRadius,what,FALSE))
       {
          return FALSE;
       }
@@ -5654,11 +5654,6 @@ messages:
    GetMercenaryTriggerObject(who=$)
    {
       return;
-   }
-
-   GetSpawnRadius()
-   {
-      return 1;
    }
 
    GetTrailSteps()

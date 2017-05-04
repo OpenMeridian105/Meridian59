@@ -91,6 +91,8 @@ properties:
 
    pbDoorDownActive = TRUE
 
+   piPatrolRadius = 1
+
 messages:
 
    Constructed()
@@ -539,7 +541,7 @@ messages:
 
    ResetMonstersInFinal()
    {
-      local i, each_obj, iCount, iRow, iCol, oStatue;
+      local i, each_obj, iCount, iRow, iCol, oStatue, oMummy;
 
       foreach i in plActive
       {
@@ -562,6 +564,7 @@ messages:
       }
 
       oStatue = Create(&LivingStatue,#bEvent=TRUE);
+      Send(oStatue,@SetSpawnLoc,#iRow=32,#iCol=7);
       Send(self,@NewHold,#what=oStatue,#new_row=32,#new_col=7,#fine_row=0,#fine_col=0);
       Send(self,@SomethingTurned,#what=oStatue,#new_angle=ANGLE_NORTH);
 
@@ -570,7 +573,9 @@ messages:
       {
          iRow = Random(MIN_GEN_ROW,MAX_GEN_ROW);
          iCol = Random(MIN_GEN_COL,MAX_GEN_COL);
-         Send(self,@NewHold,#what=Create(&SpectralMummy,#bEvent=TRUE),#new_row=iRow,#new_col=iCol);
+         oMummy = Create(&SpectralMummy,#bEvent=TRUE);
+         Send(oMummy,@SetSpawnLoc,#iRow=iRow,#iCol=iCol);
+         Send(self,@NewHold,#what=oMummy,#new_row=iRow,#new_col=iCol);
       }
 
       return;

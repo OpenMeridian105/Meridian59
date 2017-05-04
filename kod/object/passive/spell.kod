@@ -1554,7 +1554,6 @@ messages:
       }
 
       if viFlash = FLASH_GOOD_SELF
-         AND who <> $
          AND IsClass(who,&User)
       {
          Send(who,@GoodSpellFlashEffect);
@@ -1599,8 +1598,7 @@ messages:
 
       // Let players see the spellpower their spells are cast at, if they
       // have the setting enabled in their preference menu.
-      if who <> $
-         AND IsClass(who,&Player)
+      if IsClass(who,&Player)
          AND Send(who,@CheckPlayerPreference,#flag=CF_SPELLPOWER)
       {
          Send(who,@MsgSendUser,#message_rsc=spell_display_spellpower,
@@ -1622,14 +1620,7 @@ messages:
          Send(self,@ImproveAbility,#who=who,#target=oTarget);
       }
 
-      if NOT IsClass(who,&ItemAttribute)
-      {
-         oRoom = Send(SYS,@UtilGetRoomRecurse,#what=who);
-      }
-      else
-      {
-         oRoom = Send(SYS,@UtilGetRoomRecurse,#what=oTarget);
-      }
+      oRoom = Send(SYS,@UtilGetRoomRecurse,#what=who);
 
       if oRoom <> $
       {

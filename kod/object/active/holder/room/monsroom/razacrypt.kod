@@ -167,6 +167,8 @@ properties:
 
    pbColumn_down = FALSE
 
+   piPatrolRadius = 1
+
 messages:
 
    Constructed()
@@ -302,11 +304,19 @@ messages:
 
    FirstUserEntered()
    {
+      local oMonster;
+
       if NOT Send(self,@CountHoldingHowMany,#class=&MummyNoTreasure)
       {
-         Post(self,@NewHold,#what=Create(&MummyNoTreasure,#bEvent=TRUE),#new_row=13,#new_col=4);
-         Post(self,@NewHold,#what=Create(&MummyNoTreasure,#bEvent=TRUE),#new_row=11,#new_col=4);
-         Post(self,@NewHold,#what=Create(&MummyNoTreasure,#bEvent=TRUE),#new_row=12,#new_col=5);
+         oMonster = Create(&MummyNoTreasure,#bEvent=TRUE);
+         Send(oMonster,@SetSpawnLoc,#iRow=13,#iCol=4);
+         Post(self,@NewHold,#what=oMonster,#new_row=13,#new_col=4);
+         oMonster = Create(&MummyNoTreasure,#bEvent=TRUE);
+         Send(oMonster,@SetSpawnLoc,#iRow=11,#iCol=4);
+         Post(self,@NewHold,#what=oMonster,#new_row=11,#new_col=4);
+         oMonster = Create(&MummyNoTreasure,#bEvent=TRUE);
+         Send(oMonster,@SetSpawnLoc,#iRow=12,#iCol=5);
+         Post(self,@NewHold,#what=oMonster,#new_row=12,#new_col=5);
       }
 
       Post(self,@ResetMonstersInFinal);
@@ -587,7 +597,7 @@ messages:
 
    ResetMonstersInFinal()
    {
-      local i,each_obj,iCount,iRow,iCol;
+      local i,each_obj,iCount,iRow,iCol, oMonster;
 
       foreach i in plActive
       {
@@ -608,17 +618,21 @@ messages:
          }
       }
 
-      Send(self,@NewHold,#what=Create(&Mummy,#bEvent=TRUE),#new_row=29,#new_col=3,
-            #fine_row=32,#fine_col=32);
-      Send(self,@NewHold,#what=Create(&Mummy,#bEvent=TRUE),#new_row=30,#new_col=7,
-            #fine_row=32,#fine_col=32);
-      Send(self,@NewHold,#what=Create(&Mummy,#bEvent=TRUE),#new_row=34,#new_col=7,
-            #fine_row=32,#fine_col=32);
-      Send(self,@NewHold,#what=Create(&Mummy,#bEvent=TRUE),#new_row=35,#new_col=2,
-            #fine_row=32,#fine_col=32);
-      
-      Send(self,@NewHold,#what=Create(&BlackMummy,#bEvent=TRUE),#new_row=37,#new_col=5,
-            #fine_row=0,#fine_col=0);
+      oMonster = Create(&Mummy,#bEvent=TRUE);
+      Send(oMonster,@SetSpawnLoc,#iRow=31,#iCol=4);
+      Send(self,@NewHold,#what=oMonster,#new_row=31,#new_col=4);
+      oMonster = Create(&Mummy,#bEvent=TRUE);
+      Send(oMonster,@SetSpawnLoc,#iRow=31,#iCol=7);
+      Send(self,@NewHold,#what=oMonster,#new_row=31,#new_col=7);
+      oMonster = Create(&Mummy,#bEvent=TRUE);
+      Send(oMonster,@SetSpawnLoc,#iRow=34,#iCol=7);
+      Send(self,@NewHold,#what=oMonster,#new_row=34,#new_col=7);
+      oMonster = Create(&Mummy,#bEvent=TRUE);
+      Send(oMonster,@SetSpawnLoc,#iRow=35,#iCol=2);
+      Send(self,@NewHold,#what=oMonster,#new_row=35,#new_col=2);
+      oMonster = Create(&BlackMummy,#bEvent=TRUE);
+      Send(oMonster,@SetSpawnLoc,#iRow=37,#iCol=5);
+      Send(self,@NewHold,#what=oMonster,#new_row=37,#new_col=5);
 
       return;
    }

@@ -197,6 +197,12 @@ classvars:
    viWeatherZone = WEATHER_ZONE_DEFAULT
    viWeatherMask = WEATHER_MASK_DEFAULT
 
+   vbAccessibleForFollowers = TRUE
+
+   // How many fine units around a spawn must be clear to allow it?
+   // Default is 3/8th, same as block radius.
+   viSpawnRadius = 24
+
 properties:
 
    piRoom_Flags = 0
@@ -324,6 +330,13 @@ properties:
 
    // per room weather conditions
    piWeather = WEATHER_PATTERN_CLEAR
+
+   // Some zones may have tighter turns and require a more narrow step size.
+   // By default, every step will be recorded.
+   piTrailSteps = 1
+
+   // Some zones may require a longer trail than others.
+   piTrailLength = 40
 
 messages:
 
@@ -2116,6 +2129,9 @@ messages:
       if bUser
       {
          session = Send(what,@GetSession);
+
+         // Reset our user trail.
+         Send(what,@SetUserTrail);
 
          Send(Send(SYS, @GetStatistics), @PlayerEnteredRoom,
               #oRoom = self, #who = what);
@@ -5118,8 +5134,8 @@ messages:
    "put at a gen point.  This is now in Room, as all rooms can use it for "
    "placing either a monster or a random item."
    {
-      local oOldOwner, iMRow, iMCol, iMRowFine, iMColFine, lPos, iRoll, iCount, lPatrolPath,
-            iQflags, iRflags, iHeightF, iHeightFWD, iHeightC, iServerID, iCheck;
+      local oOldOwner, iMRow, iMCol, iMRowFine, iMColFine, lPos, iIndex, iCount, lPatrolPath,
+            iQflags, iRflags, iHeightF, iHeightFWD, iHeightC, iServerID, iCheck, iSpawnLoc;
 
       iMRow = iRow;
       iMCol = iCol;
@@ -5168,24 +5184,41 @@ messages:
 
                return FALSE;
             }
+            else if NOT Send(self,@IsValidSpawnLocation,#iRow=iMRow,#iCol=iMCol,
+               #iFineRow=iMRowFine,#iFineCol=iMColFine,#what=oMonster)
+            {
+               Send(oMonster,@Delete);
+
+               return FALSE;
+            }
             else
             {
                // no need to verify these randompoints again
                iCheck = FALSE;
+
+               // Keep track of our spawn location.
+               Send(oMonster,@SetSpawnLoc,#iRow=iMRow,#iCol=iMCol);
             }
          }
          else
          {
-            iRoll = Random(1,Length(plGenerators));
-            lPos = Nth(plGenerators,iRoll);
-            iMRow = First(lPos);
-            iMCol = Nth(lPos,2);
-            
-            if (plPatrolPaths <> $)
-               AND (Length(plPatrolPaths) >= iRoll)
-               AND (Nth(plPatrolPaths,iRoll) <> $)
+            iSpawnLoc = Send(self,@FindFreeGenerator);
+            if NOT iSpawnLoc
             {
-               lPatrolPath = Nth(plPatrolPaths,iRoll);
+               return FALSE;
+            }
+
+            iIndex = iSpawnLoc / 1000000;
+            iMRow = (iSpawnLoc / 1000) % 1000;
+            iMCol = iSpawnLoc % 1000;
+
+            Send(oMonster,@SetSpawnLoc,#iRow=iMRow,#iCol=iMCol,#iIndex=iIndex);
+
+            if (plPatrolPaths <> $)
+               AND (Length(plPatrolPaths) >= iIndex)
+               AND (Nth(plPatrolPaths,iIndex) <> $)
+            {
+               lPatrolPath = Nth(plPatrolPaths,iIndex);
             }
          }
       }
@@ -5235,6 +5268,69 @@ messages:
       }
 
       return TRUE;
+   }
+
+   FindFreeGenerator(bRandom=TRUE)
+   {
+      local i, j, iRow, iCol, iIndex, iLength, iShift, bOccupied,
+            oMonster, iSpawnLoc;
+
+      iLength = Length(plGenerators);
+      iShift = bRandom * Random(0,iLength-1);
+
+      iIndex = 1 + iShift;
+
+      while iIndex <> iShift
+      {
+         i = Nth(plGenerators,iIndex);
+         iRow = First(i);
+         iCol = Nth(i,2);
+
+         bOccupied = FALSE;
+
+         foreach j in plActive
+         {
+            oMonster = Send(self,@HolderExtractObject,#data=j);
+            if NOT IsClass(oMonster,&Monster)
+            {
+               continue;
+            }
+
+            iSpawnLoc = Send(oMonster,@GetSpawnLoc);
+
+            if iSpawnLoc = $
+            {
+               continue;
+            }
+
+            if ((iSpawnLoc / 1000) % 1000 = iRow)
+               AND (iSpawnLoc % 1000 = iCol)
+            {
+               bOccupied = TRUE;
+               break;
+            }
+         }
+
+         if NOT bOccupied
+         {
+            return iIndex*1000000+iRow*1000+iCol;
+         }
+
+         if iIndex < iLength
+         {
+            ++iIndex;
+         }
+         else if iShift
+         {
+            iIndex = 1;
+         }
+         else
+         {
+            break;
+         }
+      }
+
+      return FALSE;
    }
 
    TryCreateMonster()
@@ -5520,6 +5616,54 @@ messages:
    "Override which prints nothing for non-monsterrooms."
    {
       return;
+   }
+
+   IsAccessibleForFollowers()
+   {
+      return vbAccessibleForFollowers;
+   }
+
+   // Occasionally this may be called if monsters are spawned in a
+   // non monster room.
+   GetNumGenerators()
+   {
+      return 0;
+   }
+
+   // Used to exempt certain areas from random monster spawning.
+   // Also double checks a location is valid by checking locations
+   // direcly next to it to prevent wall spawns.
+   IsValidSpawnLocation(iRow=0,iCol=0,iFineRow=0,iFineCol=0,what=$)
+   {
+      if viSpawnRadius
+         AND (NOT CanMoveInRoomBSP(prmRoom,iRow,iCol,iFineRow,iFineCol,
+               iRow,iCol,iFineRow+viSpawnRadius,iFineCol+viSpawnRadius,what,FALSE)
+            OR NOT CanMoveInRoomBSP(prmRoom,iRow,iCol,iFineRow,iFineCol,
+               iRow,iCol,iFineRow-viSpawnRadius,iFineCol+viSpawnRadius,what,FALSE)
+            OR NOT CanMoveInRoomBSP(prmRoom,iRow,iCol,iFineRow,iFineCol,
+               iRow,iCol,iFineRow+viSpawnRadius,iFineCol-viSpawnRadius,what,FALSE)
+            OR NOT CanMoveInRoomBSP(prmRoom,iRow,iCol,iFineRow,iFineCol,
+               iRow,iCol,iFineRow-viSpawnRadius,iFineCol-viSpawnRadius,what,FALSE))
+      {
+         return FALSE;
+      }
+
+      return TRUE;
+   }
+
+   GetMercenaryTriggerObject(who=$)
+   {
+      return;
+   }
+
+   GetTrailSteps()
+   {
+      return piTrailSteps;
+   }
+
+   GetTrailLength()
+   {
+      return piTrailLength;
    }
 
 end

@@ -135,12 +135,24 @@ messages:
          // Do damage to them.
          iDamage = Random(1,5) + (iSpellpower/20) + (2*((Send(who,@GetKarma,#detect=TRUE)
                      - Send(oUndead,@GetKarma,#detect=TRUE))/40));
+
+         // Tell the room first so that we may wipe their memories later.
+         Send(oRoom,@SomethingAttacked,#what=who,#victim=oUndead,#use_weapon=self);
+
          if Send(oUndead,@AssessDamage,#what=who,#damage=iDamage,#aspell=ATCK_SPELL_HOLY) = $
          {
             Send(who,@KilledSomething,#what=oUndead,#use_weapon=self);
          }
-
-         Send(oRoom,@SomethingAttacked,#what=who,#victim=oUndead,#use_weapon=self);
+         else if IsClass(who,&Player)
+         {
+            Post(oUndead,@MemoryWipe,#who=who,#iMemoryWipe=iSpellPower*2/3);
+            Post(oUndead,@EnterStateWait,#actnow=TRUE);
+         }
+         else
+         {
+            Post(oUndead,@MemoryWipe,#who=who,#iMemoryWipe=100);
+            Post(oUndead,@EnterStateWait,#actnow=TRUE);
+         }
       }
 
       propagate;

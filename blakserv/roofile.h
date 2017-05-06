@@ -40,7 +40,7 @@
 #define PLAYERWIDTH           (31.0f * (float)KODFINENESS * 0.25f)   // (from clientd3d/game.c)
 #define WALLMINDISTANCE       (PLAYERWIDTH / 2.0f)                   // (from clientd3d/game.c)
 #define WALLMINDISTANCE2      (WALLMINDISTANCE * WALLMINDISTANCE)    // (from clientd3d/game.c)
-#define OBJMINDISTANCE        768.0f                                 // 3 highres rows/cols, old value from kod
+#define OBJMINDISTANCE        384.0f                                 // 3 highres rows/cols, old value from kod
 #define OBJMINDISTANCE2       (OBJMINDISTANCE * OBJMINDISTANCE)
 #define LOSEXTEND             64.0f
 

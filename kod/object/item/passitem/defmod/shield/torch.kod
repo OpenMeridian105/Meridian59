@@ -75,7 +75,12 @@ messages:
          DeleteTimer(ptBurn);
       }
 
-      ptBurn = CreateTimer(self,@BurnTimer,TORCH_CHARGE_RATE);
+      // Only players get sucky non-self-sustaining torches.
+      // Monster technology is way ahead of our time.
+      if IsClass(what,&Player)
+      {
+         ptBurn = CreateTimer(self,@BurnTimer,TORCH_CHARGE_RATE);
+      }
 
       Send(poOwner,@SetFlickerFlag);
       if NOT pbIn_use
@@ -111,13 +116,16 @@ messages:
 
       // Avoid the case where we got here by being deleted in BurnTimer(),
       // in which case piHits = 0.
-      if piHits > 0
+      if IsClass(what,&Player)
       {
-         piHits = piHits - 1;
-         if piHits = 0
+         if piHits > 0
          {
-            Send(poOwner,@MsgSendUser,#message_rsc=torch_dead_rsc);
-            Post(self,@Delete);
+            piHits = piHits - 1;
+            if piHits = 0
+            {
+               Send(poOwner,@MsgSendUser,#message_rsc=torch_dead_rsc);
+               Post(self,@Delete);
+            }
          }
       }
 

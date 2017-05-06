@@ -72,10 +72,9 @@ properties:
    prRoom = room_MarionCrypt1
    piRoom_num = RID_MAR_CRYPT1
 
-   piGenTime = 15000
    piInit_count_min = 10
    piInit_count_max = 12
-   piMonster_count_max = 25
+   piMonster_count_max = 20
 
    piBaseLight = LIGHT_DARK
    piOutside_factor = OUTDOORS_NONE
@@ -92,14 +91,13 @@ properties:
 
    pbDoorDownActive = TRUE
 
+   piPatrolRadius = 1
+
 messages:
 
    Constructed()
    {
       plMonsters = [ [&SpectralMummy, 100] ];
-
-      plGenerators = [ [5, 21], [5, 36], [9, 28], [17, 35], [21, 23],
-                       [25, 11], [29, 18], [37, 35], [38, 19] ];
 
       Post(self,@DoMartyr);
 
@@ -358,14 +356,23 @@ messages:
       propagate;
    }
 
-   LeverChanged(what = $)
+   LeverChanged(what=$,who=$)
    {
-      local iSwitched;
+      local iSwitched, oFollower;
 
       iSwitched = 0;
+
       if Send(poLever1,@IsSwitched)
       {
          iSwitched = iSwitched + 1;
+
+         oFollower = Send(who,@GetMercenary);
+
+         if (oFollower <> $)
+            AND (Send(oFollower,@GetTriggerObject) = poLever2)
+         {
+            Send(poLever2,@SetSwitched);
+         }
       }
 
       if Send(poLever2,@IsSwitched)
@@ -510,9 +517,9 @@ messages:
       {
          each_obj = First(i);
          if count = COUNT_MONSTERS
-               AND IsClass(each_obj,&Monster)
+               AND Send(each_obj,@CountsAsMonster)
             OR count = COUNT_PLAYERS
-               AND IsClass(each_obj,&User)
+               AND Send(each_obj,@CountsAsHero)
          {
             iRow = Send(each_obj,@GetRow);
             iCol = Send(each_obj,@GetCol);
@@ -534,7 +541,7 @@ messages:
 
    ResetMonstersInFinal()
    {
-      local i, each_obj, iCount, iRow, iCol, oStatue;
+      local i, each_obj, iCount, iRow, iCol, oStatue, oMummy;
 
       foreach i in plActive
       {
@@ -556,7 +563,8 @@ messages:
          }
       }
 
-      oStatue = Create(&LivingStatue);
+      oStatue = Create(&LivingStatue,#bEvent=TRUE);
+      Send(oStatue,@SetSpawnLoc,#iRow=32,#iCol=7);
       Send(self,@NewHold,#what=oStatue,#new_row=32,#new_col=7,#fine_row=0,#fine_col=0);
       Send(self,@SomethingTurned,#what=oStatue,#new_angle=ANGLE_NORTH);
 
@@ -565,7 +573,9 @@ messages:
       {
          iRow = Random(MIN_GEN_ROW,MAX_GEN_ROW);
          iCol = Random(MIN_GEN_COL,MAX_GEN_COL);
-         Send(self,@NewHold,#what=Create(&SpectralMummy),#new_row=iRow,#new_col=iCol);
+         oMummy = Create(&SpectralMummy,#bEvent=TRUE);
+         Send(oMummy,@SetSpawnLoc,#iRow=iRow,#iCol=iCol);
+         Send(self,@NewHold,#what=oMummy,#new_row=iRow,#new_col=iCol);
       }
 
       return;
@@ -573,7 +583,7 @@ messages:
 
    OpenDoorDown()
    {
-      send(self,@CloseFinalDoor);
+      Send(self,@CloseFinalDoor);
 
       Send(self,@SetSector,#sector=SECTOR_EXIT1,#animation=ANIMATE_CEILING_LIFT,
             #height=273,#speed=4);
@@ -603,6 +613,58 @@ messages:
       if IsClass(oSpellSkill,&Discordance)
       {
          return (chance / 10);
+      }
+
+      propagate;
+   }
+
+   AdjustMaxMonsters(what=$)
+   {
+      piMonster_adjusted_max = piMonster_count_max;
+
+      return;
+   }
+
+   IsValidSpawnLocation(iRow=0,iCol=0,iFineRow=0,iFineCol=0)
+   {
+      if ((iCol < 3)
+         OR ((iCol < 20) AND (iRow < 15) AND (iRow > 7))
+         OR ((iCol < 10) AND (iRow > 27)))
+      {
+         return FALSE;
+      }
+
+      propagate;
+   }
+
+   GetMercenaryTriggerObject(who=$)
+   {
+      local oLeader, leverrow, levercol, dleaderrow, dleadercol,
+            dfollowerrow, dfollowercol;
+
+      oLeader = Send(who,@GetLeader);
+
+      if (oLeader = $)
+         OR (Send(oLeader,@GetOwner) <> self)
+      {
+         return;
+      }
+
+      leverrow = Send(poLever2,@GetRow);
+      levercol = Send(poLever2,@GetCol);
+
+      dleaderrow = leverrow - Send(oLeader,@GetRow);
+      dleadercol = levercol - Send(oLeader,@GetCol);
+
+      dfollowerrow = leverrow - Send(who,@GetRow);
+      dfollowercol = levercol - Send(who,@GetCol);
+
+      if (NOT Send(poLever2,@IsSwitched))
+         AND dleaderrow*dleaderrow + dleadercol*dleadercol <= 49
+         AND dfollowerrow*dfollowerrow + dfollowercol*dfollowercol <= 9
+         AND Send(self,@LineOfSight,#obj1=who,#obj2=poLever2)
+      {
+         return poLever2;
       }
 
       propagate;

@@ -175,7 +175,8 @@ resources:
       "Hey!  You almost hit %s%s's minion! Good thing your safety was on!"
    player_own_minion = \
       "You cannot attack your own minion!"
-
+   player_cannot_attack_follower = \
+      "You cannot attack this poor soul in need of guidance!"
    player_safe_server = \
       "You are not allowed to attack other players in this world."
    player_no_enter = \
@@ -791,7 +792,11 @@ resources:
    bad_line_of_sight = \
       "Your hindered line of sight makes a successful hit more difficult."
 
-      
+   player_already_leader = \
+      "You already have a mercenary under your command.  You will have to "
+      "let them know that you need to ~Ipart ways~I, before you can take "
+      "another under your tutelage.  "
+
    pvp_notify_wav = gong.ogg
 
 classvars:
@@ -1085,6 +1090,9 @@ properties:
    // Our current sidekick
    poMercenary = $
 
+   // Our stored follower in case of the feature being disabled temporarily.
+   poSavedFollower = $
+
 messages:
 
    Constructor()
@@ -1175,10 +1183,34 @@ messages:
       Send(Send(SYS,@GetLore),@PlayerSuicides,#who=self);
       plSchools = $;
 
-      if poMercenary <> $ AND IsTimer(poMercenary)
+      if poMercenary <> $
       {
-         DeleteTimer(poMercenary);
-         poMercenary = $;
+         if IsTimer(poMercenary)
+         {
+            DeleteTimer(poMercenary);
+            poMercenary = $;
+         }
+         else
+         {
+            Send(poMercenary,@Delete,#bConfirm=TRUE);
+         }
+      }
+
+      // Clear minion control list. Delete each of our minions
+      // unless they are reflections, which are handled separately.
+      // Deleted minions will remove themselves from our list, we
+      // just need to let them know they're to be deleted.
+      if plControlledMinions <> $
+      {
+         foreach i in plControlledMinions
+         {
+            if IsClass(i,&Monster)
+               AND NOT IsClass(i,&Reflection)
+            {
+               Send(i,@Delete);
+            }
+         }
+         plControlledMinions = $;
       }
 
       propagate;
@@ -1520,6 +1552,15 @@ messages:
          {
             Send(self,@MsgSendUser,#message_rsc=phase_fatigue_cleared);
             Send(self,@RefreshPhaseTimeToBase);
+         }
+
+         if poMercenary <> $
+            AND NOT IsTimer(poMercenary)
+            AND IsClass(poMercenary,&Follower)
+            AND Send(poMercenary,@IsAbsent)
+            AND Send(poOwner,@IsAccessibleForFollowers)
+         {
+            Send(poMercenary,@FollowerReturn);
          }
       }
 
@@ -2239,6 +2280,15 @@ messages:
       {
          Send(poOwner,@SomethingWaveRoom,#what=self,
                #wave_rsc=player_logged_off_wav_rsc);
+      }
+
+      // Make our follower linger for a while, then poof.
+      if poMercenary <> $
+         AND NOT IsTimer(poMercenary)
+         AND IsClass(poMercenary,&Follower)
+         AND NOT Send(poMercenary,@IsAbsent)
+      {
+         Send(poMercenary,@FollowerAbsence,#iDelay=30000);
       }
 
       return;
@@ -4366,6 +4416,16 @@ messages:
 
             return FALSE;
          }
+
+         if IsClass(victim,&Follower)
+         {
+            if report
+            {
+               Send(self,@MsgSendUser,#message_rsc=player_cannot_attack_follower);
+            }
+
+            return FALSE;
+         }
       }
       else
       {
@@ -5261,8 +5321,6 @@ messages:
          iModBonus = Send(i,@ModifyDamage,#who=self,#what=what,#damage=iDamage,
                           #stroke_obj=oStroke);
          iDamageBonus += (iModBonus - iDamage);
-
-         Send(i,@WeaponHitTarget);
       }
 
       foreach i in plRadiusEnchantments
@@ -5589,7 +5647,7 @@ messages:
       return damage;
    }
 
-   // This message kicks in when damage is done to the opponent.
+   // This message kicks in when damage has been dealt to the opponent.
    DidDamage(what = $, amount = 0)
    {
       local oWeapon, i, shrunken;
@@ -5724,6 +5782,25 @@ messages:
    {
       local bReflection, i, oSoldierShield, monstkarma, iChance, oEnemyGuild,
             oVictimRoom, oObject;
+
+      // Killed something with a weapon, damage weapon.
+      if (use_weapon <> $)
+         AND IsClass(use_weapon,&Weapon)
+      {
+         Send(use_weapon,@WeaponHitTarget);
+      }
+
+      // Killed something by holding down the attack key. Damage
+      // any gear that might have helped our attack.
+      if (stroke_obj <> $)
+         AND (IsClass(stroke_obj,&Skill)
+            OR IsClass(stroke_obj,&TouchAttackSpell))
+      {
+         foreach i in plAttack_modifiers
+         {
+            Send(i,@WeaponHitTarget);
+         }
+      }
 
       // If we killed someone or something, we did damage.
       Send(self,@SetPlayerFlag,#flag=PFLAG_DID_DAMAGE,#value=TRUE);
@@ -5912,6 +5989,15 @@ messages:
       if oObject <> $
       {
          Send(oObject,@OpponentKilled,#what=what,#stroke_obj=stroke_obj);
+      }
+
+      // Let our follower know if we have one. It'll make his day!
+      if (poMercenary <> $)
+         AND NOT IsTimer(poMercenary)
+         AND IsClass(poMercenary,&Follower)
+         AND (Send(poMercenary,@GetOwner) = poOwner)
+      {
+         Send(poMercenary,@LeaderKilledSomething,#what=what,#use_weapon=use_weapon);
       }
 
       return;
@@ -8829,6 +8915,14 @@ messages:
             Send(self,@AddTrainingPoints,#points=iMaxHealth * 3,#bCap=FALSE);
          }
 
+         // Allow our mercenary to gain a level as well.
+         if poMercenary <> $
+            AND NOT IsTimer(poMercenary)
+            AND IsClass(poMercenary,&Follower)
+         {
+            Send(poMercenary,@FollowerDing);
+         }
+
          return TRUE;
       }
 
@@ -9334,9 +9428,16 @@ messages:
          Send(self,@WaveSendUser,#what=self,#wave_rsc=i);
       }
 
+      if poMercenary <> $ 
+         AND NOT IsTimer(poMercenary)
+         AND (Send(poMercenary,@GetOwner) = poOwner)
+      {
+         Send(poMercenary,@Killed);
+      }
+
       // Teleport to the Underworld.
       Send(self,@UserGotoDeadRoom);
-      
+
       // Change health, mana, vigor.
       if Send(SYS,@GetChaosNight)
       {
@@ -11209,6 +11310,15 @@ messages:
       Send(self,@ResetPlayerFlagList);
       Send(self,@NewVigor);
 
+      // If we have a follower, make them take a break, too.
+      if (poMercenary <> $)
+         AND NOT IsTimer(poMercenary)
+         AND IsClass(poMercenary,&Follower)
+         AND (Send(poMercenary,@GetOwner) = poOwner)
+      {
+         Send(poMercenary,@StartResting);
+      }
+
       return;
    }
 
@@ -11217,6 +11327,15 @@ messages:
       piBattlerFlags &= ~BFLAG_RESTING;
       Send(self,@ResetPlayerFlagList);
       Send(self,@NewVigor);
+
+      // Followers gotta follow.
+      if (poMercenary <> $)
+         AND NOT IsTimer(poMercenary)
+         AND IsClass(poMercenary,&Follower)
+         AND (Send(poMercenary,@GetOwner) = poOwner)
+      {
+         Send(poMercenary,@StopResting);
+      }
 
       return;
    }
@@ -11632,8 +11751,9 @@ messages:
          }
 
          // Is this in the same school?
-         if Send(nObj,@GetSchool) = school
-            AND Send(nobj,@GetLevel) = level
+         if (Send(nObj,@GetSchool) = school)
+            AND ((level = $)
+               OR (Send(nObj,@GetLevel) = level))
          {
             count = count + 1;
          }
@@ -11656,7 +11776,8 @@ messages:
 
          // Is this in the same school?
          if (Send(nObj,@GetSchool) = school)
-            AND (Send(nobj,@GetLevel)) = level
+            AND ((level = $)
+               OR (Send(nObj,@GetLevel) = level))
          {
             count = count + 1;
          }
@@ -14400,8 +14521,6 @@ messages:
                AND Send(oActive,@GetMaster) = self
                AND Send(oActive,@GetTarget) <> oTarget
             {
-               Send(oActive,@SetBehaviorFlag,
-                     #flag=AI_MOVE_FOLLOW_MASTER,#value=FALSE);
                Send(oActive,@TargetSwitch,#what=oTarget,
                      #iHatred=100);
                Send(oActive,@EnterStateEngage,#target=oTarget,
@@ -14804,6 +14923,12 @@ messages:
          return FALSE;
       }
 
+      if (Abs(piLastMoveUpdateTime - GetTickCount()) > Send(SETTINGS_OBJECT,@GetStealthDelay))
+         AND (ptAttackTimer = $)
+      {
+         return 300;
+      }
+
       // Stealth is primarily based on our agility and intellect.
       iStealth = 2 * Send(self,@GetAgility) + Send(self,@GetIntellect);
 
@@ -14844,36 +14969,25 @@ messages:
    {
       local oTargetMaster;
 
-      if target = $
+      if (target = $)
+         OR NOT IsClass(target,&Battler)
       {
          return FALSE;
       }
 
-      if NOT IsClass(target,&Battler)
-      {
-         return FALSE;
-      }
-
-      if target = self
+      if (target = self)
       {
          return TRUE;
       }
 
       oTargetMaster = Send(target,@GetMaster);
 
-      if oTargetMaster <> $
+      if (oTargetMaster <> $)
       {
-         if Send(oTargetMaster,@IsAlly,#target=self)
-         {
-            return TRUE;
-         }
-      }
-      else if Send(target,@IsAlliedClass,#what=self)
-      {
-         return TRUE;
+         return Send(self,@IsAlly,#target=oTargetMaster);
       }
 
-      return FALSE;
+      return Send(self,@IsAlliedClass,#what=target);
    }
 
    IsAlliedClass(what=$)
@@ -14903,7 +15017,102 @@ messages:
          }
       }
 
+      if IsClass(what,&Follower)
+         AND ((what = poMercenary)
+            OR (piBase_max_health < Send(SETTINGS_OBJECT,@GetPKillEnableHP)))
+      {
+         return TRUE;
+      }
+
       return FALSE;
+   }
+
+   CreateFollower(iDifficulty=$,iGender=$,bContracted=FALSE)
+   {
+      local oFollower;
+
+      if (poMercenary <> $)
+      {
+         if IsTimer(poMercenary)
+         {
+            DeleteTimer(poMercenary);
+            poMercenary = $;
+         }
+         else
+         {
+            Send(self,@MsgSendUser,#message_rsc=player_already_leader);
+
+            return FALSE;
+         }
+      }
+
+      oFollower = Create(&Follower,#oLeader=self,#iLevel=piBase_Max_Health,
+                     #iDifficulty=iDifficulty,#iGender=iGender);
+
+      Send(poOwner,@NewHold,#what=oFollower,#new_row=piRow+2,#new_col=piCol+2,
+                          #fine_row=piFine_row,#fine_col=piFine_col);
+
+      Send(oFollower,@SetLeader,#oLeader=self,#bContracted=bContracted);
+
+      Send(oFollower,@FollowerDing,#bCreation=TRUE);
+
+      Send(oFollower,@FaceLeader);
+
+      Send(oFollower,@DoWave);
+
+      return TRUE;
+   }
+
+   CreateMercenaryContract(iDifficulty=$,iGender=$)
+   {
+      local oContract;
+
+      oContract = Create(&MercenaryContract,#iLevel=iDifficulty,#iGender=iGender);
+      Send(self,@NewHold,#what=oContract);
+
+      return;
+   }
+
+   CountsAsMonster()
+   {
+      return FALSE;
+   }
+
+   CountsAsHero()
+   {
+      return TRUE;
+   }
+
+   IsLegitimateSpawn()
+   {
+      return TRUE;
+   }
+
+   StoreFollower()
+   {
+      if (poMercenary <> $)
+         AND IsClass(poMercenary,&Follower)
+      {
+         poSavedFollower = poMercenary;
+         poMercenary = $;
+      }
+
+      return;
+   }
+
+   RestoreFollower()
+   {
+      if (poSavedFollower <> $)
+      {
+         if (poMercenary <> $)
+         {
+            Send(poMercenary,@SetLeader,#report=FALSE);
+         }
+
+         poMercenary = poSavedFollower;
+      }
+
+      return;
    }
 
 end

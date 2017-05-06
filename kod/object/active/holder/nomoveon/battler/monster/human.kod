@@ -122,7 +122,6 @@ resources:
    human_male_sound_death = pdeath.ogg
    human_female_sound_death = pdeathf.ogg
    human_sound_aware = trps1awr.ogg
-   human_sound_attack = trpsatk.ogg
 
 classvars:
 
@@ -149,6 +148,9 @@ classvars:
 
    viCashMin = 200
    viCashMax = 600
+
+   // AI humans have a considerably lower chance to damage gear.
+   viGearDamageChance = 20
 
 properties:
 
@@ -256,7 +258,7 @@ messages:
 
    SetGender()
    {
-      if Random(1,100) < viChanceFemale
+      if Random(1,100) <= viChanceFemale
       {
          viGender = GENDER_FEMALE;
          vrIcon = human_female_icon_rsc;
@@ -293,7 +295,35 @@ messages:
       return;
    }
 
-   UnuseItem(what = $, Recalibrate = FALSE)
+   TryUnuseItem(what = $)
+   {
+      local bFound, i;
+
+      bFound = FALSE;
+
+      //check and see if item disallows
+      foreach i in plUsing
+      {
+         if i = what
+         {
+            bFound = TRUE;
+         }
+      }
+
+      if NOT bFound
+      {
+         return FALSE;
+      }
+
+      if Send(what,@ReqUnuse)
+      {
+         return Send(self,@UnuseItem,#what=what);
+      }
+
+      return FALSE;
+   }
+
+   UnuseItem(what = $)
    {
       local i;
 
@@ -303,14 +333,7 @@ messages:
          {
             plUsing = DelListElem(plUsing,i);
 
-            if Recalibrate
-            {
-               Send(what,@NewUnused,#what=self,#Recalibrate=TRUE);
-            }
-            else
-            {
-               Send(what,@NewUnused,#what=self);
-            }
+            Send(what,@NewUnused,#what=self);
 
             return TRUE;
          }
@@ -684,6 +707,9 @@ messages:
       oWeapon = Send(self,@GetWeapon);
       if oWeapon = $
          OR (stroke_obj <> $ AND NOT Send(stroke_obj,@CanParry))
+         OR (piBehavior & AI_NOMOVE)
+         OR (piBehavior & AI_MOVE_RANDOM)
+         OR (piBehavior & AI_NOFIGHT)
       {
          return 0;
       }
@@ -691,7 +717,7 @@ messages:
       // Can't ask the weapon for its parry ability since this just asks
       // us for our parry skill % and human mobs don't have it (i.e. weapons
       // don't have individual parry abilities).
-      return (viDifficulty * 10) / 2;
+      return viDifficulty * 11;
    }
 
    GetBlockAbility(stroke_obj=$)
@@ -701,13 +727,16 @@ messages:
       oShield = Send(self,@LookupPlayerShield);
       if oShield = $
          OR ((stroke_obj <> $) AND NOT Send(stroke_obj,@CanBlock))
+         OR (piBehavior & AI_NOMOVE)
+         OR (piBehavior & AI_MOVE_RANDOM)
+         OR (piBehavior & AI_NOFIGHT)
       {
          return 0;
       }
 
       // Shields query the player for their block ability, so can't request
       // the shields block ability.
-      return (viDifficulty * 10);
+      return viDifficulty * 11;
    }
 
    // Returns weapon used.
@@ -898,6 +927,43 @@ messages:
       piAnimation = PANM_NONE;
 
       return;
+   }
+
+   DoWave()
+   {
+      piAnimation = PANM_WAVE;
+      Send(poOwner,@SomethingChanged,#what=self);
+      piAnimation = PANM_NONE;
+
+      return;
+   }
+
+   DoPoint()
+   {
+      piAnimation = PANM_POINT;
+      Send(poOwner,@SomethingChanged,#what=self);
+      piAnimation = PANM_NONE;
+
+      return;
+   }
+
+   DoDance()
+   {
+      local i;
+
+      foreach i in plUsing
+      {
+         if Send(i,@GetItemUseType) & ITEM_USE_HAND
+         {
+            return FALSE;
+         }
+      }
+
+      piAnimation = PANM_DANCE;
+      Send(poOwner,@SomethingChanged,#what=self);
+      piAnimation = PANM_NONE;
+
+      return TRUE;
    }
 
    GetAttackRange()
@@ -1571,7 +1637,7 @@ messages:
 
       if iUse_type & ITEM_SINGLE_USE
       {
-         return Send(self,@TryApplyItem,#what=what,#apply_on=self);
+         return FALSE;
       }
 
       if iUse_type & ITEM_BROKEN
@@ -2130,6 +2196,225 @@ messages:
       }
 
       propagate;
+   }
+
+   // Human armor can take damage just like player armor.
+   // Not as often though.
+   AssessDamage(what=$,absolute=FALSE)
+   {
+      local i;
+
+      if NOT absolute AND (Random(1,100) <= viGearDamageChance)
+      {
+         foreach i in plDefense_modifiers
+         {
+            Send(i,@DefendingHit,#who=self,#what=what);
+         }
+      }
+
+      propagate;
+   }
+
+   // Human weapons can take damage just like player weapons.
+   // Not as often though.
+   DidDamage(what = $, amount = 0)
+   {
+      local oWeapon, i;
+
+      if (Random(1,100) <= viGearDamageChance)
+      {
+         oWeapon = Send(self,@GetWeapon);
+
+         if oWeapon <> $
+         {
+            Send(oWeapon,@WeaponHitTarget);
+         }
+
+         foreach i in plAttack_modifiers
+         {
+            Send(i,@WeaponHitTarget);
+         }
+      }
+
+      propagate;
+   }
+
+   // Allows humans to enjoy armor from items.
+   ArmorCheck(what=$,damage=0,atype=0,aspell=0,bonus=0)
+   {
+      local i, iArmor, oAttribute;
+
+      foreach oAttribute in plObject_attributes
+      {
+         damage = Send(oAttribute,@ModifyDefenseDamage,#who=self,#what=what,
+            #damage=damage,#atype=atype,#aspell=aspell);
+      }
+
+      foreach i in plDefense_modifiers
+      {
+         damage = Send(i,@ModifyDefenseDamage,#who=self,#what=what,
+            #damage=damage,#atype=atype,#aspell=aspell);
+      }
+
+      // piArmor may be adjusted situationally (e.g. survival room)
+      iArmor = piArmor + viBonusArmor;
+
+      // Randomization simulates hits of differently armored body parts.
+      iArmor = Bound(Random(iArmor*33,iArmor*100),0,damage);
+
+      // Armor is only fully effective against physical attacks.
+      if aspell <> 0
+      {
+         // Reduce damage if part of the damage is spell
+         if atype <> 0
+         {
+            // Only 2/3 of the damage reduction if we're doing both weapon
+            // and spell damage types.
+            iArmor *= 2;
+            iArmor /= 3;
+         }
+         else
+         {
+            // If we're doing pure spell damage, we get no reduction.
+            iArmor = 0;
+         }
+      }
+      
+      return damage - iArmor;
+   }
+
+   GetDefense(what = $, stroke_obj=$)
+   "This returns the battler's ability to avoid being hit.  Ranges from "
+   "1 to 2000."
+   {
+      local i, iDefense, iSkills;
+
+      // Emulates defense skills.
+      iSkills = Send(self,@GetDodgeAbility,#stroke_obj=stroke_obj) * 2;
+      iSkills += Send(self,@GetParryAbility,#stroke_obj=stroke_obj);
+      iSkills += Send(self,@GetBlockAbility,#stroke_obj=stroke_obj);
+
+      iDefense = 2 * viLevel + 8 * piAgility + iSkills;
+
+      foreach i in plDefense_modifiers
+      {
+         iDefense = Send(i,@ModifyDefensePower,#who=self,#what=what,
+            #defense_power=iDefense);
+      }
+
+      foreach i in plRadiusEnchantments
+      {
+         iDefense = Send(Nth(i,2),@ModifyDefensePower,#who=self,#what=what,
+            #state=Nth(i,3),#defense_power=iDefense);
+      }
+
+
+      return Bound(iDefense,1,2000);
+   }
+
+   GetOffense(what = $, stroke_obj=$)
+   "This returns the battler's ability to-hit.  Ranges from 1 to 2000."
+   {
+      local i, iOffense, oWeapon;
+
+      iOffense = 4*viLevel + 8*piAim;
+
+      if piEnch_flags & ENCH_PALSY
+      {
+         iOffense = iOffense * 3 / 4;
+      }
+
+      oWeapon = Send(self,@GetWeapon);
+
+      if oWeapon <> $
+      {
+         iOffense = Send(oWeapon,@ModifyHitRoll,#target=what,#hit_roll=iOffense);
+      }
+
+      // List of items and spells that affect chance-to-hit
+      foreach i in plAttack_modifiers
+      {
+         iOffense = Send(i,@ModifyHitRoll,#who=self,#what=what,
+                        #hit_roll=iOffense,#stroke_obj=stroke_obj);
+      }
+
+      foreach i in plRadiusEnchantments
+      {
+         iOffense = Send(Nth(i,2),@ModifyHitRoll,#who=self,#what=what,
+                           #hit_roll=iOffense,#state=Nth(i,3));
+      }
+
+      return Bound(iOffense,1,2000);
+   }
+
+   // Humans benefit from weapon damage and other modifications.
+   GetDamage(what = $)
+   {
+      local i, iDamage, iModBonus, iDamageBonus, oWeapon;
+
+      oWeapon = Send(self,@GetWeapon);
+
+      // If we aren't wielding an actual weapon, let the parent handle it.
+      if (oWeapon = $) OR NOT IsClass(oWeapon,&Weapon)
+      {
+         propagate;
+      }
+
+      // Let's get the raw weapon damage and convert it to precision mode.
+      iDamage = Send(oWeapon,@GetDamage,#who=self,#target=what) * 100;
+
+      // Equivalent to the flat prodiciency bonus.
+      iDamage += Bound(viDifficulty * 56,0,500);
+
+      // Roughly equivalent to stat bonus of up to 25% at 50 might plus secondary stat.
+      iDamage += iDamage * (piMight + (piAim + piAgility) / 2) * viDifficulty / 3600;
+
+      // Spells and attmods that modify damage
+      iDamageBonus = 0;
+      foreach i in plAttack_modifiers
+      {
+         // Attack modifiers return the total damage, subtract out the original
+         //  damage to get the damage bonus.
+         iModBonus = Send(i,@ModifyDamage,#who=self,#what=what,#damage=iDamage);
+         iDamageBonus += (iModBonus - iDamage);
+      }
+
+      foreach i in plRadiusEnchantments
+      {
+         iDamageBonus = Send(Nth(i,2),@ModifyDamage,#who=self,#what=what,
+                              #state=Nth(i,3),#damage=iDamageBonus);
+      }
+
+      // Convert to high precision. Super dirty, will be cleaned up shortly.
+      iDamageBonus *= 100;
+
+      iDamage += iDamageBonus;
+
+      if piEnch_flags & ENCH_PALSY
+      {
+         iDamage = iDamage * 3 / 4 ;
+      }
+
+      return Bound(iDamage,0,$);
+   }
+
+   GetSpellPower(oSpell=$)
+   {
+      local i, iSpellPower;
+
+      iSpellPower = piSpellPower;
+
+      foreach i in plUsing
+      {
+         iSpellPower += Send(i,@GetSpellModifier,#oSpell=oSpell);
+      }
+
+      return iSpellPower;
+   }
+
+   CountsAsMonster()
+   {
+      return FALSE;
    }
 
 end

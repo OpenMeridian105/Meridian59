@@ -224,5 +224,22 @@ messages:
       return iSpellpower / 3;
    }
 
+   CanPayMonsterCosts(lTargets=$)
+   {
+      local oTarget;
+
+      oTarget = First(lTargets);
+
+      if (IsClass(oTarget,&Player)
+            AND Send(oTarget,@CheckPlayerFlag,#flag=PFLAG_NO_FIGHT))
+         OR (IsClass(oTarget,&Monster)
+            AND Send(oTarget,@CheckMonsterBehavior,#flag=AI_NOFIGHT))
+      {
+         return FALSE;
+      }
+
+      propagate;
+   }
+
 end
 ////////////////////////////////////////////////////////////////////////////////

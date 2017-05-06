@@ -74,6 +74,14 @@ properties:
 
 messages:
 
+   Constructed()
+   {
+      // Excluses troops from monster count.
+      pbEvent = TRUE;
+
+      propagate;
+   }
+
    SetClothes()
    {
       Send(self,@SetDefaultClothes,#shirt_color=viColorTranslate1);
@@ -244,7 +252,9 @@ messages:
             return TRUE;
          }
 
+         // We also defend lowbies that are unfactioned.
          if IsClass(what,&User)
+            AND (Send(what,@GetBaseMaxHealth) < Send(SETTINGS_OBJECT,@GetPKillEnableHP))
          {
             // Players not of same faction.
             if (iFaction = FACTION_NEUTRAL)
@@ -272,13 +282,13 @@ messages:
          iFaction = Send(what,@GetFaction);
          if iFaction = viFaction
          {
-            return -30;
+            return -300;
          }
 
          if (iFaction <> FACTION_NEUTRAL)
             AND (iFaction <> viFaction)
          {
-            return 30;
+            return 300;
          }
       }
 

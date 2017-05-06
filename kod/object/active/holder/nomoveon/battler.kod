@@ -177,8 +177,8 @@ resources:
 classvars:
 
    viObject_flags = OF_ATTACKABLE
-
    viBattler_level = 50
+   viNaturalVigorRegeneration = 0
 
 properties:
 
@@ -266,23 +266,6 @@ messages:
    Delete()
    {
       local i;
-
-      // Clear minion control list. Delete each of our minions
-      // unless they are reflections, which are handled separately.
-      // Deleted minions will remove themselves from our list, we
-      // just need to let them know they're to be deleted.
-      if plControlledMinions <> $
-      {
-         foreach i in plControlledMinions
-         {
-            if IsClass(i,&Monster)
-               AND NOT IsClass(i,&Reflection)
-            {
-               Send(i,@Delete);
-            }
-         }
-         plControlledMinions = $;
-      }
 
       // If this Battler has created any evil twins, delete them.
       Send(self,@RemoveAllCreatedEvilTwins);
@@ -1554,7 +1537,7 @@ messages:
    CalculateVigorPerTick()
    {
       local iNatural, iExertion, iVigorPerTick, iHaste, iStamina, iBonus,
-            iLimit, i, iVigor;
+            iLimit, i, iVigor, iState;
 
       // Natural regeneration only takes effect up to this value.
       iLimit = piVigor_rest_threshold + (piWind + 1)/5;
@@ -1570,6 +1553,8 @@ messages:
       // if we aren't suffering from a vigor curse.
       if (NOT (piBattlerFlags & BFLAG_VIGOR_CURSE))
       {
+         iNatural += viNaturalVigorRegeneration;
+
          iStamina = Send(self,@GetStamina);
 
          // Resting is the most traditional way of replenishing vigor.
@@ -1602,7 +1587,7 @@ messages:
          // per second.
          if piWind
          {
-            iBonus = 50 * (iLimit - iVigor) / iLimit;
+            iBonus = 50 * Bound(iLimit - iVigor,0,iLimit) / iLimit;
             iBonus *= iBonus;
             iBonus = Bound(iBonus,100,2500) * (2 * iStamina + piWind + 1) / 100;
 
@@ -1612,14 +1597,17 @@ messages:
 
       // Factor in invigorate. Invigorate will not be inhibited by a vigor
       // curse, but only works up to the rest threshold. That's why we
-      // add it to our natural regeneration.
+      // add it to our natural regeneration. It does, however, increase
+      // the rest threshold by up to 20 points while active.
       foreach i in plRadiusEnchantments
       {
          // Check the battler's REs for invigorate.
          if IsClass(Nth(i,2),&Invigorate)
          {
             // Get the RE's state.
-            iNatural += Nth(Nth(i,3),5);
+            iState = Nth(Nth(i,3),5) + 10;
+            iNatural += iState;
+            iLimit += iState / 25;
             break;
          }
       }
@@ -1647,8 +1635,8 @@ messages:
          }
       }
 
-      // Vigor below limit, proceed as normal.
-      if iVigor < iLimit
+      // Vigor below limit, proceed as normal - unless we are a monster.
+      if (iVigor < iLimit)
       {
          iVigorPerTick = iNatural;
          iVigorPerTick -= iExertion;
@@ -1656,7 +1644,7 @@ messages:
       }
       // Vigor at limit. Make sure our natural regeneration stops,
       // but allow it to counteract drains.
-      else if iVigor = iLimit
+      else if (iVigor = iLimit)
       {
          // External effects help us. Let's not mix them with natural
          // regen which only counteracts drains, but add later.
@@ -1680,7 +1668,7 @@ messages:
       }
 
       // Disable regeneration when sitting at or above max vigor.
-      if iVigor >= piMax_vigor
+      if (iVigor >= piMax_vigor)
       {
          iVigorPerTick = Bound(iVigorPerTick,$,0);
 
@@ -1692,7 +1680,7 @@ messages:
       }
 
       // Stop any decay if we are already sitting at 0 vigor.
-      if piVigor = 0
+      if (piVigor = 0)
       {
          iVigorPerTick = Bound(iVigorPerTick,0,$);
       }
@@ -3141,12 +3129,6 @@ messages:
                Send(self,@RemoveControlledMinion,#what=i);
 
                continue;
-            }
-
-            if Send(i,@GetTarget) = $
-            {
-               Send(i,@SetBehaviorFlag,#flag=AI_MOVE_FOLLOW_MASTER,
-                     #value=TRUE);
             }
          }
          ptMinionControlCheck = CreateTimer(self,@MinionControlCheck,2000);

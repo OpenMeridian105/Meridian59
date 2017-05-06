@@ -237,6 +237,10 @@ classvars:
    viOffensive = FALSE
    viResistanceType = 0
 
+   // Adjusts the casting frequency of monster casts of the spell.
+   viStartingPriority = $
+   viPriorityAdjustment = $
+
 properties:
 
    // Format of reagents:  Each element of plReagents is a list, describing a
@@ -1509,8 +1513,17 @@ messages:
       // Add a mana drain if applicable.
       if IsClass(who,&Battler) AND viManaDrain > 0
       {
-         Send(who,@StartOverTimeEffect,#strength=-viManaDrain,#what=self,#who=who,
-            #removable=REMOVE_INTERNAL,#showicon=FALSE,#type=TYPE_MANA);
+         if IsClass(who,&Player)
+         {
+            Send(who,@StartOverTimeEffect,#strength=-viManaDrain,#what=self,#who=who,
+               #removable=REMOVE_INTERNAL,#showicon=FALSE,#type=TYPE_MANA);
+         }
+         // Monsters can maintain draining spells more easily.
+         else
+         {
+            Send(who,@StartOverTimeEffect,#strength=-viManaDrain/2,#what=self,#who=who,
+               #removable=REMOVE_INTERNAL,#showicon=FALSE,#type=TYPE_MANA);
+         }
       }
 
       if IsClass(who,&DM)
@@ -1541,7 +1554,6 @@ messages:
       }
 
       if viFlash = FLASH_GOOD_SELF
-         AND who <> $
          AND IsClass(who,&User)
       {
          Send(who,@GoodSpellFlashEffect);
@@ -1586,8 +1598,7 @@ messages:
 
       // Let players see the spellpower their spells are cast at, if they
       // have the setting enabled in their preference menu.
-      if who <> $
-         AND IsClass(who,&Player)
+      if IsClass(who,&Player)
          AND Send(who,@CheckPlayerPreference,#flag=CF_SPELLPOWER)
       {
          Send(who,@MsgSendUser,#message_rsc=spell_display_spellpower,
@@ -1609,14 +1620,7 @@ messages:
          Send(self,@ImproveAbility,#who=who,#target=oTarget);
       }
 
-      if NOT IsClass(who,&ItemAttribute)
-      {
-         oRoom = Send(SYS,@UtilGetRoomRecurse,#what=who);
-      }
-      else
-      {
-         oRoom = Send(SYS,@UtilGetRoomRecurse,#what=oTarget);
-      }
+      oRoom = Send(SYS,@UtilGetRoomRecurse,#what=who);
 
       if oRoom <> $
       {
@@ -2812,6 +2816,57 @@ messages:
    CausesAggression(iSpellpower=0)
    {
       return viHarmful;
+   }
+
+   GetCombatType()
+   {
+      if viHarmful AND NOT vbIsAreaEffect
+      {
+         return COMBAT_ACTION_HARM;
+      }
+
+      if IsClass(self,&Heal)
+      {
+         return COMBAT_ACTION_HEAL;
+      }
+
+      if IsClass(self,&PersonalEnchantment)
+      {
+         return COMBAT_ACTION_BUFF;
+      }
+
+      return COMBAT_ACTION_NEUTRAL;
+   }
+
+   // Adjustments for monster casting
+   GetStartingPriority()
+   {
+      if viStartingPriority = $
+      {
+         return Random(0,700);
+      }
+
+      return viStartingPriority;
+   }
+
+   GetPriorityAdjustment()
+   {
+      if viPriorityAdjustment = $
+      {
+         return 200 + (viMana*5 + viSpellExertion*20)*viSpell_Level;
+      }
+
+      return viPriorityAdjustment;
+   }
+
+   GetMonsterManaCost()
+   {
+      return viMana;
+   }
+
+   GetMonsterExertion()
+   {
+      return viSpellExertion;
    }
 
 end

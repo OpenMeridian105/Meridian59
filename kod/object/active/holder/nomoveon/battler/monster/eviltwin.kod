@@ -476,7 +476,6 @@ messages:
       {
          // Evil twins will go after the original target.
          poMaster = poCaster;
-         Send(self,@SetBehaviorFlag,#flag=AI_MOVE_FOLLOW_MASTER,#value=FALSE);
          Send(self,@GoToOriginal);
       }
       else
@@ -496,8 +495,6 @@ messages:
             if poTarget <> poOriginal
             {
                Send(self,@EnterStateWait);
-               Send(self,@SetBehaviorFlag,#flag=AI_MOVE_FOLLOW_MASTER,
-                     #value=FALSE);
                Send(self,@GoToOriginal);
             }
          }
@@ -520,12 +517,6 @@ messages:
          OR poOriginal = $)
       {
          return;
-      }
-
-      // Don't follow if owned by caster.
-      if (poMaster = poCaster)
-      {
-         Send(self,@SetBehaviorFlag,#flag=AI_MOVE_FOLLOW_MASTER,#value=FALSE);
       }
 
       // Original might be phased or spectated.
@@ -712,7 +703,7 @@ messages:
             plActions = DelListElem(plActions,i);
          }
 
-         plActions = Cons ([SKID_MINIMUM,0,0,MAX_KOD_INT,50,1,99],plActions);
+         plActions = Cons ([SKID_MINIMUM,0,0,MAX_KOD_INT,50,1,99,COMBAT_ACTION_NEUTRAL],plActions);
 
          // Gotta get the evil twin's correct action list.
          if IsClass(poOriginal,&User)
@@ -726,27 +717,27 @@ messages:
 
                if IsClass(oWeapon,&RangedWeapon)
                {
-                  plActions = Cons([SKID_FIRE,0,0,iRange,100,1,99],plActions);
+                  plActions = Cons([SKID_FIRE,0,0,iRange,100,1,99,COMBAT_ACTION_HARM],plActions);
                }
                else
                {
-                  plActions = Cons([SKID_SLASH,0,0,iRange,100,1,99],plActions);
+                  plActions = Cons([SKID_SLASH,0,0,iRange,100,1,99,COMBAT_ACTION_HARM],plActions);
                }
             }
             else
             {
-               plActions = Cons([SKID_SLASH,0,0,4096,100,1,99],plActions);
+               plActions = Cons([SKID_SLASH,0,0,4096,100,1,99,COMBAT_ACTION_HARM],plActions);
             }
          }
          else
          {
             iRange = Send(poOriginal,@GetMeleeRange);
             iRange *= iRange;
-            plActions = Cons([SKID_SLASH,0,0,iRange,100,1,99],plActions);
+            plActions = Cons([SKID_SLASH,0,0,iRange,100,1,99,COMBAT_ACTION_HARM],plActions);
 
             iRange = Send(poOriginal,@GetFireRange);
             iRange *= iRange;
-            plActions = Cons([SKID_FIRE,0,0,iRange,100,1,99],plActions);
+            plActions = Cons([SKID_FIRE,0,0,iRange,100,1,99,COMBAT_ACTION_HARM],plActions);
          }
 
          if IsClass(poOriginal,&User)
@@ -1058,7 +1049,7 @@ messages:
       if IsClass(what,&Revenant)
          OR IsClass(what,&EvilTwin)
       {
-         return -2000;
+         return -20000;
       }
 
       return 0;

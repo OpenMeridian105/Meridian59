@@ -68,7 +68,7 @@ messages:
       }
 
       oTarget = First(lTargets);
-      if NOT IsClass(oTarget,&User)
+      if NOT (IsClass(oTarget,&User) OR IsClass(oTarget,&Follower))
       {
          if NOT bItemCast
          {
@@ -98,7 +98,7 @@ messages:
 
    CastSpell(who = $, lTargets = $, iSpellPower = 0)
    {
-      local i, iHeal, iDamage, iStrength, iTime, oTarget;
+      local i, iHeal, iDamage, iStrength, iTime, oTarget, oEffect;
 
       // Skip standard heal code if it's an area effect.
       if vbIsAreaEffect
@@ -119,7 +119,8 @@ messages:
                      #iSpellPower=iSpellPower);
 
       // A little boost for casting on newbies, even if you're the newbie!
-      if NOT Send(oTarget,@CheckPlayerFlag,#flag=PFLAG_PKILL_ENABLE)
+      if IsClass(oTarget,&Player)
+         AND NOT Send(oTarget,@CheckPlayerFlag,#flag=PFLAG_PKILL_ENABLE)
       {
          iHeal += Random(200,500);
       }
@@ -132,7 +133,9 @@ messages:
 
          foreach i in Send(oTarget,@GetOverTimeEffects)
          {
-            if IsClass(Nth(i,5),&Bleed)
+            oEffect = Nth(i,5);
+
+            if (oEffect <> 0) AND IsClass(oEffect,&Bleed)
             {
                iTime = GetTimeRemaining(First(i));
                iStrength = Nth(i,3);
@@ -238,7 +241,8 @@ messages:
                #parm3=iHeal/100);
 
          // Give them a little boost if they help someone of higher Karma.
-         if Send(who,@GetKarma) < Send(oTarget,@GetKarma)
+         if IsClass(who,&Player)
+            AND Send(who,@GetKarma) < Send(oTarget,@GetKarma)
          {
             Send(who,@AddKarma,#amount=Send(who,@CalculateKarmaChangeFromAct,
                   #karma_doer=Send(who,@GetKarma),

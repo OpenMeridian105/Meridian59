@@ -142,16 +142,10 @@ classvars:
 
    viTerrain_type = TERRAIN_NECROPOLIS | TERRAIN_CAVES
 
-   viPit_monsters_max = 5   // Max # of monsters in the pit area
-   viPit_row = 11           // Pit generator location
-   viPit_col = 4
-
 properties:
 
    prRoom = room_razacrypt
    piRoom_num = RID_RAZA_MAUSOLEUM
-
-   piGenTime = 15000        // Need to regen faster since some monsters thrown out
 
    piBaseLight = LIGHT_DARK
    piOutside_factor = OUTDOORS_NONE
@@ -160,7 +154,7 @@ properties:
 
    piInit_count_min = 12
    piInit_count_max = 15
-   piMonster_count_max = 35
+   piMonster_count_max = 20
 
    piPit_Monsters = 0        // Number of monsters currently in the pit area
 
@@ -173,15 +167,13 @@ properties:
 
    pbColumn_down = FALSE
 
+   piPatrolRadius = 1
+
 messages:
 
    Constructed()
    {
       plMonsters = [ [&Mummy, 50], [&MummyNoTreasure, 50] ];
-
-      plGenerators = [ [viPit_row, viPit_col], [5, 21], [5, 36], [9, 28],
-                       [17, 35], [21, 23], [25, 11], [29, 18], [37, 35], [38, 19]
-                     ];
 
       propagate;
    }
@@ -298,26 +290,11 @@ messages:
       return;
    }
 
-   ReqNewHold(what = $, new_row = $, new_col = $)
-   // Only allow a certain # of monsters in the pit
+   IsValidSpawnLocation(iRow=0,iCol=0,iFineRow=0,iFineCol=0)
    {
-      if IsClass(what,&MummyNoTreasure)
-         AND piPit_Monsters >= viPit_Monsters_max
-      {
-         return FALSE;
-      }
-
-      // Allow only wimpy mummies in the pit
-      if NOT IsClass(what, &MummyNoTreasure)
-         AND new_row = viPit_row
-         AND new_col = viPit_col
-      {
-         return FALSE;
-      }
-
-      // Wimpy mummies appear only in the pit
-      if IsClass(what, &MummyNoTreasure)
-      AND (new_row <> viPit_row OR new_col <> viPit_col)
+      if ((iCol < 3)
+         OR ((iCol < 20) AND (iRow < 15) AND (iRow > 7))
+         OR ((iCol < 10) AND (iRow > 27)))
       {
          return FALSE;
       }
@@ -327,7 +304,21 @@ messages:
 
    FirstUserEntered()
    {
-      Post(self,@NewHold,#what=Create(&MummyNoTreasure),#new_row=viPit_row,#new_col=viPit_col);
+      local oMonster;
+
+      if NOT Send(self,@CountHoldingHowMany,#class=&MummyNoTreasure)
+      {
+         oMonster = Create(&MummyNoTreasure,#bEvent=TRUE);
+         Send(oMonster,@SetSpawnLoc,#iRow=13,#iCol=4);
+         Post(self,@NewHold,#what=oMonster,#new_row=13,#new_col=4);
+         oMonster = Create(&MummyNoTreasure,#bEvent=TRUE);
+         Send(oMonster,@SetSpawnLoc,#iRow=11,#iCol=4);
+         Post(self,@NewHold,#what=oMonster,#new_row=11,#new_col=4);
+         oMonster = Create(&MummyNoTreasure,#bEvent=TRUE);
+         Send(oMonster,@SetSpawnLoc,#iRow=12,#iCol=5);
+         Post(self,@NewHold,#what=oMonster,#new_row=12,#new_col=5);
+      }
+
       Post(self,@ResetMonstersInFinal);
 
       propagate;
@@ -378,16 +369,25 @@ messages:
       propagate;
    }
 
-   LeverChanged(what = $)
+   LeverChanged(what=$,who=$)
    {
-      local iSwitched;
+      local iSwitched, oFollower;
 
       Send(self,@SomethingWaveRoom,#wave_rsc=razacrypt_door1_rsc,#what=what);
 
       iSwitched = 0;
+
       if Send(poLever1,@IsSwitched)
       {
          iSwitched = iSwitched + 1;
+
+         oFollower = Send(who,@GetMercenary);
+
+         if (oFollower <> $)
+            AND (Send(oFollower,@GetTriggerObject) = poLever2)
+         {
+            Send(poLever2,@SetSwitched);
+         }
       }
 
       if Send(poLever2,@IsSwitched)
@@ -569,9 +569,9 @@ messages:
       {
          each_obj = First(i);
          if count = COUNT_MONSTERS
-             AND IsClass(each_obj,&Monster) 
+               AND Send(each_obj,@CountsAsMonster)
             OR count = COUNT_PLAYERS
-             AND IsClass(each_obj,&User)
+               AND Send(each_obj,@CountsAsHero)
          {
             iRow = Send(each_obj,@GetRow);
             
@@ -597,7 +597,7 @@ messages:
 
    ResetMonstersInFinal()
    {
-      local i,each_obj,iCount,iRow,iCol;
+      local i,each_obj,iCount,iRow,iCol, oMonster;
 
       foreach i in plActive
       {
@@ -618,19 +618,63 @@ messages:
          }
       }
 
-      Send(self,@NewHold,#what=Create(&Mummy),#new_row=29,#new_col=3,
-            #fine_row=32,#fine_col=32);
-      Send(self,@NewHold,#what=Create(&Mummy),#new_row=30,#new_col=7,
-            #fine_row=32,#fine_col=32);
-      Send(self,@NewHold,#what=Create(&Mummy),#new_row=34,#new_col=7,
-            #fine_row=32,#fine_col=32);
-      Send(self,@NewHold,#what=Create(&Mummy),#new_row=35,#new_col=2,
-            #fine_row=32,#fine_col=32);
-      
-      Send(self,@NewHold,#what=Create(&BlackMummy),#new_row=37,#new_col=5,
-            #fine_row=0,#fine_col=0);
+      oMonster = Create(&Mummy,#bEvent=TRUE);
+      Send(oMonster,@SetSpawnLoc,#iRow=31,#iCol=4);
+      Send(self,@NewHold,#what=oMonster,#new_row=31,#new_col=4);
+      oMonster = Create(&Mummy,#bEvent=TRUE);
+      Send(oMonster,@SetSpawnLoc,#iRow=31,#iCol=7);
+      Send(self,@NewHold,#what=oMonster,#new_row=31,#new_col=7);
+      oMonster = Create(&Mummy,#bEvent=TRUE);
+      Send(oMonster,@SetSpawnLoc,#iRow=34,#iCol=7);
+      Send(self,@NewHold,#what=oMonster,#new_row=34,#new_col=7);
+      oMonster = Create(&Mummy,#bEvent=TRUE);
+      Send(oMonster,@SetSpawnLoc,#iRow=35,#iCol=2);
+      Send(self,@NewHold,#what=oMonster,#new_row=35,#new_col=2);
+      oMonster = Create(&BlackMummy,#bEvent=TRUE);
+      Send(oMonster,@SetSpawnLoc,#iRow=37,#iCol=5);
+      Send(self,@NewHold,#what=oMonster,#new_row=37,#new_col=5);
 
       return;
+   }
+
+   AdjustMaxMonsters(what=$)
+   {
+      piMonster_adjusted_max = piMonster_count_max;
+
+      return;
+   }
+
+   GetMercenaryTriggerObject(who=$)
+   {
+      local oLeader, leverrow, levercol, dleaderrow, dleadercol,
+            dfollowerrow, dfollowercol;
+
+      oLeader = Send(who,@GetLeader);
+
+      if (oLeader = $)
+         OR (Send(oLeader,@GetOwner) <> self)
+      {
+         return;
+      }
+
+      leverrow = Send(poLever2,@GetRow);
+      levercol = Send(poLever2,@GetCol);
+
+      dleaderrow = leverrow - Send(oLeader,@GetRow);
+      dleadercol = levercol - Send(oLeader,@GetCol);
+
+      dfollowerrow = leverrow - Send(who,@GetRow);
+      dfollowercol = levercol - Send(who,@GetCol);
+
+      if (NOT Send(poLever2,@IsSwitched))
+         AND dleaderrow*dleaderrow + dleadercol*dleadercol <= 49
+         AND dfollowerrow*dfollowerrow + dfollowercol*dfollowercol <= 9
+         AND Send(self,@LineOfSight,#obj1=who,#obj2=poLever2)
+      {
+         return poLever2;
+      }
+
+      propagate;
    }
 
 end

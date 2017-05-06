@@ -67,7 +67,7 @@ messages:
 
    CanPayCosts(who=$,lTargets=$)
    {
-      local i, oTarget, lDebuffs, bHasDebuff;
+      local i, oTarget, lDebuffs, bHasDebuff, oEffect;
 
       // Can cast spell if the 1 target item is a user.
       if Length(lTargets) <> 1
@@ -109,7 +109,9 @@ messages:
          {
             foreach i in lDebuffs
             {
-               if IsClass(Nth(i,5),&Disease)
+               oEffect = Nth(i,5);
+
+               if (oEffect <> 0) AND IsClass(oEffect,&Disease)
                {
                   bHasDebuff = TRUE;
 
@@ -201,6 +203,11 @@ messages:
    GetPotionClass()
    {
       return &CureDiseasePotion;
+   }
+
+   GetCombatType()
+   {
+      return COMBAT_ACTION_BUFF;
    }
 
 end

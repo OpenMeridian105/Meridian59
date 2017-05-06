@@ -545,6 +545,12 @@ properties:
    // Checks for actual changes before drawing. Removes flicker.
    plDraw = $
 
+   // Keeps track of the most recent steps a user has taken.
+   plUserTrail = $
+
+   // Steps the player has taken since their last step was recorded.
+   piTrailSteps = 0
+
 messages:
 
    Constructor(name = $,icon = $)
@@ -865,6 +871,15 @@ messages:
 
       // Give user the logon delay
       Send(self,@LogonDelay);
+
+      // Give a new user a buddy upon first login. Has to happen
+      // after the user has arrived in poOwner.
+      if (piXP_total = 0)
+         AND (poMercenary = $)
+         AND Send(SETTINGS_OBJECT,@IsFollowerEnabled)
+      {
+         Post(self,@CreateFollower,#iDifficulty=5);
+      }
 
       if (poEvilTwin <> $)
       {
@@ -3191,7 +3206,7 @@ messages:
    "This message builds the minimap dot flags for each object we can see, "
    "which is then sent to our client for drawing objects on the map/minimap."
    {
-      local iBehavior, iFlags, oIllusion, oOtherGuild, oTarget;
+      local iBehavior, iFlags, oIllusion, oOtherGuild, oTarget, oMaster;
 
       if what = $
          OR poOwner <> Send(what,@GetOwner)
@@ -3343,13 +3358,15 @@ messages:
             }
          }
 
-         if Send(what,@GetMaster) <> $
+         oMaster = Send(what,@GetMaster);
+
+         if oMaster <> $
          {
-            if (Send(what,@GetMaster) = self)
+            if (oMaster = self)
             {
                iFlags |= MM_MINION_SELF;
             }
-            else
+            else if IsClass(oMaster,&Player)
             {
                iFlags |= MM_MINION_OTHER;
             }
@@ -3358,6 +3375,11 @@ messages:
          if Send(what,@GetLeader) = self
          {
             iFlags |= MM_MERCENARY;
+         }
+         else if IsClass(what,&Follower)
+         {
+            // For anyone but the leader, followers are simply NPCs.
+            return MM_NPC;
          }
 
          if IsClass(poOwner,&SurvivalRoom)
@@ -4261,6 +4283,20 @@ messages:
       //
 
       Send(self,@SetPlayerFlag,#flag=PFLAG_MOVED_SINCE_ENTRY,#value=TRUE);
+
+      //
+      // 11. Keep track of the most recent steps to facilitate monster pursuit.
+      //
+
+      ++piTrailSteps;
+
+      if piTrailSteps >= Send(poOwner,@GetTrailSteps)
+      {
+         Send(self,@SetUserTrail,#iRow=new_row,#iCol=new_col,
+            #iFineRow=fine_row,#iFineCol=fine_col);
+
+         piTrailSteps = 0;
+      }
 
       return;
    }
@@ -6646,6 +6682,13 @@ messages:
       {
          Send(self,@DoWave);
 
+         if poMercenary <> $ 
+            AND NOT IsTimer(poMercenary)
+            AND (Send(poMercenary,@GetOwner) = poOwner)
+         {
+            Send(poMercenary,@DoWave);
+         }
+
          return;
       }
 
@@ -6653,12 +6696,26 @@ messages:
       {
          Send(self,@DoPoint);
 
+         if poMercenary <> $ 
+            AND NOT IsTimer(poMercenary)
+            AND (Send(poMercenary,@GetOwner) = poOwner)
+         {
+            Send(poMercenary,@DoPoint);
+         }
+
          return;
       }
 
       if action = UA_DANCE
       {
          Send(self,@DoDance);
+
+         if poMercenary <> $ 
+            AND NOT IsTimer(poMercenary)
+            AND (Send(poMercenary,@GetOwner) = poOwner)
+         {
+            Send(poMercenary,@DoDance);
+         }
 
          return;
       }
@@ -10983,6 +11040,36 @@ messages:
       }
 
       return;
+   }
+
+   SetUserTrail(iRow=$,iCol=$,iFineRow=$,iFineCol=$)
+   {
+      local i;
+
+      if (poOwner = $)
+         OR (iRow = $)
+         OR (iCol = $)
+         OR (iFineRow = $)
+         OR (iFineCol = $)
+      {
+         plUserTrail = $;
+      }
+      else
+      {
+         plUserTrail = Cons([iRow,iCol,iFineRow,iFineCol],plUserTrail);
+
+         if Length(plUserTrail) > Send(poOwner,@GetTrailLength)
+         {
+            plUserTrail = DelLastListElem(plUserTrail);
+         }
+      }
+
+      return;
+   }
+
+   GetUserTrail()
+   {
+      return plUserTrail;
    }
 
 end

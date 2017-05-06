@@ -5267,6 +5267,25 @@ messages:
       return;
    }
 
+   ActivateFollowers()
+   {
+      Send(SETTINGS_OBJECT,@SetFollowerEnabled);
+      Send(&ThreeCouncilor,@SetForSale);
+      Send(&Player,@RestoreFollower);
+
+      return;
+   }
+
+   DeactivateFollowers()
+   {
+      Send(SETTINGS_OBJECT,@SetFollowerEnabled,#bEnabled=FALSE);
+      Send(&ThreeCouncilor,@SetForSale);
+      Send(&Follower,@FollowerAbsence);
+      Send(&Player,@StoreFollower);
+
+      return;
+   }
+
    EnableRoomIllusions()
    {
       if NOT pbRoomIllusionsEnabled
@@ -5377,6 +5396,7 @@ messages:
       plMonsterTemplates = cons(create(&PrincessMage,#template=TRUE),plMonsterTemplates);
       plMonsterTemplates = cons(create(&NecromancerTroop,#template=TRUE),plMonsterTemplates);
       plMonsterTemplates = cons(create(&Necromancer,#template=TRUE),plMonsterTemplates);
+      plMonsterTemplates = cons(create(&Follower,#template=TRUE),plMonsterTemplates);
 
       plMonsterTemplates = cons(create(&XeoFire,#template=TRUE),plMonsterTemplates);
       plMonsterTemplates = cons(create(&XeoWater,#template=TRUE),plMonsterTemplates);
@@ -5472,7 +5492,8 @@ messages:
       plItemTemplates = cons(create(&Book),plItemTemplates);
       plItemTemplates = cons(create(&LoreTosApoth),plItemTemplates);
       plItemTemplates = cons(create(&LoreHist1),plItemTemplates);
-      
+      plItemTemplates = cons(create(&MercenaryContract),plItemTemplates);
+
       plItemTemplates = cons(create(&JalaNecklace),plItemTemplates);
       plItemTemplates = cons(create(&NecromancerAmulet),plItemTemplates);
       plItemTemplates = cons(create(&ShadowAmulet),plItemTemplates);

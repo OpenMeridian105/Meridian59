@@ -56,7 +56,11 @@
 //      called when a if/while/do-while/for-condition statement has a single
 //      expression containing the null check. Also replaces the list $ check
 //      assignment and test in foreach loops.
-#define BOF_VERSION 9
+// BOF_VERSION 10 (2-5-2017) added:
+//    - Split the 3 call opcodes into 6 based on whether any settings
+//      (named parameters) are present. Most calls use the new opcodes
+//      and skip outputting a 0 num settings byte. 10% kod performance increase.
+#define BOF_VERSION 10
 
 #define IDBASE        10000      /* Lowest # of user-defined id.  Builtin ids have lower #s */
 #define RESOURCEBASE  20000      /* Lowest # of user-defined resource. */

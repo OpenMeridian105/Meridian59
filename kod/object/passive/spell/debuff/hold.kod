@@ -86,7 +86,7 @@ messages:
    }
 
    DoSpell(what=$,oTarget=$,iDuration=$,report=TRUE,bAllowFreeAction=TRUE)
-   "Holds target for duration seconds."
+   "Holds target for duration milliseconds."
    {
       local i, oSpell;
 
@@ -179,7 +179,6 @@ messages:
             Send(who,@EffectSendUser,#what=self,#effect=EFFECT_PARALYZE_OFF);
          }
 
-         Send(who,@EffectSendUser,#what=self,#effect=EFFECT_PARALYZE_OFF);
          if state
          {
             Send(who,@MsgSendUser,#message_rsc=vrEnchantment_Off);
@@ -197,7 +196,11 @@ messages:
 
    RestartEnchantmentEffect(who=$,state=$)
    {
-      Send(who,@MsgSendUser,#message_rsc=vrEnchantment_On);
+      if (state)
+      {
+         Send(who,@MsgSendUser,#message_rsc=vrEnchantment_On);
+      }
+
       Send(who,@EffectSendUser,#what=self,#effect=EFFECT_PARALYZE_ON);
 
       return;

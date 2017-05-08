@@ -3147,6 +3147,10 @@ messages:
       {
          oTimer = $;
       }
+      else if NOT pbLogged_on
+      {
+         oTimer = time;
+      }
       else if lastcall
       {
          oTimer = CreateTimer(self,@EnchantmentTimer,time);
@@ -3258,7 +3262,7 @@ messages:
    FreezeAllEnchantments()
    "Called when a player logs off."
    {
-      local i, iTime;
+      local i, tTimer, iTime, oSpell;
 
       if (piFlags & PFLAG_PHASED)
       {
@@ -3270,11 +3274,13 @@ messages:
 
       foreach i in plEnchantments
       {
+         oSpell = Nth(i,2);
+
          // If we have the spectate enchantment, remove it.
-         if IsClass(Nth(i,2),&Spectate)
+         if IsClass(oSpell,&Spectate)
          {
-            Send(Nth(i,2),@RemoveEnchantmentEffects,#who=self,#report=FALSE);
-            Send(self,@ShowRemoveEnchantment,#what=Nth(i,2),
+            Send(oSpell,@RemoveEnchantmentEffects,#who=self,#report=FALSE);
+            Send(self,@ShowRemoveEnchantment,#what=oSpell,
                   #type=ENCHANTMENT_PLAYER);
             plEnchantments = DelListElem(plEnchantments,i);
             Send(self,@ResetPlayerFlagList,#who=self);
@@ -3282,24 +3288,31 @@ messages:
             continue;
          }
 
-         if First(i) <> $
+         tTimer = First(i);
+         if tTimer <> $
          {
-            if NOT IsClass(Nth(i,2),&Boon)
+            if NOT IsClass(oSpell,&Boon)
             {
                // Convert timer to integer if we have a timer,
                // otherwise log for debugging.
-               if IsTimer(First(i))
+               if IsTimer(tTimer)
                {
-                  iTime = GetTimeRemaining(First(i));
-                  DeleteTimer(First(i));
+                  iTime = GetTimeRemaining(tTimer);
+                  DeleteTimer(tTimer);
 
                   // If it's a negative enchantment, add a bit to the time in
                   // order to prevent people from just "flashing" on and off
                   // to wait out an enchantment and be relatively unhittable.
-                  if Send(Nth(i,2),@IsHarmful)
+                  // Stateless hold, which is used for logon/phase delay should
+                  // be reset to the logon delay time.
+                  if (IsClass(oSpell,&Hold) AND Nth(i,3) = 0)
+                  {
+                     iTime = Send(SETTINGS_OBJECT,@GetLogonDelay);
+                  }
+                  else if Send(oSpell,@IsHarmful)
                   {
                      // Time is measured in milliseconds, 3000 = 3 seconds.
-                     iTime = iTime + 3000;
+                     iTime += 3000;
                   }
                }
                else
@@ -3310,7 +3323,7 @@ messages:
                   iTime = First(i);
                   Debug(self, " player ",Send(self,@GetTrueName),
                      " called FreezeAllEnchantments with invalid timer for ",
-                     Send(Nth(i,2),@GetName), " timer value ",iTime);
+                     Send(oSpell,@GetName), " timer value ",iTime);
                }
 
                SetFirst(i,iTime);
@@ -3320,20 +3333,21 @@ messages:
 
       foreach i in plOverTimeEffects
       {
-         if First(i) <> $
+         tTimer = First(i);
+         if tTimer <> $
          {
             // Convert timer to integer if we have a timer.
-            if IsTimer(First(i))
+            if IsTimer(tTimer)
             {
-               iTime = GetTimeRemaining(First(i));
-               DeleteTimer(First(i));
+               iTime = GetTimeRemaining(tTimer);
+               DeleteTimer(tTimer);
             }
             else
             {
                // We should really have had a timer at this stage. Since
                // we haven't, let's assume that the timer has already been
                // converted to an integer. Leave it.
-               iTime = First(i);
+               iTime = tTimer;
             }
 
             SetFirst(i,iTime);
@@ -3346,57 +3360,62 @@ messages:
    ReactivateAllEnchantments()
    "Called when a player logs on."
    {
-      local i, tTimer, iTime, state;
+      local i, tTimer, iTime, state, oSpell;
 
       foreach i in plEnchantments
       {
+         oSpell = Nth(i,2);
+
          // Phase reactivates enchantments while it is still in plEnchantments
-         if IsClass(Nth(i,2),&Phase)
-            OR IsClass(Nth(i,2),&Spectate)
+         if IsClass(oSpell,&Phase)
+            OR IsClass(oSpell,&Spectate)
          {
             continue;
          }
 
-         if IsClass(Nth(i,2),&Boon) = FALSE
+         iTime = First(i);
+          // Skip always active timers (e.g. boons).
+         if (IsTimer(iTime))
+         {
+            continue;
+         }
+
+         if Length(i) > ENCHANTMENT_LIST_NO_STATE
+         {
+            state = Nth(i,3);
+         }
+         else
          {
             state = $;
-            if length(i) > ENCHANTMENT_LIST_NO_STATE
-            {
-               state = Nth(i,3);
-            }
+         }
 
-            iTime = First(i);
-
-            if iTime = $
-               OR IsTimer(iTime)
-               OR iTime < 1
+         if iTime = $
+            OR iTime < 1
+         {
+            // Give them a short timer, and log this for debugging purposes.
+            Debug("Trying to make an invalid timer ",iTime," for ",
+                  Send(oSpell,@GetTrueName)," on player ",
+                  self,Send(self,@GetTrueName));
+            if Send(oSpell,@IsHarmful)
             {
-               // Give them a short timer, and log this for debugging purposes.
-               // We include timers since we're not supposed to have one here.
-               Debug("Trying to make an invalid timer ",iTime," for ",
-                     Send(Nth(i,2),@GetTrueName)," on player ",
-                     self,Send(self,@GetTrueName));
-               if Send(Nth(i,2),@IsHarmful)
-               {
-                  iTime = 5000;
-               }
-               else
-               {
-                  iTime = 20000;
-               }
-            }
-
-            if Send(Nth(i,2),@IsPeriodic,#state=state,#who=self)
-            {
-               SetFirst(i,CreateTimer(self,@PeriodicEnchantmentTimer,iTime));
+               iTime = 5000;
             }
             else
             {
-               SetFirst(i,CreateTimer(self,@EnchantmentTimer,iTime));
+               iTime = 20000;
             }
-
-            Send(Nth(i,2),@RestartEnchantmentEffect,#who=self,#state=state);
          }
+
+         if Send(oSpell,@IsPeriodic,#state=state,#who=self)
+         {
+            SetFirst(i,CreateTimer(self,@PeriodicEnchantmentTimer,iTime));
+         }
+         else
+         {
+            SetFirst(i,CreateTimer(self,@EnchantmentTimer,iTime));
+         }
+
+         Send(oSpell,@RestartEnchantmentEffect,#who=self,#state=state);
       }
 
       foreach i in plOverTimeEffects

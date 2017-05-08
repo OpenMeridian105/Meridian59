@@ -534,8 +534,6 @@ properties:
 
    piCheaterLogs = 0
 
-   ptLogonDelayTimer = $
-
    // What order do you want your inventory sorted in?
    plClassOrderPreferences = $
 
@@ -802,6 +800,10 @@ messages:
       local i, sGuild, oBRoom, oHRoom;
 
       poSession = session_id;
+
+      // Users logging on unsafely are held for a short time.
+      Send(self,@LogonDelay);
+
       pbLogged_on = TRUE;
 
       piLastLoginTime = GetTime();
@@ -869,9 +871,6 @@ messages:
       Send(self,@ToCliSpellSchools);
       Send(self,@UserLogonHook);
 
-      // Give user the logon delay
-      Send(self,@LogonDelay);
-
       // Give a new user a buddy upon first login. Has to happen
       // after the user has arrived in poOwner.
       if (piXP_total = 0)
@@ -926,37 +925,36 @@ messages:
    }
 
    LogonDelay()
+   "Note that this occurs before the player enters the room."
    {
-      local iLogonDelay, oSpell;
+      local iLogonDelay, oSpell, oRoom;
 
-      if (NOT pbLogged_on)
+      if (pbLogged_on)
       {
+         oRoom = poOwner;
+      }
+      else
+      {
+         oRoom = Send(SYS,@FindRoomByNum,#num=piSave_room);
+      }
+
+      if (oRoom = $)
+      {
+         Debug("User ", self, vrName, " got $ room in LogonDelay");
+
          return;
       }
 
       oSpell = Send(SYS,@FindSpellByNum,#num=SID_HOLD);
 
       if NOT Send(self,@IsEnchanted,#what=oSpell)
-         AND NOT Send(poOwner,@CheckDefaultRoomFlag,#flag=ROOM_SAFELOGOFF)
-         AND NOT (IsClass(self,&DM) AND Send(self,@PlayerIsImmortal))
+         AND NOT Send(oRoom,@CheckDefaultRoomFlag,#flag=ROOM_SAFELOGOFF)
       {
-         if ptLogonDelayTimer <> $
-         {
-            DeleteTimer(ptLogonDelayTimer);
-         }
-         Send(self,@EffectSendUser,#what=self,#effect=EFFECT_PARALYZE_ON);
-         Send(self,@SysMsgSendUser,#message_rsc=user_logon_delay);
          iLogonDelay = Send(SETTINGS_OBJECT,@GetLogonDelay);
-         ptLogonDelayTimer = CreateTimer(self,@LogonHoldOff,iLogonDelay);
+         Send(oSpell,@DoSpell,#oTarget=self,#iDuration=iLogonDelay,
+               #report=FALSE,#bAllowFreeAction=FALSE);
+         Post(self,@SysMsgSendUser,#message_rsc=user_logon_delay);
       }
-
-      return;
-   }
-
-   LogonHoldOff()
-   {
-      Send(self,@EffectSendUser,#what=self,#effect=EFFECT_PARALYZE_OFF);
-      ptLogonDelayTimer = $;
 
       return;
    }

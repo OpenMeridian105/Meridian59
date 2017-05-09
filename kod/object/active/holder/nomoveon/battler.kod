@@ -276,20 +276,17 @@ messages:
       // If this Battler has Apparitions attacking it, delete them.
       Send(self,@RemoveAllApparitions);
 
-      if plHurtMeRecently <> $
+      foreach i in plHurtMeRecently
       {
-         foreach i in plHurtMeRecently
+         if IsTimer(Nth(i,3))
          {
-            if IsTimer(Nth(i,3))
-            {
-               DeleteTimer(Nth(i,3));
-            }
-            SetFirst(i,$);
-            SetNth(i,2,$);
-            SetNth(i,3,$);
-            plHurtMeRecently = DelListElem(plHurtMeRecently,i);
+            DeleteTimer(Nth(i,3));
          }
+         SetFirst(i,$);
+         SetNth(i,3,$);
       }
+
+      plHurtMeRecently = $;
 
       // Delete our resource timers.
       if ptHealth <> $
@@ -525,6 +522,26 @@ messages:
 
    ResetPlayerFlagList()
    {
+      return;
+   }
+
+   CheckBattlerFlag(flag=0)
+   {
+      return piBattlerFlags & flag;
+   }
+
+   SetBattlerFlag(flag=0,value=FALSE)
+   "This always requires the POSITIVE flag name.  Default unsets the flag."
+   {
+      if (value)
+      {
+         piBattlerFlags |= flag;
+      }
+      else
+      {
+         piBattlerFlags &= ~flag;
+      }
+
       return;
    }
 
@@ -3332,6 +3349,12 @@ messages:
    AddHurtMeRecently(who=$,amount=0)
    {
       local i;
+
+      // No point adding if mob died already.
+      if (poOwner = $)
+      {
+         return;
+      }
 
       foreach i in plHurtMeRecently
       {

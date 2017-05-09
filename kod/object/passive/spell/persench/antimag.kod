@@ -1,0 +1,200 @@
+// Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+// All rights reserved.
+//
+// This software is distributed under a license that is described in
+// the LICENSE file that accompanies it.
+//
+// Meridian is a registered trademark.
+
+
+////////////////////////////////////////////////////////////////////////////////
+AntiMagicAura is PersonalEnchantment
+
+constants:
+
+   include blakston.khd
+
+resources:
+
+   include antimag.lkod
+
+   AntiMagicAura_name_rsc = "anti-magic aura"
+   AntiMagicAura_icon_rsc = iantimag.bgf
+   AntiMagicAura_desc_rsc = \
+      "Surrounds you with a concentrated energy field that will heavily "
+      "distort and disrupt the local flow of magic, thereby mitigating the "
+      "effect of any spells attempting to pass through it.  While affording a "
+      "certain protection from meddling mages, the barrier will not "
+      "distinguish between friend and foe."
+   AntiMagicAura_start = \
+      "The air surrounding you begins to hum as the energy barrier materializes."
+   AntiMagicAura_stop  = "Your energy barrier collapses."
+   AntiMagicAura_already_enchanted = \
+      "You are already surrounded by an energy barrier."
+   AntiMagicAura_success_rsc = \
+      "The air surrounding %s%s begins to hum as the energy barrier "
+      "materializes."
+   AntiMagicAura_lower_self = \
+      "Your anti-magic aura disrupts your casting of %s, reducing its effect "
+      "by ~b%i~n spellpower."
+   AntiMagicAura_lower_target = \
+      "The anti-magic aura around %s%s disrupts your casting of %s, "
+      "reducing its effect by ~b%i~n spellpower."
+   AntiMagicAura_enchantment_rsc = \
+      "\n\nYour current anti-magic aura will reduce spells cast on or by you "
+      "by %i spellpower."
+   AntiMagicAura_sound = kantimag.ogg
+
+classvars:
+
+   vrName = AntiMagicAura_name_rsc
+   vrIcon = AntiMagicAura_icon_rsc
+   vrDesc = AntiMagicAura_desc_rsc
+
+   vrAlreadyEnchanted = AntiMagicAura_already_enchanted
+   vrEnchantment_On = AntiMagicAura_start
+   vrEnchantment_Off = AntiMagicAura_stop
+   vrSuccess = AntiMagicAura_success_rsc
+
+   viSpell_num = SID_ANTIMAGIC_AURA
+   viSchool = SS_KRAANAN
+   viSpell_level = 6
+   viMana = 15
+   viSpellExertion = 1
+   viCast_time = 600
+   viChance_To_Increase = 10
+   viMeditate_ratio = 75
+
+   viFlash = FLASH_GOOD_SELF
+   vrSucceed_wav = AntiMagicAura_sound
+
+   vbCanCastOnOthers = FALSE
+
+properties:
+
+   // What percentage of AMA's spellpower is removed from the
+   // spellpower of any spells cast.
+   piAMAEffectPercent = 50
+
+   // Seconds of base duration
+   piBaseDuration = 30
+
+   // The effectiveness of purge on the target spell as a percentage.
+   // 100 will cause purge to remove its entire spellpower, 0 will
+   // prevent purge from removing this spell.
+   viPurgeFactor = 40
+
+messages:
+
+   ResetReagents()
+   {
+      plReagents = $;
+      plReagents = Cons([&Sapphire,2],plReagents);
+      plReagents = Cons([&PolishedSeraphym,1],plReagents);
+
+      return;
+   }
+
+   GetStateValue(iSpellpower=$,who=$,target=$)
+   {
+      Post(self,@SetSpellBattlerFlag,#who=target);
+
+      // State is the enchanted player and spellpower.
+      return [target,iSpellPower];
+   }
+
+   SetSpellBattlerFlag(who=$)
+   {
+      Send(who,@SetBattlerFlag,#flag=BFLAG_SPELLPOWER_MOD,#value=TRUE);
+
+      return;
+   }
+
+   EndEnchantment(who=$,state=0,report=TRUE)
+   {
+      if (report)
+      {
+         Send(who,@MsgSendUser,#message_rsc=AntiMagicAura_stop);
+      }
+
+      Send(who,@SetBattlerFlag,#flag=BFLAG_SPELLPOWER_MOD,#value=FALSE);
+
+      return;
+   }
+
+   GetDuration(iSpellPower=0)
+   {
+      // piBaseDuration seconds plus 1s per point of spellpower.
+      return (piBaseDuration + iSpellPower) * 1000;
+   }
+
+   // 'who' is the caster of the spell we are modifying.
+   ModifySpellPower(who=$,state=$,oSpell=$,iSpellPower=0,report=TRUE)
+   {
+      local oTarget, iSub;
+
+      if (state = $)
+      {
+         return iSpellPower;
+      }
+
+      oTarget = First(state);
+
+      // Case 0: $ oSpell given, return what we would have taken. Useful if
+      // we want to query the effects of AMA.
+      if (oSpell = $)
+      {
+         return iSpellPower - Nth(state,2) * piAMAEffectPercent / 100;
+      }
+
+      // Case 1: 'who' is casting a spell, and they are enchanted with AMA.
+      // Always lose spellpower, and display a message.
+      if (oTarget = who)
+      {
+         iSub = Nth(state,2) * piAMAEffectPercent / 100;
+         iSub = Bound(iSpellPower - iSub,SPELLPOWER_MINIMUM,SPELLPOWER_MAXIMUM);
+
+         if (report)
+         {
+            Send(who,@MsgSendUser,#message_rsc=AntiMagicAura_lower_self,
+                  #parm1=Send(oSpell,@GetName),#parm2=iSpellPower - iSub);
+         }
+
+         return iSub;
+      }
+
+      // Case 2a: 'who' is not the enchanted player, and is casting a spell
+      // on them. Spell is not single target, so we ignore it.
+      if (Send(oSpell,@GetNumSpellTargets) <> 1)
+      {
+         return iSpellPower;
+      }
+
+      // Case 2b: 'who' is casting a spell we can affect.
+      iSub = Nth(state,2) * piAMAEffectPercent / 100;
+      iSub = Bound(iSpellPower - iSub,SPELLPOWER_MINIMUM,SPELLPOWER_MAXIMUM);
+
+      if (report)
+      {
+         Send(who,@MsgSendUser,#message_rsc=AntiMagicAura_lower_target,
+               #parm1=Send(oTarget,@GetDef),#parm2=Send(oTarget,@GetName),
+               #parm3=Send(oSpell,@GetName),#parm4=iSpellPower - iSub);
+      }
+
+      return iSub;
+   }
+
+   EffectDesc(who=$)
+   {
+      local lState;
+
+      lState = Send(who,@GetEnchantedState,#what=self);
+
+      AddPacket(4,AntiMagicAura_enchantment_rsc,
+                4,Nth(lState,2) * piAMAEffectPercent / 100);
+
+      return;
+   }
+
+end
+////////////////////////////////////////////////////////////////////////////////

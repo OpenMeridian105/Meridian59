@@ -81,7 +81,7 @@ messages:
       propagate;   // Check other things higher up
    }
 
-   CastSpell(who=$,lTargets=$,iSpellPower=0)
+   DoSpellEffects(who=$,lTargets=$,iSpellPower=0)
    {
       local iCurrentSpell, oItem, oItemAtt;
 
@@ -92,7 +92,7 @@ messages:
          Send(who,@MsgSendUser,#message_rsc=spell_resists,
                #parm1=Send(oItem,@GetCapDef),#parm2=Send(oItem,@GetName));
 
-         return;
+         return FALSE;
       }
 
       oItemAtt = Send(SYS,@FindItemAttByNum,#num=IA_SHROUD);
@@ -111,7 +111,7 @@ messages:
             #parm1=Send(oItem,@GetName),
             #state3=Send(self,@GetMakerInfo,#who=who));
 
-      propagate;
+      return TRUE;
    }
 
 end

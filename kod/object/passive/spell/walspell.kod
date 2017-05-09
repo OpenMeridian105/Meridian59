@@ -25,7 +25,7 @@ resources:
       "\nNOTE: If your safety is ON, this spell will not affect innocents.  "
       "If your safety is OFF, you can become an outlaw for harming other players "
       "or a murderer for killing other players."
-
+   WallSpell_cast_rsc = "A blazing hot wall of fire appears before you!"
    WallSpell_failed_rsc = \
       "There is too much summoning magic focused here to cast that spell." 
 
@@ -38,7 +38,7 @@ classvars:
 
    // How many elements do we expect to summon?
    viNumElements = 9
-
+   vrSuccess = WallSpell_cast_rsc
    vrSummonLimitMsg = WallSpell_failed_rsc
 
 properties:
@@ -70,11 +70,22 @@ messages:
       return 0;
    }
 
-   CastSpell(who = $, lTargets = $, iSpellPower = 1, bRing = FALSE, bStun = FALSE)
+   WallSpellSuccessMessage(who=$)
    {
+      Send(who,@MsgSendUser,#message_rsc=vrSuccess);
+
+      return;
+   }
+
+   DoSpellEffects(who = $, lTargets = $, iSpellPower = 1, bRing = FALSE,
+                  bStun = FALSE)
+   {
+      Send(self,@WallSpellSuccessMessage,#who=who,#lTargets=lTargets);
+
       if bRing
       {
-         Send(self,@PlaceRingOnCaster,#who=who,#iSpellPower=iSpellPower,#bStun=bStun);
+         Send(self,@PlaceRingOnCaster,#who=who,#iSpellPower=iSpellPower,
+               #bStun=bStun);
       }
       else
       {
@@ -82,7 +93,7 @@ messages:
               #iSpellPower=iSpellPower);
       }
 
-      propagate;
+      return TRUE;
    }
 
    PlaceWallElements(who = $, lTargets=$, iSpellPower = 0)

@@ -70,25 +70,15 @@ messages:
       return;
    }
 
-   CastSpell(who=$,lTargets=$,iSpellPower=0)
+   DoSpellEffects(who=$,lTargets=$,iDuration=0,iSpellPower=$)
    {
-      local oTarget;
+      local iAmount, iAgil, iMight, iAim, oTarget;
 
       oTarget = First(lTargets);
 
-      Send(self,@DoSpell,#what=who,#oTarget=oTarget,#iSpellPower=iSpellPower,
-           #iDuration=Send(self,@GetDuration,#iSpellPower=iSpellPower));
-
-      propagate;
-   }
-
-   DoSpell(what=$,oTarget=$,iDuration=0,iSpellPower=$)
-   {
-      local iAmount, iAgil, iMight, iAim;
-
       iAmount = Send(self,@GetAmount,#iSpellPower=iSpellPower);
 
-      Send(what,@MsgSendUser,#message_rsc=vrSuccess,
+      Send(who,@MsgSendUser,#message_rsc=vrSuccess,
            #parm1=Send(oTarget,@GetCapDef),#parm2=Send(oTarget,@GetName));
 
       // Spell effects

@@ -11,6 +11,7 @@
 Loadout is UtilitySpell
 
 constants:
+
    include blakston.khd
 
 resources:
@@ -122,7 +123,7 @@ messages:
       propagate;
    }
 
-   CastSpell(who = $, lTargets = $)
+   DoSpellEffects(who = $, lTargets = $)
    {
       local i, n, class, number, bFound, lLoadout_list, lInventory, school,
             oItem, lDRobes, lLRobes, oGuild, oGuildHall, lSpellItems;
@@ -132,13 +133,13 @@ messages:
       oGuild = Send(who,@GetGuild);
       if (oGuild = $)
       {
-         propagate;
+         return TRUE;
       }
 
       oGuildHall = Send(oGuild,@GetGuildHall);
       if (oGuildHall = $)
       {
-         propagate;
+         return TRUE;
       }
 
       lLoadout_list = Send(who,@GetLoadoutList);
@@ -230,10 +231,10 @@ messages:
       }
 
       // Now deal with disciple robes. If lDRobes and lLRobes are both $,
-      // just propagate.
+      // just return.
       if (lDRobes = $ AND lLRobes = $)
       {
-         propagate;
+         return TRUE;
       }
 
       // For each robe the player currently has, remove it if present in
@@ -279,7 +280,7 @@ messages:
                #school=school,#class=&LightDiscipleRobe);
       }
 
-      propagate;
+      return TRUE;
    }
 
    LoadoutSpellItems(who=$,lList=$,lInventory=$,oGuildHall=$)

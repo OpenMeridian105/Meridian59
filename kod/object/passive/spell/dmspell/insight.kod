@@ -11,6 +11,7 @@
 Insight is DMSpell
 
 constants:
+
    include blakston.khd
 
 resources:
@@ -26,126 +27,130 @@ resources:
    caster_Insight_msg = "~bYou stare deeply at %s%s."
    Insightd_Insight_msg = "~b%s%s looks deeply into your eyes."
    Insight_desc_rsc = \
-   "This gazes deep into a person's eyes, and judges their odds of advancing in each spell/skill."
-   "The true percentage appears after the name of the spell or skill.  The first number after that "
-   "is the intellect check, and the second is the requisite stat check.  Note that the req stat "
-   "check assumes that the target will be around the same level as a fungus beast or mutant ant - "
-   "when casting an offensive spell or using a combat skill, your odds go up if you fight tougher monsters."
-
-
+      "This gazes deep into a person's eyes, and judges their odds of "
+      "advancing in each spell/skill.  The true percentage appears after the "
+      "name of the spell or skill.  The first number after that is the "
+      "intellect check, and the second is the requisite stat check.  Note "
+      "that the req stat check assumes that the target will be around the "
+      "same level as a fungus beast or mutant ant - when casting an offensive "
+      "spell or using a combat skill, your odds go up if you fight tougher "
+      "monsters."
    Insight_Message = "%s (%i):  %i total, %i initial/%i secondary chance."
 
 classvars:
+
    vrName = Insight_name_rsc
    vrIcon = Insight_icon_rsc
    vrDesc = Insight_desc_rsc
 
-   viSpell_num = SID_Insight
+   viSpell_num = SID_INSIGHT
    viMana = 0
-  
+
 properties:
-     
+
 messages:
 
    Constructor()
    {
       propagate;
    }
-   
+
    GetNumSpellTargets()
    {
       return 1;
    }
 
-   CastSpell(who = $, lTargets = $)
+   DoSpellEffects(who = $, lTargets = $)
    {
-      local  i, oRoom, lActive, each_obj;
+      local i, oRoom, each_obj, oTarget;
 
       oRoom = Send(who,@GetOwner);
-      lActive = Send(oRoom,@GetHolderActive);
+      oTarget = First(lTargets);
 
       Send(who,@MsgSendUser,#message_rsc=caster_Insight_msg,
-           #parm1=Send(First(lTargets),@GetDef),
-           #parm2=Send(First(lTargets),@GetName));
+            #parm1=Send(oTarget,@GetDef),
+            #parm2=Send(oTarget,@GetName));
 
-      if (IsClass(First(lTargets),&Player))
+      if (IsClass(oTarget,&Player))
       {
-         Send(First(lTargets),@EffectSendUser,#what=self,#effect=EFFECT_INVERT);
-         Send(First(lTargets),@MsgSendUser,#message_rsc=Insightd_Insight_msg,
-              #parm1=Send(who,@GetCapIndef),
-              #parm2=Send(who,@GetName));
-         Send(self,@ComputeInsightInfo,#who=First(lTargets),#dmis=who);
+         Send(oTarget,@EffectSendUser,#what=self,#effect=EFFECT_INVERT);
+         Send(oTarget,@MsgSendUser,#message_rsc=Insightd_Insight_msg,
+               #parm1=Send(who,@GetCapIndef),#parm2=Send(who,@GetName));
+         Send(self,@ComputeInsightInfo,#who=oTarget,#dmis=who);
       }
 
-      foreach i in lActive
+      foreach i in Send(oRoom,@GetHolderActive)
       {
+         each_obj = First(i);
 
-         each_obj = Send(oRoom,@HolderExtractObject,#data=i);
-         if (IsClass(each_obj,&Player) and (each_obj <> who) and (each_obj <> First(lTargets)))
+         if (IsClass(each_obj,&Player)
+            AND (each_obj <> who)
+            AND (each_obj <> oTarget))
          {
-            if (IsClass(First(lTargets),&Battler))
+            if (IsClass(oTarget,&Battler))
             {
-               send(each_obj,@MsgSendUser,#message_rsc=allinroom_Insight_msg1,
-                    #parm1=Send(who,@GetIndef),
-                    #parm2=Send(who,@GetName),
-                    #parm3=Send(First(lTargets),@GetDef),
-                    #parm4=Send(First(lTargets),@GetName));
+               Send(each_obj,@MsgSendUser,#message_rsc=allinroom_Insight_msg1,
+                     #parm1=Send(who,@GetIndef),#parm2=Send(who,@GetName),
+                     #parm3=Send(oTarget,@GetDef),#parm4=Send(oTarget,@GetName));
             }
             else
             {
-               send(each_obj,@MsgSendUser,#message_rsc=allinroom_Insight_msg2,
-                #parm1=Send(who,@GetIndef),
-                #parm2=Send(who,@GetName),
-                #parm3=Send(First(lTargets),@GetDef),
-                #parm4=Send(First(lTargets),@GetName));
+               Send(each_obj,@MsgSendUser,#message_rsc=allinroom_Insight_msg2,
+                     #parm1=Send(who,@GetIndef),#parm2=Send(who,@GetName),
+                     #parm3=Send(oTarget,@GetDef),#parm4=Send(oTarget,@GetName));
             }
          }
       }
-      
-      propagate;
+
+      return TRUE;
    }
 
    ComputeInsightInfo(who=$,dmis=$)
    {
       local iInitialchance, total_chance, increase_chance, i, num, obj;
-      if dmis=$ or who=$  { debug("Bad data!");  return FALSE; }
-      
-      foreach i in send(who,@GetSpellList)
+
+      if dmis = $
+         OR who = $
       {
-         num = send(who,@DecodeSpellNum,#compound=i);
-         obj = send(SYS,@FindSpellByNum,#num=num);
-         iInitialChance = send(obj,@GetInitialChance,#who=who);
-         increase_chance = send(obj,@GetSecondaryChance,#who=who,#target=$);
-         total_chance = bound((iInitialChance*increase_chance)/100,1,100);
-         send(dmis,@msgsenduser,#message_rsc=insight_message,
-              #parm1=send(obj,@GetName),#parm2=send(who,@GetSpellAbility,#spell_num=num),
+         Debug("Bad data!");
+
+         return FALSE;
+      }
+
+      foreach i in Send(who,@GetSpellList)
+      {
+         num = Send(who,@DecodeSpellNum,#compound=i);
+         obj = Send(SYS,@FindSpellByNum,#num=num);
+         iInitialChance = Send(obj,@GetInitialChance,#who=who);
+         increase_chance = Send(obj,@GetSecondaryChance,#who=who,#target=$);
+         total_chance = Bound((iInitialChance*increase_chance)/100,1,100);
+         Send(dmis,@MsgSendUser,#message_rsc=insight_message,
+              #parm1=Send(obj,@GetName),#parm2=Send(who,@GetSpellAbility,#spell_num=num),
               #parm3=total_chance,#parm4=iInitialChance,#parm5=increase_chance);
       }
-      
-      foreach i in send(who,@GetSkillList)
+
+      foreach i in Send(who,@GetSkillList)
       {
-         num = send(who,@DecodeSkillNum,#compound=i);
-         obj = send(SYS,@FindSkillByNum,#num=num);
-         send(obj,@GetName);
-         iInitialChance = send(obj,@GetInitialChance,#who=who);
-         increase_chance = send(obj,@GetSecondaryChance,#who=who,#target=$);
-         total_chance = bound((iInitialChance*increase_chance)/100,1,100);
-         send(dmis,@msgsenduser,#message_rsc=insight_message,
-              #parm1=send(obj,@GetName),#parm2=send(who,@GetSkillAbility,#skill_num=num),
+         num = Send(who,@DecodeSkillNum,#compound=i);
+         obj = Send(SYS,@FindSkillByNum,#num=num);
+         iInitialChance = Send(obj,@GetInitialChance,#who=who);
+         increase_chance = Send(obj,@GetSecondaryChance,#who=who,#target=$);
+         total_chance = Bound((iInitialChance*increase_chance)/100,1,100);
+         Send(dmis,@MsgSendUser,#message_rsc=insight_message,
+              #parm1=Send(obj,@GetName),#parm2=Send(who,@GetSkillAbility,#skill_num=num),
               #parm3=total_chance,#parm4=iInitialChance,#parm5=increase_chance);
       }
 
       return;
-   }      
+   }
 
    SendEffectData()
    {
       // for EFFECT_INVERT, 4 bytes of time to be inverted
       AddPacket(4,10000);
-      
+
       return;
    }
 
 end
-
 ////////////////////////////////////////////////////////////////////////////////

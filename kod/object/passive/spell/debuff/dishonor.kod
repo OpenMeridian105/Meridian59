@@ -37,6 +37,7 @@ resources:
    MarkOfDishonor_no_self = \
       "You cannot cast mark of dishonor upon yourself; if you were truly "
       "dishonorable you would not be able to cast Shal'ille's spells."
+
 classvars:
 
    vrName = MarkOfDishonor_name_rsc
@@ -72,27 +73,16 @@ messages:
       return;
    }
 
-   CastSpell(who=$,lTargets=$,iSpellPower=0)
+   DoSpellEffects(who=$,lTargets=$,iDuration=0,iSpellPower=0)
    {
-      local oTarget;
+      local iKarma, oTarget;
 
       oTarget = First(lTargets);
-
-      // Spell effects
-      Send(self,@DoSpell,#what=who,#oTarget=oTarget,#iSpellPower=iSpellPower,
-           #iDuration=Send(self,@GetDuration,#iSpellPower=iSpellPower));
-
-      propagate;
-   }
-
-   DoSpell(what=$,oTarget=$,iDuration=0,iSpellPower=0)
-   {
-      local iKarma;
 
       // Put a DoT based on their karma and stop their health regeneration.
       iKarma = Bound(Send(oTarget,@GetKarma),-100,0);
       Send(oTarget,@StartOverTimeEffect,#strength=(iSpellPower*iKarma/5),
-            #duration=iDuration,#what=self,#who=what,#curse=TYPE_HEALTH);
+            #duration=iDuration,#what=self,#who=who,#curse=TYPE_HEALTH);
 
       if IsClass(oTarget,&Player)
       {
@@ -109,7 +99,7 @@ messages:
          Post(oTarget,@EnterStateWait,#delay=iDuration);
       }
 
-      Send(what,@MsgSendUser,#message_rsc=MarkOfDishonor_success,
+      Send(who,@MsgSendUser,#message_rsc=MarkOfDishonor_success,
             #parm1=Send(oTarget,@GetDef),#parm2=Send(oTarget,@GetName));
 
       propagate;

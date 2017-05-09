@@ -135,7 +135,7 @@ messages:
       propagate;
    }
 
-   CastSpell(who = $, lTargets = $)
+   DoSpellEffects(who = $, lTargets = $)
    {
       local oTarget, oSpell;
 
@@ -146,7 +146,7 @@ messages:
       {
          Debug(who," tried to create an invalid scroll ",oTarget);
 
-         return;
+         return FALSE;
       }
 
       oSpell = Send(SYS,@FindSpellByNum,#num=piScrollSpellNum);
@@ -155,7 +155,7 @@ messages:
          Debug("CastSpell got invalid SID in piScrollSpellNum",
                piScrollSpellNum);
 
-         return;
+         return FALSE;
       }
 
       Send(self,@PayIngredients,#who=who,#oSpell=oSpell);
@@ -164,7 +164,7 @@ messages:
       // Delete old scroll.
       Post(oTarget,@Delete);
 
-      propagate;
+      return TRUE;
    }
 
    CanPayIngredients(who = $, oSpell = $)

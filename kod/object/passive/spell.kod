@@ -1506,9 +1506,43 @@ messages:
       return TRUE;
    }
 
-   CastSpell(who = $, lTargets = $, iSpellPower = 0, iPowerLevel = 100, bItemCast=FALSE)
+   DoSpellEffects()
    {
-      local oTarget, oRoom, i, iAggro;
+      return TRUE;
+   }
+
+   GetDuration()
+   {
+      return 0;
+   }
+
+   CastSpell(who = $, lTargets = $, iSpellPower = 0, iPowerLevel = 100,
+             bItemCast=FALSE, bRing=FALSE, bStun=FALSE,report=TRUE)
+   {
+      local oTarget, oRoom, i, iAggro, iDuration;
+
+      // Insert any spellpower-modifying effects here that shouldn't affect
+      // the actual casting/success of the spell, but still have an effect on
+      // its power. Note that a few spells won't be affected by this - some
+      // DM spells, meditate and elusion.
+      /////////////
+
+      // Some spells will need a duration in DoSpellEffects. Called here
+      // because some calls to DoSpellEffects from elsewhere will send their
+      // own duration.
+      iDuration = Send(self,@GetDuration,#iSpellPower=iSpellPower,
+                        #caster=who,#lTargets=lTargets);
+
+      // DoSpellEffects performs the actual work of the spell (i.e. the effect
+      // the spell has, a buff or an attack etc). Returns FALSE if there is
+      // an error that should stop CastSpell from going any further.
+      if (NOT Send(self,@DoSpellEffects,#who=who,#lTargets=lTargets,
+                  #report=report,#iSpellPower=iSpellPower,#iDuration=iDuration,
+                  #iPowerLevel=iPowerLevel,#bItemCast=bItemCast,
+                  #bRing=bRing,#bStun=bStun))
+      {
+         return;
+      }
 
       // Add a mana drain if applicable.
       if IsClass(who,&Battler) AND viManaDrain > 0

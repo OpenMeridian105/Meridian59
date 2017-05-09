@@ -11,6 +11,7 @@
 Blink is TeleportationSpell
 
 constants:
+
    include blakston.khd
 
 resources:
@@ -55,66 +56,40 @@ messages:
       return;
    }
 
-   GetNumSpellTargets()
+   DoSpellEffects(who = $, lTargets = $)
    {
-      return 0;
-   }
+      local oRoom, oFollower, iNum;
 
-   CastSpell(who = $, lTargets = $)
-   {
-      local oOwner, oRoom, oFollower;
-
-      oOwner = Send(who,@GetOwner);
+      oRoom = Send(who,@GetOwner);
       oFollower = Send(who,@GetMercenary);
 
-      if oFollower = $
-         OR IsTimer(oFollower)
-         OR NOT IsClass(oFollower,&Follower)
-         OR (Send(oFollower,@GetOwner) <> oOwner)
+      if oFollower <> $
+         AND (IsTimer(oFollower)
+            OR NOT IsClass(oFollower,&Follower)
+            OR (Send(oFollower,@GetOwner) <> oRoom))
       {
          oFollower = $;
       }
 
-      if Send(oOwner,@GetRoomNum) = RID_KOC_HALL_OF_HEROES
+      iNum = Send(oRoom,@GetRoomNum);
+
+      if iNum = RID_KOC_HALL_OF_HEROES
       {
          oRoom = Send(SYS,@FindRoomByNum,#num=RID_TOS_FORGET);
-         if oRoom <> $
-         {
-            Post(oRoom,@Teleport,#what=who);
-
-            if oFollower <> $
-            {
-               Post(oRoom,@Teleport,#what=oFollower);
-            }
-
-            propagate;
-         }
       }
-
-      if Send(oOwner,@GetRoomNum) = RID_BAZMANS_ROOM
+      else if iNum = RID_BAZMANS_ROOM
       {
          oRoom = Send(SYS,@FindRoomByNum,#num=RID_FORGOTTEN_TOO);
-         if oRoom <> $
-         {
-            Post(oRoom,@Teleport,#what=who);
-
-            if oFollower <> $
-            {
-               Post(oRoom,@Teleport,#what=oFollower);
-            }
-
-            propagate;
-         }
       }
 
-      Send(oOwner,@Teleport,#what=who);
+      Send(oRoom,@Teleport,#what=who);
 
       if oFollower <> $
       {
-         Post(oOwner,@Teleport,#what=oFollower);
+         Post(oRoom,@Teleport,#what=oFollower);
       }
 
-      propagate;
+      return TRUE;
    }
 
    SuccessChance(who=$)

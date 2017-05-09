@@ -67,7 +67,7 @@ messages:
 
    CanPayCosts(who=$,lTargets=$)
    {
-      local i, oTarget, lDebuffs, bHasDebuff, oEffect;
+      local i, oTarget, oEffect;
 
       // Can cast spell if the 1 target item is a user.
       if Length(lTargets) <> 1
@@ -85,54 +85,33 @@ messages:
       }
 
       // The target must have a disease.
-      bHasDebuff = FALSE;
-      lDebuffs = Send(oTarget,@GetEnchantmentList);
-      if lDebuffs <> $ 
+      foreach i in Send(oTarget,@GetEnchantmentList)
       {
-         foreach i in lDebuffs
+         if IsClass(Nth(i,2),&Disease)
          {
-            if IsClass(Nth(i,2),&Disease)
-            {
-               bHasDebuff = TRUE;
-
-               break;
-            }
+            propagate;
          }
       }
 
-      // Only checking over time effects if we have to.
-      if NOT bHasDebuff
+      // Check over time effects.
+      foreach i in Send(oTarget,@GetOverTimeEffects)
       {
-         lDebuffs = Send(oTarget,@GetOverTimeEffects);
+         oEffect = Nth(i,5);
 
-         if lDebuffs <> $
+         if (oEffect <> 0) AND IsClass(oEffect,&Disease)
          {
-            foreach i in lDebuffs
-            {
-               oEffect = Nth(i,5);
-
-               if (oEffect <> 0) AND IsClass(oEffect,&Disease)
-               {
-                  bHasDebuff = TRUE;
-
-                  break;
-               }
-            }
+            propagate;
          }
       }
 
-      if NOT bHasDebuff
-      {
-         Send(who,@MsgSendUser,#message_rsc=curedisease_unnecessary,
-               #parm1=Send(oTarget,@GetDef),#parm2=Send(oTarget,@GetName));
+      // If we get to here, we didn't have a disease to cure.
+      Send(who,@MsgSendUser,#message_rsc=curedisease_unnecessary,
+            #parm1=Send(oTarget,@GetDef),#parm2=Send(oTarget,@GetName));
 
-         return FALSE;
-      }
-
-      propagate;
+      return FALSE;
    }
 
-   CastSpell(who=$,lTargets=$,iSpellpower=0)
+   DoSpellEffects(who=$,lTargets=$,iSpellpower=0)
    {
       local oSpell, oTarget, oDisease, iOrigStatLoss, iNewStatLoss, lState;
 
@@ -197,7 +176,7 @@ messages:
       oSpell = Send(SYS,@FindSpellByNum,#num=SID_CURE_POISON);
       Send(oSpell,@DoCurePoison,#who=oTarget,#iSpellPower=iSpellpower);
 
-      propagate;
+      return TRUE;
    }
 
    GetPotionClass()

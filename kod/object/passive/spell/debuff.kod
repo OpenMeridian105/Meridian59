@@ -137,12 +137,13 @@ messages:
       propagate;
    }
 
-   DoSpell(what=$,oTarget=$)
+   DoSpellEffects(who=$,lTargets=$)
    {
-      local i, iDuration, oList;
+      local i, iDuration, oList, oTarget;
 
       if Send(SETTINGS_OBJECT,@DisplaySpellData)
       {
+         oTarget = First(lTargets);
          oList = Send(oTarget,@GetEnchantmentList);
 
          foreach i in oList
@@ -153,14 +154,14 @@ messages:
             }
          }
 
-         if (what <> $)
+         if (who <> $)
          {
-            Send(what,@MsgSendUser,#message_rsc=debuff_display_duration,
+            Send(who,@MsgSendUser,#message_rsc=debuff_display_duration,
                   #parm1=Send(self,@GetName),#parm2=iDuration);
          }
 
          if oTarget <> $
-            AND oTarget <> what
+            AND oTarget <> who
             AND IsClass(oTarget,&Player)
          {
             Send(oTarget,@MsgSendUser,#message_rsc=debuff_display_duration,
@@ -168,7 +169,7 @@ messages:
          }
       }
 
-      return;
+      return TRUE;
    }
 
    SendEffectData()

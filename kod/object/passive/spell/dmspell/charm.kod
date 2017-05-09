@@ -89,48 +89,41 @@ messages:
       propagate;
    }
 
-   CastSpell(who=$,lTargets=$,iSpellPower=0)
+   DoSpellEffects(who=$,lTargets=$)
    {
-      // Spell effects
-      Send(self,@DoSpell,#what=who,#oTarget=First(lTargets));
+      local oMaster, oTarget;
 
-      propagate;
-   }
-
-   DoSpell(what=$,oTarget=$)
-   {
-      local oMaster;
-
+      oTarget = First(lTargets);
       oMaster = Send(oTarget,@GetMaster);
 
-      if (oMaster = what)
+      if (oMaster = who)
       {
          // If we're already the master, lose the minion.
          Send(oTarget,@SetMaster,#oMaster=$);
-         Send(what,@MsgSendUser,#message_rsc=vrEndEnchantment,
+         Send(who,@MsgSendUser,#message_rsc=vrEndEnchantment,
                #parm1=Send(oTarget,@GetCapDef),#parm2=Send(oTarget,@GetName));
 
-         return;
+         return TRUE;
       }
       else if (oMaster <> $)
       {
          Send(oMaster,@MsgSendUser,#message_rsc=vrStolen,
-               #parm1=Send(what,@GetCapDef),#parm2=Send(what,@GetName),
+               #parm1=Send(who,@GetCapDef),#parm2=Send(who,@GetName),
                #parm3=Send(oTarget,@GetName));
          // Mob might be seduced, so remove the seduce enchantment first.
          Send(oTarget,@RemoveEnchantmentClass,#class=&Seduce);
       }
 
-      Send(what,@MsgSendUser,#message_rsc=vrSuccess,
+      Send(who,@MsgSendUser,#message_rsc=vrSuccess,
             #parm1=Send(oTarget,@GetCapDef),#parm2=Send(oTarget,@GetName));
 
-      Send(oTarget,@SetMaster,#oMaster=what);
+      Send(oTarget,@SetMaster,#oMaster=who);
       Send(oTarget,@ResetBehaviorFlags);
       Send(oTarget,@SetBehaviorFlag,#flag=AI_FIGHT_HYPERAGGRESSIVE,#value=FALSE);
       Send(oTarget,@SetBehaviorFlag,#flag=AI_FIGHT_AGGRESSIVE,#value=FALSE);
       Send(oTarget,@SetBehaviorFlag,#flag=AI_FIGHT_NEWBIESAFE);
 
-      return;
+      return TRUE;
    }
 
 end

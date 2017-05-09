@@ -115,7 +115,7 @@ messages:
       propagate;
    }
 
-   CastSpell(who = $, lTargets = $, iSpellPower=0)
+   DoSpellEffects(who = $, lTargets = $, iSpellPower=0)
    {
       local oItem_victim, oItem_caster, oVictim, oCaster,
             rVerb, iRepeat, oNew_item, oTempHolder;
@@ -137,7 +137,7 @@ messages:
          Send(oVictim,@MsgSendUser,#message_rsc=swap_failed_victim,
                #parm1=Send(oCaster,@GetCapDef),#parm2=Send(oCaster,@GetName));
 
-         propagate;
+         return TRUE;
       }
 
       oItem_victim = Send(oVictim,@GetRandomItem);
@@ -148,7 +148,7 @@ messages:
          Send(oVictim,@MsgSendUser,#message_rsc=swap_failed_victim,
                #parm1=Send(oCaster,@GetCapDef),#parm2=Send(oCaster,@GetName));
 
-         propagate;
+         return TRUE;
       }
 
       iRepeat = iSpellpower / 25;
@@ -178,8 +178,8 @@ messages:
          Send(oVictim,@MsgSendUser,#message_rsc=swap_failed_victim,
                #parm1=Send(oCaster,@GetCapDef),#parm2=Send(oCaster,@GetName));
 
-         // Return here instead of propagating, no chance to succeed.
-         return;
+         // Return false here, no chance to succeed.
+         return FALSE;
       }
 
       if IsClass(oItem_victim,&NumberItem)
@@ -218,7 +218,7 @@ messages:
       Send(oVictim,@NewHold,#what=oItem_caster);
       Send(oCaster,@NewHold,#what=oItem_victim);
 
-      propagate;
+      return TRUE;
    }
 
    SpellBannedInArena()

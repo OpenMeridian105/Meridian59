@@ -60,11 +60,6 @@ messages:
       return;
    }
 
-   GetNumSpellTargets()
-   {
-      return 0;
-   }
-
    CanPayCosts(who = $,lTargets = $)
    {
       // Can't cast just after attacking someone
@@ -94,7 +89,7 @@ messages:
       propagate;
    }
 
-   CastSpell(who = $, iSpellPower = 0)
+   DoSpellEffects(who = $, iSpellPower = 0)
    {
       local iDelay;
 
@@ -105,13 +100,13 @@ messages:
       // Add a little delay in sometimes.
       if Random(1,2) = 1
       {
-         iDelay = iDelay + Random(2000, 4000);
+         iDelay += Random(2000, 4000);
       }
 
       Send(who,@StartRescueTimer,#time=iDelay);
       Send(who,@MsgSendUser,#message_rsc=Rescue_Start);
 
-      propagate;
+      return TRUE;
    }
 
    DoRescue(who = $)

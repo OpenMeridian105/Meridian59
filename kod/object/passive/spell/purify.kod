@@ -75,7 +75,7 @@ messages:
 
    CanPayCosts(who = $, lTargets = $, bItemCast = FALSE)
    {
-      local oTarget, i, lDebuffs, bHasDebuff, oEffect;
+      local oTarget, i, oEffect;
 
       // If it's only self cast, spoof self as target for following code
       if NOT pbCan_Cast_on_others
@@ -102,51 +102,6 @@ messages:
          return FALSE;
       }
 
-      // The target must have a debuff.
-      bHasDebuff = FALSE;
-      lDebuffs = Send(oTarget,@GetEnchantmentList);
-      if lDebuffs <> $ 
-      {
-         foreach i in lDebuffs
-         {
-            if IsClass(Nth(i,2),&Debuff)
-            {
-               bHasDebuff = TRUE;
-
-               break;
-            }
-         }
-      }
-
-      // Only checking over time effects if we have to.
-      if NOT bHasDebuff
-      {
-         lDebuffs = Send(oTarget,@GetOverTimeEffects);
-
-         if lDebuffs <> $
-         {
-            foreach i in lDebuffs
-            {
-               oEffect = Nth(i,5);
-
-               if (oEffect <> 0) AND IsClass(oEffect,&Debuff)
-               {
-                  bHasDebuff = TRUE;
-
-                  break;
-               }
-            }
-         }
-      }
-
-      if NOT bHasDebuff
-      {
-         Send(who,@MsgSendUser,#message_rsc=purify_not_enchanted,
-               #parm1=Send(oTarget,@GetDef),#parm2=Send(oTarget,@GetName));
-
-         return FALSE;
-      }
-
       // Can only cast purify on yourself, to curb massive mule abuse.
       if NOT pbCan_cast_on_others
          AND oTarget <> who
@@ -158,10 +113,34 @@ messages:
          return FALSE;
       }
 
-      propagate;
+      // The target must have a debuff.
+      foreach i in Send(oTarget,@GetEnchantmentList)
+      {
+         if IsClass(Nth(i,2),&Debuff)
+         {
+            propagate;
+         }
+      }
+
+      // Check over time effects.
+      foreach i in Send(oTarget,@GetOverTimeEffects)
+      {
+         oEffect = Nth(i,5);
+
+         if (oEffect <> 0) AND IsClass(oEffect,&Debuff)
+         {
+            propagate;
+         }
+      }
+
+      // If we get to here, we didn't have anything to remove.
+      Send(who,@MsgSendUser,#message_rsc=purify_not_enchanted,
+            #parm1=Send(oTarget,@GetDef),#parm2=Send(oTarget,@GetName));
+
+      return FALSE;
    }
 
-   CastSpell(who = $, lTargets = $, iSpellPower = 0)
+   DoSpellEffects(who = $, lTargets = $, iSpellPower = 0)
    {
       local oTarget, lInfo, oSpell, lList, lEnchantmentList;
 
@@ -201,14 +180,13 @@ messages:
 
       Send(self,@DoPurify,#who=oTarget,#iSpellPower=iSpellPower);
 
-      propagate;
+      return TRUE;
    }
 
    DoPurify(who=$, iSpellPower=$)
    "Remove negative enchantments on who with a given chance to remove each one."
    {
-      local iNumEnchantments, lDebuffs, iChance, oEffect,
-            lList, oSpell, bRemovedSomething;
+      local iNumEnchantments, lDebuffs, iChance, i, oSpell, bRemovedSomething;
 
       if who = $
       {
@@ -226,34 +204,16 @@ messages:
 
       bRemovedSomething = FALSE;
 
-      lList = Send(who,@GetEnchantmentList);
+      lDebuffs = GetAllListNodesByClass(Send(who,@GetEnchantmentList), 2,&Debuff);
 
-      if lList <> $
+      foreach i in Send(who,@GetOverTimeEffects)
       {
-         foreach oEffect in lList
+         oSpell = Nth(i,5);
+
+         // Poison is handled afterwards.
+         if IsClass(oSpell,&Debuff) AND NOT IsClass(oSpell,&Poison)
          {
-            oSpell = Nth(oEffect,2);
-
-            if IsClass(oSpell,&Debuff)
-            {
-               lDebuffs = Cons(oSpell,lDebuffs);
-            }
-         }
-      }
-
-      lList = Send(who,@GetOverTimeEffects);
-
-      if lList <> $
-      {
-         foreach oEffect in lList
-         {
-            oSpell = Nth(oEffect,5);
-
-            // Poison is handled afterwards.
-            if IsClass(oSpell,&Debuff) AND NOT IsClass(oSpell,&Poison)
-            {
-               lDebuffs = Cons(oSpell,lDebuffs);
-            }
+            lDebuffs = Cons(oSpell,lDebuffs);
          }
       }
 

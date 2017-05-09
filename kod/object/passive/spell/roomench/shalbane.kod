@@ -83,7 +83,7 @@ messages:
       return;
    }
 
-   CastSpell( who = $, iSpellPower = 0 )
+   DoSpellEffects( who = $, iSpellPower = 0 )
    "Initiation point for the spell."
    {
       local oRoom;
@@ -92,15 +92,16 @@ messages:
       if Send(oRoom,@IsEnchanted,#what=self)
       {
         Send(who,@MsgSendUser,#message_rsc=ShalilleBane_unnecessary);
-        return;
+
+        return FALSE;
       }
 
       // global effects of the enchantment
       Send(oRoom,@SomeoneSaid,#type=SAY_MESSAGE,#string=ShalilleBane_on,#what=self);
       Send(oRoom,@RoomStartEnchantment,#what=self,#state=[iSpellPower,who],
             #time=send(self,@GetDuration,#iSpellPower=iSpellPower));
-      
-      propagate;
+
+      return TRUE;
    }
 
    GetDuration(iSpellPower=0)

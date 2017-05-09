@@ -84,7 +84,7 @@ messages:
       return 0;
    }
 
-   CastSpell(who=$,lTargets=$,iSpellPower=1)
+   DoSpellEffects(who=$,lTargets=$,iSpellPower=1)
    {
       local oRoom, oReflection;
 
@@ -94,7 +94,7 @@ messages:
       {
          Debug(who, Send(who,@GetName), " tried to create a reflection in $ room.");
 
-         return;
+         return FALSE;
       }
 
       oReflection = Create(&Reflection,#iSpellpower=iSpellpower,#oMaster=who);
@@ -110,7 +110,7 @@ messages:
       Send(who,@NewControlledMinion,#minion=oReflection);
       Send(SYS,@AddReflection,#who=who,#oReflection=oReflection);
 
-      propagate;
+      return TRUE;
    }
 
    CountPlayerReflections(who=$)

@@ -72,33 +72,22 @@ messages:
       return;
    }
 
-   CastSpell(who=$,lTargets=$,iSpellpower=0,report=TRUE)
-   {
-      local oTarget;
-
-      oTarget = First(lTargets);
-
-      // Spell effects.
-      Send(self,@DoSpell,#what=who,#oTarget=oTarget,#report=report,
-            #iDuration=Send(self,@GetDuration,#iSpellPower=iSpellPower));
-
-      propagate;
-   }
-
-   DoSpell(what=$,oTarget=$,iDuration=$,report=TRUE,bAllowFreeAction=TRUE)
+   DoSpellEffects(who=$,lTargets=$,iDuration=$,report=TRUE,bAllowFreeAction=TRUE)
    "Holds target for duration milliseconds."
    {
-      local i, oSpell;
+      local i, oSpell, oTarget;
 
-      if oTarget = $
+      if (lTargets = $)
       {
          return FALSE;
       }
 
+      oTarget = First(lTargets);
+
       // Check for enchantment already applied
       if Send(oTarget,@IsEnchanted,#what=self)
       {
-         return FALSE;
+         return TRUE;
       }
 
       // Check for spell called with $ iDuration, apply default time if so.
@@ -113,12 +102,12 @@ messages:
          oSpell = Send(SYS,@FindSpellByNum,#num=SID_FREE_ACTION);
          if Send(oTarget,@IsEnchanted,#what=oSpell)
          {
-            iDuration = Send(oSpell,@DoFreeAction,#oHoldCaster=what,
+            iDuration = Send(oSpell,@DoFreeAction,#oHoldCaster=who,
                               #oTarget=oTarget,#iDuration=iDuration);
             if iDuration = $
             {
                // Resisted completely
-               return FALSE;
+               return TRUE;
             }
 
             iDuration = Bound(iDuration,500,10000);
@@ -149,7 +138,7 @@ messages:
 
       if report
       {
-         Send(what,@MsgSendUser,#message_rsc=vrSuccess,
+         Send(who,@MsgSendUser,#message_rsc=vrSuccess,
                #parm1=Send(oTarget,@GetCapDef),#parm2=Send(oTarget,@GetName));
       }
 

@@ -1668,26 +1668,31 @@ messages:
          Send(oRoom,@SpellCast,#who=who,#oSpell=self,#lItems=lTargets,
                #bItemCast=bItemCast);
 
-         // Also inform the room in case we have harmed our targets.
-         foreach i in lTargets
+         // Add hatred to our targets if we cast a non-damage aggressive
+         // spell. Also inform the room that this was an attack.
+         // Only done if caster was a battler.
+         if (IsClass(who,&Battler))
          {
-            if IsClass(i,&Battler)
+            iAggro = Send(self,@CausesAggression,#iSpellpower=iSpellPower);
+            iAggro *= 100;
+            if (iAggro)
             {
-               iAggro = Send(self,@CausesAggression,#iSpellpower=iSpellPower);
-               iAggro *= 100;
-
-               if iAggro
+               foreach i in lTargets
                {
-                  Send(i,@AddHurtMeRecently,#who=who,#amount=iAggro);
-                  Send(oRoom,@SomethingAttacked,#what=who,#victim=i,#use_weapon=self);
+                  if IsClass(i,&Battler)
+                  {
+                     Send(i,@AddHurtMeRecently,#who=who,#amount=iAggro);
+                     Send(oRoom,@SomethingAttacked,#what=who,#victim=i,
+                           #use_weapon=self);
+                  }
                }
             }
          }
-      }
 
-      if Send(self,@AffectsSpellPower)
-      {
-         Send(oRoom,@SetRoomFlag,#flag=ROOM_ANTI_MAGIC,#value=TRUE);
+         if Send(self,@AffectsSpellPower)
+         {
+            Send(oRoom,@SetRoomFlag,#flag=ROOM_ANTI_MAGIC,#value=TRUE);
+         }
       }
 
       if IsClass(who,&Player)
@@ -1739,7 +1744,8 @@ messages:
          }
       }
 
-      // Count that this spell was cast successfully
+      // Count that this spell was cast successfully.
+      // Counts spells cast by monsters, items etc.
       Send(Send(SYS,@GetStatistics),@SpellCast,#oSpell=self,#who=who);
 
       return;

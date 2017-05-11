@@ -13,7 +13,6 @@ MarionInnkeeper is MarionTown
 constants:
 
    include blakston.khd
-   include protocol.khd
 
 resources:
 
@@ -42,7 +41,7 @@ resources:
       "like your room."
 
    MarionInnkeeper_days_left = \
-      "You like it here, I see.  There are %q days until you should "
+      "You like it here, I see.  There are %i days until you should "
       "pay me again."
    MarionInnkeeper_too_long = \
       "Oh, I can't be responsible for holding so much money!  Pay me again "
@@ -100,8 +99,6 @@ messages:
 
          if (StringContain(string,MrIk_rent_command)
                AND StringContain(string,MrIk_room_command))
-            OR (StringContain(string,"rent")
-               AND StringContain(string,"room"))
          {
             rSayRsc = Send(oRoomMaint,@RentRoom,#who=what,
                            #iLocation=RID_MAR_INN,#iCost=piInitialRoomCost);
@@ -119,7 +116,6 @@ messages:
          }
 
          if StringContain(string,MrIk_copy_key_command)
-            OR StringContain(string,"copy key")
          {
             rSayRsc = Send(oRoomMaint,@CopyKey,#who=what,
                            #iLocation=RID_MAR_INN,#iCost=piKeyCopyCosts);
@@ -133,8 +129,6 @@ messages:
 
          if (StringContain(string,MrIk_room_command)
                AND StringContain(string,MrIk_cost_command))
-            OR (StringContain(string,"room")
-               AND StringContain(string,"cost"))
          {
             Post(poOwner,@SomeoneSaid,#what=self,#type=SAY_RESOURCE,
                   #string=MarionInnkeeper_cost,#type1=0,
@@ -183,7 +177,7 @@ messages:
       iMoney = 0;
       foreach i in item_list
       {
-         iMoney = iMoney + Send(i,@GetValue);
+         iMoney += Send(i,@GetValue);
       }
 
       oRoomMaint = Send(SYS,@GetRentableRoomMaintenance);
@@ -193,7 +187,7 @@ messages:
 
       if iNewDays <> $
       {
-         // iNewDays = 0 means that we've trying to pay for than max days.
+         // iNewDays = 0 means that we've trying to pay for more than max days.
          if iNewDays = 0
          {
             Post(poOwner,@SomeoneSaid,#type=SAY_RESOURCE,#what=self,
@@ -202,9 +196,7 @@ messages:
          else
          {
             Post(poOwner,@SomeoneSaid,#type=SAY_RESOURCE,#what=self,
-                  #string=MarionInnkeeper_days_left,
-                  #parm1=Send(SYS,@IntToString,#num=iNewDays),
-                  #type1=STRING_RESOURCE);
+                  #string=MarionInnkeeper_days_left,#parm1=iNewDays);
          }
 
          return FALSE;

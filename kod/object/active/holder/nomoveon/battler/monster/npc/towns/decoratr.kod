@@ -102,7 +102,7 @@ resources:
    Decorator_cant_pay = \
       "I'm afraid you don't have enough resources to pay for "
       "that room modification."
-   Decorator_credit_balance = "Your credit balance is currently %q shillings."
+   Decorator_credit_balance = "Your credit balance is currently %i shillings."
    Decorator_option_unavailable = \
       "I'm sorry, That's not possible right now.  Would you like a "
       "different option?"
@@ -703,8 +703,8 @@ messages:
    DecoratorSayCredit()
    {
       Post(poOwner,@SomeoneSaid,#type=SAY_RESOURCE,#what=self,
-            #string=Decorator_credit_balance,#parm1=Send(SYS,@IntToString,
-            #num=Send(poOwner,@GetCreditBalance)),#type1=STRING_RESOURCE);
+            #string=Decorator_credit_balance,
+            #parm1=Send(poOwner,@GetCreditBalance));
 
       return;
    }
@@ -714,9 +714,6 @@ messages:
       local iLength, lList, l1, l2, i, iCount, oObj, iLengthl1, iLengthl2;
 
       lList = Send(poOwner,@GetObjectList,#who=what,#oDecorator=self);
-
-      l1 = $;
-      l2 = $;
 
       // Split list into two halves, might be too big.
       iLength = Length(lList);

@@ -13,7 +13,6 @@ BarloqueInnkeeper is BarloqueTown
 constants:
 
    include blakston.khd
-   include protocol.khd
 
 resources:
 
@@ -44,7 +43,7 @@ resources:
       "share thine room with a special someone."
 
    BarloqueInnkeeper_days_left = \
-      "I thanketh thee.  Thou hast %q days left at my luxurious inn."
+      "I thanketh thee.  Thou hast %i days left at my luxurious inn."
    BarloqueInnkeeper_too_long = \
       "It pleaseth me that ye liketh thine room, but thou hast paid enough "
       "in rent already!  I canst not accept more from you right now."
@@ -173,7 +172,7 @@ messages:
    {
       local oObj;
 
-      oObj=Create(&Mace);
+      oObj = Create(&Mace);
       Send(Send(SYS,@GetLibrary),@AddToMobLib,#mob=self,
             #triggers=[Send(oObj,@GetName)],
             #action=[LIBACT_CONDITIONAL,oObj,100,BqInn_mace_sale]);
@@ -191,8 +190,6 @@ messages:
 
          if (StringContain(string,BqInn_rent_command)
                AND StringContain(string,BqInn_room_command))
-            OR (StringContain(string,"rent")
-               AND StringContain(string,"room"))
          {
             rSayRsc = Send(oRoomMaint,@RentRoom,#who=what,
                            #iLocation=RID_BAR_INN,#iCost=piInitialRoomCost);
@@ -210,7 +207,6 @@ messages:
          }
 
          if StringContain(string,BqInn_copy_key_command)
-            OR StringContain(string,"copy key")
          {
             rSayRsc = Send(oRoomMaint,@CopyKey,#who=what,
                            #iLocation=RID_BAR_INN,#iCost=piKeyCopyCosts);
@@ -224,8 +220,6 @@ messages:
 
          if (StringContain(string,BqInn_room_command)
                AND StringContain(string,BqInn_cost_command))
-            OR (StringContain(string,"room")
-               AND StringContain(string,"cost"))
          {
             Post(poOwner,@SomeoneSaid,#what=self,#type=SAY_RESOURCE,
                   #string=BarloqueInnkeeper_cost,#type1=0,
@@ -274,7 +268,7 @@ messages:
       iMoney = 0;
       foreach i in item_list
       {
-         iMoney = iMoney + Send(i,@GetValue);
+         iMoney += Send(i,@GetValue);
       }
 
       oRoomMaint = Send(SYS,@GetRentableRoomMaintenance);
@@ -284,7 +278,7 @@ messages:
 
       if iNewDays <> $
       {
-         // iNewDays = 0 means that we've trying to pay for than max days.
+         // iNewDays = 0 means that we've trying to pay for more than max days.
          if iNewDays = 0
          {
             Post(poOwner,@SomeoneSaid,#type=SAY_RESOURCE,#what=self,
@@ -293,9 +287,7 @@ messages:
          else
          {
             Post(poOwner,@SomeoneSaid,#type=SAY_RESOURCE,#what=self,
-                  #string=BarloqueInnkeeper_days_left,
-                  #parm1=Send(SYS,@IntToString,#num=iNewDays),
-                  #type1=STRING_RESOURCE);
+                  #string=BarloqueInnkeeper_days_left,#parm1=iNewDays);
          }
 
          return FALSE;

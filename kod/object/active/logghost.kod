@@ -37,7 +37,7 @@ resources:
    logoffghost_noflatpenalty_mail = \
       "Subject: Penalties for logging off in an unsafe area\n"
       "You have suffered some penalties for logging off in an unsafe area:\n"
-      "You lost %q XP, %q items, %q spell points, and %q skill points."
+      "You lost %i XP, %i items, %i spell points, and %i skill points."
       "\n\n"
       "In the future, it would be wise to log off in a safe area such as an "
       "inn, an adventurer's hall, or the interior of your guild's hall."
@@ -70,7 +70,7 @@ resources:
    logoffghost_penalty_mail = \
       "Subject: Penalties for logging off in an unsafe area\n"
       "You have suffered some penalties for logging off in an unsafe area:\n"
-      "You lost %q XP, %q items, %q spell points, and %q skill points."
+      "You lost %i XP, %i items, %i spell points, and %i skill points."
       "\n\n"
       "In the future, it would be wise to log off in a safe area such as an "
       "inn, an adventurer's hall, or the interior of your guild's hall."
@@ -166,10 +166,6 @@ properties:
    piOverlays = 8
 
    ptPenaltyTimer = $
-   psXPLost = $
-   psItemsLost = $
-   psSpellPointsLost = $
-   psSkillPointsLost = $
    piSoldierShieldOverlay = $
 
 messages:
@@ -353,18 +349,12 @@ messages:
          rMail = logoffghost_noflatpenalty_mail;
       }
 
-      // Convert to strings for the mail.
-      psXPLost = Send(SYS,@IntToString,#num=iXPLost);
-      psItemsLost = Send(SYS,@IntToString,#num=iItemsLost);
-      psSpellPointsLost = Send(SYS,@IntToString,#num=iSpellPtLost);
-      psSkillPointsLost = Send(SYS,@IntToString,#num=iSkillPtLost);
-
       // Send mail notifying user of penalties incurred
       Send(poGhostedPlayer,@ReceiveNestedMail,
            #from=logoffghost_penalty_mail_Sender,
            #dest_list=[poGhostedPlayer],
-           #nest_list=[4,rMail, 4,psXPLost, 4,psItemsLost, 4,psSpellPointsLost,
-                       4,psSkillPointsLost]);
+           #nest_list=[4,rMail, 4,iXPLost, 4,iItemsLost, 4,iSpellPtLost,
+                       4,iSkillPtLost]);
 
       return;
    }

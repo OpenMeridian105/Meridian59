@@ -119,12 +119,7 @@ messages:
       return Bound(viCast_time - (iSpellpower * 500),10000,60000);
    }
 
-   GetNumSpellTargets()
-   {
-      return 0;
-   }
-
-   CastSpell(who = $, lTargets = $)
+   DoSpellEffects(who = $, lTargets = $)
    {
       local oOwner, oTargetRoom, i, each_obj;
 
@@ -132,7 +127,7 @@ messages:
 
       if oOwner = $
       {
-         return;
+         return FALSE;
       }
 
       if Send(oOwner,@CheckRoomFlag,#flag=ROOM_NO_COMBAT)
@@ -186,7 +181,7 @@ messages:
          Send(who,@BindPlayerToCurrentLocation);
       }
 
-      propagate;
+      return TRUE;
    }
 
    SuccessChance(who=$)

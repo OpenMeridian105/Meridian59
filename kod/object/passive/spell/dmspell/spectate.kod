@@ -55,13 +55,13 @@ messages:
       return TRUE;
    }
 
-   CastSpell(who=$,lTargets=$)
+   DoSpellEffects(who=$,lTargets=$)
    {
       local each_obj, i, oRoom, oTarget;
 
       if lTargets = $
       {
-         return;
+         return FALSE;
       }
 
       oTarget = First(lTargets);
@@ -69,14 +69,14 @@ messages:
       if oTarget = $
          OR NOT IsClass(oTarget,&Player)
       {
-         return;
+         return FALSE;
       }
 
       if Send(oTarget,@CheckPlayerFlag,#flag=PFLAG_SPECTATOR)
       {
          Send(oTarget,@RemoveEnchantment,#what=self);
 
-         return;
+         return FALSE;
       }
 
       if Send(oTarget,@CheckPlayerFlag,#flag=PFLAG_PHASED)
@@ -96,7 +96,7 @@ messages:
          Send(oRoom,@SomethingSpectatedOut,#what=oTarget);
       }
 
-      propagate;
+      return TRUE;
    }
 
    RestartEnchantmentEffect(who = $, state = $)

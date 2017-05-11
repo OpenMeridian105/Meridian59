@@ -144,13 +144,13 @@ messages:
       return lFinalTargets;
    }
 
-   CastSpell(who=$,lTargets=$,iSpellPower=0,bItemCast=FALSE)
+   DoSpellEffects(who=$,lTargets=$)
    {
-      local iDamage, oRoom;
+      local i, each_obj, oRoom;
 
       if (who = $)
       {
-         return;
+         return FALSE;
       }
 
       // Get the room this was cast in. If a room cast this, set
@@ -162,21 +162,6 @@ messages:
       else
       {
          oRoom = Send(who,@GetOwner);
-      }
-
-      // Call DoEarthQuake to handle special messages
-      Send(self,@DoEarthQuake,#who=who,#lTargets=lTargets,#oRoom=oRoom);
-
-      propagate;
-   }
-
-   DoEarthQuake(who=$,lTargets=$,oRoom=$)
-   {
-      local i, each_obj;
-
-      if (who = $)
-      {
-         return;
       }
 
       // Do the rumble effect, with a chance to disrupt casting. :)
@@ -210,7 +195,7 @@ messages:
       // Everybody in the room hears the earthquake sound.
       Send(oRoom,@SomethingWaveRoom,#wave_rsc=earthquake_sound);
 
-      return;
+      propagate;
    }
 
    ComputeDamage(who=$,target=$,iDamage=$)

@@ -97,11 +97,11 @@ messages:
       return;
    }
 
-   CastSpell(who = $, lTargets=$, iSpellPower = 0)
+   DoSpellEffects(who = $, lTargets=$, iSpellPower = 0)
    {
       local iToList, iListed, i, oTarget, lAbilities, iCompound, iAbilityNum,
             oAbility, iAbilityLength, iMaxHopSize, iFrog, iCounter, iTemp,
-            iSkill;
+            iSkill, iLen;
 
       oTarget = First(lTargets);
       iToList = iSpellPower / 4;
@@ -114,7 +114,7 @@ messages:
          Send(self,@ForesightMonster,#who=who,#oTarget=oTarget,
                #iSpellPower=iSpellPower);
 
-         propagate;
+         return TRUE;
       }
 
       foreach i in Send(oTarget,@GetSpellList)
@@ -131,15 +131,12 @@ messages:
          lAbilities = Cons([oAbility,i],lAbilities);
       }
 
-      iCounter = 1;
       iAbilityLength = Length(lAbilities) - 1;
-
-      while iCounter < (iAbilityLength / 2)
+      for (iCounter = 1, iLen = iAbilityLength / 2; iCounter < iLen; iCounter += 2)
       {
          iTemp = Nth(lAbilities,iAbilityLength-iCounter);
          SetNth(lAbilities,iAbilityLength-iCounter,Nth(lAbilities,iCounter));
          SetNth(lAbilities,iCounter,iTemp);
-         iCounter += 2;
       }
 
       iAbilityLength = Length(lAbilities);
@@ -209,7 +206,7 @@ messages:
 
       SendPacket(Send(who,@GetSession));
 
-      propagate;
+      return TRUE;
    }
 
    ForesightMonster(who = $, oTarget = $, iSpellPower = 0)

@@ -50,17 +50,14 @@ messages:
       room_rows = Send(where,@GetRoomRows);
       room_cols = Send(where,@GetRoomCols);
 
-      distance = 0;
-      while distance <= max_distance
+      for (distance = 0; distance <= max_distance; ++distance)
       {
-         i = 0;
-         while i <= (2*distance)
+         for (i = 0; i <= 2 * distance; ++i)
          {
             if i = 0 OR i = (2*distance)
             {
                // First or last row, check all the way across
-               j = 0;
-               while j <= (2*distance)
+               for (j = 0; j <= (2*distance); ++j)
                {
                   row = new_row - distance + i;
                   col = new_col - distance + j;
@@ -73,8 +70,6 @@ messages:
                   {
                      return TRUE;
                   }
-
-                  j = j + 1;
                }
             }
             else
@@ -103,11 +98,7 @@ messages:
                   }
                }
             }
-
-            i = i + 1;
          }
-
-         distance = distance + 1;
       }
 
       return FALSE;
@@ -388,8 +379,8 @@ messages:
          return Xlat;
       }
 
-      Xlat = Xlat - XLAT_BASE_VALUE;
-      Xlat = Xlat / 11;
+      Xlat -= XLAT_BASE_VALUE;
+      Xlat /= 11;
 
       return Xlat;
    }
@@ -398,8 +389,8 @@ messages:
    {
       if Xlat > 120 AND Xlat < 131
       {
-         Xlat = Xlat - 121;
-         Xlat = Xlat % 3;
+         Xlat -= 121;
+         Xlat %= 3;
          if Xlat = 0
          {
             return XLAT_TO_SKIN4;
@@ -418,8 +409,8 @@ messages:
          return Xlat;
       }
 
-      Xlat = Xlat - XLAT_BASE_VALUE;
-      Xlat = Xlat % 11;
+      Xlat -= XLAT_BASE_VALUE;
+      Xlat %= 11;
 
       return Xlat;
    }
@@ -488,10 +479,9 @@ messages:
 
    GetSpellCommands(plSpells = $)
    {
-      local i, lSpells;
+      local i;
 
-      lSpells = ListCopy(plSpells);
-      foreach i in lSpells
+      foreach i in plSpells
       {
          //AdminSetSpell(num = 0, ability = 0, add = 0)
          Debug("send o % AdminSetSpell num int",
@@ -507,7 +497,6 @@ messages:
       local i, lUsers, lFinal, iHigh, iIndex;
 
       lUsers = ListCopy(Send(SYS,@GetUsers));
-      lFinal = $;
 
       // First, let's delete any deadweight from the list.
       // People who never logged on get nothing.
@@ -549,12 +538,6 @@ messages:
       }
 
       return lFinal;
-   }
-
-   CreateSpellBook(SID=SID_FIREBALL,mana=1)
-   "Creates a monster spellbook with a single spell."
-   {
-      return [[SID,mana,100]];
    }
 
    TryLook()

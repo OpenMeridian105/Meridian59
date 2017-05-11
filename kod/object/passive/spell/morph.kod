@@ -84,13 +84,6 @@ messages:
       propagate;
    }
 
-   CastSpell(who = $, iSpellPower = 0)
-   {
-      Send(self,@PerformMorph,#caster=who,#victim=who,#iSpellpower=iSpellpower);
-
-      propagate;
-   }
-
    GetTranceTime(iSpellpower=0,who=$)
    {
       local iPercent;
@@ -109,34 +102,43 @@ messages:
       return (viCast_time * iPercent) / 100;
    }
 
-   PerformMorph(caster = $,victim = $,iIllusion_type = $, iSpellpower = 0)
-   "A secondary function so that a potion can cast this easily"
+   DoSpellEffects(who = $,lTargets = $,iIllusion_type = $, iSpellpower = 0)
+   "Potion can call this directly."
    {
       local i, oIllusion, iTime, oRoom, playerHP, monsterHP, differenceHP,
-            changeHP;
+            changeHP, oTarget;
 
-      // Are they already enchanted by Illusionary form?
-      if Send(victim,@IsEnchanted,#byClass=&IllusionaryForm)
+      if (lTargets = $)
       {
-         // Remove Illusionary form
-         Send(victim,@RemoveEnchantmentClass,#class=&IllusionaryForm);
+         oTarget = who;
+      }
+      else
+      {
+         oTarget = First(lTargets);
       }
 
-      oRoom = Send(victim,@GetOwner);
+      // Are they already enchanted by Illusionary form?
+      if Send(oTarget,@IsEnchanted,#byClass=&IllusionaryForm)
+      {
+         // Remove Illusionary form
+         Send(oTarget,@RemoveEnchantmentClass,#class=&IllusionaryForm);
+      }
 
-      foreach i in Send(victim,@GetPlayerUsing)
+      oRoom = Send(oTarget,@GetOwner);
+
+      foreach i in Send(oTarget,@GetPlayerUsing)
       {
          if NOT IsClass(i,&SoldierShield)
          {
-            Send(victim,@UnuseItem,#what=i);
+            Send(oTarget,@UnuseItem,#what=i);
          }
       }
 
       if iSpellPower = $
       {
-         Debug("$ spellpower passed to morph PerformMorph.");
+         Debug("$ spellpower passed to morph DoSpellEffects.");
 
-         return;
+         return FALSE;
       }
 
       if iIllusion_type = $
@@ -146,20 +148,20 @@ messages:
       }
 
       oIllusion = Nth(Send(SYS,@GetMonsterTemplates),iIllusion_type);
-      Send(victim,@MsgSendUser,#message_rsc=morph_on,
+      Send(oTarget,@MsgSendUser,#message_rsc=morph_on,
             #parm1=Send(oIllusion,@GetIndef),#parm2=Send(oIllusion,@GetName));
 
-      playerHP = Send(victim,@GetMaxHealth);
+      playerHP = Send(oTarget,@GetMaxHealth);
       monsterHP = Send(oIllusion,@GetLevel);
 
       // Do the random hp range here instead of relying on the template's
       // set hps.
       monsterHP = (monsterHP * Random(90,110)) / 100;
       differenceHP = ((playerHP - monsterHP) * iSpellPower) / 100;
-      changeHP = Send(victim,@GainMaxHealth,#amount=-differenceHP);
+      changeHP = Send(oTarget,@GainMaxHealth,#amount=-differenceHP);
 
       // Health changed, Send NewHealth.
-      Send(victim,@NewHealth);
+      Send(oTarget,@NewHealth);
 
       // Dduration is based on spellpower, the difference between the hps of
       //  the caster and the target monster, and a slight random.
@@ -170,16 +172,16 @@ messages:
       // Convert to ms.
       iTime *= 1000;
 
-      Send(oRoom,@SomethingWaveRoom,#what=victim,#wave_rsc=morph_scream_wav);
-      Send(victim,@EffectSendUserDuration,#effect=EFFECT_PAIN,
+      Send(oRoom,@SomethingWaveRoom,#what=oTarget,#wave_rsc=morph_scream_wav);
+      Send(oTarget,@EffectSendUserDuration,#effect=EFFECT_PAIN,
             #duration=MORPH_PAIN_TIME);
 
-      Send(victim,@StartEnchantment,#what=self,#time=iTime,
+      Send(oTarget,@StartEnchantment,#what=self,#time=iTime,
             #state=[iIllusion_type,changeHP],#iSpellPower=iSpellPower);
 
-      Send(victim,@SetPlayerIllusion,#what=self);
+      Send(oTarget,@SetPlayerIllusion,#what=self);
 
-      return;
+      return TRUE;
    }
 
    SetSpellPlayerFlag(who=$)
@@ -257,9 +259,9 @@ messages:
       if iForm <> -1
       {
          // Use EVENT_STEER so we don't print fizzle message.
-         Send(who,@BreakTrance,#event=EVENT_STEER);  
-         Send(self,@PerformMorph,#caster=who,#victim=who,#iIllusion_type=iForm,
-               #iSpellpower=iSpellpower);
+         Send(who,@BreakTrance,#event=EVENT_STEER);
+         Send(self,@DoSpellEffects,#who=who,#lTargets=[who],
+               #iIllusion_type=iForm,#iSpellpower=iSpellpower);
       }
 
       return;

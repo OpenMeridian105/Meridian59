@@ -174,9 +174,9 @@ messages:
       propagate;
    }
 
-   CastSpell(who=$,iSpellPower=0,lTargets=$,bItemCast=FALSE)
+   DoSpellEffects(who=$,iSpellPower=0,iDuration=$,lTargets=$,bItemCast=FALSE)
    {
-      local oTarget, lType;
+      local oTarget, lType, state;
 
       lType = [self,viDefensive,viOffensive,viResistanceType];
 
@@ -208,14 +208,20 @@ messages:
 
       Send(oTarget,@MsgSendUser,#message_rsc=vrEnchantment_On);
 
-      Send(oTarget,@StartEnchantment,#what=self,
-            #state=Send(self,@GetStateValue,#iSpellpower=iSpellpower,#who=who,
-            #target=oTarget),#time=Send(self,@GetDuration,#iSpellPower=iSpellPower),
-            #lastcall=Send(self,@GetLastCall),#addicon=Send(self,@GetAddicon),
-            #who=who,#ltype=lType,#bItemCast=bItemCast,#iSpellpower=iSpellpower);
+      // Must have a duration - double check.
+      if (iDuration = $)
+      {
+         iDuration = Send(self,@GetDuration,#iSpellPower=iSpellPower);
+      }
 
       // GetStateValue is sometimes (eg used for pre-enchantment behaviors,
       // who is the caster, target is the target (sometimes the same as who).
+      state = Send(self,@GetStateValue,#iSpellpower=iSpellpower,#who=who,
+                  #target=oTarget);
+
+      Send(oTarget,@StartEnchantment,#what=self,#state=state,#time=iDuration,
+            #lastcall=Send(self,@GetLastCall),#addicon=Send(self,@GetAddicon),
+            #who=who,#ltype=lType,#bItemCast=bItemCast,#iSpellpower=iSpellpower);
 
       if oTarget <> who
       {
@@ -223,7 +229,7 @@ messages:
                #parm1=Send(oTarget,@GetCapDef),#parm2=Send(oTarget,@GetName));
       }
 
-      propagate;
+      return TRUE;
    }
 
    EndEnchantment(who=$,report=TRUE,state=0)

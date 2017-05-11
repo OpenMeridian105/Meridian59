@@ -64,20 +64,20 @@ messages:
       return 1;
    }
 
-   CastSpell(who = $, lTargets = $)
+   DoSpellEffects(who = $, lTargets = $)
    {
       local oTarget, oRoom, oVault, iFee, oMoney, iCash;
 
       if (lTargets = $)
       {
-         return;
+         return FALSE;
       }
 
       oTarget = First(lTargets);
 
       if (oTarget = $)
       {
-         return;
+         return FALSE;
       }
 
       if NOT IsClass(oTarget,&NumberItem)
@@ -87,14 +87,14 @@ messages:
          Send(who,@MsgSendUser,#message_rsc=conveyance_cant,
                #parm1=Send(oTarget,@GetDef),#parm2=Send(oTarget,@GetName));
 
-         return;
+         return FALSE;
       }
 
       if NOT Send(who,@IsHolding,#what=oTarget)
       {
          Send(who,@MsgSendUser,#message_rsc=conveyance_not_holding);
 
-         return;
+         return FALSE;
       }
 
       oRoom = Send(who,@GetOwner);
@@ -117,7 +117,7 @@ messages:
          Send(who,@MsgSendUser,#message_rsc=conveyance_cant,
                #parm1=Send(oTarget,@GetDef),#parm2=Send(oTarget,@GetName));
 
-         return;
+         return FALSE;
       }
 
       oMoney = Send(who,@GetMoneyObject);
@@ -137,7 +137,7 @@ messages:
          Send(who,@MsgSendUser,#message_rsc=conveyance_not_enough_cash,
                #parm1=Send(oTarget,@GetDef),#parm2=Send(oTarget,@GetName));
 
-         return;
+         return FALSE;
       }
 
       if Send(oVault,@CanDepositItems,#lItems=lTargets,#who=who)
@@ -156,7 +156,7 @@ messages:
          Send(who,@MsgSendUser,#message_rsc=Conveyance_not_enough_space);
       }
 
-      propagate;
+      return TRUE;
    }
 
    SuccessChance(who=$)

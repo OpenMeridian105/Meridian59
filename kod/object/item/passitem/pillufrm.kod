@@ -29,6 +29,7 @@ resources:
    illusionaryformpotion_gulp_sound =  drkptn.ogg
 
 classvars:
+
    vrName = illusionaryformpotion_name_rsc
    vrIcon = illusionaryformpotion_icon_rsc
    vrDesc = illusionaryformpotion_desc_rsc
@@ -50,11 +51,13 @@ messages:
    {
       if IsClass(apply_on,&User)
       {
-	 return True;
+         return TRUE;
       }
-      Send(what,@MsgSendUser,#message_rsc=illusionaryformpotion_cant_use_on, 
-	   #parm1=Send(apply_on,@GetIndef),#parm2=Send(apply_on,@GetName));
-      return False;
+
+      Send(what,@MsgSendUser,#message_rsc=illusionaryformpotion_cant_use_on,
+            #parm1=Send(apply_on,@GetIndef),#parm2=Send(apply_on,@GetName));
+
+      return FALSE;
    }
 
    NewApplied(what = $,apply_on = $)
@@ -63,21 +66,28 @@ messages:
 
       oSpell = Send(SYS,@FindSpellByNum,#num=SID_ILLUSIONARY_FORM);
       if oSpell = $
-      {  DEBUG(self,"CAN'T FIND SID_ILLUSIONARY_FORM"); return; }
-
-      if isClass(apply_on,&User) 
       {
-         send(apply_on,@wavesenduser,#wave_rsc=illusionaryformpotion_gulp_sound);
+         Debug(self,"CAN'T FIND SID_ILLUSIONARY_FORM");
+
+         return;
       }
+
+      if IsClass(apply_on,&User)
+      {
+         Send(apply_on,@wavesenduser,#wave_rsc=illusionaryformpotion_gulp_sound);
+      }
+
       if Send(apply_on,@IsEnchanted,#what=oSpell)
       {
-	 Send(apply_on,@MsgSendUser,#message_rsc=illusionaryformpotion_already_enchanted);
-	 Send(self,@Delete);
-	 return;
+         Send(apply_on,@MsgSendUser,
+               #message_rsc=illusionaryformpotion_already_enchanted);
+         Send(self,@Delete);
+
+         return;
       }
 
-
-      Send(oSpell,@PerformIllusionaryForm,#caster=self,#victim=apply_on,#iSpellPower=random(1,80));
+      Send(oSpell,@DoSpellEffects,#who=self,#lTargets=[apply_on],
+            #iSpellPower=Random(1,80));
       Send(self,@Delete);
 
       return;
@@ -88,7 +98,6 @@ messages:
    {
       return 30;
    }
-
 
 end
 ////////////////////////////////////////////////////////////////////////////////

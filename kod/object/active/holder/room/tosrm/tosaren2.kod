@@ -44,16 +44,15 @@ properties:
 
    piBaseLight = LIGHT_NICE
 
-
 messages:
 
-
-   Teleport(what=$)
+   Teleport(what=$,mob_override=FALSE)
    "Admin supported."
    "Teleports object to coordinates specified in constants."
    {
-       send(SYS,@UtilGoNearSquare,#what=what,
-	  #where=self,#new_row=TO_ROW,#new_col=TO_COL);
+      Send(SYS,@UtilGoNearSquare,#what=what,#where=self,
+            #new_row=TO_ROW,#new_col=TO_COL,#mob_override=mob_override);
+
        return;
    }
 
@@ -91,40 +90,43 @@ messages:
       plExits = Cons([ 16, 36, RID_EAST_TOS, 17, 35, ROTATE_NONE ],plExits);
       plExits = Cons([ 16, 37, RID_EAST_TOS, 17, 36, ROTATE_NONE ],plExits);
 
+      propagate;
+   }
 
-   propagate;
-	}
-
-  CreateStandardObjects()
-  {
-	 Send(self,@NewHold,#what=Create(&ArenaSign2,#style=STYLE_ONE_ON_ONE),
+   CreateStandardObjects()
+   {
+      Send(self,@NewHold,#what=Create(&ArenaSign2,#style=STYLE_ONE_ON_ONE),
             #new_row=25,#new_col=33,#fine_row=24,#fine_col=16);
-	 Send(self,@NewHold,#what=Create(&ArenaSign2,#style=STYLE_LAST_MAN_STANDING),
+      Send(self,@NewHold,#what=Create(&ArenaSign2,#style=STYLE_LAST_MAN_STANDING),
             #new_row=26,#new_col=33,#fine_row=8,#fine_col=16);
-	 Send(self,@NewHold,#what=Create(&ArenaSign2,#style=STYLE_GUILD_VS_GUILD),
+      Send(self,@NewHold,#what=Create(&ArenaSign2,#style=STYLE_GUILD_VS_GUILD),
             #new_row=27,#new_col=33,#fine_row=40,#fine_col=16);
-	 Send(self,@NewHold,#what=Create(&ArenaSign2,#style=STYLE_LAST_GUILD_STANDING),
+      Send(self,@NewHold,#what=Create(&ArenaSign2,#style=STYLE_LAST_GUILD_STANDING),
             #new_row=26,#new_col=33,#fine_row=56,#fine_col=16);
-   propagate;
-  }
 
-  SomethingTryGo(what = $, row = $, col = $)
-  {
-     local i;
+      propagate;
+   }
 
-     foreach i in plExits
-     {
-        if (row = first(i) and col = nth(i,2)) and nth(i,3) = RID_TOS_ARENA
-        {
-           if send(send(SYS,@findroombynum,#num=RID_TOS_ARENA),@isLocked)
-             {
-                send(what,@msgsenduser,#message_rsc=TosArena2_locked);
-                return TRUE;
-             }
-        }
-     }
-     propagate;
-  }
+   SomethingTryGo(what = $, row = $, col = $)
+   {
+      local i;
+
+      foreach i in plExits
+      {
+         if (row = First(i) AND col = Nth(i,2))
+            AND Nth(i,3) = RID_TOS_ARENA
+         {
+            if Send(Send(SYS,@FindRoomByNum,#num=RID_TOS_ARENA),@IsLocked)
+            {
+               Send(what,@MsgSendUser,#message_rsc=TosArena2_locked);
+
+               return TRUE;
+            }
+         }
+      }
+
+      propagate;
+   }
 
 end
 ////////////////////////////////////////////////////////////////////////////////

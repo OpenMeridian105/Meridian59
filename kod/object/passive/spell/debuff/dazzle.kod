@@ -75,32 +75,21 @@ messages:
       return;
    }
 
-   CastSpell(who=$,lTargets=$,iSpellPower=0)
+   DoSpellEffects(who=$,lTargets=$,iDuration=0)
    {
-      local oTarget, iDuration;
+      local oSpell, oTarget;
 
       oTarget = First(lTargets);
-      iDuration = Send(self,@GetDuration,#iSpellPower=iSpellPower,
-                        #caster=who,#target=oTarget);
-
-      Send(self,@DoSpell,#what=who,#oTarget=oTarget,#iDuration=iDuration);
-
-      propagate;
-   }
-
-   DoSpell(what=$,oTarget=$,iDuration=0)
-   {
-      local oSpell;
 
       oSpell = Send(SYS,@FindSpellByNum,#NUM=SID_EAGLE_EYES);
       if Send(oTarget,@IsEnchanted,#what=oSpell)
       {
-         iDuration = Send(oSpell,@DoEagleEyes,#oCaster=what,#oTarget=oTarget,
+         iDuration = Send(oSpell,@DoEagleEyes,#oCaster=who,#oTarget=oTarget,
                            #iDuration=iDuration,#iFactor=2);
          if iDuration = $
          {
             // Resisted completely.
-            return;
+            return TRUE;
          }
       }
 
@@ -119,16 +108,18 @@ messages:
          Post(oTarget,@ResetBehaviorFlags);
       }
 
-      Send(what,@MsgSendUser,#message_rsc=vrSuccess,
+      Send(who,@MsgSendUser,#message_rsc=vrSuccess,
             #parm1=Send(oTarget,@GetCapDef),#parm2=Send(oTarget,@GetName));
       Send(oTarget,@StartEnchantment,#what=self,#time=iDuration);
 
       propagate;
    }
 
-   GetDuration(iSpellPower=0,caster=$,target=$)
+   GetDuration(iSpellPower=0,caster=$,lTargets=$)
    {
-      local iDuration, iKarmaDif, iKarma, iTargetKarma;
+      local iDuration, iKarmaDif, iKarma, iTargetKarma, oTarget;
+
+      oTarget = First(lTargets);
 
       // 1-8 seconds based on spellpower. Recommended 3-7.
       iDuration = piBaseDuration + iSpellPower * piSpellPowerMultiplier;
@@ -143,7 +134,7 @@ messages:
          iKarma = Random(30,90);
       }
 
-      iTargetKarma = Send(target,@GetKarma,#detect=TRUE);
+      iTargetKarma = Send(oTarget,@GetKarma,#detect=TRUE);
 
       iKarmaDif = iKarma - iTargetKarma;
 

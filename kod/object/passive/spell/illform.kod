@@ -70,26 +70,25 @@ messages:
       propagate;
    }
 
-   CastSpell(who = $, iSpellPower = 0)
+   DoSpellEffects(who = $, lTargets = $, iSpellPower = 0, iIllusion_type = $)
+   "Potion can call this directly."
    {
-      Send(self,@PerformIllusionaryForm,#caster=who,#victim=who,
-            #iSpellpower=iSpellpower);
-      Send(who,@ResetPlayerFlagList);
-
-      propagate;
-   }
-
-   PerformIllusionaryForm(caster = $,victim = $,iIllusion_type = $,
-                          iSpellpower = 0)
-   "A secondary function so that a potion can cast this easily"
-   {
-      local oIllusion, iTime;
+      local oIllusion, iTime, oTarget;
 
       if iSpellPower = $
       {
-         Debug("Null spellpower passed to illform PerformIllusionaryForm.");
+         Debug("Null spellpower passed to illform DoSpellEffects.");
 
-         return;
+         return FALSE;
+      }
+
+      if (lTargets = $)
+      {
+         oTarget = who;
+      }
+      else
+      {
+         oTarget = First(lTargets);
       }
 
       if iIllusion_type = $
@@ -99,17 +98,19 @@ messages:
       }
 
       oIllusion = Nth(Send(SYS,@GetMonsterTemplates),iIllusion_type);
-      Send(victim,@MsgSendUser,#message_rsc=illusionaryform_on,
+      Send(oTarget,@MsgSendUser,#message_rsc=illusionaryform_on,
             #parm1=Send(oIllusion,@GetIndef),#parm2=Send(oIllusion,@GetName));
 
       iTime = 1000 * (90 + 2 * iSpellPower);
       iTime = Random(iTime / 2,iTime);
 
-      Send(victim,@StartEnchantment,#what=self,#time=iTime,
+      Send(oTarget,@StartEnchantment,#what=self,#time=iTime,
             #state=iIllusion_type,#iSpellPower=iSpellPower);
-      Send(victim,@SetPlayerIllusion,#what=self);
+      Send(oTarget,@SetPlayerIllusion,#what=self);
 
-      return;
+      Send(oTarget,@ResetPlayerFlagList);
+
+      return TRUE;
    }
 
    SetSpellPlayerFlag(who=$)
@@ -179,8 +180,8 @@ messages:
       if iForm <> -1
       {
          // don't print fizzle message.
-         Send(who,@BreakTrance,#event=EVENT_STEER);  
-         Send(self,@PerformIllusionaryForm,#caster=who,#victim=who,
+         Send(who,@BreakTrance,#event=EVENT_STEER);
+         Send(self,@DoSpellEffects,#who=who,#lTargets=[who],
               #iIllusion_type=iForm,#iSpellpower=iSpellpower);
       }
 

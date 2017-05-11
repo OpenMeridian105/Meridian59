@@ -112,7 +112,7 @@ messages:
       propagate;
    }
 
-   CastSpell(who = $, lTargets = $, iSpellPower=0)
+   DoSpellEffects(who = $, lTargets = $, iSpellPower=0)
    {
       local oShatter, oTarget, count, oChosen, iNumber, iPercent;
 
@@ -125,7 +125,7 @@ messages:
       if oTarget = $
          OR NOT IsClass(oTarget,&Player)
       {
-         return;
+         return FALSE;
       }
 
       count = Random(0,iSpellpower/33) + 1;
@@ -160,7 +160,7 @@ messages:
          Send(oTarget,@MsgSendUser,#message_rsc=shatter_failed_target,
                #parm1=Send(who,@GetCapDef),#parm2=Send(who,@GetName));
 
-         propagate;
+         return TRUE;
       }
 
       if Send(oTarget,@ReqLeaveHold,#what=oShatter)
@@ -198,7 +198,7 @@ messages:
          }
       }
 
-      propagate;
+      return TRUE;
    }
 
    SpellBannedInArena()

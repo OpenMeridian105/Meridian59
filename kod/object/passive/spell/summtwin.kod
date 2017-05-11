@@ -126,14 +126,14 @@ messages:
       propagate;
    }
 
-   CastSpell(who=$,lTargets=$,iSpellPower=1)
+   DoSpellEffects(who=$,lTargets=$,iSpellPower=1)
    {
       local i, j, oTwin, oRoom, iRow, iCol, iFine_Row, iFine_Col;
 
       // Monster casters can rarely end up with $ target.
       if lTargets = $
       {
-         return;
+         return FALSE;
       }
 
       Send(who,@MsgSendUser,#message_rsc=summonEvilTwin_cast_rsc);
@@ -141,7 +141,7 @@ messages:
       Send(self,@SpawnEvilTwin,#oTarget=First(lTargets),#who=who,
             #iSpellPower=iSpellPower);
 
-      propagate;
+      return TRUE;
    }
 
    SpawnEvilTwin(who = $, oTarget=$, iSpellPower=SPELLPOWER_MAXIMUM)

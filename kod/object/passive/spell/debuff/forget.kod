@@ -81,23 +81,12 @@ messages:
       return;
    }
 
-   CastSpell(who=$,lTargets=$,iSpellPower=0)
+   DoSpellEffects(who=$,lTargets=$,iDuration=0,iSpellPower=0)
    {
-      local oTarget;
+      local iPowerLeft, i, lSkills, lSpells, lState, iCompound, oTarget,
+            iAbilityNum, oAbility, iSkillLength, iSpellLength;
 
       oTarget = First(lTargets);
-
-      // Spell effects
-      Send(self,@DoSpell,#what=who,#oTarget=oTarget,#iSpellPower=iSpellPower,
-           #iDuration=Send(self,@GetDuration,#iSpellPower=iSpellPower));
-
-      propagate;
-   }
-
-   DoSpell(what=$,oTarget=$,iDuration=0,iSpellPower=0)
-   {
-      local iPowerLeft,i,lSkills,lSpells,lState,iCompound,
-         iAbilityNum,oAbility,iSkillLength,iSpellLength;
 
       if IsClass(oTarget,&Monster)
       {
@@ -106,7 +95,7 @@ messages:
          iDuration = iDuration/4;
 
          Send(oTarget,@StartEnchantment,#what=self,#time=iDuration);
-         Send(what,@MsgSendUser,#message_rsc=forgetspell_caster,
+         Send(who,@MsgSendUser,#message_rsc=forgetspell_caster,
                #parm1=Send(oTarget,@GetCapDef),
                #parm2=Send(oTarget,@GetName));
 
@@ -116,17 +105,17 @@ messages:
 
          // If we managed to perform a memory wipe, the mob will have lost its target
          // upon waking. Inform the caster.
-         if IsClass(what,&DM) AND Send(what,@PlayerIsImmortal)
+         if IsClass(who,&DM) AND Send(who,@PlayerIsImmortal)
          {
             if Send(oTarget,@MemoryWipe,#bFull=TRUE)
             {
-               Send(what,@MsgSendUser,#message_rsc=forgetspell_memory_wipe_full,
+               Send(who,@MsgSendUser,#message_rsc=forgetspell_memory_wipe_full,
                   #parm1=Send(oTarget,@GetDef),#parm2=Send(oTarget,@GetName));
             }
          }
-         else if Send(oTarget,@MemoryWipe,#who=what,#iMemoryWipe=iSpellPower)
+         else if Send(oTarget,@MemoryWipe,#who=who,#iMemoryWipe=iSpellPower)
          {
-            Send(what,@MsgSendUser,#message_rsc=forgetspell_memory_wipe_caster,
+            Send(who,@MsgSendUser,#message_rsc=forgetspell_memory_wipe_caster,
                #parm1=Send(oTarget,@GetDef),#parm2=Send(oTarget,@GetName));
          }
 
@@ -142,7 +131,7 @@ messages:
 
       if iSkillLength = 0 and iSpellLength = 0
       {
-         Send(what,@MsgSendUser,#message_rsc=forgetspell_caster_failed,
+         Send(who,@MsgSendUser,#message_rsc=forgetspell_caster_failed,
                #parm1=Send(oTarget,@GetCapDef),
                #parm2=Send(oTarget,@GetName,#cap=TRUE));
 
@@ -200,7 +189,7 @@ messages:
          }
       }
 
-      Send(what,@MsgSendUser,#message_rsc=forgetspell_caster,
+      Send(who,@MsgSendUser,#message_rsc=forgetspell_caster,
             #parm1=Send(oTarget,@GetIndef),
             #parm2=Send(oTarget,@GetName));
 

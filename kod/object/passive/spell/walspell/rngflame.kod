@@ -42,7 +42,7 @@ classvars:
    viMana = 15
    viSpellExertion = 3
    viMeditate_ratio = 50
-
+   vrSuccess = RingOfFlames_target
    vrSucceed_wav = RingOfFlames_sound
 
    viHarmful = TRUE
@@ -72,7 +72,7 @@ messages:
       return vbCanCastOnOthers;
    }
 
-   CastSpell(who=$,lTargets=$,iSpellPower=1)
+   WallSpellSuccessMessage(who=$,lTargets=$)
    {
       local oTarget;
 
@@ -101,7 +101,7 @@ messages:
                #parm1=Send(oTarget,@GetDef),#parm2=Send(oTarget,@GetName));
       }
 
-      propagate;
+      return;
    }
 
    PlaceWallElements(who=$,lTargets=$,iSpellPower=1)
@@ -118,6 +118,13 @@ messages:
       else
       {
          oTarget = First(lTargets);
+      }
+
+      if oTarget = $
+      {
+         Debug("Ring of Flames cast with nil target");
+
+         return;
       }
 
       iAngle = Send(oTarget,@GetAngle);

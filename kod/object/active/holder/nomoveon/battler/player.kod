@@ -799,6 +799,9 @@ resources:
 
    pvp_notify_wav = gong.ogg
 
+   player_bonus_tp = "You are awarded ~B~k%i~v~B bonus training points for "
+      "your impressive accomplishment!"
+
 classvars:
 
    viHand_space = 2
@@ -8598,7 +8601,7 @@ messages:
    "stamina, all the way down to half for those with high staminas."
    {
       local i, iMaxHealth, dodgeskill, oSkill, monster_level, iXP, oWeapon,
-            iItemBonus, iUnbound, iDist, iDifference;
+            iItemBonus, iUnbound, iDist, iDifference, iBonus;
 
       iXP = 0;
       iItemBonus = 0;
@@ -8691,10 +8694,6 @@ messages:
                         #parm2=Send(what,@GetName));
                }
             }
-
-            // Add stamina modifier here.
-            // 1// bonus for 1 stamina, 70// bonus for 70 stamina.
-            iXP += iXP * Send(self,@GetStamina) / 100;
          }
          else if (monster_level + 5) > iMaxHealth
                AND IsClass(what,&Monster) AND killing_blow
@@ -8717,8 +8716,22 @@ messages:
             Send(self,@MsgSendUser,#message_rsc=player_spits);
          }
 
+         // Check if we are awarded any additional XP or TP for defeating a boss.
+         // The bonus scales with regular XP received before modifiers.
+         // Calculate TP first because we don't want to base the value on 
+         // XP post bonus.
+         iBonus = Send(what,@GetBonusTP) * iXP / monster_level;
+         piTraining_points += iBonus;
+
+         // Alright, now it's time for the XP bonus.
+         iXP += Send(what,@GetBonusXP) * iXP / monster_level;
+
+         // Add stamina modifier here.
+         // 1% bonus for 1 stamina, 70% bonus for 70 stamina.
+         iXP += iXP * Send(self,@GetStamina) / 100;
+
          // Determine XP bonuses on top of the base amount:
-         // Newbies get 10// bonus XP.
+         // Newbies get 10% bonus XP.
          // 2XP (default) per survival arena level.
          // Halve XP if player has more than twice their base health.
          // Multiply total XP by the global XP percent setting.
@@ -8741,7 +8754,9 @@ messages:
             iXP /= 2;
          }
 
+         // Scale XP with server modifier.
          iXP = iXP * Bound(Send(SETTINGS_OBJECT,@GetXPPercent),50,500) / 100;
+
          // Add in XP bonus from items after this.
          iXP += iItemBonus;
          // AddXP checks for HP gain and redraws the XP bar.
@@ -8840,6 +8855,12 @@ messages:
 
          // Draw the training points bar.
          Post(self,@DrawTraining);
+
+         // Inform the player about bonus TP if they've received any.
+         if iBonus > 0
+         {
+            Send(self,@MsgSendUser,#message_rsc=player_bonus_tp,#parm1=iBonus);
+         }
       }
 
       if (piFlags & PFLAG_DODGED)

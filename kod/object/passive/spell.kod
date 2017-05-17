@@ -1516,6 +1516,55 @@ messages:
       return 0;
    }
 
+   CheckCastPowerModifiers(who=$,lTargets=$,iSpellPower=0,report=TRUE)
+   "Modifiers that don't affect the success of the spell, but still modify "
+   "the power it will cast at."
+   {
+      local oSpell, oTarget;
+
+      if lTargets <> $
+      {
+         oTarget = First(lTargets);
+      }
+      else
+      {
+         oTarget = $;
+      }
+      
+      // Anti-magic aura PE will lower the spellpower of any spell cast by the
+      // enchanted player, or any spell cast directly on that player.
+      if (IsClass(who,&Battler))
+      {
+         if (Send(who,@CheckBattlerFlag,#flag=BFLAG_SPELLPOWER_MOD))
+         {
+            oSpell = Send(SYS,@FindSpellByNum,#num=SID_ANTIMAGIC_AURA);
+            if Send(who,@IsEnchanted,#what=oSpell)
+            {
+               iSpellPower = Send(oSpell,@ModifySpellPower,#who=who,#oSpell=self,
+                                 #report=report,#iSpellPower=iSpellPower,
+                                 #state=Send(who,@GetEnchantedState,#what=oSpell));
+            }
+         }
+         if (oTarget <> $
+            AND oTarget <> who
+            AND Length(lTargets) = 1
+            AND IsClass(oTarget,&Battler)
+            AND Send(oTarget,@CheckBattlerFlag,#flag=BFLAG_SPELLPOWER_MOD))
+         {
+            // Single target enchanted with a spellpower mod.
+            oSpell = Send(SYS,@FindSpellByNum,#num=SID_ANTIMAGIC_AURA);
+            if Send(oTarget,@IsEnchanted,#what=oSpell)
+            {
+               iSpellPower = Send(oSpell,@ModifySpellPower,#who=who,#oSpell=self,
+                                 #report=report,#iSpellPower=iSpellPower,
+                                 #state=Send(oTarget,@GetEnchantedState,#what=oSpell));
+            }
+         }
+      }
+
+      return iSpellPower;
+   }
+
    CastSpell(who = $, lTargets = $, iSpellPower = 0, iPowerLevel = 100,
              bItemCast=FALSE, bRing=FALSE, bStun=FALSE,report=TRUE)
    {
@@ -1524,8 +1573,12 @@ messages:
       // Insert any spellpower-modifying effects here that shouldn't affect
       // the actual casting/success of the spell, but still have an effect on
       // its power. Note that a few spells won't be affected by this - some
-      // DM spells, meditate and elusion.
-      /////////////
+      // DM spells, meditate and elusion - as their effects are done before
+      // CastSpell is called. These spells must call CheckCastPowerModifiers.
+
+      iSpellPower = Send(self,@CheckCastPowerModifiers,#who=who,
+                        #lTargets=lTargets,#iSpellPower=iSpellPower,
+                        #report=report);
 
       // Some spells will need a duration in DoSpellEffects. Called here
       // because some calls to DoSpellEffects from elsewhere will send their
@@ -2602,7 +2655,7 @@ messages:
 
       if Send(oRoom,@CheckRoomFlag,#flag=ROOM_ANTI_MAGIC)
       {
-         oModifierSpell = Send(SYS,@FindSpellByNum,#num=SID_ANTIMAGIC_AURA);
+         oModifierSpell = Send(SYS,@FindSpellByNum,#num=SID_ANTIMAGIC_ROOM);
          iSpellPower = Send(oModifierSpell,@ModifySpellPower,
                               #who=who,#oRoom=oRoom,#oSpell=self,
                               #iSpellPower=iSpellPower);
@@ -2682,16 +2735,11 @@ messages:
    ModifyMonsterBehavior()
    {
       return;
-   }   
+   }
 
    IsIllusion()
-   {           
-      if viSchool = SS_RIIJA
-      {
-         return TRUE;
-      }
-      
-      return FALSE;
+   {
+      return viSchool = SS_RIIJA;
    }
 
    TranceBroken(oCaster=$)
@@ -2699,7 +2747,7 @@ messages:
       Send(oCaster,@MsgSendUser,#message_rsc=spell_trance_break,
            #parm1=Send(self,@GetName));
       Send(oCaster,@WaveSendUser,#wave_rsc=spell_trance_break_sound);
-      
+
       return;
    }
 
@@ -2813,6 +2861,12 @@ messages:
    {
       // Spells can overwrite this to change resistances temporarily.
       return resistance_list;
+   }
+
+   ModifySpellPower(who=$,state=$,oSpell=$,iSpellPower=SPELLPOWER_MINIMUM)
+   {
+      // Spells can overwrite this to modify spellpower.
+      return iSpellPower;
    }
 
    HasConditionalEffect()

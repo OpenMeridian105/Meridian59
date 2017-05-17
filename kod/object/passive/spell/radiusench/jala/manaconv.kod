@@ -21,8 +21,8 @@ resources:
    ManaConvergence_name_rsc = "mana convergence"
    ManaConvergence_icon_rsc = imanacon.bgf
    ManaConvergence_desc_rsc = \
-      "The words of this song form an enchantment which increases the "
-      "effectiveness of magical attack spells."
+      "The words of this song form an enchantment which saps mystical energy "
+      "from your enemies."
 
    ManaConvergence_song = jala5.ogg
 
@@ -32,9 +32,13 @@ resources:
    Mana_Convergence_ends = "The charged song played by %s%s fades away."
    Mana_Convergence_caster_ends = "Your song of empowerment fades."
    Mana_Convergence_enter = \
-      "The flow of magic in this place suddenly becomes stronger."
+      "You feel your mystical energy being drawn out by the notes in the air."
    Mana_Convergence_leave = \
       "The empowered crackling of energy in the air around you fades."
+   manacon_sap_caster = \
+      "%s%s appears weary as %s mystical energy is sucked away!"
+   manacon_sap_target = \
+      "You feel weak as %s%s rips away your mystical energy!"
 
 classvars:
 
@@ -58,7 +62,6 @@ classvars:
    viSpell_level = 5
    viMeditate_ratio = 75
 
-   viAffectsGuildmates = TRUE
    viAffectsEnemies = TRUE
 
 properties:
@@ -75,15 +78,38 @@ messages:
       return;
    }
 
-   ModifySpellPower(who=$,oSpell=$,state=$,iSpellPower=0)
+   PeriodicEffect(who=$,state=$)
    {
-      if state <> $
-         AND IsClass(oSpell,&AttackSpell)
+      local oCaster, iManaGain;
+
+      oCaster = First(state);
+
+      if (IsClass(who,&Player)
+         AND NOT (who = oCaster))
       {
-         return iSpellPower + Nth(state,5);
+         iManaGain = Send(who,@LoseMana,#amount=1);
+
+         if (iManaGain > 0)
+         {
+            Send(oCaster,@GainMana,#amount=iManaGain,#bCapped=TRUE);
+            Send(oCaster,@MsgSendUser,#message_rsc=manacon_sap_caster,
+                  #parm1=Send(who,@GetCapDef),#parm2=Send(who,@GetName),
+                  #parm3=Send(who,@GetHisHer));
+
+            Send(who,@MsgSendUser,#message_rsc=manacon_sap_target,
+                  #parm1=Send(oCaster,@GetCapDef),#parm2=Send(oCaster,@GetName));
+         }
       }
 
-      return iSpellPower;
+      propagate;
+   }
+
+   GetStateDuration(state = $)
+   {
+      local iDuration;
+
+      // 4000-5000 ms.
+      return 5000 - (Nth(state,5) * 10);
    }
 
 end

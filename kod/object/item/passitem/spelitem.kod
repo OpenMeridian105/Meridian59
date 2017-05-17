@@ -280,15 +280,15 @@ messages:
 
       oRoom = Send(poOwner,@GetOwner);
 
-      // AMA modifies item spellpower.
+      // AMA (room) modifies item spellpower.
       if Send(oRoom,@CheckRoomFlag,#flag=ROOM_ANTI_MAGIC)
       {
-         oModifierSpell = Send(SYS,@FindSpellByNum,#num=SID_ANTIMAGIC_AURA);
+         oModifierSpell = Send(SYS,@FindSpellByNum,#num=SID_ANTIMAGIC_ROOM);
          iSpellPower = Send(oModifierSpell,@ModifySpellPower,
                               #oRoom=oRoom,#oSpell=oSpell);
       }
 
-      // Mana convergence adds spellpower.
+      // Check for radius enchantment spellpower modifications.
       foreach i in Send(poOwner,@GetRadiusEnchantments)
       {
          iSpellPower = Send(Nth(i,2),@ModifySpellPower,#who=poOwner,

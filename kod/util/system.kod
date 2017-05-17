@@ -3173,7 +3173,7 @@ messages:
 
    CreateOneSpellIfNew(num = $,class = $)
    {
-      local oSpell, iSchool;
+      local oSpell, iSchool, iNum;
 
       if Send(self,@FindSpellByNum,#num=num) = $
       {
@@ -3184,7 +3184,16 @@ messages:
             return;
          }
 
-         AddTableEntry(phSpells,Send(oSpell,@GetSpellNum),oSpell);
+         iNum = Send(oSpell,@GetSpellNum);
+         // Double check if we were given the correct SID. If not, log a debug
+         // message but still create the spell, using spell's actual SID.
+         if (num <> iNum)
+         {
+            Debug("Spell ID mismatch in CreateOneSpellIfNew for given SID ",
+               num, " and retrieved SID ",iNum);
+         }
+
+         AddTableEntry(phSpells,iNum,oSpell);
          plSpells = Cons(oSpell,plSpells);
 
          // Check if we should add this spell to new char spells list.
@@ -3197,6 +3206,10 @@ messages:
                plNewCharSpells = Cons(oSpell,plNewCharSpells);
             }
          }
+      }
+      else
+      {
+         Debug("WARNING: Duplicate spell found with SID ", num);
       }
 
       return;
@@ -3273,6 +3286,7 @@ messages:
 
       Send(self,@CreateOneSpellIfNew,#num=SID_INVISIBILITY,#class=&Invisibility);
       Send(self,@CreateOneSpellIfNew,#num=SID_ANTIMAGIC_AURA,#class=&AntiMagicAura);
+      Send(self,@CreateOneSpellIfNew,#num=SID_ANTIMAGIC_ROOM,#class=&AntiMagicRoom);
       Send(self,@CreateOneSpellIfNew,#num=SID_ENFEEBLE,#class=&Enfeeble);
       Send(self,@CreateOneSpellIfNew,#num=SID_RESIST_MAGIC,#class=&ResistMagic);
       Send(self,@CreateOneSpellIfNew,#num=SID_SWAP,#class=&Swap);

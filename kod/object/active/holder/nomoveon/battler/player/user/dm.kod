@@ -55,6 +55,9 @@ resources:
    dm_makesignetfail = "You were unable to create a signet ring at this time."
 
    // Commands
+   dm_inspectroom = "room"
+   dm_inspectmonsterroom = "monster"
+   dm_inspectpreviousroom = "previous"
    dm_makemonster = "monster"
    dm_event_sign_command = "event sign"
    dm_makeitem = "item"
@@ -898,7 +901,7 @@ messages:
 
    UserSay(string=$,type=$)
    {
-      local i;
+      local i, oRoom;
 
       if type <> SAY_DM
       {
@@ -1168,6 +1171,64 @@ messages:
             Send(poOwner,@SomeoneSaid,#what=self,#type=SAY_MESSAGE,
                  #string=dm_baddie,#parm1=vrName);
          }
+
+         return;
+      }
+
+      if StringContain(string,dm_inspectroom)
+      {
+         // Run through RIDs up to max ID.
+         // Begin at our current room.
+         i = Send(poOwner,@GetRoomNum);
+         oRoom = $;
+
+         while i < RID_RENTABLE_START
+         {
+            // Increase RID.
+            if StringContain(string,dm_inspectpreviousroom)
+            {
+               --i;
+            }
+            else
+            {
+               ++i;
+            }
+
+            // Lower bound: zero.
+            if i = 0
+            {
+               break;
+            }
+
+            // Check for a room.
+            oRoom = Send(SYS,@FindRoomByNum,#num=i);
+
+            if oRoom <> $
+            {
+               // We found a room. Check if we want monster rooms.
+               // If so, continue unless we have one.
+               if StringContain(string,dm_inspectmonsterroom)
+                  AND NOT IsClass(oRoom,&MonsterRoom)
+               {
+                  continue;
+               }
+
+               // Break if we found a room and we don't care what kind it is.
+               // Also break if we are looking for a monster room and found one.
+               break;
+            }
+         }
+
+         if oRoom = $
+         {
+            // We ran through the remaining rooms without a match. Go to room 1.
+            oRoom = Send(SYS,@FindRoomByNum,#num=RID_DEFAULT);
+         }
+
+         Send(SYS,@UtilGoNearSquare,#what=self,#where=oRoom,
+              #new_row=Send(oRoom,@GetTeleportRow),
+              #new_col=Send(oRoom,@GetTeleportCol),
+              #new_angle=Send(oRoom,@GetTeleportAngle));
 
          return;
       }

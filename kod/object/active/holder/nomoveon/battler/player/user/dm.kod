@@ -901,7 +901,7 @@ messages:
 
    UserSay(string=$,type=$)
    {
-      local i, oRoom;
+      local i, oRoom, bPrevious, bMonster;
 
       if type <> SAY_DM
       {
@@ -1180,12 +1180,14 @@ messages:
          // Run through RIDs up to max ID.
          // Begin at our current room.
          i = Send(poOwner,@GetRoomNum);
+         bMonster = StringContain(string,dm_inspectmonsterroom);
+         bPrevious = StringContain(string,dm_inspectpreviousroom);
          oRoom = $;
 
          while i < RID_RENTABLE_START
          {
             // Increase RID.
-            if StringContain(string,dm_inspectpreviousroom)
+            if bPrevious
             {
                --i;
             }
@@ -1194,7 +1196,7 @@ messages:
                ++i;
             }
 
-            // Lower bound: zero.
+            // Lower boundary: zero.
             if i = 0
             {
                break;
@@ -1207,7 +1209,7 @@ messages:
             {
                // We found a room. Check if we want monster rooms.
                // If so, continue unless we have one.
-               if StringContain(string,dm_inspectmonsterroom)
+               if bMonster
                   AND NOT IsClass(oRoom,&MonsterRoom)
                {
                   continue;

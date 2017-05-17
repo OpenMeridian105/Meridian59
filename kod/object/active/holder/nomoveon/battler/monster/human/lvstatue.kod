@@ -529,5 +529,31 @@ messages:
       return TRUE;
    }
 
+   // Statues will fall dormant if left alone.
+   EnterStateMove()
+   {
+      Send(self,@SetTarget);
+      Send(self,@SetState,#bit=STATE_MOVE);
+      Send(self,@ClearBehavior);
+      piHatred = 0;
+
+      // Fall asleep...
+      viSpeed = SPEED_NONE;
+
+      // Change behavior flags...
+      piBehavior = AI_NOMOVE | AI_NOFIGHT | AI_NPC;
+
+      // Change our name...
+      vrName = LivingStatue_name_rsc;
+
+      // Should always have an owner when entering state move anyway...
+      if poOwner <> $
+      {
+         Send(poOwner,@SomethingChanged,#what=self);
+      }
+
+      return;
+   }
+
 end
 ////////////////////////////////////////////////////////////////////////////////

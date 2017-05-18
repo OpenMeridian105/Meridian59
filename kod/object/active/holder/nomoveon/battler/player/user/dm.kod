@@ -901,7 +901,7 @@ messages:
 
    UserSay(string=$,type=$)
    {
-      local i, oRoom, bPrevious, bMonster;
+      local i, oRoom, bPrevious, bMonster, lRooms;
 
       if type <> SAY_DM
       {
@@ -1179,52 +1179,35 @@ messages:
       {
          // Run through RIDs up to max ID.
          // Begin at our current room.
-         i = Send(poOwner,@GetRoomNum);
+         lRooms = Send(SYS,@GetRooms);
+         i = FindListElem(lRooms,poOwner);
          bMonster = StringContain(string,dm_inspectmonsterroom);
          bPrevious = StringContain(string,dm_inspectpreviousroom);
          oRoom = $;
 
-         while i < RID_RENTABLE_START
+         while (oRoom = $) OR (bMonster AND NOT IsClass(oRoom,&MonsterRoom))
          {
-            // Increase RID.
+            // plRooms has reversed order of phRooms, which is sorted by RID.
             if bPrevious
-            {
-               --i;
-            }
-            else
             {
                ++i;
             }
+            else
+            {
+               --i;
+            }
 
-            // Lower boundary: zero.
+            // Wrap around.
             if i = 0
             {
-               break;
+               i = Length(lRooms);
             }
-
-            // Check for a room.
-            oRoom = Send(SYS,@FindRoomByNum,#num=i);
-
-            if oRoom <> $
+            else if i > Length(lRooms)
             {
-               // We found a room. Check if we want monster rooms.
-               // If so, continue unless we have one.
-               if bMonster
-                  AND NOT IsClass(oRoom,&MonsterRoom)
-               {
-                  continue;
-               }
-
-               // Break if we found a room and we don't care what kind it is.
-               // Also break if we are looking for a monster room and found one.
-               break;
+               i = 1;
             }
-         }
 
-         if oRoom = $
-         {
-            // We ran through the remaining rooms without a match. Go to room 1.
-            oRoom = Send(SYS,@FindRoomByNum,#num=RID_DEFAULT);
+            oRoom = Nth(lRooms,i);
          }
 
          Send(SYS,@UtilGoNearSquare,#what=self,#where=oRoom,

@@ -136,7 +136,7 @@ messages:
             oRoom = Send(oSpell,@GetWrongRoom);
             rLocationName = Send(oRoom,@GetName);
             Send(who,@StartEnchantment,#what=self,#state=rLocationName,
-                 #time=Send(self,@GetDuration,#spellpower=ispellpower,#who=who),
+                 #time=Send(self,@GetDuration,#iSpellPower=ispellpower,#caster=who),
                  #iSpellPower=iSpellPower,#lastcall=TRUE,#addicon=FALSE);
 
             if (Send(oKiller,@IsEnchanted,#what=oSpell))
@@ -179,12 +179,12 @@ messages:
       return iPower;
    }
 
-   GetDuration(iSpellPower = 0, who = $)
+   GetDuration(iSpellPower = 0, caster = $)
    {
       local iDuration;
 
       // 1 to 5 minutes
-      iDuration = 300 - (((7 * iSpellpower)/5) + Send(who,@GetKarma));
+      iDuration = 300 - (((7 * iSpellpower)/5) + Send(caster,@GetKarma));
       iDuration = Bound(iDuration,60,300);
       iDuration *= 1000;
 

@@ -52,7 +52,7 @@ messages:
 
    TeleportTimerTrigger(timer = $)
    {
-      local lActive, i;
+      local i;
 
       if (ptTeleport <> timer)
       {
@@ -70,25 +70,27 @@ messages:
       if (piTeleport_Counter > 4)
       {
          //Debug("Counter = ",piTeleport_Counter,", teleporting regardless...");
-         Send(self, @NextDest);
+         Send(self,@NextDest);
 
          return;
       }
 
-      lActive = Send(poOwner, @GetHolderActive);
-
-      foreach i in lActive
+      if (NOT IsClass(poOwner,&GodRoom))
       {
-         if IsClass(First(i),&User)
+         foreach i in Send(poOwner,@GetHolderActive)
          {
-            piTeleport_Counter = piTeleport_Counter + 1;
-            //Debug("Teleport failed, counter = ", piTeleport_Counter);
+            if IsClass(First(i),&User)
+            {
+               ++piTeleport_Counter;
+               //Debug("Teleport failed, counter = ", piTeleport_Counter);
 
-            return;
+               return;
+            }
          }
       }
 
       Send(self,@NextDest);
+
       return;
    }
 

@@ -1179,7 +1179,7 @@ messages:
       return (100 + iBonus);
    }
 
-  GetFactionHitrollBonus(who=$)
+  GetFactionHitrollBonus(who=$,stroke_obj=$)
   {
       local iBonus, iFaction;
 
@@ -1210,7 +1210,9 @@ messages:
     
       iBonus = Send(self,@CalcFactionBonus,#base=100,#faction=iFaction);
 
-      if Random(0,100) = 0 AND iFaction <> FACTION_NEUTRAL
+      if stroke_obj <> $
+         AND iFaction <> FACTION_NEUTRAL
+         AND Random(0,100) = 0
       {
          if iBonus <= 0
          {
@@ -1358,7 +1360,7 @@ messages:
     
       iBonus = Send(self,@CalcFactionBonus,#base=30,#faction=iFaction);
 
-      if Random(0,100) = 0 AND iFaction <> FACTION_NEUTRAL
+      if Random(0,150) = 0 AND iFaction <> FACTION_NEUTRAL
       {
          if iBonus <= 0
          {
@@ -1375,7 +1377,7 @@ messages:
       return iBonus;
    }
 
-   GetFactionDefenseBonus(who=$)
+   GetFactionDefenseBonus(who=$,stroke_obj=$)
    {
       local iBonus, iFaction;
 
@@ -1392,21 +1394,23 @@ messages:
 
       iBonus = 0;
 
-      iFaction = send(who,@GetFaction);
+      iFaction = Send(who,@GetFaction);
       if (iFaction = FACTION_DUKE) OR (iFaction = FACTION_REBEL)
       {
          return 0;
       }
 
-      // Player is under 40
-      if not Send(who,@PlayerIsIntriguing)
+      // Player is under 50
+      if NOT Send(who,@PlayerIsIntriguing)
       {
          return 50;
       }
 
       iBonus = Send(self,@CalcFactionBonus,#base=200,#faction=iFaction);
 
-      if Random(0,100) = 0 AND iFaction <> FACTION_NEUTRAL
+      if stroke_obj <> $
+         AND iFaction <> FACTION_NEUTRAL
+         AND Random(0,100) = 0
       {
          if iBonus <= 0
          {

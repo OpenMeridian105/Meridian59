@@ -1121,8 +1121,8 @@ messages:
       iTime = Send(self,@CalculateManaTime);
 
       // Let's make sure we aren't negative. That'd be absurd!
-      // Also, don't allow temporary mana beyond the hardcap.
-      piMana = Bound(piMana,0,200 * piMax_mana);
+      // Upper bound should be checked when mana is added via GainMana.
+      piMana = Bound(piMana,0,$);
 
       // iTime can only be negative or positive, never zero.
       if iTime <> $
@@ -3356,6 +3356,12 @@ messages:
          return;
       }
 
+      // Only add battlers.
+      if (NOT IsClass(who,&Battler))
+      {
+         return;
+      }
+
       foreach i in plHurtMeRecently
       {
          if First(i) = who
@@ -3502,6 +3508,16 @@ messages:
    {
       return Send(poOwner,@GetSectorIDAtLocation,#row=piRow,#col=piCol,
                   #fine_row=piFine_row,#fine_col=piFine_col);
+   }
+
+   GetBonusXP()
+   {
+      return 0;
+   }
+
+   GetBonusTP()
+   {
+      return 0;
    }
 
 end

@@ -1976,7 +1976,7 @@ messages:
          }
 
          // Modified by the global chase range factor.
-         iChaseRange *= Send(SETTINGS_OBJECT,@GetChaseRangeFactor) / 100;
+         iChaseRange = iChaseRange * Send(SETTINGS_OBJECT,@GetChaseRangeFactor) / 100;
 
          // Severely reduce chase range if target is out of sight.
          if NOT bSight
@@ -4510,14 +4510,17 @@ messages:
       {
          oEffect = Send(SYS,@FindSpellByNum,#num=SID_BLEED);
          iStrength = Send(self,@GetBleedStrength,#amount=amount);
+         iStrength = iStrength * Send(SETTINGS_OBJECT,@GetDrainFactor) / 100;
          iStrength = iStrength * (50 + piAim) / 75;
          iDuration = Send(self,@GetBleedDuration,#amount=amount);
          iDuration = iDuration * (50 + piMight) / 75;
-         Send(oEffect,@StartBleed,#who=what,#source=who,
+         if Send(oEffect,@StartBleed,#who=what,#source=who,
                #strength=Random(iStrength / 5 * 4, iStrength),
-               #duration=Random(iDuration / 5 * 4, iDuration));
-         Send(self,@IllusionHitEffectMessage,#who=who,#what=what,
-               #amount=(iStrength/100)*(iDuration/100)/100,#num=SID_BLEED);
+               #duration=Random(iDuration / 5 * 4, iDuration))
+         {
+            Send(self,@IllusionHitEffectMessage,#who=who,#what=what,
+                  #amount=(iStrength/100)*(iDuration/100)/100,#num=SID_BLEED);
+         }
       }
 
       // Siphon: Frequency scales with mysticism, strength with mysticism, duration with intellect.
@@ -4527,12 +4530,15 @@ messages:
       {
          oEffect = Send(SYS,@FindSpellByNum,#num=SID_SIPHON);
          iStrength = Send(self,@GetSiphonStrength,#amount=amount);
+         iStrength = iStrength * Send(SETTINGS_OBJECT,@GetDrainFactor) / 100;
          iStrength = iStrength * (50 + piMysticism) / 75;
          iDuration = Send(self,@GetSiphonDuration,#amount=amount);
          iDuration = iDuration * (50 + piIntellect) / 75;
-         Send(oEffect,@StartSiphon,#who=what,#source=who,
-               #strength=iStrength,#duration=iDuration);
-         Send(self,@IllusionHitEffectMessage,#who=who,#what=what,#num=SID_SIPHON);
+         if Send(oEffect,@StartSiphon,#who=what,#source=who,
+               #strength=iStrength,#duration=iDuration)
+         {
+            Send(self,@IllusionHitEffectMessage,#who=who,#what=what,#num=SID_SIPHON);
+         }
       }
 
       // Fatigue: Frequency scales with might, strength with might, duration with aim.
@@ -4542,12 +4548,15 @@ messages:
       {
          oEffect = Send(SYS,@FindSpellByNum,#num=SID_FATIGUE);
          iStrength = Send(self,@GetFatigueStrength,#amount=amount);
+         iStrength = iStrength * Send(SETTINGS_OBJECT,@GetDrainFactor) / 100;
          iStrength = iStrength * (50+piMight)/75;
          iDuration = Send(self,@GetFatigueDuration,#amount=amount);
          iDuration = iDuration * (50+piAim)/75;
-         Send(oEffect,@StartFatigue,#who=what,#source=who,
-               #strength=iStrength,#duration=iDuration);
-         Send(self,@IllusionHitEffectMessage,#who=who,#what=what,#num=SID_FATIGUE);
+         if Send(oEffect,@StartFatigue,#who=what,#source=who,
+               #strength=iStrength,#duration=iDuration)
+         {
+            Send(self,@IllusionHitEffectMessage,#who=who,#what=what,#num=SID_FATIGUE);
+         }
       }
 
       // Burn: Frequency scales with mysticism, strength with mysticism, duration with stamina.
@@ -4557,13 +4566,16 @@ messages:
       {
          oEffect = Send(SYS,@FindSpellByNum,#num=SID_BURN);
          iStrength = Send(self,@GetBurnStrength,#amount=amount);
+         iStrength = iStrength * Send(SETTINGS_OBJECT,@GetDrainFactor) / 100;
          iStrength = iStrength * (50 + piMysticism) / 75;
          iDuration = Send(self,@GetBurnDuration,#amount=amount);
          iDuration = iDuration * (50 + piStamina) / 75;
-         Send(oEffect,@StartBurn,#who=what,#source=who,
-               #strength=iStrength,#duration=iDuration);
-         Send(self,@IllusionHitEffectMessage,#who=who,#what=what,
-               #amount=(iStrength/100)*(iDuration/100)/100,#num=SID_BURN);
+         if Send(oEffect,@StartBurn,#who=what,#source=who,
+               #strength=iStrength,#duration=iDuration)
+         {
+            Send(self,@IllusionHitEffectMessage,#who=who,#what=what,
+                  #amount=(iStrength/100)*(iDuration/100)/100,#num=SID_BURN);
+         }
       }
 
       return;

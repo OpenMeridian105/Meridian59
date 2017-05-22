@@ -14,6 +14,10 @@ constants:
 
    include blakston.khd
 
+   // Siphons below this amount of damage (precision) won't be considered.
+   SIPHON_DAMAGE_CUT_OFF = 100
+
+
 resources:
 
    include siphon.lkod
@@ -54,6 +58,12 @@ messages:
    {
       local iFlash;
 
+      // If our siphon is too weak, ignore it.
+      if (strength/100) * (duration/100) < SIPHON_DAMAGE_CUT_OFF
+      {
+         return FALSE;
+      }
+
       Send(who,@StartOverTimeEffect,#strength=-strength,#duration=duration,
             #what=self,#who=source,#state=100,#type=TYPE_MANA,
             #removable=REMOVE_INTERNAL);
@@ -68,7 +78,7 @@ messages:
                #duration=iFlash,#xlat=82);
       }
 
-      return;
+      return TRUE;
    }
 
 end

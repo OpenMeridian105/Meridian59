@@ -773,6 +773,12 @@ messages:
       return piTimeLoggedIn;
    }
 
+   // Used by GetStealth in player.kod to check if the player enjoys login protection.
+   GetTimeSinceLogin()
+   {
+      return GetTime() - piLastLoginTime;
+   }
+
    SendFirstTimeAppeal()
    {
       Send(self,@UserAppeal,#first_time=TRUE);
@@ -10462,7 +10468,7 @@ messages:
    {
       // We're not moving if it's been more than 2 seconds since we moved
       //   OR if we're flagged as unable to move.
-      if (GetTime() - piLastMoveUpdateTime) > 2
+      if (Abs(GetTickCount() - piLastMoveUpdateTime) > 2000)
          OR (piFlags & PFLAG_NO_MOVE)
       {
          return FALSE;

@@ -14,6 +14,9 @@ constants:
 
    include blakston.khd
 
+   // Bleeds below this amount of damage (precision) won't be considered.
+   BLEED_DAMAGE_CUT_OFF = 100
+
 resources:
 
    include bleed.lkod
@@ -55,6 +58,12 @@ messages:
    {
       local iDamage, iFlash;
 
+      // If our bleed is too weak, ignore it.
+      if (strength/100) * (duration/100) < BLEED_DAMAGE_CUT_OFF
+      {
+         return FALSE;
+      }
+
       Send(who,@StartOverTimeEffect,#strength=-strength,#duration=duration,
             #what=self,#who=source,#state=100,#type=TYPE_HEALTH,
             #removable=REMOVE_INTERNAL);
@@ -69,7 +78,7 @@ messages:
          Send(who,@EffectSendUserDuration,#effect=EFFECT_PAIN,#duration=iFlash);
       }
 
-      return;
+      return TRUE;
    }
 
 end

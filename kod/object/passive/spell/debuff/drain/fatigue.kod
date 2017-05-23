@@ -14,6 +14,9 @@ constants:
 
    include blakston.khd
 
+   // Fatigue below this amount of damage (precision) won't be considered.
+   FATIGUE_DAMAGE_CUT_OFF = 100
+
 resources:
 
    include fatigue.lkod
@@ -53,6 +56,12 @@ messages:
    {
       local iFlash;
 
+      // If our fatigue is too weak, ignore it.
+      if (strength/100) * (duration/100) < FATIGUE_DAMAGE_CUT_OFF
+      {
+         return FALSE;
+      }
+
       Send(who,@StartOverTimeEffect,#strength=-strength,#duration=duration,
             #what=self,#who=source,#state=100,#type=TYPE_VIGOR,
             #removable=REMOVE_INTERNAL);
@@ -67,7 +76,7 @@ messages:
                #duration=iFlash,#xlat=65);
       }
 
-      return;
+      return TRUE;
    }
 
 end

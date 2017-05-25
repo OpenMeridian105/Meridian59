@@ -2316,6 +2316,9 @@ messages:
    }
 
    BreakTrance(who=$,state=$,event=$)
+   "Handles any conditions that would prevent the trance from being broken.  "
+   "Most spells are not trances and don't do anything as a result of this, and "
+   "just return TRUE."
    {
       if event = EVENT_OOM AND viManaDrain = 0
       {
@@ -2327,15 +2330,14 @@ messages:
       return TRUE;
    }
 
-   TranceEnding(who=$)
-   "Allow maintained spells to do something when their trance breaks."
+   TranceEnding()
+   "Spells override this to do spell-ending specific stuff.  Note that this "
+   "is ONLY called (through BreakTrance) if the spell ends via resting, "
+   "out-of-mana etc., and not if the spell ends forcefully (arena match, "
+   "RecreateAll, purge/purify).  Ideally spells overriding this add a call "
+   "to RemoveEnchantment, which calls RemoveEnchantmentEffects, which calls "
+   "EndEnchantment."
    {
-      if viManaDrain > 0
-      {
-         // Stop drain effect!
-         Send(who,@DeleteOverTimeEffect,#what=self,#who=who,#removal=REMOVE_INTERNAL);
-      }
-
       return;
    }
 
@@ -2350,6 +2352,22 @@ messages:
    {
       Send(self,@EndEnchantment,#who=who,#state=state,#report=report,
             #recheck=recheck);
+
+      return;
+   }
+
+   EndEnchantment(who=$)
+   "Called by EnchantmentTimer when an enchantment ends, or by "
+   "RemoveEnchantmentEffects when an enchantment is forcefully/prematurely "
+   "removed.  Handles mana drain - spells with drain effects should propagate "
+   "here."
+   {
+      if viManaDrain > 0
+      {
+         // Stop drain effect!
+         Send(who,@DeleteOverTimeEffect,#what=self,#who=who,
+               #removal=REMOVE_INTERNAL);
+      }
 
       return;
    }

@@ -238,7 +238,7 @@ messages:
       return;
    }
 
-   RemoveEnchantmentEffects(who=$,state=$)
+   EndEnchantment(who = $, state=$)
    {
       Send(who,@RemoveDefenseModifier,#what=self);
       Send(who,@ResetPlayerIllusion);
@@ -249,14 +249,15 @@ messages:
          SetFirst(state, $);
       }
 
-      return;
+      propagate;
    }
 
-   EndEnchantment(who = $, state=$)
+   TranceEnding(who=$,state=$)
+   "Allow maintained spells to do something when their trance breaks."
    {
-      Post(self,@RemoveEnchantmentEffects,#who=who,#state=state);
+      Send(who,@RemoveEnchantment,#what=self,#state=state);
 
-      return;
+      propagate;
    }
 
    StartPeriodicEnchantment(who = $, state = $, iSpellPower = 0)
@@ -491,14 +492,6 @@ messages:
    GetPotionClass()
    {
       return &FeignDeathPotion;
-   }
-
-   TranceEnding(who=$,state=$)
-   "Allow maintained spells to do something when their trance breaks."
-   {
-      Send(who,@RemoveEnchantment,#what=self,#state=state);
-
-      propagate;
    }
 
 end

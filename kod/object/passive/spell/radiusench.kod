@@ -750,6 +750,13 @@ messages:
                      #report=report,#recheck=recheck);
             }
          }
+
+         if viManaDrain > 0
+         {
+            // Stop drain effect!
+            Send(who,@DeleteOverTimeEffect,#what=self,#who=who,
+                  #removal=REMOVE_INTERNAL);
+         }
       }
 
       return;
@@ -963,12 +970,54 @@ messages:
       return;
    }
 
+   // Overrides spell.kod entirely.
+   BreakTrance(who=$,state=$,event=$)
+   {
+      local oRoom, bRecheck;
+
+      if event = EVENT_OOM AND viManaDrain = 0
+      {
+         return FALSE;
+      }
+
+      // The spell keeps going if you get damaged, move, cast, use an item,
+      // or make an attack. Players must rest to end most radius spells.
+      if event = EVENT_DAMAGE
+         OR event = EVENT_ATTACK
+         OR event = EVENT_RUN
+         OR event = EVENT_DISRUPT
+         OR event = EVENT_CAST
+         OR event = EVENT_USE
+      {
+         return FALSE;
+      }
+
+      oRoom = Send(who,@GetOwner);
+
+      // Only cancel a maintained RE if it is offensive & caster is
+      // entering a non-combat room.
+      if (event = EVENT_NEWOWNER OR event = EVENT_REQNEWOWNER)
+      {
+         if oRoom <> $
+            AND NOT (viHarmful AND Send(oRoom,@CheckRoomFlag,#flag=ROOM_NO_COMBAT))
+         {
+            return FALSE;
+         }
+      }
+
+      bRecheck = (event = EVENT_REST);
+
+      Send(self,@TranceEnding,#who=who,#state=state,#bRecheck=bRecheck);
+
+      return TRUE;
+   }
+
    TranceEnding(who=$,state=$,bRecheck=FALSE)
    "Allow maintained spells to do something when their trance breaks."
    {
       Send(who,@RemoveRadiusEnchantment,#what=self,#state=state,#recheck=bRecheck);
 
-      propagate;
+      return;
    }
 
    CanPayMonsterCosts(who=$,lTargets=$,iSpellpower=$)

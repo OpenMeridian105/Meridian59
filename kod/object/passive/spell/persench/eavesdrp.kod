@@ -98,8 +98,8 @@ messages:
 
       return;
    }
-   
-   EndEnchantment(who=$,state=0)
+
+   EndEnchantment(state=$)
    {
       Send(Nth(state,2),@Delete);
 
@@ -200,10 +200,20 @@ messages:
       return lRooms;
    }
 
+   BreakTrance(event=$,what=$)
+   {
+      if event = EVENT_CAST
+         AND what = self
+      {
+         return TRUE;
+      }
+
+      propagate;
+   }
+
    TranceEnding(who=$,state=$)
    "Allow maintained spells to do something when their trance breaks."
    {
-      Send(Nth(state,2),@Delete);
       Send(who,@RemoveEnchantment,#what=self,#state=state);
 
       propagate;

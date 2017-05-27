@@ -1970,17 +1970,18 @@ messages:
 
       foreach i in plAbility_totals
       {
-         if first(i) = school
+         if First(i) = school
          {
             foreach j in Nth(i,2)
             {
-               if first(j) = level
+               if First(j) = level
                {
                   return Nth(j,2);
                }
             }
          }
       }
+
       return 0;
    }
 
@@ -1995,19 +1996,25 @@ messages:
          return FALSE;
       }
 
-      if school = SS_DM_COMMAND  { return FALSE; }   // no need to store this.
+      if school = SS_DM_COMMAND
+         OR school = SKS_DM
+      {
+         // No need to store these.
+         return FALSE;
+      }
 
       foreach i in plAbility_totals
       {
-         if first(i) = school
+         if First(i) = school
          {
             foreach j in Nth(i,2)
-            {   
-               if first(j) = level
+            {
+               if First(j) = level
                {
-                       lNode = Nth(j,2) + 1;
-                       setNth(j,2,lNode);
-                       return;
+                  lNode = Nth(j,2) + 1;
+                  SetNth(j,2,lNode);
+
+                  return;
                }
             }
 
@@ -2020,7 +2027,8 @@ messages:
       }
 
       // No spells of this school added yet, add the school node
-      plAbility_totals = cons( [ school, [[ level, 1]]], plAbility_totals);
+      plAbility_totals = Cons( [ school, [[ level, 1]]], plAbility_totals);
+
       return;
    }
 
@@ -2035,7 +2043,7 @@ messages:
       foreach i in plSpells
       {
          // Don't want diseases and poison, don't want to figure in pk spells on happyland
-         if isClass(i,&Spell)
+         if IsClass(i,&Spell)
             AND Send(i,@IsAccessible)
          {
             Send(self,@AddToAbilityTotals,#school=Send(i,@GetSchool),
@@ -7213,8 +7221,9 @@ messages:
 
          // Give debug message for each player, describing what levels they have.
          Debug("Player ",i,Send(i,@GetTrueName)," has extra levels! Has ",
-               First(lSkills),"WC ",First(lSpells),"Shal'ille ",Nth(lSpells,2),
-               "Qor ",Nth(lSpells,3),"Kraanan ",Nth(lSpells,4),"Faren ",
+               First(lSkills),"WC ", Nth(lSkills,2), "Rogue ",
+               First(lSpells),"Shal'ille ",Nth(lSpells,2),"Qor ",
+               Nth(lSpells,3),"Kraanan ",Nth(lSpells,4),"Faren ",
                Nth(lSpells,5),"Riija and ",Nth(lSpells,6), "Jala. Player has ",
                Send(i,@GetRawIntellect)," intellect.");
       }

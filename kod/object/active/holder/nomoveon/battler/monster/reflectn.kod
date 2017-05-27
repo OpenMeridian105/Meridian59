@@ -579,12 +579,8 @@ messages:
       {
          piDrawfx = Send(poOriginal,@GetDrawingEffects);
 
-         foreach i in plActions
-         {
-            plActions = DelListElem(plActions,i);
-         }
-
-         plActions = Cons ([SKID_MINIMUM,0,0,MAX_KOD_INT,50,1,99,COMBAT_ACTION_NEUTRAL],plActions);
+         // Reset plActions.
+         plActions = [[SKID_MINIMUM,0,0,MAX_KOD_INT,50,1,99,COMBAT_ACTION_NEUTRAL]];
 
          // Gotta get the reflection's correct action list.
          if IsClass(poOriginal,&User)
@@ -635,12 +631,12 @@ messages:
             {
                Send(self,@DoDance);
             }
-            else
+            else if poOwner <> $
             {
                Send(poOwner,@SomethingChanged,#what=self);
             }
          }
-         else
+         else if poOwner <> $
          {
             Send(poOwner,@SomethingChanged,#what=self);
          }

@@ -8106,8 +8106,17 @@ messages:
 
    SomethingPhasedOut(what = $, iHealth = 0, iMaxHealth = 0)
    {
+      local oToken;
+
       if (what = self)
       {
+         oToken = Send(self,@FindHolding,#class=&Token);
+
+         if (oToken <> $)
+         {
+            Send(oToken,@UserPhased,#where=poOwner);
+         }
+
          Send(self,@RemoveAllMinions);
 
          // Evil twin attacking us.
@@ -8172,8 +8181,17 @@ messages:
 
    SomethingSpectatedOut(what = $)
    {
+      local oToken;
+
       if (what = self)
       {
+         oToken = Send(self,@FindHolding,#class=&Token);
+
+         if (oToken <> $)
+         {
+            Send(oToken,@UserPhased,#where=poOwner);
+         }
+
          Send(self,@RemoveAllMinions);
 
          // Evil twin goes to limbo, to await our return.

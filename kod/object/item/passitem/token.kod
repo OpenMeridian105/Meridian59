@@ -355,6 +355,24 @@ messages:
       propagate;
    }
 
+   UserPhased(where=$)
+   "Like UserLogoff, except have to call NewUnused to force unuse due to "
+   "being phased."
+   {
+      if (where = $)
+      {
+         Debug("User phased in $ room and tried to drop token!");
+
+         return;
+      }
+
+      Send(poOwner,@MsgSendUser,#message_rsc=Token_drops,
+            #parm1=Send(self,@GetCapDef),#parm2=vrName);
+      Send(self,@NewUnused,#where=where);
+
+      return;
+   }
+
    DestroyDisposable()
    {
       return;

@@ -43,6 +43,13 @@ messages:
       propagate;
    }
 
+   Constructed()
+   {
+      Send(self,@ValidateObjectGenPoints);
+
+      propagate;
+   }
+
    CreateObjectGeneration()
    "Set plObject_gen to the list of object stuff to be made by this room."
    {
@@ -84,6 +91,40 @@ messages:
       return;
    }
 
+   ValidateObjectGenPoints()
+   "Checks that the position of each object gen point is inside the map."
+   "Logs a debug message for those that aren't, but does not modify the list."
+   {
+      local i, iSectorID, iRow, iCol, iFineRow, iFineCol;
+
+      foreach i in plObject_gen
+      {
+         iRow = Nth(i,4);
+         iCol = Nth(i,5);
+         if Length(i) >= 7
+         {
+            iFineRow = Nth(i,6);
+            iFineCol = Nth(i,7);
+         }
+         else
+         {
+            iFineRow = FINENESS_HALF;
+            iFineCol = FINENESS_HALF;
+         }
+         
+         iSectorID = Send(self,@GetSectorIDAtLocation,#row=iRow,#col=iCol,
+                           #fine_row=iFineRow,#fine_col=iFineCol);
+         if (iSectorID = $
+            OR iSectorID < 0)
+         {
+            Debug("Invalid obj coords for ",First(i),iRow, iCol,
+                  " in room ",vrName);
+         }
+      }
+
+      return;
+   }
+
    TestGenPoints(bApple = TRUE)
    {
       local lObjectInfo, oObject, row, col, finerow, finecol;
@@ -121,7 +162,8 @@ messages:
    TryCreateObject()
    "Creates an object from our list, if possible, and places in the room."
    {
-      local i,lObject_info,oNew_creation,iNumber,iRow,iCol,iFine_row,iFine_col;
+      local i, lObject_info, oNew_creation, iNumber, iRow, iCol, iFine_row,
+            iFine_col;
 
       if plObject_gen = $
       {

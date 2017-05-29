@@ -58,7 +58,7 @@ properties:
    ptPeriodicEffect = $
 
 messages:
-   
+
    Constructor(caster = $, duration=75, MaxDamage = 0)
    {
       piMaxDamage = MaxDamage;
@@ -72,7 +72,7 @@ messages:
 
       iDuration = Random(duration-20,duration+20);
       iDuration = iDuration * 1000;
-      iDuration = bound(iDuration,30000,200000);
+      iDuration = Bound(iDuration,30000,200000);
 
       return iDuration;
    }
@@ -80,36 +80,32 @@ messages:
    DoEffect(what = $, periodic=FALSE)
    {
       local iDamage, iMaxDamage, oWatcher, rMessage;
-    
+
       iDamage = 0;
       iMaxDamage = piMaxDamage;
-      
+
       iDamage = Send(what,@AssessDamage,#what=poCaster,#damage=Random(0,iMaxDamage),
-                     #aspell=ATCK_SPELL_ALL+ATCK_SPELL_SHOCK,#report=FALSE,#report_resistance=FALSE);
+                     #aspell=ATCK_SPELL_ALL+ATCK_SPELL_SHOCK,#report=FALSE,
+                     #report_resistance=FALSE);
 
       Send(poOwner,@SomethingAttacked,#what=poCaster,#victim=what,
             #use_weapon=self,#stroke_obj=self);
 
-      if iDamage = $
+      if (piMaxDamage > 0
+         AND IsClass(poCaster,&Player))
       {
-         Send(poCaster,@KilledSomething,#what=what,#use_weapon=self);
+         Send(poCaster,@SetPlayerFlag,#flag=PFLAG_DID_DAMAGE,#value=TRUE);
       }
 
-      if IsClass(poCaster,&Player)
+      if iDamage = $
       {
-         if iDamage = $
+         if (IsClass(what,&Player))
          {
-            Send(poCaster,@SetPlayerFlag,#flag=PFLAG_DID_DAMAGE,#value=TRUE);
+            Send(what,@MsgSendUser,#message_rsc=lightningwall_damage10);
+         }
+         Send(poCaster,@KilledSomething,#what=what,#use_weapon=self);
 
-            return;
-         }
-         else
-         {
-            if piMaxDamage > 0
-            {
-               Send(poCaster,@SetPlayerFlag,#flag=PFLAG_DID_DAMAGE,#value=TRUE);
-            }
-         }
+         return;
       }
 
       if IsClass(what,&Player)
@@ -127,35 +123,29 @@ messages:
             {
                rMessage = lightningwall_damage5;
             }
+            else if iDamage < 10
+            {
+               rMessage = lightningwall_damage10;
+            }
+            else if iDamage < 15
+            {
+               rMessage = lightningwall_damage15;
+            }
             else
             {
-               if iDamage < 10
-               {
-                  rMessage = lightningwall_damage10;
-               }
-               else
-               {
-                  if iDamage < 15
-                  {
-                     rMessage = lightningwall_damage15;
-                  }
-                  else
-                  {
-                     rMessage = lightningwall_damage20;
-                  }
-               }
+               rMessage = lightningwall_damage20;
             }
          }
 
          Send(what,@MsgSendUser,#message_rsc=rMessage);
       }
-      
+
       propagate;
    }
 
    SendAnimation()
    {
-      AddPacket(1,ANIMATE_CYCLE, 4,random(100,140), 2,1, 2,5);
+      AddPacket(1,ANIMATE_CYCLE, 4,Random(100,140), 2,1, 2,5);
 
       return;
    }
@@ -163,19 +153,19 @@ messages:
    NewOwner(what = $)
    {
       // Add a bit of light.  Lightning walls shed some light.
-   
+
       // new room
       if what <> $
       {
          Send(what,@AddBaseLight,#amount=viLightBonus);
       }
-      
+
       // old room
       if poOwner <> $
       {
          Send(poOwner,@AddBaseLight,#amount=-viLightBonus);
       }
-      
+
       propagate;
    }
 
@@ -186,21 +176,18 @@ messages:
       {
          Send(poOwner,@AddBaseLight,#amount=-viLightBonus);
       }
-      
+
       propagate;
    }
 
    SendLightingInformation()
    {
-      AddPacket(2,(LIGHT_FLAG_ON | LIGHT_FLAG_DYNAMIC));
-      // 5 out of 255 intensity of light
-      AddPacket(1,5);
-      // Lightning color
-      AddPacket(2,LIGHT_LIGHTNING);
+      // Flags, intensity (5 out of 255), color.
+      AddPacket(2,(LIGHT_FLAG_ON | LIGHT_FLAG_DYNAMIC),
+                1,5, 2,LIGHT_LIGHTNING);
 
       return;
    }
-
 
 end
 ////////////////////////////////////////////////////////////////////////////////

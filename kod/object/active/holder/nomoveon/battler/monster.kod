@@ -2422,9 +2422,9 @@ messages:
    {
       local iRadius, drow, dcol;
 
+      // Can be called for apparitions also ($ poMaster), return in that case.
       if poMaster = $
       {
-         Debug("MovetoMaster Called with nil master!",Send(self,@GetName));
          return FALSE;
       }
 
@@ -3717,7 +3717,7 @@ messages:
    ReturnToCommander()
    "Return to our commander if we have one and we have strayed too far."
    {
-      local iRow, iCol, iRadius, oCommander;
+      local iRow, iCol, iRadius, oCommander, oRoom;
 
       // Usually, our leader is in command.
       oCommander = poLeader;
@@ -3729,8 +3729,19 @@ messages:
          oCommander = poMaster;
       }
 
-      if (oCommander = $
-         OR Send(oCommander,@GetOwner) = $)
+      // No commander, bail out.
+      if (oCommander = $)
+      {
+         return FALSE;
+      }
+
+      oRoom = Send(oCommander,@GetOwner);
+
+      // If commander is not in a room (logged out/dead mob) or is in a
+      // different room, don't go to them. If the mob should be teleported
+      // to the commander, this should be handled when commander changes room.
+      if (oRoom = $
+         OR oRoom <> poOwner)
       {
          return FALSE;
       }
@@ -9218,9 +9229,24 @@ messages:
       return;
    }
 
-   GetSpellBook()
+   GetActions()
    {
       return plActions;
+   }
+
+   GetSpellList()
+   {
+      local i, lSpells;
+
+      foreach i in plActions
+      {
+         if First(i) < SKID_MINIMUM
+         {
+            lSpells = Cons(First(i),lSpells);
+         }
+      }
+
+      return lSpells;
    }
 
    GetBaseSpellPower()

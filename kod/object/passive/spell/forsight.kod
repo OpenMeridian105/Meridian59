@@ -97,6 +97,29 @@ messages:
       return;
    }
 
+   CanPayCosts(who=$,lTargets=$)
+   {
+      local oTarget;
+
+      oTarget = First(lTargets);
+
+      if oTarget = $
+      {
+         return FALSE;
+      }
+
+      if NOT IsClass(oTarget,&Battler)
+      {
+         Send(who,@MsgSendUser,#message_rsc=spell_bad_target,
+               #parm1=vrName,#parm2=Send(oTarget,@GetDef),
+               #parm3=Send(oTarget,@GetName));
+
+         return FALSE;
+      }
+
+      propagate;
+   }
+
    DoSpellEffects(who = $, lTargets=$, iSpellPower = 0)
    {
       local iToList, iListed, i, oTarget, lAbilities, iCompound, iAbilityNum,
@@ -211,16 +234,16 @@ messages:
 
    ForesightMonster(who = $, oTarget = $, iSpellPower = 0)
    {
-      local i, iLength, oSpell, lSpellBook, rAbility;
+      local i, iLength, oSpell, lSpells, rAbility;
 
       if (who = $ OR oTarget = $)
       {
          return;
       }
 
-      lSpellBook = Send(oTarget,@GetSpellBook);
+      lSpells = Send(oTarget,@GetSpellList);
 
-      if (lSpellBook = $)
+      if (lSpells = $)
       {
          AddPacket(1,BP_MESSAGE, 4,Foresight_nothing,
                    4,Send(oTarget,@GetCapDef), 4,Send(oTarget,@GetName));
@@ -236,7 +259,7 @@ messages:
       rAbility = Send(self,@GetAbilityResource,
                         #iAbility=Send(oTarget,@GetBaseSpellPower));
 
-      iLength = Length(lSpellBook);
+      iLength = Length(lSpells);
       for (i = 1; i <= iLength; ++i)
       {
          if iLength = 1
@@ -253,7 +276,7 @@ messages:
          }
          AddPacket(4,rAbility);
 
-         oSpell = Send(SYS,@FindSpellByNum,#num=First(Nth(lSpellBook, i)));
+         oSpell = Send(SYS,@FindSpellByNum,#num=Nth(lSpells, i));
          AddPacket(4,Send(oSpell,@GetName));
       }
 

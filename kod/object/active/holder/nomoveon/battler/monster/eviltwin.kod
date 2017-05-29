@@ -415,6 +415,17 @@ messages:
       propagate;
    }
 
+   ReturnToCommander()
+   {
+      // Don't return to caster.
+      if (poMaster = poCaster)
+      {
+         return FALSE;
+      }
+
+      propagate;
+   }
+
    GotoOriginal()
    {
       local oRoom;
@@ -698,12 +709,8 @@ messages:
       {
          piDrawfx = Send(poOriginal,@GetDrawingEffects);
 
-         foreach i in plActions
-         {
-            plActions = DelListElem(plActions,i);
-         }
-
-         plActions = Cons ([SKID_MINIMUM,0,0,MAX_KOD_INT,50,1,99,COMBAT_ACTION_NEUTRAL],plActions);
+         // Reset plActions.
+         plActions = [[SKID_MINIMUM,0,0,MAX_KOD_INT,50,1,99,COMBAT_ACTION_NEUTRAL]];
 
          // Gotta get the evil twin's correct action list.
          if IsClass(poOriginal,&User)
@@ -740,26 +747,7 @@ messages:
             plActions = Cons([SKID_FIRE,0,0,iRange,100,1,99,COMBAT_ACTION_HARM],plActions);
          }
 
-         if IsClass(poOriginal,&User)
-         {
-            if Send(what,@GetAnimation) = PANM_WAVE
-            {
-               Send(self,@DoWave);
-            }
-            else if Send(what,@GetAnimation) = PANM_POINT
-            {
-               Send(self,@DoPoint);
-            }
-            else if Send(what,@GetAnimation) = PANM_DANCE
-            {
-               Send(self,@DoDance);
-            }
-            else
-            {
-               Send(poOwner,@SomethingChanged,#what=self);
-            }
-         }
-         else
+         if poOwner <> $
          {
             Send(poOwner,@SomethingChanged,#what=self);
          }

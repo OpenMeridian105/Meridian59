@@ -240,7 +240,8 @@ messages:
 
       // Start vigor drain and curse.
       Send(poOwner,@StartOverTimeEffect,#type=TYPE_VIGOR,#strength=-viVigorDrain,
-         #who=self,#removable=REMOVE_INTERNAL,#curse=TYPE_VIGOR);
+            #who=self,#removable=REMOVE_INTERNAL,#curse=TYPE_VIGOR,
+            #showicon=FALSE);
 
       // Cancels rescue and elusion when a player picks up a token.
       Send(poOwner,@BreakTrance);
@@ -352,6 +353,24 @@ messages:
       Send(poOwner,@TryUnuseItem,#what=self);
 
       propagate;
+   }
+
+   UserPhased(where=$)
+   "Like UserLogoff, except have to call NewUnused to force unuse due to "
+   "being phased."
+   {
+      if (where = $)
+      {
+         Debug("User phased in $ room and tried to drop token!");
+
+         return;
+      }
+
+      Send(poOwner,@MsgSendUser,#message_rsc=Token_drops,
+            #parm1=Send(self,@GetCapDef),#parm2=vrName);
+      Send(self,@NewUnused,#where=where);
+
+      return;
    }
 
    DestroyDisposable()

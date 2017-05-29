@@ -4570,7 +4570,8 @@ messages:
          }
 
          // ...or our side kick.
-         if NOT Send(self,@CheckMercAttack,#what=victim,#report=report)
+         if IsClass(victim,&Monster)
+            AND NOT Send(self,@CheckMercAttack,#what=victim,#report=report)
          {
             return FALSE;
          }
@@ -11835,10 +11836,10 @@ messages:
    "learning. For example, if a player can't learn because he has too "
    "many competing schools, he needs to know that."
    {
-      local bSkill, obj, level, school, division, iHave, prev_level,
-            iSamediv, iOtherdiv, aHigh, bHigh, cHigh, iBase, i, temp,
-            nObj, nSID, index, iNeed, nSchool, nLevel, msg, bKnowOne,
-            iWeapon, iKraanan, iShalille, iQor, iFaren, iRiija, iJala, iPoints;
+      local obj, level, school, division, iHave, prev_level, iSamediv,
+            iOtherdiv, aHigh, bHigh, cHigh, iBase, i, temp, nObj, nSID,
+            index, iNeed, nSchool, nLevel, msg, bKnowOne, iWeapon, iKraanan,
+            iShalille, iQor, iFaren, iRiija, iJala, iRogue, iPoints;
 
       // Phase one. Assert our data. Be sure we have been fed a valid spell
       // and skill num for a spell item that actually exists.
@@ -11851,7 +11852,6 @@ messages:
          }
          else
          {
-            bSkill = TRUE;
             obj = Send(SYS,@FindSkillByNum,#num=skill_num);
          }
       }
@@ -11864,7 +11864,6 @@ messages:
          }
          else
          {
-            bSkill = FALSE;
             obj = Send(SYS,@FindSpellByNum,#num=spell_num);
          }
       }
@@ -11938,6 +11937,7 @@ messages:
       aHigh = 0; bHigh = 0; cHigh = 0;
 
       iWeapon = 0;
+      iRogue = 0;
       iKraanan = 0;
       iShalille = 0;
       iQor = 0;
@@ -11952,7 +11952,7 @@ messages:
 
          if nobj = $
          {
-            Debug("bad data in spell list!");
+            Debug("bad data in skill list!");
 
             return PLAYER_LEARN_ERROR;
          }
@@ -11963,9 +11963,10 @@ messages:
          }
 
          nLevel = Send(nobj,@GetLevel);
+         nSchool = Send(nobj,@GetSchool);
 
          // Is this in the same school at level N-1?
-         if school=Send(nobj,@GetSchool) AND (level-1) = (nLevel)
+         if school = nSchool AND (level-1) = (nLevel)
          {
             index = Send(self,@DecodeSkillAbility,#compound=i);
             if index > aHigh
@@ -11988,9 +11989,20 @@ messages:
             }
          }
 
-         if nLevel > iWeapon
+         switch (nSchool)
          {
-            iWeapon = nLevel;
+         case SKS_WEAPONCRAFT:
+            if nLevel > iWeapon
+            {
+               iWeapon = nLevel;
+            }
+            break;
+         case SKS_ROGUE:
+            if nLevel > iRogue
+            {
+               iRogue = nLevel;
+            }
+            break;
          }
       }
 
@@ -11998,7 +12010,7 @@ messages:
       {
          nSID=Send(self,@DecodeSpellNum,#compound=i);
          nobj=Send(SYS,@FindSpellByNum,#num=nSID);
-         
+
          if nobj = $
          {
             Debug("bad data in spell list!");
@@ -12126,6 +12138,7 @@ messages:
       // We have done all the information gathering, so now, lets compute:
 
       iPoints =  Send(SYS,@GetLevelLearnPoints,#level=iWeapon)
+               + Send(SYS,@GetLevelLearnPoints,#level=iRogue)
                + Send(SYS,@GetLevelLearnPoints,#level=iKraanan)
                + Send(SYS,@GetLevelLearnPoints,#level=iShalille)
                + Send(SYS,@GetLevelLearnPoints,#level=iQor)
@@ -12163,9 +12176,13 @@ messages:
       if scryer <> $
       {
          // nSchool will equal how much the intended school's points added.
-         if bSkill
+         if school = SKS_WEAPONCRAFT
          {
             nSchool = iWeapon;
+         }
+         else if school = SKS_ROGUE
+         {
+            nSchool = iRogue;
          }
          else if school = SS_KRAANAN
          {
@@ -12263,7 +12280,7 @@ messages:
    GetTotalLearnPoints(except = $)
    {
       local iSpell, iSID, oSpellObj, iSchool, iLevel, iKraanan, iShalille,
-            iQor, iFaren, iRiija, iJala, iWeapon, iTotalLearnPoints;
+            iQor, iFaren, iRiija, iJala, iWeapon, iRogue, iTotalLearnPoints;
 
       iKraanan = 0;
       iShalille = 0;
@@ -12272,6 +12289,7 @@ messages:
       iRiija = 0;
       iJala = 0;
       iWeapon = 0;
+      iRogue = 0;
 
       foreach iSpell in plSpells
       {
@@ -12328,24 +12346,37 @@ messages:
          }
       }
 
-      if except <> SKS_WEAPONCRAFT
+      foreach iSpell in plSkills
       {
-         foreach iSpell in plSkills
+         iSID = Send(self,@DecodeSkillNum,#compound=iSpell);
+         oSpellObj = Send(SYS,@FindSkillByNum,#num=iSID);
+
+         iSchool = Send(oSpellObj,@GetSchool);
+         iLevel = Send(oSpellObj,@GetLevel);
+
+         if iSchool <> SKS_DM
+            AND except <> iSchool
          {
-            iSID = Send(self,@DecodeSkillNum,#compound=iSpell);
-            oSpellObj = Send(SYS,@FindSkillByNum,#num=iSID);
-
-            iLevel = Send(oSpellObj,@GetLevel);
-
-            if iLevel > iWeapon
-               AND iLevel < 50       // Catch DM only skills
+            switch (iSchool)
             {
-               iWeapon = iLevel;
+            case SKS_WEAPONCRAFT:
+               if iLevel > iWeapon
+               {
+                  iWeapon = iLevel;
+               }
+               break;
+            case SKS_ROGUE:
+               if iLevel > iRogue
+               {
+                  iRogue = iLevel;
+               }
+               break;
             }
          }
       }
 
       iTotalLearnPoints =  Send(SYS,@GetLevelLearnPoints,#level=iWeapon)
+                         + Send(SYS,@GetLevelLearnPoints,#level=iRogue)
                          + Send(SYS,@GetLevelLearnPoints,#level=iKraanan)
                          + Send(SYS,@GetLevelLearnPoints,#level=iShalille)
                          + Send(SYS,@GetLevelLearnPoints,#level=iQor)
@@ -13436,9 +13467,11 @@ messages:
    // is added later and this needs to be extended.
    GetSkillSchoolLevels()
    {
-      local i, lSchoolLevels, oSkill, iLevel, weaponcraft_level;
+      local i, lSchoolLevels, oSkill, iLevel, iSchool, weaponcraft_level,
+            rogue_level;
 
       weaponcraft_level = 0;
+      rogue_level = 0;
       iLevel = 0;
 
       foreach i in plSkills
@@ -13446,14 +13479,24 @@ messages:
          oSkill = Send(SYS,@FindSkillByNum,#num=Send(self,@DecodeSkillNum,
                                                       #compound=i));
          iLevel = Send(oSkill,@GetLevel);
-
-         if iLevel > weaponcraft_level
+         iSchool = Send(oSkill,@GetSchool);
+         if (iSchool = SKS_WEAPONCRAFT)
          {
-            weaponcraft_level = iLevel;
+            if iLevel > weaponcraft_level
+            {
+               weaponcraft_level = iLevel;
+            }
+         }
+         else if (iSchool = SKS_ROGUE)
+         {
+            if iLevel > rogue_level
+            {
+               rogue_level = iLevel;
+            }
          }
       }
 
-      lSchoolLevels = [weaponcraft_level];
+      lSchoolLevels = [weaponcraft_level, rogue_level];
 
       return lSchoolLevels;
    }

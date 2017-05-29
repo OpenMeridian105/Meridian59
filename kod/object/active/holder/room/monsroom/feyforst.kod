@@ -302,38 +302,14 @@ messages:
 
    SomeoneSaid(what=$,string=$,type=$)
    {
-      local i, iValue, oRoom,oCenter;
-
-      iValue = -1;
-
       if type <> SAY_DM
          OR NOT IsClass(what,&DM)
       {
          propagate;
       }
 
-      // Codes to change the room karma, spawn mobs or change the forest karma.
-      if StringEqual(string,"room very good")
-      {
-         Send(self,@AdjustRoomKarma,#value=100);
-      }
-      else if StringEqual(string,"room good")
-      {
-         Send(self,@AdjustRoomKarma,#value=75);
-      }
-      else if StringEqual(string,"room neutral")
-      {
-         Send(self,@AdjustRoomKarma,#value=50);
-      }
-      else if StringEqual(string,"room evil")
-      {
-         Send(self,@AdjustRoomKarma,#value=25);
-      }
-      else if StringEqual(string,"room very evil")
-      {
-         Send(self,@AdjustRoomKarma,#value=0);
-      }
-      else if StringEqual(string,"good fey")
+      // Codes to spawn mobs.
+      if StringEqual(string,"good fey")
       {
          Send(self,@TryCreateMonster,#goodguy=TRUE);
       }
@@ -341,85 +317,8 @@ messages:
       {
          Send(self,@TryCreateMonster,#darkguy=TRUE);
       }
-      else if StringEqual(string,"forest very good")
-      {
-         iValue = 100;
-      }
-      else if StringEqual(string,"forest good")
-      {
-         iValue = 75;
-      }
-      else if StringEqual(string,"forest neutral")
-      {
-         iValue = 50;
-      }
-      else if StringEqual(string,"forest evil")
-      {
-         iValue = 25;
-      }
-      else if StringEqual(string,"forest very evil")
-      {
-         iValue = 0;
-      }
-
-      if iValue <> -1
-      {
-         oCenter = Send(SYS,@FindRoomByNum,#num=RID_C2);
-         foreach i in Send(oCenter,@GetFeyForest)
-         {
-            oRoom = Send(SYS,@FindRoomByNum,#num=i);
-            if oRoom = $
-            {
-               continue;
-            }
-
-            Send(oRoom,@AdjustRoomKarma,#value=iValue);
-         }
-      }
 
       propagate;
-   }
-
-   AdjustRoomKarma(value = 50)
-   {
-      local i, iGood, iBad;
-
-      piRoom_karma = value;
-
-      foreach i in plActive
-      {
-         if IsClass(First(i),&Monster)
-         {
-            Send(First(i),@Delete);
-         }
-      }
-
-      if pbUser_in_room
-      {
-         iGood = value / 10;
-         iBad = 10 - iGood;
-
-         while iGood > 0
-         {
-            if Send(self,@TryCreateMonster,#goodguy=TRUE,#nofigure=TRUE)
-            {
-               --iGood;
-            }
-         }
-
-         while iBad > 0
-         {
-            if Send(self,@TryCreateMonster,#darkguy=TRUE,#nofigure=TRUE)
-            {
-               --iBad;
-            }
-         }
-      }
-
-      // Force a change, because we've pre-set the Karma value.
-      Send(self,@FigureRoomKarma,#bForceChange=TRUE);
-
-      return;
    }
 
    CreateYellZoneList()

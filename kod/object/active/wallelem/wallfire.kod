@@ -73,7 +73,7 @@ messages:
 
       iDuration = Random(duration-20,duration+20);
       iDuration = iDuration * 1000;
-      iDuration = bound(iDuration,30000,200000);
+      iDuration = Bound(iDuration,30000,200000);
 
       return iDuration;
    }
@@ -83,7 +83,7 @@ messages:
       local iDamage, oIllusWounds, iDuration, rMessage;
 
       iDamage = 0;
-      
+
       if viIllusion
       {
          if (piMaxDamage < 35)
@@ -93,7 +93,8 @@ messages:
 
          oIllusWounds = Send(SYS,@FindSpellByNum,#num=SID_ILLUSIONARY_WOUNDS);
          iDuration = Send(oIllusWounds,@GetDuration,#iSpellPower=piMaxDamage);
-         iDamage = Send(oIllusWounds,@GetHPLoss,#who=poCaster,#victim=what,#iSpellPower=piMaxDamage);
+         iDamage = Send(oIllusWounds,@GetHPLoss,#who=poCaster,#victim=what,
+                        #iSpellPower=piMaxDamage);
 
          if iDamage > 0
          {
@@ -111,31 +112,27 @@ messages:
       else
       {
          iDamage = Send(what,@AssessDamage,#what=poCaster,#damage=Random(0,piMaxDamage),
-                        #aspell=ATCK_SPELL_ALL+ATCK_SPELL_FIRE,#report=FALSE,#report_resistance=FALSE);
+                        #aspell=ATCK_SPELL_ALL+ATCK_SPELL_FIRE,#report=FALSE,
+                        #report_resistance=FALSE);
          Send(poOwner,@SomethingAttacked,#what=poCaster,#victim=what,
                #use_weapon=self,#stroke_obj=self);
       }
 
-      if iDamage = $
+      if (piMaxDamage > 0
+         AND IsClass(poCaster,&Player))
       {
-         Send(poCaster,@KilledSomething,#what=what,#use_weapon=self);
+         Send(poCaster,@SetPlayerFlag,#flag=PFLAG_DID_DAMAGE,#value=TRUE);
       }
 
-      if IsClass(poCaster,&Player)
+      if iDamage = $
       {
-         if iDamage = $
+         if (IsClass(what,&Player))
          {
-            Send(poCaster,@SetPlayerFlag,#flag=PFLAG_DID_DAMAGE,#value=TRUE);
-            
-            return;
+            Send(what,@MsgSendUser,#message_rsc=firewall_damage20);
          }
-         else
-         {
-            if piMaxDamage > 0
-            {
-               Send(poCaster,@SetPlayerFlag,#flag=PFLAG_DID_DAMAGE,#value=TRUE);
-            }
-         }
+         Send(poCaster,@KilledSomething,#what=what,#use_weapon=self);
+
+         return;
       }
 
       if IsClass(what,&Player)
@@ -153,36 +150,30 @@ messages:
             {
                rMessage = firewall_damage5;
             }
+            else if iDamage < 10
+            {
+               rMessage = firewall_damage10;
+            }
+            else if iDamage < 15
+            {
+               rMessage = firewall_damage15;
+            }
             else
             {
-               if iDamage < 10
-               {
-                  rMessage = firewall_damage10;
-               }
-               else
-               {
-                  if iDamage < 15
-                  {
-                     rMessage = firewall_damage15;
-                  }
-                  else
-                  {
-                     rMessage = firewall_damage20;
-                  }
-               }
+               rMessage = firewall_damage20;
             }
          }
 
          Send(what,@MsgSendUser,#message_rsc=rMessage);
       }
-      
+
       propagate;
    }
 
    SendAnimation()
    {
-      AddPacket(1,ANIMATE_CYCLE, 4,random(100,140), 2,1, 2,5);
-      
+      AddPacket(1,ANIMATE_CYCLE, 4,Random(100,140), 2,1, 2,5);
+
       return;
    }
 
@@ -203,7 +194,7 @@ messages:
             Send(poOwner,@AddBaseLight,#amount=-viLightBonus);
          }
       }
-      
+
       propagate;
    }
 
@@ -217,31 +208,27 @@ messages:
             Send(poOwner,@AddBaseLight,#amount=-viLightBonus);
          }
       }
-      
+
       propagate;
    }
 
    SendLightingInformation()
    {
-      AddPacket(2,(LIGHT_FLAG_ON | LIGHT_FLAG_DYNAMIC));
-      // Intensity
       if viIllusion
       {
          // Send less light if we're illusionary.
-         AddPacket(1,0);
+         AddPacket(2,(LIGHT_FLAG_ON | LIGHT_FLAG_DYNAMIC),
+                   1,0, 2,LIGHT_RED);
       }
       else
       {
-         // 5 out of 255 intensity of light
-         AddPacket(1,5);
+         // 5 out of 255 intensity of light.
+         AddPacket(2,(LIGHT_FLAG_ON | LIGHT_FLAG_DYNAMIC),
+                   1,5, 2,LIGHT_RED);
       }
-
-      // Red color
-      AddPacket(2,LIGHT_RED);
 
       return;
    }
-
 
 end
 ////////////////////////////////////////////////////////////////////////////////

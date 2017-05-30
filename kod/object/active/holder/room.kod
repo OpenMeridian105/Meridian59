@@ -369,6 +369,7 @@ messages:
       local iTerrain;
 
       Send(self,@CreateStandardObjects);
+      Send(self,@ValidateStandardObjects);
       Send(self,@CreateStandardExits);
       Send(self,@CreateYellZoneList);
       Send(self,@ComputeFarenBonus);
@@ -423,6 +424,25 @@ messages:
       }
 
       propagate;
+   }
+
+   ValidateStandardObjects()
+   {
+      local i, iSectorID, each_obj;
+
+      foreach i in plPassive
+      {
+         each_obj = First(i);
+         iSectorID = Send(each_obj,@GetSectorIDAtObject);
+         if (iSectorID = $
+            OR iSectorID < 0)
+         {
+            Debug(each_obj, Send(each_obj,@GetName), " is outside map in room ",
+                  vrName, Send(each_obj,@GetRow), Send(each_obj,@GetCol));
+         }
+      }
+
+      return;
    }
 
    SomethingChanged(what = $)

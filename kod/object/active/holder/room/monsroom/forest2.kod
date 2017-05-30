@@ -11,7 +11,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 Forest2 is MonsterRoom
 
-
 constants:
 
    include blakston.khd
@@ -25,11 +24,8 @@ resources:
 
    room_forest2 = forest2.roo
    room_name_forest2 = "The Forests of Meridian"
-
    forest2_noise = forest1.ogg
-
    forest2_music = walk2.ogg
-
 
 classvars:
 
@@ -57,7 +53,6 @@ properties:
    piGen_time = 120000
    piGen_percent = 60
 
-
 messages:
 
    Constructed()
@@ -68,7 +63,7 @@ messages:
                        [20, 32], [28, 51], [26, 56], [43, 19] ];
 
       ptNoise = CreateTimer(self,@NoiseTimer,
-			    NOISE_DELAY + Random(-NOISE_VARIATION,NOISE_VARIATION));
+                     NOISE_DELAY + Random(-NOISE_VARIATION,NOISE_VARIATION));
 
       propagate;
    }
@@ -77,9 +72,10 @@ messages:
    {
       if ptNoise <> $
       {
-	 DeleteTimer(ptNoise);
+         DeleteTimer(ptNoise);
          ptNoise = $;
       }
+
       propagate;
    }
 
@@ -88,11 +84,11 @@ messages:
       local i;
 
       ptNoise = CreateTimer(self,@NoiseTimer,
-			    NOISE_DELAY + Random(-NOISE_VARIATION,NOISE_VARIATION));
+                     NOISE_DELAY + Random(-NOISE_VARIATION,NOISE_VARIATION));
       
       foreach i in plActive
       {
-	 Send(First(i),@WaveSendUser,#wave_rsc=forest2_noise);
+         Send(First(i),@WaveSendUser,#wave_rsc=forest2_noise);
       }
 
       return;
@@ -101,56 +97,59 @@ messages:
 
    SomethingMoved(what = $,new_row = $, new_col = $)
    {
-      if (new_row < 19) and (new_col < 7)
-      {
-	 Send(SYS,@UtilGoNearSquare,#what=what,
-	      #where=Send(SYS,@FindRoomByNum,#num=RID_CAVE2),
-              #new_row=55,#new_col = 35, #new_angle=ANGLE_NORTH);
-	 return;
-      }
-      
-      if (new_row < 16) and (new_col > 40)
-      {
-	 Send(SYS,@UtilGoNearSquare,#what=what,
-	      #where=Send(SYS,@FindRoomByNum,#num=RID_FOREST1),
-	      #new_row=25,#new_col = 2, #new_angle=ANGLE_EAST);
-	 return;
-      }
-      
-      if (new_row > 33) and (new_col > 57)
-      {
-	 Send(SYS,@UtilGoNearSquare,#what=what,
-              #where=Send(SYS,@FindRoomByNum,#num=RID_FOREST3),
-              #new_row=1,#new_col = 7, #new_angle=ANGLE_SOUTH);
-	 return;
-      }
-
-      if (new_row = 47) and (new_col = 14)
-      {
-	 Send(SYS,@UtilGoNearSquare,#what=what,
-              #where=Send(SYS,@FindRoomByNum,#num=RID_NEST1),
-              #new_row=4,#new_col = 17, #new_angle=ANGLE_SOUTH);
-	 return;
-      }
-
-      if (new_row = 55) and ((new_col = 46) or (new_col = 47))
+      if (new_row < 19) AND (new_col < 7)
       {
          Send(SYS,@UtilGoNearSquare,#what=what,
-              #where=Send(SYS,@FindRoomByNum,#num=RID_FOREST4),
-              #new_row=10,#new_col = 47,#new_angle=ANGLE_WEST);
+               #where=Send(SYS,@FindRoomByNum,#num=RID_CAVE2),
+               #new_row=55,#new_col = 35, #new_angle=ANGLE_NORTH);
+
+         return;
+      }
+
+      if (new_row < 16) AND (new_col > 40)
+      {
+         Send(SYS,@UtilGoNearSquare,#what=what,
+               #where=Send(SYS,@FindRoomByNum,#num=RID_FOREST1),
+               #new_row=25,#new_col = 2, #new_angle=ANGLE_EAST);
+
+         return;
+      }
+
+      if (new_row > 33) AND (new_col > 57)
+      {
+         Send(SYS,@UtilGoNearSquare,#what=what,
+               #where=Send(SYS,@FindRoomByNum,#num=RID_FOREST3),
+               #new_row=1,#new_col = 7, #new_angle=ANGLE_SOUTH);
+
+         return;
+      }
+
+      if (new_row = 47) AND (new_col = 14)
+      {
+         Send(SYS,@UtilGoNearSquare,#what=what,
+               #where=Send(SYS,@FindRoomByNum,#num=RID_NEST1),
+               #new_row=4,#new_col = 17, #new_angle=ANGLE_SOUTH);
+
+         return;
+      }
+
+      if (new_row = 55)
+         AND ((new_col = 46) OR (new_col = 47))
+      {
+         Send(SYS,@UtilGoNearSquare,#what=what,
+               #where=Send(SYS,@FindRoomByNum,#num=RID_FOREST4),
+               #new_row=10,#new_col = 47,#new_angle=ANGLE_WEST);
+
          return;
       }
 
       propagate;
-
    }
-
-
 
    CreateStandardObjects()
    {
       Send(self,@NewHold,#what=Create(&Tree,#top=TREE_PINE,#bottom=TREE_PINE),
-          #new_row=22,#new_col=8);
+            #new_row=22,#new_col=8);
       Send(self,@NewHold,#what=Create(&SingleTree),
           #new_row=47,#new_col=14,#fine_row=48,#fine_col=16);
       Send(self,@NewHold,#what=Create(&Tree,#top=TREE_PINE,#bottom=TREE_PINE),
@@ -205,27 +204,10 @@ messages:
           #new_row=30,#new_col=36);
       Send(self,@NewHold,#what=Create(&Tree,#top=TREE_OAK,#bottom=TREE_ELM),
           #new_row=12,#new_col=36);
-
       Send(self,@NewHold,#what=Create(&Tree,#top=TREE_OAK,#bottom=TREE_ELM),
           #new_row=19,#new_col=4,#fine_row=10,#fine_col=26);
-
       Send(self,@NewHold,#what=Create(&Tree,#top=TREE_OAK,#bottom=TREE_PINE),
           #new_row=19,#new_col=3,#fine_row=5,#fine_col=10);
-
-      // some mushrooms
-
-      Send(self,@NewHold,#what=Create(&Mushroom),
-	   #new_row=23,#new_col=22);
-
-      Send(self,@NewHold,#what=Create(&Mushroom),
-	   #new_row=37,#new_col=15);
-
-      Send(self,@NewHold,#what=Create(&Mushroom),
-	   #new_row=54,#new_col=7);
-
-      Send(self,@NewHold,#what=Create(&Mushroom),
-	   #new_row=51,#new_col=27);
-
 
       propagate;
    }

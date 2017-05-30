@@ -77,7 +77,7 @@ messages:
       plMonsters = [ [&CaveOrc, 70], [&GroundwormQueen, 30] ];
       //plGenerators = [[50,43], [36,31], [28,39], [15,35], [21,19], [15,12], [39,17], [44,29],
       //		     [44,34], [27,8],   [36,28], [48,22], [47,23], [45,31], [24,33], [20,39]];
-    
+
       propagate;
    }
 
@@ -86,16 +86,16 @@ messages:
       plEdge_exits = $;
       plEdge_Exits = Cons([LEAVE_SOUTH, RID_ORC_CAVE2, 2, 14, ROTATE_NONE], plEdge_exits);
       plEdge_Exits = Cons([LEAVE_WEST, RID_ORC_PIT, 35, 67, ROTATE_NONE], plEdge_exits);
+
       propagate;
    }
-
 
    CreateStandardObjects()
    {
       local i, o;
 
-      poSwitch = Create(&Lever);  
-      send(self,@NewHold,#what=poSwitch,#new_row=48,#new_col=29);
+      poSwitch = Create(&Lever);
+      Send(self,@NewHold,#what=poSwitch,#new_row=48,#new_col=29);
 
       // some barriers for the pass tunnel
 
@@ -105,33 +105,12 @@ messages:
          [ 53, 35, 32, 32, OO_STALAGMITE1 ],
 
          [ 53, 36, 50, 50, OO_STALACTITE2 ],
-         [ 53, 37, 45, 32, OO_STALAGMITE1 ],
          [ 53, 38, 50, 14, OO_STALACTITE2 ],
 
          [ 54, 36, 32, 50, OO_STALAGMITE2 ],
-         [ 54, 37, 32, 32, OO_STALACTITE2 ],
          [ 54, 38, 32, 14, OO_STALAGMITE1 ],
 
-         [ 54, 37, 50, 50, OO_STALAGMITE1 ],
-         [ 54, 37, 50, 14, OO_STALACTITE2 ],
-         [ 54, 37, 14, 50, OO_STALAGMITE2 ],
-         [ 54, 37, 14, 14, OO_STALACTITE1 ],
-
-         [ 53, 37, 40, 32, OO_STALAGMITE2 ],
-         [ 53, 37, 50, 32, OO_STALACTITE1 ],
-         [ 53, 37, 60, 32, OO_STALACTITE2 ],
-         [ 54, 37,  6, 32, OO_STALAGMITE1 ],
-         [ 54, 37, 16, 32, OO_STALACTITE2 ],
-         [ 54, 37, 26, 32, OO_STALAGMITE2 ],
-         [ 54, 37, 36, 32, OO_STALACTITE1 ],
-         [ 54, 37, 46, 32, OO_STALAGMITE1 ],
-         [ 54, 37, 56, 32, OO_STALACTITE1 ],
-         [ 55, 37,  4, 32, OO_STALACTITE2 ],
-         [ 55, 37, 14, 32, OO_STALAGMITE1 ],
-         [ 55, 37, 24, 32, OO_STALACTITE2 ],
-
          [ 55, 36, 14, 50, OO_STALACTITE2 ],
-         [ 55, 37, 19, 32, OO_STALAGMITE1 ],
          [ 55, 38, 14, 14, OO_STALACTITE2 ],
 
          [ 55, 39, 40, 44, OO_STALACTITE2 ],
@@ -143,11 +122,11 @@ messages:
 
       ]
       {
-         o = create(&OrnamentalObject,#type=nth(i,5));
-         send(o,@SetNoMoveOn);
-         send(self,@NewHold,#what=o,
-            #new_row=nth(i,1),#new_col=nth(i,2),
-            #fine_row=nth(i,3),#fine_col=nth(i,4));
+         o = Create(&OrnamentalObject,#type=Nth(i,5));
+         Send(o,@SetNoMoveOn);
+         Send(self,@NewHold,#what=o,
+               #new_row=First(i),#new_col=Nth(i,2),
+               #fine_row=Nth(i,3),#fine_col=Nth(i,4));
       }
 
       propagate;
@@ -167,28 +146,29 @@ messages:
       }
       poSwitch = $;
       propagate;
-   }                                    
-
+   }
 
    SomethingTryGo(What=$,Row=$,Col=$)
    {
-      if (Row >= 53 and Col >=28 and Row <=55 and Col <=30)
+      if (Row >= 53 AND Col >= 28 AND Row <= 55 AND Col <= 30)
       {
-         send(self,@setsector,#sector=DOORSECTOR,#animation=ANIMATE_CEILING_LIFT,
-            #height = 600,#speed=50);
+         Send(self,@setsector,#sector=DOORSECTOR,#animation=ANIMATE_CEILING_LIFT,
+               #height = 600,#speed=50);
          ptDoor = createtimer(self,@CloseDoor,60000);
+
          return TRUE;
       }
+
       propagate;
    }
-
 
    CloseDoor()
    {
       ptDoor = $;
 
-      send(self,@setsector,#sector=DOORSECTOR,#animation=ANIMATE_CEILING_LIFT,
-         #height = 500,#speed=0);
+      Send(self,@setsector,#sector=DOORSECTOR,#animation=ANIMATE_CEILING_LIFT,
+            #height = 500,#speed=0);
+
       return;
    }
 
@@ -212,51 +192,61 @@ messages:
    SomethingChanged(what=$)
    {
       if what = poSwitch
-      { send(self,@EvaluatePuzzle); }
+      {
+         Send(self,@EvaluatePuzzle);
+      }
+
       propagate;
    }
 
    EvaluatePuzzle()
    {
       local NumChamberA, NumChamberB, oRoomA, bAllAA, bAllAB, bAllBA, bAllBB;
+
       oRoomA = Send(SYS,@FindRoombynum,#num=RID_ORC_PIT_A);
-   
-      NumChamberA = send(oRoomA,@NumInChamber);
-      NumChamberB = send(self,@NumInChamber);
-   
-      If NumChamberA * 3 = NumChamberB or
-         NumChamberA * 2 = NumChamberB or
-         NumChamberA * 2 = NumChamberB * 3
+
+      NumChamberA = Send(oRoomA,@NumInChamber);
+      NumChamberB = Send(self,@NumInChamber);
+
+      if NumChamberA * 3 = NumChamberB
+         OR NumChamberA * 2 = NumChamberB
+         OR NumChamberA * 2 = NumChamberB * 3
       {
          bAllAA = Send(oRoomA,@AllAUsed);
          bAllAB = Send(oRoomA,@AllBUsed);
-         bAllBA = Send(Self,@AllAUsed);
-         bAllBB = Send(Self,@AllBUsed);
-         ptPuzzle = createtimer(self,@ResetPuzzle,60000);
+         bAllBA = Send(self,@AllAUsed);
+         bAllBB = Send(self,@AllBUsed);
+         ptPuzzle = CreateTimer(self,@ResetPuzzle,60000);
 
-         if bAllAA and bAllAB and bAllBA and bAllBB // Person on all "A" and "B" in each room.
+         // Person on all "A" and "B" in each room.
+         if bAllAA AND bAllAB AND bAllBA AND bAllBB
          {
-            send(oRoomA,@DoSolution,#height=SOLUTIONHEIGHTA1);
-            send(Self,@DoSolution,#height=SOLUTIONHEIGHTB1);
+            Send(oRoomA,@DoSolution,#height=SOLUTIONHEIGHTA1);
+            Send(self,@DoSolution,#height=SOLUTIONHEIGHTB1);
+
             return;
          }
 
-         if bAllAA and bAllBA // Person on all "A" in each room.
+         // Person on all "A" in each room.
+         if bAllAA AND bAllBA
          {
-            send(oRoomA,@DoSolution,#height=SOLUTIONHEIGHTA3);
-            send(Self,@DoSolution,#height=SOLUTIONHEIGHTB3);
-            return;
-         }      
+            Send(oRoomA,@DoSolution,#height=SOLUTIONHEIGHTA3);
+            Send(self,@DoSolution,#height=SOLUTIONHEIGHTB3);
 
-         if bAllAB and bAllBB // Person on all "B" in each room.
-         {
-            send(oRoomA,@DoSolution,#height=SOLUTIONHEIGHTA2);
-            send(Self,@DoSolution,#height=SOLUTIONHEIGHTB2);
             return;
          }
-         
-         send(oRoomA,@DoSolution,#height=SOLUTIONHEIGHTA1);  // None of the above
-         send(Self,@DoSolution,#height=SOLUTIONHEIGHTB1);
+
+         // Person on all "B" in each room.
+         if bAllAB AND bAllBB
+         {
+            Send(oRoomA,@DoSolution,#height=SOLUTIONHEIGHTA2);
+            Send(self,@DoSolution,#height=SOLUTIONHEIGHTB2);
+            return;
+         }
+
+         // None of the above
+         Send(oRoomA,@DoSolution,#height=SOLUTIONHEIGHTA1);
+         Send(self,@DoSolution,#height=SOLUTIONHEIGHTB1);
       }
       return;
    }
@@ -264,81 +254,120 @@ messages:
    ResetPuzzle()
    {
       ptPuzzle = $;
-      Send(Send(SYS,@FindRoomByNum,#num=RID_ORC_PIT_A),@DoSolution,#Height=REGULARHEIGHTA,#Speed=50);
-      Send(Self,@DoSolution,#Height=REGULARHEIGHTB,#Speed=50);
+
+      Send(Send(SYS,@FindRoomByNum,#num=RID_ORC_PIT_A),@DoSolution,
+            #Height=REGULARHEIGHTA,#Speed=50);
+      Send(self,@DoSolution,#Height=REGULARHEIGHTB,#Speed=50);
       if Send(poSwitch,@GetState) = LEVER_UP
-         { Send(poSwitch,@SwitchLever); }
+      {
+         Send(poSwitch,@SwitchLever);
+      }
 
       return;
    }
 
-
    DoSolution(height=500,speed=50)
    {
-      send(self,@setsector,#sector=SOLUTIONSECTOR,#animation=ANIMATE_FLOOR_LIFT,
-         #height = height,#speed=speed);
+      Send(self,@setsector,#sector=SOLUTIONSECTOR,#animation=ANIMATE_FLOOR_LIFT,
+            #height = height,#speed=speed);
+
       return;
    }
 
    NumInChamber()
    {
       local i, each_obj, count, iRow, iCol;
+
       count = 0;
-      
+
       foreach i in plActive
       {
-         each_obj = send(self,@HolderExtractObject,#data=i);
-         iRow = send(each_obj,@getrow);
-         iCol = send(each_obj,@getcol);
-         if iRow > 43 and iCol > 24 and iRow < 53 and iCol < 34 and isclass(each_obj,&user)
-            { count = count + 1; }	 
+         each_obj = First(i);
+
+         iRow = Send(each_obj,@GetRow);
+         iCol = Send(each_obj,@GetCol);
+
+         if iRow > 43
+            AND iCol > 24
+            AND iRow < 53
+            AND iCol < 34
+            AND IsClass(each_obj,&User)
+         {
+            ++count;
+         }
       }
+
       return count;
    }
 
    AllAUsed()
    {
       local i, each_obj, iRow, iCol, bAOne, bATwo;
+
       bAOne = FALSE;
       bATwo = FALSE;
+
       foreach i in plActive
       {
-         each_obj = send(self,@HolderExtractObject,#data=i);
-         iRow = send(each_obj,@getrow);
-         iCol = send(each_obj,@getcol);
-         if iRow = 45 and iCol = 29 and isclass(each_obj,&user)
-            { bAOne = TRUE; }	 
-         if iRow = 51 and iCol = 29 and isclass(each_obj,&user)
-            { bATwo = TRUE; }	 
+         each_obj = First(i);
+
+         iRow = Send(each_obj,@GetRow);
+         iCol = Send(each_obj,@GetCol);
+
+         if iRow = 45
+            AND iCol = 29
+            AND IsClass(each_obj,&User)
+         {
+            bAOne = TRUE;
+         }
+
+         if iRow = 51
+            AND iCol = 29
+            AND IsClass(each_obj,&User)
+         {
+            bATwo = TRUE;
+         }
       }
+
       return (bAOne and bATwo);
    }
 
    AllBUsed()
    {
       local i, each_obj, count, iRow, iCol, bBOne, bBTwo, bBThree, bBFour;
+
       bBOne = FALSE;
       bBTwo = FALSE;
       bBThree = FALSE;
       bBFour = FALSE;
-      
+
       foreach i in plActive
       {
-         each_obj = send(self,@HolderExtractObject,#data=i);
-         iRow = send(each_obj,@getrow);
-         iCol = send(each_obj,@getcol);
-         if (iRow = 46 and iCol = 28) and isclass(each_obj,&user)
-            {bBOne = TRUE; } 
-         if (iRow = 46 and iCol = 30) and isclass(each_obj,&user)
-            {bBTwo = TRUE; }
-         if (iRow = 50 and iCol = 28) and isclass(each_obj,&user)
-            {bBTwo = TRUE; }
-         if (iRow = 50 and iCol = 30) and isclass(each_obj,&user)
-            {bBTwo = TRUE; }
-      }
-      return (bBOne and bBTwo and bBThree and bBFour);
-   }
+         each_obj = First(i);
 
+         iRow = Send(each_obj,@GetRow);
+         iCol = Send(each_obj,@GetCol);
+
+         if (iRow = 46 AND iCol = 28) AND IsClass(each_obj,&User)
+         {
+            bBOne = TRUE;
+         }
+         if (iRow = 46 AND iCol = 30) AND IsClass(each_obj,&User)
+         {
+            bBTwo = TRUE;
+         }
+         if (iRow = 50 AND iCol = 28) AND IsClass(each_obj,&User)
+         {
+            bBThree = TRUE;
+         }
+         if (iRow = 50 AND iCol = 30) AND IsClass(each_obj,&User)
+         {
+            bBFour = TRUE;
+         }
+      }
+
+      return (bBOne AND bBTwo AND bBThree AND bBFour);
+   }
 
 end
 ////////////////////////////////////////////////////////////////////////////////

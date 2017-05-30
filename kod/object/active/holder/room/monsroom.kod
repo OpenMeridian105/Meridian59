@@ -82,6 +82,35 @@ properties:
 
 messages:
 
+   Constructed()
+   {
+      Send(self,@ValidateMonsterGenPoints);
+
+      propagate;
+   }
+
+   ValidateMonsterGenPoints()
+   {
+      local i, iSectorID, each_obj, iRow, iCol;
+
+      foreach i in plGenerators
+      {
+         iRow = First(i);
+         iCol = Nth(i,2);
+
+         iSectorID = Send(self,@GetSectorIDAtLocation,#row=iRow,#col=iCol,
+                           #fine_row=FINENESS_HALF,#fine_col=FINENESS_HALF);
+         if (iSectorID = $
+            OR iSectorID < 0)
+         {
+            Debug("Invalid plGenerator coords ", iRow, iCol,
+                  " in room ",vrName, GetClass(self));
+         }
+      }
+
+      return;
+   }
+
    Delete()
    {
       if ptGen <> $
@@ -96,6 +125,8 @@ messages:
          ptOkay_To_Load = $;
          pbOkay_To_Load = TRUE;
       }
+
+      plGenerators = $;
 
       propagate;
    }

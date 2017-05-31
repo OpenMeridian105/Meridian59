@@ -139,6 +139,7 @@ Cons creates a a list node. The node is added to the beginning of the list.
 `First(list node)`
 
 First returns the first part of a list node.
+
 ```
    liClient_cmd = First(client_msg);
 
@@ -317,6 +318,7 @@ Takes a list and a class, returns the first instance in the list that matches
 the class. Used to replace list iterations where a single element was the
 target, and each element was being compared via IsClass. Returns $ if no
 element of the class was found.
+
 ```
    GetReagentBag()
    {
@@ -331,6 +333,7 @@ Used exclusively for iterating through a list that contains lists. Takes a
 list, an integer and an object, checks the nth position of each sub-list for
 the object and if found, returns the sub-list itself. Returns $ if no sub-list
 in the list contains the object at the nth position.
+
 ```
    GetEnchantmentState(what = $)
    "If enchanted by <what>, return enchantment state."
@@ -377,6 +380,7 @@ If the lists contain other lists, the contents are also compared.
 Creates a copy of the list and returns it. If necessary it will recurse on
 any lists held by the original list and copy those also. NOTE: does not create
 copies of objects or tables.
+
 ```
    plPlayerRestrict2 = ListCopy(Send(oQE,@GetQuestPlayerRestrictions2,
                                     #index=piQuestTemplateIndex));
@@ -478,19 +482,25 @@ had a single element, $ is returned.
 ```
 
 #### FindListElem
-`FindListElem(list, expr)`
+`FindListElem(list, element)`
+
+Searches the given list for the given element. Returns FALSE if the element is
+not found, or if the list is $. Returns $ if the given list is not a valid list
+or $. Returns the position of the element in the list if present.
 
 ```
-   RestrictToResourceList(res = $, res_list = $)
-   "If res is in res_list, return it.  Otherwise return the first element "
-   "of res_list."
+   AddOverlayObject(what = $)
+   "Adds <what> to plOverlays, so we can keep track of whom to "
+   "call about overlays"
    {
-      if FindListElem(res_list, res)
+      if (FindListElem(plOverlays,what))
       {
-         return res;
+         return;
       }
 
-      return Nth(res_list, 1);
+      plOverlays = Cons(what,plOverlays);
+
+      return;
    }
 ```
 
@@ -526,8 +536,14 @@ Return true if the object is a list node.
 Copies all objects in a list matching the given class into a new list. If the
 list_position given is 0, copies directly from the list. If list_position is 1,
 copies from the first element of each sublist contained in the original list.
-Has the potential to create a lot of extra list nodes, and is not currently
-used.
+Has the potential to create a lot of extra list nodes.
+
+```
+   // Takes a list of enchantments (structure [timer, spell, state, spellpower])
+   // and creates a new list containing just the 'spell' objects if they are
+   // of class &Debuff.
+   lDebuffs = GetAllListNodesByClass(Send(who,@GetEnchantmentList), 2, &Debuff);
+```
 
 ## Communications
 #### AddPacket
@@ -751,6 +767,10 @@ comparison is case insensitive.
 ```
 
 #### StringSubstitute
+`StringSubstitute(string, substr1, substr2)`
+
+Takes a string, replaces the first instance of substr1 with substr2.
+Returns TRUE if substitution occurred, FALSE if not.
 
 ```
    CleanseString(string = $)
@@ -778,6 +798,9 @@ comparison is case insensitive.
 ```
 
 #### StringLength
+`StringLength(string)`
+
+Returns the length of a given string.
 
 ```
    if StringLength(Nth(client_msg, 2)) > MAX_GUILD_NAME_LEN
@@ -789,6 +812,10 @@ comparison is case insensitive.
 ```
 
 #### StringConsistsOf
+`StringConsistsOf(string, characters)`
+
+Checks that the given string is comprised of only the given characters.
+Returns FALSE if any non-passed characters are found.
 
 ```
    if NOT StringConsistsOf(sName, 
@@ -803,7 +830,8 @@ comparison is case insensitive.
 `ParseString(string, separators, message)`
 
 Parse the given string into a set of substrings, separated by characters
-in the string separators.
+in the string separators. Calls the given message for each substring with
+parameter 'string' containing the temp string, which holds a substring.
 
 ```
    UserLookupNames(amount = $,string = $)
@@ -827,6 +855,7 @@ If passed `$` for var, SetString will create a new kod string to place the text
 into. This negates the need for a prior [CreateString](#createstring) call.
 SetString can accept a message for the second parameter in place of a string,
 in which case it will set the string to the name of that message.
+
 ```
    if (string = GetTempString())
    {
@@ -870,6 +899,7 @@ will be added.
 `ClearTempString()`
 
 Clears all data stored in the kod temp string.
+
 ```
    GetNecromancerRoster()
    {
@@ -891,6 +921,7 @@ Clears all data stored in the kod temp string.
 
 Get the ID of the kod temp string so it can be used in other C calls, e.g.
 for creating a kod string from the contents of the temp string.
+
 ```
    GetNecromancerRoster()
    {
@@ -928,6 +959,7 @@ Create a new, empty string. Note: this is somewhat deprecated as
 `SetResource(resource, string)`
 
 Changes the string value of a dynamic resource. Used for changing player names.
+
 ```
    MakeQ()
    {
@@ -942,6 +974,7 @@ Changes the string value of a dynamic resource. Used for changing player names.
 
 Returns TRUE if string is a valid string with data tag TAG_STRING, FALSE
 otherwise.
+
 ```
    if NOT IsString(message)
    {
@@ -953,6 +986,7 @@ otherwise.
 `StringToNumber(string)`
 
 Returns the int (TAG_INT) value of the given string.
+
 ```
    DMParseDiceRoll(string = $)
    "Called only by ParseString from DMSayDiceRoll, sets two properties with "
@@ -1072,6 +1106,9 @@ Returns TRUE if timer is a valid timer with data tag TAG_TIMER, FALSE otherwise.
 ```
 
 ## Room Operations
+Some room operations use sets of coordinates, these will always be of the form
+'row, col, fine row, fine col'.
+
 #### RoomData
 
 ```
@@ -1135,7 +1172,7 @@ Frees the memory associated with a room.
 ```
 
 #### LineOfSightBSP
-`LineOfSightBSP(roomdata, startrow, startcol, startfinerow, startfinecol, endrow, endcol, endfinerow, endfinecol)`
+`LineOfSightBSP(roomdata, start coords, end coords)`
 
 Checks if a source location has line of sight with a destination, uses the BSP tree.
 
@@ -1164,11 +1201,12 @@ Checks if a source location has line of sight with a destination, uses the BSP t
 ```
 
 #### LineOfSightView
-`LineOfSightView(kod_angle, row, col, finerow, finecol, end_row, end_col, end_finerow, end_finecol)`
+`LineOfSightView(kod_angle, object1 coords, object2 coords)`
 
 Checks if the object at the first set of coordinates facing the given kod angle
 (4096 degrees) can see the object at the second set of coordinates. Returns
 TRUE or FALSE.
+
 ```
 LineOfSightView(Send(self,@GetAngle), piRow, piCol, piFine_row,
    piFine_col, Send(oTarget,@GetRow), Send(oTarget,@GetCol),
@@ -1176,31 +1214,25 @@ LineOfSightView(Send(self,@GetAngle), piRow, piCol, piFine_row,
 ```
 
 #### CanMoveInRoomBSP
-`CanMoveInRoomBSP(roomdata, startrow, startcol, startfinerow, startfinecol, endrow, endcol, endfinerow, endfinecol)`
+`CanMoveInRoomBSP(roomdata, start coords, end coords, object, flags)`
 
-Checks if you can walk along a straight line from the source to the destination.
+Checks if the object can walk along a straight line from the start coords to
+the end coords. Flags parameter is used to specify whether the object can move
+outside the room's BSP tree.
 
 ```
-   CanMoveInRoom(obj1 = $, obj2 = $)
-   "Returns TRUE if obj1 can walk along a straight line to obj2"
+   bMoveOffBSP = FALSE;
+
+   if (IsClass(what,&Monster)
+      AND (Send(what,@GetBehavior) & AI_MOVE_WALKTHROUGH_WALLS))
    {
-      local start_row, start_col, start_finerow, start_finecol,
-            end_row, end_col, end_finerow, end_finecol, los;
+      bMoveOffBSP = TRUE;
+   }
 
-      // get coordinates of source (obj1) and target (obj2)
-      start_row = Send(obj1, @GetRow);
-      start_col = Send(obj1, @GetCol);
-      start_finerow = Send(obj1, @GetFineRow);
-      start_finecol = Send(obj1, @GetFineCol);
-      end_row = Send(obj2, @GetRow);
-      end_col = Send(obj2, @GetCol);
-      end_finerow = Send(obj2, @GetFineRow);
-      end_finecol = Send(obj2, @GetFineCol);
-
-      // call BSP CanMoveInRoom in C code  
-      return CanMoveInRoomBSP(prmRoom,
-         start_row, start_col, start_finerow, start_finecol,
-         end_row, end_col, end_finerow, end_finecol);
+   if NOT CanMoveInRoomBSP(prmRoom,iRow,iCol,iFineRow,iFineCol,new_row,
+               new_col,new_finerow,new_finecol,what,bMoveOffBSP)
+   {
+      return FALSE;
    }
 ```
 
@@ -1237,13 +1269,14 @@ affect line of sight.
 ```
 
 #### GetLocationInfoBSP
-`GetLocationInfoBSP(room_data, query_flags, row, col, finerow, finecol, *return_flags, *floor_height, *floor_depth_height, *ceiling_height, *sector_id)`
+`GetLocationInfoBSP(room_data, query_flags, location, *return_flags, *floor_height, *floor_depth_height, *ceiling_height, *sector_id)`
 
 One of the most complicated C calls - used for getting information about the
 given location (row, col, finerow, finecol) from the data stored for the room.
 The query_flags parameter specifies which data is being requested, and the last
 five parameters are local variables (passed by ID) in which to place the query
 results. Returns TRUE if the query was successful, FALSE if it was not.
+
 ```
    GetHeightFloorAtObjectBSP()
    {
@@ -1288,6 +1321,7 @@ correctly disallow movement for other objects.
 
 Called whenever an object that can block movement moves to a new location, to
 update the roomdata's position stored for that object.
+
 ```
    if (Send(what,@GetMoveOnType) = MOVEON_NO)
    {
@@ -1301,6 +1335,7 @@ update the roomdata's position stored for that object.
 `BlockerRemoveBSP(room_data, object)`
 
 Called whenever an object that blocks movement leaves a room.
+
 ```
    LeaveHold(what = $)
    {
@@ -1322,6 +1357,7 @@ Used for finding a free, valid space to place a monster or any other object.
 Max_tries acts as a safety to avoid running an infinite loop, and if the call
 is successful the coordinates to use are placed into the local vars row, col,
 finerow and finecol.
+
 ```
    // query random point from C (into local vars)
    // this point is guaranteed to have the following properties:
@@ -1338,13 +1374,14 @@ finerow and finecol.
 ```
 
 #### GetStepTowardsBSP
-`GetStepTowardsBSP(room_data, row, col, finerow, finecol, *end_row, *end_col, *end_finerow, *end_finecol, flags, object)`
+`GetStepTowardsBSP(room_data, coords, *end_row, *end_col, *end_finerow, *end_finecol, flags, object)`
 
 Used for calculating the next step an object can take towards the destination
 given by the first set of coordinates. If unsuccessful, this call will return
 `$`, otherwise it will return flags for movement (which way the object is
 moving). If successful, it will also place the valid destination coordinates
 into the second set of coordinate variables.
+
 ```
    // query where to step next
    // note: these need some persistent info across

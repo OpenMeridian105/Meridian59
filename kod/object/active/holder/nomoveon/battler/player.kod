@@ -3322,7 +3322,7 @@ messages:
                {
                   // We probably have an integer when we shouldn't have this
                   // here, and we should log it for debugging.
-                  // $ values handed when the player logs in.
+                  // $ values handled when the player logs in.
                   iTime = First(i);
                   Debug(self, " player ",Send(self,@GetTrueName),
                      " called FreezeAllEnchantments with invalid timer for ",
@@ -8558,6 +8558,7 @@ messages:
       if victim = poKill_target
       {
          if what = self
+            OR what = poMercenary // Merc kills count as our own.
          {
             Send(self,@AdvancementCheck,#what=victim,#killing_blow=TRUE);
          }
@@ -8668,7 +8669,7 @@ messages:
                // either take damage or dodge to gain bonus XP.
                foreach i in plUsing
                {
-                  iItemBonus = iItemBonus + Send(i,@GetItemXPBonus);
+                  iItemBonus += Send(i,@GetItemXPBonus);
                }
             }
             else

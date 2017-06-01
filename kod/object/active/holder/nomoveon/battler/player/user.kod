@@ -967,10 +967,23 @@ messages:
 
    UserLogoff()
    {
-      local i, j;
+      local i;
 
       piTimeLoggedIn = Send(self,@GetTimeLoggedIn);
       Send(self,@BreakTrance);
+
+      // Check for phase out
+      foreach i in plEnchantments
+      {
+         if IsClass(Nth(i,2),&Phase)
+         {
+            Send(self,@FreezePhaseTimer);
+            Send(self,@RemoveEnchantment,#what=Nth(i,2),#report=FALSE);
+
+            break;
+         }
+      }
+
       pbLogged_on = FALSE;
 
       Send(self,@CancelIfOffer);
@@ -1042,18 +1055,6 @@ messages:
       if poEvilTwin <> $
       {
          Send(poEvilTwin,@SomethingLeft,#what=self);
-      }
-
-      // Check for phase out
-      foreach j in plEnchantments
-      {
-         if IsClass(Nth(j,2),&Phase)
-         {
-            Send(self,@FreezePhaseTimer);
-            Send(self,@RemoveEnchantment,#what=Nth(j,2),#report=FALSE);
-
-            break;
-         }
       }
 
       // Have to put here so room enchantments are removed first.

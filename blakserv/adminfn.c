@@ -4405,7 +4405,7 @@ void AdminSendInt(int session_id,admin_parm_type parms[],
 void AdminSendList(int session_id, admin_parm_type parms[],
                   int num_blak_parm, parm_node blak_parm[])
 {
-   int list_id, message_id;
+   int list_id, message_id, temp_list_id;
    const char *message_name;
    list_node *l;
 
@@ -4433,8 +4433,14 @@ void AdminSendList(int session_id, admin_parm_type parms[],
    if (l->first.v.tag == TAG_OBJECT)
       SendTopLevelBlakodMessage(l->first.v.data, message_id, num_blak_parm, blak_parm);
 
+   // Reaquire list node in case list node realloc due to SendBlakodMessage
+   // clobbered variable. list_id already confirmed valid if we are here.
+   l = GetListNodeByID(list_id);
+
    while (l && l->rest.v.tag != TAG_NIL)
    {
+      // Get this list node to replace after call to SendTopLevelBlakodMessage.
+      temp_list_id = l->rest.v.data;
       l = GetListNodeByID(l->rest.v.data);
       if (!l)
       {
@@ -4443,6 +4449,7 @@ void AdminSendList(int session_id, admin_parm_type parms[],
       }
       if (l->first.v.tag == TAG_OBJECT)
          SendTopLevelBlakodMessage(l->first.v.data, message_id, num_blak_parm, blak_parm);
+      l = GetListNodeByID(temp_list_id);
    }
 
    aprintf("AdminSendList completed in %.3f microseconds.\n",

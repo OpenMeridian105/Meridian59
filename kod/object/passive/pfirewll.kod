@@ -51,14 +51,13 @@ properties:
 
 messages:
 
-   Constructor(MaxDamage=0,Duration=75,Illusionary=TRUE,Caster=$)
+   Constructor(MaxDamage=0,Duration=1000,Illusionary=TRUE,Caster=$)
    {
       local iDuration;
 
       viIllusion = Illusionary;
-      iDuration = Random(Duration-20,Duration+20);
-      iDuration = iDuration * 1000;
-      iDuration = bound(iDuration,30000,200000);
+      iDuration = Random(Duration - 2000,Duration + 2000);
+      iDuration = Bound(iDuration,30000,200000);
 
       piMaxDamage = MaxDamage;
       ptExpire = CreateTimer(self,@Expire,iDuration);
@@ -85,7 +84,7 @@ messages:
       }
       else
       {
-         Addpacket(4,PassiveWallofFire_Cold);
+         AddPacket(4,PassiveWallofFire_Cold);
       }
 
       return;
@@ -95,7 +94,7 @@ messages:
    {
       if Send(poOwner,@IsArena)
          AND NOT Send(poOwner,@InPlay,#what=self,#bNonPlayerOkay=TRUE)
-      {	 
+      {
          Post(self,@Delete);
       }
 
@@ -139,18 +138,15 @@ messages:
 
    SendAnimation()
    {
-      AddPacket(1,ANIMATE_CYCLE, 4,random(100,140), 2,1, 2,5);
+      AddPacket(1,ANIMATE_CYCLE, 4,Random(100,140), 2,1, 2,5);
 
       return;
    }
 
    SendLightingInformation()
    {
-      AddPacket(2,(LIGHT_FLAG_ON | LIGHT_FLAG_DYNAMIC));
       // 0 out of 255 intensity of light
-      AddPacket(1,0);
-      // Lightning color
-      AddPacket(2,LIGHT_RED);
+      AddPacket(2,(LIGHT_FLAG_ON | LIGHT_FLAG_DYNAMIC), 1,0, 2,LIGHT_RED);
 
       return;
    }

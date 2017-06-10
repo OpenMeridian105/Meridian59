@@ -57,8 +57,8 @@ properties:
    plExcludedMonsters = $
 
 messages:
-   
-   Constructor(caster = $, duration = 75, MaxHoldTime = 0)
+
+   Constructor(MaxHoldTime = 0)
    {
       piMaxHoldTime = MaxHoldTime;
 
@@ -70,7 +70,7 @@ messages:
                              &DarkAngel, &Kriipa, &XeoAir, &XeoFire,
                              &Revenant, &Elemental
                            ];
-     
+
       propagate;
    }
 
@@ -78,20 +78,15 @@ messages:
    {
       local iDuration;
 
-      iDuration = Random(duration-20,duration+20);
-      iDuration = iDuration * 1000;
-      iDuration = bound(iDuration,20000,150000);
+      iDuration = Random(duration - 2000,duration + 2000);
+      iDuration = Bound(iDuration,20000,150000);
 
       return iDuration;
    }
 
-   SomethingMoved(what = $,new_row = $,new_col = $)
+   SomethingMoved(what = $)
    {
-      local cWhatClass;
-
-      cWhatClass = GetClass(what);
-
-      if FindListElem(plExcludedMonsters,cWhatClass) <> 0
+      if FindListElem(plExcludedMonsters,GetClass(what)) <> 0
       {
          return;
       }

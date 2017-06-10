@@ -40,10 +40,10 @@ properties:
 
 messages:
 
-   Constructor(Caster=$,duration=75)
+   Constructor(Caster=$,duration=1000)
    {
      poCaster = Caster;
-     vbSummoned = isClass(Caster,&User);
+     vbSummoned = IsClass(Caster,&User);
      ptExpire = CreateTimer(self,@Expire,Send(self,@GetDuration,#duration=duration));
 
      propagate;
@@ -63,19 +63,19 @@ messages:
       local iDuration;
 
       iDuration = Random(duration*4/5,duration*6/5);
-      iDuration = iDuration * 1000;
-      iDuration = bound(iDuration,1000,200000);
+      iDuration = Bound(iDuration,1000,200000);
 
       return iDuration;
    }
 
    ArenaCheck()
    {
-      if send(poOwner,@IsArena)
-      and not send(poOwner,@InPlay,#what=self,#bNonPlayerOkay = TRUE)
-      {	 
-	      post(self,@Delete);
+      if Send(poOwner,@IsArena)
+         AND NOT Send(poOwner,@InPlay,#what=self,#bNonPlayerOkay = TRUE)
+      {
+         Post(self,@Delete);
       }
+
       return;
    }
 
@@ -83,6 +83,7 @@ messages:
    {
       ptExpire = $;
       Send(self,@Delete);
+
       return;
    }
 
@@ -93,6 +94,7 @@ messages:
          DeleteTimer(ptExpire);
          ptExpire = $;
       }
+
       propagate;
    }
 
@@ -103,20 +105,21 @@ messages:
 
    NewOwner(what = $)
    {
-      if IsClass(what,&GuildHall) and
-         (send(what,@InFoyer,#who=poCaster) <> send(what,@InFoyer,#who=self))
+      if IsClass(what,&GuildHall)
+         AND (Send(what,@InFoyer,#who=poCaster) <> Send(what,@InFoyer,#who=self))
       {
-         post(self,@delete);
+         Post(self,@delete);
       }
+
       propagate;
    }
 
    SendAnimation()
    {
-      AddPacket(1, ANIMATE_CYCLE, 4, random(280,300), 2, 1, 2, 5);
+      AddPacket(1, ANIMATE_CYCLE, 4, Random(280,300), 2, 1, 2, 5);
+
       return;
    }
-
 
 end
 ////////////////////////////////////////////////////////////////////////////////

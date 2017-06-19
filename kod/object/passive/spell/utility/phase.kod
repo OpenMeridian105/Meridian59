@@ -160,38 +160,62 @@ messages:
    }
 
    AdjustVisualEffectBasedOnTimeRemaining(who = $)
+   "Returns the amount of time (in milliseconds) until the message should "
+   "be called again to change xlat or send a message.  This should all be in "
+   "the Player class, not here."
    {
-      local iTimeLeft, iBrightnessLevel;
+      local iTimeLeft, iBrightnessLevel, iTimer;
 
       iTimeLeft = Send(who,@GetRemainingPhaseTime) / 1000;
       iBrightnessLevel = 0;
 
-      if iTimeLeft < 10
+      if iTimeLeft <= 10
       {
+         iTimer = 2000;
          iBrightnessLevel = 5;
          Send(who,@MsgSendUser,#message_rsc=phase_time_gone);
       }
-      else if iTimeLeft < 25
+      else if iTimeLeft <= 25
       {
+         // Every 5 seconds, unless close to the next interval.
+         if (iTimeLeft < 14)
+         {
+            iTimer = (iTimeLeft - 10) * 1000;
+         }
+         else
+         {
+            iTimer = 5000;
+         }
          iBrightnessLevel = 4;
          Send(who,@MsgSendUser,#message_rsc=phase_time_low);
       }
-      else if iTimeLeft < 35
+      else if iTimeLeft <= 35
       {
+         // Set timer to go off at 25.
+         iTimer = (iTimeLeft - 25) * 1000;
          iBrightnessLevel = 3;
       }
-      else if iTimeLeft < 45
+      else if iTimeLeft <= 45
       {
+         // Set timer to go off at 35.
+         iTimer = (iTimeLeft - 35) * 1000;
          iBrightnessLevel = 2;
       }
-      else if iTimeLeft < 60
+      else if iTimeLeft <= 60
       {
+         // Set timer to go off at 45.
+         iTimer = (iTimeLeft - 45) * 1000;
          iBrightnessLevel = 1;
+      }
+      else
+      {
+         // Set timer to go off at 60.
+         iTimer = (iTimeLeft - 60) * 1000;
       }
 
       Send(who,@EffectSendUserXlat,#xlat=(PHASE_OUT_XLAT + iBrightnessLevel));
 
-      return;
+      return iTimer;
    }
 
    DoSpellEffects(who=$,lTargets=$)
@@ -204,7 +228,6 @@ messages:
       }
       else
       {
-         Send(self,@AdjustVisualEffectBasedOnTimeRemaining,#who=who);
          Send(who,@BreakTrance,#event=EVENT_STEER);
          Send(who,@FreezeAllEnchantments);
          Send(who,@SetPlayerFlag,#flag=PFLAG_PHASED,#value=TRUE);

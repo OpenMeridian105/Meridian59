@@ -54,23 +54,13 @@ classvars:
 properties:
 
    piMaxHoldTime = 0
-   plExcludedMonsters = $
 
 messages:
-   
-   Constructor(caster = $, duration = 75, MaxHoldTime = 0)
+
+   Constructor(MaxHoldTime = 0)
    {
       piMaxHoldTime = MaxHoldTime;
 
-      // A list of monsters not affected by webbing
-      // Includes: Spiders, Bosses, Fliers, Xeos, and Revenants
-      plExcludedMonsters = [ &Spider, &SpiderBaby, &SpiderQueen, &DeathSpider,
-                             &Lich, &LupoggKing, &Yeti, &Ghost,
-                             &DragonFly, &DragonFlyQueen, &EvilFairy, &Fairy,
-                             &DarkAngel, &Kriipa, &XeoAir, &XeoFire,
-                             &Revenant, &Elemental
-                           ];
-     
       propagate;
    }
 
@@ -78,20 +68,16 @@ messages:
    {
       local iDuration;
 
-      iDuration = Random(duration-20,duration+20);
-      iDuration = iDuration * 1000;
-      iDuration = bound(iDuration,20000,150000);
+      iDuration = Random(duration - 2000,duration + 2000);
+      iDuration = Bound(iDuration,20000,150000);
 
       return iDuration;
    }
 
-   SomethingMoved(what = $,new_row = $,new_col = $)
+   SomethingMoved(what = $)
    {
-      local cWhatClass;
-
-      cWhatClass = GetClass(what);
-
-      if FindListElem(plExcludedMonsters,cWhatClass) <> 0
+      // Mobs that fly or are too big to be webbed will return FALSE.
+      if (NOT Send(what,@CanBeWebbed))
       {
          return;
       }
@@ -116,7 +102,7 @@ messages:
       if piMaxHoldTime > 0
       {
          iHoldTime = Random(piMaxHoldTime - 2,piMaxHoldTime);
-         iHoldTime = bound(iHoldTime,1,$);
+         iHoldTime = Bound(iHoldTime,1,$);
 
          if IsClass(what,&Monster)
          {
@@ -147,24 +133,17 @@ messages:
             {
                rMessage = web_stick1;
             }
+            else if iHoldTime < 3
+            {
+               rMessage = web_stick2;
+            }
+            else if iHoldTime < 4
+            {
+               rMessage = web_stick3;
+            }
             else
             {
-
-               if iHoldTime < 3
-               {
-                  rMessage = web_stick2;
-               }
-               else
-               {
-                  if iHoldTime < 4
-                  {
-                     rMessage = web_stick3;
-                  }
-                  else
-                  {
-                     rMessage = web_stick5;
-                  }
-               }
+               rMessage = web_stick5;
             }
          }
 
@@ -179,7 +158,6 @@ messages:
 
       propagate;
    }
-
 
 end
 ////////////////////////////////////////////////////////////////////////////////

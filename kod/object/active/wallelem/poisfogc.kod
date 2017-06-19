@@ -59,8 +59,8 @@ properties:
    piOdds = 0
 
 messages:
-   
-   Constructor(Caster = $, Duration = 75, Odds = 0)
+
+   Constructor(Odds = 0)
    {
       piOdds = Odds;
 
@@ -69,23 +69,23 @@ messages:
 
    DoEffect(what = $)
    {
-      local bPoison, oSpell;
-      
+      local oSpell;
+
       if Random(1,100) < piOdds
       {
-     
          oSpell = Send(SYS,@FindSpellByNum,#num=SID_POISON);
 
-         if NOT Send(what,@HasOverTimeEffect,#what=oSpell) or Random(1,POISON_CHANCE) = 1
+         if NOT Send(what,@HasOverTimeEffect,#what=oSpell) OR Random(1,POISON_CHANCE) = 1
          {
-            if isClass(what,&User)
+            if IsClass(what,&User)
             {
                Send(what,@MsgSendUser,#message_rsc=PoisonFogCloud_poisoned);
                Send(what,@WaveSendUser,#wave_rsc=PoisonFogCloud_poison_snd);
-            }  
+            }
 
-            Send(oSpell,@StartPoison,#source=poCaster,#who=what,#healthloss=POISON_HEALTHLOSS,
-                 #vigorloss=POISON_VIGORLOSS,#duration=POISON_DURATION);
+            Send(oSpell,@StartPoison,#source=poCaster,#who=what,
+                  #healthloss=POISON_HEALTHLOSS,#vigorloss=POISON_VIGORLOSS,
+                  #duration=POISON_DURATION);
             Send(poOwner,@SomethingAttacked,#what=poCaster,#victim=what,
                   #use_weapon=self,#stroke_obj=self);
             if IsClass(poCaster,&Player)
@@ -98,7 +98,7 @@ messages:
       {
          Send(what,@MsgSendUser,#message_rsc=PoisonFog_unaffected);
       }
-      
+
       propagate;
    }
 
@@ -108,7 +108,6 @@ messages:
 
       return;
    }
-
 
 end
 ////////////////////////////////////////////////////////////////////////////////

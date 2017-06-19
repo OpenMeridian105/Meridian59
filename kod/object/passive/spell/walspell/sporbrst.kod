@@ -97,6 +97,8 @@ messages:
 
       oRoom = Send(who,@GetOwner);
       iRadius = Bound(iSpellpower/30,1,3);
+
+      // Returns duration in milliseconds.
       iDuration = Send(self,@GetDuration,#iSpellpower=iSpellpower);
 
       iRow = Send(oTarget,@GetRow);
@@ -253,7 +255,7 @@ messages:
          Send(oRoom,@NewHold,#what=oPassiveFog,
               #new_row=iRow-3,#new_col=iCol-1,
               #fine_row=FINENESS,#fine_col=FINENESS);
-      }         
+      }
 
       propagate;
    }
@@ -263,12 +265,10 @@ messages:
       local iDuration;
 
       // Duration, in seconds
-      iDuration = iSpellPower * 2; 
-      iDuration = bound(iDuration,30,200);
-      // Convert to ms.
-      iDuration = iDuration * 1000;
+      iDuration = Bound(iSpellPower * 2,30,200);
 
-      return iDuration;
+      // Convert to ms.
+      return iDuration * 1000;
    }
 
    ModifyMonsterBehavior(mob = $)
@@ -276,7 +276,7 @@ messages:
       Send(mob,@SetBehaviorFlag,#flag=AI_NOMOVE,#value=TRUE);
       Send(mob,@SetBehaviorFlag,#flag=AI_NOFIGHT,#value=TRUE);
 
-      return;      
+      return;
    }
 
    GetScrollClass()
@@ -284,7 +284,5 @@ messages:
       return &SporeBurstScroll;
    }
 
-
 end
 ////////////////////////////////////////////////////////////////////////////////
-

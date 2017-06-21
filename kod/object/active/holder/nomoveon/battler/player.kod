@@ -14718,47 +14718,40 @@ messages:
          }
       }
 
-      if ptPhaseVisualEffectTimer = $
-      {
-         ptPhaseVisualEffectTimer = CreateTimer(self,@PhaseVisualEffectTimer,2000);
-      }
+      Send(self,@PhaseVisualEffectTimer);
 
       // Add phase time to piTimeAttackedPlayer if it is currently
       // preventing the player from casting escape spells.
-      if piTimeAttackedPlayer
-            + Send(SETTINGS_OBJECT,@TeleportAttackDelaySec)
+      if piTimeAttackedPlayer + Send(SETTINGS_OBJECT,@TeleportAttackDelaySec)
             > GetTime()
       {
-         piTimeAttackedPlayer = piTimeAttackedPlayer
-                                 + (Send(self,@GetRemainingPhaseTime) / 1000);
+         piTimeAttackedPlayer += (Send(self,@GetRemainingPhaseTime) / 1000);
       }
 
       return;
    }
-   
+
    PhaseVisualEffectTimer(timer = $)
    {
-      ptPhaseVisualEffectTimer = $;
-      Send(self,@PhaseVisualEffect);
+      local iTimeLeft;
 
-      return;
-   }
-
-   PhaseVisualEffect()
-   {
       if ptPhaseVisualEffectTimer <> $
       {
-         DeleteTimer(ptPhaseVisualEffectTimer);
+         if ptPhaseVisualEffectTimer <> timer
+         {
+            DeleteTimer(ptPhaseVisualEffectTimer);
+         }
          ptPhaseVisualEffectTimer = $;
       }
 
-      Send(Send(SYS,@FindSpellByNum,#num=SID_PHASE),
-            @AdjustVisualEffectBasedOnTimeRemaining,#who=self);
+      iTimeLeft = Send(Send(SYS,@FindSpellByNum,#num=SID_PHASE),
+                        @AdjustVisualEffectBasedOnTimeRemaining,#who=self);
 
       if ptPhaseVisualEffectTimer = $
          AND (piFlags & PFLAG_PHASED)
+         AND iTimeLeft > 0
       {
-         ptPhaseVisualEffectTimer = CreateTimer(self,@PhaseVisualEffectTimer,2000);
+         ptPhaseVisualEffectTimer = CreateTimer(self,@PhaseVisualEffectTimer,iTimeLeft);
       }
 
       return;
@@ -14781,12 +14774,10 @@ messages:
 
       // If we added phase time to piTimeAttackedPlayer before,
       // remove what is remaining (restore to original time).
-      if piTimeAttackedPlayer
-            + Send(SETTINGS_OBJECT,@TeleportAttackDelaySec)
+      if piTimeAttackedPlayer + Send(SETTINGS_OBJECT,@TeleportAttackDelaySec)
             > GetTime()
       {
-         piTimeAttackedPlayer = piTimeAttackedPlayer
-                                 - (Send(self,@GetRemainingPhaseTime) / 1000);
+         piTimeAttackedPlayer -= (Send(self,@GetRemainingPhaseTime) / 1000);
       }
 
       // Possibly start phase time regen.

@@ -972,18 +972,6 @@ messages:
       piTimeLoggedIn = Send(self,@GetTimeLoggedIn);
       Send(self,@BreakTrance);
 
-      // Check for phase out
-      foreach i in plEnchantments
-      {
-         if IsClass(Nth(i,2),&Phase)
-         {
-            Send(self,@FreezePhaseTimer);
-            Send(self,@RemoveEnchantment,#what=Nth(i,2),#report=FALSE);
-
-            break;
-         }
-      }
-
       pbLogged_on = FALSE;
 
       Send(self,@CancelIfOffer);
@@ -1009,8 +997,7 @@ messages:
                + Send(SETTINGS_OBJECT,@TeleportAttackDelaySec)
                > GetTime()
          {
-            piTimeAttackedPlayer = piTimeAttackedPlayer
-                                   + (Send(self,@GetRemainingPhaseTime) / 1000);
+            piTimeAttackedPlayer += (Send(self,@GetRemainingPhaseTime) / 1000);
          }
       }
       else
@@ -1055,6 +1042,18 @@ messages:
       if poEvilTwin <> $
       {
          Send(poEvilTwin,@SomethingLeft,#what=self);
+      }
+
+      // Check for phase out
+      foreach i in plEnchantments
+      {
+         if IsClass(Nth(i,2),&Phase)
+         {
+            Send(self,@FreezePhaseTimer);
+            Send(self,@RemoveEnchantment,#what=Nth(i,2),#report=FALSE);
+
+            break;
+         }
       }
 
       // Have to put here so room enchantments are removed first.

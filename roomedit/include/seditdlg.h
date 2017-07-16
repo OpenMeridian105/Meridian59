@@ -123,6 +123,7 @@ protected:
 	TListBox *pSectorList;
 	TEdit *pLightEdit;
 	TCheckBox *pFlickerCheck;
+	TCheckBox *pNoMoveCheck;
 	TEdit *pTextureXEdit;
 	TEdit *pTextureYEdit;
 	TListBox *pTextureList;

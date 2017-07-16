@@ -153,6 +153,7 @@ DEFINE_RESPONSE_TABLE1(TSectorEditDialog, TDialog)
 	EV_BN_CLICKED(IDC_SCROLLMEDIUM, ScrollClicked),
 	EV_BN_CLICKED(IDC_SCROLLFAST, ScrollClicked),
 	EV_BN_CLICKED(IDC_FLICKER, ScrollClicked),
+	EV_BN_CLICKED(IDC_NOMOVE, ScrollClicked),
 //	EV_LBN_SELCHANGE(IDC_SECTOR_LIST, SectorSelChange),
 	EV_LBN_SELCHANGE(IDC_FTEXTURE_LIST, TextureSelChange),
 	EV_LBN_DBLCLK(IDC_FTEXTURE_LIST, TextureDblclick),
@@ -221,6 +222,7 @@ TSectorEditDialog::TSectorEditDialog (TWindow* parent, SelPtr sel,
 	pScrollMediumRadio = newTRadioButton(this, IDC_SCROLLMEDIUM, 0);
 	pScrollFastRadio   = newTRadioButton(this, IDC_SCROLLFAST, 0);
 	pFlickerCheck      = newTCheckBox(this, IDC_FLICKER, 0);
+	pNoMoveCheck       = newTCheckBox(this, IDC_NOMOVE, 0);
 	pSlopeFloorVertex[0]  = newTEdit(this, IDC_FLOORV1, 6);
 	pSlopeFloorVertex[1]  = newTEdit(this, IDC_FLOORV2, 6);
 	pSlopeFloorVertex[2]  = newTEdit(this, IDC_FLOORV3, 6);
@@ -351,7 +353,10 @@ void TSectorEditDialog::SetSector()
 
    if (CurSector.blak_flags & SF_FLICKER)
       pFlickerCheck->SetCheck(BF_CHECKED);
-   
+
+   if (CurSector.blak_flags & SF_NOMOVE)
+      pNoMoveCheck->SetCheck(BF_CHECKED);
+
    wsprintf (str, "%d", CurSector.xoffset);
    pTextureXEdit->SetText (str);
 
@@ -498,6 +503,9 @@ BOOL TSectorEditDialog::GetSector()
 
    if (pFlickerCheck->GetCheck() == BF_CHECKED)
       flags |= SF_FLICKER;
+
+   if (pNoMoveCheck->GetCheck() == BF_CHECKED)
+      flags |= SF_NOMOVE;
 
    pTextureXEdit->GetText (str, 4);
    if ( CurSector.xoffset != atoi(str) )	ConfirmData.pTextureOffsetCheck = TRUE;

@@ -91,6 +91,8 @@
 #define SF_FLICKER        0x00000200      // Flicker light in sector
 #define SF_SLOPED_FLOOR   0x00000400      // Sector has sloped floor
 #define SF_SLOPED_CEILING 0x00000800      // Sector has sloped ceiling
+// 0x00001000 used by clients for animation/rendering
+#define SF_NOMOVE         0x00002000      // Sector can't be moved on by mobs or players
 
 #define ABS(x) ((x) > 0 ? (x) : (-(x)))
 #define SGN(x) ((x) == 0 ? 0 : ((x) > 0 ? 1 : -1))

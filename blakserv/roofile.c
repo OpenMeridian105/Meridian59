@@ -56,6 +56,7 @@
 #define SF_MASK_DEPTH      0x00000003      // Gets depth type from flags
 #define SF_SLOPED_FLOOR    0x00000400      // Sector has sloped floor
 #define SF_SLOPED_CEILING  0x00000800      // Sector has sloped ceiling
+#define SF_NOMOVE          0x00002000      // Sector can't be moved on by mobs or players
 #define WF_TRANSPARENT     0x00000002      // normal wall has some transparency
 #define WF_PASSABLE        0x00000004      // wall can be walked through
 #define WF_NOLOOKTHROUGH   0x00000020      // bitmap can't be seen through even though it's transparent
@@ -950,7 +951,8 @@ bool BSPGetLocationInfo(room_type* Room, V2* P, unsigned int QueryFlags, unsigne
 /*********************************************************************************************/
 /* BSPGetRandomPoint: Tries up to 'MaxAttempts' times to create a randompoint in 'Room'.
 /*                    If return is true, P's coordinates are guaranteed to be:
-/*                    (a) inside a sector (b) inside thingsbox (c) outside any obj blockradius
+/*                    (a) inside a sector               (b) inside thingsbox 
+/*                    (c) outside any obj blockradius   (d) not on sector marked SF_NOMOVE
 /*********************************************************************************************/
 bool BSPGetRandomPoint(room_type* Room, int MaxAttempts, V2* P)
 {
@@ -977,9 +979,9 @@ bool BSPGetRandomPoint(room_type* Room, int MaxAttempts, V2* P)
       // note: locations quite close to a wall pass this check!
       if (!BSPGetHeight(Room, P, &heightF, &heightFWD, &heightC, &leaf))
          continue;
-		
-      // 2. must also have floor texture set
-      if (leaf && leaf->Sector->FloorTexture == 0)
+
+      // 2. must also have floor texture set and not marked as SF_NOMOVE, otherwise roll again
+      if (leaf && (leaf->Sector->FloorTexture == 0 || ((leaf->Sector->Flags & SF_NOMOVE) == SF_NOMOVE)))
          continue;
 
       // 3. check for being too close to a blocker

@@ -943,6 +943,9 @@ bool BSPGetLocationInfo(room_type* Room, V2* P, unsigned int QueryFlags, unsigne
 
       if ((*Leaf)->Sector->CeilingTexture > 0)
          *ReturnFlags |= LIR_SECTOR_HASCTEX;
+
+      if (((*Leaf)->Sector->Flags & SF_NOMOVE) == SF_NOMOVE)
+         *ReturnFlags |= LIR_SECTOR_NOMOVE;
    }
 
    return true;

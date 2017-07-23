@@ -91,7 +91,8 @@ CCOMMONFLAGS = /nologo /GR- /EHsc- /MP /fp:precise \
 # /ZI           Debug info generation (edit and continue)
 # /DBLAKDEBUG   Tell blakserv to run in debug mode
 # /DNODPRINTFS  Used to surpress debug output and few others in release client
-CNORMALFLAGS  = $(CCOMMONFLAGS) /MT /Ox /Ob2 /Oi /Ot /Oy /GL /GF /DNODPRINTFS
+# /DNDEBUG      Visual Studio default macro for 'Release' builds
+CNORMALFLAGS  = $(CCOMMONFLAGS) /MT /Ox /Ob2 /Oi /Ot /Oy /GL /GF /DNODPRINTFS /DNDEBUG
 CDEBUGFLAGS   = $(CCOMMONFLAGS) /MT /ZI /DBLAKDEBUG
 
 # -----------------------------------------------------------------

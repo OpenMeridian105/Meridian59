@@ -218,7 +218,11 @@ void *ReallocCHK(int malloc_id, void *p,size_t size, size_t old_size )
 
 	void *tmp ; 
 
-	tmp = MallocCHK(size,__FILE__,__LINE__) ;
+#ifndef NDEBUG
+   tmp = MallocCHK(size, __FILE__, __LINE__);
+#else
+   tmp = MallocCHK(size);
+#endif
 
 	if( old_size < size )
 	{

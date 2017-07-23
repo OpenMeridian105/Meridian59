@@ -22,6 +22,14 @@
 
 void MainServer()
 {
+   HANDLE hProcess = GetCurrentProcess();
+   SetPriorityClass(hProcess, HIGH_PRIORITY_CLASS);
+#if defined(DISABLE_HT)
+   // don't allow to run on HT cores
+   // 8cores + 8ht --> 0x5555 = 101010101010101
+   SetProcessAffinityMask(hProcess, 0x5555);
+#endif
+
 	InitInterfaceLocks(); 
 	
 	InitInterface(); /* starts a thread with the window */

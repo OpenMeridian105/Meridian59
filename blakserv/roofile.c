@@ -102,6 +102,10 @@ __forceinline bool BSPCanMoveInRoomTreeInternal(const SectorNode* SectorS, const
    if (!((SideS->Flags & WF_PASSABLE) == WF_PASSABLE))
       return false;
 
+   // endsector must not be marked SF_NOMOVE
+   if ((SectorE->Flags & SF_NOMOVE) == SF_NOMOVE)
+      return false;
+
    // get floor heights
    const float hFloorS = BSPGetSectorHeightFloorWithDepth(SectorS, Q);
    const float hFloorE = BSPGetSectorHeightFloorWithDepth(SectorE, Q);

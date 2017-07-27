@@ -2659,7 +2659,9 @@ int C_CanMoveInRoomBSP(int object_id, local_var_type *local_vars,
 	e.Y = GRIDCOORDTOROO(row_dest.v.data, finerow_dest.v.data);
 
 	Wall* blockWall;
-	ret_val.v.data = BSPCanMoveInRoom(&r->data, &s, &e, objectid.v.data, (move_outside_bsp.v.data != 0), &blockWall);
+
+   // todo: consider making "ignoreEndBlocker" a KOD param, "false" means any query using an object position as "END" will return FALSE
+	ret_val.v.data = BSPCanMoveInRoom(&r->data, &s, &e, objectid.v.data, (move_outside_bsp.v.data != 0), true, false, &blockWall);
 
 #if DEBUGMOVE
 	//dprintf("MOVE:%i R:%i S:(%1.2f/%1.2f) E:(%1.2f/%1.2f)", ret_val.v.data, r->data.roomdata_id, s.X, s.Y, e.X, e.Y);
@@ -3381,6 +3383,174 @@ int C_GetRandomPointBSP(int object_id, local_var_type *local_vars,
 	}
 
 	return ret_val.int_val;
+}
+
+int C_GetRandomMoveDestBSP(int object_id, local_var_type *local_vars,
+   int num_normal_parms, parm_node normal_parm_array[],
+   int num_name_parms, parm_node name_parm_array[])
+{
+   val_type ret_val, room_val, maxattempts_val, mindistance_val, maxdistance_val;
+   val_type row, col, finerow, finecol, objrow, objcol, objfinerow, objfinecol;
+   room_node *r;
+
+   // in case it fails
+   ret_val.v.tag = TAG_INT;
+   ret_val.v.data = false;
+
+   room_val = RetrieveValue(object_id, local_vars, normal_parm_array[0].type,
+      normal_parm_array[0].value);
+
+   maxattempts_val = RetrieveValue(object_id, local_vars, normal_parm_array[1].type,
+      normal_parm_array[1].value);
+
+   mindistance_val = RetrieveValue(object_id, local_vars, normal_parm_array[2].type,
+      normal_parm_array[2].value);
+
+   maxdistance_val = RetrieveValue(object_id, local_vars, normal_parm_array[3].type,
+      normal_parm_array[3].value);
+
+
+   objrow = RetrieveValue(object_id, local_vars, normal_parm_array[4].type,
+      normal_parm_array[4].value);
+   objcol = RetrieveValue(object_id, local_vars, normal_parm_array[5].type,
+      normal_parm_array[5].value);
+   objfinerow = RetrieveValue(object_id, local_vars, normal_parm_array[6].type,
+      normal_parm_array[6].value);
+   objfinecol = RetrieveValue(object_id, local_vars, normal_parm_array[7].type,
+      normal_parm_array[7].value);
+
+
+   row = RetrieveValue(object_id, local_vars, normal_parm_array[8].type,
+      normal_parm_array[8].value);
+   col = RetrieveValue(object_id, local_vars, normal_parm_array[9].type,
+      normal_parm_array[9].value);
+   finerow = RetrieveValue(object_id, local_vars, normal_parm_array[10].type,
+      normal_parm_array[10].value);
+   finecol = RetrieveValue(object_id, local_vars, normal_parm_array[11].type,
+      normal_parm_array[11].value);
+
+
+   if (room_val.v.tag != TAG_ROOM_DATA)
+   {
+      bprintf("C_GetRandomMoveDestBSP can't use non room %i,%i\n",
+         room_val.v.tag, room_val.v.data);
+      return ret_val.int_val;
+   }
+
+   if (maxattempts_val.v.tag != TAG_INT)
+   {
+      bprintf("C_GetRandomMoveDestBSP maxattempts can't use non int %i,%i\n",
+         maxattempts_val.v.tag, maxattempts_val.v.data);
+      return ret_val.int_val;
+   }
+
+   if (mindistance_val.v.tag != TAG_INT)
+   {
+      bprintf("C_GetRandomMoveDestBSP mindistance can't use non int %i,%i\n",
+         mindistance_val.v.tag, mindistance_val.v.data);
+      return ret_val.int_val;
+   }
+
+   if (maxdistance_val.v.tag != TAG_INT)
+   {
+      bprintf("C_GetRandomMoveDestBSP maxdistance can't use non int %i,%i\n",
+         maxdistance_val.v.tag, maxdistance_val.v.data);
+      return ret_val.int_val;
+   }
+
+   if (objrow.v.tag != TAG_INT)
+   {
+      bprintf("C_GetRandomMoveDestBSP objrow source can't use non int %i,%i\n",
+         objrow.v.tag, objrow.v.data);
+      return ret_val.int_val;
+   }
+
+   if (objcol.v.tag != TAG_INT)
+   {
+      bprintf("C_GetRandomMoveDestBSP objcol source can't use non int %i,%i\n",
+         objcol.v.tag, objcol.v.data);
+      return ret_val.int_val;
+   }
+
+   if (objfinerow.v.tag != TAG_INT)
+   {
+      bprintf("C_GetRandomMoveDestBSP objfinerow source can't use non int %i,%i\n",
+         objfinerow.v.tag, objfinerow.v.data);
+      return ret_val.int_val;
+   }
+
+   if (objfinecol.v.tag != TAG_INT)
+   {
+      bprintf("C_GetRandomMoveDestBSP objfinecol source can't use non int %i,%i\n",
+         objfinecol.v.tag, objfinecol.v.data);
+      return ret_val.int_val;
+   }
+
+   if (row.v.tag != TAG_INT)
+   {
+      bprintf("C_GetRandomMoveDestBSP row source can't use non int %i,%i\n",
+         row.v.tag, row.v.data);
+      return ret_val.int_val;
+   }
+
+   if (col.v.tag != TAG_INT)
+   {
+      bprintf("C_GetRandomMoveDestBSP col source can't use non int %i,%i\n",
+         col.v.tag, col.v.data);
+      return ret_val.int_val;
+   }
+
+   if (finerow.v.tag != TAG_INT)
+   {
+      bprintf("C_GetRandomMoveDestBSP finerow source can't use non int %i,%i\n",
+         finerow.v.tag, finerow.v.data);
+      return ret_val.int_val;
+   }
+
+   if (finecol.v.tag != TAG_INT)
+   {
+      bprintf("C_GetRandomMoveDestBSP finecol source can't use non int %i,%i\n",
+         finecol.v.tag, finecol.v.data);
+      return ret_val.int_val;
+   }
+
+   r = GetRoomDataByID(room_val.v.data);
+   if (r == NULL)
+   {
+      bprintf("C_GetRandomMoveDestBSP can't find room %i\n", room_val.v.data);
+      return ret_val.int_val;
+   }
+
+   float mindist = FINENESSKODTOROO((float)mindistance_val.v.data);
+   float maxdist = FINENESSKODTOROO((float)maxdistance_val.v.data);
+
+   V2 s;
+   s.X = GRIDCOORDTOROO(objcol.v.data, objfinecol.v.data);
+   s.Y = GRIDCOORDTOROO(objrow.v.data, objfinerow.v.data);
+
+   V2 e;
+   bool ok = BSPGetRandomMoveDest(&r->data, maxattempts_val.v.data, mindist, maxdist, &s, &e);
+
+   if (ok)
+   {
+      // set output vars
+      local_vars->locals[finecol.v.data].v.tag = TAG_INT;
+      local_vars->locals[finecol.v.data].v.data = ROOCOORDTOGRIDFINE(e.X);
+
+      local_vars->locals[finerow.v.data].v.tag = TAG_INT;
+      local_vars->locals[finerow.v.data].v.data = ROOCOORDTOGRIDFINE(e.Y);
+
+      local_vars->locals[col.v.data].v.tag = TAG_INT;
+      local_vars->locals[col.v.data].v.data = ROOCOORDTOGRIDBIG(e.X);
+
+      local_vars->locals[row.v.data].v.tag = TAG_INT;
+      local_vars->locals[row.v.data].v.data = ROOCOORDTOGRIDBIG(e.Y);
+
+      // mark succeeded
+      ret_val.v.data = true;
+   }
+
+   return ret_val.int_val;
 }
 
 int C_GetStepTowardsBSP(int object_id, local_var_type *local_vars,

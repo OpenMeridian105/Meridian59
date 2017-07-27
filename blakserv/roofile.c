@@ -721,7 +721,7 @@ bool BSPLineOfSight(room_type* Room, V3* S, V3* E)
 /*********************************************************************************************/
 /* BSPCanMoveInRoom:  Checks if you can walk a straight line from (S)tart to (E)nd           */
 /*********************************************************************************************/
-bool BSPCanMoveInRoom(room_type* Room, V2* S, V2* E, int ObjectID, bool moveOutsideBSP, Wall** BlockWall)
+bool BSPCanMoveInRoom(room_type* Room, V2* S, V2* E, int ObjectID, bool moveOutsideBSP, bool checkObjects, bool ignoreEndBlocker, Wall** BlockWall)
 {
    // sanity check: these are binary or operations because it's very unlikely
    // any condition is met. So next ones can't be skipped, so binary is faster.
@@ -744,6 +744,10 @@ bool BSPCanMoveInRoom(room_type* Room, V2* S, V2* E, int ObjectID, bool moveOuts
    if (!roomok)
       return false;
 
+   // don't validate objects, we're done
+   if (!checkObjects)
+      return true;
+
    // otherwise also check against blockers
    BlockerNode* blocker = Room->Blocker;
    while (blocker)
@@ -753,6 +757,19 @@ bool BSPCanMoveInRoom(room_type* Room, V2* S, V2* E, int ObjectID, bool moveOuts
       {
          blocker = blocker->Next;
          continue;
+      }
+
+      // don't block by object at end
+      if (ignoreEndBlocker)
+      {
+         V2 db; // from blocker to end
+         V2SUB(&db, &blocker->Position, E);
+         const float db2 = V2LEN2(&db);
+         if (db2 <= EPSILON)
+         {
+            blocker = blocker->Next;
+            continue;
+         }
       }
 
       V2 ms; // from m to s  
@@ -843,6 +860,9 @@ void BSPChangeTexture(room_type* Room, unsigned int ServerID, unsigned short New
             sector->CeilingTexture = (isReset ? sector->CeilingTextureOrig : NewTexture);
       }
    }
+
+   AStarClearEdgesCache(Room);
+   AStarClearPathCaches(Room);
 }
 
 /*********************************************************************************************/
@@ -873,6 +893,9 @@ void BSPMoveSector(room_type* Room, unsigned int ServerID, bool Floor, float Hei
          BSPUpdateLeafHeights(Room, sector, false);
       }
    }
+
+   AStarClearEdgesCache(Room);
+   AStarClearPathCaches(Room);
 }
 
 /*********************************************************************************************/
@@ -1022,6 +1045,108 @@ bool BSPGetRandomPoint(room_type* Room, int MaxAttempts, V2* P)
 }
 
 /*********************************************************************************************/
+/* BSPGetRandomMoveDest:
+/*  Tries up to 'MaxAttempts' times to create a random move destination in 'Room'.
+/*  The point has the same guarantees as the return of BSPGetRandomPoint(), but additionally is
+/*  also guaranteed to be within a limited distance from P and the height diff of S and P is limited.
+/*********************************************************************************************/
+bool BSPGetRandomMoveDest(room_type* Room, int MaxAttempts, float MinDistance, float MaxDistance, V2* S, V2* P)
+{
+   if (!Room | !S | !P)
+      return false;
+
+   ///////////////////////////////////////////////////////////////////////////////////////////////
+   // GET START HEIGHT/SECTOR
+
+   float heightSF, heightSFWD, heightSC;
+   BspLeaf* leafS = NULL;
+
+   // check start inside valid sector, get start sector and location heights
+   if (!BSPGetHeight(Room, S, &heightSF, &heightSFWD, &heightSC, &leafS) || !leafS)
+      return false;
+
+   ///////////////////////////////////////////////////////////////////////////////////////////////
+   // FIND MOVE DESTINATION POINT
+
+   // difference between maximum and minimum distance
+   const float distDelta = MaxDistance - MinDistance;
+   
+   float heightF, heightFWD, heightC;
+   BspLeaf* leaf = NULL;
+
+   for (int i = 0; i < MaxAttempts; i++)
+   {
+      // generate a random vector length and rotation
+      const float length = MinDistance + (((float)rand() / (float)RAND_MAX) * distDelta);
+      const float rotate = ((float)rand() / (float)RAND_MAX) * PI_MULT_2;
+
+      // unit X vector
+      V2 v; v.X = 1.0f; v.Y = 0.0f;
+
+      // rotate and scale by generated randoms
+      V2ROTATE(&v, rotate);
+      V2SCALE(&v, length);
+
+      // then add up on start to generate point
+      V2ADD(P, S, &v);
+
+      // make sure point is exactly expressable in KOD fineness units also
+      V2ROUNDROOTOKODFINENESS(P);
+
+      ////// CHECKS ///////
+
+      // [1] check for inside things box, otherwise roll again
+      if (!ISINBOX(&Room->ThingsBox.Min, &Room->ThingsBox.Max, P))
+         continue;
+
+      // [2] check random point is inside valid sector, otherwise roll again
+      // note: locations quite close to a wall pass this check!
+      if (!BSPGetHeight(Room, P, &heightF, &heightFWD, &heightC, &leaf) || !leaf)
+         continue;
+
+      // [3] must also have floor texture set and not marked as SF_NOMOVE, otherwise roll again
+      if ((leaf->Sector->FloorTexture == 0) || ((leaf->Sector->Flags & SF_NOMOVE) == SF_NOMOVE))
+         continue;
+
+      // get height difference
+      const float delta  = heightFWD - heightSFWD;
+      const float delta2 = delta * delta;
+
+      // [4] if height of destination is much higher or lower, roll again
+      if (delta2 > MAXRNDMOVEDELTAH2)
+         continue;
+
+      // [5] check for destination being too close to a blocker
+      BlockerNode* blocker = Room->Blocker;
+      bool collision = false;
+      while (blocker)
+      {
+         V2 b;
+         V2SUB(&b, P, &blocker->Position);
+
+         // too close
+         if (V2LEN2(&b) < OBJMINDISTANCE2)
+         {
+            collision = true;
+            break;
+         }
+
+         blocker = blocker->Next;
+      }
+
+      // too close to a blocker, roll again
+      if (collision)
+         continue;
+
+      // all good with P
+      return true;
+   }
+
+   // failed to generate point
+   return false;
+}
+
+/*********************************************************************************************/
 /* BSPGetStepTowards:  Returns a location in P param, in a distant of 16 kod fineness units
 /*                     away from S on the way towards E.
 /*********************************************************************************************/
@@ -1036,9 +1161,12 @@ bool BSPGetStepTowards(room_type* Room, V2* S, V2* E, V2* P, unsigned int* Flags
    // send this flag with state.
    bool moveOutsideBSP = ((*Flags & MSTATE_MOVE_OUTSIDE_BSP) == MSTATE_MOVE_OUTSIDE_BSP);
 
-   // but must not give these back in piState
-   *Flags &= ~MSTATE_MOVE_OUTSIDE_BSP;
-   
+   // unset several flags:
+   *Flags &= ~MSTATE_MOVE_OUTSIDE_BSP; // must not give these back in piState (was hijacked by caller)
+   *Flags &= ~ESTATE_LONG_STEP;        // unset possible longstep flag from last astar step
+   *Flags &= ~STATE_MOVE_PATH;         // unset possible pathmoving flag
+   *Flags &= ~STATE_MOVE_DIRECT;       // unset possible directmoving flag
+
    V2 se, stepend;
    V2SUB(&se, E, S);
 
@@ -1063,125 +1191,170 @@ bool BSPGetStepTowards(room_type* Room, V2* S, V2* E, V2* P, unsigned int* Flags
    V2SCALE(&se, scale);
 
    /****************************************************/
-   // 1) try direct step towards destination first
+   // 1) test direct line towards destination first
    /****************************************************/
    Wall* blockWall = NULL;
 
-   // note: we must verify the location the object is actually going to end up in KOD,
-   // this means we must round to the next closer kod-fineness value,  
-   // so these values are also exactly expressable in kod coordinates.
-   // in fact this makes the vector a variable length between ~15.5 and ~16.5 fine units
-   V2ADD(&stepend, S, &se);
-   V2ROUNDROOTOKODFINENESS(&stepend);
-   if (BSPCanMoveInRoom(Room, S, &stepend, ObjectID, moveOutsideBSP, &blockWall))
+   // we do not care about object blocks here, since this is no real step
+   if (BSPCanMoveInRoom(Room, S, E, ObjectID, moveOutsideBSP, true, true, &blockWall))
    {
-      *P = stepend;
+      // note: we must verify the location the object is actually going to end up in KOD,
+      // this means we must round to the next closer kod-fineness value,  
+      // so these values are also exactly expressable in kod coordinates.
+      // in fact this makes the vector a variable length between ~15.5 and ~16.5 fine units
+      // this time object blocks matter
+      V2ADD(&stepend, S, &se);
+      V2ROUNDROOTOKODFINENESS(&stepend);
+      if (BSPCanMoveInRoom(Room, S, &stepend, ObjectID, moveOutsideBSP, true, false, &blockWall))
+      {
+         //dprintf("Astar-SKIP-Direct Step (%s)", GetResourceByID(Room->resource_id)->resource_name);
+         *P = stepend;
+
+         // flag as direct move towards end
+         *Flags |= STATE_MOVE_DIRECT;
+
+         // unset heuristic flags
+         *Flags &= ~ESTATE_AVOIDING;
+         *Flags &= ~ESTATE_CLOCKWISE;
+         return true;
+      }
+   }
+
+   /****************************************************/
+   // 2) can't walk direct line
+   /****************************************************/
+   float temp1; BspLeaf* temp2;
+
+   // try get next step from astar if enabled and end is inside legal sector
+   if (ASTARENABLED && 
+       BSPGetHeight(Room, E, &temp1, &temp1, &temp1, &temp2) &&
+       AStarGetStepTowards(Room, S, E, P, Flags, ObjectID))
+   {
+      // flag as pathmoving in piState return
+      *Flags |= STATE_MOVE_PATH;
+
+      // unset heuristic flags
       *Flags &= ~ESTATE_AVOIDING;
       *Flags &= ~ESTATE_CLOCKWISE;
       return true;
    }
-   
-   /****************************************************/
-   // 2) can't do direct step
-   /****************************************************/
-
-   bool isAvoiding = ((*Flags & ESTATE_AVOIDING) == ESTATE_AVOIDING);
-   bool isLeft = ((*Flags & ESTATE_CLOCKWISE) == ESTATE_CLOCKWISE);
-
-   // not yet in clockwise or cclockwise mode
-   if (!isAvoiding)
+   else
    {
-      // if not blocked by a wall, roll a dice to decide
-      // how to get around the blocking obj.
-      if (!blockWall)
-         isLeft = (rand() % 2 == 1);
-
-      // blocked by wall, go first into 'slide-along' direction
-      // based on vector towards target
-      else
+      /****************************************************/
+      // 2.1) try direct step towards destination first
+      /****************************************************/
+      V2ADD(&stepend, S, &se);
+      V2ROUNDROOTOKODFINENESS(&stepend);
+      if (BSPCanMoveInRoom(Room, S, &stepend, ObjectID, moveOutsideBSP, true, false, &blockWall))
       {
-         V2 p1p2;
-         V2SUB(&p1p2, &blockWall->P2, &blockWall->P1);
-
-         // note: walls can be aligned in any direction like left->right, right->left,
-         //   same with up->down and same also with the movement vector.
-         //   The typical angle between vectors, acosf(..) is therefore insufficient to differ.
-         //   What is done here is a convert into polar-coordinates (= angle in 0..2pi from x-axis)
-         //   The difference (or sum) (-2pi..2pi) then provides up to 8 different cases (quadrants) which must be mapped
-         //   to the left or right decision.
-         float f1 = atan2f(se.Y, se.X);
-         float f2 = atan2f(p1p2.Y, p1p2.X);
-         float df = f1 - f2;
-
-         bool q1_pos = (df >= 0.0f && df <= (float)M_PI_2);
-         bool q2_pos = (df >= (float)M_PI_2 && df <= (float)M_PI);
-         bool q3_pos = (df >= (float)M_PI && df <= (float)(M_PI + M_PI_2));
-         bool q4_pos = (df >= (float)(M_PI + M_PI_2) && df <= (float)M_PI*2.0f);
-         bool q1_neg = (df <= 0.0f && df >= (float)-M_PI_2);
-         bool q2_neg = (df <= (float)-M_PI_2 && df >= (float)-M_PI);
-         bool q3_neg = (df <= (float)-M_PI && df >= (float)-(M_PI + M_PI_2));
-         bool q4_neg = (df <= (float)-(M_PI + M_PI_2) && df >= (float)-M_PI*2.0f);
- 
-         isLeft = (q1_pos || q2_pos || q1_neg || q3_neg) ? false : true;
-
-         /*if (isLeft)
-            dprintf("trying left first  r: %f", df);
-         else
-            dprintf("trying right first   r: %f", df);*/
-      }
-   }
-
-   // must run this possibly twice
-   // e.g. left after right failed or right after left failed
-   for (int i = 0; i < 2; i++)
-   {
-      if (isLeft)
-      {
-         V2 v = se;
-
-         // try rotating move left in 6 steps of 22.5° up to 135°
-         for (int j = 0; j < 6; j++)
-         {
-            V2ROTATE(&v, 0.5f * (float)-M_PI_4);
-            V2ADD(&stepend, S, &v);
-            V2ROUNDROOTOKODFINENESS(&stepend);
-            if (BSPCanMoveInRoom(Room, S, &stepend, ObjectID, moveOutsideBSP, &blockWall))
-            {
-               *P = stepend;
-               *Flags |= ESTATE_AVOIDING;
-               *Flags |= ESTATE_CLOCKWISE;
-               return true;
-            }
-         }
-
-         // failed to circumvent by going left, switch to right
-         isLeft = false;
-         *Flags |= ESTATE_AVOIDING;
+         *P = stepend;
+         *Flags &= ~ESTATE_AVOIDING;
          *Flags &= ~ESTATE_CLOCKWISE;
+         return true;
       }
-      else
+
+      /****************************************************/
+      // 2.2) can't do direct step
+      /****************************************************/
+
+      bool isAvoiding = ((*Flags & ESTATE_AVOIDING) == ESTATE_AVOIDING);
+      bool isLeft = ((*Flags & ESTATE_CLOCKWISE) == ESTATE_CLOCKWISE);
+
+      // not yet in clockwise or cclockwise mode
+      if (!isAvoiding)
       {
-         V2 v = se;
+         // if not blocked by a wall, roll a dice to decide
+         // how to get around the blocking obj.
+         if (!blockWall)
+            isLeft = (rand() % 2 == 1);
 
-         // try rotating move right in 6 steps of 22.5° up to 135°
-         for (int j = 0; j < 6; j++)
+         // blocked by wall, go first into 'slide-along' direction
+         // based on vector towards target
+         else
          {
-            V2ROTATE(&v, 0.5f * (float)M_PI_4);
-            V2ADD(&stepend, S, &v);
-            V2ROUNDROOTOKODFINENESS(&stepend);
-            if (BSPCanMoveInRoom(Room, S, &stepend, ObjectID, moveOutsideBSP, &blockWall))
-            {
-               *P = stepend;
-               *Flags |= ESTATE_AVOIDING;
-               *Flags &= ~ESTATE_CLOCKWISE;
-               return true;
-            }
-         }
+            V2 p1p2;
+            V2SUB(&p1p2, &blockWall->P2, &blockWall->P1);
 
-         // failed to circumvent by going right, switch to left
-         isLeft = true;
-         *Flags |= ESTATE_AVOIDING;
-         *Flags |= ESTATE_CLOCKWISE;
+            // note: walls can be aligned in any direction like left->right, right->left,
+            //   same with up->down and same also with the movement vector.
+            //   The typical angle between vectors, acosf(..) is therefore insufficient to differ.
+            //   What is done here is a convert into polar-coordinates (= angle in 0..2pi from x-axis)
+            //   The difference (or sum) (-2pi..2pi) then provides up to 8 different cases (quadrants) which must be mapped
+            //   to the left or right decision.
+            float f1 = atan2f(se.Y, se.X);
+            float f2 = atan2f(p1p2.Y, p1p2.X);
+            float df = f1 - f2;
+
+            bool q1_pos = (df >= 0.0f && df <= (float)M_PI_2);
+            bool q2_pos = (df >= (float)M_PI_2 && df <= (float)M_PI);
+            bool q3_pos = (df >= (float)M_PI && df <= (float)(M_PI + M_PI_2));
+            bool q4_pos = (df >= (float)(M_PI + M_PI_2) && df <= (float)M_PI*2.0f);
+            bool q1_neg = (df <= 0.0f && df >= (float)-M_PI_2);
+            bool q2_neg = (df <= (float)-M_PI_2 && df >= (float)-M_PI);
+            bool q3_neg = (df <= (float)-M_PI && df >= (float)-(M_PI + M_PI_2));
+            bool q4_neg = (df <= (float)-(M_PI + M_PI_2) && df >= (float)-M_PI*2.0f);
+
+            isLeft = (q1_pos || q2_pos || q1_neg || q3_neg) ? false : true;
+
+            /*if (isLeft)
+               dprintf("trying left first  r: %f", df);
+            else
+               dprintf("trying right first   r: %f", df);*/
+         }
+      }
+
+      // must run this possibly twice
+      // e.g. left after right failed or right after left failed
+      for (int i = 0; i < 2; i++)
+      {
+         if (isLeft)
+         {
+            V2 v = se;
+
+            // try rotating move left in 6 steps of 22.5° up to 135°
+            for (int j = 0; j < 6; j++)
+            {
+               V2ROTATE(&v, 0.5f * (float)-M_PI_4);
+               V2ADD(&stepend, S, &v);
+               V2ROUNDROOTOKODFINENESS(&stepend);
+               if (BSPCanMoveInRoom(Room, S, &stepend, ObjectID, moveOutsideBSP, true, false, &blockWall))
+               {
+                  *P = stepend;
+                  *Flags |= ESTATE_AVOIDING;
+                  *Flags |= ESTATE_CLOCKWISE;
+                  return true;
+               }
+            }
+
+            // failed to circumvent by going left, switch to right
+            isLeft = false;
+            *Flags |= ESTATE_AVOIDING;
+            *Flags &= ~ESTATE_CLOCKWISE;
+         }
+         else
+         {
+            V2 v = se;
+
+            // try rotating move right in 6 steps of 22.5° up to 135°
+            for (int j = 0; j < 6; j++)
+            {
+               V2ROTATE(&v, 0.5f * (float)M_PI_4);
+               V2ADD(&stepend, S, &v);
+               V2ROUNDROOTOKODFINENESS(&stepend);
+               if (BSPCanMoveInRoom(Room, S, &stepend, ObjectID, moveOutsideBSP, true, false, &blockWall))
+               {
+                  *P = stepend;
+                  *Flags |= ESTATE_AVOIDING;
+                  *Flags &= ~ESTATE_CLOCKWISE;
+                  return true;
+               }
+            }
+
+            // failed to circumvent by going right, switch to left
+            isLeft = true;
+            *Flags |= ESTATE_AVOIDING;
+            *Flags |= ESTATE_CLOCKWISE;
+         }
       }
    }
 
@@ -1865,6 +2038,40 @@ bool BSPLoadRoom(char *fname, room_type *room)
    // no initial blockers
    room->Blocker = NULL;
 
+   /****************************************************************************/
+   /****************************************************************************/
+
+#if ASTARENABLED
+   // calculate size of edgecache
+   room->EdgesCacheSize = room->colshighres * room->rowshighres * sizeof(unsigned short);
+
+   // allocate memory for edge cache (BSP queries between squares)
+   room->EdgesCache = (unsigned short*)AllocateMemory(
+      MALLOC_ID_ASTAR, room->EdgesCacheSize);
+
+   // clear edge cache
+   AStarClearEdgesCache(room);
+
+ #if PREBUILDEDGECACHE
+   // prebuild edge cache
+   AStarBuildEdgesCache(room);
+ #endif
+
+   // allocate path cache
+   for (int i = 0; i < PATHCACHESIZE; i++)
+      room->Paths[i] = (astar_path*)AllocateMemory(MALLOC_ID_ASTAR, sizeof(astar_path));
+
+   // allocate nopath cache
+   for (int i = 0; i < NOPATHCACHESIZE; i++)
+      room->NoPaths[i] = (astar_nopath*)AllocateMemory(MALLOC_ID_ASTAR, sizeof(astar_nopath));
+
+   // clear path cache
+   AStarClearPathCaches(room);
+#endif
+
+   /****************************************************************************/
+   /****************************************************************************/
+
    return True;
 }
 
@@ -1909,6 +2116,19 @@ void BSPFreeRoom(room_type *room)
    room->WallsCount = 0;
    room->SidesCount = 0;
    room->SectorsCount = 0;
+
+#if ASTARENABLED
+   // free edgescache mem
+   FreeMemory(MALLOC_ID_ASTAR, room->EdgesCache, room->EdgesCacheSize);
+
+   // free path cache
+   for (int i = 0; i < PATHCACHESIZE; i++)
+      FreeMemory(MALLOC_ID_ASTAR, room->Paths[i], sizeof(astar_path));
+
+   // free nopath cache
+   for (int i = 0; i < NOPATHCACHESIZE; i++)
+      FreeMemory(MALLOC_ID_ASTAR, room->NoPaths[i], sizeof(astar_nopath));
+#endif
 
    BSPBlockerClear(room);
 

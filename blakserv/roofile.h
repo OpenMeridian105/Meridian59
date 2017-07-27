@@ -13,8 +13,6 @@
 #ifndef _ROOFILE_H
 #define _ROOFILE_H
 
-#include "geometry.h"
-
 #pragma region Macros
 /**************************************************************************************************************/
 /*                                           MACROS                                                           */
@@ -40,10 +38,11 @@
 #define PLAYERWIDTH           (31.0f * (float)KODFINENESS * 0.25f)   // (from clientd3d/game.c)
 #define WALLMINDISTANCE       (PLAYERWIDTH / 2.0f)                   // (from clientd3d/game.c)
 #define WALLMINDISTANCE2      (WALLMINDISTANCE * WALLMINDISTANCE)    // (from clientd3d/game.c)
-#define OBJMINDISTANCE        384.0f                                 // 3 highres rows/cols, old value from kod
+#define OBJMINDISTANCE        512.0f                                 // 2 astar rows/cols, MUST BE MULTIPLE OF 256
 #define OBJMINDISTANCE2       (OBJMINDISTANCE * OBJMINDISTANCE)
 #define LOSEXTEND             64.0f
-
+#define MAXRNDMOVEDELTAH      (5.0f * MAXSTEPHEIGHT)                 // ignore rnd gen move dest pnt if above/below this
+#define MAXRNDMOVEDELTAH2     (MAXRNDMOVEDELTAH * MAXRNDMOVEDELTAH)  // squared MAXRNDMOVEDELTAH
 
 // Calculation to convert KOD angles to radians.
 #define KODANGLETORADIANS(x) ((float)((x) % (int)MAX_KOD_DEGREE) * PI_MULT_2 / MAX_KOD_DEGREE)
@@ -79,7 +78,12 @@
   V2ROUND(a);                      \
   V2FINENESSKODTOROO(a);
 
+// from blakston.khd, set on special move-returns
+#define STATE_MOVE_PATH    0x00000020
+#define STATE_MOVE_DIRECT  0x00000040
+
 // from blakston.khd, used in BSPGetNextStepTowards across calls
+#define ESTATE_LONG_STEP 0x00002000
 #define ESTATE_AVOIDING  0x00004000
 #define ESTATE_CLOCKWISE 0x00008000
 
@@ -238,7 +242,16 @@ typedef struct room_type
    Side*          Sides;
    unsigned short SidesCount;
    SectorNode*    Sectors;
-   unsigned short SectorsCount; 
+   unsigned short SectorsCount;
+
+#if ASTARENABLED
+   unsigned short* EdgesCache;
+   int             EdgesCacheSize;
+   astar_path*     Paths[PATHCACHESIZE];
+   unsigned int    NextPathIdx;
+   astar_nopath*   NoPaths[NOPATHCACHESIZE];
+   unsigned int    NextNoPathIdx;
+#endif
 } room_type;
 #pragma endregion
 
@@ -247,13 +260,15 @@ typedef struct room_type
 /*                                          METHODS                                                           */
 /**************************************************************************************************************/
 bool  BSPGetHeight(room_type* Room, V2* P, float* HeightF, float* HeightFWD, float* HeightC, BspLeaf** Leaf);
-bool  BSPCanMoveInRoom(room_type* Room, V2* S, V2* E, int ObjectID, bool moveOutsideBSP, Wall** BlockWall);
+bool  BSPCanMoveInRoom(room_type* Room, V2* S, V2* E, int ObjectID, bool moveOutsideBSP, bool checkObjects, bool ignoreEndBlocker, Wall** BlockWall);
 bool  BSPLineOfSightView(V2 *S, V2 *E, int kod_angle);
 bool  BSPLineOfSight(room_type* Room, V3* S, V3* E);
+bool  BSPLineOfSightTree(const BspNode* Node, const V3* S, const V3* E);
 void  BSPChangeTexture(room_type* Room, unsigned int ServerID, unsigned short NewTexture, unsigned int Flags);
 void  BSPMoveSector(room_type* Room, unsigned int ServerID, bool Floor, float Height, float Speed);
 bool  BSPGetLocationInfo(room_type* Room, V2* P, unsigned int QueryFlags, unsigned int* ReturnFlags, float* HeightF, float* HeightFWD, float* HeightC, BspLeaf** Leaf);
 bool  BSPGetRandomPoint(room_type* Room, int MaxAttempts, V2* P);
+bool  BSPGetRandomMoveDest(room_type* Room, int MaxAttempts, float MinDistance, float MaxDistance, V2* S, V2* E);
 bool  BSPGetStepTowards(room_type* Room, V2* S, V2* E, V2* P, unsigned int* Flags, int ObjectID);
 bool  BSPBlockerAdd(room_type* Room, int ObjectID, V2* P);
 bool  BSPBlockerMove(room_type* Room, int ObjectID, V2* P);

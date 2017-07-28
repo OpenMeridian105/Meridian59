@@ -545,6 +545,7 @@ char * name_function(int fnum)
    case BLOCKERCLEARBSP: return "BlockerClearBSP";
    case GETRANDOMPOINTBSP: return "GetRandomPointBSP";
    case GETSTEPTOWARDSBSP: return "GetStepTowardsBSP";
+   case GETRANDOMMOVEDESTBSP: return "GetRandomMoveDestBSP";
 
    case STRINGTONUMBER : return "StringToNumber";
 

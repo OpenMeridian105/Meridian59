@@ -95,6 +95,7 @@ OBJS =  \
     $(OUTDIR)\mutex_windows.obj \
     $(OUTDIR)\thdmsgqueue_windows.obj \
     $(OUTDIR)\database.obj \
+    $(OUTDIR)\astar.obj \
 
 all : makedirs $(OUTDIR)\blakserv.exe
 

@@ -516,6 +516,7 @@ properties:
 
    poBrain = $
 
+   piBadSteps = 0
    piTargetLocationRow
    piTargetLocationCol
    piTargetLocationFineRow = 0
@@ -3533,7 +3534,27 @@ messages:
 
       return;
    }
+   
+   ReconsiderMoveDestination()
+   "Called if too many steps by heuristic"
+   {
+      // check if strolling
+      if (piBehavior & AI_STROLLING)
+      {
+         Send(self, @ClearStrollLocation);
+         //Debug("Discarded current stroll location!!");
+      }
 
+      // check if returning to spawn
+      if (piBehavior & AI_RETURN_TO_SPAWN)
+      {
+         Send(self, @ClearSpawnReturnLocation);
+         //Debug("Discarded SPAWN return location!!");
+      }
+	   
+      return;
+   }
+   
    MoveTowardsCoords(iRow=$,iCol=$,iFineRow=FINENESS_HALF,iFineCol=FINENESS_HALF,
                      face_target=FALSE,face_away=FALSE,pass_walls=FALSE)
    {
@@ -3566,7 +3587,25 @@ messages:
       {
          piState = iState;
 
-         if Send(self,@ReqMonsterMove,#new_row=iRow,#new_col=iCol,
+         // check if this was a 'good' step (=on a path or directly towards)
+         if (iState & STATE_MOVE_PATH) OR (iState & STATE_MOVE_DIRECT)
+         {
+            // reset badstep counter
+            piBadSteps = 0;		
+         }
+         else
+         {
+            // increment bad step counter
+            piBadSteps = piBadSteps + 1;
+
+            // too many heuristic steps, consider going elsewhere
+            if (piBadSteps % 2 = 0)
+            {
+               Send(self,@ReconsiderMoveDestination);
+            }
+         }
+		 
+		 if Send(self,@ReqMonsterMove,#new_row=iRow,#new_col=iCol,
                   #new_finerow=iFineRow,#new_finecol=iFineCol)
          {
             Send(self,@MonsterOrient,#new_row=iRow,#new_col=iCol,
@@ -3616,8 +3655,9 @@ messages:
    {
       local iMRow,iMCol,iMRowFine,iMColFine;
 
-      if (NOT GetRandomPointBSP(Send(poOwner,@GetRoomData), 15, *iMRow,
-                     *iMCol, *iMRowFine, *iMColFine))
+      if (NOT GetRandomMoveDestBSP(Send(poOwner,@GetRoomData), 48, 128, 1536,
+                                   piRow, piCol, piFine_row, piFine_col, 
+                                   *iMRow, *iMCol, *iMRowFine, *iMColFine))
          OR (Send(poOwner,@GetSectorIDAtLocation,#row=iMRow,#col=iMCol,
                   #fine_row=iMRowFine,#fine_col=iMColFine) = 10)
          OR (piBehavior & AI_HAS_TARGET_LOCATION)
@@ -7018,6 +7058,14 @@ messages:
       {
          // see formula above  
          iTime = 10000 / (piSpeed * 4);
+
+         // diagonal gridmove (astar):
+         // scale-up the time according to the increased distance
+         if piState & ESTATE_LONG_STEP
+         {
+            // sqrt(2) = 1.41421356
+            iTime = (14142 * iTime) / 10000;
+         }
 
          // finally we reduce the timer a bit (right now it's exact at ms)
          // why? the client should get a new position before the last destination

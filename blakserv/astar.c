@@ -617,9 +617,11 @@ void AStarClearPathCaches(room_type* Room)
       // get path entry
       astar_path* path = Room->Paths[i];
 
-      // set head to 0 and clear first node
+      // set head to 0 and clear first two nodes
+      // care: GetStepFromCache() accesses head+1
       path->head     = 0;
       path->nodes[0] = NULL;
+      path->nodes[1] = NULL;
    }
 
    // clear nopath-cache
@@ -771,16 +773,9 @@ bool AStarGetStepFromCache(room_type* Room, astar_node* S, astar_node* E, V2* P,
       // get current head (start/laststep)
       unsigned int head = path->head;
 
-      // make sure head is valid
-      if (head >= MAXPATHLENGTH)
-      {
-         path->head = 0;
-         continue;
-      }
-
       // get the previous, the current, the next and the next-next steps on this path
       astar_node* prev  = (head < MAXPATHLENGTH - 1) ? path->nodes[head + 1] : NULL;
-      astar_node* cur   = path->nodes[head];
+      astar_node* cur   = (head < MAXPATHLENGTH)     ? path->nodes[head]     : NULL;
       astar_node* next  = (head > 0)                 ? path->nodes[head - 1] : NULL;
       astar_node* nnext = (head > 1)                 ? path->nodes[head - 2] : NULL;
 
@@ -1070,45 +1065,63 @@ bool AStarGetStepTowards(room_type* Room, V2* S, V2* E, V2* P, unsigned int* Fla
    astar_path* path = Room->Paths[Room->NextPathIdx];
    Room->NextPathIdx++;
 
-   // reset path head and clear endnode
+   // reset path head and clear head and head+1
+   // care: GetStepFromCache() accesses head+1
    path->head     = 0;
    path->nodes[0] = NULL;
+   path->nodes[1] = NULL;
 
    // walk back parent pointers from lastnode (=path)
-   astar_node* node = AStar.LastNode;
+   astar_node*  node = AStar.LastNode;
    unsigned int head = 0;
 
-   while (node)
+   while (true)
    {
       // above maximum pathlength
       if (head >= MAXPATHLENGTH)
          return false;
 
-      // save node and increment
+      // save step/node
       path->nodes[head] = node;
-      head++;
 
-      // get parent (step on path)
+      // get parent (next step on path)
       node = node->Data->parent;
+
+      // loop again with incremented head or exit loop
+      if (node) head++;
+      else break;
    }
 
-   // adjust head index
-   // -2 because 0-based and we don't want current startnode in path
-   if (head > 1)
-      head -= 2;
+   // zero out the next unused path-entry
+   // care: GetStepFromCache() accesses head+1
+   if (head < MAXPATHLENGTH - 1)
+      path->nodes[head + 1] = NULL;
+
+   // ignore startnode (will be at head)
+   if (head > 0)
+      head--;
 
    // get next step node
    node = path->nodes[head];
 
    // remove next step node
-   if (head > 1)
+   if (head > 0)
       head--;
 
    // save new head
    path->head = head;
 
-   if (!node)
+   /**********************************************************************/
+
+   // invalid node or node not neighbour of startnode
+   if (!node || node->Data->parent != AStar.StartNode)
+   {
+     #if ASTARDEBUG
+      dprintf("A*ER O:%05i NODE NULL OR NOT NEIGHBOUR OF START (%s)",
+         AStar.ObjectID, RESNAME);
+     #endif
       return false;
+   }
 
    // for diagonal moves mark to be long step (required for timer elapse)
    if ((node->Col - AStar.StartNode->Col) != 0 &&

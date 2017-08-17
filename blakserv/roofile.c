@@ -2059,11 +2059,23 @@ bool BSPLoadRoom(char *fname, room_type *room)
 
    // allocate path cache
    for (int i = 0; i < PATHCACHESIZE; i++)
+   {
       room->Paths[i] = (astar_path*)AllocateMemory(MALLOC_ID_ASTAR, sizeof(astar_path));
+
+      // do a full zero initialization on pathcache
+      // it's only minimally cleared at runtime
+      ZeroMemory(room->Paths[i], sizeof(astar_path));
+   }
 
    // allocate nopath cache
    for (int i = 0; i < NOPATHCACHESIZE; i++)
+   {
       room->NoPaths[i] = (astar_nopath*)AllocateMemory(MALLOC_ID_ASTAR, sizeof(astar_nopath));
+
+      // do a full zero initialization on nopatch
+      // it's only minimally cleared at runtime
+      ZeroMemory(room->NoPaths[i], sizeof(astar_nopath));
+   }
 
    // clear path cache
    AStarClearPathCaches(room);

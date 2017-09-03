@@ -367,8 +367,13 @@ void D3DLMapsStaticGet(room_type *room)
             || pRNode->obj.dLighting.intensity == 0)
             continue;
 
-         if (!D3DLMapCheck(&gDLightCache.dLights[gDLightCache.numLights], pRNode))
-            gD3DRedrawAll |= D3DRENDER_REDRAW_ALL;
+         // This gives false positive changes - e.g. a static light turns off, and is no
+         // longer in the gDLightCache.dLights array. Some or all lights may be moved to
+         // new positions in the array and trigger a redraw, but if the light was the last
+         // entry a redraw wouldn't be triggered (and this call was the only 'catch' for
+         // a static light turning off). Static light changes now handled in game.c's ChangeObject.
+         //if (!D3DLMapCheck(&gDLightCache.dLights[gDLightCache.numLights], pRNode))
+            //gD3DRedrawAll |= D3DRENDER_REDRAW_ALL;
 
          pDib = GetObjectPdib(pRNode->obj.icon_res, 0, 0);
 

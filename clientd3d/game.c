@@ -14,6 +14,7 @@
 player_info player;
 room_type current_room;
 BOOL dataValid = FALSE;
+extern Bool gD3DRedrawAll;
 
 /* This flag is True before we get the first player info message from the server,
  * and when we're not in the game.  We use it to keep track of entering the game,
@@ -484,6 +485,13 @@ void ChangeObject(object_node *new_obj, BYTE translation, BYTE effect, Animate *
    r = GetRoomObjectById(new_obj->id);
    if (r != NULL)
    {
+      // Must redraw room for static light changes.
+      if (!(r->obj.dLighting.flags & LIGHT_FLAG_DYNAMIC)
+         && (r->obj.dLighting.intensity != new_obj->dLighting.intensity
+            || r->obj.dLighting.color != new_obj->dLighting.color
+            || r->obj.dLighting.flags != new_obj->dLighting.flags))
+         gD3DRedrawAll |= D3DRENDER_REDRAW_ALL;
+
       RoomObjectDestroy(r);
       // XXX This is bad--should call ObjectCopy and redo allocation in server.c/HandleChange
 

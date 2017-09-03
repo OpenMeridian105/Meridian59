@@ -927,6 +927,15 @@ arg_type make_arg_from_setting(id_type id, expr_type expr)
    return arg;
 }
 /************************************************************************/
+id_type make_constant_id_noeol(id_type id, expr_type expr)
+{
+   // Returns error for no newline character after a constant declaration.
+   // e.g. constants include file without a blank line at the end.
+   action_error("Missing newline after constant declaration for %s", id->name);
+
+   return make_constant_id(id, expr);
+}
+/************************************************************************/
 id_type make_constant_id(id_type id, expr_type expr)
 {
    int numeric_val = 0;
@@ -1210,6 +1219,15 @@ int make_language_id(char *str)
       action_error("Invalid language code %s!", str);
 
    return lid;
+}
+/************************************************************************/
+resource_type make_resource_noeol(id_type id, const_type c, int la_id)
+{
+   // Returns error for no newline character after a resource declaration.
+   // e.g. language resource include file without a blank line at the end.
+   action_error("Missing newline after resource declaration for %s",id->name);
+
+   return make_resource(id, c, la_id);
 }
 /************************************************************************/
 resource_type make_resource(id_type id, const_type c, int la_id)

@@ -374,10 +374,12 @@ arg_type make_arg_from_expr(expr_type expr);
 arg_type make_arg_from_setting(id_type id, expr_type expr);
 
 id_type make_constant_id(id_type, expr_type);
+id_type make_constant_id_noeol(id_type, expr_type);
 param_type make_parameter(id_type, expr_type);
 classvar_type make_classvar(id_type, expr_type);
 property_type make_property(id_type, expr_type);
 resource_type make_resource(id_type, const_type, int);
+resource_type make_resource_noeol(id_type, const_type, int);
 int make_language_id(char *);
 
 void check_break(void);

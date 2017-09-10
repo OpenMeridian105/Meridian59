@@ -26,44 +26,43 @@ resources:
    include ratcave2.lkod
 
    room_ratcave2 = ratcave2.roo
-   room_name_ratcave2 = "Rat Cave 2"
+   room_name_ratcave2 = "Abandoned Outpost"
 
-   //ratcave2_music = Orc2.ogg
    ratcave2_music = Creep.ogg
    RatKingLair_door_sound = down2.ogg
    
    RatKingLair_lever_desc = \
       "This lever is caked with years' worth of accumulated rust and slime."
-	  
+      
    ratlair_book_name = "Old Book"
    ratlair_book_text = \
       "Year 473, Day 27\n"
-	  "\n"
-	  "The cave system we discovered while building the new guard tower appears to "
-	  "reach just beneath Tos. The king ordered us to immediately set up a supply "
-	  "route and charged me with overseeing it. Tos will not fall to the orcs.\n"
-	  "\n"
-	  "\n"
-	  "Year 473, Day 48\n"
-	  "\n"
-	  "Construction of the checkpoint is progressing nicely. The men discovered "
-	  "multiple side tunnels, greatly reducing the area we need to excavate.\n"
-	  "\n"
-	  "\n"
-	  "Year 473, Day 81\n"
-	  "\n"
-	  "Tos is holding out, thanks to the ever increasing stream of supplies passing "
-	  "through these caves every day. It appears that smugglers are making use of "
-	  "the many tunnels as well; some of the men have reported hearing noises from "
-	  "behind the walls.\n"
-	  "\n"
-	  "\n"
-	  "Year 473, Day 86\n"
-	  "\n"
-	  "We broke through some of the walls today and found something strange. No sign "
-	  "of smugglers. The tunnels there are too small for humans or orcs, but what else "
-	  "could it be? I can hear the noises now, too. A scratching at the walls, coming "
-	  "from all directions."
+      "\n"
+      "The cave system we discovered while building the new guard tower appears to "
+      "reach just beneath Tos. King Far'Nohl ordered us to immediately set up a supply "
+      "route and charged me with overseeing it. Tos will not fall to the orcs.\n"
+      "\n"
+      "\n"
+      "Year 473, Day 48\n"
+      "\n"
+      "Construction of the checkpoint is progressing nicely. The men discovered "
+      "multiple side tunnels, greatly reducing the area we need to excavate.\n"
+      "\n"
+      "\n"
+      "Year 473, Day 81\n"
+      "\n"
+      "Tos is holding out, thanks to the ever increasing stream of supplies passing "
+      "through these caves every day. It appears that smugglers are making use of "
+      "the many tunnels as well; some of the men have reported hearing noises from "
+      "behind the walls.\n"
+      "\n"
+      "\n"
+      "Year 473, Day 86\n"
+      "\n"
+      "We broke through some of the walls today and found something strange. No sign "
+      "of smugglers. The tunnels there are too small for humans or orcs, but what else "
+      "could it be? I can hear the noises now, too. A scratching at the walls, coming "
+      "from all directions."
 
 classvars:
 
@@ -85,10 +84,8 @@ properties:
  
    piOutside_factor = 0
    
-   //piGen_percent = 80
-
    piInit_count_min = 5
-   piInit_count_max = 9
+   piInit_count_max = 7
 
    piMonster_count_max = 12
    
@@ -110,7 +107,7 @@ messages:
       plEdge_Exits = $;
       
       plEdge_Exits = Cons([LEAVE_SOUTH, RID_RATCAVE1, 2, 38, ROTATE_NONE], plEdge_exits);
-	  plEdge_Exits = Cons([LEAVE_NORTH, RID_RATCAVE3, 80, 11, ROTATE_NONE], plEdge_exits);
+      plEdge_Exits = Cons([LEAVE_NORTH, RID_RATCAVE3, 80, 11, ROTATE_NONE], plEdge_exits);
   
       propagate;
    }
@@ -119,17 +116,18 @@ messages:
    {
       plMonsters = [ [&GiantRatSoldier, 100] ];
 
-		plGenerators = [ [43, 54], [50, 50], [44, 50], [52, 44], [52, 40],
-              [50, 35], [44, 55] ];
-			  
-	Send(self,@ResetTreasureList);
-	
-	if poChest = $
+      plGenerators = [ [43, 54], [50, 50], [44, 50], [52, 44], [52, 40],
+                       [50, 35], [44, 55] ];
+                       
+      Send(self,@ResetTreasureList);
+   
+      if poChest = $
       {
          poChest = Create(&WoodenBox,#bLocked=TRUE);
-         Send(self,@NewHold,#what=poChest,#new_row=62,#new_col=13,#fine_row=32,#fine_col=0,#angle=ANGLE_EAST);
+         Send(self,@NewHold,#what=poChest,#new_row=62,#new_col=13,#fine_row=32,#fine_col=0,
+              #angle=ANGLE_EAST);
       }
-			  
+      
       propagate;
    }
 
@@ -138,71 +136,86 @@ messages:
       local oBook;
    
       poLever = Create(&Lever,#description=RatKingLair_lever_desc);
+      
       Send(self,@NewHold,#what=poLever,#new_row=48,#new_col=18,
            #fine_row=00,#fine_col=00);
-			
-	  Send(self,@NewHold,#what=Create(&DynamicLight,#iColor=LIGHT_WHITE,#iIntensity=40),
+           
+      Send(self,@NewHold,#what=Create(&DynamicLight,#iColor=LIGHT_WHITE,#iIntensity=40),
            #new_row=62,#new_col=13,#fine_row=32,#fine_col=00);
-		  
-	  Send(self,@NewHold,#what=Create(&Brazier),
+           
+      Send(self,@NewHold,#what=Create(&Brazier),
            #new_row=67,#new_col=14,#fine_row=40,#fine_col=32);
-	  
-	  Send(self,@NewHold,#what=Create(&Brazier),
+           
+      Send(self,@NewHold,#what=Create(&Brazier),
            #new_row=67,#new_col=11,#fine_row=40,#fine_col=32);
-		   
-	  Send(self,@NewHold,#what=Create(&QuillPen),
-            #new_row=62,#new_col=16,#fine_row=48,#fine_col=40);
-			
-	  Send(self,@NewHold,#what=Create(&Skull),
-	       #new_row=48,#new_col=10,#fine_row=48,#fine_col=00,#angle=ANGLE_EAST);
-		   
-	  Send(self,@NewHold,#what=Create(&OrnamentalObject,#type=OO_BARREL2),
+           
+      Send(self,@NewHold,#what=Create(&QuillPen),
+           #new_row=62,#new_col=16,#fine_row=48,#fine_col=40);
+            
+      Send(self,@NewHold,#what=Create(&Skull),
+           #new_row=48,#new_col=10,#fine_row=48,#fine_col=00,#angle=ANGLE_EAST);
+           
+      Send(self,@NewHold,#what=Create(&OrnamentalObject,#type=OO_BARREL2),
            #new_row=57,#new_col=9,#fine_row=48,#fine_col=16,#new_angle=ANGLE_EAST);
-		   
-		   
-	  oBook = Create(&BookPedestal,#Name=ratlair_book_name,#Text=ratlair_book_text);
+           
+           
+      oBook = Create(&BookPedestal,#Name=ratlair_book_name,#Text=ratlair_book_text);
 
       Send(self,@NewHold,#what=oBook,
            #new_row=64,#new_col=16,#fine_row=0,#fine_col=0,#new_angle=ANGLE_WEST);
-		 
-	propagate;
+           
+      propagate;
    }
    
    SomethingChanged(what=$)
    {
-		if what = poLever
-		   AND Send(poLever,@GetState) = LEVER_DOWN
-		{
-		   Send(poLever,@SetStuck,#newstuck=true);
-		   send(self,@setsector,#sector=DOOR1SECTOR,#animation=ANIMATE_FLOOR_LIFT,
-	            #height = 728,#speed=32); // Lock players in the room
-		
-		   if ptDoor1 = $   // Front door opens on its own after a while in case players leave the arena by other means
-		   {
-		      ptDoor1 = CreateTimer(self,@OpenDoor,30000);
-		   }
-		
-		   Send(self,@SomethingWaveRoom,#wave_rsc=RatKingLair_door_sound,#what=poLever);
-		
-		   // Spawn boss and minions
-		   Send(self,@NewHold,#what=create(&DuskRat),
-		        #new_row=42,#new_col=13,#fine_row=0,#fine_col=0);
-		   Send(self,@NewHold,#what=create(&DuskRat),
-		        #new_row=51,#new_col=25,#fine_row=0,#fine_col=0);
-		   Send(self,@NewHold,#what=create(&DuskRat),
-		        #new_row=43,#new_col=23,#fine_row=0,#fine_col=0);
-		
-		   Send(self,@NewHold,#what=create(&DuskRat),
-		        #new_row=44,#new_col=15,#fine_row=0,#fine_col=0);
-		   Send(self,@NewHold,#what=create(&DuskRat),
-		        #new_row=42,#new_col=19,#fine_row=0,#fine_col=0);
-		   Send(self,@NewHold,#what=create(&DuskRat),
-		        #new_row=52,#new_col=19,#fine_row=0,#fine_col=0);
-		
-		   Send(self,@NewHold,#what=create(&GiantRatKing),
-		        #new_row=48,#new_col=10,#fine_row=0,#fine_col=0);
-		}
-   propagate;
+      local i, oObj;
+      
+      if what = poLever
+         AND Send(poLever,@GetState) = LEVER_DOWN
+      {
+         Send(poLever,@SetStuck,#newstuck=TRUE);
+         Send(poChest,@LockChest,#bLocked=TRUE);
+         Send(self,@setsector,#sector=DOOR1SECTOR,#animation=ANIMATE_FLOOR_LIFT,
+              #height = 728,#speed=32); // Lock players in the room
+              
+         if ptDoor1 = $   // Front door opens on its own after a while in case
+                          // players leave the arena by other means
+         {
+            ptDoor1 = CreateTimer(self,@OpenDoor,60000);
+         }
+         
+         Send(self,@SomethingWaveRoom,#wave_rsc=RatKingLair_door_sound,#what=poLever);
+         
+         foreach i in plActive
+         {
+            oObj = First(i);
+            if IsClass(oObj,&DuskRat)
+               OR IsClass(oObj,&GiantRatKing)
+            {
+               Send(oObj,@Delete);
+            }
+         }
+         
+         // Spawn boss and minions
+         Send(self,@NewHold,#what=create(&DuskRat),
+              #new_row=42,#new_col=13,#fine_row=0,#fine_col=0);
+         Send(self,@NewHold,#what=create(&DuskRat),
+              #new_row=51,#new_col=25,#fine_row=0,#fine_col=0);
+         Send(self,@NewHold,#what=create(&DuskRat),
+              #new_row=43,#new_col=23,#fine_row=0,#fine_col=0);
+              
+         Send(self,@NewHold,#what=create(&DuskRat),
+              #new_row=44,#new_col=15,#fine_row=0,#fine_col=0);
+         Send(self,@NewHold,#what=create(&DuskRat),
+              #new_row=42,#new_col=19,#fine_row=0,#fine_col=0);
+         Send(self,@NewHold,#what=create(&DuskRat),
+              #new_row=52,#new_col=19,#fine_row=0,#fine_col=0);
+              
+         Send(self,@NewHold,#what=create(&GiantRatKing),
+              #new_row=48,#new_col=10,#fine_row=0,#fine_col=0);
+      }
+      propagate;
    }
    
    
@@ -213,32 +226,32 @@ messages:
    if what <> $
          AND IsClass(what,&Player)
    {
-	  cClass = GetClass(victim);
-	  
-	  if (cClass = &DuskRat)
-	  {
-	    piMinionsKilled = piMinionsKilled + 1;
-	  }
-	  
-	  else if (cClass = &GiantRatKing)
-	  {
-		// Unlock treasure room and chest for a while after defeating the boss
-		
-		send(self,@setsector,#sector=DOOR2SECTOR,#animation=ANIMATE_FLOOR_LIFT,
-			 #height = 632,#speed=16);
-		if ptDoor1 <> $
-		{
-		   DeleteTimer(ptDoor1);
-		   ptDoor1 = CreateTimer(self,@OpenDoor,6000);
-		}
-		
-		ptDoor2 = CreateTimer(self,@CloseDoor,18000);
-		Send(self,@DoTreasure);
-		Send(poChest,@LockChest,#bLocked=FALSE);
-		Send(self,@SomethingWaveRoom,#wave_rsc=RatKingLair_door_sound,#what=poLever);
-	  }
+      cClass = GetClass(victim);
+     
+      if (cClass = &DuskRat)
+      {
+         piMinionsKilled = piMinionsKilled + 1;
+      }
+     
+      else if (cClass = &GiantRatKing)
+      {
+       // Unlock treasure room and chest for a while after defeating the boss
+      
+         send(self,@setsector,#sector=DOOR2SECTOR,#animation=ANIMATE_FLOOR_LIFT,
+              #height = 632,#speed=16);
+         if ptDoor1 <> $
+         {
+            DeleteTimer(ptDoor1);
+            ptDoor1 = CreateTimer(self,@OpenDoor,5000);
+         }
+      
+         ptDoor2 = CreateTimer(self,@CloseDoor,30000);
+         Send(self,@DoTreasure);
+         Send(poChest,@LockChest,#bLocked=FALSE);
+         Send(self,@SomethingWaveRoom,#wave_rsc=RatKingLair_door_sound,#what=poLever);
+      }
    }
-   propagate;
+      propagate;
   
    }
    
@@ -246,52 +259,55 @@ messages:
    {
       if ptDoor1 <> $
       {
-	     DeleteTimer(ptDoor1);
-	     ptDoor1 = $;
+         DeleteTimer(ptDoor1);
+         ptDoor1 = $;
       }
-	  
-	  if ptDoor2 <> $
-	  {
-	     DeleteTimer(ptDoor2);
-		 ptDoor2 = $;
-	  }
-	  
-	  plTreasuresList = $;
+     
+      if ptDoor2 <> $
+      {
+         DeleteTimer(ptDoor2);
+         ptDoor2 = $;
+      }
+     
+      plTreasuresList = $;
 
       Send(poChest,@Delete);
       poChest = $;
-	  
+      
+      Send(poLever,@SetStuck,#newstuck=FALSE);
+     
       propagate;
    }
    
    OpenDoor()
    {
       if ptDoor1 <> $
-	  {
-	     ptDoor1 = $;
-	  }
-	  send(self,@setsector,#sector=DOOR1SECTOR,#animation=ANIMATE_FLOOR_LIFT,
-	       #height = 632,#speed=16);
-	  Send(self,@SomethingWaveRoom,#wave_rsc=RatKingLair_door_sound,#what=poLever);
-	  
-	  return;
+      {
+         ptDoor1 = $;
+      }
+      Send(self,@setsector,#sector=DOOR1SECTOR,#animation=ANIMATE_FLOOR_LIFT,
+           #height = 632,#speed=16);
+      Send(self,@SomethingWaveRoom,#wave_rsc=RatKingLair_door_sound,#what=poLever);
+     
+      Send(poLever,@SetStuck,#newstuck=FALSE);
+     
+     
+      return;
    }
    
    CloseDoor()
    {
       if ptDoor2 <> $
-	  {
-	     ptDoor2 = $;
-	  }
-
-	 send(self,@setsector,#sector=DOOR2SECTOR,#animation=ANIMATE_FLOOR_LIFT,
-	      #height = 712,#speed=16);
-	 Send(poLever,@SetStuck,#newstuck=false);
-	 Send(self,@SomethingWaveRoom,#wave_rsc=RatKingLair_door_sound,#what=poLever);
-	 Send(poChest,@LockChest,#bLocked=TRUE); // Lock the chest once the door closes to guarantee players
-	                                         // have to kill the boss to access it
+      {
+         ptDoor2 = $;
+      }
      
-	 return;
+      Send(self,@setsector,#sector=DOOR2SECTOR,#animation=ANIMATE_FLOOR_LIFT,
+           #height = 712,#speed=16);
+
+      Send(self,@SomethingWaveRoom,#wave_rsc=RatKingLair_door_sound,#what=poLever);
+     
+      return;
    }
    
    DoTreasure()
@@ -347,8 +363,8 @@ messages:
                      Send(poChest,@NewHold,#what=oObject);
                }
                
-			   //
-			   else
+            //
+            else
                {
                   if Nth(Nth(plTreasuresList,i),2) = TREASURE_POWER
                   {
@@ -363,7 +379,7 @@ messages:
                      Send(poChest,@NewHold,#what=oObject);
                   }
                }
-			   //
+            //
                
                iCumulative = 100;
             }
@@ -373,50 +389,52 @@ messages:
 
          iItemNumber = iItemNumber - 1;
       }
-	  
+     
    return;
    }
-   
+     
    ResetTreasureList()
    {
       // All chances (first number) should add up to 100.
-      plTreasuresList = [ [ 3, TREASURE_OBJECT, &ScaleArmor, 1 ],
-					      [ 2, TREASURE_OBJECT, &DiscipleRobe, 1 ],
-						  [ 3, TREASURE_OBJECT, &ChainArmor, 1 ],
-						  [ 1, TREASURE_OBJECT, &PlateArmor, 1 ],
-						  [ 2, TREASURE_OBJECT, &Circlet, 1 ],
-						  [ 2, TREASURE_OBJECT, &Lute, 1 ],
-						  [ 2, TREASURE_OBJECT, &MysticSword, 1 ],
+      plTreasuresList = [ [ 2, TREASURE_OBJECT, &ScaleArmor, 1 ],
+                          [ 2, TREASURE_OBJECT, &DiscipleRobe, 1 ],
+                          [ 2, TREASURE_OBJECT, &ChainArmor, 1 ],
+                          [ 1, TREASURE_OBJECT, &PlateArmor, 1 ],
+                          [ 2, TREASURE_OBJECT, &Circlet, 1 ],
+                          [ 2, TREASURE_OBJECT, &Lute, 1 ],
+                          [ 2, TREASURE_OBJECT, &MysticSword, 1 ],
+                          [ 1, TREASURE_OBJECT, &BlindWand, 1 ],
                           [ 1, TREASURE_SPECIAL, &Hammer, WA_BLINDER ],
-						  [ 1, TREASURE_SPECIAL, &Hammer, WA_PARALYZER ],
+                          [ 1, TREASURE_SPECIAL, &Hammer, WA_PARALYZER ],
                           [ 1, TREASURE_SPECIAL, &Axe, WA_BLINDER ],
-						  [ 1, TREASURE_SPECIAL, &Axe, WA_PARALYZER ],
-						  [ 1, TREASURE_SPECIAL, &PlateArmor, IA_DURABLE ],
-						  [ 1, TREASURE_SPECIAL, &Hammer, WA_SIPHON ],
-						  [ 1, TREASURE_SPECIAL, &LongSword, WA_SIPHON ],
-						  [ 1, TREASURE_POWER, &Hammer, WA_PUNISHER ],
-						  [ 1, TREASURE_POWER, &Axe, WA_PUNISHER ],
-						  [ 1, TREASURE_POWER, &LongSword, WA_PUNISHER ],
-						  [ 1, TREASURE_POWER, &Hammer, IA_XP_KILL_BONUS ],
-						  [ 1, TREASURE_POWER, &Axe, IA_XP_KILL_BONUS ],
-						  [ 1, TREASURE_POWER, &Scimitar, IA_XP_KILL_BONUS ],
-						  [ 1, TREASURE_POWER, &LongSword, IA_XP_KILL_BONUS ],
-						  [ 1, TREASURE_POWER, &MetalShield, IA_XP_KILL_BONUS ],
-						  [ 1, TREASURE_POWER, &GoldShield, IA_XP_KILL_BONUS ],
-						  [ 1, TREASURE_POWER, &Knightshield, IA_XP_KILL_BONUS ],
-						  [ 1, TREASURE_POWER, &PlateArmor, IA_XP_KILL_BONUS ],
-						  [ 1, TREASURE_POWER, &ScaleArmor, IA_XP_KILL_BONUS ],
-						  [ 1, TREASURE_POWER, &ChainArmor, IA_XP_KILL_BONUS ],
-						  [ 1, TREASURE_POWER, &LeatherArmor, IA_XP_KILL_BONUS ],
+                          [ 1, TREASURE_SPECIAL, &Axe, WA_PARALYZER ],
+                          [ 1, TREASURE_SPECIAL, &PlateArmor, IA_DURABLE ],
+                          [ 1, TREASURE_SPECIAL, &Hammer, WA_SIPHON ],
+                          [ 1, TREASURE_SPECIAL, &LongSword, WA_SIPHON ],
+                          [ 1, TREASURE_POWER, &Hammer, WA_PUNISHER ],
+                          [ 1, TREASURE_POWER, &Axe, WA_PUNISHER ],
+                          [ 1, TREASURE_POWER, &LongSword, WA_PUNISHER ],
+                          [ 1, TREASURE_POWER, &Hammer, IA_XP_KILL_BONUS ],
+                          [ 1, TREASURE_POWER, &Axe, IA_XP_KILL_BONUS ],
+                          [ 1, TREASURE_POWER, &Scimitar, IA_XP_KILL_BONUS ],
+                          [ 1, TREASURE_POWER, &LongSword, IA_XP_KILL_BONUS ],
+                          [ 1, TREASURE_POWER, &MetalShield, IA_XP_KILL_BONUS ],
+                          [ 1, TREASURE_POWER, &GoldShield, IA_XP_KILL_BONUS ],
+                          [ 1, TREASURE_POWER, &Knightshield, IA_XP_KILL_BONUS ],
+                          [ 1, TREASURE_POWER, &PlateArmor, IA_XP_KILL_BONUS ],
+                          [ 1, TREASURE_POWER, &ScaleArmor, IA_XP_KILL_BONUS ],
+                          [ 1, TREASURE_POWER, &ChainArmor, IA_XP_KILL_BONUS ],
+                          [ 1, TREASURE_POWER, &LeatherArmor, IA_XP_KILL_BONUS ],
+                          [ 2, TREASURE_POWER, &Gauntlet, IA_XP_KILL_BONUS ],
                           [ 7, TREASURE_OBJECT, &PurpleMushroom, 25 ],
                           [ 7, TREASURE_OBJECT, &InkyCap, 15 ],
-						  [ 7, TREASURE_OBJECT, &OrcTooth, 25 ],
-						  [ 7, TREASURE_OBJECT, &Diamond, 35 ],
+                          [ 7, TREASURE_OBJECT, &OrcTooth, 25 ],
+                          [ 7, TREASURE_OBJECT, &Diamond, 35 ],
                           [ 7, TREASURE_OBJECT, &BlueDragonScale, 15 ],
                           [ 7, TREASURE_OBJECT, &DarkAngelFeather, 15 ],
                           [ 7, TREASURE_OBJECT, &EntrootBerry, 30 ],
                           [ 7, TREASURE_OBJECT, &Ruby, 25 ],
-                          [ 8, TREASURE_OBJECT, &Money, 5000 ]
+                          [ 7, TREASURE_OBJECT, &Money, 5000 ]
                         ];
 
       return;

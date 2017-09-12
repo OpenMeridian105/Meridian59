@@ -6,6 +6,6 @@
 
 DEPEND = ..\jixarm.bof
 
-BOFS = jixa.bof jixa_inn.bof
+BOFS = jixa.bof jixa_inn.bof jixa_dye.bof
 
 !include $(KODDIR)\kod.mak

@@ -233,7 +233,7 @@ BOOL CALLBACK ReadNewsDialogProc(HWND hDlg, UINT message, UINT wParam, LONG lPar
          if (!IsNameInIgnoreList(article->poster))
          {
             // Option for showing post indexes
-            if (config.debug)
+            if (cinfo->config->debug)
             {
                char title_index[MAX_SUBJECT];
                title_index[0] = 0;

@@ -2421,6 +2421,7 @@ void AdminShowCalls(int session_id,admin_parm_type parms[],
 		case LISTCOPY : strcpy(c_name, "ListCopy"); break;
 		case GETTIME : strcpy(c_name, "GetTime"); break;
 		case GETUNIXTIMESTRING: strcpy(c_name, "GetUnixTimeString"); break;
+		case OLDTIMESTAMPFIX: strcpy(c_name, "OldTimestampFix"); break;
 		case GETTICKCOUNT : strcpy(c_name, "GetTickCount"); break;
 		case GETDATEANDTIME : strcpy(c_name, "GetDateAndTime"); break;
 		case ABS : strcpy(c_name, "Abs"); break;

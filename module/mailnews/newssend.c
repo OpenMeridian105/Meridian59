@@ -73,7 +73,7 @@ BOOL CALLBACK PostNewsDialogProc(HWND hDlg, UINT message, UINT wParam, LONG lPar
       Edit_LimitText(hEdit, MAXARTICLE);
       SetWindowFont(hEdit, GetFont(FONT_MAIL), TRUE);
 
-      Edit_LimitText(hSubject, MAX_SUBJECT - 1);
+      Edit_LimitText(hSubject, MAX_SUBJECT_ENTRY - 1);
       SetWindowFont(hSubject, GetFont(FONT_MAIL), TRUE);
 
       /* Store dialog rectangle in case of resize */

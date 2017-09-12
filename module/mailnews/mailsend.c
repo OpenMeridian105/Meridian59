@@ -96,7 +96,7 @@ BOOL CALLBACK SendMailDialogProc(HWND hDlg, UINT message, UINT wParam, LONG lPar
       GetWindowRect(hDlg, &dlg_rect);
 
       Edit_LimitText(hEdit, MAXMAIL - 1);
-      Edit_LimitText(hSubject, MAX_SUBJECT - 1);
+      Edit_LimitText(hSubject, MAX_SUBJECT_ENTRY - 1);
       Edit_LimitText(hRecipients, (MAXUSERNAME + 2) * MAX_RECIPIENTS - 1);
       SendMessage(hDlg, BK_SETDLGFONTS, 0, 0);
       EnableWindow(GetDlgItem(hDlg, IDOK), FALSE);

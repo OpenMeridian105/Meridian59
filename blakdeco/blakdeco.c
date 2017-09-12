@@ -574,6 +574,7 @@ char * name_function(int fnum)
    case LISTCOPY : return "ListCopy";
 
    case GETTIME : return "GetTime";
+   case GETUNIXTIMESTRING: return "GetUnixTimeString";
    case GETTICKCOUNT : return "GetTickCount";
    case GETDATEANDTIME : return "GetDateAndTime";
 

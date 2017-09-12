@@ -226,6 +226,7 @@ void InitBkodInterpret(void)
    ccall_table[LISTCOPY] = C_ListCopy;
 
    ccall_table[GETTIME] = C_GetTime;
+   ccall_table[GETUNIXTIMESTRING] = C_GetUnixTimeString;
    ccall_table[GETTICKCOUNT] = C_GetTickCount;
    ccall_table[GETDATEANDTIME] = C_GetDateAndTime;
    ccall_table[SETCLASSVAR] = C_SetClassVar;

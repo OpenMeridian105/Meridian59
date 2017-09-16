@@ -6309,9 +6309,8 @@ messages:
 
       // Send one BP_MAIL message for each new mail message
       iNum = Length(plNew_mail);
-      i = 0;
 
-      while i < iNum
+      for (i = 0; i < iNum; ++i)
       {
          // take new mail from the end of the list,
          // so they are in order of arrival
@@ -6321,13 +6320,14 @@ messages:
          lNew_mail = Nth(plNew_mail, iIndex);
 
          AddPacket(1,BP_MAIL, 4,iIndex, STRING_RESOURCE,First(lNew_mail),
-                   4,Nth(lNew_mail,2), 2,Length(Nth(lNew_mail,3)));
-         foreach j in Nth(lNew_mail,3)
+                   STRING_AS_INTEGER,Nth(lNew_mail,MAIL_LONG_TIME),
+                   2,Length(Nth(lNew_mail,MAIL_RECEIVERS)));
+         foreach j in Nth(lNew_mail,MAIL_RECEIVERS)
          {
             AddPacket(STRING_RESOURCE,Send(j,@GetTrueName));
          }
 
-         lMail_strings = Nth(lNew_mail,4);
+         lMail_strings = Nth(lNew_mail,MAIL_TEXT);
          if Length(lMail_strings) = 1
          {
             // standard string as mail
@@ -6346,7 +6346,6 @@ messages:
          }
 
          SendPacket(poSession);
-         ++i;
       }
 
       return;
@@ -7775,7 +7774,7 @@ messages:
 
    UserGetNewsTitles(nid = $)
    {
-      local oNews, plMessages, len, message, part, parts, count, max, article;
+      local oNews, lMessages, len, part, parts, count, max, article;
 
       oNews = Send(SYS,@FindNewsByNum,#num=nid);
       if oNews = $
@@ -7786,21 +7785,19 @@ messages:
       }
 
       // Need to be in same room as news globe
-      if (NOT Send(poOwner, @ContainsNewsID, #nid = Send(oNews, @GetNewsNum)))
+      if (NOT Send(poOwner,@ContainsNewsID,#nid=Send(oNews,@GetNewsNum)))
       {
          Debug("Client request for reading news from another room, user = ",
                Send(self,@GetName));
          return;
       }
 
-      plMessages = Send(oNews, @GetArticleList);
-      len = Length(plMessages);
-      part = 1;
+      lMessages = Send(oNews,@GetArticleList);
+      len = Length(lMessages);
       parts = (len - 1) / MAX_ARTICLES_PER_PART + 1;
       max = MAX_ARTICLES_PER_PART;
-      message = plMessages;
 
-      while (part <= parts)
+      for (part = 1; part <= parts; ++part)
       {
          // Figure out how many articles are in this part of the message
          if part = parts
@@ -7809,21 +7806,20 @@ messages:
          }
 
          AddPacket(1,BP_ARTICLES, 2,nid, 1,part, 1,parts, 2,max);
-         count = 0;
 
-         while count < max
+         for (count = 0; count < max; ++count)
          {
             // Article is of form: [ message number, time, Poster, title ]
-            article = First(message);
-            AddPacket(4,First(article), 4,Nth(article,3),
-                      STRING_RESOURCE,Send(Nth(article,2),@GetTrueName),
-                      0,Nth(article,4));
-            ++count;
-            message = Rest(message);
+            article = First(lMessages);
+            AddPacket(4,First(article),
+                      //4,Nth(article,NEWS_ARTICLE_SHORT_TIME), // int
+                      STRING_AS_INTEGER,Nth(article,NEWS_ARTICLE_LONG_TIME), // string
+                      STRING_RESOURCE,Send(Nth(article,NEWS_ARTICLE_POSTER),@GetTrueName),
+                      0,Nth(article,NEWS_ARTICLE_TITLE)); // string
+            lMessages = Rest(lMessages);
          }
 
          SendPacket(poSession);
-         ++part;
       }
 
       return;
@@ -8711,7 +8707,8 @@ messages:
          dest_list = [self];
       }
 
-      plNew_mail = Cons([from,GetTime(),dest_list,[perm_string]],plNew_mail);
+      plNew_mail = Cons([from,GetTime(),GetUnixTimeString(),dest_list,[perm_string]],
+                        plNew_mail);
 
       Send(self,@MsgSendUser,#message_rsc=user_new_mail,#parm1=from);
 
@@ -8726,7 +8723,8 @@ messages:
          dest_list = [self];
       }
 
-      plNew_mail = Cons([from,GetTime(),dest_list,nest_list],plNew_mail);
+      plNew_mail = Cons([from,GetTime(),GetUnixTimeString(),dest_list,nest_list],
+                        plNew_mail);
 
       Send(self,@MsgSendUser,#message_rsc=user_new_nested_mail);
 
@@ -10602,6 +10600,23 @@ messages:
       return piSave_Angle;
    }
 
+   FixMailTimestamps()
+   "Adds the new timestamp field to each mail in plNew_mail."
+   {
+      local i;
+
+      foreach i in plNew_mail
+      {
+         if (Length(i) < 5)
+         {
+            i = InsertListElem(i,MAIL_LONG_TIME,
+                     OldTimestampFix(Nth(i,MAIL_SHORT_TIME)));
+         }
+      }
+
+      return;
+   }
+
    RemoveOldMail(iDays=180)
    {
       local iCutoff_time, lRecent_mail, lNew_mail, iTime, iRemoved;
@@ -10612,7 +10627,7 @@ messages:
       foreach lNew_mail in plNew_mail
       {
          // This is a list of [ from, time, list of to, other ]
-         iTime = Nth(lNew_mail,2);
+         iTime = Nth(lNew_mail,MAIL_SHORT_TIME); // use GetTime() here
          if (iTime > iCutoff_time)
             AND iTime < GetTime()
          {
@@ -10640,8 +10655,8 @@ messages:
       i = 1;
       foreach lNew_mail in plNew_mail
       {
-         // This is a list of [ from, time, list of to, list of stuff ]
-         stuff = Nth(lNew_mail,4);
+         // This is a list of [ from, short time, unix timestring, list of to, list of stuff ]
+         stuff = Nth(lNew_mail,MAIL_TEXT);
          if (Length(stuff) > 1)
          {
             j = 1;

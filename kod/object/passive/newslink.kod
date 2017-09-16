@@ -22,7 +22,7 @@ resources:
    newslink_icon_rsc = news.bgf
    newslink_desc_rsc = "You are looking at a public posting device."
 
-classvars:   
+classvars:
 
 properties:
 
@@ -30,8 +30,8 @@ properties:
    vrDesc = newslink_desc_rsc
    vrIcon = newslink_icon_rsc
 
-   // newsgroup id (nid) 
-   piNews         
+   // newsgroup id (nid)
+   piNews
 
 messages:
 
@@ -54,7 +54,7 @@ messages:
 
       piNews = nid;
 
-      propagate;      
+      propagate;
    }
 
    TryLook(what = $)
@@ -78,21 +78,23 @@ messages:
    {
       local oPlayerOwner;
 
-      oPlayerOwner = send(what,@GetOwner);
+      oPlayerOwner = Send(what,@GetOwner);
       if oPlayerOwner <> poOwner
       {
-         debug("ALERT!  ",send(what,@GetTrueName),what," in RID ",send(oPlayerOwner,@GetRoomNum)," got permissions for newslink in RID ",send(poOwner,@GetRoomNum));
+         Debug("ALERT!  ",Send(what,@GetTrueName),what," in RID ",
+               Send(oPlayerOwner,@GetRoomNum)," got permissions for newslink in RID ",
+               Send(poOwner,@GetRoomNum));
 
          return NEWS_PERMISSION_NONE;
       }
-      
+
       return Send(Send(SYS,@FindNewsByNum,#num=piNews),@GetNewsPermission,#what=what);
    }
 
-   PostNews(what = $,title = $,body = $)
+   PostNews(what = $,title = $,body = $,timestring = $)
    {
       return Send(Send(SYS,@FindNewsByNum,#num=piNews),@PostNews,
-                  #what=what,#title=title,#body=body);
+                  #what=what,#title=title,#body=body,#timestring=timestring);
    }
 
    GetNumArticles()
@@ -113,15 +115,10 @@ messages:
    // Give globes a soft glow.
    SendLightingInformation()
    {
-      AddPacket(2,LIGHT_FLAG_ON);
-      // Intensity (out of 255)
-      AddPacket(1,5);
-      // Color
-      AddPacket(2,LIGHT_NEWSGLOBE);
+      AddPacket(2,LIGHT_FLAG_ON, 1,5, 2,LIGHT_NEWSGLOBE);
 
       return;
    }
-
 
 end
 ////////////////////////////////////////////////////////////////////////////////

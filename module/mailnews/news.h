@@ -13,7 +13,6 @@
 #define _NEWS_H
 
 #define MAXARTICLE 4096      /* Max length of news article */
-
 /* Permissions to be able to read and post news */
 #define NEWS_READ 0x01
 #define NEWS_POST 0x02
@@ -22,7 +21,7 @@
 typedef struct
 {
    long num;                       /* Index # of article */
-   long time;                      /* Time article was posted */
+   long time;                      /* Time article was posted, unix epoch time */
    char poster[MAXUSERNAME];       /* Person who posted article */
    char title[MAX_SUBJECT];        /* Title string of article */
 } NewsArticle;

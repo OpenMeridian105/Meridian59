@@ -130,7 +130,8 @@ constants_list:
 
 constant_assign:
 		id '=' expression EOL	{ $$ = 0; make_constant_id($1, $3); }
-	|       INCLUDE fname EOL       { include_file($2); }
+	|	id '=' expression	{ $$ = 0; make_constant_id_noeol($1, $3); }
+	|	INCLUDE fname EOL       { include_file($2); }
 	|	error EOL		{ $$ = 0; } 
 	;
 
@@ -142,6 +143,7 @@ resource_list:
 resource:
 		id '=' resource_const EOL{ $$ = make_resource($1, $3, 0); }
 	|	id '=' language_const resource_const EOL{ $$ = make_resource($1, $4, $3); }
+	|	id '=' language_const resource_const{ $$ = make_resource_noeol($1, $4, $3); }
 	|	INCLUDE fname EOL { include_file($2); $$ = NULL; }
 	|	error EOL			{ $$ = NULL; }
 	;

@@ -26,8 +26,10 @@ resources:
    OutdoorsA5_music = forest.ogg
 
    cliff_msg1a5 = "You MUST be kidding!"
-   room_discord_message = "A strange wind blows in from the sea which clears away the spells affecting this area."
-   
+   room_discord_message = \
+      "A strange wind blows in from the sea which clears away the spells "
+      "affecting this area."
+
 classvars:
 
    vrName = room_name_OutdoorsA5
@@ -60,6 +62,7 @@ properties:
 
    piMonster_count_max = 15
    ptDiscord = $
+   pbDiscordPenalty = FALSE
 
 messages:
 
@@ -68,9 +71,9 @@ messages:
       plMonsters = [ [&RedAnt, 60], [&Troll, 40] ];
 
       plGenerators = [ [38, 39], [41, 29], [44, 7], [42, 20], [28, 40],
-		      [13, 44], [11, 45], [12, 33], [19, 14], [20, 19], 
-		      [21, 2], [30, 17], [20, 7], [14, 7], [2, 7] ];
-		      
+                     [13, 44], [11, 45], [12, 33], [19, 14], [20, 19], 
+                     [21, 2], [30, 17], [20, 7], [14, 7], [2, 7] ];
+
       ptDiscord = CreateTimer(self,@DiscordTimer,
                       random(DISCORD_TIME_MIN,DISCORD_TIME_MAX));
 
@@ -84,20 +87,20 @@ messages:
       if plEnchantments <> $
       {
          // Do this the easy way instead of going through the spell.
-         send(self,@RemoveAllEnchantments);
-         send(self,@SomeoneSaid,#type=SAY_MESSAGE,#string=room_discord_message,#what=self);
+         Send(self,@RemoveAllEnchantments);
+         Send(self,@SomeoneSaid,#type=SAY_MESSAGE,#string=room_discord_message,#what=self);
       }
-      
+
       ptDiscord = CreateTimer(self,@DiscordTimer,Random(DISCORD_TIME_MIN,DISCORD_TIME_MAX));
-      
+
       return;
    }
 
    CreateStandardObjects()
    {
       Send(self,@NewHold,#what=Create(&ManaNode,#node_num=NODE_A5),
-           #new_row=20,#new_col=17,#fine_row=0,#fine_col=0);
-           
+            #new_row=20,#new_col=17,#fine_row=0,#fine_col=0);
+
       propagate;
    }
 
@@ -105,7 +108,7 @@ messages:
    {
       plEdge_Exits = $;
       plEdge_Exits = Cons([LEAVE_SOUTH, RID_A6, 1,20, ROTATE_NONE], plEdge_exits);
-      
+
       return;
    }
 
@@ -115,12 +118,12 @@ messages:
       {
          if (IsClass(what,&Player))
          {
-            send(what,@MsgSendUser,#message_rsc = cliff_msg1a5);
+            Send(what,@MsgSendUser,#message_rsc=cliff_msg1a5);
          }
-         
+
          return;
       }
-      
+
       propagate;
    }
 
@@ -131,33 +134,35 @@ messages:
          DeleteTimer(ptDiscord);
          ptDiscord = $;
       }
-      
+
       propagate;
    }
 
    ModifyChanceToImprove(who=$,oSpellSkill=$,chance=0)
-   "This takes a spell/skill that who is trying to advance and modifies the improve_chance."
+   "This takes a spell/skill that who is trying to "
+   "advance and modifies the improve_chance."
    {
       local iBonus;
 
-      // Hinder learning room enchants because of the auto-discordance
-      if IsClass(oSpellSkill,&RoomEnchantment)
+      // Hinder learning room enchants because of the auto-discordance.
+      // Only if pbDiscordPenalty set to TRUE (default FALSE).
+      if (pbDiscordPenalty
+         AND IsClass(oSpellSkill,&RoomEnchantment))
       {
          return (chance / 10);
       }
 
-      // Help skill learning by 20// because it's out of the way
+      // Help skill learning by 20% because it's out of the way
       if IsClass(oSpellSkill,&Skill)
       {
          iBonus = (chance * 2)/10;
-         iBonus = bound(iBonus,1,10);
+         iBonus = Bound(iBonus,1,10);
 
          return (chance + iBonus);
       }
 
       propagate;
    }
-
 
 end
 ////////////////////////////////////////////////////////////////////////////////

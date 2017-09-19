@@ -228,14 +228,28 @@ BOOL CALLBACK ReadNewsDialogProc(HWND hDlg, UINT message, UINT wParam, LONG lPar
       for (l = info->articles; l != NULL; l = l->next)
       {
          article = (NewsArticle *) (l->data);
-         
+
          // Add article to list view
          if (!IsNameInIgnoreList(article->poster))
          {
+            // Option for showing post indexes
+            if (cinfo->config->debug)
+            {
+               char title_index[MAX_SUBJECT];
+               title_index[0] = 0;
+               sprintf(title_index, "%i: ", article->num);
+               strcat(title_index, article->title);
+
+               lvitem.pszText = title_index;
+            }
+            else
+            {
+               lvitem.pszText = article->title;
+            }
+
             lvitem.mask = LVIF_TEXT | LVIF_PARAM;
             lvitem.iItem = ListView_GetItemCount(hList);
             lvitem.iSubItem = 0;
-            lvitem.pszText = article->title;
             lvitem.lParam = (LPARAM) article;
             ListView_InsertItem(hList, &lvitem);
          
@@ -421,7 +435,6 @@ Bool DateFromSeconds(long seconds, char *str)
    struct tm *t;
    time_t local_time = seconds;
 
-   local_time += 1388534400L;    // Offset to January 2014
    t = localtime(&local_time);
 
    if (t == NULL)

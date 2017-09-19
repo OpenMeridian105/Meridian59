@@ -14,7 +14,8 @@
 
 #define MAXMAIL 4096       /* Max length of mail message body */
 #define MAXDATE 23         /* Max length of date string */
-#define MAX_SUBJECT 50     /* Max length of mail subject */
+#define MAX_SUBJECT 100     /* Max length of mail subject */
+#define MAX_SUBJECT_ENTRY 50 /* Max subject user can create */
 #define MAX_RECIPIENTS 20  /* Max # of recipients of a message */
 #define MAX_HEADERLINE 200 /* Max length of message summary line in list box */
 #define MAX_LINE (20 + (MAXUSERNAME + 2) * MAX_RECIPIENTS) /* Max length of line in header */

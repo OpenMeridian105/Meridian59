@@ -93,6 +93,7 @@ present in the current codebase.
   * [RecordStat](#recordstat)
 * [Timing Functions](#timing-functions)
   * [GetTime](#gettime)
+  * [GetUnixTimeString](#getunixtimestring)
   * [GetTickCount](#gettickcount)
   * [GetInactiveTime](#getinactivetime)
   * [GetDateAndTime](#getdateandtime)
@@ -1690,7 +1691,8 @@ the data to be added.
 #### GetTime
 `GetTime( )`
 
-Return the current wall clock time in seconds.
+Return the current unix epoch time in seconds, offset to fit inside
+a kod integer (27 bits).
 ```
    RecalcLightAndWeather()
    {
@@ -1714,6 +1716,19 @@ Return the current wall clock time in seconds.
 
       return;
    }
+```
+
+#### GetUnixTimeString
+`GetUnixTimeString( )`
+
+Return the current unix epoch time in seconds as a kod string, with no offset.
+```
+   if (unixtime = $)
+   {
+      unixtime = GetUnixTimeString();
+   }
+
+   plMessages = Cons([iMessage_num,what,GetTime(),unixtime,title,body],plMessages);
 ```
 
 #### GetTickCount

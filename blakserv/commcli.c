@@ -17,8 +17,9 @@
 
 #include "blakserv.h"
 
-#define NUMBER_OBJECT 5      /* writes 4 bytes, but diff "tag" */
+#define NUMBER_OBJECT 5     /* writes 4 bytes, but diff "tag" */
 #define STRING_RESOURCE 6   /* writes actual string, even though it's a resource */
+#define STRING_AS_INTEGER 7 /* converts string to 32-bit int, writes int */
 
 static buffer_node *blist;
 
@@ -59,7 +60,10 @@ void AddBlakodToPacket(val_type obj_size,val_type obj_data)
          bprintf("AddBlakodToPacket can't find string id %i\n",obj_data.v.data);
          break;
       }
-      AddStringToPacket(snod->len_data,snod->data);
+      if (num_bytes == STRING_AS_INTEGER)
+         AddStringToPacketAsInt(snod->data);
+      else
+         AddStringToPacket(snod->len_data,snod->data);
       break;
       
    case TAG_TEMP_STRING :
@@ -125,6 +129,13 @@ void AddShortToPacket(short byte2)
 void AddIntToPacket(int byte4)
 {
    blist = AddToBufferList(blist,&byte4,4);
+}
+
+void AddStringToPacketAsInt(const char *ptr)
+{
+   int number = strtol(ptr, NULL, 10);
+
+   blist = AddToBufferList(blist, &number, 4);
 }
 
 void AddStringToPacket(int int_len,const char *ptr)

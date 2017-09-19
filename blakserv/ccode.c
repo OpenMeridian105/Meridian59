@@ -4358,6 +4358,94 @@ int C_GetTime(int object_id,local_var_type *local_vars,
 	return ret_val.int_val;
 }
 
+/*
+ * C_GetUnixTimeString: Returns unix time as a kod string, to work around
+ *    the kod integer limit issues.
+ */
+int C_GetUnixTimeString(int object_id, local_var_type *local_vars,
+   int num_normal_parms, parm_node normal_parm_array[],
+   int num_name_parms, parm_node name_parm_array[])
+{
+   val_type ret_val;
+   string_node *snod;
+   char timeStr[15];
+
+   ret_val.v.tag = TAG_STRING;
+   ret_val.v.data = CreateString("");
+
+   snod = GetStringByID(ret_val.v.data);
+   if (snod == NULL)
+   {
+      bprintf("C_GetUnixTimeString can't set invalid string %i,%i\n",
+         ret_val.v.tag, ret_val.v.data);
+      return NIL;
+   }
+
+   // Make a string with unix time.
+   int len = sprintf(timeStr, "%i", GetTime());
+
+   if (len <= 0)
+   {
+      bprintf("C_GetUnixTimeString got invalid time from GetTime(), returning $.");
+
+      return NIL;
+   }
+
+   // Make a blakod string using the string value of the unix time.
+   SetString(snod, timeStr, len);
+
+   return ret_val.int_val;
+}
+
+// Temporary C call used to fix instances of GetTime() with offset being used
+// as a 'permanent' timestamp. As these break every 4 years when stored as int,
+// they should instead be stored as strings. This function converts the old int
+// to the new string.
+int C_OldTimestampFix(int object_id, local_var_type *local_vars,
+   int num_normal_parms, parm_node normal_parm_array[],
+   int num_name_parms, parm_node name_parm_array[])
+{
+   val_type ret_val, time_val;
+   string_node *snod;
+   char timeStr[15];
+
+   time_val = RetrieveValue(object_id, local_vars, normal_parm_array[0].type,
+      normal_parm_array[0].value);
+
+   if (time_val.v.tag != TAG_INT)
+   {
+      bprintf("C_OldTimestampFix can only set timestamp from TAG_INT, received %i,%i\n",
+         time_val.v.tag, time_val.v.data);
+      return NIL;
+   }
+
+   ret_val.v.tag = TAG_STRING;
+   ret_val.v.data = CreateString("");
+
+   snod = GetStringByID(ret_val.v.data);
+   if (snod == NULL)
+   {
+      bprintf("C_OldTimestampFix can't set invalid string %i,%i\n",
+         ret_val.v.tag, ret_val.v.data);
+      return NIL;
+   }
+
+   // Make a string with unix time by adding the time offset to the old timestamp.
+   int len = sprintf(timeStr, "%i", 1388534400 + time_val.v.data);
+
+   if (len <= 0)
+   {
+      bprintf("C_OldTimestampFix got invalid time from GetTime(), returning $.");
+
+      return NIL;
+   }
+
+   // Make a blakod string using the string value of the timestamp.
+   SetString(snod, timeStr, len);
+
+   return ret_val.int_val;
+}
+
 int C_GetTickCount(int object_id,local_var_type *local_vars,
 			  int num_normal_parms,parm_node normal_parm_array[],
 			  int num_name_parms,parm_node name_parm_array[])

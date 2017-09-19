@@ -41,10 +41,11 @@ properties:
    vrName = news_name_rsc
    vrDesc = news_desc_rsc
 
-   piNews			// newsgroup id (nid) 
+   // newsgroup id (nid)
+   piNews
 
-   plMessages = $               // don't change structure of this without
-                                // changing user.kod!!!
+   // don't change structure of this without changing user.kod!!!
+   plMessages = $
 
    // plMessages is a list of lists.
    //
@@ -54,7 +55,8 @@ properties:
    //
    //   [ INT message number,
    //     OBJECT that posted the message,
-   //     INT post time,
+   //     INT post time, (with offset, for checking deletion time)
+   //     STRING unix time, (without offset, for displaying date in clients)
    //     STRING title of message,
    //     STRING message text
    //   ]
@@ -69,16 +71,16 @@ messages:
    {
       if nid = $
       {
-         debug("Newsgroup created with no nid");
-         
+         Debug("Newsgroup created with no nid");
+
          propagate;
       }
-      
+
       if name <> $
       {
          vrName = name;
       }
-      
+
       if desc <> $
       {
          vrDesc = desc;
@@ -88,7 +90,24 @@ messages:
 
       Send(SYS,@SystemNewNews,#what = self);
 
-      propagate;      
+      propagate;
+   }
+
+   FixPostTimestamps()
+   "Adds the new timestamp field to each post in plMessages."
+   {
+      local i;
+
+      foreach i in plMessages
+      {
+         if (Length(i) < 6)
+         {
+            i = InsertListElem(i,NEWS_ARTICLE_LONG_TIME,
+                  OldTimestampFix(Nth(i,NEWS_ARTICLE_SHORT_TIME)));
+         }
+      }
+
+      return;
    }
 
    Delete()
@@ -102,7 +121,7 @@ messages:
    TryLook(what = $)
    {
       Send(what,@SendLookNews,#what=self);
-      
+
       return;
    }
 
@@ -118,29 +137,36 @@ messages:
 
    GetNewsPermission(what = $)
    {
-      return NEWS_PERMISSION_READ_WRITE;			// read-write by everybody
+      return NEWS_PERMISSION_READ_WRITE; // read-write by everybody
    }
 
-   PostNews(what = $,title = $,body = $)
+   PostNews(what = $,title = $,body = $, timestring = $)
    {
       local iMessage_num;
 
-      if NOT (send(self,@GetNewsPermission,#what=what) & NEWS_PERMISSION_WRITE)
+      if NOT (Send(self,@GetNewsPermission,#what=what) & NEWS_PERMISSION_WRITE)
       {
-         debug("ALERT!  Player ",send(what,@GetTrueName),what," tried to write to a newsglobe without permission.");
-         
+         Debug("ALERT!  Player ",Send(what,@GetTrueName),what,
+            " tried to write to a newsglobe without permission.");
+
          return;
       }
 
       Send(self,@ClearSpaceToPost);
 
-      iMessage_num = piNext_num;
-      piNext_num = piNext_num + 1;
+      iMessage_num = piNext_num++;
 
-      title = send(SYS,@CleanseString,#string=title);
-      body = send(SYS,@CleanseString,#string=body);
+      title = Send(SYS,@CleanseString,#string=title);
+      body = Send(SYS,@CleanseString,#string=body);
 
-      plMessages = Cons([iMessage_num,what,GetTime(),title,body],plMessages);
+      // Passing a time in allows a post to display the original date,
+      // e.g. if deleted/moved to god globe.
+      if (timestring = $)
+      {
+         timestring = GetUnixTimeString();
+      }
+
+      plMessages = Cons([iMessage_num,what,GetTime(),timestring,title,body],plMessages);
 
       return;
    }
@@ -187,14 +213,15 @@ messages:
             return FALSE;
          }
 
-         if (Nth(lArticle,2) <> who)
+         if (Nth(lArticle,NEWS_ARTICLE_POSTER) <> who)
          {
             Send(who,@MsgSendUser,#message_rsc=news_not_own_post);
 
             return FALSE;
          }
 
-         if (GetTime() - Nth(lArticle,3) > viPostDeleteMinutes * 60)
+         if (GetTime() - Nth(lArticle,NEWS_ARTICLE_SHORT_TIME)
+            > viPostDeleteMinutes * 60)
          {
             // Resource to be sent to user is a time string which may change,
             // so we use a callback to add a BP_MESSAGE protocol and build
@@ -206,13 +233,24 @@ messages:
          }
       }
 
-      // Article is [index, player obj_id, time, title, body]
-      // index and time are not preserved when copying. If deleting
-      // from god globe, don't try to move the post.
+      // Article is [index, player obj_id, time, timestring, title, body]
+      // index and (short) time are not preserved when copying. If deleting
+      // from god globe, don't try to move the post. Post will be displayed
+      // on god globe with its original time (once timestring is in use),
+      // meaning posts are displayed in deleted order instead of chronological.
       if (oNews <> self)
       {
-         Send(oNews,@PostNews,#what=Nth(lArticle,2),#title=Nth(lArticle,4),
-               #body=Nth(lArticle,5));
+         // Add a note to the title of who deleted the post.
+         ClearTempString();
+         AppendTempString("d:");
+         AppendTempString(Send(who,@GetTrueName));
+         AppendTempString(" - ");
+         AppendTempString(Nth(lArticle,NEWS_ARTICLE_TITLE));
+
+         Send(oNews,@PostNews,#what=Nth(lArticle,NEWS_ARTICLE_POSTER),
+               #title=SetString($,GetTempString()),
+               #body=Nth(lArticle,NEWS_ARTICLE_BODY),
+               #timestring=Nth(lArticle,NEWS_ARTICLE_LONG_TIME));
       }
 
       Send(self,@DeleteMail,#number=index);
@@ -253,7 +291,7 @@ messages:
    GetArticle(index=$)
    "Returns an article by post index."
    {
-      return GetListNode(plMessages, 1, index);
+      return GetListNode(plMessages, NEWS_ARTICLE_INDEX, index);
    }
 
    GetNewsBody(num = $)
@@ -264,10 +302,10 @@ messages:
       {
          if First(i) = num
          {
-            return Nth(i,5);
+            return Nth(i,NEWS_ARTICLE_BODY);
          }
       }
-      
+
       return $;
    }
 
@@ -296,7 +334,7 @@ messages:
          }
 
          lOld = Nth(plMessages,piMax_messages);
-      }      
+      }
 
       return;
    }
@@ -306,23 +344,6 @@ messages:
    "Prints out the next news num to help tracking down mail to delete"
    {
       return piNext_num;
-   }
-
-   GetString(number = $)
-   "Admin supported\n"
-   "Prints out string of a message number."
-   {
-      local i;
-      
-      foreach i in plMessages
-      {
-         if First(i) = number
-         {
-            return Nth(i,5);
-         }
-      }
-
-      return $;
    }
 
    DeleteMail(number = $)
@@ -336,7 +357,7 @@ messages:
          if First(i) = number
          {
             plMessages = DelListElem(plMessages,i);
-            
+
             return TRUE;
          }
       }
@@ -348,7 +369,7 @@ messages:
    "Admin supported.\n"
    "Deletes a mail message by mail number."
    {
-      return send(self,@DeleteMail,#number=number);
+      return Send(self,@DeleteMail,#number=number);
    }
 
    SearchForPosts(name = $, poster = $, contains = $)
@@ -359,7 +380,7 @@ messages:
 
       if (poster = $) AND (name <> $)
       {
-         poster = send(SYS,@FindUserByString,#string=name);
+         poster = Send(SYS,@FindUserByString,#string=name);
       }
 
       if (poster = $) AND (contains = $)
@@ -367,34 +388,33 @@ messages:
          return $;
       }
 
-      list = $;
       foreach i in plMessages
       {
-         if (poster <> $) AND (Nth(i, 2) = poster)
+         if (poster <> $) AND (Nth(i, NEWS_ARTICLE_POSTER) = poster)
          {
-            list = cons(Nth(i, 1), list);
-            
+            list = Cons(First(i), list);
+
             continue;
          }
 
-         if (contains <> $) AND stringContain(Nth(i, 4), contains)
+         if (contains <> $) AND StringContain(Nth(i, NEWS_ARTICLE_TITLE), contains)
          {
-            list = cons(Nth(i, 1), list);
-            
+            list = Cons(First(i), list);
+
             continue;
          }
 
-         if (contains <> $) AND stringContain(Nth(i, 5), contains)
+         if (contains <> $) AND StringContain(Nth(i, NEWS_ARTICLE_BODY), contains)
          {
-            list = cons(Nth(i, 1), list);
-            
+            list = Cons(First(i), list);
+
             continue;
          }
       }
 
-      if length(list) = 1
+      if Length(list) = 1
       {
-         return Nth(list, 1);
+         return First(list);
       }
 
       return list;
@@ -411,11 +431,7 @@ messages:
    // Give globes a soft glow.
    SendLightingInformation()
    {
-      AddPacket(2,LIGHT_FLAG_ON);
-      // Intensity (out of 255)
-      AddPacket(1,5);
-      // Color
-      AddPacket(2,LIGHT_NEWSGLOBE);
+      AddPacket(2,LIGHT_FLAG_ON, 1,5, 2,LIGHT_NEWSGLOBE);
 
       return;
    }

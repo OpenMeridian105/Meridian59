@@ -869,10 +869,14 @@ messages:
             }
             iVision *= iVision;
 
-            if iDistance < iVision
+            // Must be fairly close.
+            if iDistance < iVision / 3
             {
                // If our friend is a player, we'll try to be his sidekick.
-               if IsClass(oSocial,&Player)
+               // Must not be hidden (dm/admin) or morphed as a mob
+               if (IsClass(oSocial,&Player)
+                  AND NOT Send(oSocial,@IsHidden)
+                  AND NOT Send(oSocial,@CheckPlayerFlag,#flag=PFLAG_MORPHED))
                {
                   if Send(mob,@SetLeader,#oLeader=oSocial)
                   {

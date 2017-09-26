@@ -11,7 +11,7 @@
 RadiusEnchantment is Spell
 
 // [timer, spell object, state, spellpower]
-// state is [caster, target, range, duration, spell-specific stuff]
+// state is [caster, source/target, range, duration, spell-specific stuff]
 // If you are enchanted with a radius enchant and are the target, the radius
 // emanates from you. If you are not the target, you get the spell effects
 // (based on relationship to the caster) but not the light effect.
@@ -235,7 +235,7 @@ messages:
 
    DoSpellEffects(who=$,iSpellPower=0,lTargets=$,bItemCast=FALSE)
    {
-      local oTarget, i, each_obj, lType, lState, iRange, lOldState;
+      local oTarget, i, each_obj, lType, lState, iRange, lOldState, iDuration;
 
       lType = [self,viDefensive,viOffensive,viResistanceType];
 
@@ -300,12 +300,14 @@ messages:
          }
       }
 
+      iDuration = Send(self,@GetDuration,#iSpellPower=iSpellPower);
+
       // who is the caster, target is the target (sometimes the same as who).
       iRange = Send(self,@CalculateRange,#who=who,#iSpellPower=iSpellPower);
-      lState = [ who, oTarget, iRange, viTickDuration,Send(self,@GetStateValue,
+      lState = [ who, oTarget, iRange, iDuration, Send(self,@GetStateValue,
                #iSpellpower=iSpellpower,#who=who,#target=oTarget)];
 
-      Send(oTarget,@StartEnchantment,#what=self,#state=lState,#time=viTickDuration,
+      Send(oTarget,@StartEnchantment,#what=self,#state=lState,#time=iDuration,
             #lastcall=Send(self,@GetLastCall),#addicon=Send(self,@GetAddicon),
             #who=who,#ltype=lType,#bItemCast=bItemCast,#iSpellpower=iSpellpower,
             #bRadiusEnchant=TRUE);
@@ -327,9 +329,9 @@ messages:
    {
       local iDuration, oCaster, i, each_obj;
 
-      // Pre-calculated
+      // Pre-calculated for most spells
       iDuration = Send(self,@GetStateDuration,#state=state);
-      oCaster = Send(self,@GetCaster,#state=state);
+      oCaster = First(state);
 
       Send(who,@StartEnchantment,#what=self,#time=iDuration,#who=oCaster,
             #state=state,#addicon=FALSE,#lastcall=FALSE,#bRadiusEnchant=TRUE,
@@ -345,11 +347,11 @@ messages:
          {
             Send(self,@PeriodicEffect,#who=each_obj,#state=state);
          }
+      }
 
-         if viRegenerationEffect and IsClass(who,&Battler)
-         {
-            Send(who,@UpdateRates);
-         }
+      if viRegenerationEffect and IsClass(who,&Battler)
+      {
+         Send(who,@UpdateRates);
       }
 
       return;
@@ -391,7 +393,7 @@ messages:
       iFineRow = Send(oSource,@GetFineRow);
       iFineCol = Send(oSource,@GetFineCol);
       // Range is in fine units.
-      iRange = Send(self,@GetRange,#state=state);
+      iRange = Nth(state,RE_STATE_RANGE);
       // Squared.
       iRange *= iRange;
 
@@ -400,7 +402,8 @@ messages:
          each_obj = First(i);
 
          // Range check.
-         if (Send(who,@SquaredFineDistanceToLocation3D,#row=iRow,#col=iCol,
+         if (NOT IsClass(each_obj,&NoMoveOn)
+            OR Send(each_obj,@SquaredFineDistanceToLocation3D,#row=iRow,#col=iCol,
                   #fine_row=iFineRow,#fine_col=iFineCol) > iRange)
          {
             continue;
@@ -438,7 +441,7 @@ messages:
       lOldState = Send(who,@GetRadiusEnchantmentState,#what=self);
       if (lOldState <> $)
       {
-         if (Send(self,@GetSource,#state=lOldState) = who
+         if (Nth(lOldState,RE_STATE_SOURCE) = who
             OR iSpellPower <= Send(who,@GetRECastPower,#what=self))
          {
             return;
@@ -448,7 +451,7 @@ messages:
          Send(who,@RemoveRadiusEnchantment,#what=self,#state=lOldState);
       }
 
-      oCaster = Send(self,@GetCaster,#state=state);
+      oCaster = First(state);
       if (who = oCaster)
       {
          Send(who,@MsgSendUser,#message_rsc=vrEnterRadiusCaster);
@@ -460,7 +463,7 @@ messages:
       }
 
       // Don't try to re-enchant the source.
-      if (who <> Send(self,@GetSource,#state=state))
+      if (who <> Nth(state,RE_STATE_SOURCE))
       {
          if (Send(self,@GetLastCall))
          {
@@ -515,7 +518,7 @@ messages:
          }
       }
 
-      oCaster = Send(self,@GetCaster,#state=state);
+      oCaster = First(state);
 
       if (oCaster = $)
       {
@@ -626,14 +629,20 @@ messages:
       return iSpellPower;
    }
 
+   GetDuration(iSpellPower=$)
+   // Override for non-periodic enchantments.
+   {
+      return viTickDuration;
+   }
+
    GetLastCall()
-   // Overwrite to true for non-periodic enchantments.
+   // Override to true for non-periodic enchantments.
    {
       return FALSE;
    }
 
    GetAddIcon()
-   // Overwrite for iconless enchantments.
+   // Override for iconless enchantments.
    {
       return TRUE;
    }
@@ -665,8 +674,8 @@ messages:
                iRow, iCol);
       }
 
-      oSource = Send(self,@GetSource,#state=state);
-      iRange = Send(self,@GetRange,#state=state);
+      oSource = Nth(state,RE_STATE_SOURCE);
+      iRange = Nth(state,RE_STATE_RANGE);
       iRange *= iRange;
 
       bEnchanted = Send(who,@IsEnchantedRadius,#what=self,#state=state);
@@ -679,7 +688,9 @@ messages:
          {
             Send(who,@MsgSendUser,#message_rsc=vrLeaveRadius,
                   #parm1=Send(oSource,@GetDef),#parm2=Send(oSource,@GetName));
-            Send(who,@RemoveRadiusEnchantment,#what=self,#state=state);
+            // Don't report in subsequent calls - radius spell still active.
+            Send(who,@RemoveRadiusEnchantment,#what=self,#state=state,
+                  #report=FALSE);
          }
       }
       else if (NOT bEnchanted)
@@ -717,11 +728,11 @@ messages:
          return;
       }
 
-      oSource = Send(self,@GetSource,#state=state);
+      oSource = Nth(state,RE_STATE_SOURCE);
 
       if report
       {
-         if (who = Send(self,@GetCaster,#state=state))
+         if (who = First(state))
          {
             Send(who,@MsgSendUser,#message_rsc=vrEnchantmentOff);
          }
@@ -764,6 +775,7 @@ messages:
 #endregion Unenchant Targets
 
 #region State Accessors
+   // These are useful for debugging but not necessary to use.
    GetCaster(state = $)
    "Returns the caster of the spell, given the state."
    {

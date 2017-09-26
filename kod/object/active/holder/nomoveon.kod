@@ -108,7 +108,8 @@ messages:
 
    SomethingEntered(what=$)
    {
-      if (what <> self)
+      if (what <> $
+         AND what <> self)
       {
          Send(self,@NoMoveOnRadiusEnchCheckOne,#who=what);
       }
@@ -120,23 +121,21 @@ messages:
    {
       local i, each_obj, oSource, state;
 
-      if (what <> self)
+      if (what <> self
+         AND IsClass(what,&NoMoveOn))
       {
-         if (IsClass(what,&NoMoveOn))
+         foreach i in plRadiusEnchantments
          {
-            foreach i in plRadiusEnchantments
+            each_obj = Nth(i,2);
+            state = Nth(i,3);
+            oSource = Nth(state,RE_STATE_SOURCE);
+            if (oSource = what)
             {
-               each_obj = Nth(i,2);
-               state = Nth(i,3);
-               oSource = Send(each_obj,@GetSource,#state=state);
-               if (oSource = what)
-               {
-                  Send(self,@RemoveRadiusEnchantment,#what=each_obj,#state=state);
-               }
-               else if (oSource = self)
-               {
-                  Send(what,@RemoveRadiusEnchantment,#what=each_obj,#state=state);
-               }
+               Send(self,@RemoveRadiusEnchantment,#what=each_obj,#state=state);
+            }
+            else if (oSource = self)
+            {
+               Send(what,@RemoveRadiusEnchantment,#what=each_obj,#state=state);
             }
          }
       }
@@ -200,7 +199,7 @@ messages:
          oSpell = Nth(i,2);
          lState = Nth(i,3);
          iSpellPower = Nth(i,4);
-         if (Send(oSpell,@GetSource,#state=lState) = self)
+         if (Nth(lState,RE_STATE_SOURCE) = self)
          {
             foreach j in lActive
             {
@@ -241,7 +240,7 @@ messages:
       {
          oSpell = Nth(i,2);
          lState = Nth(i,3);
-         if (Send(oSpell,@GetSource,#state=lState) = self)
+         if (Nth(lState,RE_STATE_SOURCE) = self)
          {
             Send(oSpell,@CheckRadiusEnchantment,#who=who,#state=lState,
                   #iRow=piRow,#iCol=piCol,#iFineRow=piFine_row,
@@ -490,7 +489,7 @@ messages:
       foreach i in plRadiusEnchantments
       {
          oLightObject = Nth(i,2);
-         if (Send(oLightObject,@GetSource,#state=Nth(i,3)) = self
+         if (Nth(Nth(i,3),RE_STATE_SOURCE) = self
             AND Send(oLightObject,@GetLightIntensity) >= iIntensity)
          {
             iIntensity = Send(oLightObject,@GetLightIntensity);

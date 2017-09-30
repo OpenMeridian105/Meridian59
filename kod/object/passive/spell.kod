@@ -1195,16 +1195,17 @@ messages:
    CheckPlayerHelp(who=$, lTargets=$)
    "Checks to see if the player can cast the beneficial spell on said targets."
    {
-      local oObject;
+      local oObject, oOwner;
 
       // If lTargets is $, then we're casting an room-effect spell, let it go.
       if lTargets <> $
       {
          foreach oObject in lTargets
          {
+            oOwner = Send(oObject,@GetOwner);
             // If we're in the arena, we can cast it.
             if IsClass(oObject,&Battler)
-               AND Send(Send(oObject,@GetOwner),@IsArena)
+               AND (oOwner <> $ AND Send(oOwner,@IsArena))
             {
                return TRUE;
             }

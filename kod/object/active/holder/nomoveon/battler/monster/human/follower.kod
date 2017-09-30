@@ -595,20 +595,16 @@ messages:
       // If the follower has Apparitions attacking it, delete them.
       Send(self,@RemoveAllApparitions);
 
-      if plHurtMeRecently <> $
+      foreach i in plHurtMeRecently
       {
-         foreach i in plHurtMeRecently
+         if IsTimer(Nth(i,3))
          {
-            if IsTimer(Nth(i,3))
-            {
-               DeleteTimer(Nth(i,3));
-            }
-            SetFirst(i,$);
-            SetNth(i,2,$);
-            SetNth(i,3,$);
-            plHurtMeRecently = DelListElem(plHurtMeRecently,i);
+            DeleteTimer(Nth(i,3));
          }
+         SetFirst(i,$);
+         SetNth(i,3,$);
       }
+      plHurtMeRecently = $;
 
       // Delete our resource timers.
       if ptHealth <> $

@@ -40,6 +40,8 @@ resources:
       "are worthy of your martyrdom."
    martyrsgrace_notargetsaround_rsc = \
       "Your martyrdom would be quite pointless with no one around to see it."
+   martyrsgrace_nohealth_rsc = \
+      "You don't have enough remaining health to sacrifice!"
 
 classvars:
 
@@ -59,6 +61,8 @@ classvars:
 
 properties:
 
+   piPctHealthLeft = 10
+
 messages:
 
    ResetReagents()
@@ -72,6 +76,13 @@ messages:
    CanPayCosts(who = $,lTargets = $)
    {
       local oRoom, i, each_obj, lPlayers;
+
+      if (Send(who,@GetHealth) < Send(who,@GetMaxHealth) * piPctHealthLeft / 100)
+      {
+         Send(who,@MsgSendUser,#message_rsc=martyrsgrace_nohealth_rsc);
+
+         return FALSE;
+      }
 
       oRoom = Send(who,@GetOwner);
 
@@ -206,7 +217,7 @@ messages:
    DoSpellEffects(who = $, lTargets = $, iSpellPower = 0)
    {
       local lFinalTargets, each_obj, iMissingHealth, iHealth, iBonus, iPool,
-            iMissing, iPercentage, iHeal, iSacrifice, iRestore;
+            iMissing, iPercentage, iHeal, iSacrifice, iRestore, iMinLeft;
 
       iMissingHealth = 0;
 
@@ -219,8 +230,9 @@ messages:
 
       // Now figure out the caster's health pool, which is a compound of their 
       // current health, their spellpower and their karma.
-      // We only utilize 90% of the actual health pool.
-      iHealth = Send(who,@GetHealth)-(Send(who,@GetMaxHealth)/10);
+      // We only utilize (by default) 90% of the actual health pool.
+      iMinLeft = Send(who,@GetMaxHealth) * piPctHealthLeft / 100;
+      iHealth = Send(who,@GetHealth) - iMinLeft;
       iBonus = Bound((Send(who,@GetKarma)-60)*5/2,0,100) + iSpellPower;
       iPool = iHealth * iBonus / 100;
 

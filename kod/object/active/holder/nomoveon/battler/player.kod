@@ -3067,7 +3067,7 @@ messages:
          oSpell = Nth(i,2);
          if First(i) = timer
          {
-            if (Send(oSpell,@GetCaster,#state=Nth(i,3)) = self)
+            if (First(Nth(i,3)) = self) // Nth(state,RE_STATE_CASTER)
             {
                Send(self,@ShowRemoveEnchantment,#what=oSpell,
                      #type=ENCHANTMENT_PLAYER);
@@ -3581,7 +3581,7 @@ messages:
                // Everyone has the room icon, only caster has player icon.
                Send(self,@ShowRemoveEnchantment,#what=what,
                      #type=ENCHANTMENT_ROOM);
-               if (Send(what,@GetCaster,#state=lState) = self)
+               if (First(lState) = self) // Nth(state,RE_STATE_CASTER)
                {
                   Send(self,@ShowRemoveEnchantment,#what=what,
                         #type=ENCHANTMENT_PLAYER);
@@ -3661,10 +3661,9 @@ messages:
       // Just send the ones we are the source for, Room handles all others.
       foreach i in plRadiusEnchantments
       {
-         each_obj = Nth(i,2);
-         if (Send(each_obj,@GetSource,#state=Nth(i,3)) = self)
+         if (Nth(Nth(i,3),RE_STATE_SOURCE) = self)
          {
-            Send(self,@ShowAddEnchantment,#what=each_obj,
+            Send(self,@ShowAddEnchantment,#what=Nth(i,2),
                   #type=ENCHANTMENT_PLAYER);
          }
       }
@@ -11484,7 +11483,7 @@ messages:
       // Check radius enchantments.
       foreach i in plRadiusEnchantments
       {
-         if (Send(Nth(i,2),@GetSource,#state=Nth(i,3)) = self)
+         if (Nth(Nth(i,3),RE_STATE_SOURCE) = self)
          {
             piDrawEffectFlag |= OF_FLICKERING;
 
@@ -11526,7 +11525,7 @@ messages:
       {
          oEnch = Nth(i,2);
          state = Nth(i,3);
-         if (Send(oEnch,@GetCaster,#state=state) = self)
+         if (First(state) = self) // Nth(state,RE_STATE_CASTER)
          {
             Send(oEnch,@BreakTrance,#who=self,#state=state,#event=event);
          }
@@ -14223,7 +14222,7 @@ messages:
       foreach i in plRadiusEnchantments
       {
          oLightObject = Nth(i,2);
-         if (Send(oLightObject,@GetSource,#state=Nth(i,3)) = self
+         if (Nth(Nth(i,3),RE_STATE_SOURCE) = self
             AND Send(oLightObject,@GetLightIntensity) >= iIntensity)
          {
             iIntensity = Send(oLightObject,@GetLightIntensity);

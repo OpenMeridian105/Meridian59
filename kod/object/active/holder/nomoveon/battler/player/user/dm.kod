@@ -159,7 +159,7 @@ resources:
    dm_create_dynamic_light_command = "place dynamic light"
 
    dm_roomgive_command = "roomgive"
-   dm_gave_to_number = "%s players received reward!"
+   dm_gave_to_number = "%i players received reward!"
 
    dm_stealth_on = "You are now in stealth mode."
    dm_stealth_off = "You are no longer in stealth mode."
@@ -1175,49 +1175,6 @@ messages:
          return;
       }
 
-      if StringContain(string,dm_inspectroom)
-      {
-         // Run through RIDs up to max ID.
-         // Begin at our current room.
-         lRooms = Send(SYS,@GetRooms);
-         i = FindListElem(lRooms,poOwner);
-         bMonster = StringContain(string,dm_inspectmonsterroom);
-         bPrevious = StringContain(string,dm_inspectpreviousroom);
-         oRoom = $;
-
-         while (oRoom = $) OR (bMonster AND NOT IsClass(oRoom,&MonsterRoom))
-         {
-            // plRooms has reversed order of phRooms, which is sorted by RID.
-            if bPrevious
-            {
-               ++i;
-            }
-            else
-            {
-               --i;
-            }
-
-            // Wrap around.
-            if i = 0
-            {
-               i = Length(lRooms);
-            }
-            else if i > Length(lRooms)
-            {
-               i = 1;
-            }
-
-            oRoom = Nth(lRooms,i);
-         }
-
-         Send(SYS,@UtilGoNearSquare,#what=self,#where=oRoom,
-              #new_row=Send(oRoom,@GetTeleportRow),
-              #new_col=Send(oRoom,@GetTeleportCol),
-              #new_angle=Send(oRoom,@GetTeleportAngle));
-
-         return;
-      }
-
       // Makes the DM/Admin into Q; only green-named can use.
       if pbImmortalSave > 1
          AND StringEqual(string,"Zandramas, in your always infinite wisdom, please make me Q.")
@@ -1591,6 +1548,51 @@ messages:
 
             return;
          }
+      }
+
+       // Exclude roomgive in case they can't hand out items (skipping it earlier)
+      if StringContain(string,dm_inspectroom)
+         AND NOT StringContain(string,dm_roomgive_command)
+      {
+         // Run through RIDs up to max ID.
+         // Begin at our current room.
+         lRooms = Send(SYS,@GetRooms);
+         i = FindListElem(lRooms,poOwner);
+         bMonster = StringContain(string,dm_inspectmonsterroom);
+         bPrevious = StringContain(string,dm_inspectpreviousroom);
+         oRoom = $;
+
+         while (oRoom = $) OR (bMonster AND NOT IsClass(oRoom,&MonsterRoom))
+         {
+            // plRooms has reversed order of phRooms, which is sorted by RID.
+            if bPrevious
+            {
+               ++i;
+            }
+            else
+            {
+               --i;
+            }
+
+            // Wrap around.
+            if i = 0
+            {
+               i = Length(lRooms);
+            }
+            else if i > Length(lRooms)
+            {
+               i = 1;
+            }
+
+            oRoom = Nth(lRooms,i);
+         }
+
+         Send(SYS,@UtilGoNearSquare,#what=self,#where=oRoom,
+              #new_row=Send(oRoom,@GetTeleportRow),
+              #new_col=Send(oRoom,@GetTeleportCol),
+              #new_angle=Send(oRoom,@GetTeleportAngle));
+
+         return;
       }
 
       if (piDMFlags & DMFLAG_ALLOW_SET_MORTAL)

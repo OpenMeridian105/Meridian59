@@ -14808,8 +14808,7 @@ messages:
       }
       ptPhaseRegenTimer = $;
 
-      if (Send(self,@IsInCannotInteractMode)
-         OR NOT pbLogged_on)
+      if (Send(self,@IsOfflineOrCannotInteract))
       {
          return;
       }
@@ -14961,6 +14960,16 @@ messages:
    IsInCannotInteractMode()
    {
       return (piFlags & PFLAG_PHASED) OR (piFlags & PFLAG_SPECTATOR);
+   }
+
+   // Use this when something should check whether a player has
+   // 'exited play' by logging, being spectated, or phasing.
+   // Basically IsInCannotInteractMode() or logged off.
+   IsOfflineOrCannotInteract()
+   {
+      return (NOT pbLogged_on)
+         OR (piFlags & PFLAG_PHASED)
+         OR (piFlags & PFLAG_SPECTATOR);
    }
 
    IsLikelyVictim()

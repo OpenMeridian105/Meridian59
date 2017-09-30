@@ -147,7 +147,7 @@ messages:
             oSpell = Nth(i,2);
             state = Nth(i,3);
             // Remove at the source.
-            Send(Send(oSpell,@GetSource,#state=state),@RemoveRadiusEnchantment,
+            Send(Nth(state,RE_STATE_SOURCE),@RemoveRadiusEnchantment,
                   #what=oSpell,#state=state,#recheck=TRUE);
          }
 
@@ -179,6 +179,7 @@ messages:
          {
             if (NOT IsClass(who,&Battler)
                OR NOT IsClass(oCaster,&Battler)
+               OR Send(oCaster,@IsOfflineOrCannotInteract)
                OR Send(who,@AllowBattlerAttack,#victim=oCaster,#stroke_obj=self,
                         #oRoomOverride=oRoom))
             {
@@ -193,7 +194,7 @@ messages:
       {
          oSpell = Nth(i,2);
          state = Nth(i,3);
-         oCaster = Send(oSpell,@GetCaster,#state=state);
+         oCaster = First(state); // Nth(state,RE_STATE_CASTER)
          iModifiedChance = iChance;
          if Send(oSpell,@GetSchool) = SS_JALA
          {
@@ -206,11 +207,12 @@ messages:
             // Check whether we can attack the caster.
             if (NOT IsClass(who,&Battler)
                OR NOT IsClass(oCaster,&Battler)
+               OR Send(oCaster,@IsOfflineOrCannotInteract)
                OR Send(who,@AllowBattlerAttack,#victim=oCaster,#stroke_obj=self,
                         #oRoomOverride=oRoom))
             {
                // Remove at the source.
-               Send(Send(oSpell,@GetSource,#state=state),@RemoveRadiusEnchantment,
+               Send(Nth(state,RE_STATE_SOURCE),@RemoveRadiusEnchantment,
                      #what=oSpell,#state=state,#recheck=TRUE);
                bRemovedSomething = TRUE;
             }

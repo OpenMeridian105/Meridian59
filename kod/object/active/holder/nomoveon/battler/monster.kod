@@ -1720,11 +1720,17 @@ messages:
          return;
       }
 
-      if (Send(oNewRoom,@CountMonsters,#mastered=TRUE) < 25)
+      if (Send(oNewRoom,@CountMonsters,#mastered=TRUE) < 200)
       {
          Send(oNewRoom,@NewHold,#what=self,
                #new_row=Send(poMaster,@GetRow),#new_col=Send(poMaster,@GetCol),
                #new_angle=Send(poMaster,@GetAngle));
+      }
+      else
+      {
+         Debug("Warning: minion blocked from entering ",Send(oNewRoom,@GetName),
+               "with >200 mobs. Minion master is ",poMaster,
+               Send(poMaster,@GetTrueName));
       }
 
       return;
@@ -9679,6 +9685,13 @@ messages:
    // Causes mobs to become docile.
    StartLullaby(iSpellPower=0)
    {
+      // Minions owned by players excluded.
+      if (poLeader <> $
+         OR Send(self,@IsOwnedByPlayer))
+      {
+         return;
+      }
+
       if NOT (piBehavior & AI_FIGHT_HYPERAGGRESSIVE)
       {
          piBehavior &= ~AI_FIGHT_AGGRESSIVE;

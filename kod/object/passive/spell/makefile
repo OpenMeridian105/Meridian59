@@ -13,6 +13,7 @@ BOFS = animate.bof \
        brittle.bof \
        brthlife.bof \
        cdisease.bof \
+       cooldown.bof \
        cpoison.bof \
        creafood.bof \
        creasphm.bof \

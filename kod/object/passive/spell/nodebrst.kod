@@ -30,7 +30,6 @@ resources:
    Nodeburst_success = \
       "You open all your mana links to the maximum and mana floods down the "
       "links."
-   Nodeburst_not_today = "You may only cast Nodeburst once per day."
    Nodeburst_sound = qor.ogg
 
 classvars:
@@ -39,7 +38,7 @@ classvars:
    vrIcon = Nodeburst_icon_rsc
    vrDesc = Nodeburst_desc_rsc
 
-   viSpell_num = SID_Nodeburst
+   viSpell_num = SID_NODEBURST
    viSchool = SS_QOR
    viSpell_level = 5
    viMana = 1
@@ -51,9 +50,9 @@ classvars:
 
    vrSucceed_wav = Nodeburst_sound
 
-properties:
+   viCooldownSID = SID_COOLDOWN_NODEBURST
 
-   plRecentCasters = $
+properties:
 
 messages:
 
@@ -73,13 +72,6 @@ messages:
 
    CanPayCosts(who = $, lTargets = $)
    {
-      local oCaster;
-
-      if lTargets = $
-      {
-         lTargets = [who];
-      }
-
       // Check for availability of mana node links.
       if Send(who,@GetNodeList) = 0
       {
@@ -88,16 +80,7 @@ messages:
          return FALSE;
       }
 
-      foreach oCaster in plRecentCasters
-      {
-         if who = oCaster
-         {
-            Send(who,@MsgSendUser,#message_rsc=Nodeburst_not_today);
-
-            return FALSE;
-         }
-      }
-
+      // Cooldown now checked in Spell.
       propagate;
    }
 
@@ -124,23 +107,7 @@ messages:
       Send(who,@GainMana,#bCapped=FALSE,#amount=iNewMana);
       Send(who,@GainHealth,#bCapped=FALSE,#amount=iGain/2);
 
-      Send(self,@NewCaster,#who=who);
-
       return TRUE;
-   }
-
-   NewCaster(who=$)
-   {
-      plRecentcasters = Cons(who,plRecentCasters);
-
-      return;
-   }
-
-   NewGameDay()
-   {
-      plRecentCasters = $;
-
-      return;
    }
 
    GetPotionClass()

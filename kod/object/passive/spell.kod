@@ -871,11 +871,6 @@ messages:
    {
       local i, each_obj, oRoom, iRand, oSpell, oTarget;
 
-      if NOT IsClass(who,&User)
-      {
-         return TRUE;
-      }
-
       // Check for a cooldown in effect.
       if (viCooldownSID > 0)
       {
@@ -905,6 +900,12 @@ messages:
 
             return FALSE;
          }
+      }
+
+      // Following checks only apply to user casters.
+      if NOT IsClass(who,&User)
+      {
+         return TRUE;
       }
 
       if NOT pbEnabled
@@ -1131,17 +1132,6 @@ messages:
                   #iSpellpower=iSpellpower)
       {
            return FALSE;
-      }
-
-      // Check for a cooldown in effect.
-      if (viCooldownSID > 0)
-      {
-         oSpell = Send(SYS,@FindSpellByNum,#num=viCooldownSID);
-         if (oSpell <> $
-            AND Send(who,@IsEnchanted,#what=oSpell))
-         {
-            return FALSE;
-         }
       }
 
       // Something in the room blocking this spell?

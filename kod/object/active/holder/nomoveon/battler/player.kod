@@ -4837,6 +4837,25 @@ messages:
       return TRUE;
    }
 
+   // Like CanHelpPlayer, but checks whether they have been attacked as well as
+   // whether they have attacked anyone. CanHelpPlayer allows helping those
+   // who have been attacked but haven't reciprocated, CanHelpPlayerStrict
+   // checks if they have been involved in any sort of combat with other players.
+   CanHelpPlayerStrict()
+   {
+      local iTime;
+
+      if (Send(SYS,@GetChaosNight))
+      {
+         return TRUE;
+      }
+
+      iTime = GetTime();
+
+      return piTimeAttackedByPlayer + ATTACKED_PLAYER_WAIT > iTime
+         AND piTimeAttackedPlayer + ATTACKED_PLAYER_WAIT > iTime;
+   }
+
    TryAttack(what = $,use_weapon = $,stroke_obj=$)
    {
       local i, iRange, oSpell, state;

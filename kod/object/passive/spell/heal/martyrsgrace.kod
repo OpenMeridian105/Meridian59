@@ -169,7 +169,7 @@ messages:
    GetTargets(who=$,lTargets=$)
    "Picks allied players within line of sight only."
    {
-      local oRoom, i, each_obj, lFinalTargets;
+      local oRoom, i, each_obj, lFinalTargets, bCanCasterPvP;
 
       if who = $
       {
@@ -177,6 +177,14 @@ messages:
       }
 
       oRoom = Send(who,@GetOwner);
+
+      // If the caster can't PvP in this room, they can't heal anyone who has
+      // engaged in PvP recently. Can still heal uninvolved players, to allow
+      // healing in events that happen to be in towns. bCanCasterPvP being
+      // true means the caster should be attackable by at least some subset
+      // of other players (shielded, guilded or reds).
+      bCanCasterPvP = Send(who,@CanPlayerPvP)
+         AND Send(oRoom,@AllowGuildAttack,#what=who,#report=FALSE);
 
       foreach i in Send(oRoom,@GetHolderActive)
       {
@@ -198,6 +206,12 @@ messages:
 
          if Send(each_obj,@CheckPlayerFlag,#flag=PFLAG_MURDERER)
             OR Send(each_obj,@CheckPlayerFlag,#flag=PFLAG_OUTLAW)
+         {
+            continue;
+         }
+
+         if (NOT bCanCasterPvP
+            AND NOT Send(each_obj,@CanHelpPlayerStrict))
          {
             continue;
          }

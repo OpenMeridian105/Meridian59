@@ -146,12 +146,12 @@ resources:
 
    Spell_too_few_hp_rsc = "You are not powerful enough to cast this spell."
 
+   cannot_cast_cooldown = \
+      "You cannot cast %s - this spell is still on cooldown!"
    cannot_cast_on_phased_out = \
       "You can't cast anything on %s while %s is phased out of existence!"
-
    over_time_effect_wearing_off = \
       "The sudden feeling passes."
-
    over_time_effect_starting = \
       "Suddenly, you feel a little different."
 
@@ -200,6 +200,9 @@ classvars:
    viCast_time = 0
    // viPostCast_time in seconds, since it works off GetTime().
    viPostCast_time = 1
+
+   // Cooldown classvars: SID is the ID of the cooldown spell to use.
+   viCooldownSID = 0
 
    vrSucceed_wav = $
 
@@ -856,6 +859,14 @@ messages:
       return TRUE;
    }
 
+   CooldownCastTried(who = $, rName = $)
+   "rName is the name of the spell being cast."
+   {
+      Send(who,@MsgSendUser,#message_rsc=cannot_cast_cooldown,#parm1=rName);
+
+      return;
+   }
+
    CanPayCosts(who=$,lTargets=$,iSpellPower=0,bItemCast=FALSE,bFreeCast=FALSE)
    {
       local i, each_obj, oRoom, iRand, oSpell, oTarget;
@@ -863,6 +874,20 @@ messages:
       if NOT IsClass(who,&User)
       {
          return TRUE;
+      }
+
+      // Check for a cooldown in effect.
+      if (viCooldownSID > 0)
+      {
+         oSpell = Send(SYS,@FindSpellByNum,#num=viCooldownSID);
+         if (oSpell <> $
+            AND Send(who,@IsEnchanted,#what=oSpell))
+         {
+            // Cooldown might want to do specific things here.
+            Send(oSpell,@CooldownCastTried,#who=who,#rName=vrName);
+
+            return FALSE;
+         }
       }
 
       if lTargets <> $
@@ -1106,6 +1131,17 @@ messages:
                   #iSpellpower=iSpellpower)
       {
            return FALSE;
+      }
+
+      // Check for a cooldown in effect.
+      if (viCooldownSID > 0)
+      {
+         oSpell = Send(SYS,@FindSpellByNum,#num=viCooldownSID);
+         if (oSpell <> $
+            AND Send(who,@IsEnchanted,#what=oSpell))
+         {
+            return FALSE;
+         }
       }
 
       // Something in the room blocking this spell?
@@ -1569,7 +1605,7 @@ messages:
    CastSpell(who = $, lTargets = $, iSpellPower = 0, iPowerLevel = 100,
              bItemCast=FALSE, bRing=FALSE, bStun=FALSE,report=TRUE)
    {
-      local oTarget, oRoom, i, iAggro, iDuration;
+      local oTarget, oRoom, i, iAggro, iDuration, oSpell;
 
       // Insert any spellpower-modifying effects here that shouldn't affect
       // the actual casting/success of the spell, but still have an effect on
@@ -1598,19 +1634,31 @@ messages:
          return;
       }
 
-      // Add a mana drain if applicable.
-      if IsClass(who,&Battler) AND viManaDrain > 0
+      // Add a mana drain and cooldown if applicable.
+      if IsClass(who,&Battler)
       {
-         if IsClass(who,&Player)
+         if (viManaDrain > 0)
          {
-            Send(who,@StartOverTimeEffect,#strength=-viManaDrain,#what=self,#who=who,
-               #removable=REMOVE_INTERNAL,#showicon=FALSE,#type=TYPE_MANA);
+            if IsClass(who,&Player)
+            {
+               Send(who,@StartOverTimeEffect,#strength=-viManaDrain,#what=self,#who=who,
+                  #removable=REMOVE_INTERNAL,#showicon=FALSE,#type=TYPE_MANA);
+            }
+            // Monsters can maintain draining spells more easily.
+            else
+            {
+               Send(who,@StartOverTimeEffect,#strength=-viManaDrain/2,#what=self,#who=who,
+                  #removable=REMOVE_INTERNAL,#showicon=FALSE,#type=TYPE_MANA);
+            }
          }
-         // Monsters can maintain draining spells more easily.
-         else
+
+         if (viCooldownSID > 0)
          {
-            Send(who,@StartOverTimeEffect,#strength=-viManaDrain/2,#what=self,#who=who,
-               #removable=REMOVE_INTERNAL,#showicon=FALSE,#type=TYPE_MANA);
+            oSpell = Send(SYS,@FindSpellByNum,#num=viCooldownSID);
+            if (oSpell <> $)
+            {
+               Send(oSpell,@CastSpell,#who=self,#oTarget=who);
+            }
          }
       }
 
@@ -2884,16 +2932,6 @@ messages:
       if viHarmful AND NOT vbIsAreaEffect
       {
          return COMBAT_ACTION_HARM;
-      }
-
-      if IsClass(self,&Heal)
-      {
-         return COMBAT_ACTION_HEAL;
-      }
-
-      if IsClass(self,&PersonalEnchantment)
-      {
-         return COMBAT_ACTION_BUFF;
       }
 
       return COMBAT_ACTION_NEUTRAL;

@@ -40,7 +40,6 @@ classvars:
    viSpell_level = 6
    viMana = 20
    viSpellExertion = 5
-   viCast_time = 5000
    viMeditate_ratio = 75
 
    viChance_To_Increase = 15
@@ -62,7 +61,12 @@ classvars:
    // If TRUE, can target others with this spell.
    vbCanCastOnOthers = FALSE
 
+   viCooldownSID = SID_COOLDOWN_SPOREBURST
+
 properties:
+
+   piBaseDuration = 5000
+   piSpellPowerModifier = 50
 
 messages:
 
@@ -191,14 +195,12 @@ messages:
          oPassiveFog = Create(&SporeCloud,#oRoom=oRoom,#Active_Elem=oActiveFog,
                               #Caster=who,#duration=iDuration);
          Send(oRoom,@NewHold,#what=oPassiveFog,
-              #new_row=iRow+3,#new_col=iCol+1,
-              #fine_row=0,#fine_col=0);
+              #new_row=iRow+3,#new_col=iCol+1);
 
          oPassiveFog = Create(&SporeCloud,#oRoom=oRoom,#Active_Elem=oActiveFog,
                               #Caster=who,#duration=iDuration);
          Send(oRoom,@NewHold,#what=oPassiveFog,
-              #new_row=iRow+3,#new_col=iCol-1,
-              #fine_row=0,#fine_col=FINENESS);
+              #new_row=iRow+3,#new_col=iCol-1);
 
          oPassiveFog = Create(&SporeCloud,#oRoom=oRoom,#Active_Elem=oActiveFog,
                               #Caster=who,#duration=iDuration);
@@ -213,26 +215,22 @@ messages:
          oPassiveFog = Create(&SporeCloud,#oRoom=oRoom,#Active_Elem=oActiveFog,
                               #Caster=who,#duration=iDuration);
          Send(oRoom,@NewHold,#what=oPassiveFog,
-              #new_row=iRow+1,#new_col=iCol+3,
-              #fine_row=0,#fine_col=0);
+              #new_row=iRow+1,#new_col=iCol+3);
 
          oPassiveFog = Create(&SporeCloud,#oRoom=oRoom,#Active_Elem=oActiveFog,
                               #Caster=who,#duration=iDuration);
          Send(oRoom,@NewHold,#what=oPassiveFog,
-              #new_row=iRow+1,#new_col=iCol-3,
-              #fine_row=0,#fine_col=FINENESS);
+              #new_row=iRow+1,#new_col=iCol-3);
 
          oPassiveFog = Create(&SporeCloud,#oRoom=oRoom,#Active_Elem=oActiveFog,
                               #Caster=who,#duration=iDuration);
          Send(oRoom,@NewHold,#what=oPassiveFog,
-              #new_row=iRow-1,#new_col=iCol+3,
-              #fine_row=FINENESS,#fine_col=0);
+              #new_row=iRow-1,#new_col=iCol+3);
 
          oPassiveFog = Create(&SporeCloud,#oRoom=oRoom,#Active_Elem=oActiveFog,
                               #Caster=who,#duration=iDuration);
          Send(oRoom,@NewHold,#what=oPassiveFog,
-              #new_row=iRow-1,#new_col=iCol-3,
-              #fine_row=FINENESS,#fine_col=FINENESS);
+              #new_row=iRow-1,#new_col=iCol-3);
 
          oPassiveFog = Create(&SporeCloud,#oRoom=oRoom,#Active_Elem=oActiveFog,
                               #Caster=who,#duration=iDuration);
@@ -247,28 +245,20 @@ messages:
          oPassiveFog = Create(&SporeCloud,#oRoom=oRoom,#Active_Elem=oActiveFog,
                               #Caster=who,#duration=iDuration);
          Send(oRoom,@NewHold,#what=oPassiveFog,
-              #new_row=iRow-3,#new_col=iCol+1,
-              #fine_row=FINENESS,#fine_col=0);
+              #new_row=iRow-3,#new_col=iCol+1);
 
          oPassiveFog = Create(&SporeCloud,#oRoom=oRoom,#Active_Elem=oActiveFog,
                               #Caster=who,#duration=iDuration);
          Send(oRoom,@NewHold,#what=oPassiveFog,
-              #new_row=iRow-3,#new_col=iCol-1,
-              #fine_row=FINENESS,#fine_col=FINENESS);
+              #new_row=iRow-3,#new_col=iCol-1);
       }
 
       propagate;
    }
 
-   GetDuration(iSpellPower=$, caster=0)
+   GetDuration(iSpellPower=0)
    {
-      local iDuration;
-
-      // Duration, in seconds
-      iDuration = Bound(iSpellPower * 2,30,200);
-
-      // Convert to ms.
-      return iDuration * 1000;
+      return piBaseDuration + iSpellPower * piSpellPowerModifier;
    }
 
    ModifyMonsterBehavior(mob = $)

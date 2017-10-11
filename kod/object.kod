@@ -171,7 +171,7 @@ messages:
       return vrDesc;
    }
 
-   SendTimeRemainingHeader(parm1=$)
+   SendTimeRemainingHeader(parm1=$, parm2=$)
    "Sends the time remaining header to the user. Classes override this "
    "to send the 'master' resource for the time remaining (e.g. for an "
    "enchantment or quest) and any extra resources.  Called only by "
@@ -189,7 +189,7 @@ messages:
       return;
    }
 
-   SendTimeRemaining(iTime=0, parm1=$)
+   SendTimeRemaining(iTime=0, parm1=$, parm2=$)
    "Takes iTime (in seconds) and uses it to pick which time resource to "
    "display to the user. Adds the appropriate packets via AddPacket, so "
    "call this message at the correct time."
@@ -204,7 +204,7 @@ messages:
 
       if iTime > 0
       {
-         Send(self,@SendTimeRemainingHeader,#parm1=parm1);
+         Send(self,@SendTimeRemainingHeader,#parm1=parm1,#parm2=parm2);
       }
       else
       {
@@ -592,6 +592,13 @@ messages:
    }
 
    IsSummoned()
+   {
+      return vbSummoned;
+   }
+
+   CountsTowardsSummonLimit()
+   "Useful for objects that are summoned, but aren't counted as part of "
+   "a room's summoned object limit.  Summoned objects counted by default."
    {
       return vbSummoned;
    }

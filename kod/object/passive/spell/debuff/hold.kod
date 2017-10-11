@@ -96,9 +96,20 @@ messages:
          iDuration = 5000;
       }
 
-      // Check if the target has free action, unless not allowed.
+      // Check if the target has free action/AMA, unless not allowed.
       if bAllowFreeAction
       {
+         // Check if AMA blocks hold completely.
+         if (Send(oTarget,@CheckBattlerFlag,#flag=BFLAG_SPELLPOWER_MOD))
+         {
+            oSpell = Send(SYS,@FindSpellByNum,#num=SID_ANTIMAGIC_AURA);
+            if (Send(oSpell,@TryResistHold,#who=who,#oTarget=oTarget))
+            {
+               return TRUE;
+            }
+         }
+
+         // Check free action.
          oSpell = Send(SYS,@FindSpellByNum,#num=SID_FREE_ACTION);
          if Send(oTarget,@IsEnchanted,#what=oSpell)
          {

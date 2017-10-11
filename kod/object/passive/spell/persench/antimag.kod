@@ -25,7 +25,8 @@ resources:
       "distort and disrupt the local flow of magic, thereby mitigating the "
       "effect of any spells attempting to pass through it.  While affording a "
       "certain protection from meddling mages, the barrier will not "
-      "distinguish between friend and foe."
+      "distinguish between friend and foe.  The aura also provides some "
+      "resistance from attempts to restrict your sight and movement."
    AntiMagicAura_start = \
       "The air surrounding you begins to hum as the energy barrier materializes."
    AntiMagicAura_stop  = "Your energy barrier collapses."
@@ -42,8 +43,15 @@ resources:
       "reducing its effect by ~b%i~n spellpower."
    AntiMagicAura_enchantment_rsc = \
       "\n\nYour current anti-magic aura will reduce spells cast on or by you "
-      "by %i spellpower."
+      "by %i spellpower.  It will prevent attempts to restrict your movement "
+      "%i%% of the time, and attempts to restrict your sight %i%% of the time."
    AntiMagicAura_sound = kantimag.ogg
+   AMA_blind_evade = "The magic of Krannan preserves your sight."
+   AMA_blind_evade_caster = \
+      "The magic of Krannan preserves the sight of your target."
+   AMA_hold_evade = "You evade an attempt to restrict your movement."
+   AMA_hold_evade_caster = \
+      "Kraanan's magic prevents you from hindering the free flow of battle."
 
 classvars:
 
@@ -83,6 +91,9 @@ properties:
    // 100 will cause purge to remove its entire spellpower, 0 will
    // prevent purge from removing this spell.
    viPurgeFactor = 40
+
+   piBlindResist = 5 // percent, includes dazzle
+   piHoldResist = 5 // percent
 
 messages:
 
@@ -184,6 +195,48 @@ messages:
       return iSub;
    }
 
+   TryResistHold(who=$,oTarget=$)
+   {
+      if (Random(1,100) <= piHoldResist)
+      {
+         if (who <> $
+            AND IsClass(who,&Player))
+         {
+            Send(who,@MsgSendUser,#message_rsc=AMA_hold_evade_caster);
+         }
+         if (oTarget <> $
+            AND IsClass(oTarget,&Player))
+         {
+            Send(oTarget,@MsgSendUser,#message_rsc=AMA_hold_evade);
+         }
+
+         return TRUE;
+      }
+
+      return FALSE;
+   }
+
+   TryResistBlind(who=$,oTarget=$)
+   {
+      if (Random(1,100) <= piBlindResist)
+      {
+         if (who <> $
+            AND IsClass(who,&Player))
+         {
+            Send(who,@MsgSendUser,#message_rsc=AMA_blind_evade_caster);
+         }
+         if (oTarget <> $
+            AND IsClass(oTarget,&Player))
+         {
+            Send(oTarget,@MsgSendUser,#message_rsc=AMA_blind_evade);
+         }
+
+         return TRUE;
+      }
+
+      return FALSE;
+   }
+
    EffectDesc(who=$)
    {
       local lState;
@@ -191,7 +244,8 @@ messages:
       lState = Send(who,@GetEnchantedState,#what=self);
 
       AddPacket(4,AntiMagicAura_enchantment_rsc,
-                4,Nth(lState,2) * piAMAEffectPercent / 100);
+                4,Nth(lState,2) * piAMAEffectPercent / 100,
+                4,piHoldResist, 4,piBlindResist);
 
       return;
    }

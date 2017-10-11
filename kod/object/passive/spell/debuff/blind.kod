@@ -92,6 +92,16 @@ messages:
 
       oTarget = First(lTargets);
 
+      // Check if AMA blocks blind completely.
+      if (Send(oTarget,@CheckBattlerFlag,#flag=BFLAG_SPELLPOWER_MOD))
+      {
+         oSpell = Send(SYS,@FindSpellByNum,#num=SID_ANTIMAGIC_AURA);
+         if (Send(oSpell,@TryResistBlind,#who=who,#oTarget=oTarget))
+         {
+            return TRUE;
+         }
+      }
+
       oSpell = Send(SYS,@FindSpellByNum,#NUM=SID_EAGLE_EYES);
       if Send(oTarget,@IsEnchanted,#what=oSpell)
       {

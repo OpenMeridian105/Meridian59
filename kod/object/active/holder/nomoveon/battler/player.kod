@@ -4569,16 +4569,16 @@ messages:
       if IsClass(victim,&Monster)
          OR (Send(victim,@FindUsing,#class=&Token) <> $)
       {
-         // ...unless they're factioned...
-         if NOT Send(self,@CheckFactionAttack,#what=victim,#report=report,
-                     #stroke_obj=stroke_obj)
+         // ...unless they are our side kick...
+         if IsClass(victim,&Monster)
+            AND NOT Send(self,@CheckMercAttack,#what=victim,#report=report)
          {
             return FALSE;
          }
 
-         // ...or our side kick.
-         if IsClass(victim,&Monster)
-            AND NOT Send(self,@CheckMercAttack,#what=victim,#report=report)
+         // or they're factioned.
+         if NOT Send(self,@CheckFactionAttack,#what=victim,#report=report,
+                     #stroke_obj=stroke_obj)
          {
             return FALSE;
          }

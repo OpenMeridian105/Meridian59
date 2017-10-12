@@ -1637,8 +1637,7 @@ messages:
 
       if psPlayerDescription <> $
       {
-         AddPacket(4,player_desc_enchanted_none);
-         AddPacket(0,psPlayerDescription);
+         AddPacket(4,player_desc_enchanted_none, 0,psPlayerDescription);
 
          return;
       }
@@ -9929,13 +9928,9 @@ messages:
    {
       if pbLogged_on
       {
-         AddPacket(1,BP_PLAYER_OVERLAY);
-         AddPacket(1,HS_SE);
-         AddPacket(4,PWO_RIGHT_HAND);
-         AddPacket(4,player_window_overlay_hand);
-         AddPacket(4,0, 4,0, 1,0, 4,0, 4,0, 1,0, 1,0);
-         AddPacket(1,ANIMATE_ONCE, 4,175, 2,1, 2,3, 2,0);
-         AddPacket(1,0);
+         AddPacket(1,BP_PLAYER_OVERLAY, 1,HS_SE, 4,PWO_RIGHT_HAND,
+                   4,player_window_overlay_hand, 4,0, 4,0, 1,0, 4,0, 4,0,
+                   1,0, 1,0, 1,ANIMATE_ONCE, 4,175, 2,1, 2,3, 2,0, 1,0);
 
          SendPacket(poSession);
       }
@@ -9960,13 +9955,9 @@ messages:
             }
          }
 
-         AddPacket(1,BP_PLAYER_OVERLAY);
-         AddPacket(1,HS_SE);
-         AddPacket(4,PWO_RIGHT_HAND);
-         AddPacket(4,player_window_overlay_hand);
-         AddPacket(4,0, 4,0, 1,0, 4,0, 4,0, 1,0, 1,0);
-         AddPacket(1,ANIMATE_ONCE,4,300,2,4,2,6,2,iGroup);
-         AddPacket(1,1);
+         AddPacket(1,BP_PLAYER_OVERLAY, 1,HS_SE, 4,PWO_RIGHT_HAND,
+                   4,player_window_overlay_hand, 4,0, 4,0, 1,0, 4,0, 4,0,
+                   1,0, 1,0, 1,ANIMATE_ONCE,4,300,2,4,2,6,2,iGroup, 1,1);
          AddPacket(4,player_window_overlay_glow, 1,HS_RIGHT_HAND,
                    1,ANIMATE_ONCE, 4,300, 2,1, 2,3, 2,0);
 
@@ -9993,13 +9984,12 @@ messages:
    {
       if pbLogged_on
       {
-         AddPacket(1,BP_PLAYER_OVERLAY);
-         AddPacket(1,Send(what,@GetWindowOverlayHotspot));
-         AddPacket(4,Send(what,@GetWindowOverlayID)); // supposedly "object id" in client
-         AddPacket(4,Send(what,@GetWindowOverlay));
-         AddPacket(4,Send(what,@GetName)); // useless field, used to make client parsing easier
+         AddPacket(1,BP_PLAYER_OVERLAY, 1,Send(what,@GetWindowOverlayHotspot),
+                   4,Send(what,@GetWindowOverlayID), // supposedly "object id" in client
+                   4,Send(what,@GetWindowOverlay),
+                   4,Send(what,@GetName), // useless field, used to make client parsing easier
          // Flags, drawing flags, minimapflags, namecolor, playertype, moveon type.
-         AddPacket(4,0, 1,0, 4,0, 4,0, 1,0, 1,0);
+                   4,0, 1,0, 4,0, 4,0, 1,0, 1,0);
          Send(what,@SendWindowOverlayAnimation);
          Send(what,@SendWindowOverlayOverlays);
 
@@ -10838,9 +10828,7 @@ messages:
          }
       }
 
-      AddPacket(1,iOverlays);
-
-      AddPacket(4,prLeft_arm, 1,HS_LEFT_HAND);
+      AddPacket(1,iOverlays, 4,prLeft_arm, 1,HS_LEFT_HAND);
       iArms_xlat = Send(self,@GetArmsTranslation);
       if iArms_xlat <> 0
       {
@@ -10902,20 +10890,19 @@ messages:
 
       iSkin_xlat = Send(self,@GetSkinColor);
 
-      AddPacket(4,prHead, 1,HS_HEAD, 1,ANIMATE_TRANSLATION, 1,iSkin_xlat,
-                1,ANIMATE_NONE, 2,1);
-
       // Don't send information about face elements if we're wearing the
       //  shrunken head mask.  See shrnkmsk.kod for details.
 //      if prHead <> ShrunkenHeadMask_icon_male_rsc
 //         AND prHead <> ShrunkenHeadMask_icon_female_rsc
 //      {
-         AddPacket(4,prMouth, 1,HS_MOUTH, 1,ANIMATE_TRANSLATION, 1,iSkin_xlat,
-                   1,ANIMATE_NONE, 2,piAction);
-         AddPacket(4,prEyes,1, HS_EYES, 1,ANIMATE_TRANSLATION, 1,iSkin_xlat,
-                   1,ANIMATE_NONE, 2,piAction);
-         AddPacket(4,prNose, 1,HS_NOSE, 1,ANIMATE_TRANSLATION, 1,iSkin_xlat,
-                   1,ANIMATE_NONE, 2,1);
+      AddPacket(4,prHead, 1,HS_HEAD, 1,ANIMATE_TRANSLATION, 1,iSkin_xlat,
+                1,ANIMATE_NONE, 2,1,
+                4,prMouth, 1,HS_MOUTH, 1,ANIMATE_TRANSLATION, 1,iSkin_xlat,
+                1,ANIMATE_NONE, 2,piAction);
+      AddPacket(4,prEyes,1, HS_EYES, 1,ANIMATE_TRANSLATION, 1,iSkin_xlat,
+                1,ANIMATE_NONE, 2,piAction,
+                4,prNose, 1,HS_NOSE, 1,ANIMATE_TRANSLATION, 1,iSkin_xlat,
+                1,ANIMATE_NONE, 2,1);
 //      }
 
       if poHair_remove = $
@@ -10994,10 +10981,9 @@ messages:
          }
       }
 
-      AddPacket(1, iOverlays);
-      iArms_xlat = Send(self,@GetArmsTranslation);
+      AddPacket(1, iOverlays, 4,prLeft_arm, 1,HS_LEFT_HAND);
 
-      AddPacket(4,prLeft_arm, 1,HS_LEFT_HAND);
+      iArms_xlat = Send(self,@GetArmsTranslation);
       if iArms_Xlat <> 0
       {
          AddPacket(1,ANIMATE_TRANSLATION, 1,iArms_xlat);
@@ -11095,19 +11081,20 @@ messages:
       }
 
       iSkin_xlat = Send(self,@GetSkinColor);
-      AddPacket(4,prHead, 1,HS_HEAD, 1,ANIMATE_TRANSLATION, 1,iSkin_xlat,
-                1,ANIMATE_NONE, 2,1);
+
       // Don't send information about face elements if we're wearing the
       //  shrunken head mask.  See shrnkmsk.kod for details.
 //      if prHead <> ShrunkenHeadMask_icon_male_rsc
 //         AND prHead <> ShrunkenHeadMask_icon_female_rsc
 //      {
-         AddPacket(4,prMouth, 1,HS_MOUTH, 1,ANIMATE_TRANSLATION, 1,iSkin_xlat,
-                   1,ANIMATE_NONE, 2,piAction);
-         AddPacket(4,prEyes, 1,HS_EYES, 1,ANIMATE_TRANSLATION, 1,iSkin_xlat,
-                   1,ANIMATE_NONE, 2,piAction);
-         AddPacket(4,prNose, 1,HS_NOSE, 1,ANIMATE_TRANSLATION, 1,iSkin_xlat,
-                   1,ANIMATE_NONE, 2,1);
+      AddPacket(4,prHead, 1,HS_HEAD, 1,ANIMATE_TRANSLATION, 1,iSkin_xlat,
+                1,ANIMATE_NONE, 2,1,
+                4,prMouth, 1,HS_MOUTH, 1,ANIMATE_TRANSLATION, 1,iSkin_xlat,
+                1,ANIMATE_NONE, 2,piAction);
+      AddPacket(4,prEyes, 1,HS_EYES, 1,ANIMATE_TRANSLATION, 1,iSkin_xlat,
+                1,ANIMATE_NONE, 2,piAction,
+                4,prNose, 1,HS_NOSE, 1,ANIMATE_TRANSLATION, 1,iSkin_xlat,
+                1,ANIMATE_NONE, 2,1);
 //      }
 
       if poHair_remove = $

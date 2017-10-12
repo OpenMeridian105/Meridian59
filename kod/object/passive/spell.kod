@@ -1750,8 +1750,16 @@ messages:
 
       if oRoom <> $
       {
+         if Send(self,@AffectsSpellPower)
+         {
+            Send(oRoom,@SetRoomFlag,#flag=ROOM_ANTI_MAGIC,#value=TRUE);
+         }
+
+         // Don't do noticeable things for blank DMs (IsHidden)
+         // or for invisible DMs (IsDMStealthed).
          if IsClass(who,&DM)
-            AND Send(who,@IsDMStealthed)
+            AND (Send(who,@IsDMStealthed)
+               OR Send(who,@IsHidden))
          {
             return;
          }
@@ -1779,11 +1787,6 @@ messages:
                   }
                }
             }
-         }
-
-         if Send(self,@AffectsSpellPower)
-         {
-            Send(oRoom,@SetRoomFlag,#flag=ROOM_ANTI_MAGIC,#value=TRUE);
          }
       }
 
@@ -2315,17 +2318,17 @@ messages:
 
    SpellMurmurMessage(caster=$,target=$,hearer=$)
    {
-      if isClass(caster,&Admin)
-         AND Send(caster, @IsHidden)
+      if IsClass(caster,&DM)
+         AND Send(caster,@IsHidden)
       {
-         return;     
-      }      
-      
+         return;
+      }
+
       if caster = hearer
       {
          return;
       }
-        
+
       if Send(self,@GetNumSpellTargets) <> 1
       {
          Send(hearer,@MsgSendUser,#message_rsc=spell_gesture_third,
@@ -2333,24 +2336,21 @@ messages:
               #parm2=Send(caster,@GetName,#cap=TRUE),
               #parm3=Send(caster,@GetHisHer));
       }
+      else if hearer = target
+      {
+         Send(hearer,@MsgSendUser,#message_rsc=spell_gesture_third_target,
+              #parm1=Send(caster,@GetCapIndef),#parm2=Send(caster,@GetName),
+              #parm3=Send(caster,@GetHisHer),#parm4=object_article_none_rsc,
+              #parm5=spell_you);
+      }
       else
       {
-         if hearer = target
-         {  
-            Send(hearer,@MsgSendUser,#message_rsc=spell_gesture_third_target,
-                 #parm1=Send(caster,@GetCapIndef),#parm2=Send(caster,@GetName),
-                 #parm3=Send(caster,@GetHisHer),#parm4=object_article_none_rsc,
-                 #parm5=spell_you);   
-         }
-         else
-         {
-            Send(hearer,@MsgSendUser,#message_rsc=spell_gesture_third_target,
-                 #parm1=Send(caster,@GetCapIndef),#parm2=Send(caster,@GetName),
-                 #parm3=Send(caster,@GetHisHer),#parm4=Send(target,@GetIndef),
-                 #parm5=Send(target,@GetName));
-         }
+         Send(hearer,@MsgSendUser,#message_rsc=spell_gesture_third_target,
+              #parm1=Send(caster,@GetCapIndef),#parm2=Send(caster,@GetName),
+              #parm3=Send(caster,@GetHisHer),#parm4=Send(target,@GetIndef),
+              #parm5=Send(target,@GetName));
       }
-      
+
       return;
    }
 

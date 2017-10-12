@@ -778,14 +778,16 @@ messages:
    " there are more than one. Message returns TRUE if something changed, "
    "FALSE otherwise. $ and invalid parameters are ignored."
    {
-      local i;
+      local i, iStatus;
 
       // Don't mess with a quest in progress!
-      if Send(poQuestNode,@GetStatus) <> QN_STATUS_WAITING_FOR_PLAYERS
+      iStatus = Send(poQuestNode,@GetStatus);
+      if (iStatus <> QN_STATUS_WAITING_FOR_PLAYERS
+         AND iStatus <> QN_STATUS_WAITING_FOR_PLAYERS_TIMED)
       {
          return FALSE;
       }
-      
+
       if plPlayerRestrict2 = $
       {
          Debug("no player restrictions to modify!");
@@ -888,6 +890,17 @@ messages:
       }
 
       return FALSE;
+   }
+
+   ActivateQuestWaiting()
+   "Called when activating a quest as a prize.  Sets the questnode deadline "
+   "so that the quest will expire if not used."
+   {
+      Send(self,@ModifyPlayerRestrict2,#restrict_type=Q_R2_QN_ASSIGNABLE,
+            #inst_num=1,#parm1=TRUE);
+      Send(poQuestNode,@ActivateQuestNodeWaiting);
+
+      return;
    }
 
    SetQuesters(questers = $)
@@ -1005,7 +1018,8 @@ messages:
       {
          iStatus = Send(poQuestNode,@GetStatus);
          if ((iStatus = QN_STATUS_IN_PROGRESS)
-            OR (iStatus = QN_STATUS_AWAITING_MONSTER_DEATH))
+            OR (iStatus = QN_STATUS_AWAITING_MONSTER_DEATH)
+            OR (iStatus = QN_STATUS_WAITING_FOR_PLAYERS_TIMED))
          {
             if bDebug
             {

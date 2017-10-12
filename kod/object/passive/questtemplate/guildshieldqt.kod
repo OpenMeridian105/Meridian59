@@ -121,9 +121,11 @@ messages:
 
       // Template #18 is guild shield quest kickoff, "mining expedition"
       // QNT_ID_GSHIELD_ONE
+      // Timelimit isn't seen by user, but instead is the amount of time
+      // this quest is available before being removed.
       if Send(oQE,@AddQuestNodeTemplate,#questnode_type=QN_TYPE_MESSAGE,
                #cargolist=[ guildshield_initial_trigger ],
-               #quest_node_index=QNT_ID_GSHIELD_ONE)
+               #quest_node_index=QNT_ID_GSHIELD_ONE,#timelimit=piTimeLimit)
       {
          Send(oQE,@SetQuestNodeNPCList,#index=QNT_ID_GSHIELD_ONE,
                #new_NPC_list=Send(oLib,@GetOccupationList,
@@ -141,7 +143,7 @@ messages:
       if Send(oQE,@AddQuestNodeTemplate,#questnode_type=QN_TYPE_ITEMFINDCLASS,
                #cargolist=[ [ QN_PRIZETYPE_ITEMCLASS, &OreChunk, 1 ] ],
                #prizelist=[ [ QN_PRIZETYPE_ITEMCLASS, &GuildShield, 1 ] ],
-               #quest_node_index=QNT_ID_GSHIELD_TWO)
+               #quest_node_index=QNT_ID_GSHIELD_TWO,#timelimit=piTimeLimit)
       {
          Send(oQE,@SetQuestNodeNPCModifier,#index=QNT_ID_GSHIELD_TWO,
                #new_mod=QN_NPCMOD_SAME);
@@ -149,8 +151,6 @@ messages:
                #new_hint=guildshield_success);
          Send(oQE,@SetQuestNodeFailureHint,#index=QNT_ID_GSHIELD_TWO,
                #new_hint=guildshield_failure);
-         Send(oQE,@SetQuestNodeTimeLimit,#index=QNT_ID_GSHIELD_TWO,
-               #new_limit=piTimeLimit);
       }
       else
       {

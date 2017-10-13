@@ -27,9 +27,14 @@ resources:
    caster_Evaluate_msg = "~bYou stare deeply at %s%s."
    Evaluated_Evaluate_msg = "~b%s%s looks deeply into your eyes."
    Evaluate_desc_rsc = \
-      "This gazes deep into a person's eyes, and judges their odds "
-      "of gaining another health point."
-   evaluate_message = "%s has %i XP and needs %i to reach %i HP."
+      "This gazes deep into a person's eyes, and judges their odds of "
+      "gaining another health point, as well as revealing various statistics."
+   evaluate_message = \
+      "%s has %i XP and needs %i to reach %i HP.  They have %i karma and "
+      "%i vigor."
+   evaluate_message_stats = \
+      "They have natural statistics of %i might, %i intellect, %i stamina, "
+      "%i agility, %i mysticism and %i aim."
    evaluate_monster = \
       "%s should concentrate on killing monsters at about %s ability level, "
       "such as %ss and %ss."
@@ -146,7 +151,12 @@ messages:
          iMaxHP = Send(who,@GetUncappedBaseMaxHealth);
          Send(dmis,@MsgSendUser,#message_rsc=evaluate_message,
                #parm1=Send(who,@GetTrueName),#parm2=iXP,#parm3=iXPForLevel,
-               #parm4=iMaxHP + 1);
+               #parm4=iMaxHP + 1,#parm5=Send(who,@GetKarma),
+               #parm6=Send(who,@GetVigor));
+         Send(dmis,@MsgSendUser,#message_rsc=evaluate_message_stats,
+               #parm1=Send(who,@GetRawMight),#parm2=Send(who,@GetRawIntellect),
+               #parm3=Send(who,@GetRawStamina),#parm4=Send(who,@GetRawAgility),
+               #parm5=Send(who,@GetRawMysticism),#parm6=Send(who,@GetRawAim));
 
          foreach i in Send(SYS,@GetMonsterTemplates)
          {

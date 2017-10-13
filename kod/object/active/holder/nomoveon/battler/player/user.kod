@@ -3469,31 +3469,19 @@ messages:
    ToCliPlayers()
    "Sends client a list of all users logged on, including object id, "
    "resource id, and actual string of the resource (since it's a dynarsc)."
+   "Admin class has an override as all players are visible."
    {
-      local i, lUsers, rName, bVisible;
+      local i, lUsers, rName;
 
       foreach i in Send(SYS,@GetUsersLoggedOn)
       {
-         bVisible = FALSE;
-
-         // admins see everyone
-         if (IsClass(self,&Admin))
+         // Skip hidden DMs.
+         if (IsClass(i,&DM) AND Send(i,@IsHidden))
          {
-            bVisible = TRUE;
-         }
-         else if (IsClass(i,&DM) AND Send(i,@IsHidden))
-         {
-            bVisible = FALSE;
-         }
-         else
-         {
-            bVisible = TRUE;
+            continue;
          }
 
-         if (bVisible)
-         {
-            lUsers = Cons(i,lUsers);
-         }
+         lUsers = Cons(i,lUsers);
       }
 
       AddPacket(1,BP_PLAYERS,2,Length(lUsers));

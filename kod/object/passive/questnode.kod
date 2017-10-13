@@ -657,6 +657,7 @@ messages:
 
       // if the player isn't on this quest, bail out here
       if piStatus <> QN_STATUS_WAITING_FOR_PLAYERS
+         AND piStatus <> QN_STATUS_WAITING_FOR_PLAYERS_TIMED
       {
          bOnQuest = FALSE;
          foreach oQuester in Send(poQuest,@GetQuesters)
@@ -828,6 +829,7 @@ messages:
 
       // Validate status and select quester(s) if needed
       if piStatus = QN_STATUS_WAITING_FOR_PLAYERS
+         OR piStatus = QN_STATUS_WAITING_FOR_PLAYERS_TIMED
       {
          // Does the person still qualify for the quest?
          if Send(poQuest,@CheckPlayerCriteria,#quester_wannabe=who_tried) <> 1
@@ -1007,8 +1009,8 @@ messages:
       {
          if Send(oQuest,@IsWaitingForActivation)
          {
-            Send(oQuest,@ModifyPlayerRestrict2,#restrict_type=Q_R2_QN_ASSIGNABLE,
-                 #inst_num=1,#parm1=TRUE);
+            Send(oQuest,@ActivateQuestWaiting);
+
             poQuestActivated = oQuest;
             if Send(oQuestEngine,@GetDebugStatus) > 1
             {
@@ -1715,6 +1717,27 @@ messages:
    GetDeadline()
    {
       return piDeadline;
+   }
+
+   ActivateQuestNodeWaiting()
+   {
+      local iTime;
+
+      // Set deadline.
+      iTime = Send(Send(SYS,@GetQuestEngine),@GetQuestNodeTimeLimit,
+                  #index=piQuestNodeTemplateIndex);
+      if (iTime = 0)
+      {
+         piDeadline = 0;
+      }
+      else
+      {
+         piDeadline = GetTime() + iTime;
+         // Expires if it has a deadline.
+         piStatus = QN_STATUS_WAITING_FOR_PLAYERS_TIMED;
+      }
+
+      return;
    }
 
    GetStatus()

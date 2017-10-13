@@ -338,6 +338,35 @@ messages:
       return;
    }
 
+   ToCliPlayers()
+   "Sends client a list of all users logged on, including object id, "
+   "resource id, and actual string of the resource (since it's a dynarsc)."
+   "Override since admins see everyone."
+   {
+      local i, lUsers, rName;
+
+      lUsers = Send(SYS,@GetUsersLoggedOn);
+
+      AddPacket(1,BP_PLAYERS,2,Length(lUsers));
+
+      foreach i in lUsers
+      {
+         rName = Send(i,@GetTrueName);
+
+         AddPacket(4,i, 4,rName, STRING_RESOURCE,rName,
+                   4,Send(i,@GetObjectFlags),
+                   1,Send(i,@GetDrawingEffects) & ~DRAWFX_INVISIBLE,
+                   4,0, // minimapflags, don't need the value here.
+                   4,Send(i,@GetPlayerNameColor),
+                   1,Send(i,@GetClientObjectType),
+                   1,0); // MoveOn type, don't need it here.
+      }
+
+      SendPacket(poSession);
+
+      return;
+   }
+
    SomeoneLogon(what=$,bTrue=TRUE)
    "We aren't tricked by admins only going hidden."
    {

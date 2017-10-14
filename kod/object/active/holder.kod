@@ -191,16 +191,27 @@ messages:
       return n;
    }
 
-   CountHoldingSummoned()
+   CountHoldingSummoned(bAll = FALSE)
+   "Won't include elements that don't count towards summoning limit "
+   "unless bAll is set."
    {
-      local n,i,each_obj;
+      local n,i,each_obj, mMsg;
 
       n = 0;
+
+      if (bAll)
+      {
+         mMsg = @IsSummoned;
+      }
+      else
+      {
+         mMsg = @CountsTowardsSummonLimit;
+      }
 
       foreach i in plActive
       {
          each_obj = Send(self,@HolderExtractObject,#data=i);
-         if Send(each_obj,@CountsTowardsSummonLimit)
+         if Send(each_obj,mMsg)
          {
             ++n;
          }
@@ -209,7 +220,7 @@ messages:
       foreach i in plPassive
       {
          each_obj = Send(self,@HolderExtractObject,#data=i);
-         if Send(each_obj,@CountsTowardsSummonLimit)
+         if Send(each_obj,mMsg)
          {
             ++n;
          }

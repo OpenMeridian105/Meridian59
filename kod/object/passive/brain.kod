@@ -874,11 +874,11 @@ messages:
             {
                // If our friend is a player, we'll try to be his sidekick.
                // Must not be hidden (dm/admin) or morphed as a mob
-               if (IsClass(oSocial,&Player)
-                  AND NOT (IsClass(oSocial,&DM) AND Send(oSocial,@IsDMStealthed))
-                  AND NOT Send(oSocial,@CheckPlayerFlag,#flag=PFLAG_MORPHED))
+               if (IsClass(oSocial,&Player))
                {
-                  if Send(mob,@SetLeader,#oLeader=oSocial)
+                  if NOT (IsClass(oSocial,&DM) AND Send(oSocial,@IsDMStealthed))
+                     AND NOT Send(oSocial,@CheckPlayerFlag,#flag=PFLAG_MORPHED)
+                     AND Send(mob,@SetLeader,#oLeader=oSocial)
                   {
                      // Attempt to move towards leader.
                      Send(mob,@MoveToLeader);

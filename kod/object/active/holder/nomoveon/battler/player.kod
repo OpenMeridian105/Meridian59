@@ -2931,15 +2931,12 @@ messages:
    GetGuildHall()
    "Return this player's guild hall, or NIL if none"
    {
-      local oGuild;
-      oGuild = poGuild;
-
-      if oGuild = $
+      if poGuild = $
       {
          return $;
       }
 
-      return Send(oGuild, @GetGuildHall);
+      return Send(poGuild,@GetGuildHall);
    }
 
    HasLeftAGuildTooRecently()
@@ -4424,16 +4421,13 @@ messages:
             }
 
             // Check status and safety against the owner of the minion.
-            if NOT IsClass(oRoom,&GuildHall)
+            if NOT Send(self,@AllowBattlerAttack,
+                        #victim=Send(victim,@GetMaster),
+                        #use_weapon=use_weapon,#stroke_obj=stroke_obj,
+                        #report=report,#actual=actual,#minion=TRUE,
+                        #oRoomOverride=oRoom)
             {
-               if NOT Send(self,@AllowBattlerAttack,
-                           #victim=Send(victim,@GetMaster),
-                           #use_weapon=use_weapon,#stroke_obj=stroke_obj,
-                           #report=report,#actual=actual,#minion=TRUE,
-                           #oRoomOverride=oRoom)
-               {
-                  return FALSE;
-               }
+               return FALSE;
             }
          }
 

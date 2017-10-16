@@ -36,7 +36,7 @@ classvars:
 
    // This is where this section of the faerie forest will 'aim' for on the
    //  karmic scale.
-   viEquilibrium = 50              
+   viEquilibrium = 50
 
    viTeleport_row = 15
    viTeleport_col = 13
@@ -60,15 +60,21 @@ messages:
    Constructor()
    {
       plFey_Forest = [RID_A1, RID_B1, RID_B2, RID_C1, RID_C2, RID_C3,RID_D2, RID_D1];
-      plGenerators = [ [24, 17], [21, 39], [26, 22], [28, 39], [24, 18], [21, 40],
-                       [26, 23], [28, 40], [23, 17], [20, 39], [25, 22], [27, 39],
-                       [23, 16], [20, 38], [25, 21], [27, 38]
-                     ];
 
       // Create the node now.
       Create(&FeyNode,#node_num=NODE_FAERIE,#karma=0,#iRoomNum=piRoom_num);
 
       propagate;
+   }
+
+   SetMonsterGenPoints()
+   {
+      plGenerators = [ [24, 17], [21, 39], [26, 22], [28, 39], [24, 18], [21, 40],
+                       [26, 23], [28, 40], [23, 17], [20, 39], [25, 22], [27, 39],
+                       [23, 16], [20, 38], [25, 21], [27, 38]
+                     ];
+
+      return;
    }
 
    Constructed()
@@ -90,7 +96,7 @@ messages:
 
          return;
       }
-	
+
       karma = Send(self,@GetKarma);
       foreach i in plFey_Forest
       {
@@ -112,7 +118,7 @@ messages:
       // All rooms have the same karma, which is either 1 or 5.  Node appears.
       Send(self,@AppearNode);
 
-      return;						
+      return;
    }
 
    FeyNodeTimer()
@@ -149,7 +155,7 @@ messages:
          Send(oNode,@NodeAppear,#where=self,#karma=2,#row=23,#col=30,
               #fine_row=0,#fine_col=0);
       }
-      
+
       if ptFeyNode = $
       {
          ptFeyNode = CreateTimer(self,@FeyNodeTimer,30000);
@@ -163,19 +169,20 @@ messages:
 
    KillNode()
    {
-      local i;
+      local i, each_obj;
 
       // Don't kill the node until time has elapsed.
       if ptFeyNode <> $
       {
          return;
-      }          
-				          
+      }
+
       foreach i in plPassive
       {
-         if IsClass(First(i),&ManaNode)
+         each_obj = First(i);
+         if IsClass(each_obj,&ManaNode)
          {
-            Send(First(i),@NodeDisappear);
+            Send(each_obj,@NodeDisappear);
          }
       }
 
@@ -188,7 +195,7 @@ messages:
    SetRoomKarma(karma = $)
    {
       local karma1, karma2, karma3;
-   
+
       // Change waterfall level.
       if (karma = KVERY_EVIL)
       {       
@@ -206,7 +213,7 @@ messages:
               #height=464,#speed=0);
       }
       else
-      {       
+      {
          Send(self,@SetSector,#sector=15,#animation=ANIMATE_FLOOR_LIFT,
               #height=288,#speed=0);
          Send(self,@SetSector,#sector=16,#animation=ANIMATE_FLOOR_LIFT,
@@ -222,7 +229,7 @@ messages:
       }
 
       // Lower to a trickle when slightly evil.
-      if (karma > NEUTRAL)            
+      if (karma > NEUTRAL)
       {       
          Send(self,@SetSector,#sector=5,#animation=ANIMATE_FLOOR_LIFT,
               #height=120,#speed = 0);
@@ -231,10 +238,10 @@ messages:
          Send(self,@SetSector,#sector=7,#animation=ANIMATE_FLOOR_LIFT,
               #height=120,#speed = 0);
          Send(self,@SetSector,#sector=8,#animation=ANIMATE_FLOOR_LIFT,
-              #height=128,#speed = 0);         
+              #height=128,#speed = 0);
       }
       else
-      {       
+      {
          Send(self,@SetSector,#sector=5,#animation=ANIMATE_FLOOR_LIFT,
               #height=288,#speed=0);
          Send(self,@SetSector,#sector=6,#animation=ANIMATE_FLOOR_LIFT,
@@ -242,7 +249,7 @@ messages:
          Send(self,@SetSector,#sector=7,#animation=ANIMATE_FLOOR_LIFT,
               #height=464,#speed=0);
          Send(self,@SetSector,#sector=8,#animation=ANIMATE_FLOOR_LIFT,
-              #height=364,#speed=0);         
+              #height=364,#speed=0);
       }
 
       propagate;
@@ -294,7 +301,7 @@ messages:
    {
       return plFey_Forest;
    }
-   
+
    Delete()
    {
       local oNode;
@@ -304,18 +311,17 @@ messages:
       oNode = Send(SYS,@FindNodeByNum,#num=NODE_FAERIE);
       if oNode <> $
       {
-         Send(oNode,@Delete);        
+         Send(oNode,@Delete);
       }
 
       if ptFeyNode <> $
       {
          DeleteTimer(ptFeyNode);
          ptFeyNode = $;
-      }      		             
+      }
 
       propagate;
    }
-
 
 end
 ////////////////////////////////////////////////////////////////////////////////

@@ -60,10 +60,22 @@ messages:
    Constructed()
    {
       plMonsters = [ [&CaveOrc, 60], [&OrcWizard,40] ];
-//      plGenerators = [[50,43], [36,31], [28,39], [15,35], [21,19], [15,12], [39,17], [44,29],
-//		     [44,34], [27,8],   [36,28], [48,22], [47,23], [45,31], [24,33], [20,39]];
-    
+
       propagate;
+   }
+
+   SetMonsterGenPoints(bRandomGen = TRUE)
+   {
+      if (bRandomGen)
+      {
+         return;
+      }
+
+      plGenerators = [[50,43], [36,31], [28,39], [15,35], [21,19], [15,12],
+                      [39,17], [44,29], [44,34], [27,8], [36,28], [48,22],
+                      [47,23], [45,31], [24,33], [20,39]];
+
+      return;
    }
 
    CreateStandardExits()
@@ -71,19 +83,22 @@ messages:
       plEdge_exits = $;
       plEdge_Exits = Cons([LEAVE_SOUTH, RID_ORC_CAVE3, 3, 41, ROTATE_NONE], plEdge_exits);
       plEdge_Exits = Cons([LEAVE_EAST, RID_ORC_PIT, 35, 5, ROTATE_NONE], plEdge_exits);
+
       propagate;
    }
 
    SomethingTryGo(What=$,Row=$,Col=$)
    {
-      if (Row = 93 and (Col = 24 or Col = 25 or Col = 26)) or
-	 (Row = 91 and (Col = 24 or Col = 25 or Col = 26))
+      if (Row = 93 AND (Col = 24 OR Col = 25 OR Col = 26))
+         OR (Row = 91 AND (Col = 24 OR Col = 25 OR Col = 26))
       {
-	 send(self,@setsector,#sector=DOORSECTOR,#animation=ANIMATE_CEILING_LIFT,
-	    #height = 600,#speed=50);
-	 ptDoor = createtimer(self,@CloseDoor,60000);
-	 return TRUE;
+         Send(self,@SetSector,#sector=DOORSECTOR,#animation=ANIMATE_CEILING_LIFT,
+               #height = 600,#speed=50);
+         ptDoor = CreateTimer(self,@CloseDoor,60000);
+
+         return TRUE;
       }
+
       propagate;
    }
 
@@ -91,9 +106,10 @@ messages:
    {
       if (ptDoor <> $)
       {
-	 DeleteTimer(ptDoor);
-	 ptDoor = $;
+         DeleteTimer(ptDoor);
+         ptDoor = $;
       }
+
       propagate;
    }
 
@@ -101,8 +117,9 @@ messages:
    {
       ptDoor = $;
 
-      send(self,@setsector,#sector=DOORSECTOR,#animation=ANIMATE_CEILING_LIFT,
-	 #height = 500,#speed=0);
+      Send(self,@SetSector,#sector=DOORSECTOR,#animation=ANIMATE_CEILING_LIFT,
+            #height = 500,#speed=0);
+
       return;
    }
 
@@ -113,62 +130,84 @@ messages:
 
    DoSolution(height=500,Speed=50)
    {
-   send(self,@setsector,#sector=SOLUTIONSECTOR,#animation=ANIMATE_FLOOR_LIFT,
-      #height = height,#speed=Speed);
-   return;
+      Send(self,@SetSector,#sector=SOLUTIONSECTOR,#animation=ANIMATE_FLOOR_LIFT,
+            #height = height,#speed=Speed);
+
+      return;
    }
-
-
-
 
    NumInChamber()
    {
       local i, each_obj, count, iRow, iCol;
+
       count = 0;
-      
+
       foreach i in plActive
       {
-         each_obj = send(self,@HolderExtractObject,#data=i);
-	 iRow = send(each_obj,@getrow);
-	 iCol = send(each_obj,@getcol);
-	 if iRow > 81 and iCol > 20 and iRow < 91 and iCol < 30 and isclass(each_obj,&user)
-	    { count = count + 1; }	 
+         each_obj = First(i);
+         iRow = Send(each_obj,@GetRow);
+         iCol = Send(each_obj,@GetCol);
+         if iRow > 81
+            AND iCol > 20
+            AND iRow < 91
+            AND iCol < 30
+            AND IsClass(each_obj,&User)
+         {
+            ++count;
+         }
       }
+
       return count;
    }
 
    AllAUsed()
    {
       local i, each_obj, iRow, iCol, bAOne;
+
       bAOne = FALSE;
+
       foreach i in plActive
       {
-         each_obj = send(self,@HolderExtractObject,#data=i);
-	 iRow = send(each_obj,@getrow);
-	 iCol = send(each_obj,@getcol);
-	 if iRow = 83 and iCol = 25 and isclass(each_obj,&user)
-	    { bAOne = TRUE; }	 
+         each_obj = First(i);
+         iRow = Send(each_obj,@GetRow);
+         iCol = Send(each_obj,@GetCol);
+         if iRow = 83
+            AND iCol = 25
+            AND IsClass(each_obj,&User)
+         {
+            bAOne = TRUE;
+         }
       }
+
       return bAOne;
    }
 
    AllBUsed()
    {
       local i, each_obj, count, iRow, iCol, bBOne, bBTwo;
+
       bBOne = FALSE;
       bBTwo = FALSE;
+
       foreach i in plActive
       {
-         each_obj = send(self,@HolderExtractObject,#data=i);
-	 iRow = send(each_obj,@getrow);
-	 iCol = send(each_obj,@getcol);
-	 if (iRow = 86 and iCol = 22) and isclass(each_obj,&user)
-	    {bBOne = TRUE; } 
-	 if (iRow = 86 and iCol = 28) and isclass(each_obj,&user)
-	    {bBTwo = TRUE; }
-   
+         each_obj = First(i);
+         iRow = Send(each_obj,@GetRow);
+         iCol = Send(each_obj,@GetCol);
+         if (iRow = 86 AND iCol = 22)
+            AND IsClass(each_obj,&User)
+         {
+            bBOne = TRUE;
+         }
+
+         if (iRow = 86 AND iCol = 28)
+            AND IsClass(each_obj,&User)
+         {
+            bBTwo = TRUE;
+         }
       }
-      return (bBOne and bBTwo);
+
+      return (bBOne AND bBTwo);
    }
 
 end

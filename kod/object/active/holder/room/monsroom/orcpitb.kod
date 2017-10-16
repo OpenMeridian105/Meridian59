@@ -75,10 +75,23 @@ messages:
    Constructed()
    {
       plMonsters = [ [&CaveOrc, 70], [&GroundwormQueen, 30] ];
-      //plGenerators = [[50,43], [36,31], [28,39], [15,35], [21,19], [15,12], [39,17], [44,29],
-      //		     [44,34], [27,8],   [36,28], [48,22], [47,23], [45,31], [24,33], [20,39]];
+
 
       propagate;
+   }
+
+   SetMonsterGenPoints(bRandomGen = TRUE)
+   {
+      if (bRandomGen)
+      {
+         return;
+      }
+
+      plGenerators = [[50,43], [36,31], [28,39], [15,35], [21,19], [15,12],
+                      [39,17], [44,29], [44,34], [27,8], [36,28], [48,22],
+                      [47,23], [45,31], [24,33], [20,39]];
+
+      return;
    }
 
    CreateStandardExits()
@@ -145,6 +158,7 @@ messages:
          ptPuzzle = $;
       }
       poSwitch = $;
+
       propagate;
    }
 
@@ -152,9 +166,9 @@ messages:
    {
       if (Row >= 53 AND Col >= 28 AND Row <= 55 AND Col <= 30)
       {
-         Send(self,@setsector,#sector=DOORSECTOR,#animation=ANIMATE_CEILING_LIFT,
+         Send(self,@SetSector,#sector=DOORSECTOR,#animation=ANIMATE_CEILING_LIFT,
                #height = 600,#speed=50);
-         ptDoor = createtimer(self,@CloseDoor,60000);
+         ptDoor = CreateTimer(self,@CloseDoor,60000);
 
          return TRUE;
       }

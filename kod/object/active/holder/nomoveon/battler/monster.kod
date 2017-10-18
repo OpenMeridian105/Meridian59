@@ -4560,13 +4560,16 @@ messages:
          iStrength = iStrength * (50 + piIntellect) / 75;
          iDuration = Send(self,@GetPoisonDuration,#amount=amount);
          iDuration = iDuration * (50 + piMysticism) / 75;
-         Send(oEffect,@StartPoison,#who=what,#source=who,#duration=iDuration,
+         if (Send(oEffect,@StartPoison,#who=what,#source=who,#duration=iDuration,
                #healthloss=iStrength * viPoisonHealth / 100,
                #manaloss=iStrength * viPoisonMana / 100,
-               #vigorloss=iStrength * viPoisonVigor / 100);
-         Send(self,@IllusionHitEffectMessage,#who=who,#what=what,
-               #effect=$,#num=SID_POISON);
-         Send(self,@PoisonVisualEffect,#what=what);
+               #vigorloss=iStrength * viPoisonVigor / 100))
+         {
+            // Only display hit/visual effect if poison was successful.
+            Send(self,@IllusionHitEffectMessage,#who=who,#what=what,
+                  #effect=$,#num=SID_POISON);
+            Send(self,@PoisonVisualEffect,#what=what);
+         }
       }
 
       // Bleed: Frequency scales with aim, strength with aim, duration with might.

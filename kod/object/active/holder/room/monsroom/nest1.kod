@@ -28,7 +28,9 @@ resources:
 
    nest1_music = song00.ogg
 
-   Nest_to_Cave_1 = "~r~B>Ouch<~n  You fall through a hole in the floor, landing squarely on your rump."
+   Nest_to_Cave_1 = \
+      "~r~B>Ouch<~n  You fall through a hole in the floor, landing "
+      "squarely on your rump."
    Nest_to_Cave_2 = "You hop through a hole in the floor to a cave below."
 
 classvars:
@@ -48,7 +50,7 @@ properties:
    prMusic = nest1_music
 
    piBaseLight = LIGHT_DARK
-   
+
    piMonster_Count_Max = 20
    piGen_time = 10000
    piGen_percent = 60
@@ -61,6 +63,13 @@ messages:
    {
       plMonsters = [ [&SpiderBaby, 20], [&Spider, 80] ];
 
+      Send(self,@QueenGenTimer);
+
+      propagate;
+   }
+
+   SetMonsterGenPoints()
+   {
       plGenerators = [ [8, 22], [27, 22], [22, 19], [19, 20], [31, 15],
                        [36, 11], [30, 2], [35, 19], [19, 25], [15, 24],
                        [24, 8], [23, 2], [4, 13], [15, 16], [2, 12],
@@ -68,9 +77,7 @@ messages:
                        [28, 12], [35, 16], [25, 24] , [31, 10],
                        [34, 7], [4, 23] ];
 
-      Send(self,@QueenGenTimer);
-
-      propagate;
+      return;
    }
 
    Delete()
@@ -87,25 +94,26 @@ messages:
    QueenGenTimer()
    "Check if there's a queen spider in room.  If not, make one."
    {
-      local i,bFound,each_obj;
+      local i, bFound;
 
       ptQueen_gen = $;
 
       bFound = FALSE;
       foreach i in plActive
       {
-         each_obj = Send(self,@HolderExtractObject,#data=i);
-         if IsClass(each_obj,&SpiderQueen)
+         if IsClass(First(i),&SpiderQueen)
          {
             bFound = TRUE;
+
+            break;
          }
       }
 
-      if not bFound
+      if NOT bFound
       {
          Send(self,@NewHold,#what=Create(&SpiderQueen),#new_row=QUEEN_ROW,#new_col=QUEEN_COL);
       }
-      
+
       ptQueen_gen = CreateTimer(self,@QueenGenTimer,1*HOUR_MILLI);
 
       return;
@@ -120,25 +128,24 @@ messages:
               #new_row=53,#new_col=14,#fine_row=16,#fine_col=16,
               #new_angle=Send(what,@GetAngle));
 
-         send(what,@MsgSendUser,#message_rsc=Nest_to_Cave_2);
+         Send(what,@MsgSendUser,#message_rsc=Nest_to_Cave_2);
 
          return;
       }
-      
+
       if (new_row = 2) AND (new_col = 19)
       {
          Send(SYS,@UtilGoNearSquare,#what=what,
               #where=Send(SYS,@FindRoomByNum,#num=RID_CAVE2),
               #new_row=50 ,#new_col = 25,#new_angle=Send(what,@GetAngle));
 
-         send(what,@MsgSendUser,#message_rsc=Nest_to_Cave_1);
+         Send(what,@MsgSendUser,#message_rsc=Nest_to_Cave_1);
 
          return;
       }
 
       propagate;
    }
-
 
 end
 ////////////////////////////////////////////////////////////////////////////////

@@ -82,13 +82,19 @@ messages:
    Constructed()
    {
       plMonsters = [ [&SpiderBaby, 50], [&Centipede, 50] ];
-      plGenerators = [ [6, 11], [10, 22], [6, 36], [14, 42], [23, 39],
-                       [22, 19], [25, 10], [39, 12], [39, 26], [19, 28]
-                     ];
 
       plLooping_sounds = cons([ waterfall_soundF8, 8, 43 ], plLooping_sounds );
 
       propagate;
+   }
+
+   SetMonsterGenPoints()
+   {
+      plGenerators = [ [6, 11], [10, 22], [6, 36], [14, 42], [23, 39],
+                       [22, 19], [25, 10], [39, 12], [39, 26], [19, 28]
+                     ];
+
+      return;
    }
 
    CreateStandardExits()
@@ -98,7 +104,7 @@ messages:
       plExits = Cons([ 6, 50, RID_GUILDH3, 5, 2, ROTATE_NONE ],plExits);
       //  this exit is now password-protected, goes to guildhall.
       plExits = Cons([ 26, 50, ROOM_LOCKED_DOOR, OutdoorsF8_locked ],plExits);
- 
+
       plEdge_exits = $;
       plEdge_Exits = Cons([LEAVE_EAST, RID_G8, 36, 3, ROTATE_NONE], plEdge_exits);
       plEdge_Exits = Cons([LEAVE_WEST, RID_JASPER, 18, 75, ANGLE_SOUTH_WEST], plEdge_exits);
@@ -106,7 +112,7 @@ messages:
 
       propagate;
    }
-      
+
    SomethingTryGo(what=$,row=$,col=$)
    {
       local oGuildHall;
@@ -119,7 +125,7 @@ messages:
 
          return TRUE;
       }
-     
+
       // prevent newbies from getting trapped behind the door!
       if row = 6 AND col = 50 AND (NOT pbDoor_open)
          AND NOT Send(what,@checkplayerflag,#flag=PFLAG_PKILL_ENABLE)
@@ -142,13 +148,13 @@ messages:
 
    OpenDoor()
    {
-       pbDoor_open = TRUE;
-       Send(self,@SetSector,#sector=DOOR,#animation=ANIMATE_CEILING_LIFT,
+      pbDoor_open = TRUE;
+      Send(self,@SetSector,#sector=DOOR,#animation=ANIMATE_CEILING_LIFT,
             #height=DOOR_OPEN,#speed=16);
 
-       ptDoor = CreateTimer(self,@CloseDoorTimer,LIFT_DELAY);
+      ptDoor = CreateTimer(self,@CloseDoorTimer,LIFT_DELAY);
 
-       return;
+      return;
    }
 
    CloseDoorTimer()
@@ -156,16 +162,17 @@ messages:
       ptDoor = $;
 
       Send(self,@CloseDoor);
+
       return;
    }
 
    CloseDoor()
    {
-       pbDoor_open = FALSE;
-       Send(self,@SetSector,#sector=DOOR,#animation=ANIMATE_CEILING_LIFT,
+      pbDoor_open = FALSE;
+      Send(self,@SetSector,#sector=DOOR,#animation=ANIMATE_CEILING_LIFT,
             #height=DOOR_CLOSED,#speed=16);
 
-       return;
+      return;
    }
 
    CreateStandardObjects()
@@ -179,7 +186,7 @@ messages:
    }  
 
    SomeoneSaid(what = $,type = $,string = $,parm1 = $,parm2 = $,parm3 = $,
-               parm4 = $, parm5 = $,parm6 = $,parm7 = $,parm8 = $)                       
+               parm4 = $, parm5 = $,parm6 = $,parm7 = $,parm8 = $)
    "If someone is in the balcony while you are in the valley, do "
    "not send them any conversation."
    {
@@ -303,19 +310,18 @@ messages:
    {
       if ptDoor <> $
       {
-         deleteTimer(ptDoor);
+         DeleteTimer(ptDoor);
          ptDoor = $;
       }
 
       if ptPasswordDoorRelock <> $
       {
-         deleteTimer(ptPasswordDoorRelock);
+         DeleteTimer(ptPasswordDoorRelock);
          ptPasswordDoorRelock = $;
       }
 
       propagate;
    }
-
 
 end
 ////////////////////////////////////////////////////////////////////////////////

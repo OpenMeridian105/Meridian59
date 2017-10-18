@@ -63,30 +63,39 @@ messages:
    {
       plMonsters = [ [&Spider, 60], [&Centipede, 40] ];
 
-      plGenerators = [ [9, 6], [10, 18], [7, 39], [4, 58], [12, 62], 
-		      [22, 3], [21, 16], [22, 32], [31, 33], [36, 40],
-		      [32, 23], [50, 17], [51, 49], [24, 61], [38, 60],
-		      [39, 53], [48, 60] ];
       propagate;
+   }
+
+   SetMonsterGenPoints()
+   {
+      plGenerators = [ [9, 6], [10, 18], [7, 39], [4, 58], [12, 62], 
+                       [22, 3], [21, 16], [22, 32], [31, 33], [36, 40],
+                       [32, 23], [50, 17], [51, 49], [24, 61], [38, 60],
+                       [39, 53], [48, 60] ];
+
+      return;
    }
 
    CreateYellZoneList()
    {
       plYell_Zone = [ RID_CAVE2 ];
+
       propagate;
    }
 
-  SomethingMoved(what = $,new_row = $, new_col = $)
-  {
-     if (new_row < 18) and (new_col < 7) and (new_row > 14)
-     {
-        Send(SYS,@UtilGoNearSquare,#what=what,
+   SomethingMoved(what = $,new_row = $, new_col = $)
+   {
+      if (new_row < 18) and (new_col < 7) and (new_row > 14)
+      {
+         Send(SYS,@UtilGoNearSquare,#what=what,
              #where=Send(SYS,@FindRoomByNum,#num=RID_CAVE2),
              #new_row=57,#new_col = 46, #new_angle=ANGLE_NORTH);
-        return;
-     }
-     propagate;
-  }
+
+         return;
+      }
+
+      propagate;
+   }
 
    CreateStandardExits()
    {
@@ -94,16 +103,16 @@ messages:
       plEdge_Exits = Cons([LEAVE_EAST, RID_I7, 7, 2, ROTATE_NONE, ROW_IS_GREATER_THAN,20], plEdge_exits);
       plEdge_Exits = Cons([LEAVE_EAST, RID_H6, 45, 6, ROTATE_NONE, ROW_IS_LESS_THAN,19], plEdge_exits);
       plEdge_Exits = Cons([LEAVE_WEST, RID_G6, 115, 88, ROTATE_NONE], plEdge_exits);
+
       propagate;
    }
-      
+
    CreateStandardObjects()
    {
-      Send(self,@NewHold,#what=Create(&SpiderTree),
-           #new_row=45,#new_col=8);
+      Send(self,@NewHold,#what=Create(&SpiderTree),#new_row=45,#new_col=8);
+
       propagate;
    }
-      
 
 end
 ////////////////////////////////////////////////////////////////////////////////

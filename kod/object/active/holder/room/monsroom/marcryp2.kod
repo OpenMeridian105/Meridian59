@@ -39,13 +39,13 @@ resources:
       "By order of the King Far'Nohl none are to venture beyond this point.  "
       "This place is lost to civility and those that enter are likely to "
       "die.  No pity shall be given to those that cross this order. "
-  
+
    MarionCrypt2_door_sound = stoneup2.ogg
 
 classvars:
 
    vrName = room_name_MarionCrypt2
-  
+
    viTeleport_row = 17
    viTeleport_col = 18
 
@@ -77,16 +77,6 @@ messages:
    Constructed()
    {
       plMonsters = [ [&Skeleton, 80], [&BatteredSkeleton, 20] ];
-      plGenerators = [ [7, 16], [11, 8], [14, 6], [17, 2], 
-                       [18, 3], [24, 7], [23, 9], [26, 8], 
-                       [27, 5], [32, 3], [28, 11], [5, 37],
-                       [29, 15], [36, 14], [37, 20], [31, 25], 
-                       [32, 27], [33, 31], [34, 35], [31, 37], 
-                       [31, 43], [27, 45], [24, 46], [22, 45], 
-                       [21, 48], [19, 42], [23, 41], [12, 50], 
-                       [13, 45], [16, 45], [11, 42], [8, 39], 
-                       [3, 41], [2, 38]
-                     ];
 
       // [row, col, angle]
       plStatueLocations = [ [25,  2, ANGLE_NORTH], [37,  2, ANGLE_NORTH],
@@ -113,9 +103,20 @@ messages:
       propagate;
    }
 
-   Delete()
+   SetMonsterGenPoints()
    {
-      propagate;
+      plGenerators = [ [7, 16], [11, 8], [14, 6], [17, 2], 
+                       [18, 3], [24, 7], [23, 9], [26, 8], 
+                       [27, 5], [32, 3], [28, 11], [5, 37],
+                       [29, 15], [36, 14], [37, 20], [31, 25], 
+                       [32, 27], [33, 31], [34, 35], [31, 37], 
+                       [31, 43], [27, 45], [24, 46], [22, 45], 
+                       [21, 48], [19, 42], [23, 41], [12, 50], 
+                       [13, 45], [16, 45], [11, 42], [8, 39], 
+                       [3, 41], [2, 38]
+                     ];
+
+      return;
    }
 
    CreateStandardExits()
@@ -136,18 +137,17 @@ messages:
       oSign = Create(&Sign,#desc=MarionCrypt2_warning_sign,
                      #name=MarionCrypt2_warning_sign_name);
       Send(self,@NewHold,#what=oSign,#new_row=38,#new_col=27,
-           #fine_row=0,#fine_col=0);
+            #fine_row=0,#fine_col=0);
 
       propagate;
    }
 
-
    FirstUserEntered(what = $)
    {
       Send(self,@PlaceStatues);
-   
+
       if pbSecondaryDoorEnabled
-      {           
+      {
          Send(self,@CloseSecondaryDoorDown);
       }
 
@@ -199,28 +199,26 @@ messages:
          Send(self,@SomethingWaveRoom,#wave_rsc=MarionCrypt2_door_sound); 
          Send(self,@SetSector,#sector=SECTOR_DOOR_CRYPT3A,
               #animation=ANIMATE_CEILING_LIFT,#height=1098,#speed=8);
- 
+
          return;
       }
 
       return;
-    }
+   }
 
-    CloseSecondaryDoorDown()
-    {
-       Send(self,@SetSector,#sector=SECTOR_DOOR_CRYPT3A,
+   CloseSecondaryDoorDown()
+   {
+      Send(self,@SetSector,#sector=SECTOR_DOOR_CRYPT3A,
             #animation=ANIMATE_CEILING_LIFT,#height=1045,#speed=150);
 
-       return;
-    }
+      return;
+   }
 
    CanHavePlayerPortal()
    {
       // Don't allow portals into this room, bypassing puzzle
-      return false;
+      return FALSE;
    }
 
 end
 ////////////////////////////////////////////////////////////////////////////////
-
-

@@ -73,12 +73,8 @@ messages:
    Constructed()
    {
       local oPortal;
-      plMonsters = [ [&StoneTroll, 85], [&GroundwormQueen, 15] ];
 
-      plGenerators = [ [9, 50], [11, 30], [6, 22], [24, 31], [25, 50],
-                       [30, 53], [52, 53], [36, 59], [50, 36], [42, 15],
-                       [52, 8], [60, 37], [62, 43], [32, 12], [10,10]
-                     ];
+      plMonsters = [ [&StoneTroll, 85], [&GroundwormQueen, 15] ];
 
       // Create the mana node.  We can find it and place it later.
       Create(&ManaNode,#node_num=NODE_Q,#iRoomNum=piRoom_num);
@@ -88,6 +84,16 @@ messages:
       Send(self,@Newhold,#what=oPortal,#new_row=25,#new_col=61);
 
       propagate;
+   }
+
+   SetMonsterGenPoints()
+   {
+      plGenerators = [ [9, 50], [11, 30], [6, 22], [24, 31], [25, 50],
+                       [30, 53], [52, 53], [36, 59], [50, 36], [42, 15],
+                       [52, 8], [60, 37], [62, 43], [32, 12], [10,10]
+                     ];
+
+      return;
    }
 
    ActivatePortal()
@@ -169,8 +175,8 @@ messages:
    }
 
    NewHold(what=$)
-   {      
-      if what <> $ and isClass(what,&token)
+   {
+      if what <> $ AND IsClass(what,&Token)
       {
          Post(what,@RandomTeleport);
       }
@@ -186,7 +192,7 @@ messages:
    CanHavePlayerPortal()
    {
       // Don't allow portals into this room, bypassing puzzle
-      return false;
+      return FALSE;
    }
 
 end

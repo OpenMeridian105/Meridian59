@@ -65,13 +65,19 @@ messages:
    Constructed()
    {
       plMonsters = [ [&Spider, 45], [&Ant, 55] ];
-      plGenerators = [ [11, 31], [12, 21], [22, 26], [23, 17], [26,  4],
-		                 [31, 22], [35, 14], [40,  5], [40, 24], [35, 36]
-		               ];
 
       plLooping_sounds = [ [ waterfall_soundH4, 19, 1, 30, 100 ] ];
 
       propagate;
+   }
+
+   SetMonsterGenPoints()
+   {
+      plGenerators = [ [11, 31], [12, 21], [22, 26], [23, 17], [26,  4],
+                       [31, 22], [35, 14], [40,  5], [40, 24], [35, 36]
+                     ];
+
+      return;
    }
 
    CreateObjectGeneration()
@@ -85,33 +91,30 @@ messages:
       plObject_gen = Cons([ &ElderBerry, GEN_INF, 2, 32, 23 ],plObject_gen);
 
       propagate;
-
    }
 
    StandardLeaveDir(what = $,dir = $,pos = $,new_room_num = $)
    {
-      if (dir = LEAVE_WEST) AND (send(what,@GetRow) < 29)
+      if (dir = LEAVE_WEST) AND (Send(what,@GetRow) < 29)
       {
-         send(what,@MsgSendUser,#message_rsc = waterfall_msg1);
+         Send(what,@MsgSendUser,#message_rsc = waterfall_msg1);
 
          return;
       }
 
       propagate;
    }
-            
 
    CreateStandardExits()
    {
-      plEdge_Exits = $;      
+      plEdge_Exits = $;
       plEdge_Exits = Cons([LEAVE_SOUTH, RID_H5, 4, 3, ROTATE_NONE], plEdge_exits);
       plEdge_Exits = Cons([LEAVE_WEST, RID_G4, 42, 49, ROTATE_NONE, ROW_IS_GREATER_THAN,28], plEdge_exits);
       plEdge_Exits = Cons([LEAVE_NORTH, RID_H3, 46, 14, ROTATE_NONE, COL_IS_LESS_THAN,33], plEdge_exits);
       plEdge_Exits = Cons([LEAVE_NORTH, RID_H3, 46, 33, ROTATE_NONE, COL_IS_GREATER_THAN,32], plEdge_exits);
 
-      propagate;                                                 
+      propagate;
    }
-
 
 end
 ////////////////////////////////////////////////////////////////////////////////

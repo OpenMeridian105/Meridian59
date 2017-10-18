@@ -62,27 +62,34 @@ messages:
    Constructed()
    {
       plMonsters = [ [&Troll, 60], [&DeathSpider, 40] ];
-      plGenerators = [ [3, 3], [7, 7], [19, 12], [22, 19], [20, 27],
-                      [16, 35], [26, 34], [30, 39], [30, 14], [36, 20],
-                      [38, 29], [48, 25], [54, 27], [50, 35] ];
+
       propagate;
    }
 
-    CreateStandardExits()
-    {
+   SetMonsterGenPoints()
+   {
+      plGenerators = [ [3, 3], [7, 7], [19, 12], [22, 19], [20, 27],
+                       [16, 35], [26, 34], [30, 39], [30, 14], [36, 20],
+                       [38, 29], [48, 25], [54, 27], [50, 35] ];
+
+      return;
+   }
+
+   CreateStandardExits()
+   {
       plEdge_Exits = $;
       plEdge_Exits = Cons([LEAVE_NORTH, RID_I7, 48, 32, ROTATE_NONE], plEdge_exits);
       plEdge_Exits = Cons([LEAVE_SOUTH, RID_I9, 4, 63, ROTATE_NONE], plEdge_exits);
-     
+
       propagate;
    }
 
    OpenQorTemple()
    {
-   
-      send(self,@setsector,#sector=QOR_DOOR,#animation=ANIMATE_CEILING_LIFT,
-                #height = 348, #speed = 8);
-      plYell_zone = cons (RID_TEMPLE_QOR, plYell_Zone);
+      Send(self,@SetSector,#sector=QOR_DOOR,#animation=ANIMATE_CEILING_LIFT,
+            #height = 348, #speed = 8);
+      plYell_zone = Cons(RID_TEMPLE_QOR, plYell_Zone);
+
       return;
    }
 
@@ -90,14 +97,15 @@ messages:
    {
       local i;
 
-      send(self,@setsector,#sector=QOR_DOOR,#animation=ANIMATE_CEILING_LIFT,
-                #height = 284, #speed = 8);
+      Send(self,@SetSector,#sector=QOR_DOOR,#animation=ANIMATE_CEILING_LIFT,
+            #height = 284, #speed = 8);
+
       foreach i in plYell_zone
       {
-	 if i = RID_TEMPLE_QOR
-	 {
-	    plYell_Zone=dellistelem(plYell_zone,i);
-	 }
+         if i = RID_TEMPLE_QOR
+         {
+            plYell_Zone = DelListElem(plYell_zone,i);
+         }
       }
 
       return;
@@ -105,19 +113,22 @@ messages:
 
    SomethingMoved(what = $,new_row = $, new_col = $)
    {
-      if new_row=38 and new_col= 26
+      if new_row=38 AND new_col= 26
       {
-	 send(send(SYS,@findroombynum,#num=RID_TEMPLE_QOR),@TempleEntrance,
-	    #who=what);
-	 return;
+         Send(Send(SYS,@FindRoomByNum,#num=RID_TEMPLE_QOR),@TempleEntrance,
+               #who=what);
+
+         return;
       }
+
       propagate;
    }
 
    ExitFromQor(who=$)
    {
-      send(SYS,@UtilGoNearSquare,#what=who,
-        #where=self,#new_row= 32,#new_col = 25,#new_angle=ANGLE_NORTH_WEST);
+      Send(SYS,@UtilGoNearSquare,#what=who,#where=self,
+            #new_row= 32,#new_col = 25,#new_angle=ANGLE_NORTH_WEST);
+
       return;
    }
 

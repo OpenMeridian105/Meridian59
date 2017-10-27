@@ -19,7 +19,7 @@ void InitAsyncConnections(void)
 {
     WSADATA WSAData;
 
-    if (WSAStartup(MAKEWORD(1,1),&WSAData) != 0)
+    if (WSAStartup(MAKEWORD(2,2),&WSAData) != 0)
     {
         eprintf("InitAsyncConnections can't open WinSock!\n");
         return;

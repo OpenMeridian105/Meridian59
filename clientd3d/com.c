@@ -70,7 +70,7 @@ Bool OpenSocketConnection(char *host, int sock_port)
 	Bool success = False;
 	long addr;
 	
-	if (WSAStartup(MAKEWORD(1,1), &WSAData) != 0) 
+	if (WSAStartup(MAKEWORD(2,2), &WSAData) != 0) 
 	{
 		ClientError(hInst, hMain, IDS_CANTINITSOCKET);
 		return False;

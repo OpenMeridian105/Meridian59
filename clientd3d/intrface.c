@@ -136,9 +136,26 @@ void InterfaceGetMaxSize(SIZE *s)
    s->cx = MAXX * factor + INVENTORY_MAX_WIDTH + LEFT_BORDER * 3 
       + 2 * GetSystemMetrics(SM_CXFRAME);
    s->cy = GetSystemMetrics(SM_CYSCREEN) + 2 * GetSystemMetrics(SM_CYFRAME);
+
+   POINT mousePos;
+   GetCursorPos(&mousePos);
+   HMONITOR hMonitor = NULL;
+   MONITORINFO monitorInfo;
+
+   // Get the nearest monitor to mouse cursor.
+   hMonitor = MonitorFromPoint(mousePos, MONITOR_DEFAULTTONEAREST);
+
+   // Get the target monitor info
+   memset(&monitorInfo, 0, sizeof(MONITORINFO));
+   monitorInfo.cbSize = sizeof(MONITORINFO);
+
+   // Cap to available space.
+   if (GetMonitorInfo(hMonitor, &monitorInfo))
+   {
+      s->cx = min(s->cx, monitorInfo.rcWork.right - monitorInfo.rcWork.left + 2 * GetSystemMetrics(SM_CXFRAME));
+      s->cy = min(s->cy, monitorInfo.rcWork.bottom - monitorInfo.rcWork.top + 2 * GetSystemMetrics(SM_CYFRAME));
+   }
 }
-
-
 /************************************************************************/
 /* 
  * GameChangeFont:  Redraw interface after user has changed a font.

@@ -54,8 +54,8 @@
 
 #define MAX_STEP_HEIGHT (HeightKodToClient(24)) // Max vertical step size (FINENESS units)
 
-#define MOVE_INTERVAL  250            // Inform server once per this many milliseconds
-#define MOVE_THRESHOLD (FINENESS / 4)  // Inform server only of moves at least this large
+#define MOVE_INTERVAL  100            // Inform server once per this many milliseconds
+#define MOVE_THRESHOLD (FINENESS / 8)  // Inform server only of moves at least this large
 
 #define MIN_NOMOVEON (FINENESS / 4)   // Closest we can get to a nomoveon object
 #define MIN_HOTPLATE_DIST (FINENESS ) // Closest we can get to a hotplate before notification
@@ -366,7 +366,7 @@ void UserMovePlayer(int action)
          {
             // Need to send walking speed for room change, otherwise room
             // changes by players with vigor < 10 will be blocked.
-            RequestMove(y, x, USER_WALKING_SPEED, player.room_id);
+            RequestMove(y, x, USER_WALKING_SPEED, player.room_id, ANGLE_CTOS(player.angle));
             move_off_room_time = now;
          }
          // Don't actually move player off room
@@ -826,14 +826,17 @@ void MoveUpdateServer(void)
    if (now - server_time < MOVE_INTERVAL || !pos_valid)
       return;
 
-   MoveUpdatePosition();
-
-   angle = ANGLE_CTOS(player.angle);
-   if (server_angle != angle)
+   // if position wasn't updated
+   // see if angle should be updated independently
+   if (!MoveUpdatePosition())
    {
-      RequestTurn(player.id, angle);
-      server_angle = angle;
-      server_time = now;
+      angle = ANGLE_CTOS(player.angle);
+      if (server_angle != angle)
+      {
+         RequestTurn(player.id, angle);
+         server_angle = angle;
+         server_time = now;
+      }
    }
 }
 /************************************************************************/
@@ -842,7 +845,7 @@ void MoveUpdateServer(void)
  *   This procedure does not care about elapsed interval, but
  *   sends the update only when the position has changed at least a bit.
  */ 
-void MoveUpdatePosition(void)
+Bool MoveUpdatePosition(void)
 {
    int x, y;
    BYTE speed;
@@ -869,13 +872,17 @@ void MoveUpdatePosition(void)
          speed = USER_RUNNING_SPEED;
 
       // send update
-      RequestMove(y, x, speed, player.room_id);
+      RequestMove(y, x, speed, player.room_id, ANGLE_CTOS(player.angle));
    
       // save last sent position and tick
       server_x = x;
       server_y = y;
       server_time = timeGetTime();
+
+      return true;
    }
+
+   return false;
 }
 /************************************************************************/
 /*

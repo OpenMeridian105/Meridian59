@@ -27,7 +27,7 @@
 
 #include "client.h"
 
-#define ANIMATE_INTERVAL 165       // ms between background animation updates
+#define ANIMATE_INTERVAL 33       // ms between background animation updates (~30fps)
 #define FLICKER_LEVEL (LIGHT_LEVELS/2)
 #define FLASH_LEVEL (LIGHT_LEVELS/2)
 #define TIME_FLASH 1000

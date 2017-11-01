@@ -211,6 +211,16 @@ void AsyncSocketSelect(SOCKET sock,int event,int error)
    LeaveSessionLock();
 }
 
+void AsyncSocketSelectUDP(SOCKET sock)
+{
+   EnterSessionLock();
+
+   // no event cases, UDP is stateless
+   // only event FD_READ is registered on socket
+   AsyncSocketReadUDP(sock);
+
+   LeaveSessionLock();
+}
 
 Bool CheckMaintenanceMask(SOCKADDR_IN6 *addr,int len_addr)
 {

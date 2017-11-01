@@ -24,7 +24,8 @@ void LoginExit(void);
 
 void LoginSendInfo(void);
 Bool GetLogin(void);
-void LoginOk(BYTE type);
+int  GetSessionID(void);
+void LoginOk(BYTE type, int sessionid);
 void LoginError(int err_string);
 void LoginErrorMessage(char *message, BYTE action);
 void LoginTimeout(void);

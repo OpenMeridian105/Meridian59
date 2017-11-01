@@ -21,5 +21,6 @@ void AsyncNameLookup(HANDLE hLookup,int error);
 void AsyncSocketClose(SOCKET sock);
 void AsyncSocketWrite(SOCKET sock);
 void AsyncSocketRead(SOCKET sock);
+void AsyncSocketReadUDP(SOCKET sock);
 
 #endif

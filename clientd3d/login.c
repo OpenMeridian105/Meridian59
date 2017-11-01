@@ -15,6 +15,7 @@
 
 static int user_type;       /* Tells if user is administrator, guest, etc.. */
 Bool logged_in;             /* True iff we're past login dialog */
+int session_id;             /* Session-ID in blakserv */
 extern int connection;
 Bool admin_mode;            // True when user wants to go into admin mode
 
@@ -68,10 +69,11 @@ void LoginSendInfo(void)
 /*
  * LoginOk:  Got a message from the server that login worked.
  */
-void LoginOk(BYTE type)
+void LoginOk(BYTE type, int sessionid)
 {
    logged_in = True;
    user_type = type;
+   session_id = sessionid;
 }
 /****************************************************************************/
 void LoginTimeout(void)
@@ -196,6 +198,16 @@ Bool GetLogin(void)
       
    return True;
 }
+
+/****************************************************************************/
+/*
+* GetSessionID:  Returns the Session-ID received from server
+*/
+int GetSessionID(void)
+{
+   return session_id;
+}
+
 /****************************************************************************/
 /*
  * LoginDialogProc:  Get login information.

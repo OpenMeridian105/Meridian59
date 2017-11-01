@@ -21,6 +21,7 @@ DWORD GetHostIP4();
 
 int ReadServer(void);
 Bool SendServer(char *buf, unsigned int numbytes);
+Bool SendServerUDP(char *buf, unsigned int numbytes);
 Bool WriteServer(char *buf,unsigned int numbytes);
 void CloseSocketConnection(void);
 Bool OpenSocketConnection(char *hostname, int sock_port);

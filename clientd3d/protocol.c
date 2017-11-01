@@ -32,7 +32,7 @@ static client_message login_msg_table[] = {
 
 /* Game mode messages */
 static client_message game_msg_table[] = { 
-{ BP_REQ_MOVE,             { PARAM_COORD, PARAM_COORD, PARAM_BYTE, PARAM_ID, PARAM_END }, },
+{ BP_REQ_MOVE,             { PARAM_COORD, PARAM_COORD, PARAM_BYTE, PARAM_ID, PARAM_WORD, PARAM_END }, },
 { BP_REQ_TURN,             { PARAM_ID, PARAM_WORD, PARAM_END }, },
 { BP_REQ_GET,              { PARAM_ID, PARAM_END }, },
 { BP_REQ_INVENTORY,        { PARAM_END }, },
@@ -313,8 +313,34 @@ void _cdecl ToServer(BYTE type, ClientMsgTable table, ...)
       argnum++;
    }   
    va_end(marker);
-   SendServer((char *) buf, ptr - buf);
 
-   // Record the fact that we've sent a messasge
-   PingSentMessage();
+   // NEW: Send some game mode messages using UDP. This is OPTIONAL.
+   // General-Limits:
+   //  1) Any AP_XY message sent by UDP will be just discarded by blakserv, don't do it!
+   //  2) BP_XY messages sent by UDP will NOT be handled in BLAKSERV C-Code, only in KOD
+   //     Hence, do not try to send messages like BP_REQ_QUIT by UDP that expect to be 
+   //     handled directly in C code of GameProtocolParse() in game.c of blakserv
+   // UDP-Notes:
+   //  1) NO RETRANSMIT OF POSSIBLY LOST MESSAGE:
+   //     Hence, do not send a BP_XY message, which MUST reach the server at all cost.
+   //  2) MOST SUITED FOR REALTIME DATA:
+   //     Anything which is sent at high frequency and where new data makes previous data fully obsolete.
+
+   if (table == game_msg_table && (
+       type == BP_REQ_MOVE || 
+       type == BP_REQ_TURN ||
+       type == BP_REQ_ATTACK))
+   {
+      SendServerUDP((char*)buf, ptr - buf);
+   }
+
+   // send the others by TCP
+   else
+   {
+      // Send
+      SendServer((char *)buf, ptr - buf);
+
+      // Record the fact that we've sent a messasge
+      PingSentMessage();
+   }
 }

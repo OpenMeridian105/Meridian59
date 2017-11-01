@@ -1631,6 +1631,7 @@ messages:
          iCol = Nth(client_msg,3);
          iSpeed = Nth(client_msg,4);
          oRoom = Nth(client_msg,5);
+         iAngle = Nth(client_msg,6);
 
          // Check if it's an outdated message, from a person going off side of
          //  room multiple times before they got their new room.
@@ -1642,6 +1643,8 @@ messages:
          Send(self,@UserMove,#new_row=iRow/FINENESS,#new_col=iCol/FINENESS,
               #fine_row=(iRow % FINENESS),#fine_col=(iCol % FINENESS),
               #speed=iSpeed);
+
+         Send(self,@UserTurn,#what=self,#new_angle=iAngle);
 
          return;
       }
@@ -4303,6 +4306,12 @@ messages:
       {
          Debug("User tried to turn object other than self: ",what);
          
+         return;
+      }
+
+      // new angle is equal to current one, nothing to do
+      if new_angle = Send(what,@GetAngle)
+      {
          return;
       }
 
@@ -8241,7 +8250,7 @@ messages:
          {
             AddPacket(1,BP_MOVE, 4,what,
                       2,new_row*FINENESS+fine_row, 2,new_col*FINENESS+fine_col,
-                      1,speed);
+                      1,speed,2,Send(what, @GetAngle));
             SendPacket(poSession);
 
             propagate;
@@ -8256,7 +8265,7 @@ messages:
    {
       AddPacket(1,BP_MOVE, 4,what,
                 2,new_row*FINENESS+fine_row, 2,new_col*FINENESS+fine_col,
-                1,speed);
+                1,speed,2,Send(what, @GetAngle));
 
       return;
    }

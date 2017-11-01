@@ -23,16 +23,21 @@
 
 static char readbuf[COMBUFSIZE];  /* Buffer for stuff read from server */
 static char tempbuf[COMBUFSIZE];  /* Temporary buffer to hold single message */
+static char udpbuf[COMBUFSIZE];   /* Used to send UDP datagrams to server */
 static int bufpos;
 
 extern int connection;  /* What type of connection do we have? */
 
 static Bool notification = False;  /* Is notification on? */
 
+static SOCKADDR_IN dest_sin; /* Currently or last connected to this host */
 static SOCKET sock = INVALID_SOCKET; /* Socket communications handle */
+static SOCKET sockUDP = INVALID_SOCKET; /* UDP Socket communcations handle */
+
 static DWORD dwIP4 = 0;
 
 static BYTE epoch;     // Epoch byte from last server message
+static unsigned int udpseqno; // incremented by one for each sent UDP datagram
 
 // Keep several "streams" of random numbers, each of which is updated every time
 // we send a message to the server.  Stream #NUM_STREAMS is used to select the stream
@@ -65,7 +70,6 @@ DWORD GetHostIP4()
 Bool OpenSocketConnection(char *host, int sock_port)
 {
 	WSADATA WSAData;
-	SOCKADDR_IN dest_sin;
 	PHOSTENT phe;
 	Bool success = False;
 	long addr;
@@ -84,6 +88,13 @@ Bool OpenSocketConnection(char *host, int sock_port)
 		return False;
 	}
 	
+   /* turn off Nagle algorithm */
+   int nagleOff = TRUE;
+   if (setsockopt(sock, IPPROTO_TCP, TCP_NODELAY, (char *)&nagleOff, sizeof nagleOff))
+   {
+      debug(("Error setting TCP_NODELAY; error # was %d\n", WSAGetLastError()));
+   }
+
 	// Try to interpret host as an address with "." notation
 	addr = inet_addr(host);
 	if (addr != -1)
@@ -139,7 +150,21 @@ Bool OpenSocketConnection(char *host, int sock_port)
 		
 		bufpos = 0;
 		
-		return True;
+
+   //-----------------------------------------------
+   // Create UDP Socket
+   sockUDP = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+
+   if (sockUDP == INVALID_SOCKET)
+   {
+      debug(("error creating UDP socket - %i \n", WSAGetLastError()));
+      return False;
+   }
+
+   // reset udp sequence number
+   udpseqno = 0;
+
+   return True;
 }
 /********************************************************************/
 /*
@@ -303,6 +328,48 @@ Bool SendServer(char *msg, UINT numbytes)
 		
 		return True;
 }
+/********************************************************************/
+/*
+* SendServerUDP:  Sends UDP message to server
+*/
+Bool SendServerUDP(char *msg, UINT numbytes)
+{
+   // build udp datagram in udpbuf
+   char* ptr = udpbuf;
+
+   /*
+   * MESSAGE HEADER
+   * 4 bytes      blakserv session-id received with AP_LOGINOK
+   * 4 bytes      seqno incremented with each udp datagram
+   * 2 bytes      CRC of message
+   * 1 byte       server epoch (0 for login state messages) 
+   */
+   
+   *((int*)ptr) = GetSessionID();
+   ptr += 4;
+
+   *((unsigned int*)ptr) = ++udpseqno;
+   ptr += 4;
+
+   *((WORD*)ptr) = GetCRC16(msg, numbytes);
+   ptr += 2;
+
+   *((BYTE*)ptr) = (state == STATE_LOGIN) ? 0 : epoch; 
+   ptr += 1;
+
+   /*
+   * MESSAGE CONTENTS
+   * 1 byte      type of message
+   * n bytes     data
+   */
+   
+   memcpy(ptr, msg, numbytes);
+
+   // SEND
+   return sendto(sockUDP, udpbuf, numbytes + SIZE_HEADER_UDP, 
+      0, (PSOCKADDR)&dest_sin, sizeof(dest_sin)) != SOCKET_ERROR;
+}
+
 /********************************************************************/
 /*
 * ReadServer:  Read pending bytes from the server into a static buffer.

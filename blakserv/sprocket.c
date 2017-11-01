@@ -21,7 +21,7 @@ typedef struct
 
 client_def_table_type client_def_table[] = 
 { 
-	{ BP_REQ_MOVE,             { {2, TAG_INT}, {2, TAG_INT}, {1, TAG_INT}, {4, TAG_OBJECT},
+	{ BP_REQ_MOVE,             { {2, TAG_INT}, {2, TAG_INT}, {1, TAG_INT}, {4, TAG_OBJECT}, {2, TAG_INT},
 	{0, DONE_PARM} } },
 	{ BP_SEND_OBJECT_CONTENTS, { {4, TAG_OBJECT}, {0, DONE_PARM} } },
 	{ BP_SAY_TO,               { {1, TAG_INT}, {0,TAG_TEMP_STRING}, {0, DONE_PARM} } },

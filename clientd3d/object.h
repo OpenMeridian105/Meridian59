@@ -45,7 +45,9 @@ typedef struct {
                                            // (Used for falling and climbing)
    float     progress;                     // 0 = source; 1 = destination
    float     increment;                    // Amount by which progress increments per millisecond
+   float     incrementstart;               // First/unmodified increment
    float     speed;							// keep history of speed to allow for auto correction
+   float     speed_factor;                 // keep history of applied speed_factor to smooth over time
    Animate   animate;                      // Object animation when moving
    list_type overlays;                     // Overlays (and animation) to use when moving
    Bool      move_animating;               // True when move animation is being displayed

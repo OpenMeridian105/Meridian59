@@ -66,9 +66,9 @@ typedef struct {
 #define RequestPlayer()              ToServer(BP_SEND_PLAYER, NULL)
 #define RequestRoom()                ToServer(BP_SEND_ROOM_CONTENTS, NULL)
 // Convert from client 0-based coordinates to server 1-based coordinates
-#define RequestMove(y, x, speed, room) \
+#define RequestMove(y, x, speed, room, angle) \
 ToServer(BP_REQ_MOVE, NULL, FinenessClientToKod(y) + KOD_FINENESS, \
-	 FinenessClientToKod(x) + KOD_FINENESS, speed, room)
+	 FinenessClientToKod(x) + KOD_FINENESS, speed, room, angle)
 #define RequestObjectContents(id)    ToServer(BP_SEND_OBJECT_CONTENTS, NULL, id)
 #define RequestPickup(id)            ToServer(BP_REQ_GET, NULL, id)
 #define RequestInventory()           ToServer(BP_REQ_INVENTORY, NULL)

@@ -91,14 +91,14 @@ void ProjectileAdd(Projectile *p, ID source_obj, ID dest_obj, BYTE speed, WORD f
    dz = p->motion.dest_z - p->motion.source_z;
 
    if (speed == 0 || (dx == 0 && dy == 0 && dz == 0))
-      p->motion.increment = 1.0f;
+      p->motion.increment = p->motion.incrementstart = 1.0f;
    else
    {
       distance = sqrtf(dx * dx + dy * dy + dz * dz) / FINENESS;
       if (distance > 0.001f)
-         p->motion.increment = ((float)speed) / 1000.0f / distance;
+         p->motion.increment = p->motion.incrementstart = ((float)speed) / 1000.0f / distance;
       else
-         p->motion.increment = 1.0f;
+         p->motion.increment = p->motion.incrementstart = 1.0f;
    }
 
    p->motion.x = p->motion.source_x;
@@ -211,14 +211,14 @@ else
       dz = q->motion.dest_z - q->motion.source_z;
 
       if (speed == 0 || (dx == 0 && dy == 0 && dz == 0))
-         q->motion.increment = 1.0f;
+         q->motion.increment = p->motion.incrementstart = 1.0f;
       else
       {
          distance = sqrtf(dx * dx + dy * dy + dz * dz) / FINENESS;
          if (distance > 0.001f)
-            q->motion.increment = ((float)speed) / 1000.0f / distance;
+            q->motion.increment = p->motion.incrementstart = ((float)speed) / 1000.0f / distance;
          else
-            q->motion.increment = 1.0f;
+            q->motion.increment = p->motion.incrementstart = 1.0f;
       }
 
       q->motion.x = q->motion.source_x;

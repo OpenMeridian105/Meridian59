@@ -510,6 +510,7 @@ void VerifyLogin(session_node *s)
 
    AddByteToPacket(AP_LOGINOK);
    AddByteToPacket((char)(s->account->type));
+   AddIntToPacket(s->session_id);
    SendPacket(s->session_id);
 
    /* they're logged in now.  Check their version number, and if old tell 'em

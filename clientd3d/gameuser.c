@@ -11,7 +11,7 @@
 
 #include "client.h"
 
-#define ATTACK_DELAY 250  // Minimum number of milliseconds between user attacks
+#define ATTACK_DELAY 200  // Minimum number of milliseconds between user attacks
 
 extern player_info player;
 extern room_type current_room;
@@ -64,7 +64,7 @@ void UserAttack(int action)
    
    if (sel_list != NULL)
    {
-      MoveUpdatePosition();   // Send our exact position, so that we try to attack in range
+      //MoveUpdatePosition();   // Send our exact position, so that we try to attack in range
 
       target_obj = (room_contents_node *) (sel_list->data);
 

@@ -116,14 +116,15 @@ typedef struct
    unsigned int secure_token;
    char* sliding_token;
 
-   Mutex muxReceive;
-   /* this protects the list of received data: receive_list, and receive_index */
+   /* this protects the list of received data: receive_list, and receive_index and udp */
+   Mutex muxReceive; 
    buffer_node *receive_list;
-   int receive_index; /* index into first buffer of receive_list, of where we are */
+   buffer_node *receive_list_udp;
+   int receive_index;       /* index into first buffer of receive_list, of where we are */
+   unsigned int receive_seqno_udp;
 
-
-   Mutex muxSend;
    /* this protects the list of buffers to be sent: send_list */
+   Mutex muxSend;
    buffer_node *send_list;
 
 } session_node;
@@ -143,6 +144,7 @@ void GameClientExit(session_node *s);
 void GameCleanupExit(session_node *s);
 void GameProcessSessionTimer(session_node *s);
 void GameProcessSessionBuffer(session_node *s);
+void GameProcessSessionBufferUDP(session_node *s);
 void TrySyncInit(session_node *s);
 void TrySyncExit(session_node *s);
 void TrySyncProcessSessionTimer(session_node *s);

@@ -37,6 +37,7 @@ void CloseConnection(connection_node conn);
 
 void ProcessSessionTimer(session_node *s);
 void ProcessSessionBuffer(session_node *s);
+void ProcessSessionBufferUDP(session_node *s);
 
 void SendGameClient(session_node *s,char *data,unsigned short len_data,int seqno);
 
@@ -145,6 +146,8 @@ session_node *AllocateSession(void)
 	sessions[i].exiting_state = False;
 	sessions[i].receive_list = NULL;
 	sessions[i].receive_index = 0;
+	sessions[i].receive_list_udp = NULL;
+	sessions[i].receive_seqno_udp = 0;
 	sessions[i].send_list = NULL;
 	sessions[i].version_major = 0;
 	sessions[i].version_minor = 0;
@@ -586,14 +589,19 @@ void PollSession(int session_id)
 	}
 	*/
 	
-	if (s->receive_list != NULL)
-		ProcessSessionBuffer(s);
+   // handle pending TCP stream data of this session
+   if (s->receive_list != NULL)
+      ProcessSessionBuffer(s);
+   
+   // handle pending UDP datagrams of this session
+   if (s->receive_list_udp != NULL)
+      ProcessSessionBufferUDP(s);
 
-    if (!MutexRelease(s->muxReceive))
-	{
-		eprintf("PollSession released mutex it didn't own in session %i\n",s->session_id);
-		HangupSession(s);
-	}
+   if (!MutexRelease(s->muxReceive))
+   {
+      eprintf("PollSession released mutex it didn't own in session %i\n",s->session_id);
+      HangupSession(s);
+   }
 }
 
 void VerifiedLoginSession(int session_id)
@@ -657,6 +665,20 @@ void ProcessSessionBuffer(session_node *s)
 			break;
 		}
 	} while (s->connected && s->state != prev_session_state);
+}
+
+void ProcessSessionBufferUDP(session_node *s)
+{
+   // parse udp only in game mode
+   if (s->state == STATE_GAME)
+      GameProcessSessionBufferUDP(s);
+   
+   // otherwise discard udp datagrams
+   else
+   {
+      DeleteBufferList(s->receive_list_udp);
+      s->receive_list_udp = NULL;
+   }
 }
 
 void ProcessSessionTimer(session_node *s)
@@ -1091,7 +1113,7 @@ void SessionAddBufferList(session_node *s,buffer_node *blist)
 	/* simple approach: set bn->next to blist.  However, this can use up
 	a ton of buffers, when the amount of data to be sent is small.  So
 	do a couple discreet checks, and perhaps memcpy's. */
-	while (blist != NULL && blist->len_buf < (bn->size_prebuf - bn->len_buf - HEADERBYTES))
+	while (blist != NULL && blist->len_buf < ((int)sizeof(bn->prebuf) - bn->len_buf - HEADERBYTES))
 	{
 		/* dprintf("squeezing %i in %i\n",blist->len_buf,bn->size_buf-bn->len_buf); */
 		memcpy(bn->buf+bn->len_buf,blist->buf,blist->len_buf);

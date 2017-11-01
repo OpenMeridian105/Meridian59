@@ -31,7 +31,7 @@ int  PlayerGetHeightOffset(void);
 void ServerMovedPlayer(void);
 void MoveUpdateServer(void);
 void MoveSetValidity(Bool valid);
-void MoveUpdatePosition(void);
+Bool MoveUpdatePosition(void);
 
 void UserTurnPlayer(int action);
 void UserTurnPlayerMouse(int delta);

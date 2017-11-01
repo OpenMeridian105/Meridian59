@@ -574,6 +574,9 @@ enum {
    SL_FLICKER_OFF      = 2,         // Turn flickering off
 };
 
+/* Size in bytes of UDP header (without TYPE byte) */
+#define SIZE_HEADER_UDP      11
+
 /* Size in bytes of numbers in protocol */
 #define SIZE_TYPE            1
 #define SIZE_ID              4
@@ -607,6 +610,7 @@ enum {
 #define SIZE_FILTER          2
 #define SIZE_PROJECTILE_FLAGS 2
 #define SIZE_PROJECTILE_RESERVED 2
+#define SIZE_SESSION_ID      4
 
 // new defines for dynamic lighting of d3d client
 #define LIGHT_FLAG_NONE		0x0000

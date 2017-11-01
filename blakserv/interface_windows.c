@@ -44,6 +44,7 @@
 #define WM_BLAK_SOCKET_MAINTENANCE_ACCEPT (WM_APP + 8)
 #define WM_BLAK_SOCKET_NAME_LOOKUP (WM_APP + 10)
 #define WM_BLAK_SOCKET_SELECT  (WM_APP + 11)
+#define WM_BLAK_SOCKET_SELECT_UDP (WM_APP + 12)
 
 #define CHANNEL_INTERFACE_LINES 5000 /* number of lines we'll keep in a list box */
 
@@ -353,6 +354,10 @@ long WINAPI InterfaceWindowProc(HWND hwnd,UINT message,UINT wParam,LONG lParam)
 			AsyncSocketSelect(wParam,WSAGETSELECTEVENT(lParam),WSAGETSELECTERROR(lParam));
 			break;
 			
+      case WM_BLAK_SOCKET_SELECT_UDP:
+         AsyncSocketSelectUDP(wParam);
+         break;
+
 		default :
 			return DefWindowProc(hwnd,message,wParam,lParam);    
    }
@@ -516,6 +521,13 @@ void StartAsyncSocketAccept(SOCKET sock,int connection_type)
 	val = WSAAsyncSelect(sock,hwndMain,window_event,FD_ACCEPT);
 	if (val != 0)
 		eprintf("StartAsyncSocketAccept got error %i\n",val);
+}
+
+void StartAsyncSocketUDPRead(SOCKET sock)
+{
+   int val = WSAAsyncSelect(sock, hwndMain, WM_BLAK_SOCKET_SELECT_UDP, FD_READ);
+   if (val != 0)
+      eprintf("StartAsyncSocketUDPRead got error %i\n", val);
 }
 
 /* this is executed in our thread, actually.

@@ -19,9 +19,9 @@
 
 #include "blakserv.h"
 
+// stores free/available buffers
 buffer_node *buffers;
 int next_buffer_id;
-
 
 CRITICAL_SECTION csBuffers; /* protects our buffers list */
 
@@ -48,12 +48,6 @@ void ResetBufferPool(void)
    while (bn != NULL)
    {
       temp = bn->next;
-      if (bn->size_prebuf != BUFFER_SIZE + HEADERBYTES)
-      {
-	 eprintf("ResetBufferPool got overwrite of a buffer size!!!");
-	 bn->size_prebuf = BUFFER_SIZE + HEADERBYTES;
-      }
-      FreeMemory(MALLOC_ID_BUFFER,bn->prebuf,bn->size_prebuf);
       FreeMemory(MALLOC_ID_BUFFER,bn,sizeof(buffer_node));
       bn = temp;
    }
@@ -71,9 +65,6 @@ buffer_node * GetBuffer(void)
    {
       bn = (buffer_node *) AllocateMemory(MALLOC_ID_BUFFER,sizeof(buffer_node));
       bn->len_buf = 0;
-      bn->size_buf = BUFFER_SIZE; /* used for buffers in reading */
-      bn->size_prebuf = BUFFER_SIZE + HEADERBYTES;
-      bn->prebuf = (char *) AllocateMemory(MALLOC_ID_BUFFER,bn->size_prebuf);
       bn->buf = bn->prebuf + HEADERBYTES;
       bn->buffer_id = next_buffer_id++;
       bn->next = NULL;
@@ -85,13 +76,7 @@ buffer_node * GetBuffer(void)
       bn->next = NULL;
       bn->len_buf = 0;
       bn->buf = bn->prebuf + HEADERBYTES;
-      if (bn->size_prebuf != BUFFER_SIZE + HEADERBYTES)
-      {
-	 eprintf("GetBuffer got overwrite of a buffer size!!!");
-	 bn->size_prebuf = BUFFER_SIZE + HEADERBYTES;
-      }
       bn->buffer_id = next_buffer_id++;
-      /* dprintf("Reuse 0x%08x\n",bn); */
    }
    LeaveCriticalSection(&csBuffers);
 
@@ -100,16 +85,33 @@ buffer_node * GetBuffer(void)
 
 void DeleteBuffer(buffer_node *bn)
 {
-   /* dprintf("Del 0x%08x\n",bn); */
    EnterCriticalSection(&csBuffers);
-   if (bn->size_prebuf != BUFFER_SIZE + HEADERBYTES)
-   {
-      eprintf("DeleteBuffer got overwrite of a buffer size!!!");
-      bn->size_prebuf = BUFFER_SIZE + HEADERBYTES;
-   }
 
+   // add the buffer to the beginning
+   // of our free/unused buffers list
    bn->next = buffers;
    buffers = bn;
+
+   LeaveCriticalSection(&csBuffers);
+}
+
+void DeleteBufferList(buffer_node *blist)
+{
+   EnterCriticalSection(&csBuffers);
+
+   // add all buffers from blist to the
+   // free/unused buffers list
+   while (blist != NULL)
+   {
+      buffer_node* bn = blist->next;
+
+      // add the buffer to the beginning
+      // of our free/unused buffers list
+      blist->next = buffers;
+      buffers = blist;
+      
+      blist = bn;
+   }
    LeaveCriticalSection(&csBuffers);
 }
 
@@ -135,16 +137,10 @@ buffer_node * AddToBufferList(buffer_node *blist,void *buf,int len_buf)
    index = 0;
    for(;;)
    {
-     copy_bytes = std::min(bn->size_buf - bn->len_buf, len_buf - index);
+     copy_bytes = std::min(BUFFER_SIZE_TCP_NOHEADER - bn->len_buf, len_buf - index);
       memcpy(bn->buf + bn->len_buf, (char *)buf + index, copy_bytes);
       index += copy_bytes;
       bn->len_buf += copy_bytes;
-
-      if (bn->size_prebuf != BUFFER_SIZE + HEADERBYTES)
-      {
-			eprintf("AddToBufferList overwrote a buffer size!!!");
-			bn->size_prebuf = BUFFER_SIZE + HEADERBYTES;
-      }
 
       if (index == len_buf)
 			break;
@@ -177,11 +173,6 @@ buffer_node * CopyBufferList(buffer_node *blist)
    {
       memcpy(bn->buf,blist->buf,blist->len_buf);
       bn->len_buf = blist->len_buf;
-      bn->size_prebuf = blist->size_prebuf;
-      if (bn->size_prebuf != BUFFER_SIZE + HEADERBYTES)
-      {
-	 eprintf("CopyBufferList copying a bad buffer size!!!");
-      }
 
       blist = blist->next;
       if (blist != NULL)
@@ -191,16 +182,4 @@ buffer_node * CopyBufferList(buffer_node *blist)
       }
    }
    return new_list;   
-}
-
-void DeleteBufferList(buffer_node *blist)
-{
-   buffer_node *bn;
-
-   while (blist != NULL)
-   {
-      bn = blist->next;
-      DeleteBuffer(blist);
-      blist = bn;
-   }
 }

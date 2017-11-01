@@ -736,10 +736,11 @@ Bool HandleMove(char *ptr, long len)
    ID obj_id;
    int x, y;
    BYTE speed;
+   WORD angle;
    char *start = ptr;
    BOOL turnToFace = FALSE;
 
-   if (len < 1 * SIZE_ID + 2 * SIZE_COORD + 1)
+   if (len < 1 * SIZE_ID + 2 * SIZE_COORD + 1 + SIZE_ANGLE)
       return False;
 
    Extract(&ptr, &obj_id, sizeof(obj_id));
@@ -752,10 +753,13 @@ Bool HandleMove(char *ptr, long len)
       turnToFace = TRUE;
    }
    
+   Extract(&ptr, &angle, sizeof(angle));
+
    len -= (ptr - start);
    if (len != 0)
       return False;
 
+   TurnObject(obj_id, angle);
    MoveObject2(obj_id, x, y, speed, turnToFace);
 
    return True;   
@@ -1887,12 +1891,14 @@ Bool HandleEchoPing(char *ptr, long len)
 Bool HandleLoginOk(char *ptr, long len)
 {
    BYTE admin;
+   int sessionid;
 
-   if (len != SIZE_ADMIN)
+   if (len != (SIZE_ADMIN + SIZE_SESSION_ID))
       return False;
 
    Extract(&ptr, &admin, SIZE_ADMIN);
-   LoginOk(admin);
+   Extract(&ptr, &sessionid, SIZE_SESSION_ID);
+   LoginOk(admin, sessionid);
    return True;
 }
 /********************************************************************/

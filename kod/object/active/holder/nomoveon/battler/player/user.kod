@@ -3236,6 +3236,11 @@ messages:
       if IsClass(what,&Reflection)
          OR IsClass(what,&EvilTwin)
       {
+         if (Send(what,@GetBehavior) & AI_NPC)
+         {
+            return MM_NPC;
+         }
+
          what = Send(what,@GetMaster);
          if what = $
             OR what = self
@@ -9923,6 +9928,33 @@ messages:
       return iFlags;
    }
 
+   GetDrawingEffectsNoPhase()
+   "Drawing effects without phase/spectate."
+   {
+      local iFlags;
+
+      iFlags = piDrawFx;
+
+      if (piFlags & PFLAG_INVISIBLE)
+      {
+         // invisibility overrides any other drawfx
+         iFlags &= (~DRAWFX_MASK);
+         iFlags |= DRAWFX_INVISIBLE;
+      }
+
+      if (piFlags & PFLAG_PHASED)
+      {
+         iFlags &= ~DRAWFX_DITHERINVIS;
+      }
+
+      if (piFlags & PFLAG_SPECTATOR)
+      {
+         iFlags &= ~DRAWFX_DITHERGREY;
+      }
+
+      return iFlags;
+   }
+
    GetDrawingEffects()
    {
       local iFlags;
@@ -9947,6 +9979,29 @@ messages:
          iFlags &= ~DRAWFX_MASK;
          iFlags |= DRAWFX_DITHERGREY;
       }
+
+      return iFlags;
+   }
+
+   GetObjectFlagsNoPhase()
+   "Object flags without phase/spectate changes."
+   {
+      local iFlags, oIllusion;
+
+      iFlags = OF_ATTACKABLE | OF_PLAYER | OF_OFFERABLE | OF_DISPLAY_NAME;
+
+      oIllusion = Send(self,@GetIllusionForm);
+
+      // If we're morphed, get rid of any "player" flags
+      if (piFlags & PFLAG_MORPHED)
+         AND oIllusion <> $
+         AND IsClass(oIllusion,&Monster)
+      {
+         iFlags = (iFlags & ~OF_PLAYER & ~OF_OFFERABLE & ~OF_DISPLAY_NAME);
+      }
+
+      // Get the flashing/flickering/phasing/bouncing flags.
+      iFlags |= piDrawEffectFlag;
 
       return iFlags;
    }

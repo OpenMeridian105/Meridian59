@@ -185,8 +185,8 @@ void MoveObject2(ID object_id, int x, int y, BYTE speed, BOOL turnToFace)
 
    //////////////////////////
 
-   debug(("continue %i speed %f lenMove %f lenMoveReal %f speedfactor %f tick %i \n", 
-      r->moving, r->motion.speed, lenMove, lenMoveReal, r->motion.speed_factor, GetTickCount()));
+   //debug(("continue %i speed %f lenMove %f lenMoveReal %f speedfactor %f tick %i \n", 
+   //   r->moving, r->motion.speed, lenMove, lenMoveReal, r->motion.speed_factor, GetTickCount()));
 
    //////////////////////////
 

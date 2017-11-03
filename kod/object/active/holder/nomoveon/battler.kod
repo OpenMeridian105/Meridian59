@@ -31,6 +31,9 @@ constants:
    // The amount of milivigor consumed per moved unit.
    EXERTION_PER_MOVE = 20
 
+   // Limit the number of poison enchantments a battler can have.
+   MAX_POISON_STACKS = 4
+
 resources:
 
    include battler.lkod
@@ -3473,7 +3476,23 @@ messages:
 
    CanPoison()
    {
-      return TRUE;
+      local i, iNumPoison, oSpell;
+
+      oSpell = Send(SYS,@FindSpellByNum,#num=SID_POISON);
+
+      iNumPoison = 0;
+
+      // Cap health poisons only.
+      foreach i in plOverTimeEffects
+      {
+         if (Nth(i,5) = oSpell
+            AND Nth(i,2) = TYPE_HEALTH)
+         {
+            ++iNumPoison;
+         }
+      }
+
+      return iNumPoison < MAX_POISON_STACKS;
    }
 
    CanBleed()

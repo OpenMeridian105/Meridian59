@@ -3808,23 +3808,27 @@ messages:
    {
       local iCost;
 
-      if piFlags2 & PFLAG2_SQUELCHED_BCAST
+      if (piFlags2 & PFLAG2_SQUELCHED_BCAST)
       {
          Send(self,@MsgSendUser,#message_rsc=player_squelched);
 
          return FALSE;
       }
 
-      if NOT IsClass(self,&DM)
+      // Don't need to divide by 100 as piMana is scaled by a factor of 100.
+      iCost = piMax_mana * Send(SETTINGS_OBJECT,@GetBroadcastManaCost);
+
+      if (iCost > 0)
       {
-         iCost = piMana * Send(SETTINGS_OBJECT,@GetBroadcastManaCost) / 100;
-         if piMana < iCost
+         if (piMana < iCost)
          {
             Send(self,@MsgSendUser,#message_rsc=player_cant_broadcast);
 
             return FALSE;
          }
-         Send(self,@LoseMana,#amount=iCost);
+
+         // Override so phased players lose mana too.
+         Send(self,@LoseMana,#amount=iCost,#override=TRUE);
       }
 
       return TRUE;

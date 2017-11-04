@@ -931,6 +931,19 @@ messages:
       return (prRank = dm_moderator);
    }
 
+   TryBroadcast()
+   "Override, DMs can potentially be squelched but won't lose mana."
+   {
+      if piFlags2 & PFLAG2_SQUELCHED_BCAST
+      {
+         Send(self,@MsgSendUser,#message_rsc=player_squelched);
+
+         return FALSE;
+      }
+
+      return TRUE;
+   }
+
    UserSay(string=$,type=$)
    {
       local i, oRoom, bPrevious, bMonster, lRooms;

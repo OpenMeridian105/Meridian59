@@ -50,12 +50,12 @@ Forest of Farol | c6.roo | 536
 Faronath, home of the TreeFolk | c7.roo | 537
 Valley of Ileria | d4.roo | 544
 West Merchant Way | d5.roo | 545
-Deep in the Forest of Farol | d6.roo | 546
 Deep in the Forest of Farol | d7.roo | 547
+Deep in the Forest of Farol | d6e6.roo | 550
+Underground Lake - Home of the Mollusk  | d6e6ulake.roo | 551
 The Great Ocean | e2.roo | 552
 East Merchant Way through Ilerian Woods | e4.roo | 554
 The Forest Shrine | e5.roo | 555
-Deep Forest of Farol | e6.roo | 556
 The Sweet Grass Prairies | e7.roo | 557
 The sandy shores of the Great Ocean | f2.roo | 562
 Source of the River Ille | f3.roo | 563
@@ -124,6 +124,7 @@ Secret Passage | toshidden.roo | 75
 Abandoned Fountain Tavern | tostavern.roo | 76
 Abandoned Storage Room | tosstorage.roo | 77
 The Smuggler's Way | tossecret.roo | 78
+The Arena of Death | tosarena_death.roo | 79
 
 ### Barloque rooms
 Room Name | Room File | Room ID
@@ -154,7 +155,9 @@ The Adventurer's Hall of Cor Noth | corhall.roo | 152
 Cibilo Creek Inn | corinn.roo | 153
 The Weapon Master's Abode | weaponsm.roo | 154
 The Spindle and the Spinster | cortail.roo | 155
-The Hall of Genealogy | coruniv.roo | 156
+The Hall of Genealogy | corgenhall.roo | 156
+The University of Cor Noth | coruniv.roo | 157
+The Meridian 59 Museum | cormuseum.roo | 158
 
 ### Marion rooms
 Room Name | Room File | Room ID
@@ -258,6 +261,8 @@ Ruins of Castle Brax | necarea5.roo | 830
 Ancient Building | nec3a.roo | 831
 Ancient Building | nec3b.roo | 832
 Goad's Grinder | necarena.roo | 833
+An excavated hallway | nechallway.roo | 834
+Lair of the Necromancer | necarea6.roo | 835
 
 ### Princess castle rooms
 Room Name | Room File | Room ID
@@ -361,6 +366,9 @@ Grog's Antechamber | ocpa.roo | 2507
 Brog's Antechamber | ocpb.roo | 2508
 A Tranquil Place | oc1a.roo | 2509
 A spring of vitality | oc5b.roo | 2510
+Dark Caves | ratcave1.roo | 2701
+Abandoned Outpost | ratcave2.roo | 2702
+Rumbling Cavern | ratcave3.roo | 2703
 
 ### DM rooms
 Room Name | Room File | Room ID
@@ -368,11 +376,14 @@ Room Name | Room File | Room ID
 The Fields | field1.roo | 3
 The Deep Dark Woods of Tos | forest4.roo | 4
 The Deep Dark Woods of Marion | forest5.roo | 6
+
 The Forests of Meridian | forest1.roo | 24
 The Forests of Meridian | forest2.roo | 26
 The Forests of Meridian | forest3.roo | 28
 The Berdonne Canyons | canyons.roo | 32
 Out of Grace with the Higher Powers | outgrace.roo | 43
+Deep in the Forest of Farol | d6.roo | 546
+Deep Forest of Farol | e6.roo | 556
 The meeting place of the Gods | zndramas.roo | 901
 Meridian University | univ.roo | 902
 object gallery | univ.roo | 903
@@ -380,3 +391,10 @@ Historic Jasper | ojas.roo | 9000
 Historic Marion | omar.roo | 9001
 Historic North Barloque | obarln.roo | 9002
 Historic South Barloque | obarls.roo | 9003
+Historic Cor Noth | ocornoth.roo | 9004
+The Historic Hall of Genealogy | ocoruniv.roo | 9005
+Historic Streets of Tos | otos.roo | 9006
+Historic East Ende | otoseast.roo | 9007
+Historic Familiars | otosinn.roo | 9008
+Historic Frisconar's Mysticals | otosapoth.roo | 9009
+Historic Tos Blacksmith | otossmith.roo | 9010

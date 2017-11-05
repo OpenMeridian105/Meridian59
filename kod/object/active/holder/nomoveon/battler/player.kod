@@ -3037,6 +3037,12 @@ messages:
             {
                Debug("Player ",vrName," had missing enchantment ",oSpell,
                      Send(oSpell,@GetName)," in EnchantmentTimer.");
+
+               // Print extra info for trance errors.
+               if (IsClass(oSpell,&Trance))
+               {
+                  Debug("Invoking spell is ",Send(First(Nth(i,3)),@GetName));
+               }
             }
 
             plEnchantments = DelListElem(plEnchantments,i);
@@ -3802,23 +3808,27 @@ messages:
    {
       local iCost;
 
-      if piFlags2 & PFLAG2_SQUELCHED_BCAST
+      if (piFlags2 & PFLAG2_SQUELCHED_BCAST)
       {
          Send(self,@MsgSendUser,#message_rsc=player_squelched);
 
          return FALSE;
       }
 
-      if NOT IsClass(self,&DM)
+      // Don't need to divide by 100 as piMana is scaled by a factor of 100.
+      iCost = piMax_mana * Send(SETTINGS_OBJECT,@GetBroadcastManaCost);
+
+      if (iCost > 0)
       {
-         iCost = piMana * Send(SETTINGS_OBJECT,@GetBroadcastManaCost) / 100;
-         if piMana < iCost
+         if (piMana < iCost)
          {
             Send(self,@MsgSendUser,#message_rsc=player_cant_broadcast);
 
             return FALSE;
          }
-         Send(self,@LoseMana,#amount=iCost);
+
+         // Override so phased players lose mana too.
+         Send(self,@LoseMana,#amount=iCost,#override=TRUE);
       }
 
       return TRUE;
@@ -13704,6 +13714,11 @@ messages:
       return (piFlags & PFLAG_MORPHED);
    }
 
+   IsMorphedOrIllusioned()
+   {
+      return (poIllusion_set <> $) OR (piFlags & PFLAG_MORPHED);
+   }
+
    //// Get Color Routines
 
    GetSkinColor()
@@ -15084,6 +15099,13 @@ messages:
       if (target = self)
       {
          return TRUE;
+      }
+
+      // All other alliances are off for arena.
+      if (poOwner <> $
+         AND Send(poOwner,@IsArena))
+      {
+         return FALSE;
       }
 
       oTargetMaster = Send(target,@GetMaster);

@@ -1236,6 +1236,17 @@ messages:
                return TRUE;
             }
 
+            // Check attacker interactions.
+            if (IsClass(oObject,&Battler)
+               AND NOT Send(oObject,@CanBeAttackedByAnyHurter,#who=who))
+            {
+               Send(who,@MsgSendUser,#message_rsc=spell_cant_help,
+                     #parm1=Send(oObject,@GetDef),
+                     #parm2=Send(oObject,@GetName));
+
+               return FALSE;
+            }
+
             // Ignore: Non-players, ourself, and Players that aren't outlaws or
             //  murderers.
             if (NOT IsClass(oObject,&Player))

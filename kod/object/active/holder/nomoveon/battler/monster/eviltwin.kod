@@ -120,24 +120,39 @@ messages:
    }
 
    PlaceEvilTwin(who=$)
-   "Places the ET at the location of 'who', and makes it take a random step."
+   "Places the ET at the location of 'who'."
    {
-      local oTarget, oRoom, i, each_obj;
+      local oTarget, oDestObj, oRoom, i, each_obj;
 
       if (who = $)
       {
          return;
       }
 
-      oRoom = Send(who,@GetOwner);
-
       Send(self,@SetOriginal,#who=who);
 
-      Send(oRoom,@NewHold,#what=self,#new_row=Send(who,@GetRow),
-            #new_col=Send(who,@GetCol),#fine_row=Send(who,@GetFineRow),
-            #fine_col=Send(who,@GetFineCol));
+      // Placement can have an edge case - if ET is seduced and the original
+      // logs off/on, the ET should teleport to the current master instead of
+      // to the original. This accounts for original being the new master.
+      if (poMaster <> poCaster)
+      {
+         oRoom = Send(poMaster,@GetOwner);
+         oDestObj = poMaster;
+      }
+      else
+      {
+         oRoom = Send(who,@GetOwner);
+         oDestObj = who;
+      }
+      Send(oRoom,@NewHold,#what=self,#new_row=Send(oDestObj,@GetRow),
+            #new_col=Send(oDestObj,@GetCol),#fine_row=Send(oDestObj,@GetFineRow),
+            #fine_col=Send(oDestObj,@GetFineCol));
 
-      Send(self,@DoRandomWalk,#override=TRUE);
+      // Do nothing further if original captured us.
+      if (poMaster = poOriginal)
+      {
+         return;
+      }
 
       oTarget = who;
 
@@ -154,8 +169,9 @@ messages:
          }
       }
 
-      Send(self,@TargetSwitch,#what=oTarget,#iHatred=1000);
-      Send(self,@EnterStateEngage,#actnow=TRUE);
+      // Post so it happens last (after entering room).
+      Post(self,@TargetSwitch,#what=oTarget,#iHatred=1000);
+      Post(self,@EnterStateEngage,#actnow=TRUE);
 
       return;
    }
@@ -346,10 +362,14 @@ messages:
    OriginalPhased()
    "If the original phases out, set the ET to behave like a NPC."
    {
-      piBehavior |= AI_NPC;
-      if (poOwner <> $)
+      if (poMaster = poCaster)
       {
-         Send(poOwner,@SomethingChanged,#what=self);
+         Send(self,@EnterStateWait,#actnow=TRUE);
+         piBehavior |= AI_NPC | AI_NOMOVE;
+         if (poOwner <> $)
+         {
+            Send(poOwner,@SomethingChanged,#what=self);
+         }
       }
 
       return;
@@ -358,14 +378,18 @@ messages:
    OriginalUnphased(who = $)
    "If original phases back in, unset the NPC flag and alert us to their entry."
    {
-      piBehavior &= ~AI_NPC;
+      piBehavior &= ~(AI_NPC | AI_NOMOVE);
 
       if (poOwner <> $)
       {
          Send(poOwner,@SomethingChanged,#what=self);
       }
 
-      Send(self,@SomethingEntered,#who=who);
+      if (poMaster = poCaster)
+      {
+         // Go get original target!
+         Post(self,@GotoOriginal);
+      }
 
       return;
    }
@@ -394,7 +418,7 @@ messages:
             Send(self,@EnterStateLimbo);
             Send(self,@NewOwner,#what=$);
             // Reset our AI flag, in case owner was phased then spectated.
-            piBehavior &= ~AI_NPC;
+            piBehavior &= ~(AI_NPC | AI_NOMOVE);
 
             return;
          }
@@ -443,14 +467,25 @@ messages:
          return;
       }
 
-      if (oRoom <> poOwner)
+      // Don't teleport if already close.
+      if (oRoom <> poOwner
+         OR Send(self,@SquaredDistanceTo,#what=poOriginal) > 25)
       {
          Send(SYS,@UtilGoNearSquare,#what=self,#where=oRoom,
                #new_row=Send(poOriginal,@GetRow),
                #new_col=Send(poOriginal,@GetCol));
       }
 
-      if poOriginal <> poMaster
+      // Edge case where the ET is seduced and the original target phases out
+      // after the ET is captured (ET won't phase) and then returns to attack
+      // the original target. ET should phase out near target.
+      if (poMaster = poCaster
+         AND IsClass(poOriginal,&User)
+         AND Send(poOriginal,@IsInCannotInteractMode))
+      {
+         Post(self,@OriginalPhased);
+      }
+      else if poOriginal <> poMaster
       {
          Send(self,@AttackOriginal);
       }
@@ -462,8 +497,8 @@ messages:
    {
       if poOriginal <> poMaster
       {
-         Send(self,@TargetSwitch,#what=poOriginal,#iHatred=1000);
-         Send(self,@EnterStateEngage,#actnow=TRUE);
+         Post(self,@TargetSwitch,#what=poOriginal,#iHatred=1000);
+         Post(self,@EnterStateEngage,#actnow=TRUE);
       }
 
       return;
@@ -532,9 +567,10 @@ messages:
 
       // Original might be phased or spectated.
       if (IsClass(poOriginal,&User)
+         AND poCaster = poMaster
          AND Send(poOriginal,@IsInCannotInteractMode))
       {
-         Send(self,@SetBehaviorFlag,#flag=AI_NPC,#value=TRUE);
+         piBehavior |= AI_NPC | AI_NOMOVE;
          if (poOwner <> $)
          {
             Send(poOwner,@SomethingChanged,#what=self);
@@ -554,13 +590,13 @@ messages:
       if IsClass(poOriginal,&Player)
       {
          vrIcon = Send(poOriginal,@GetPlayerIcon);
-         piDrawfx = Send(poOriginal,@GetDrawingEffects);
+         piDrawfx = Send(self,@GetDrawingEffects);
          vrName = Send(poOriginal,@GetTrueName);
       }
       else
       {
          vrIcon = Send(poOriginal,@GetIcon);
-         piDrawfx = Send(poOriginal,@GetDrawingEffects);
+         piDrawfx = Send(self,@GetDrawingEffects);
          vrName = Send(poOriginal,@GetName);
       }
 
@@ -569,11 +605,32 @@ messages:
       return;
    }
 
+   GetMoveOnType()
+   {
+      if (piBehavior & AI_NPC)
+      {
+         return MOVEON_YES;
+      }
+
+      propagate;
+   }
+
    GetObjectFlags()
    {
       if poOriginal = $
       {
          return 0;
+      }
+
+      // Special case if target is phased and ET is not owned by caster.
+      // ET shouldn't display the phased object flags since it will
+      // still be active.
+      if (poCaster <> poMaster
+         AND poMaster <> poOriginal
+         AND IsClass(poOriginal,&User)
+         AND Send(poOriginal,@IsInCannotInteractMode))
+      {
+         return Send(poOriginal,@GetObjectFlagsNoPhase);
       }
 
       return Send(poOriginal,@GetObjectFlags);
@@ -584,6 +641,18 @@ messages:
       if poOriginal = $
       {
          return 0;
+      }
+
+      // Special case if target is phased and ET is not owned by caster.
+      // ET shouldn't display the phased drawing flags since it will
+      // still be active. If the original has captured the ET, it should
+      // display the phased effect.
+      if (poCaster <> poMaster
+         AND poMaster <> poOriginal
+         AND IsClass(poOriginal,&User)
+         AND Send(poOriginal,@IsInCannotInteractMode))
+      {
+         return Send(poOriginal,@GetDrawingEffectsNoPhase);
       }
 
       return Send(poOriginal,@GetDrawingEffects);
@@ -707,7 +776,7 @@ messages:
 
       if what = poOriginal
       {
-         piDrawfx = Send(poOriginal,@GetDrawingEffects);
+         piDrawfx = Send(self,@GetDrawingEffects);
 
          // Reset plActions.
          plActions = [[SKID_MINIMUM,0,0,MAX_KOD_INT,50,1,99,COMBAT_ACTION_NEUTRAL]];

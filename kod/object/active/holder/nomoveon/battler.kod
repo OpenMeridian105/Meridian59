@@ -3410,6 +3410,52 @@ messages:
       return;
    }
 
+   CanBeAttackedByAnyHurter(who=$)
+   "Determines whether a potential helper ('who') can fight any of the damage "
+   "sources in this battler's plHurtMeRecently list.  Ignores damage from "
+   "non-battler sources."
+   {
+      local bFound, i, oAttacker;
+
+      if (plHurtMeRecently = $
+         OR who = $
+         OR who = self)
+      {
+         return TRUE;
+      }
+
+      bFound = FALSE;
+      foreach i in plHurtMeRecently
+      {
+         oAttacker = First(i);
+         if (NOT IsClass(oAttacker,&Battler)
+            OR Send(oAttacker,@GetOwner) = $)
+         {
+            continue;
+         }
+
+         // Found at least one live Battler.
+         bFound = TRUE;
+
+         // Return true if 'who' can fight the Battler.
+         if (Send(oAttacker,@AllowBattlerAttack,#victim=who,
+                  #oRoomOverride=poOwner,#report=FALSE,#actual=FALSE))
+         {
+            return TRUE;
+         }
+      }
+
+      // No Battler sources in plHurtMeRecently, can help.
+      if (NOT bFound)
+      {
+         return TRUE;
+      }
+
+      // Getting here means there are Battler entries in
+      // plHurtMeRecently, but 'who' can't fight any of them.
+      return FALSE;
+   }
+
    IsDrainImmune()
    {
       return FALSE;

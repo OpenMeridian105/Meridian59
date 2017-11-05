@@ -52,7 +52,7 @@ constants:
    USER_RUNNING_SPEED = 50
 
    // How many packets incoming per second do we allow?
-   INCOMING_PACKET_THROTTLE = 25
+   INCOMING_PACKET_THROTTLE = 30
 
    // Speedhack/cheating detection:
    // What's the maximum number of times we should log a violation?
@@ -1601,12 +1601,20 @@ messages:
             piFloodCount++;
 
             // Have to let this message through in case they're logging off.
-            if (type = 0
+            if ((type = $ OR type = 0)
                AND First(client_msg) = BP_REQ_QUIT)
             {
                Send(self,@UserLogoff);
             }
 
+            // Option to print debug info on what packet this is.
+            // Cap at 15 entries per second.
+            if ((piFlags & PFLAG_LOG)
+               AND piPacketsPerSecond <= INCOMING_PACKET_THROTTLE + 15)
+            {
+               Debug(vrName," flooding packet ",type,First(client_msg),
+                  "PPS: ",piPacketsPerSecond," Flood count: ",piFloodCount);
+            }
             // Don't go on if marked as spammer
             return;
          }

@@ -1319,8 +1319,22 @@ messages:
       return;
    }
 
+   // Note: mobs shouldn't be in STATE_WAIT if they don't have an owner.
+   // Mobs with $ owner should ideally be in STATE_LIMBO.
    EnterStateWait(actnow=FALSE,delay=MOB_MOVE_TIMER_WAIT)
    {
+      // Some things post EnterStateWait so that the effects take place after
+      // the call chain finishes, but we should discard that if the mob died
+      // somewhere further in the call chain.
+      // Example: mob killed with Mark of Dishonor weapon, spell is cast during
+      // the damage calculation process (maybe not ideal?) but before the mob
+      // actually dies. MoD posts EnterStateWait which is called here after
+      // the mob is already dead.
+      if (poOwner = $)
+      {
+         return;
+      }
+
       // SetTarget without a 'what' passed sets target to nil.
       Send(self,@SetTarget);
 
@@ -3819,6 +3833,11 @@ messages:
       }
 
       iRadius *= iRadius;
+
+      if (Send(poTarget,@GetOwner) <> poOwner)
+      {
+         return (Send(self,@SquaredDistanceTo,#what=oCommander) > iRadius);
+      }
 
       return ((Send(poTarget,@SquaredDistanceTo,#what=oCommander) > iRadius)
          AND (Send(self,@SquaredDistanceTo,#what=oCommander) > iRadius));
@@ -8817,7 +8836,6 @@ messages:
             }
 
             SetFirst(i,$);
-            SetNth(i,2,$);
             SetNth(i,3,$);
 
             plHurtMeRecently = DelListElem(plHurtMeRecently,i);
@@ -9526,7 +9544,14 @@ messages:
 
    CanPoison()
    {
-      return vbCanPoison;
+      if (vbCanPoison)
+      {
+         // Battler handles max poison enchantments,
+         // only for mobs that can be poisoned.
+         propagate;
+      }
+
+      return FALSE;
    }
 
    CanBleed()
@@ -9749,7 +9774,6 @@ messages:
                      DeleteTimer(Nth(i,3));
                   }
                   SetFirst(i,$);
-                  SetNth(i,2,$);
                   SetNth(i,3,$);
                   plHurtMeRecently = DelListElem(plHurtMeRecently,i);
                   bWipe = TRUE;
@@ -9903,7 +9927,6 @@ messages:
             DeleteTimer(Nth(i,3));
          }
          SetFirst(i,$);
-         SetNth(i,2,$);
          SetNth(i,3,$);
 
          plHurtMeRecently = DelListElem(plHurtMeRecently,i);
@@ -9946,7 +9969,6 @@ messages:
             DeleteTimer(Nth(i,3));
          }
          SetFirst(i,$);
-         SetNth(i,2,$);
          SetNth(i,3,$);
          plHurtMeRecently = DelListElem(plHurtMeRecently,i);
       }

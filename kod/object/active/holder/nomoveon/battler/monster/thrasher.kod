@@ -135,7 +135,7 @@ messages:
    "Decides which shield/weapon/drumstick is part of the thrasher and sets "
    "the appropriate overlay and stat adjustments."
    {
-      local iRandom;
+      local iRandom, oObject;
 
       // Choose randomly
       iRandom = Random(0,2);
@@ -143,17 +143,23 @@ messages:
       {
          // Shield: Increase hps.
          viLevel += 10;
+         oObject = Create(&GoldShield);
+         Send(self,@NewHold,#what=oObject);
          prShieldOverlay = thrasher_shield_overlay;
       }
       else if iRandom = 1
       {
          // Mace: No change in stats, we just get a second attack.
+         oObject = Create(&Mace);
+         Send(self,@NewHold,#what=oObject);
          prShieldOverlay = thrasher_mace_overlay;
       }
       else
       {
          // Scimitar: Get second attack.
          ++viDifficulty;
+         oObject = Create(&Scimitar);
+         Send(self,@NewHold,#what=oObject);
          prShieldOverlay = thrasher_scimitar_overlay;
       }
 
@@ -275,30 +281,26 @@ messages:
 
    SendMoveOverlays()
    {
-      AddPacket(1,1);
       // Also walking, 1-5 I assume. currently 1, 2, 1 to test
-      AddPacket(4,prShieldOverlay, 1,HS_HEAD, 1,ANIMATE_NONE, 2,1);
+      AddPacket(1,1, 4,prShieldOverlay, 1,HS_HEAD, 1,ANIMATE_NONE, 2,1);
 
       return;
    }
 
    SendOverlays()
    {
-      // Send overlay bitmap info to user.
-      AddPacket(1,1);
-
       if piAnimation = ANIM_ATTACK
       {
          // Shield and Mace have no attack frames.
          // Scimitar animates from group 2-4 for an attack.
-         AddPacket(4,prShieldOverlay, 1,HS_HEAD, 1,ANIMATE_ONCE, 4,150,
+         AddPacket(1,1, 4,prShieldOverlay, 1,HS_HEAD, 1,ANIMATE_ONCE, 4,150,
                    2,1, 2,1, 2,1);
 
          return;
       }
 
       // Default setting: no animation.  This includes when spinning.
-      AddPacket(4,prShieldOverlay, 1,HS_HEAD, 1,ANIMATE_NONE, 2,1);
+      AddPacket(1,1, 4,prShieldOverlay, 1,HS_HEAD, 1,ANIMATE_NONE, 2,1);
 
       return;
    }

@@ -156,6 +156,9 @@ messages:
       }
       ptPlace = $;
 
+      poRoom = $;
+      poHauntee = $;
+
       propagate;
    }
 
@@ -169,6 +172,8 @@ messages:
       oRoom = Send(poHauntee,@GetOwner);
 
       if oRoom <> poRoom
+         OR (IsClass(poHauntee,&DM)
+            AND Send(poHauntee,@IsDMStealthed))
       {
          /// target has moved on, let new revenant take over
          Send(self,@Delete);
@@ -232,8 +237,19 @@ messages:
       }
 
       Send(poRoom,@NewHold,#what=self,#new_row=iRow,#new_col=iCol);
-      poTarget = poHauntee;
-      Send(self,@EnterStateEngage);
+      if (Send(poHauntee,@IsInCannotInteractMode))
+      {
+         piBehavior |= AI_NPC | AI_NOMOVE;
+         if (poOwner <> $)
+         {
+            Send(poOwner,@SomethingChanged,#what=self);
+         }
+      }
+      else
+      {
+         poTarget = poHauntee;
+         Send(self,@EnterStateEngage);
+      }
       Post(poHauntee,@MsgSendUser,#message_rsc=Rev_coming_to_get_ya);
 
       return;
@@ -248,8 +264,7 @@ messages:
 
    SendLookAnimation()
    {
-      AddPacket(1,ANIMATE_CYCLE);
-      AddPacket(4,200,2,2,2,3);
+      AddPacket(1,ANIMATE_CYCLE, 4,200,2,2,2,3);
 
       return;
    }
@@ -272,6 +287,16 @@ messages:
       }
 
       // if no body animation
+
+      propagate;
+   }
+
+   GetMoveOnType()
+   {
+      if (piBehavior & AI_NPC)
+      {
+         return MOVEON_YES;
+      }
 
       propagate;
    }
@@ -348,6 +373,69 @@ messages:
       return;
    }
 
+   SomethingPhasedOut(what = $)
+   {
+      if (what = poHauntee)
+      {
+         piBehavior |= AI_NPC | AI_NOMOVE;
+         if (poOwner <> $)
+         {
+            Send(poOwner,@SomethingChanged,#what=self);
+         }
+      }
+
+      return;
+   }
+
+   SomethingPhasedIn(what = $)
+   {
+      if (what = poHauntee)
+      {
+         piBehavior &= ~(AI_NPC | AI_NOMOVE);
+
+         if (poOwner <> $)
+         {
+            Send(poOwner,@SomethingChanged,#what=self);
+         }
+
+         // Slight delay.
+         Send(self,@EnterStateMove);
+      }
+
+      return;
+   }
+
+   SomethingSpectatedOut(what = $)
+   {
+      if (what = poHauntee)
+      {
+         piBehavior |= AI_NPC | AI_NOMOVE;
+         if (poOwner <> $)
+         {
+            Send(poOwner,@SomethingChanged,#what=self);
+         }
+      }
+
+      return;
+   }
+
+   SomethingSpectatedIn(what = $)
+   {
+      if (what = poHauntee)
+      {
+         piBehavior &= ~(AI_NPC | AI_NOMOVE);
+
+         if (poOwner <> $)
+         {
+            Send(poOwner,@SomethingChanged,#what=self);
+         }
+
+         // Slight delay.
+         Send(self,@EnterStateMove);
+      }
+
+      return;
+   }
 
    //////////////////////////////////////////
    // State Transition Functions
@@ -435,6 +523,28 @@ messages:
       if vrSound_aware <> $
       {
          Send(poOwner,@SomethingWaveRoom,#what=self,#wave_rsc=vrSound_aware);
+      }
+
+      return;
+   }
+
+   TweakBehavior()
+   {
+      if (poOwner = $
+         OR poHauntee = $)
+      {
+         return;
+      }
+
+      // Original might be phased or spectated.
+      if (IsClass(poHauntee,&User)
+         AND Send(poHauntee,@IsInCannotInteractMode))
+      {
+         piBehavior |= AI_NPC | AI_NOMOVE;
+         if (poOwner <> $)
+         {
+            Send(poOwner,@SomethingChanged,#what=self);
+         }
       }
 
       return;

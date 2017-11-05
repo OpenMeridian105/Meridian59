@@ -97,24 +97,25 @@ messages:
    {
       plRowNums = [G,FFF,EEE,D,C,B,A];
       plColNums = [GG,FF,EE,DD,CC,BB,AA];
-      poSnitch = create(&LadyPheonix);
+      poSnitch = Create(&LadyPheonix);
       Send(self,@NewHold,#what=poSnitch,#new_row=9,#new_col=3,#fine_col=16);
-      poShrine = create(&shrine,#shrine_num=SHRINE_FOREST);
-      Send(self,@newhold,#what=poShrine,#new_row=9,#new_col=16,#fine_col=16);
+      poShrine = Create(&Shrine,#shrine_num=SHRINE_FOREST);
+      Send(self,@NewHold,#what=poShrine,#new_row=9,#new_col=16,#fine_col=16);
       Send(self,@InitPuzzle);
+
       propagate;
    }
 
    CreateStandardObjects()
-   ///Place fog elems 
    {
-      local iCount,iCount2,oFog;
+      local iCount, iCount2, oFog;
 
+      //Place fog elems
       foreach iCount in plColNums
       {
          foreach iCount2 in plRowNums
          {
-            oFog = create(&ShrineFog);
+            oFog = Create(&ShrineFog);
             Send(self,@NewHold,#what=oFog,#new_row=iCount2,#new_col=iCount);
          }
       }
@@ -135,7 +136,7 @@ messages:
    {
       if IsClass(what,&Item)
       {
-         Post(self,@PostShrineCheckItem,#what=what);  
+         Post(self,@PostShrineCheckItem,#what=what);
          ///Have to post this to handle numberitems and SYS can't handle posts.
       }
       propagate;
@@ -457,16 +458,23 @@ messages:
       local iDamage;
 
       if who = $
-      { Debug("PunishPlayer called with no who"); Return; }
+      {
+         Debug("PunishPlayer called with no who");
+
+         return;
+      }
+
       if NOT IsClass(who,&DM)
       {
          iDamage = Send(who,@GetBaseMaxHealth) / 3;
          if Send(who,@AssessDamage,#damage=iDamage,#what=self,
             #aspell=ATCK_SPELL_ACID,#report = FALSE, #report_resistance = FALSE) = $
          {
-            Send(who,@killed);
+            Send(self,@SomethingKilled,#what=self,#victim=who);
+            Send(who,@Killed);
             Send(self,@InitPuzzle);
             Post(who,@MsgSendUser,#message_rsc=e5_death);
+
             return;
          }
       }
@@ -486,33 +494,33 @@ messages:
          Send(self,@InitPuzzle);
          ///message from ladyP
       }
-      if (poRunner <> $)
+
+      if (poRunner <> $
+         AND (NOT Send(poRunner,@IsLoggedOn)
+            OR Send(poRunner,@GetOwner) <> self))
       {
-         if Send(poRunner,@IsLoggedon) AND (Send(poRunner,@GetOwner) = self)
-         {
-            propagate;
-         }
-         else
-         {
-            Send(self,@InitPuzzle);
-         }
+         Send(self,@InitPuzzle);
       }
+
       propagate;
    }
 
    SomeoneSaidRoom(what=$,string=$,type=$)
    {
       Post(poSnitch,@SomeoneSaidLadyP,#what=what,#string=string,#type=type);
+
       propagate;
    }
 
    Delete()
    {
       if ptCheckAllPositionsTimer <> $
-      { DeleteTimer(ptCheckAllPositionsTimer); }
+      {
+         DeleteTimer(ptCheckAllPositionsTimer);
+      }
 
       propagate;
    }
-   
+
 end
 ////////////////////////////////////////////////////////////////////////////////

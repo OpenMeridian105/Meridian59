@@ -138,7 +138,7 @@ messages:
    "Return False only if you want user.kod to send its own "
    "error message to user."
    {
-      local i, oTerritoryGame;
+      local i, oTerritoryGame, each_obj;
 
       if NOT pbClaimable
       {
@@ -182,13 +182,14 @@ messages:
       // Make the existing troops hate the claimer.
       foreach i in Send(poOwner,@GetHolderActive)
       {
-         if IsClass(First(i),&FactionTroop)
-            AND (Send(First(i),@GetFaction) <> Send(poClaimer,@GetFaction))
+         each_obj = First(i);
+         if IsClass(each_obj,&FactionTroop)
+            AND (Send(each_obj,@GetFaction) <> Send(poClaimer,@GetFaction))
          {
             if Random(0,3) <> 0
             {
-               Send(First(i),@TargetSwitch,#what=poClaimer,#iHatred=30);
-               Send(First(i),@EnterStateEngage,#target=poClaimer,#actnow=TRUE);
+               Send(each_obj,@TargetSwitch,#what=poClaimer,#iHatred=30);
+               Send(each_obj,@EnterStateEngage,#target=poClaimer,#actnow=TRUE);
             }
          }
       }
@@ -918,8 +919,8 @@ messages:
 
             if Random(1,2) = 1
             {
-               Send(oTroop,@TargetSwitch,#what=poClaimer,#iHatred=30);
-               Send(oTroop,@EnterStateEngage,#target=poClaimer,#actnow=TRUE);
+               Post(oTroop,@TargetSwitch,#what=poClaimer,#iHatred=30);
+               Post(oTroop,@EnterStateEngage,#target=poClaimer,#actnow=TRUE);
             }
          }
       }

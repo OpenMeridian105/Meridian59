@@ -154,9 +154,8 @@ messages:
       //   and some unidentifiable runes instead of a name.
       if NOT Send(Send(SYS,@GetAssassinGame),@InSession)
       {
-         AddPacket(4,BlackDagger_4_gems);
-         AddPacket(4,BlackDagger_no_notches);
-         AddPacket(4,BlackDagger_runes);
+         AddPacket(4,BlackDagger_4_gems, 4,BlackDagger_no_notches,
+                   4,BlackDagger_runes);
 
          return;
       }
@@ -281,7 +280,7 @@ messages:
       // Does the animations and overlays
       Send(self,@WeaponAttack);
 
-      piDagger_hits = piDagger_hits - 1;
+      --piDagger_hits;
       if piDagger_hits < 1
       {
          Send(poOwner,@MsgSendUser,#message_rsc=BlackDagger_impact);
@@ -330,7 +329,7 @@ messages:
          return;
       }
 
-      piPlayer_hits = piPlayer_hits - 1;
+      --piPlayer_hits;
       if piPlayer_hits < 1
       {
          Post(self,@AssassinDies,#attacker=attacker);
@@ -410,7 +409,7 @@ messages:
 
       if piDagger_hits < DAGGER_MAX
       {
-         piDagger_hits = piDagger_hits + 1;
+         ++piDagger_hits;
 
          ptDagger_heal = CreateTimer(self,@DaggerHealTimer,DAGGER_HEAL_TIME);
       }
@@ -424,7 +423,7 @@ messages:
 
    AddNotch()
    {
-      piNotches = piNotches + 1;
+      ++piNotches;
 
       return;
    }
@@ -433,7 +432,7 @@ messages:
    {
       local oGame;
 
-      oGame=Send(SYS,@GetAssassinGame);
+      oGame = Send(SYS,@GetAssassinGame);
 
       if Send(oGame,@InSession)
          AND Send(oGame,@IsCombatant,#who=what)
@@ -516,11 +515,11 @@ messages:
 
       if iStart_time > iLogon_time
       {
-         piTime_online = piTime_online + (GetTime() - iStart_Time);
+         piTime_online += (GetTime() - iStart_Time);
       }
       else
       {
-         piTime_online = piTime_online + (GetTime() - iLogon_time);
+         piTime_online += (GetTime() - iLogon_time);
       }
 
       propagate;
@@ -548,7 +547,7 @@ messages:
 
    AddShiver()
    {
-      piShiver = piShiver + 1;
+      ++piShiver;
 
       return;
    }
@@ -606,7 +605,7 @@ messages:
       while piShiver > 0
       {
          Send(poOwner,@MsgSendUser,#message_rsc=BlackDagger_shiver);
-         piShiver = piShiver - 1;
+         --piShiver;
       }
 
       return;

@@ -72,7 +72,7 @@ resources:
    AssGame_mail_winner = "Subject: One has risen above the others.\n"
       "%q has won the challenge of the dark blades.\n\n"
       "-- Roq, the Dark Blade"
-   
+
    Assgame_go_wav = assassin.ogg
    AssGame_roq = "Roq, the Dark Blade"
 
@@ -123,14 +123,13 @@ properties:
    // How many kills did they get?
    piNum_kills_lastgame = 0
 
-
    // Who got the most kills?  [player,player...]
    plMost_kills = $
    // How many kills did they get?
    piNum_kills = 0
 
    // This is an optional prize awarded to the winner of the game.
-   poPrize = $                
+   poPrize = $
 
 messages:
 
@@ -143,7 +142,19 @@ messages:
       ptMaintenance = CreateTimer(self,@MaintenanceTimer,MAINTENANCE_TIME);
       iValue = Bound(Random(piGame_Wait_Min,piGame_Wait_Max),1,MAX_INT);
       ptGame = CreateTimer(self,@GameTimer,iValue);
-      
+
+      return;
+   }
+
+   Recreate()
+   {
+      // Check for invalid start time.
+      if (piStartTime > GetTime())
+      {
+         Debug("Got Assassin's Game start time in future, setting to now.");
+         piStartTime = GetTime();
+      }
+
       return;
    }
 
@@ -155,31 +166,31 @@ messages:
       local i;
 
       ptGame = $;
-      piDays = piDays + 1;
+      ++piDays;
 
       if NOT Send(self,@InAcceptMode) AND NOT Send(self,@InSession)
       {
          // The game is not in accept mode, and the game is not in session.
          //  Enter accept mode and let new players into the match.
          Send(self,@EnterAcceptMode);
-         
+
          return;
       }
-      
+
       if Send(self,@InAcceptMode)
       {
          // Tell the game to start itself.
          Send(self,@StartGame);
-         
+
          return;
       }
-      
+
       // A game is in session, and has been for quite some time.
       //  Kick out the deadwood players 
       foreach i in plCombatants
       {
          Send(self,@CheckForDeadWeight,#who=i);
-         
+
          if NOT Send(self,@InSession)
          {
             // Game is no longer valid, but a new timer has already been
@@ -187,10 +198,10 @@ messages:
             return;
          }
       }
-      
+
       if piKills = 0
       {
-         piDays_without_kills = piDays_without_kills + 1;
+         ++piDays_without_kills;
       }
       else
       {
@@ -205,7 +216,7 @@ messages:
                  #from=assgame_roq,#dest_list=[i]);
          }
       }
-      
+
       if piDays_without_kills > 2
       {
          foreach i in plCombatants
@@ -213,15 +224,15 @@ messages:
             Send(i,@ReceiveNestedMail,#nest_list=[4,assgame_mail_disgrace],
                  #from=assgame_roq,#dest_list=[i]);
          }
-         
+
          Send(self,@ResetGame,#report=FALSE);
-         
+
          return;
       }
 
       piKills = 0;
-      ptGame = CreateTimer(self,@GameTimer,piGAME_DAY);
-      
+      ptGame = CreateTimer(self,@GameTimer,piGame_day);
+
       return;
    }
 
@@ -229,24 +240,18 @@ messages:
    {
       local i;
 
-      ptMaintenance=CreateTimer(self,@MaintenanceTimer,MAINTENANCE_TIME);
+      ptMaintenance = CreateTimer(self,@MaintenanceTimer,MAINTENANCE_TIME);
       foreach i in plCombatants
       {
          if Send(self,@GetDagger,#who=i) = $
          {
             Debug("Combatant got rid of a dagger somehow!");
-            
+
             Send(self,@QuitCombatant,#who=i,#report=Send(self,@InSession),
                  #WinCheck=Send(self,@InSession));
          }
       }
-      
-      return;
-   }
 
-   CleanUp()
-   "A stub right now.  Here to put any fixes in we may need later."
-   {
       return;
    }
 
@@ -262,13 +267,13 @@ messages:
          DeleteTimer(ptMaintenance);
          ptMaintenance = $;
       }
-      
+
       if ptGame <> $
       {
          DeleteTimer(ptGame);
          ptGame = $;
       }
-      
+
       return;
    }
 
@@ -285,32 +290,29 @@ messages:
       if who = $
       {
          Debug("Got NULL for who!");
-         
+
          return;
       }
-      
-      if NOT isClass(who,&user)
+
+      if NOT IsClass(who,&User)
       {
          Debug("Can't make non-player a combatant!");
 
          return;
       }
 
-      Send(self,@AdvertiseTo,#who=who); 
-         
-      if NOT Send(self,@IsLegalCombatant,#who=who)
-      {
-         return FALSE;
-      }
+      Send(self,@AdvertiseTo,#who=who);
 
-      if Send(self,@IsCombatant,#who=who)
+      // Don't add if not eligible, or already a combatant.
+      if NOT Send(self,@IsLegalCombatant,#who=who)
+         OR Send(self,@IsCombatant,#who=who)
       {
          return FALSE;
       }
 
       // put him on the combatant list and give 'em a black dagger.
       plCombatants = Cons(who,plCombatants);
-      Send(who,@NewHold,#what=create(&BlackDagger));
+      Send(who,@NewHold,#what=Create(&BlackDagger));
 
       return TRUE;
    }
@@ -319,7 +321,7 @@ messages:
    "Removes the player from the combat proceedings.  Also, removes their "
    "dagger.  Also, lets others know that player is gone."
    {
-      local i, bFound, oOpponent, oDagger;
+      local oOpponent, oDagger;
 
       if who = $
       {
@@ -328,60 +330,51 @@ messages:
          return FALSE;
       }
 
-      bFound = FALSE;
-      foreach i in plCombatants       
-      {                         
-         if i = who                        
-         {
-            Send(self,@CheckForMostKills,#who=who);
-            
-            if report AND Send(self,@InSession)
-            {
-               Send(self,@NotifyOpponents,#who=who,
-                    #string=assgame_blade_shivers);
-
-               // Okay, if they're offline, let the dagger know so it can
-               //  shiver when they log on.
-               oOpponent = Send(self,@GetPrimaryOpponent,#who=who);
-               
-               if NOT Send(oOpponent,@IsLoggedOn)
-               { 
-                  Send(Send(self,@GetDagger,#who=oOpponent),@AddShiver);
-               }
-
-               oOpponent = Send(self,@GetSecondaryOpponent,#who=who);
-               if not Send(oOpponent,@IsLoggedOn)
-               { 
-                  Send(Send(self,@GetDagger,#who=oOpponent),@AddShiver);
-               }
-            }
-
-            plCombatants = DelListElem(plCombatants,i);
-            bFound = TRUE;
-
-            oDagger = Send(self,@GetDagger,#who=who);
-            if oDagger <> $
-            {
-               Send(oDagger,@Delete);
-            }
-
-            if wincheck
-            {
-               Send(self,@CheckForWinner);
-            }
-         }
-      }
-         
-      if bFound = FALSE
+      if (NOT FindListElem(plCombatants,who))
       {
          Debug("NonCombatant called QuitCombatant!");
 
          return FALSE;
       }
 
+      Send(self,@CheckForMostKills,#who=who);
+
+      if report AND Send(self,@InSession)
+      {
+         Send(self,@NotifyOpponents,#who=who,#string=assgame_blade_shivers);
+
+         // Okay, if they're offline, let the dagger know so it can
+         //  shiver when they log on.
+         oOpponent = Send(self,@GetPrimaryOpponent,#who=who);
+
+         if NOT Send(oOpponent,@IsLoggedOn)
+         {
+            Send(Send(self,@GetDagger,#who=oOpponent),@AddShiver);
+         }
+
+         oOpponent = Send(self,@GetSecondaryOpponent,#who=who);
+         if NOT Send(oOpponent,@IsLoggedOn)
+         {
+            Send(Send(self,@GetDagger,#who=oOpponent),@AddShiver);
+         }
+      }
+
+      plCombatants = DelListElem(plCombatants,who);
+
+      oDagger = Send(self,@GetDagger,#who=who);
+      if oDagger <> $
+      {
+         Send(oDagger,@Delete);
+      }
+
+      if wincheck
+      {
+         Send(self,@CheckForWinner);
+      }
+
       if kill
       {
-         piKills = piKills + 1;
+         ++piKills;
       }
 
       return TRUE;
@@ -396,7 +389,7 @@ messages:
          return FALSE;
       }
 
-      if NOT isClass(who,&user)
+      if NOT IsClass(who,&User)
       {
          Debug("Can't advertise to non-player!");
 
@@ -469,10 +462,10 @@ messages:
                if Length(plMost_kills_lastgame) = 0
                {
                   piNum_kills_lastgame = 0;
-               }   
+               }
             }
          }
-        
+
          foreach i in plMost_kills
          {
             if i = who
@@ -522,7 +515,7 @@ messages:
       {
          Debug("Non-combatant",Send(attacker,@GetName),"got a black dagger!");
          Send(attacker,@MsgSendUser,#message_rsc=assgame_impact);
-         
+
          return FALSE;
       }
 
@@ -555,31 +548,28 @@ messages:
 
       // Okay, at this point, we know we have an attacker attacking a
       //   legal target while a match is on.  Do the math - attacker has
-      //   a 50// chance to hit, and must do four hits to kill.
+      //   a 50% chance to hit, and must do four hits to kill.
       // Anti-cheapness: no hitting if your opponent is held, blinded or dazzled
 
-      if random(1,100) > ASSASSIN_HIT_CHANCE
+      if Random(1,100) > ASSASSIN_HIT_CHANCE
          OR Send(target,@IsEnchanted,#byClass=&Hold)
          OR Send(target,@IsEnchanted,#byClass=&Blind)
          OR Send(target,@IsEnchanted,#byClass=&Dazzle)
       {
          Send(dagger_obj,@AssassinMiss,#target=target);
       }
+      else if bLegal_Opponent
+      {
+         // Remove invisibility and ShadowForm to make this a bit more of a
+         //  fair fight.
+         Send(attacker,@RemoveEnchantmentClass,#class=&Invisibility);
+         Send(attacker,@RemoveEnchantmentClass,#class=&ShadowForm);
+
+         Send(dagger_obj,@AssassinHit,#target=target);
+      }
       else
       {
-         if bLegal_Opponent
-         {
-            // Remove invisibility and ShadowForm to make this a bit more of a
-            //  fair fight.
-            Send(attacker,@RemoveEnchantmentClass,#class=&Invisibility);
-            Send(attacker,@RemoveEnchantmentClass,#class=&ShadowForm);
-            
-            Send(dagger_obj,@AssassinHit,#target=target);
-         }
-         else
-         {
-            Send(dagger_obj,@AssassinHitWrongTarget,#target=target);
-         }
+         Send(dagger_obj,@AssassinHitWrongTarget,#target=target);
       }
 
       return TRUE;
@@ -597,15 +587,15 @@ messages:
          foreach i in plCombatants
          {
             Send(i,@ReceiveNestedMail,#nest_list=[4,assgame_mail_reset],
-               #from=assgame_roq,#dest_list=[i]);
+                  #from=assgame_roq,#dest_list=[i]);
          }
       }
-      
+
       foreach i in plCombatants
       {
          Send(self,@QuitCombatant,#who=i,#wincheck=FALSE,#report=FALSE);
       }
-      
+
       pbGame_in_Session = FALSE;
       pbAccept_mode = FALSE;
       plMost_kills = $;
@@ -646,24 +636,26 @@ messages:
       }
 
       // We have a winner!
+      poWinner_lastgame = First(plCombatants);
+
+      // Let everyone know about it.
       foreach i in plAdvertise
       {
-         if Send(i,@isLoggedOn)
+         if Send(i,@IsLoggedOn)
          {
             Send(i,@MsgSendUser,#message_rsc=assgame_winner,
-                 #parm1=Send(first(plCombatants),@GetTrueName));
+                  #parm1=Send(poWinner_lastgame,@GetTrueName));
          }
          else
          {
             Send(i,@ReceiveNestedMail,#nest_list=[4,assgame_mail_winner,
-                 STRING_RESOURCE,Send(first(plCombatants),@GetTrueName)],
-                 #from=assgame_roq,#dest_list=[i]);             
+                  STRING_RESOURCE,Send(poWinner_lastgame,@GetTrueName)],
+                  #from=assgame_roq,#dest_list=[i]);
          }
       }
-      
-      Send(self,@CheckForMostKills,#who=first(plCombatants));
 
-      poWinner_lastgame = first(plCombatants);
+      Send(self,@CheckForMostKills,#who=poWinner_lastgame);
+
       plMost_kills_lastgame = plMost_kills;
       piNum_kills_lastgame = piNum_kills;
 
@@ -671,20 +663,20 @@ messages:
       if poPrize <> $
       {
          Send(poWinner_lastgame,@MsgSendUser,#message_rsc=assgame_prize,
-              #parm1=Send(poPrize,@GetIndef),#parm2=Send(poPrize,@GetName));
+               #parm1=Send(poPrize,@GetIndef),#parm2=Send(poPrize,@GetName));
          Send(poWinner_lastgame,@NewHold,#what=poPrize);
          poPrize = $;
       }
 
       // Reset the game for the next match
       Send(self,@ResetGame);
-      
+
       return TRUE;
    }
 
    CheckForMostKills(who=$)
    {
-      local oDagger;
+      local oDagger, iNotches;
 
       if who = $
       {
@@ -697,25 +689,25 @@ messages:
 
       if oDagger <> $
       {
-         if Send(oDagger,@GetNotches) = piNum_kills
+         iNotches = Send(oDagger,@GetNotches);
+
+         if iNotches = piNum_kills
          {
             plMost_kills = Cons(who,plMost_Kills);
          }
-         
-         if Send(oDagger,@GetNotches) > piNum_kills
+         else if iNotches > piNum_kills
          {
-            piNum_kills = Send(oDagger,@GetNotches);
-            
+            piNum_kills = iNotches;
             plMost_kills = [who];
          }
       }
-     
+
       return;
    }
 
    CheckForDeadWeight(who=$)
    {
-      local oDagger, iTime;    
+      local oDagger, iTime;
 
       if who = $
       {
@@ -725,16 +717,16 @@ messages:
       }
 
       oDagger = Send(self,@GetDagger,#who=who);
-      
+
       if oDagger = $
       {
          Debug("Combatant doesn't have a dagger!  Kicking him out!");
          Send(self,@QuitCombatant,#who=who);
-         
+
          return;
       }
-      
-      iTime = Send(oDagger,@GetTimeOnline);      
+
+      iTime = Send(oDagger,@GetTimeOnline);
       if (iTime/piDays) < MINIMUM_TIME_ONLINE
       {
          // If they're online and not hiding, give them a warning, but don't
@@ -744,18 +736,18 @@ messages:
                  OR IsClass(Send(who,@GetOwner),&RentableRoom))
          {
             Send(who,@ReceiveNestedMail,#nest_list=[4,assgame_mail_not_enough],
-                 #from=assgame_roq,#dest_list=[who]);
+                  #from=assgame_roq,#dest_list=[who]);
             Send(self,@QuitCombatant,#who=who);
-            
-            return;            
+
+            return;
          }
          else
          {
             // Tell the player to shape up and spend more time online.
-            Send(oDagger,@Warn);         
+            Send(oDagger,@Warn);
          }
       }
-      
+
       return;
    }
 
@@ -765,7 +757,7 @@ messages:
 
       // Clear combatants list.
       plCombatants = $;
-      
+
       // No daggers should exist right now - none have been given out.
       Send(&BlackDagger,@CleanUp);
 
@@ -773,29 +765,29 @@ messages:
       if ptGame <> $
       {
          DeleteTimer(ptGame);
-         ptGame = $;        
+         ptGame = $;
       }
-      
-      if Send(self,@inSession)
+
+      if Send(self,@InSession)
       {
          Debug("Called when a game was in session!  Wrongo!");
 
          return FALSE;
       }
-      
+
       pbAccept_mode = TRUE;
       foreach i in plAdvertise
       {
          if Send(i,@IsLoggedOn)
          {
             Send(i,@msgSenduser,#message_rsc=assgame_urge);
-         }         
+         }
       }
 
       // Create the timer here, since this may be reached abnormally.
       iValue = Bound(Random(piGame_Accept_Min,piGame_Accept_Max),1,MAX_INT);
       ptGame = CreateTimer(self,@GameTimer,iValue);
-      
+
       return;
    }
 
@@ -803,7 +795,7 @@ messages:
    {
       local i;
 
-      if Send(self,@inSession)
+      if Send(self,@InSession)
       {
          Debug("Called when a game is already in session!  Wrongo!");
 
@@ -837,13 +829,13 @@ messages:
       foreach i in plCombatants
       {
          // Init the dagger's stats
-         Send(Send(self,@GetDagger,#who=i),@InitGame);   
+         Send(Send(self,@GetDagger,#who=i),@InitGame);
          Send(i,@MsgSendUser,#message_rsc=assgame_go);
          Send(i,@WaveSendUser,#wave_rsc=assgame_go_wav);
       }
-      
+
       ptGame = CreateTimer(self,@GameTimer,piGAME_DAY);
-      
+
       return;
    }
 
@@ -862,8 +854,6 @@ messages:
    IsCombatant(who=$)
    "Returns TRUE if who is in the combatant list."
    {
-      local i;
-
       if who = $
       {
          Debug("Got NULL for who!");
@@ -871,22 +861,12 @@ messages:
          return FALSE;
       }
 
-      foreach i in plCombatants
-      {
-         if i = who
-         {
-            return TRUE;
-         }
-      }
-      
-      return FALSE;
+      return FindListElem(plCombatants,who);
    }
 
    IsAdvertised(who=$)
    "Returns TRUE if who is in the 'advertise to me' list."
    {
-      local i;
-
       if who = $
       {
          Debug("Got NULL for who!");
@@ -894,15 +874,7 @@ messages:
          return;
       }
 
-      foreach i in plAdvertise
-      {
-         if i = who
-         {
-            return TRUE;
-         }
-      }
-      
-      return FALSE;
+      return FindListElem(plAdvertise,who);
    }
 
    IsLegalCombatant(who=$)
@@ -945,8 +917,8 @@ messages:
       }
 
       // Neither person before or after attacker is someone attacker should
-      //  be attacking.  
-      return FALSE;            
+      //  be attacking.
+      return FALSE;
    }
 
    GetPrimaryOpponent(who=$)
@@ -1037,14 +1009,15 @@ messages:
       return oOpponent;
    }
 
-
    NotifyOpponents(who=$,string=$)
    {
       local oOpponent;
 
       if who = $ OR string = $
       {
-         Debug("Notify opponents called with who = NIL or string = NIL!"); return;
+         Debug("Notify opponents called with who = NIL or string = NIL!");
+
+         return;
       }
 
       oOpponent = Send(self,@GetPrimaryOpponent,#who=who);
@@ -1060,7 +1033,7 @@ messages:
       if Length(plCombatants) = 2
       {
          return;
-      }   
+      }
 
       oOpponent = Send(self,@GetSecondaryOpponent,#who=who);
 
@@ -1069,11 +1042,10 @@ messages:
          return;
       }
 
-      Send(oOpponent,@MsgSendUser,#message_rsc=string);     
+      Send(oOpponent,@MsgSendUser,#message_rsc=string);
 
       return;
    }
-
 
    RandomizeCombatants()
    "At the beginning of the match, this is run to put combatants in "
@@ -1081,43 +1053,37 @@ messages:
    {
       local new_list, rand;
 
-      new_list = $;
-
       while plCombatants <> $
       {
-         rand = random(1,Length(plCombatants));
+         rand = Random(1,Length(plCombatants));
          new_list = Cons(Nth(plCombatants,rand),new_list);
          plCombatants = DelListElem(plCombatants,Nth(plCombatants,rand));
       }
-      
+
       plCombatants = new_list;
-      
+
       return;
    }
 
    GetDagger(who=$)
    {
-      local lPassive, i;
+      local oDagger;
 
       if who = $
       {
          Debug("Can't get Black Dagger if who equals NIL!");
-         
+
          return $;
       }
 
-      lPassive = Send(who,@GetHolderPassive);
-      foreach i in lPassive
+      oDagger = GetListElemByClass(Send(who,@GetHolderPassive),&BlackDagger);
+
+      if (oDagger = $)
       {
-         if isClass(i,&BlackDagger)
-         {
-            return i;
-         }
+         Debug("Target player has no black dagger to get!");
       }
-      
-      Debug("Target player has no black dagger to get!");
-      
-      return $;
+
+      return oDagger;
    }
 
    GetMostKills()
@@ -1143,12 +1109,7 @@ messages:
    IsViableGame()
    "If the game is viable (i.e. there are enough combatants) start the match."
    {
-      if Length(plCombatants) > 1
-      {
-         return TRUE;
-      }
-
-      return FALSE;
+      return Length(plCombatants) > 1;
    }
 
    InAcceptMode()
@@ -1169,7 +1130,7 @@ messages:
       {
          return FALSE;
       }
-      
+
       poPrize = what;
 
       // If prize has a previous owner, take it away.

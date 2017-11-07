@@ -10503,13 +10503,32 @@ messages:
    UpdateTimeValues()
    "Sets all time variables to the current time.  Useful for when changing server time."
    {
+      local i, iTime;
+
       // Don't set piTimeNewsPosted to current time.  That'd potentially make
       //  people unable to post for a while.
       piTimeNewsPosted = 0;
-      piLastMoveUpdateTime = GetTickCount();
 
       // Eliminate logoff penalty time.  Just easier this way.
       Send(self,@RefreshPhaseTimeToBase);
+
+      iTime = GetTime();
+
+      // Set any 'future' mail to current time. Client uses the
+      // string timestamp, int one is just for deleting old mails.
+      foreach i in plNew_mail
+      {
+         if (Nth(i,2) > iTime)
+         {
+            SetNth(i,2,iTime);
+         }
+      }
+
+      // Can be 0 for non-created players. Set to current if not 0.
+      if (piLastLoginTime > 0)
+      {
+         piLastLoginTime = iTime;
+      }
 
       propagate;
    }

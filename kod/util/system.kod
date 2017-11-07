@@ -2732,12 +2732,42 @@ messages:
       ///////////////////////////////////////////////
       // Temporary! One-time fix of old timestamps.
       // Newsglobes.
-      Send(&News,@FixPostTimestamps);
+      //Send(&News,@FixPostTimestamps);
       // Mails.
-      Send(&User,@FixMailTimestamps);
+      //Send(&User,@FixMailTimestamps);
       ///////////////////////////////////////////////
 
       return TRUE;
+   }
+
+   FixOldTimestamps(bAreYouSure = 0)
+   "Fixes old timestamps when time changes.  Some are already handled in "
+   "recreate, or by the old objects being deleted (rooms, mobs)."
+   {
+      local i;
+
+      // For safety.
+      if (bAreYouSure <> 11523)
+      {
+         return system_failure_rsc;
+      }
+
+      // Shrunken head silence timestamp.
+      Send(&ShrunkenHead,@UpdateTimeValues);
+
+      // Misc user/player timestamps.
+      Send(&User,@UpdateTimeValues);
+
+      // Sets new time of death.
+      Send(&DeadBody,@UpdateTimeValues);
+
+      // Guild hall raid time.
+      Send(&Guild,@UpdateTimeValues);
+
+      // News post times.
+      Send(&News,@UpdateTimeValues);
+
+      return system_success_rsc;
    }
 
    RecreateAllExits()
@@ -6101,7 +6131,7 @@ messages:
       }
       else
       {
-         Send(poAssassin_game,@CleanUp);
+         Send(poAssassin_game,@Recreate);
       }
 
       return;
@@ -6888,6 +6918,11 @@ messages:
    AdminGetTime()
    {
       return GetTime();
+   }
+
+   AdminGetTickCount()
+   {
+      return GetTickCount();
    }
 
    AdminCreateList(iNum = 0, parm1 = $, parm2 = $, parm3 = $, parm4 = $,

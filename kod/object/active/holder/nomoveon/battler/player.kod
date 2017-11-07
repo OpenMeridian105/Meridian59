@@ -9268,7 +9268,7 @@ messages:
       // Stop any rescue attempts that were going on.
       Send(self,@CancelRescue);
       
-      piLastDeathTime = getTime();
+      piLastDeathTime = GetTime();
 
       // Grab the location of the deceased.
       // Might need to grab the old location if logged off.
@@ -12697,7 +12697,7 @@ messages:
       // Don't require new service if the player has been an active soldier.
       if oSoldierShield = $
       {
-         piFactionServiceUpdate = piFactionServiceUpdate + tyme - piFactionTimeUpdated;
+         piFactionServiceUpdate += tyme - piFactionTimeUpdated;
       }
       else
       {
@@ -14182,13 +14182,31 @@ messages:
 
       time = GetTime();
 
-      piLastDeathTime = time;
-      piGuildRejoinTimestamp = time;
-      piLast_restart_time = time;
+      // Can be 0 if never died.
+      if (piLastDeathTime > 0)
+      {
+         piLastDeathTime = time;
+      }
+
+      // Set to 0, so we don't cause any guild join delays.
+      piGuildRejoinTimestamp = 0;
+
+      // Can be 0 for non-created players.
+      if (piLast_restart_time > 0)
+      {
+         piLast_restart_time = time;
+      }
+
+      if (piFactionTimeUpdated > 0)
+      {
+         piFactionTimeUpdated = time;
+      }
+
       piTimeLastStomachUpdate = 0;
       piTimeAttackedPlayer = 0;
       piTimeAttackedByPlayer = 0;
       piTimeLastMurder = 0;
+      piReward_timestamp = 0;
 
       return;
    }

@@ -110,8 +110,7 @@ Bool CheckServerMessage(char** msg, char **params, long *len, ID fmt_id)
          // back through it due to an %s formatter on the end, we have to skip
          // it here. Any potential characters that could come after the % should
          // be checked here to skip to next formatter (if any).
-         if (type_char == ' ' || type_char == '.' || type_char == ','
-            || type_char == '!' || type_char == '?')
+         if (!isalnum((int)type_char) && type_char != '%')
          {
             next_ptr = strchr(next_ptr, '%');
 

@@ -1223,6 +1223,14 @@ messages:
    {
       local oObject, oOwner;
 
+      // Immortal DMs bypass safety checks.
+      if (who <> $
+         AND IsClass(who,&DM)
+         AND Send(who,@PlayerIsImmortal))
+      {
+         return TRUE;
+      }
+
       // If lTargets is $, then we're casting an room-effect spell, let it go.
       if lTargets <> $
       {
@@ -1813,6 +1821,7 @@ messages:
          //  isn't already an outlaw or murderer.
          if NOT (Send(who,@CheckPlayerFlag,#flag=PFLAG_OUTLAW)
                  OR Send(who,@CheckPlayerFlag,#flag=PFLAG_MURDERER))
+            AND NOT (IsClass(who,&DM) AND Send(who,@PlayerIsImmortal))
          {
             // Check to see if the spell will automatically make you an outlaw.
             //  That is, the spell is flagged as outlaw but not harmful.

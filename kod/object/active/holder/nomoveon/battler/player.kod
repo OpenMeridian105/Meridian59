@@ -12553,16 +12553,24 @@ messages:
       iTime = Send(SETTINGS_OBJECT,@GetTempSafeTime);
       iTime = iTime * 60 * 1000;
 
-      if ptTempSafe <> $
+      if (ptTempSafe <> $
+         AND IsTimer(ptTempSafe))
       {
-         if (IsTimer(ptTempSafe))
-         {
-            DeleteTimer(ptTempSafe);
-         }
+         DeleteTimer(ptTempSafe);
       }
-      ptTempSafe = CreateTimer(self,@EndTempSafe,iTime);
+
       piFlags = piFlags | PFLAG_TEMPSAFE;
-      Send(self,@MsgSendUser,#message_rsc=player_temp_safe);
+
+      // Only set a timer if logged on.
+      if (pbLogged_on)
+      {
+         ptTempSafe = CreateTimer(self,@EndTempSafe,iTime);
+         Send(self,@MsgSendUser,#message_rsc=player_temp_safe);
+      }
+      else
+      {
+         ptTempSafe = iTime;
+      }
 
       return;
    }

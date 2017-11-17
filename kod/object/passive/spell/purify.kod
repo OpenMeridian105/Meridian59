@@ -204,7 +204,14 @@ messages:
 
       bRemovedSomething = FALSE;
 
-      lDebuffs = GetAllListNodesByClass(Send(who,@GetEnchantmentList), 2,&Debuff);
+      foreach i in Send(who,@GetEnchantmentList)
+      {
+         oSpell = Nth(i,2);
+         if IsClass(oSpell,&Debuff) AND NOT IsClass(oSpell,&Poison)
+         {
+            lDebuffs = Cons(oSpell,lDebuffs);
+         }
+      }
 
       foreach i in Send(who,@GetOverTimeEffects)
       {

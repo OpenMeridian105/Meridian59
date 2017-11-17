@@ -59,6 +59,11 @@ void EditBoxCreate(HWND hParent)
    lpfnDefEditProc = SubclassWindow(hwndText, EditProc);
    SetWindowFont(hwndText, GetFont(FONT_EDIT), FALSE);
 
+   // For capturing link click notifications.
+   //LRESULT mask = SendMessage(hwndText, EM_GETEVENTMASK, 0, 0);
+   //SendMessage(hwndText, EM_SETEVENTMASK, 0, mask | ENM_LINK);
+   //SendMessage(hwndText, EM_AUTOURLDETECT, TRUE, NULL);
+
    // If edit_contents has been filled, edit_readd will be true.
    // Add the contents back to the edit box with no color/style.
    if (edit_readd)
@@ -193,7 +198,7 @@ void EditBoxStartAdd(void)
    Edit_SetSel(hwndText, txtlen, txtlen);
    memset(&cformat, 0, sizeof(cformat));
    cformat.cbSize = sizeof(cformat);
-   cformat.dwMask    |= CFM_BOLD | CFM_ITALIC | CFM_UNDERLINE;  // Turn these off
+   cformat.dwMask    |= CFM_BOLD | CFM_ITALIC | CFM_UNDERLINE | CFM_STRIKEOUT | CFM_LINK;  // Turn these off
    SendMessage(hwndText, EM_SETCHARFORMAT, SCF_SELECTION, (LPARAM) &cformat);
 }
 /************************************************************************/
@@ -243,26 +248,19 @@ void EditBoxAddText(char *message, int color, int style)
       cformat.dwMask = CFM_COLOR;
       cformat.crTextColor = color;
 
-      if (style == STYLE_NORMAL)
-	 cformat.dwMask    |= CFM_BOLD | CFM_ITALIC | CFM_UNDERLINE;
+      cformat.dwMask    |= CFM_BOLD | CFM_ITALIC | CFM_UNDERLINE | CFM_STRIKEOUT | CFM_LINK;
 
       if (style & STYLE_BOLD)
-      {
-	 cformat.dwMask    |= CFM_BOLD;
-	 cformat.dwEffects |= CFE_BOLD;
-      }
-
+         cformat.dwEffects |= CFE_BOLD;
       if (style & STYLE_ITALIC)
-      {
-	 cformat.dwMask    |= CFM_ITALIC;
-	 cformat.dwEffects |= CFE_ITALIC;
-      }
-
+         cformat.dwEffects |= CFE_ITALIC;
       if (style & STYLE_UNDERLINE)
-      {
-	 cformat.dwMask    |= CFM_UNDERLINE;
-	 cformat.dwEffects |= CFE_UNDERLINE;
-      }
+         cformat.dwEffects |= CFE_UNDERLINE;
+      if (style & STYLE_STRIKEOUT)
+         cformat.dwEffects |= CFE_STRIKEOUT;
+      if (style & STYLE_LINK)
+         cformat.dwEffects |= CFE_LINK;
+
 
       SendMessage(hwndText, EM_SETCHARFORMAT, SCF_SELECTION, (LPARAM) &cformat);
    }
@@ -281,7 +279,7 @@ void EditBoxSetNormalFormat()
    memset(&cformat, 0, sizeof(cformat));
    cformat.cbSize = sizeof(cformat);
    cformat.crTextColor = RGB(0,0,0);
-   cformat.dwMask |= CFM_COLOR | CFM_BOLD | CFM_ITALIC | CFM_UNDERLINE;
+   cformat.dwMask |= CFM_COLOR | CFM_BOLD | CFM_ITALIC | CFM_UNDERLINE | CFM_STRIKEOUT | CFM_LINK;
 
    SendMessage(hwndText, EM_SETCHARFORMAT, SCF_SELECTION, (LPARAM) &cformat);
 }

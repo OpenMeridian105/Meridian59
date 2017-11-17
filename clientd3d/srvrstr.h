@@ -18,6 +18,8 @@ enum {
    STYLE_ITALIC    = 1,
    STYLE_BOLD      = 2,
    STYLE_UNDERLINE = 4,
+   STYLE_STRIKEOUT = 8,
+   STYLE_LINK = 16,
 
    STYLE_RESET     = 3,
 };

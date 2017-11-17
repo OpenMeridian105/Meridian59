@@ -595,6 +595,8 @@ static FormatCode code_table[] = {
 { 'B', CODE_STYLE, STYLE_BOLD },
 { 'I', CODE_STYLE, STYLE_ITALIC },
 { 'U', CODE_STYLE, STYLE_UNDERLINE },
+{ 'S', CODE_STYLE, STYLE_STRIKEOUT },
+{ 'L', CODE_STYLE, STYLE_LINK },
 { 'n', CODE_STYLE, STYLE_RESET },
 };
 

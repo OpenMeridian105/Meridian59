@@ -1305,7 +1305,10 @@ messages:
    EnterStateLimbo()
    {
       // SetTarget without a 'what' passed sets target to nil.
-      Send(self,@SetTarget);
+      if (poTarget <> $)
+      {
+         Send(self,@SetTarget);
+      }
 
       Send(self,@SetState,#bit=STATE_LIMBO);
 
@@ -1338,7 +1341,10 @@ messages:
       }
 
       // SetTarget without a 'what' passed sets target to nil.
-      Send(self,@SetTarget);
+      if (poTarget <> $)
+      {
+         Send(self,@SetTarget);
+      }
 
       Send(self,@SetState,#bit=STATE_WAIT);
 
@@ -1366,7 +1372,10 @@ messages:
    EnterStateMove(actnow=FALSE)
    {
       // SetTarget without a 'what' passed sets target to nil.
-      Send(self,@SetTarget);
+      if (poTarget <> $)
+      {
+         Send(self,@SetTarget);
+      }
 
       // Note: All monsters "move" even the ones who physically can't.
       Send(self,@SetState,#bit=STATE_MOVE);
@@ -9618,12 +9627,9 @@ messages:
       if (poOwner <> $) AND (poTarget <> what)
       {
          // We have had a different target before. If that different
-         // target was a User, subtract us from his chaser log. If the
-         // User is no longer in the same room, his chaser log has already
-         // been reset and we have to skip instead.
+         // target was a User, subtract us from his chaser log.
          if (poTarget <> $)
             AND IsClass(poTarget,&User)
-            AND (Send(poTarget,@GetOwner) = poOwner)
          {
             Send(poTarget,@SubtractFromMonsterChasers,#level=viLevel);
          }

@@ -4888,9 +4888,6 @@ messages:
       // tracking the results of monster kills, but not any
       // accidental player kills (or player minion kills).
       if poApparitionCaster <> $
-         AND IsClass(what,&Monster)
-         AND (Send(what,@GetMaster) = $
-            OR IsClass(Send(what,@GetMaster),&Monster))
       {
          return Send(poApparitionCaster,@KilledSomething,#what=what,
                      #use_weapon=use_weapon);
@@ -8246,6 +8243,14 @@ messages:
          {
             Send(poMaster,@RemoveControlledMinion,#what=self);
             poMaster = $;
+
+            // Delete apparitions at this point.
+            if (poApparitionOriginal <> $)
+            {
+               Post(self,@Delete);
+
+               return;
+            }
          }
       }
       else
@@ -8688,6 +8693,11 @@ messages:
          return Send(poMaster,@IsAlly,#target=target);
       }
 
+      if (poApparitionCaster <> $)
+      {
+         return Send(poApparitionCaster,@IsAlly,#target=target);
+      }
+
       oTargetMaster = Send(target,@GetMaster);
 
       if (oTargetMaster <> $)
@@ -8933,14 +8943,22 @@ messages:
       {
          Debug("BAD target we're switching to here!");
 
-         return;
+         return FALSE;
       }
 
       if IsClass(what,&User)
          AND NOT Send(what,@IsLoggedOn)
       {
          // Trying to switch to someone logged off. Can't do that.
-         return;
+         return FALSE;
+      }
+
+      // Apparitions can't switch targets, unless they have a proper master.
+      if (poApparitionOriginal <> $
+         AND poMaster = $
+         AND what <> poApparitionOriginal)
+      {
+         return FALSE;
       }
 
       piHatred = iHatred;
@@ -8956,7 +8974,7 @@ messages:
          Send(poOwner,@SomethingWaveRoom,#what=self,#wave_rsc=vrSound_aware);
       }
 
-      return;
+      return TRUE;
    }
 
    SpecialHatredBehavior(what=$)

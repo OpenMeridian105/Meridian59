@@ -160,13 +160,17 @@ void RadiusProjectileAdd(Projectile *p, ID source_obj, BYTE speed, WORD flags,
 {
    float distance, destx, desty, radangle, fRange;
    float dx, dy, dz, destz;
-   room_contents_node *s;
    fRange = range;
    float initangle = 0.0;
 
    // If animation off, don't bother with projectiles.
    if (!config.animate)
      return;
+
+   // Set source coordinates based on object location
+   room_contents_node *s = GetRoomObjectById(source_obj);
+   if (!s)
+      return;
 
    for (int i = 0; i < number; ++i)
    {
@@ -176,9 +180,6 @@ void RadiusProjectileAdd(Projectile *p, ID source_obj, BYTE speed, WORD flags,
       q->translation = p->translation;
       q->animate = p->animate;
       q->dLighting = p->dLighting;
-
-      // Set source coordinates based on object location
-      s = GetRoomObjectById(source_obj);
 
       q->motion.source_x = s->motion.x;
       q->motion.source_y = s->motion.y;

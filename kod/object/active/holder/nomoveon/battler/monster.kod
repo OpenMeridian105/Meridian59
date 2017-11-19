@@ -1305,7 +1305,10 @@ messages:
    EnterStateLimbo()
    {
       // SetTarget without a 'what' passed sets target to nil.
-      Send(self,@SetTarget);
+      if (poTarget <> $)
+      {
+         Send(self,@SetTarget);
+      }
 
       Send(self,@SetState,#bit=STATE_LIMBO);
 
@@ -1338,7 +1341,10 @@ messages:
       }
 
       // SetTarget without a 'what' passed sets target to nil.
-      Send(self,@SetTarget);
+      if (poTarget <> $)
+      {
+         Send(self,@SetTarget);
+      }
 
       Send(self,@SetState,#bit=STATE_WAIT);
 
@@ -1366,7 +1372,10 @@ messages:
    EnterStateMove(actnow=FALSE)
    {
       // SetTarget without a 'what' passed sets target to nil.
-      Send(self,@SetTarget);
+      if (poTarget <> $)
+      {
+         Send(self,@SetTarget);
+      }
 
       // Note: All monsters "move" even the ones who physically can't.
       Send(self,@SetState,#bit=STATE_MOVE);
@@ -4884,9 +4893,6 @@ messages:
       // tracking the results of monster kills, but not any
       // accidental player kills (or player minion kills).
       if poApparitionCaster <> $
-         AND IsClass(what,&Monster)
-         AND (Send(what,@GetMaster) = $
-            OR IsClass(Send(what,@GetMaster),&Monster))
       {
          return Send(poApparitionCaster,@KilledSomething,#what=what,
                      #use_weapon=use_weapon);
@@ -8235,6 +8241,14 @@ messages:
          {
             Send(poMaster,@RemoveControlledMinion,#what=self);
             poMaster = $;
+
+            // Delete apparitions at this point.
+            if (poApparitionOriginal <> $)
+            {
+               Post(self,@Delete);
+
+               return;
+            }
          }
       }
       else
@@ -8677,6 +8691,11 @@ messages:
          return Send(poMaster,@IsAlly,#target=target);
       }
 
+      if (poApparitionCaster <> $)
+      {
+         return Send(poApparitionCaster,@IsAlly,#target=target);
+      }
+
       oTargetMaster = Send(target,@GetMaster);
 
       if (oTargetMaster <> $)
@@ -8922,14 +8941,22 @@ messages:
       {
          Debug("BAD target we're switching to here!");
 
-         return;
+         return FALSE;
       }
 
       if IsClass(what,&User)
          AND NOT Send(what,@IsLoggedOn)
       {
          // Trying to switch to someone logged off. Can't do that.
-         return;
+         return FALSE;
+      }
+
+      // Apparitions can't switch targets, unless they have a proper master.
+      if (poApparitionOriginal <> $
+         AND poMaster = $
+         AND what <> poApparitionOriginal)
+      {
+         return FALSE;
       }
 
       piHatred = iHatred;
@@ -8945,7 +8972,7 @@ messages:
          Send(poOwner,@SomethingWaveRoom,#what=self,#wave_rsc=vrSound_aware);
       }
 
-      return;
+      return TRUE;
    }
 
    SpecialHatredBehavior(what=$)
@@ -9616,12 +9643,9 @@ messages:
       if (poOwner <> $) AND (poTarget <> what)
       {
          // We have had a different target before. If that different
-         // target was a User, subtract us from his chaser log. If the
-         // User is no longer in the same room, his chaser log has already
-         // been reset and we have to skip instead.
+         // target was a User, subtract us from his chaser log.
          if (poTarget <> $)
             AND IsClass(poTarget,&User)
-            AND (Send(poTarget,@GetOwner) = poOwner)
          {
             Send(poTarget,@SubtractFromMonsterChasers,#level=viLevel);
          }

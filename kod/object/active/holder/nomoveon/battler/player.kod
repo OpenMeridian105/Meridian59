@@ -3696,7 +3696,10 @@ messages:
    "strength and damage."
    {
       plAttack_modifiers = Cons(what,plAttack_modifiers);
-      Post(self,@DrawOffense);
+      if (pbLogged_on)
+      {
+         Post(self,@DrawOffense);
+      }
 
       return;
    }
@@ -3704,22 +3707,19 @@ messages:
    RemoveAttackModifier(what = $)
    "Removes <what> from plAttack_modifiers."
    {
-      local i;
-
-      foreach i in plAttack_modifiers
+      if (FindListElem(plAttack_modifiers, what))
       {
-         if i = what
+         plAttack_modifiers = DelListElem(plAttack_modifiers,what);
+         if (pbLogged_on)
          {
-            plAttack_modifiers = DelListElem(plAttack_modifiers,i);
             Post(self,@DrawOffense);
-
-            return;
          }
       }
-
-      // Karahol's Curse can get here, because it has to remove itself when
-      // done, because it doesn't know if it was a normal ending or a
-      // user-quit ending.
+      else
+      {
+         Debug(self,vrName, "Tried to remove attack modifier",what,
+               Send(what,@GetName)," not in list",plAttack_modifiers);
+      }
 
       return;
    }
@@ -3729,38 +3729,32 @@ messages:
    "and damage."
    {
       plDefense_modifiers = Cons(what,plDefense_modifiers);
-      Post(self,@DrawDefense);
-      Post(self,@DrawArmor);
+      if pbLogged_on
+      {
+         Post(self,@DrawDefense);
+         Post(self,@DrawArmor);
+      }
 
       return;
    }
 
    RemoveDefenseModifier(what = $)
-   "Removes <what> from plDefense_modifiers."
+   "Removes <what> from plDefense_modifiers. If <what> is present more than "
+   "once in the defense modifier list, removes only one copy."
    {
-      local i, bFound;
-
-      bFound = FALSE ;
-      foreach i in plDefense_modifiers
+      if (FindListElem(plDefense_modifiers, what))
       {
-         if i = what
+         plDefense_modifiers = DelListElem(plDefense_modifiers,what);
+         if pbLogged_on
          {
-            plDefense_modifiers = DelListElem(plDefense_modifiers,i);
-            if pbLogged_on
-            {
-               Post(self,@DrawDefense);
-               Post(self,@DrawArmor);
-            }
-            bFound = TRUE;
-
-            return;
+            Post(self,@DrawDefense);
+            Post(self,@DrawArmor);
          }
       }
-
-      if NOT bFound
+      else
       {
-         Debug(self,"Tried to remove defense modifier",what,"but not in list",
-               plDefense_modifiers);
+         Debug(self,vrName, "Tried to remove defense modifier",what,
+               Send(what,@GetName)," not in list",plDefense_modifiers);
       }
 
       return;
@@ -13977,6 +13971,17 @@ messages:
    "Stubbed here, since variable is defined in user - DOH!"
    "(real function is also in user.kod)"
    {
+      return;
+   }
+
+   ResetLoggedOffMonsterChasers()
+   "For admin mode - resets monster chasers for logged off players."
+   {
+      if (NOT pbLogged_on)
+      {
+         piMonsterChasers = 0;
+      }
+
       return;
    }
 

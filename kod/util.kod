@@ -21,6 +21,42 @@ properties:
 
 messages:
 
+   UtilGoRandomNear(what = $, where = $, new_row = $, new_col = $,
+                    fine_row = FINENESS/2, fine_col = FINENESS/2,
+                    iMinDist = 64, iMaxDist = 192)
+   "Different from UtilGoNearSquare since min/max distance can be specified."
+   "Assumes 'what' is allowed to go to 'where'."
+   {
+      local iMRow, iMCol, iMRowFine, iMColFine;
+
+      if what = $ OR where = $ OR new_row = $ OR new_col = $
+      {
+         Debug("Got $ what,where,new_row,or new_col",
+               what,where,new_row,new_col);
+
+         return FALSE;
+      }
+
+      if NOT IsClass(where,&Room)
+      {
+         Debug("Got non-room destination",where);
+
+         return FALSE;
+      }
+
+      if (GetRandomMoveDestBSP(Send(where,@GetRoomData), 24, iMinDist,
+               iMaxDist, new_row, new_col, fine_row, fine_col,
+               *iMRow, *iMCol, *iMRowFine, *iMColFine))
+      {
+         Send(where,@NewHold,#what=what,#new_row=iMRow,#new_col=iMCol,
+               #fine_row=iMRowFine,#fine_col=iMColFine);
+
+         return TRUE;
+      }
+
+      return FALSE;
+   }
+
    UtilGoNearSquare(what = $,where = $,new_row = $,new_col = $,do_move = TRUE,
                     max_distance = 50000,new_angle = $, mob_override = FALSE,
                     fine_row = FINENESS/2,fine_col = FINENESS/2)

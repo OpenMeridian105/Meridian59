@@ -158,8 +158,14 @@ messages:
       iFine_Row = Send(oTarget,@GetFineRow);
       iFine_Col = Send(oTarget,@GetFineCol);
 
-      Send(oRoom,@NewHold,#what=oApparition,#new_row=iRow,#new_col=iCol,
-            #fine_row=iFine_Row,#fine_col=iFine_Col);
+      // Attempt to place randomly near, otherwise place on the target.
+      if NOT (Send(SYS,@UtilGoRandomNear,#what=oApparition,#where=oRoom,
+                  #new_row=iRow,#new_col=iCol,
+                  #fine_row=iFine_Row,#fine_col=iFine_Col))
+      {
+         Send(oRoom,@NewHold,#what=oApparition,#new_row=iRow,#new_col=iCol,
+               #fine_row=iFine_Row,#fine_col=iFine_Col);
+      }
 
       Post(oApparition,@TargetSwitch,#what=oTarget,#iHatred=1000);
       Post(oApparition,@EnterStateEngage,#target=oTarget,#actnow=TRUE);

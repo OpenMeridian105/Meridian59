@@ -293,8 +293,6 @@ resources:
       "Not a court vassal, yet affected by the Meridian Council."
    player_not_intriguing = "Not yet concerned with affairs at the Royal Court."
 
-   player_nl = "\n"
-   player_sp = " "
    player_dot = "."
 
    // Master fixed info resource.
@@ -2036,7 +2034,7 @@ messages:
 //         }
 //
 //         AppendTempString(player_dot);
-//         AppendTempString(player_nl);
+//         AppendTempString(system_newline_resource);
 //      }
 //      AddPacket(4,GetTempString());
 
@@ -3715,7 +3713,8 @@ messages:
             Post(self,@DrawOffense);
          }
       }
-      else
+      else if (NOT (IsClass(what,&KillingFields)
+                 OR IsClass(what,&ForcesOfLight)))
       {
          Debug(self,vrName, "Tried to remove attack modifier",what,
                Send(what,@GetName)," not in list",plAttack_modifiers);
@@ -6986,7 +6985,14 @@ messages:
 
    RemoveNodeFromList(node_num=0)
    {
-      piNodelist = piNodelist & ~node_num ;
+      piNodelist &= ~node_num;
+
+      // Have to update mana node quest in quest log.
+      // Would be better to update each quest individually...
+      if (pbLogged_on)
+      {
+         Send(self,@ToCliStats,#group=5);
+      }
 
       return;
    }
@@ -6994,6 +7000,13 @@ messages:
    ResetNodeList()
    {
       piNodelist = 0;
+
+      // Have to update mana node quest in quest log.
+      // Would be better to update each quest individually...
+      if (pbLogged_on)
+      {
+         Send(self,@ToCliStats,#group=5);
+      }
 
       return;
    }
@@ -7031,6 +7044,13 @@ messages:
          piNodelist |= node_num;
       }
 
+      // Have to update mana node quest in quest log.
+      // Would be better to update each quest individually...
+      if (pbLogged_on)
+      {
+         Send(self,@ToCliStats,#group=5);
+      }
+
       Send(self,@ComputeMaxMana);
 
       return;
@@ -7044,6 +7064,13 @@ messages:
       }
 
       piNodelist &= ~node_num;
+
+      // Have to update mana node quest in quest log.
+      // Would be better to update each quest individually...
+      if (pbLogged_on)
+      {
+         Send(self,@ToCliStats,#group=5);
+      }
 
       Send(self,@ComputeMaxMana);
 

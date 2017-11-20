@@ -3716,10 +3716,12 @@ messages:
          iCount = 1;
          // Need to know how many completed quests in quest history.
          iQLength = Send(self,@GetCompletedQuestLength);
-         AddPacket(1,BP_STAT_GROUP, 1,group, 1,Length(plActiveQuests) + iQLength + 2);
+         // Add 3 at the end - 2 for headers, 1 for mana node quest.
+         AddPacket(1,BP_STAT_GROUP, 1,group, 1,Length(plActiveQuests) + iQLength + 3);
 
          // Send active quests.
          if plActiveQuests <> $
+            OR piNodeList < NODE_ALL
          {
             // Send the "Active Quests" header.
             AddPacket(1,0, 4,user_active_quests_header,
@@ -3738,6 +3740,7 @@ messages:
          ++iCount;
          // Send completed quests.
          if plQuestHistory <> $
+            OR piNodeList >= NODE_ALL
          {
             // Send the "Completed Quests" header.
             AddPacket(1,iCount, 4,user_completed_quests_header,
@@ -3819,6 +3822,15 @@ messages:
          ++iCount;
       }
 
+      // Mana node quest if player doesn't have all.
+      if (piNodeList < NODE_ALL)
+      {
+         oQObj = Send(oQE,@GetQuestTemplateObject,#index=QST_ID_MANA_NODE);
+         AddPacket(1,iCount, 4,Send(oQObj,@GetName), 1,STAT_LIST,
+                   4,oQObj, 4,QST_ID_MANA_NODE, 4,Send(oQObj,@GetIcon));
+         ++iCount;
+      }
+
       // Need to return the current count.
       return iCount;
    }
@@ -3829,6 +3841,15 @@ messages:
       local i, iQTemplate, oQE, oQObj, rQuestName;
 
       oQE = Send(SYS,@GetQuestEngine);
+
+      // Mana node quest first, if they have all nodes.
+      if (piNodeList >= NODE_ALL)
+      {
+         oQObj = Send(oQE,@GetQuestTemplateObject,#index=QST_ID_MANA_NODE);
+         AddPacket(1,iCount, 4,Send(oQObj,@GetName), 1,STAT_LIST,
+                   4,oQObj, 4,QST_ID_MANA_NODE, 4,Send(oQObj,@GetIcon));
+         ++iCount;
+      }
 
       foreach i in plQuestHistory
       {

@@ -395,6 +395,8 @@ static TypedCommand commands[] = {
 { "telgilde",           CommandTellGuild, },
 { "tguild",             CommandTellGuild, },
 { "tgilde",             CommandTellGuild, },
+{ "invite",             CommandInvite, },
+{ "einladen",           CommandInvite, },
 { "safety on",          CommandSafetyOn, },
 { "sicherheit an",      CommandSafetyOn, },
 { "safety off",         CommandSafetyOff, },

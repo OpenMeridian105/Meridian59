@@ -27,6 +27,10 @@ resources:
    guildinvite_already_your_guild = "This person already belongs to your guild."
    invite_cant_invite_self = "You cannot invite yourself to join your guild!"
    invite_non_user = "%s%s respectfully declines your tempting offer."
+   guildinvite_cannot_interact = \
+      "%s%s is unable to accept your invitation right now."
+   guildinvite_different_room = \
+      "You must be in the same room as %s%s to hand them an invitation."
    guildinvitation_to_inductor = \
       "~BYou extend to %s%q the opportunity to join %s%q."
    guildinvitation_to_inductee = \
@@ -74,10 +78,25 @@ messages:
          return FALSE;
       }
 
-      if oTarget=who
+      if oTarget = who
       {
-         Debug("player tried to invite self into guild!  Shouldn't have been an option!");
          Send(who,@MsgSendUser,#message_rsc=invite_cant_invite_self);
+
+         return FALSE;
+      }
+
+      if (Send(oTarget,@IsOfflineOrCannotInteract))
+      {
+         Send(who,@MsgSendUser,#message_rsc=guildinvite_cannot_interact,
+               #parm1=Send(oTarget,@GetCapDef),#parm2=Send(oTarget,@GetName));
+
+         return FALSE;
+      }
+
+      if (Send(oTarget,@GetOwner) <> Send(who,@GetOwner))
+      {
+         Send(who,@MsgSendUser,#message_rsc=guildinvite_different_room,
+               #parm1=Send(oTarget,@GetDef),#parm2=Send(oTarget,@GetName));
 
          return FALSE;
       }
@@ -97,7 +116,7 @@ messages:
          return FALSE;
       }
 
-      if Length(Send(newGuild,@GetMemberList)) >= Send(newGuild,@getmaxmembers)
+      if Length(Send(newGuild,@GetMemberList)) >= Send(newGuild,@GetMaxMembers)
       {
          Send(who,@MsgSendUser,#message_rsc=guildinvitation_guild_full,
                #parm1=Send(newGuild,@GetCapDef),#parm2=Send(newGuild,@GetName));

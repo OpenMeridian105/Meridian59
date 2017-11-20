@@ -100,6 +100,36 @@ void CommandHelp(char *args)
 }
 /************************************************************************/
 /*
+ * CommandInvite: "(guild)invite" command ("invite" for less collisions)
+ */
+void CommandInvite(char *args)
+{
+   char *name = GetPlayerName(args, NULL);
+   if (!name)
+   {
+      debug(("Missing name to invite\n"));
+      return;
+   }
+
+   ID player = FindPlayerByName(name);
+
+   // 'Tell' error messages are similar enough to use here.
+   if (player == 0)
+   {
+      GameMessage(GetString(hInst, IDS_NOTELLNAME));
+      return;
+   }
+
+   if (player == INVALID_ID)
+   {
+      GameMessage(GetString(hInst, IDS_DUPLICATETELLNAME));
+      return;
+   }
+
+   RequestInvite(player);
+}
+/************************************************************************/
+/*
  * CommandTell: "tell" command
  */
 void CommandTell(char *args)

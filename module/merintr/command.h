@@ -22,6 +22,7 @@ void CommandEmote(char *args);
 void CommandQuit(char *args);
 void CommandHel(char *args);
 void CommandHelp(char *args);
+void CommandInvite(char *args);
 void CommandTell(char *args);
 void CommandWho(char *args);
 void CommandGroupAdd(char *args);

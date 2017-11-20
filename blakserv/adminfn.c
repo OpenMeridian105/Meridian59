@@ -156,6 +156,8 @@ void AdminShowOneConfigNode(config_node *c, const char *config_name,
                             const char *default_str);
 void AdminShowString(int session_id,admin_parm_type parms[],
                      int num_blak_parm,parm_node blak_parm[]);
+void AdminShowDebugString(int session_id, admin_parm_type parms[],
+                          int num_blak_parm, parm_node blak_parm[]);
 void AdminShowSuspended(int session_id, admin_parm_type parms[],
                         int num_blak_parm, parm_node blak_parm[]);
 void AdminShowSysTimers(int session_id,admin_parm_type parms[],
@@ -358,6 +360,7 @@ admin_table_type admin_show_table[] =
 	{ AdminShowTime,          {N},   F, A|M, NULL, 0, "clock",         "Show current server time" },
 	{ AdminShowConfiguration, {N},   F, A|M, NULL, 0, "config",        "Show configuration values" },
 	{ AdminShowConstant,      {S,N}, F,A|M, NULL, 0, "constant",       "Show value of admin constant" },
+   { AdminShowDebugString,   {S,I,N}, F,A|M, NULL, 0, "debugstring",  "Show one debug string by class and debugstr id" },
 	{ AdminShowDynamicResources,{N}, F, A|M, NULL, 0, "dynamic",       "Show all dynamic resources" },
    { AdminShowAccByEmail,    {S,N}, F, A|M, NULL, 0, "email",         "Show all accounts with a given email address" },
 	{ AdminShowInstances,     {S,N}, F, A|M, NULL, 0, "instances",     "Show all instances of class" },
@@ -2256,6 +2259,30 @@ void AdminShowString(int session_id,admin_parm_type parms[],
 	/* not null-terminated */
 	AdminBufferSend(snod->data,snod->len_data); 
 	aprintf("\n-------------------------------------------\n");
+}
+
+#define MAX_HANDLED_DSTRING 4192
+void AdminShowDebugString(int session_id, admin_parm_type parms[],
+   int num_blak_parm, parm_node blak_parm[])
+{
+   char *class_str = (char *)parms[0];
+   int debugstr_id = (int)parms[1];
+
+   class_node *c = GetClassByName(class_str);
+   if (c == NULL)
+   {
+      aprintf("Cannot find CLASS %s.\n", class_str);
+      return;
+   }
+   const char *dstr = GetClassDebugStr(c, debugstr_id);
+
+   aprintf("Debug String %i\n", debugstr_id);
+   aprintf("-------------------------------------------\n");
+   if (strnlen(dstr, MAX_HANDLED_DSTRING) == MAX_HANDLED_DSTRING)
+      aprintf("String too large to print, greater than size %i\n", MAX_HANDLED_DSTRING);
+   else
+      aprintf("%s\n", dstr);
+   aprintf("\n-------------------------------------------\n");
 }
 
 void AdminShowSysTimers(int session_id,admin_parm_type parms[],

@@ -1719,9 +1719,7 @@ messages:
       // Notify the event engine
       Send(EVENTENGINE_OBJECT,@UserKilled,#who=what,#killer=killer);
 
-      if IsClass(what,&Guest)
-         OR (killer = $)
-         OR IsClass(killer,&Guest)
+      if (killer = $)
       {
          return;
       }
@@ -4358,37 +4356,49 @@ messages:
       {
          oUser = Nth(client_msg,2);
 
-         // Find any reason to fail the character creation now.
-
-         bLegal = TRUE;
+         if (oUser = $)
+         {
+            return;
+         }
 
          // Is this char actually available for creation?
-         if NOT Send(oUser, @IsFirstTime)          
+         if NOT Send(oUser,@IsFirstTime)
          {
-            bLegal = FALSE;
+            Debug(oUser, " tried to create char on non-empty slot!");
+            AddPacket(1,BP_CHARINFO_NOT_OK, 1, CC_NOT_FIRST_TIME);
+            SendPacket(session_id);
+
+            return;
          }
 
          // Validate name and description
          sName = Nth(client_msg,3);
 
          bLegal = Send(self,@ValidateUserName,#oUser=oUser,#sName=sName);
+         if (bLegal <> CC_OK)
+         {
+            AddPacket(1,BP_CHARINFO_NOT_OK, 1, bLegal);
+            SendPacket(session_id);
+
+            return;
+         }
 
          sDesc = Nth(client_msg,4);
          if StringLength(sDesc) > MAX_CHAR_DESCRIPTION_LEN
          {
-            Debug("Got description length out of range for user ", oUser);
-            bLegal = FALSE;
+            Debug("Got description length ", StringLength(sDesc),
+                  " out of range for user ", oUser);
+            AddPacket(1,BP_CHARINFO_NOT_OK, 1, CC_DESC_TOO_LONG);
+            SendPacket(session_id);
+
+            return;
          }
 
          iGender = Nth(client_msg,5);
          if iGender <> GENDER_MALE AND iGender <> GENDER_FEMALE 
          {
-            bLegal = FALSE;
-         }
-
-         if NOT bLegal
-         {
-            AddPacket(1,BP_CHARINFO_NOT_OK);
+            Debug(oUser," somehow ended up with invalid gender ",iGender);
+            AddPacket(1,BP_CHARINFO_NOT_OK, 1, CC_INVALID_GENDER);
             SendPacket(session_id);
 
             return;
@@ -4416,15 +4426,8 @@ messages:
 
          // From this point on, we're creating a new character.
 
-         AddPacket(1,BP_CHARINFO_OK);
-         AddPacket(4,oUser);
+         AddPacket(1,BP_CHARINFO_OK, 4,oUser);
          SendPacket(session_id);
-
-         if NOT isClass(oUser,&Guest)
-         {
-            Debug("User suicide",oUser,"from",Send(oUser,@GetTrueName),
-                  "to",sName);
-         }
 
          Send(self,@ChangeUserName,#oUser=oUser,#sName=sName);
 
@@ -4441,6 +4444,7 @@ messages:
       if liClient_cmd = BP_SEND_CHARINFO
       {
          Send(self,@SendCharInfo,#session_id=session_id);
+
          return;
       }
 
@@ -4450,7 +4454,13 @@ messages:
    AdminChangeUserName(oUser=$,sName=$)
    "Can be called by admin to both validate and change a user name."
    {
-      if (Send(self,@ValidateUserName,#oUser=oUser,#sName=sName))
+      if oUser = $
+         OR sName = $
+      {
+         return system_failure_rsc;
+      }
+
+      if (Send(self,@ValidateUserName,#oUser=oUser,#sName=sName) = CC_OK)
       {
          Send(self,@ChangeUserName,#oUser=oUser,#sName=sName);
 
@@ -4461,21 +4471,17 @@ messages:
    }
 
    ValidateUserName(oUser=$,sName=$)
+   "Returns error codes for failure depending on the cause. Zero return (CC_OK) "
+   "indicates success, failure is > 0."
    {
       local i, lBadNameContain, lBadNameIs, oLookup;
-
-      if oUser = $
-         OR sName = $
-      {
-         return FALSE;
-      }
 
       if StringLength(sName) < MIN_CHAR_NAME_LEN
          OR StringLength(sName) > MAX_CHAR_NAME_LEN
       {
          Debug("Got char name length out of range for user ", oUser);
 
-         return FALSE;
+         return CC_NAME_TOO_LONG;
       }
 
       if NOT StringConsistsOf(sName, 
@@ -4483,22 +4489,28 @@ messages:
       {
          Debug("Got char name with illegal characters for user ", oUser);
 
-         return FALSE;
+         return CC_NAME_BAD_CHARACTERS;
       }
 
       oLookup = Send(SYS,@FindUserByString,#string=sName);
       if oLookup <> $
          AND oLookup <> oUser
       {
-         return FALSE;
+         return CC_NAME_IN_USE;
       }
 
       // No using monster or NPC names.
       if Send(SYS,@FindMonsterByString,#string=sName) <> $
-         OR Send(SYS,@FindNPCByString,#string=sName) <> $
-         OR Send(SYS,@FindGuildByString,#string=sName) <> $
       {
-         return FALSE;
+         return CC_NO_MOB_NAME;
+      }
+      if Send(SYS,@FindNPCByString,#string=sName) <> $
+      {
+         return CC_NO_NPC_NAME;
+      }
+      if Send(SYS,@FindGuildByString,#string=sName) <> $
+      {
+         return CC_NO_GUILD_NAME;
       }
 
       // Check for people who put "a" or "an" in front of a monster name.
@@ -4518,7 +4530,7 @@ messages:
             if StringEqual(psTemp,"a")
                OR StringEqual(psTemp,"an")
             {
-               return FALSE;
+               return CC_NO_MOB_NAME;
             }
          }
       }
@@ -4536,14 +4548,15 @@ messages:
                      "Faren", "Shal'ille", "Qor", "Faren",
                      "Kraanan", "Riija", "Jala",
                      // Causes confusion.
-                     "You", system_hidden_admin
+                     "You", system_hidden_admin, "admin", "administrator"
                    ];
 
       foreach i in lBadNameContain
       {
          if StringContain(sName,i)
          {
-            return FALSE;
+            Debug(oUser," tried to make a naughty name: ",sName);
+            return CC_NO_BAD_WORDS;
          }
       }
 
@@ -4551,15 +4564,14 @@ messages:
       {
          if StringEqual(sName, i)
          {
-            return FALSE;
+            return CC_NO_CONFUSING_NAME;
          }
       }
 
-      // Pull the string from user.  This is the name we gmail to contact
-      //  our own guild.
+      // This is the name we gmail to contact our own guild.
       if StringEqual(sName, system_guild_rsc)
       {
-            return FALSE;
+         return CC_NO_CONFUSING_NAME;
       }
 
       // Name should be valid.
@@ -4569,11 +4581,11 @@ messages:
       {
          if StringEqual(sName, i)
          {
-            return FALSE;
+            return CC_RETIRED_NAME;
          }
       }
 
-      return TRUE;
+      return CC_OK;
    }
 
    ChangeUserName(oUser=$,sName=$)

@@ -124,7 +124,7 @@ CharAppearance *CharAppearanceDestroy(CharAppearance *ap);
 void CharTabPageCommand(HWND hwnd, int id, HWND hwndCtl, UINT codeNotify);
 Bool VerifySettings(void);
 void CharInfoValid(void);
-void CharInfoInvalid(void);
+void CharInfoInvalid(BYTE err_num);
 
 BOOL CALLBACK CharNameDialogProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam);
 void CharNameGetChoices(char *name, char *desc);

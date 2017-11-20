@@ -2168,12 +2168,6 @@ messages:
       piXP_total = 0;
       piTraining_points = 0;
 
-      if pbLogged_on
-      {
-         AddPacket(1,BP_USERCOMMAND,1,UC_SEND_QUIT);
-         SendPacket(poSession);
-      }
-
       RecordStat(STAT_PLAYERSUICIDE, poSession, Send(self,@GetTrueName));
 
       // Change the name to a unique placeholder one.
@@ -2186,6 +2180,12 @@ messages:
       Send(SYS,@ChangeUserName,#oUser=self,#sName=sName);
 
       Send(self,@ResetCharacter);
+
+      if pbLogged_on
+      {
+         AddPacket(1,BP_USERCOMMAND,1,UC_SEND_QUIT);
+         SendPacket(poSession);
+      }
 
       return Send(SYS,@GetSuccessRsc);
    }

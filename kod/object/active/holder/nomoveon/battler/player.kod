@@ -164,7 +164,7 @@ resources:
    player_temp_safe_end = \
       "~I~BYou feel your guardian angel has departed once more."
 
-   player_improved = "~I~BYou have improved in the art of %s."
+   player_improved = "~I~BYou have improved in the art of %s.~n ~B[%i%%] "
    player_improved_wav_rsc = imp.ogg
    player_aggressor = "Shal'ille frowns upon your unprovoked attack."
    player_aggressor_minion = \
@@ -210,9 +210,9 @@ resources:
    player_unbound_energy_wiped = "The volatile energy surrounding you "
       "dissipates in the violently twisting aether."
    player_unbound_energy_gained = "You gather ~B~t%i~v~B unbound energy "
-      "from your fallen enemy."
+      "from your fallen enemy. (~B~t%i ~v~Btotal)"
    player_unbound_energy_lost = "You channel ~B~t%i~v~B unbound energy "
-      "to shape your spell."
+      "to shape your spell. Your remaining unbound energy is ~B~t%i~v~B."
    player_unbound_energy_wasted = "Your mind is too preoccupied with your "
       "recent encounter to make any use of the subtle energies dispersing "
       "before your eyes."
@@ -7705,7 +7705,7 @@ messages:
          if poOwner <> $
          {
             Post(self,@MsgSendUser,#message_rsc=player_improved,
-                  #parm1=spellName);
+                  #parm1=spellName,#parm2=newAbility);
             Send(poOwner,@SomethingWaveRoom,#what=self,
                   #wave_rsc=player_improved_wav_rsc);
 
@@ -8249,7 +8249,7 @@ messages:
          if poOwner <> $
          {
             Post(self,@MsgSendUser,#message_rsc=player_improved,
-                  #parm1=skillName);
+                  #parm1=skillName,#parm2=newability);
             Send(poOwner,@SomethingWaveRoom,#what=self,
                   #wave_rsc=player_improved_wav_rsc);
          }
@@ -9088,12 +9088,12 @@ messages:
          if iAmount > 0
          {
             Send(self,@MsgSendUser,#message_rsc=player_unbound_energy_gained,
-                  #parm1=iAmount);
+                  #parm1=iAmount,#parm2=piUnbound_energy);
          }
          else if iAmount < 0
          {
             Send(self,@MsgSendUser,#message_rsc=player_unbound_energy_lost,
-                  #parm1=-iAmount);
+                  #parm1=-iAmount,#parm2=piUnbound_energy);
          }
       }
 

@@ -78,7 +78,8 @@ enum
    REALTIME_CLASS = 36,
    EVENTENGINE_CLASS = 37,
    ESCAPED_CONVICT_CLASS = 38,
-   MAX_BUILTIN_CLASS = 38
+   TEST_CLASS = 39,
+   MAX_BUILTIN_CLASS = 39
 
    // To add other C-accessible KOD identifiers,
    // see the BLAKCOMP's table of BuiltinIds[].

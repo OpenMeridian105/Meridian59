@@ -8,6 +8,15 @@
 #define IDS_CHARNAMEUSED                4
 #define IDS_STATPOINTSLEFT              5
 #define IDS_SPELLPOINTSLEFT             6
+#define IDS_GENERICERROR                7
+#define IDS_NOTFIRSTTIME                8
+#define IDS_NAMETOOLONG                 9
+#define IDS_NAMEBADCHARS                10
+#define IDS_NOMOBNAME                   11
+#define IDS_NONPCNAME                   12
+#define IDS_NOGUILDNAME                 13
+#define IDS_NOBADWORDS                  14
+#define IDS_NOCONFUSINGNAME             15
 #define IDS_CHAR_NAME                   16
 #define IDS_CHARSPELLS                  17
 #define IDS_CHARSKILLS                  18
@@ -15,6 +24,9 @@
 #define IDS_CHARSTATS                   20
 #define IDS_DIALOGTITLE                 21
 #define IDS_NEWCHARACTER                22
+#define IDS_RETIREDNAME                 23
+#define IDS_DESCTOOLONG                 24
+#define IDS_INVALIDGENDER               25
 #define IDD_MAKECHAR                    102
 #define IDD_CHARNAME                    103
 #define IDD_CHARPICK                    129

@@ -230,11 +230,29 @@ void CharInfoValid(void)
    GoToGame(char_to_use);
 }
 /********************************************************************/
-void CharInfoInvalid(void)
+void CharInfoInvalid(BYTE err_num)
 {
+   int resource_num;
    if (hMakeCharDialog != NULL)
    {
-      ClientError(hInst, hMakeCharDialog, IDS_CHARNAMEUSED);
+      switch (err_num)
+      {
+      case CC_NOT_FIRST_TIME: resource_num = IDS_NOTFIRSTTIME; break;
+      case CC_NAME_TOO_LONG: resource_num = IDS_NAMETOOLONG; break;
+      case CC_NAME_BAD_CHARACTERS: resource_num = IDS_NAMEBADCHARS; break;
+      case CC_NAME_IN_USE: resource_num = IDS_CHARNAMEUSED; break;
+      case CC_NO_MOB_NAME: resource_num = IDS_NOMOBNAME; break;
+      case CC_NO_NPC_NAME: resource_num = IDS_NONPCNAME; break;
+      case CC_NO_GUILD_NAME: resource_num = IDS_NOGUILDNAME; break;
+      case CC_NO_BAD_WORDS: resource_num = IDS_NOBADWORDS; break;
+      case CC_NO_CONFUSING_NAME: resource_num = IDS_NOCONFUSINGNAME; break;
+      case CC_RETIRED_NAME: resource_num = IDS_RETIREDNAME; break;
+      case CC_DESC_TOO_LONG: resource_num = IDS_DESCTOOLONG; break;
+      case CC_INVALID_GENDER: resource_num = IDS_INVALIDGENDER; break;
+      default: resource_num = IDS_GENERICERROR; break;
+      }
+
+      ClientError(hInst, hMakeCharDialog, resource_num);
       EnableWindow(GetDlgItem(hMakeCharDialog, IDOK), TRUE);
    }
 }

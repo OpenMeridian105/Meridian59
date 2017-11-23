@@ -285,6 +285,24 @@ enum {
    UC_REQ_TIME = 60,
 };
 
+// Character creation error enum
+enum {
+   CC_OK = 0,
+   CC_GENERIC_ERROR = 1, // Client uses this for e.g. broken protocol message.
+   CC_NOT_FIRST_TIME = 2, // Player has a restart time > 0.
+   CC_NAME_TOO_LONG = 3,
+   CC_NAME_BAD_CHARACTERS = 4, // Invalid letters in name.
+   CC_NAME_IN_USE = 5,
+   CC_NO_MOB_NAME = 6,
+   CC_NO_NPC_NAME = 7,
+   CC_NO_GUILD_NAME = 8,
+   CC_NO_BAD_WORDS = 9,
+   CC_NO_CONFUSING_NAME = 10, // Gods names, 'You' etc.
+   CC_RETIRED_NAME = 11, // Names of old designers/admins.
+   CC_DESC_TOO_LONG = 12,
+   CC_INVALID_GENDER = 13,
+};
+
 // Login error action constants
 #define LA_NOTHING   0
 #define LA_LOGOFF    1
@@ -611,6 +629,7 @@ enum {
 #define SIZE_PROJECTILE_FLAGS 2
 #define SIZE_PROJECTILE_RESERVED 2
 #define SIZE_SESSION_ID      4
+#define SIZE_CHARINFO_ERROR 1
 
 // new defines for dynamic lighting of d3d client
 #define LIGHT_FLAG_NONE		0x0000

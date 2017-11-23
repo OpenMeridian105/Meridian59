@@ -287,9 +287,18 @@ Bool HandleCharInfoOk(char *ptr, long len)
 /********************************************************************/
 Bool HandleCharInfoNotOk(char *ptr, long len)
 {
-   if (len != 0)
-      return False;
-   CharInfoInvalid();
+   BYTE err_num;
+
+   // Handle with generic error if message doesn't fit.
+   if (len != SIZE_CHARINFO_ERROR)
+      CharInfoInvalid(CC_GENERIC_ERROR);
+   else
+   {
+      Extract(&ptr, &err_num, SIZE_CHARINFO_ERROR);
+      len -= SIZE_CHARINFO_ERROR;
+      CharInfoInvalid(err_num);
+   }
+
    return True;
 }
 /****************************************************************************/

@@ -115,16 +115,8 @@ int AllocateObject(int class_id)
 
 object_node * GetObjectByIDQuietly(int object_id)
 {
-   if (object_id < 0 || object_id >= num_objects)
-   {
+   if (object_id < 0 || object_id >= num_objects || objects[object_id].deleted)
       return NULL;
-   }
-   if (objects[object_id].deleted)
-   {
-      class_node* c;
-      c = GetClassByID(objects[object_id].class_id);
-      return NULL;
-   }
 
    return &objects[object_id];
 }
@@ -138,12 +130,28 @@ object_node * GetObjectByID(int object_id)
    }
    if (objects[object_id].deleted)
    {
-      class_node* c;
-      c = GetClassByID(objects[object_id].class_id);
-      if (c)
-	 eprintf("GetObjectByID can't retrieve deleted OBJECT %i which was CLASS %s\n",object_id,c->class_name);
-      else
-	 eprintf("GetObjectByID can't retrieve deleted OBJECT %i, unknown or invalid class\n",object_id);
+      eprintf("GetObjectByID can't retrieve deleted OBJECT %i which was CLASS %s\n",
+         object_id, GetClassNameByID(objects[object_id].class_id));
+
+      return NULL;
+   }
+
+   return &objects[object_id];
+}
+
+// Skip the class retrieval so it the function can be inlined.
+// Print class ID in the error message for deleted objects instead.
+object_node * GetObjectByIDInterp(int object_id)
+{
+   if (object_id < 0 || object_id >= num_objects)
+   {
+      eprintf("GetObjectByIDInterp can't retrieve invalid object %i\n", object_id);
+      return NULL;
+   }
+   if (objects[object_id].deleted)
+   {
+      eprintf("GetObjectByIDInterp can't retrieve deleted OBJECT %i, class ID %i\n",
+         object_id, objects[object_id].class_id);
       return NULL;
    }
    return &objects[object_id];

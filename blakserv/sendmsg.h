@@ -116,7 +116,7 @@ val_type __forceinline RetrieveValue(int object_id,local_var_type *local_vars,in
 
    if (data_type == PROPERTY)
    {
-      o = GetObjectByID(object_id);
+      o = GetObjectByIDInterp(object_id);
       if (o == NULL)
       {
          eprintf("[%s] RetrieveValue can't find OBJECT %i\n",BlakodDebugInfo(),
@@ -132,7 +132,7 @@ val_type __forceinline RetrieveValue(int object_id,local_var_type *local_vars,in
 
    if (data_type == CLASS_VAR)
    {
-      o = GetObjectByID(object_id);
+      o = GetObjectByIDInterp(object_id);
       if (o == NULL)
       {
          eprintf("[%s] RetrieveValue class var can't find OBJECT %i\n",
@@ -181,7 +181,7 @@ val_type __forceinline RetrieveProperty(int object_id, int data)
    object_node *o;
    val_type ret_val;
 
-   o = GetObjectByID(object_id);
+   o = GetObjectByIDInterp(object_id);
    if (o == NULL)
    {
       eprintf("[%s] RetrieveProperty can't find OBJECT %i\n", BlakodDebugInfo(),
@@ -198,7 +198,7 @@ val_type __forceinline RetrieveClassVar(int object_id, int data)
    class_node *c;
    val_type ret_val;
 
-   o = GetObjectByID(object_id);
+   o = GetObjectByIDInterp(object_id);
    if (o == NULL)
    {
       eprintf("[%s] RetrieveClassVar class var can't find OBJECT %i\n",

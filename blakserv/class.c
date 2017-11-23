@@ -361,6 +361,26 @@ class_node * GetClassByName(const char *class_name)
 	return NULL;
 }
 
+// Always returns a string, not NULL.
+const char * GetClassNameByID(int class_id)
+{
+   class_node *c = GetClassByID(class_id);
+   if (!c || !c->class_name)
+      return "Unknown";
+
+   return c->class_name;
+}
+
+// Always returns a string, not NULL.
+const char * GetClassNameByObjectID(int object_id)
+{
+   object_node *o = GetObjectByID(object_id);
+   if (!o)
+      return "Unknown";
+
+   return GetClassNameByID(o->class_id);
+}
+
 const char * GetPropertyNameByID(class_node *c,int property_id)
 {
 	return SIHashFindByValue(c->property_names,property_id);

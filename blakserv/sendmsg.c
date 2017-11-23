@@ -373,9 +373,7 @@ int SendTopLevelBlakodMessage(int object_id,int message_id,int num_parms,parm_no
          
          dprintf("SendTopLevelBlakodMessage too many instructions in posted followups\n");
          dprintf("  OBJECT %i CLASS %s MESSAGE %s (%i) some followups are being aborted\n",
-            object_id,
-            GetClassByID(GetObjectByID(object_id)->class_id)->class_name,
-            GetNameByID(message_id), message_id);
+            object_id, GetClassNameByObjectID(object_id), GetNameByID(message_id), message_id);
          
          break;
       }
@@ -820,7 +818,7 @@ __forceinline void StoreProperty(int object_id, int data, val_type new_data)
 {
    object_node *o;
 
-   o = GetObjectByID(object_id);
+   o = GetObjectByIDInterp(object_id);
    if (o == NULL)
    {
       eprintf("[%s] StoreValue can't find object %i\n",
@@ -966,7 +964,13 @@ void InterpretGotoIfTrueProperty(int object_id, local_var_type *local_vars)
    int dest_addr = get_int();
    int var_check = get_int();
 
-   if (GetObjectByID(object_id)->p[var_check].val.v.data != 0)
+   object_node *o = GetObjectByIDInterp(object_id);
+   if (!o)
+   {
+      bprintf("Critical error, NULL object in InterpretGotoIfTrueProperty!\n");
+      FlushDefaultChannels();
+   }
+   else if (o->p[var_check].val.v.data != 0)
       bkod += dest_addr;
 }
 // OP_GOTO_IF_TRUE_V: 1 byte instruction, 4 byte address, 4 classvar ID
@@ -1005,7 +1009,13 @@ void InterpretGotoIfFalseProperty(int object_id, local_var_type *local_vars)
    int dest_addr = get_int();
    int var_check = get_int();
 
-   if (GetObjectByID(object_id)->p[var_check].val.v.data == 0)
+   object_node *o = GetObjectByIDInterp(object_id);
+   if (!o)
+   {
+      bprintf("Critical error, NULL object in InterpretGotoIfFalseProperty!\n");
+      FlushDefaultChannels();
+   }
+   else if (o->p[var_check].val.v.data == 0)
       bkod += dest_addr;
 }
 // OP_GOTO_IF_FALSE_V: 1 byte instruction, 4 byte address, 4 classvar ID
@@ -1044,7 +1054,13 @@ void InterpretGotoIfNullProperty(int object_id, local_var_type *local_vars)
    int dest_addr = get_int();
    int var_check = get_int();
 
-   if (GetObjectByID(object_id)->p[var_check].val.int_val == 0)
+   object_node *o = GetObjectByIDInterp(object_id);
+   if (!o)
+   {
+      bprintf("Critical error, NULL object in InterpretGotoIfNullProperty!\n");
+      FlushDefaultChannels();
+   }
+   else if (o->p[var_check].val.int_val == 0)
       bkod += dest_addr;
 }
 // OP_GOTO_IF_NULL_V: 1 byte instruction, 4 byte address, 4 classvar ID
@@ -1083,7 +1099,13 @@ void InterpretGotoIfNeqNullProperty(int object_id, local_var_type *local_vars)
    int dest_addr = get_int();
    int var_check = get_int();
 
-   if (GetObjectByID(object_id)->p[var_check].val.int_val != 0)
+   object_node *o = GetObjectByIDInterp(object_id);
+   if (!o)
+   {
+      bprintf("Critical error, NULL object in InterpretGotoIfNeqNullProperty!\n");
+      FlushDefaultChannels();
+   }
+   else if (o->p[var_check].val.int_val != 0)
       bkod += dest_addr;
 }
 // OP_GOTO_IF_NEQ_NULL_V: 1 byte instruction, 4 byte address, 4 classvar ID

@@ -970,12 +970,10 @@ int codegen_foreach(foreach_stmt_type s, int numlocals)
    /**** Statement #3:    i = First(temp) ****/
    temp_expr.type = E_IDENTIFIER;
    temp_expr.value.idval = temp_id;
-   arg.type = ARG_EXPR;
-   arg.value.expr_val = &temp_expr;
-   call_stmt.store_required = STORE_REQUIRED;
-   call_stmt.function = FIRST;
-   call_stmt.args = list_create(&arg);
-   codegen_call(&call_stmt, s->id, s->condition->lineno, numlocals);  /* Won't require more temps */
+
+   // First() opcode.
+   expr_type first_op = make_first_op(&temp_expr);
+   flatten_expr(first_op, s->id, numlocals);   /* Won't require more temps */
 
    /* Write code for loop body */
    for (p = s->body; p != NULL; p = p->next)
@@ -990,8 +988,12 @@ int codegen_foreach(foreach_stmt_type s, int numlocals)
       BackpatchGotoUnconditional(outfile, (int)p->data, FileCurPos(outfile));
 
    /**** Statement #4:    temp = Rest(temp) ****/
-   /* Can reuse most of statement #3 above */
+   /* Can reuse temp_expr from statement #3 above */
+   call_stmt.store_required = STORE_REQUIRED;
    call_stmt.function = REST;
+   arg.type = ARG_EXPR;
+   arg.value.expr_val = &temp_expr;
+   call_stmt.args = list_create(&arg);
    codegen_call(&call_stmt, temp_id, s->condition->lineno, numlocals);  /* Won't require more temps */
 
    /**** Statement #5:    goto top ****/

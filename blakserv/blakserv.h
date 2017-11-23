@@ -34,7 +34,7 @@
 
 #define MAX_DEPTH 800
 
-#define BOF_VERSION 10
+#define BOF_VERSION 11
 
 // enable constants such as M_PI from math.h
 #define _USE_MATH_DEFINES

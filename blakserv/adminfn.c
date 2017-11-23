@@ -2429,7 +2429,6 @@ void AdminShowCalls(int session_id,admin_parm_type parms[],
 		case STRINGTONUMBER : strcpy(c_name, "StringToNumber"); break;
 		case APPENDLISTELEM : strcpy(c_name, "AppendListElem"); break;
 		case CONS : strcpy(c_name, "Cons"); break;
-		case FIRST : strcpy(c_name, "First"); break;
 		case REST : strcpy(c_name, "Rest"); break;
 		case LENGTH : strcpy(c_name, "Length"); break;
 		case LAST : strcpy(c_name, "Last"); break;

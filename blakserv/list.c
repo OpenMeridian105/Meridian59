@@ -108,6 +108,8 @@ Bool IsListNodeByID(int list_id)
 	return True;
 }
 
+// Note that the C call for First is now handled as an opcode in the
+// interpreter, so it doesn't call this message. Other places do call it.
 int First(int list_id)
 {
 	list_node *l;

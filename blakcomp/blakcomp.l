@@ -179,6 +179,7 @@ if		{ return IF; }
 in		{ return IN; }
 is		{ return IS; }
 isclass { return ISCLASS; }
+first { return FIRST; }
 local		{ return LOCAL; }
 messages	{ in_constants = False; yy_push_state(CODE); return MESSAGES; }
 not		{ return NOT; }
@@ -259,11 +260,28 @@ void yyerror(const char *s)
    else
       fname = current_fname;
 
-   /* If token is EOL, give useful error message */
-   if (!strcmp(yytext, "\n"))
+   if (!s || !yytext)
    {
+      printf("%s(%d): fatal error: Error occurred but no data reported from parser\n",
+         fname, lineno);
+   }
+   else if (!strcmp(yytext, "\n"))
+   {
+      /* If token is EOL, give useful error message */
       printf("%s(%d): fatal error: Premature end of line\n",
          fname, lineno - 1);
+   }
+   else if (!strcmp(s,"syntax error, unexpected ISCLASS") && !stricmp(yytext,"isclass"))
+   {
+      // Bad token ISCLASS and yytext is IsClass, likely non-assignment of IsClass call.
+      printf("%s(%d): fatal error: result of IsClass MUST be assigned to local or property\n",
+         fname, lineno);
+   }
+   else if (!strcmp(s,"syntax error, unexpected FIRST") && !stricmp(yytext,"first"))
+   {
+      // Bad token FIRST and yytext is first, likely non-assignment of First call.
+      printf("%s(%d): fatal error: result of First MUST be assigned to local or property\n",
+         fname, lineno);
    }
    else
    {

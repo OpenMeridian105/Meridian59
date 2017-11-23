@@ -3765,29 +3765,6 @@ int C_Cons(int object_id,local_var_type *local_vars,
    return ret_val.int_val;
 }
 
-int C_First(int object_id,local_var_type *local_vars,
-			int num_normal_parms,parm_node normal_parm_array[],
-			int num_name_parms,parm_node name_parm_array[])
-{
-	val_type list_val;
-	
-	list_val = RetrieveValue(object_id,local_vars,normal_parm_array[0].type,
-		normal_parm_array[0].value);
-	if (list_val.v.tag != TAG_LIST)
-	{
-		bprintf("C_First object %i can't take First of a non-list %i,%i\n",
-			object_id,list_val.v.tag,list_val.v.data);
-		return NIL;
-	}
-	if (!IsListNodeByID(list_val.v.data))
-	{
-		bprintf("C_First object %i can't take First of an invalid list %i,%i\n",
-			object_id,list_val.v.tag,list_val.v.data);
-		return NIL;
-	}
-	return First(list_val.v.data);
-}
-
 int C_Rest(int object_id,local_var_type *local_vars,
 		   int num_normal_parms,parm_node normal_parm_array[],
 		   int num_name_parms,parm_node name_parm_array[])

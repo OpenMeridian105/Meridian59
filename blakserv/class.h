@@ -80,6 +80,8 @@ void AddClassPropertyName(class_node *c,char *property_name,int property_id);
 void SetClassPropertyNames();
 class_node * GetClassByName(const char *class_name);
 class_node * GetClassByID(int class_id);
+const char * GetClassNameByID(int class_id);
+const char * GetClassNameByObjectID(int object_id);
 const char * GetPropertyNameByID(class_node *c,int property_id);
 int GetPropertyIDByName(class_node *c,const char *property_name);
 char *GetClassVarNameByID(class_node *c,int classvar_id);

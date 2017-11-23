@@ -372,7 +372,9 @@ admin_table_type admin_show_table[] =
 	{ AdminShowName,          {R,N}, F, A|M, NULL, 0, "name",          "Show object of user name" },
 	{ AdminShowNameIDs,       {N},   F, A|M, NULL, 0, "nameids",       "Show all name ids (message/parms)" },
 	{ AdminShowObject,        {I,N}, F, A|M, NULL, 0, "object",        "Show one object by id" },
-	//{ AdminShowOpcodes,       {N},   F, A|M, NULL, 0, "opcodes",       "Show opcode count" },
+#if KOD_OPCODE_TESTING
+	{ AdminShowOpcodes,       {N},   F, A|M, NULL, 0, "opcodes",       "Show opcode count and timing (enable with PP def KOD_OPCODE_TESTING" },
+#endif
 	{ AdminShowPackages,      {N},   F,A, NULL, 0, "packages",         "Show all packages loaded" },
 	{ AdminShowProtocol,      {N},   F, A|M, NULL, 0, "protocol",      "Show protocol message counts" },
 	{ AdminShowReferences,    {S,S,N}, F, A|M, NULL, 0, "references",  "Show what objects or lists reference a particular data value" },
@@ -2320,7 +2322,7 @@ void AdminShowEachSysTimer(systimer_node *st)
 void AdminShowOpcodes(int session_id, admin_parm_type parms[],
                       int num_blak_parm, parm_node blak_parm[])
 {
-#if 0
+#if KOD_OPCODE_TESTING
    kod_statistics *kstat;
    kstat = GetKodStats();
    UINT64 total_opcodes = 0;
@@ -2328,15 +2330,25 @@ void AdminShowOpcodes(int session_id, admin_parm_type parms[],
 
    for (int i = 0; i < NUMBER_OF_OPCODES; ++i)
    {
+      double iTime;
+
       if (!kstat->opcode_count[i])
+      {
          ++unused_opcodes;
-      total_opcodes += kstat->opcode_count[i];
-      aprintf("Opcode: %i, count: %llu\n", i, kstat->opcode_count[i]);
+         iTime = 0.0;
+      }
+      else
+      {
+         total_opcodes += kstat->opcode_count[i];
+         // Convert to nanoseconds.
+         iTime = kstat->opcode_total_time[i] * 1000.0 / kstat->opcode_count[i];
+      }
+      aprintf("Opcode: %3i, count: %10llu, time: %8.3f ns\n", i, kstat->opcode_count[i], iTime);
    }
    aprintf("\nUnused opcodes: %i\n", unused_opcodes);
    aprintf("Total instructions: %llu\n", total_opcodes);
 #else
-   aprintf("Opcode printing disabled.\n");
+   aprintf("Opcode count/timing disabled - enable by building \nblakserv with preprocessor define KOD_OPCODE_TESTING.\n");
 #endif
 }
 

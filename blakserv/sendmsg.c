@@ -111,6 +111,14 @@ void InitProfiling(void)
       kod_stat.ccall_total_time[i] = 0;
    }
 
+#if KOD_OPCODE_TESTING
+   for (i = 0; i < NUMBER_OF_OPCODES; ++i)
+   {
+      kod_stat.opcode_total_time[i] = 0;
+      kod_stat.opcode_count[i] = 0;
+   }
+#endif
+
    message_depth = 0;
 
    if (ConfigBool(DEBUG_TIME_CALLS))
@@ -711,7 +719,9 @@ int InterpretAtMessage(int object_id,class_node* c,message_node* m,
       char *op_id = bkod++;
 
       // Opcode counter - disabled on live server (unnecessary overhead).
-      //kod_stat.opcode_count[*op_id]++;
+#if KOD_OPCODE_TESTING
+      kod_stat.opcode_count[*op_id]++;
+#endif
 
       // Zero opcode is return.
       if (!*op_id)
@@ -754,7 +764,13 @@ int InterpretAtMessage(int object_id,class_node* c,message_node* m,
       }*/
 
       // Otherwise call the opcode function.
+#if KOD_OPCODE_TESTING
+      double startOpTime = GetMicroCountDouble();
+#endif
       opcode_table[*op_id](object_id, &local_vars);
+#if KOD_OPCODE_TESTING
+      kod_stat.opcode_total_time[*op_id] += (GetMicroCountDouble() - startOpTime);
+#endif
    }
 }
 

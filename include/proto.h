@@ -563,8 +563,6 @@ enum {
    DF_DIRHELP          = 0x10,   // File's location is help subdirectory
    DF_DIRMAIL          = 0x14,   // File's location is mail subdirectory
    DF_ADVERTISEMENT    = 0x18,   // Identifies file as an advertisement (goes in client dir)
-
-   DF_GUEST            = 0x20,   // File should be downloaded by guests
 };
 #define DownloadCommand(z)  ((z) & 0x03)
 #define DownloadLocation(z) ((z) & 0x1c)

@@ -13,7 +13,7 @@
 #ifndef _ACCOUNT_H
 #define _ACCOUNT_H
 
-enum { ACCOUNT_NORMAL = 0, ACCOUNT_ADMIN = 1, ACCOUNT_DM = 2, ACCOUNT_GUEST = 3};
+enum { ACCOUNT_NORMAL = 0, ACCOUNT_ADMIN = 1, ACCOUNT_DM = 2 };
 
 typedef struct account_node_struct
 {
@@ -33,7 +33,6 @@ void InitAccount(void);
 void ResetAccount(void);
 account_node * GetConsoleAccount(void);
 int GetNextAccountID(void);
-int GetUsedGuestAccounts(void);
 Bool CreateAccount(char *name,char *password,char *email,int type,int *account_id);
 int CreateAccountSecurePassword(char *name,char *password,char *email,int type);
 int RecreateAccountSecurePassword(int account_id,char *name,char *password,char *email,int type);

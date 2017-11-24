@@ -81,15 +81,6 @@ config_table_type config_table[] =
 { CHANNEL_GOD_DISK,       T, "GodDisk",       CONFIG_BOOL,  "Yes" },
 { CHANNEL_ADMIN_DISK,     T, "AdminDisk",     CONFIG_BOOL,  "Yes" },
 
-{ GUEST_GROUP,            F, "[Guest]",       CONFIG_GROUP, "" },
-{ GUEST_ACCOUNT,          F, "Account",       CONFIG_STR,   "GUEST" },
-{ GUEST_CREDITS,          F, "Credits",       CONFIG_INT,   "10" },
-{ GUEST_MAX,              T, "Max",           CONFIG_INT,   "30" },
-{ GUEST_SERVER_MIN,       T, "ServerMin",     CONFIG_INT,   "100" },
-{ GUEST_SERVER_MAX,       T, "ServerMax",     CONFIG_INT,   "109" },
-{ GUEST_TOO_MANY,         F, "TooMany",       CONFIG_STR,   
-     "Too many guests are logged on right now; please try again later." },
-
 { ACCOUNT_GROUP,          T, "[Account]",     CONFIG_GROUP, "" },
 { ACCOUNT_NUM_SLOTS,      T, "NumSlots",      CONFIG_INT,   "3" },
 

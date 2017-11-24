@@ -1762,7 +1762,7 @@ void AdminShowUser(int session_id,admin_parm_type parms[],
 void AdminShowUsage(int session_id, admin_parm_type parms[],
                     int num_blak_parm, parm_node blak_parm[])
 {
-   aprintf(":< sessions %i\n", GetUsedSessions);
+   aprintf(":< sessions %i\n", GetUsedSessions());
    aprintf(":>\n");
 }
 

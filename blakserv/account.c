@@ -79,21 +79,6 @@ void SetNextAccountID(int accountNum)
    next_account_id = accountNum;
 }
 
-static int used_guest_accounts;
-void CountUsedGuestAccounts(session_node* s)
-{
-   if (s && s->connected && s->account && s->account->type == ACCOUNT_GUEST)
-      used_guest_accounts++;
-}
-
-int GetUsedGuestAccounts(void)
-{
-   used_guest_accounts = 0;
-   ForEachSession(CountUsedGuestAccounts);
-
-   return used_guest_accounts;
-}
-
 void InsertAccount(account_node *a)
 {
    account_node *temp;
@@ -364,7 +349,7 @@ Bool SuspendAccountAbsolute(account_node *a, int suspend_time)
       return False;
    }
 
-   if (a == NULL || a->account_id == 0 || a->type == GUEST_ACCOUNT)
+   if (a == NULL || a->account_id == 0)
    {
       eprintf("SuspendAccountAbsolute: cannot suspend account\n");
       return False;
@@ -484,48 +469,15 @@ account_node * GetAccountByEmail(char *email)
 
 account_node * AccountLoginByName(char *name)
 {
-   account_node *a;
+   account_node *a = accounts;
 
-   if (0 == stricmp(name,ConfigStr(GUEST_ACCOUNT)))
+   while (a != NULL)
    {
-      if (GetUsedGuestAccounts() >= ConfigInt(GUEST_MAX))
-	 return NULL;
-
-      a = accounts;
-      while (a != NULL)
-      {
-	 if (a->type == ACCOUNT_GUEST)
-	 {
-	    if (GetSessionByAccount(a) == NULL)
-	    {
-	       /* no one using this particular guest account, so we will */
-
-	       /* give guests credits every time they login */
-	       /* a->credits = 100*ConfigInt(GUEST_CREDITS); */
-	       
-	       return a;
-	    }
-	 }
-	 a = a->next;
-      }
+      if (!stricmp(a->name, name))
+         return a;
+      a = a->next;
    }
-   else
-   {
-      a = accounts;
-      while (a != NULL)
-      {
-	 if (!stricmp(a->name,name))
-	 {
-	    /* give administrators credits every time they login */
-	    /*
-	    if (a->type == ACCOUNT_ADMIN)
-	       a->credits = 100*ConfigInt(CREDIT_ADMIN);
-	       */
-	    return a;
-	 }
-	 a = a->next;
-      }
-   }
+
    return NULL;
 }
 

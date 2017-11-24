@@ -37,14 +37,7 @@ void ConnectingDone(int error)
    if (error != 0)
    {
       debug(("Connect error %d\n", error));
-      
-      // Don't display error for guest accounts; they may want to retry
-      if (config.guest)
-      {
-	 GuestConnectError();
-	 return;
-      }
-      
+
       ClientError(hInst, hMain, IDS_SOCKETOPEN, config.comm.sockport, config.comm.hostname);
       MainSetState(STATE_OFFLINE);
       return;

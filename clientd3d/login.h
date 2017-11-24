@@ -17,7 +17,7 @@
 #define MAXPASSWORD 32
 
 /* User types */
-enum { USER_NORMAL = 0, USER_ADMIN = 1, USER_GUEST = 2 };
+enum { USER_NORMAL = 0, USER_ADMIN = 1 };
 
 void LoginInit(void);
 void LoginExit(void);

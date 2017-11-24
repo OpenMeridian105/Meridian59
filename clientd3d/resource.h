@@ -138,9 +138,7 @@
 #define IDD_ABOUT                       120
 #define IDS_UNKNOWNERROR                120
 #define IDD_MAINMENU                    121
-#define IDS_GUEST                       121
 #define IDD_DOWNLOAD                    122
-#define IDS_GUESTFULL                   122
 #define IDD_PASSWORD                    123
 #define IDD_DESCSPELL                   124
 #define IDC_TARGETCURSOR                125
@@ -195,7 +193,6 @@
 #define IDS_PROFANITYWARNING            163
 #define IDB_BLUEWHO                     164
 #define IDS_HOMEPAGEURL                 164
-#define IDD_GUEST                       166
 #define IDA_DOWNLOAD                    170
 #define IDB_VIEWTREAT_TOPLEFT           171
 #define IDB_VIEWTREAT_TOPRIGHT          172
@@ -294,7 +291,6 @@
 #define IDC_HANGUP                      1079
 #define IDC_OK                          1080
 #define IDC_MAINLIST                    1081
-#define IDC_GUEST                       1081
 #define IDC_HOMEPAGE                    1082
 #define IDC_CREDITS                     1083
 #define IDC_SCREENSIZE                  1085
@@ -380,7 +376,6 @@
 #define IDC_SCROLL                      1167
 #define IDC_SPECIAL1                    1168
 #define IDC_SPECIAL2                    1169
-#define IDC_GUESTBAR                    1170
 #define IDC_ANIMATE1                    1171
 #define IDC_AGELABEL2                   1172
 #define IDC_PROFANE                     1173

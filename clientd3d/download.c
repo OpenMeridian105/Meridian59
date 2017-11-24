@@ -233,7 +233,7 @@ BOOL CALLBACK AskDownloadDialogProc(HWND hDlg, UINT message, UINT wParam, LONG l
  */
 BOOL CALLBACK DownloadDialogProc(HWND hDlg, UINT message, UINT wParam, LONG lParam)
 {
-   int fraction, i;
+   int fraction;
    HWND hGraph;
    BOOL bResult = FALSE;
    char temp[256];
@@ -338,17 +338,6 @@ BOOL CALLBACK DownloadDialogProc(HWND hDlg, UINT message, UINT wParam, LONG lPar
          // Set download time
          DownloadSetTime(info->files[lParam].time);
 
-         // If we're a guest, there may be additional files that we are supposed to skip.
-         // If so, we should set our download time to the last file, so that we will skip
-         // the download on the next entry into the game.
-         if (config.guest)
-            for (i = lParam + 1; i < info->num_files; i++)
-            {
-               if (info->files[i].flags & DF_GUEST)
-                  break;
-               DownloadSetTime(info->files[i].time);
-            }
-
          info->current_file++;
 
          // Tell transfer thread to continue
@@ -424,10 +413,6 @@ Bool DownloadDone(DownloadFileInfo *file_info)
 #if VANILLA_UPDATER
    char zip_name[MAX_PATH + FILENAME_MAX];    // Name of uncompressed file
    char *destination_dir;
-
-   // If we're a guest, skip non-guest files
-   if (config.guest && !(file_info->flags & DF_GUEST))
-      return True;
 
    sprintf(zip_name, "%s\\%s", download_dir, file_info->filename);
 

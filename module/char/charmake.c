@@ -21,16 +21,15 @@ typedef struct {
    int     name;          // Resource id of name
    int     template_id;   // Resource id of dialog template
    DLGPROC dialog_proc;   // Dialog procedure for tab
-   Bool    guest;         // True if we should show tab for guest accounts
 } TabPage;
 
 // Window handles of modeless dialogs, one per tab
 TabPage tab_pages[] = {
-{ IDS_CHAR_NAME,      IDD_CHARNAME,       CharNameDialogProc,   True, },
-{ IDS_CHARAPPEARANCE, IDD_CHARAPPEARANCE, CharFaceDialogProc,   True, },
-{ IDS_CHARSTATS,      IDD_CHARSTATS,      CharStatsDialogProc,  True, },
-{ IDS_CHARSPELLS,     IDD_CHARSPELLS,     CharSpellsDialogProc, False, },
-{ IDS_CHARSKILLS,     IDD_CHARSKILLS,     CharSkillsDialogProc, False, },
+{ IDS_CHAR_NAME,      IDD_CHARNAME,       CharNameDialogProc,   },
+{ IDS_CHARAPPEARANCE, IDD_CHARAPPEARANCE, CharFaceDialogProc,   },
+{ IDS_CHARSTATS,      IDD_CHARSTATS,      CharStatsDialogProc,  },
+{ IDS_CHARSPELLS,     IDD_CHARSPELLS,     CharSpellsDialogProc, },
+{ IDS_CHARSKILLS,     IDD_CHARSKILLS,     CharSkillsDialogProc, },
 };
 
 #define NUM_TAB_PAGES (sizeof(tab_pages) / sizeof(TabPage))
@@ -83,10 +82,6 @@ void MakeChar(CharAppearance *ap_init, list_type spells_init, list_type skills_i
    // Prepare property sheets
    for (i=0; i < NUM_TAB_PAGES; i++)
    {
-      // Skip non-guest pages if we're a guest
-      if (cinfo->config->guest && !tab_pages[i].guest)
-	 continue;
-      
       psh.nPages++;
       psp[i].dwSize = sizeof(PROPSHEETPAGE);
       psp[i].dwFlags = PSP_USETITLE;
@@ -140,12 +135,11 @@ Bool VerifySettings(void)
 
    // If stats or spell/skill points remain, ask user to continue
    if (CharStatsGetPoints() > 0 && !AreYouSure(hInst, hMakeCharDialog, NO_BUTTON, IDS_STATPOINTSLEFT))
-     return False;
+      return False;
 
-   // Skip spell points check if a guest; they have no spell section
-   if (!cinfo->config->guest)
-      if (spell_points > 0 && !AreYouSure(hInst, hMakeCharDialog, NO_BUTTON, IDS_SPELLPOINTSLEFT))
-	 return False;
+   // Spell points check
+   if (spell_points > 0 && !AreYouSure(hInst, hMakeCharDialog, NO_BUTTON, IDS_SPELLPOINTSLEFT))
+      return False;
 
    // Fill in face bitmaps
    CharFaceGetChoices(ap, parts, &gender);
@@ -157,24 +151,24 @@ Bool VerifySettings(void)
    spells_send = NULL;
    for (l = spells; l != NULL; l = l->next)
    {
-      Spell *s = (Spell *) (l->data);
+      Spell *s = (Spell *)(l->data);
       if (s->chosen)
-	 spells_send = list_add_item(spells_send, (void *) s->id);
+         spells_send = list_add_item(spells_send, (void *)s->id);
    }
 
    skills_send = NULL;
    for (l = skills; l != NULL; l = l->next)
    {
-      Skill *s = (Skill *) (l->data);
+      Skill *s = (Skill *)(l->data);
       if (s->chosen)
-	 skills_send = list_add_item(skills_send, (void *) s->id);
+         skills_send = list_add_item(skills_send, (void *)s->id);
    }
 
    // Send char info to server
    SendNewCharInfo(char_to_use, new_name, desc, gender, NUM_FACE_OVERLAYS + 1, parts,
-		   ap->hair_translations[ap->hairt_choice], 
-		   ap->face_translations[ap->facet_choice],
-		   NUM_CHAR_STATS, stats, spells_send, skills_send);
+      ap->hair_translations[ap->hairt_choice],
+      ap->face_translations[ap->facet_choice],
+      NUM_CHAR_STATS, stats, spells_send, skills_send);
 
    list_delete(spells_send);
    list_delete(skills_send);

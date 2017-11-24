@@ -63,6 +63,7 @@
 // BOF_VERSION 11 (24-11-2017) added:
 //    - First, Rest and GetClass calls converted to 2 opcodes,
 //      45-58% faster. Syntax unmodified.
+//    - Removed unused builtin IDs (including GUEST_CLASS).
 #define BOF_VERSION 11
 
 #define IDBASE        10000      /* Lowest # of user-defined id.  Builtin ids have lower #s */

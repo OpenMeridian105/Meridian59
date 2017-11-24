@@ -346,7 +346,7 @@ int C_GodLog(int object_id,local_var_type *local_vars,
 				}
 				
 				if (c->class_id == USER_CLASS || c->class_id == DM_CLASS ||
-					c->class_id == GUEST_CLASS || c->class_id == ADMIN_CLASS)
+					 c->class_id == ADMIN_CLASS)
 				{
 					u = GetUserByObjectID(o->object_id);
 					if (u == NULL)
@@ -489,7 +489,7 @@ int C_Debug(int object_id,local_var_type *local_vars,
 				}
 				
 				if (c->class_id == USER_CLASS || c->class_id == DM_CLASS ||
-					c->class_id == GUEST_CLASS || c->class_id == ADMIN_CLASS)
+					 c->class_id == ADMIN_CLASS)
 				{
 					u = GetUserByObjectID(o->object_id);
 					if (u == NULL)

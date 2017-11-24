@@ -100,6 +100,8 @@ enum opcode_id {
    OP_ISCLASS_CONST_P,
    OP_FIRST_L,
    OP_FIRST_P,
+   OP_REST_L,
+   OP_REST_P,
    NUMBER_OF_OPCODES // Must be last.
 };
 
@@ -193,7 +195,6 @@ enum
    APPENDLISTELEM = 100,
    CONS = 101,
 
-   REST = 103,
    LENGTH = 104,
    NTH = 105,
    MLIST = 106,

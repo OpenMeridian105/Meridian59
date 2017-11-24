@@ -64,7 +64,7 @@
 
 %token AND BREAK CLASSVARS CONSTANTS CONTINUE ELSE FOR IF IN IS LOCAL MESSAGES 
 %token NOT OR PROPAGATE PROPERTIES RESOURCES RETURN WHILE DO SWITCH CASE
-%token END EOL SEP INCLUDE FOREACH DEFAULT ISCLASS FIRST
+%token END EOL SEP INCLUDE FOREACH DEFAULT ISCLASS FIRST REST
 
 /* precedence of operators, lowest precedence first */
 %left OR
@@ -374,7 +374,8 @@ expression:
 	|	id DEC_OP			{ $$ = make_un_op(POST_DEC_OP, make_expr_from_id($1)); }
 	|	DEC_OP id			{ $$ = make_un_op(PRE_DEC_OP, make_expr_from_id($2)); }
 	|	ISCLASS '(' expression ',' expression ')' { $$ = make_isclass_op($3, $5); }
-	|	FIRST '(' expression ')' { $$ = make_first_op($3); }
+	|	FIRST '(' expression ')' { $$ = make_list_op(FIRST_OP, $3); }
+	|	REST '(' expression ')' { $$ = make_list_op(REST_OP, $3); }
 	|	constant			{ $$ = make_expr_from_constant($1); }
 	|	literal				{ $$ = make_expr_from_constant($1); }
 	|	call				{ $$ = make_expr_from_call($1); }

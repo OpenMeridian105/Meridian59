@@ -931,9 +931,8 @@ int codegen_foreach(foreach_stmt_type s, int numlocals)
    int our_maxlocal, numtemps;
    stmt_struct temp_stmt;
    expr_struct temp_expr;
+   expr_type op_expr;
    assign_stmt_struct assign_stmt;
-   call_stmt_struct call_stmt;
-   arg_struct arg;
    id_type temp_id;
    long toppos;
    list_type p;
@@ -972,8 +971,8 @@ int codegen_foreach(foreach_stmt_type s, int numlocals)
    temp_expr.value.idval = temp_id;
 
    // First() opcode.
-   expr_type first_op = make_first_op(&temp_expr);
-   flatten_expr(first_op, s->id, numlocals);   /* Won't require more temps */
+   op_expr = make_list_op(FIRST_OP, &temp_expr);
+   flatten_expr(op_expr, s->id, numlocals);   /* Won't require more temps */
 
    /* Write code for loop body */
    for (p = s->body; p != NULL; p = p->next)
@@ -989,20 +988,15 @@ int codegen_foreach(foreach_stmt_type s, int numlocals)
 
    /**** Statement #4:    temp = Rest(temp) ****/
    /* Can reuse temp_expr from statement #3 above */
-   call_stmt.store_required = STORE_REQUIRED;
-   call_stmt.function = REST;
-   arg.type = ARG_EXPR;
-   arg.value.expr_val = &temp_expr;
-   call_stmt.args = list_create(&arg);
-   codegen_call(&call_stmt, temp_id, s->condition->lineno, numlocals);  /* Won't require more temps */
+   // Rest() opcode.
+   op_expr = make_list_op(REST_OP, &temp_expr);
+   flatten_expr(op_expr, temp_id, numlocals);   /* Won't require more temps */
 
    /**** Statement #5:    goto top ****/
    OutputGotoOpcode(outfile, GOTO_UNCONDITIONAL, 0);
    OutputGotoOffset(outfile, FileCurPos(outfile), toppos);
 
    codegen_exit_loop();  /* Takes care of break statements */
-
-   list_delete(call_stmt.args);
 
    return our_maxlocal;
 }

@@ -180,6 +180,7 @@ in		{ return IN; }
 is		{ return IS; }
 isclass { return ISCLASS; }
 first { return FIRST; }
+rest { return REST; }
 local		{ return LOCAL; }
 messages	{ in_constants = False; yy_push_state(CODE); return MESSAGES; }
 not		{ return NOT; }
@@ -281,6 +282,12 @@ void yyerror(const char *s)
    {
       // Bad token FIRST and yytext is first, likely non-assignment of First call.
       printf("%s(%d): fatal error: result of First MUST be assigned to local or property\n",
+         fname, lineno);
+   }
+   else if (!strcmp(s,"syntax error, unexpected REST") && !stricmp(yytext,"rest"))
+   {
+      // Bad token REST and yytext is rest, likely non-assignment of Rest call.
+      printf("%s(%d): fatal error: result of Rest MUST be assigned to local or property\n",
          fname, lineno);
    }
    else

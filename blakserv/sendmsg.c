@@ -219,7 +219,6 @@ void InitBkodInterpret(void)
 
    ccall_table[APPENDLISTELEM] = C_AppendListElem;
    ccall_table[CONS] = C_Cons;
-   ccall_table[REST] = C_Rest;
    ccall_table[LENGTH] = C_Length;
    ccall_table[LAST] = C_Last;
    ccall_table[NTH] = C_Nth;
@@ -1614,6 +1613,30 @@ void InterpretUnaryFirst_P(int object_id, local_var_type *local_vars)
 
    StoreProperty(object_id, opnode->dest, l ? l->first : nil_val);
 }
+// OP_REST_L: Unary Rest (data from list node), store in local.
+void InterpretUnaryRest_L(int object_id, local_var_type *local_vars)
+{
+   UNARY_OP_INIT
+   UNARY_OP_RETRIEVE(object_id, local_vars, opcode, opnode)
+   LIST_CHECK_UNARY(source_data, "InterpretUnaryRest_L object %i can't take Rest of a non-list %i,%i\n")
+   INVALID_LIST_CHECK_UNARY(source_data, "InterpretUnaryRest_L object %i can't take Rest of an invalid list %i,%i\n")
+
+   list_node *l = GetListNodeByID(source_data.v.data);
+
+   StoreLocal(local_vars, opnode->dest, l ? l->rest : nil_val);
+}
+// OP_REST_P: Unary Rest (data from list node), store in property.
+void InterpretUnaryRest_P(int object_id, local_var_type *local_vars)
+{
+   UNARY_OP_INIT
+   UNARY_OP_RETRIEVE(object_id, local_vars, opcode, opnode)
+   LIST_CHECK_UNARY(source_data, "InterpretUnaryRest_P object %i can't take Rest of a non-list %i,%i\n")
+   INVALID_LIST_CHECK_UNARY(source_data, "InterpretUnaryRest_P object %i can't take Rest of an invalid list %i,%i\n")
+
+   list_node *l = GetListNodeByID(source_data.v.data);
+
+   StoreProperty(object_id, opnode->dest, l ? l->rest : nil_val);
+}
 
 // Binary instructions. Two opcodes for each, depending on where we
 // store the result (local or property). Each binary instruction has:
@@ -2252,4 +2275,6 @@ void CreateOpcodeTable(void)
    opcode_table[OP_ISCLASS_CONST_P] = InterpretIsClassConst_P;
    opcode_table[OP_FIRST_L] = InterpretUnaryFirst_L;
    opcode_table[OP_FIRST_P] = InterpretUnaryFirst_P;
+   opcode_table[OP_REST_L] = InterpretUnaryRest_L;
+   opcode_table[OP_REST_P] = InterpretUnaryRest_P;
 }

@@ -389,6 +389,27 @@ int is_parent(class_type parent, class_type child)
    return is_parent(parent, child->superclass);
 }
 /************************************************************************/
+/*
+ * is_unary_list_op: returns True if opcode is a unary list op.
+ */
+int is_unary_list_op(int op)
+{
+   return (op == FIRST_OP || op == REST_OP);
+}
+/************************************************************************/
+/*
+* get_list_op_name: returns string name for list opcodes, for errors.
+*/
+char * get_list_op_name(int op)
+{
+   switch (op)
+   {
+   case FIRST_OP: return "First";
+   case REST_OP: return "Rest";
+   }
+   return "Unknown";
+}
+/************************************************************************/
 id_type duplicate_id(id_type id)
 {
    id_type temp = (id_type) SafeMalloc(sizeof(id_struct));
@@ -873,7 +894,7 @@ expr_type make_isclass_op(expr_type expr1, expr_type expr2)
    }
    else if (expr2->type == E_CALL
       || expr2->type == E_IDENTIFIER
-      || (expr2->type == E_UNARY_OP && expr2->value.unary_opval.op == FIRST_OP))
+      || (expr2->type == E_UNARY_OP && is_unary_list_op(expr2->value.unary_opval.op)))
    {
       // These are valid ways of obtaining class ID at runtime.
       e->value.binary_opval.op = ISCLASS_OP;
@@ -889,27 +910,27 @@ expr_type make_isclass_op(expr_type expr1, expr_type expr2)
       action_error("IsClass call cannot use constant for object field.");
    else if (expr1->type == E_BINARY_OP)
       action_error("IsClass call cannot use binary op for object field.");
-   else if (expr1->type == E_UNARY_OP && expr1->value.unary_opval.op != FIRST_OP)
+   else if (expr1->type == E_UNARY_OP && !is_unary_list_op(expr1->value.unary_opval.op))
       action_error("IsClass call cannot use unary op for object field.");
 
    return e;
 }
 /************************************************************************/
-expr_type make_first_op(expr_type expr1)
+expr_type make_list_op(int op, expr_type expr1)
 {
    expr_type e = (expr_type)SafeMalloc(sizeof(expr_struct));
 
-   // Expr1 must be call, ID or First unary OP.
+   // Expr1 must be call, ID or list (First/Rest) unary OP.
    if (expr1->type == E_CONSTANT)
-      action_error("First call cannot use constant for list field.");
+      action_error("%s call cannot use constant for list field.", get_list_op_name(op));
    else if (expr1->type == E_BINARY_OP)
-      action_error("First call cannot use binary op for list field.");
-   else if (expr1->type == E_UNARY_OP && expr1->value.unary_opval.op != FIRST_OP)
-      action_error("First call cannot use unary op for list field.");
+      action_error("%s call cannot use binary op for list field.", get_list_op_name(op));
+   else if (expr1->type == E_UNARY_OP && !is_unary_list_op(expr1->value.unary_opval.op))
+      action_error("%s call cannot use unary op for list field.", get_list_op_name(op));
 
    e->type = E_UNARY_OP;
    e->value.unary_opval.exp = expr1;
-   e->value.unary_opval.op = FIRST_OP;
+   e->value.unary_opval.op = op;
    e->lineno = lineno;
 
    return e;

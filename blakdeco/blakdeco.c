@@ -37,6 +37,7 @@ enum
    PRE_INCREMENT = 6,
    PRE_DECREMENT = 7,
    UNARY_FIRST = 8,
+   UNARY_REST = 9,
 };
 enum
 {
@@ -430,6 +431,7 @@ char * name_unary_operation(int unary_op)
       case PRE_DECREMENT :
       case POST_DECREMENT : return "--";
       case UNARY_FIRST: return "First elem";
+      case UNARY_REST: return "Rest elem";
       default : return "INVALID";
    }
 }
@@ -554,7 +556,6 @@ char * name_function(int fnum)
 
    case APPENDLISTELEM : return "AppendListElem";
    case CONS  : return "Cons";
-   case REST  : return "Rest";
    case LENGTH  : return "Length";
    case ISLISTMATCH : return "IsListMatch";
    case NTH  : return "Nth";
@@ -1043,6 +1044,14 @@ void dump_unary_first_P(char *text)
 {
    dump_unary(text, PROPERTY, UNARY_FIRST);
 }
+void dump_unary_rest_L(char *text)
+{
+   dump_unary(text, LOCAL_VAR, UNARY_REST);
+}
+void dump_unary_rest_P(char *text)
+{
+   dump_unary(text, PROPERTY, UNARY_REST);
+}
 
 // Binary
 void dump_binary_add_L(char *text)
@@ -1259,4 +1268,6 @@ void CreateOpcodeTable(void)
    opcode_table[OP_ISCLASS_CONST_P] = dump_isclass_const_P;
    opcode_table[OP_FIRST_L] = dump_unary_first_L;
    opcode_table[OP_FIRST_P] = dump_unary_first_P;
+   opcode_table[OP_REST_L] = dump_unary_rest_L;
+   opcode_table[OP_REST_P] = dump_unary_rest_P;
 }

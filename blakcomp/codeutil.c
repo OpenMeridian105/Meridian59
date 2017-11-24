@@ -536,6 +536,7 @@ int flatten_expr(expr_type e, id_type destvar, int maxlocal)
          case POST_INC_OP: OutputByte(outfile, (BYTE)OP_UNARY_POSTINC);  break;
          case POST_DEC_OP: OutputByte(outfile, (BYTE)OP_UNARY_POSTDEC);  break;
          case FIRST_OP:    OutputByte(outfile, (BYTE)OP_FIRST_L);        break;
+         case REST_OP:     OutputByte(outfile, (BYTE)OP_REST_L);         break;
 
          default:
             codegen_error("Unknown unary operator type (%d) encountered",
@@ -554,6 +555,7 @@ int flatten_expr(expr_type e, id_type destvar, int maxlocal)
          case POST_INC_OP: OutputByte(outfile, (BYTE)OP_UNARY_POSTINC);  break;
          case POST_DEC_OP: OutputByte(outfile, (BYTE)OP_UNARY_POSTDEC);  break;
          case FIRST_OP:    OutputByte(outfile, (BYTE)OP_FIRST_P);        break;
+         case REST_OP:     OutputByte(outfile, (BYTE)OP_REST_P);         break;
 
          default:
             codegen_error("Unknown unary operator type (%d) encountered",

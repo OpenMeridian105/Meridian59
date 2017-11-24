@@ -179,6 +179,7 @@ if		{ return IF; }
 in		{ return IN; }
 is		{ return IS; }
 isclass { return ISCLASS; }
+getclass { return GETCLASS; }
 first { return FIRST; }
 rest { return REST; }
 local		{ return LOCAL; }
@@ -288,6 +289,12 @@ void yyerror(const char *s)
    {
       // Bad token REST and yytext is rest, likely non-assignment of Rest call.
       printf("%s(%d): fatal error: result of Rest MUST be assigned to local or property\n",
+         fname, lineno);
+   }
+   else if (!strcmp(s,"syntax error, unexpected GETCLASS") && !stricmp(yytext,"getclass"))
+   {
+      // Bad token GETCLASS and yytext is getclass, likely non-assignment of GetClass call.
+      printf("%s(%d): fatal error: result of GetClass MUST be assigned to local or property\n",
          fname, lineno);
    }
    else

@@ -400,12 +400,13 @@ int is_unary_list_op(int op)
 /*
 * get_list_op_name: returns string name for list opcodes, for errors.
 */
-char * get_list_op_name(int op)
+char * get_unarycall_op_name(int op)
 {
    switch (op)
    {
    case FIRST_OP: return "First";
    case REST_OP: return "Rest";
+   case GETCLASS_OP: return "GetClass";
    }
    return "Unknown";
 }
@@ -894,7 +895,9 @@ expr_type make_isclass_op(expr_type expr1, expr_type expr2)
    }
    else if (expr2->type == E_CALL
       || expr2->type == E_IDENTIFIER
-      || (expr2->type == E_UNARY_OP && is_unary_list_op(expr2->value.unary_opval.op)))
+      || (expr2->type == E_UNARY_OP
+         && (is_unary_list_op(expr2->value.unary_opval.op)
+         || expr2->value.unary_opval.op == GETCLASS_OP)))
    {
       // These are valid ways of obtaining class ID at runtime.
       e->value.binary_opval.op = ISCLASS_OP;
@@ -916,17 +919,17 @@ expr_type make_isclass_op(expr_type expr1, expr_type expr2)
    return e;
 }
 /************************************************************************/
-expr_type make_list_op(int op, expr_type expr1)
+expr_type make_unarycall_op(int op, expr_type expr1)
 {
    expr_type e = (expr_type)SafeMalloc(sizeof(expr_struct));
 
    // Expr1 must be call, ID or list (First/Rest) unary OP.
    if (expr1->type == E_CONSTANT)
-      action_error("%s call cannot use constant for list field.", get_list_op_name(op));
+      action_error("%s call cannot use constant as an argument.", get_unarycall_op_name(op));
    else if (expr1->type == E_BINARY_OP)
-      action_error("%s call cannot use binary op for list field.", get_list_op_name(op));
+      action_error("%s call cannot use binary op as an argument.", get_unarycall_op_name(op));
    else if (expr1->type == E_UNARY_OP && !is_unary_list_op(expr1->value.unary_opval.op))
-      action_error("%s call cannot use unary op for list field.", get_list_op_name(op));
+      action_error("%s call cannot use unary op as an argument.", get_unarycall_op_name(op));
 
    e->type = E_UNARY_OP;
    e->value.unary_opval.exp = expr1;

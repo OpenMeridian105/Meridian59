@@ -1050,34 +1050,6 @@ int C_CreateObject(int object_id,local_var_type *local_vars,
 	return ret_val.int_val;
 }
 
-int C_GetClass(int object_id,local_var_type *local_vars,
-			   int num_normal_parms,parm_node normal_parm_array[],
-			   int num_name_parms,parm_node name_parm_array[])
-{
-	val_type object_val,ret_val;
-	object_node *o;
-	
-	object_val = RetrieveValue(object_id,local_vars,normal_parm_array[0].type,
-		normal_parm_array[0].value);
-	if (object_val.v.tag != TAG_OBJECT)
-	{
-		bprintf("C_GetClass can't deal with non-object %i,%i\n",
-			object_val.v.tag,object_val.v.data);
-		return NIL;
-	}
-	
-	o = GetObjectByID(object_val.v.data);
-	if (o == NULL)
-	{
-		bprintf("C_GetClass can't find object %i\n",object_val.v.data);
-		return NIL;
-	}
-	
-	ret_val.v.tag = TAG_CLASS;
-	ret_val.v.data = o->class_id;
-	return ret_val.int_val;
-}
-
 // Look up the string given by val.  If found, return true and set *str and *len
 // to the string value and length respectively.  function_name is the C function
 // name used in reporting errors.

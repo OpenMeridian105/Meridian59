@@ -161,7 +161,6 @@ void InitBkodInterpret(void)
       ccall_table[i] = C_Invalid;
    
    ccall_table[CREATEOBJECT] = C_CreateObject;
-   ccall_table[GETCLASS] = C_GetClass;
    
    ccall_table[SENDMESSAGE] = C_SendMessage;
    ccall_table[POSTMESSAGE] = C_PostMessage;
@@ -1637,6 +1636,61 @@ void InterpretUnaryRest_P(int object_id, local_var_type *local_vars)
 
    StoreProperty(object_id, opnode->dest, l ? l->rest : nil_val);
 }
+// OP_GETCLASS_L: Unary GetClass (return class ID or $), store in local.
+void InterpretUnaryGetClass_L(int object_id, local_var_type *local_vars)
+{
+   UNARY_OP_INIT;
+   UNARY_OP_RETRIEVE(object_id, local_vars, opcode, opnode);
+   val_type store_val;
+
+   if (source_data.v.tag != TAG_OBJECT)
+   {
+      bprintf("InterpretUnaryGetClass_L can't deal with non-object %i,%i\n",
+         source_data.v.tag, source_data.v.data);
+      StoreLocal(local_vars, opnode->dest, nil_val);
+      return;
+   }
+
+   object_node *o = GetObjectByIDInterp(source_data.v.data);
+   if (o == NULL)
+   {
+      bprintf("InterpretUnaryGetClass_L can't find object %i\n", source_data.v.data);
+      StoreLocal(local_vars, opnode->dest, nil_val);
+      return;
+   }
+
+   store_val.v.tag = TAG_CLASS;
+   store_val.v.data = o->class_id;
+
+   StoreLocal(local_vars, opnode->dest, store_val);
+}
+// OP_GETCLASS_P: Unary GetClass (return class ID or $), store in local.
+void InterpretUnaryGetClass_P(int object_id, local_var_type *local_vars)
+{
+   UNARY_OP_INIT;
+   UNARY_OP_RETRIEVE(object_id, local_vars, opcode, opnode);
+   val_type store_val;
+
+   if (source_data.v.tag != TAG_OBJECT)
+   {
+      bprintf("InterpretUnaryGetClass_P can't deal with non-object %i,%i\n",
+         source_data.v.tag, source_data.v.data);
+      StoreProperty(object_id, opnode->dest, nil_val);
+      return;
+   }
+
+   object_node *o = GetObjectByIDInterp(source_data.v.data);
+   if (o == NULL)
+   {
+      bprintf("InterpretUnaryGetClass_P can't find object %i\n", source_data.v.data);
+      StoreProperty(object_id, opnode->dest, nil_val);
+      return;
+   }
+   store_val.v.tag = TAG_CLASS;
+   store_val.v.data = o->class_id;
+
+   StoreProperty(object_id, opnode->dest, store_val);
+}
 
 // Binary instructions. Two opcodes for each, depending on where we
 // store the result (local or property). Each binary instruction has:
@@ -2277,4 +2331,6 @@ void CreateOpcodeTable(void)
    opcode_table[OP_FIRST_P] = InterpretUnaryFirst_P;
    opcode_table[OP_REST_L] = InterpretUnaryRest_L;
    opcode_table[OP_REST_P] = InterpretUnaryRest_P;
+   opcode_table[OP_GETCLASS_L] = InterpretUnaryGetClass_L;
+   opcode_table[OP_GETCLASS_P] = InterpretUnaryGetClass_P;
 }

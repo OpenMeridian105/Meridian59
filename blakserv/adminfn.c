@@ -228,6 +228,7 @@ void AdminMark(int session_id, admin_parm_type parms[], int num_blak_parm, parm_
 
 void AdminTestFirst(int session_id, admin_parm_type parms[], int num_blak_parm, parm_node blak_parm[]);
 void AdminTestRest(int session_id, admin_parm_type parms[], int num_blak_parm, parm_node blak_parm[]);
+void AdminTestGetClass(int session_id, admin_parm_type parms[], int num_blak_parm, parm_node blak_parm[]);
 
 admin_table_type admin_showtimer_table[] =
 {
@@ -241,6 +242,7 @@ admin_table_type admin_test_table[] =
 {
    { AdminTestFirst, {I,N}, F, A|M, NULL, 0, "first", "Benchmark the 'First' instruction, int parm is loop iterations." },
    { AdminTestRest, {I,N}, F, A|M, NULL, 0, "rest", "Benchmark the 'Rest' instruction, int parm is loop iterations." },
+   { AdminTestGetClass, {I,N}, F, A|M, NULL, 0, "getclass", "Benchmark the 'getclass' instruction, int parm is loop iterations." },
 };
 #define LEN_ADMIN_TEST_TABLE (sizeof(admin_test_table)/sizeof(admin_table_type))
 
@@ -2237,6 +2239,15 @@ void AdminTimeOPLocalProp(int test_count, char *local_msg, char *prop_msg, char 
       aprintf("Sent bad loop count %i.  Setting to safe value of 5000.\n", test_count);
       test_count = 5000;
    }
+   else if (test_count < 10)
+   {
+      aprintf("Minimum number of function calls is 10 (function runs \n10x each iteration). Setting to 10.\n");
+      test_count = 10;
+   }
+   else if (test_count % 10 != 0)
+   {
+      aprintf("Note that the tested function runs 10x in each loop, \nso the requested number of calls is rounded.\n");
+   }
 
    // Create a kod parameter for the number of iterations.
    count_val.v.tag = TAG_INT;
@@ -2309,6 +2320,14 @@ void AdminTestRest(int session_id, admin_parm_type parms[],
    AdminTimeOPLocalProp(test_count, "TimeRestStoreLocal", "TimeRestStoreProperty", "Rest");
 }
 
+void AdminTestGetClass(int session_id, admin_parm_type parms[],
+                       int num_blak_parm, parm_node blak_parm[])
+{
+   int test_count = (int)parms[0];
+   aprintf("test count:%i\n", test_count);
+   AdminTimeOPLocalProp(test_count, "TimeGetClassStoreLocal", "TimeGetClassStoreProperty", "GetClass");
+}
+
 void AdminShowOpcodes(int session_id, admin_parm_type parms[],
                       int num_blak_parm, parm_node blak_parm[])
 {
@@ -2353,7 +2372,7 @@ void AdminShowCalls(int session_id,admin_parm_type parms[],
 	num_show = (int)parms[0];
 	
 	kstat = GetKodStats();
-	
+   aprintf("\nNote: IsClass, GetClass, First and Rest are \nnow opcodes and won't show in this list.\n\n");
 	aprintf("%4s %-23s %-12s %s\n","Rank","Function","Count","Avg Time(us)");
 	
 	ignore_val = -1;
@@ -2377,7 +2396,6 @@ void AdminShowCalls(int session_id,admin_parm_type parms[],
 		switch (max_index)
 		{
 		case CREATEOBJECT : strcpy(c_name, "CreateObject"); break;
-		case GETCLASS : strcpy(c_name, "GetClass"); break;
 		case SENDMESSAGE : strcpy(c_name, "Send"); break;
 		case POSTMESSAGE : strcpy(c_name, "Post"); break;
 		case SENDLISTMSG : strcpy(c_name, "SendList"); break;

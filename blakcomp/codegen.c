@@ -971,7 +971,7 @@ int codegen_foreach(foreach_stmt_type s, int numlocals)
    temp_expr.value.idval = temp_id;
 
    // First() opcode.
-   op_expr = make_list_op(FIRST_OP, &temp_expr);
+   op_expr = make_unarycall_op(FIRST_OP, &temp_expr);
    flatten_expr(op_expr, s->id, numlocals);   /* Won't require more temps */
 
    /* Write code for loop body */
@@ -989,7 +989,7 @@ int codegen_foreach(foreach_stmt_type s, int numlocals)
    /**** Statement #4:    temp = Rest(temp) ****/
    /* Can reuse temp_expr from statement #3 above */
    // Rest() opcode.
-   op_expr = make_list_op(REST_OP, &temp_expr);
+   op_expr = make_unarycall_op(REST_OP, &temp_expr);
    flatten_expr(op_expr, temp_id, numlocals);   /* Won't require more temps */
 
    /**** Statement #5:    goto top ****/

@@ -38,6 +38,7 @@ enum
    PRE_DECREMENT = 7,
    UNARY_FIRST = 8,
    UNARY_REST = 9,
+   UNARY_GETCLASS = 10,
 };
 enum
 {
@@ -432,6 +433,7 @@ char * name_unary_operation(int unary_op)
       case POST_DECREMENT : return "--";
       case UNARY_FIRST: return "First elem";
       case UNARY_REST: return "Rest elem";
+      case UNARY_GETCLASS: return "GetClass";
       default : return "INVALID";
    }
 }
@@ -491,8 +493,6 @@ char * name_function(int fnum)
    switch (fnum)
    {
    case CREATEOBJECT : return "Create";
-   //   case DELETEOBJECT : return "Delete";
-   case GETCLASS : return "GetClass";
 
    case SENDMESSAGE : return "Send";
    case POSTMESSAGE : return "Post";
@@ -1052,7 +1052,14 @@ void dump_unary_rest_P(char *text)
 {
    dump_unary(text, PROPERTY, UNARY_REST);
 }
-
+void dump_unary_getclass_L(char *text)
+{
+   dump_unary(text, LOCAL_VAR, UNARY_GETCLASS);
+}
+void dump_unary_getclass_P(char *text)
+{
+   dump_unary(text, PROPERTY, UNARY_GETCLASS);
+}
 // Binary
 void dump_binary_add_L(char *text)
 {
@@ -1270,4 +1277,6 @@ void CreateOpcodeTable(void)
    opcode_table[OP_FIRST_P] = dump_unary_first_P;
    opcode_table[OP_REST_L] = dump_unary_rest_L;
    opcode_table[OP_REST_P] = dump_unary_rest_P;
+   opcode_table[OP_GETCLASS_L] = dump_unary_getclass_L;
+   opcode_table[OP_GETCLASS_P] = dump_unary_getclass_P;
 }

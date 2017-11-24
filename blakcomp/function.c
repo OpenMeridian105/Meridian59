@@ -77,7 +77,6 @@ function_type Functions[] = {
 {"RoomData",            ROOMDATA,        STORE_REQUIRED, AEXPRESSION,   ANONE},
 {"LoadRoom",            CREATEROOMDATA,  STORE_REQUIRED, AEXPRESSION,   ANONE},
 {"FreeRoom",            FREEROOM,        STORE_OPTIONAL, AEXPRESSION,   ANONE},
-{"GetClass",            GETCLASS,        STORE_REQUIRED, AEXPRESSION,   ANONE},
 {"GetTime",             GETTIME,         STORE_REQUIRED, ANONE},
 {"GetUnixTimeString",   GETUNIXTIMESTRING,STORE_REQUIRED,ANONE},
 {"OldTimestampFix",     OLDTIMESTAMPFIX, STORE_REQUIRED, AEXPRESSION, ANONE},

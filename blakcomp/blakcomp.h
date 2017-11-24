@@ -60,7 +60,11 @@
 //    - Split the 3 call opcodes into 6 based on whether any settings
 //      (named parameters) are present. Most calls use the new opcodes
 //      and skip outputting a 0 num settings byte. 10% kod performance increase.
-#define BOF_VERSION 10
+// BOF_VERSION 11 (24-11-2017) added:
+//    - First, Rest and GetClass calls converted to 2 opcodes,
+//      45-58% faster. Syntax unmodified.
+//    - Removed unused builtin IDs (including GUEST_CLASS).
+#define BOF_VERSION 11
 
 #define IDBASE        10000      /* Lowest # of user-defined id.  Builtin ids have lower #s */
 #define RESOURCEBASE  20000      /* Lowest # of user-defined resource. */
@@ -103,7 +107,8 @@ enum
    REALTIME_CLASS = 36,
    EVENTENGINE_CLASS = 37,
    ESCAPED_CONVICT_CLASS = 38,
-   MAX_BUILTIN_CLASS = 38
+   TEST_CLASS = 39,
+   MAX_BUILTIN_CLASS = 39
 };
 
 enum { C_NUMBER, C_STRING, C_NIL, C_FNAME, C_RESOURCE, C_CLASS, C_MESSAGE, C_OVERRIDE }; 
@@ -111,7 +116,8 @@ enum { C_NUMBER, C_STRING, C_NIL, C_FNAME, C_RESOURCE, C_CLASS, C_MESSAGE, C_OVE
 /* Types of operators */
 enum { AND_OP, OR_OP, PLUS_OP, MINUS_OP, MULT_OP, DIV_OP, MOD_OP, NOT_OP, NEG_OP,
        NEQ_OP, EQ_OP, LT_OP, GT_OP, LEQ_OP, GEQ_OP, BITAND_OP, BITOR_OP, BITNOT_OP,
-       PRE_INC_OP, PRE_DEC_OP, POST_INC_OP, POST_DEC_OP, ISCLASS_OP, ISCLASS_CONST_OP};
+       PRE_INC_OP, PRE_DEC_OP, POST_INC_OP, POST_DEC_OP, ISCLASS_OP, ISCLASS_CONST_OP,
+       FIRST_OP, REST_OP, GETCLASS_OP};
 
 typedef struct {
    int type;
@@ -368,6 +374,7 @@ expr_type make_expr_from_constant(const_type);
 expr_type make_expr_from_literal(id_type id);
 expr_type make_bin_op(expr_type, int, expr_type);
 expr_type make_isclass_op(expr_type, expr_type);
+expr_type make_unarycall_op(int op, expr_type expr1);
 expr_type make_un_op(int, expr_type);
 
 arg_type make_arg_from_expr(expr_type expr);

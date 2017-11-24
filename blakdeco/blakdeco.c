@@ -14,7 +14,7 @@
 
 #include "bkod.h"
 
-#define BOF_VERSION 10
+#define BOF_VERSION 11
 
 #define MAX_CLASSES 100
 #define MAX_HANDLERS 500
@@ -36,6 +36,9 @@ enum
    POST_DECREMENT = 5,
    PRE_INCREMENT = 6,
    PRE_DECREMENT = 7,
+   UNARY_FIRST = 8,
+   UNARY_REST = 9,
+   UNARY_GETCLASS = 10,
 };
 enum
 {
@@ -428,7 +431,9 @@ char * name_unary_operation(int unary_op)
       case POST_INCREMENT : return "++";
       case PRE_DECREMENT :
       case POST_DECREMENT : return "--";
-      
+      case UNARY_FIRST: return "First elem";
+      case UNARY_REST: return "Rest elem";
+      case UNARY_GETCLASS: return "GetClass";
       default : return "INVALID";
    }
 }
@@ -488,8 +493,6 @@ char * name_function(int fnum)
    switch (fnum)
    {
    case CREATEOBJECT : return "Create";
-   //   case DELETEOBJECT : return "Delete";
-   case GETCLASS : return "GetClass";
 
    case SENDMESSAGE : return "Send";
    case POSTMESSAGE : return "Post";
@@ -553,8 +556,6 @@ char * name_function(int fnum)
 
    case APPENDLISTELEM : return "AppendListElem";
    case CONS  : return "Cons";
-   case FIRST  : return "First";
-   case REST  : return "Rest";
    case LENGTH  : return "Length";
    case ISLISTMATCH : return "IsListMatch";
    case NTH  : return "Nth";
@@ -1035,6 +1036,30 @@ void dump_unary_predec(char *text)
 {
    dump_unary(text, 0, PRE_DECREMENT);
 }
+void dump_unary_first_L(char *text)
+{
+   dump_unary(text, LOCAL_VAR, UNARY_FIRST);
+}
+void dump_unary_first_P(char *text)
+{
+   dump_unary(text, PROPERTY, UNARY_FIRST);
+}
+void dump_unary_rest_L(char *text)
+{
+   dump_unary(text, LOCAL_VAR, UNARY_REST);
+}
+void dump_unary_rest_P(char *text)
+{
+   dump_unary(text, PROPERTY, UNARY_REST);
+}
+void dump_unary_getclass_L(char *text)
+{
+   dump_unary(text, LOCAL_VAR, UNARY_GETCLASS);
+}
+void dump_unary_getclass_P(char *text)
+{
+   dump_unary(text, PROPERTY, UNARY_GETCLASS);
+}
 // Binary
 void dump_binary_add_L(char *text)
 {
@@ -1248,4 +1273,10 @@ void CreateOpcodeTable(void)
    opcode_table[OP_ISCLASS_P] = dump_isclass_P;
    opcode_table[OP_ISCLASS_CONST_L] = dump_isclass_const_L;
    opcode_table[OP_ISCLASS_CONST_P] = dump_isclass_const_P;
+   opcode_table[OP_FIRST_L] = dump_unary_first_L;
+   opcode_table[OP_FIRST_P] = dump_unary_first_P;
+   opcode_table[OP_REST_L] = dump_unary_rest_L;
+   opcode_table[OP_REST_P] = dump_unary_rest_P;
+   opcode_table[OP_GETCLASS_L] = dump_unary_getclass_L;
+   opcode_table[OP_GETCLASS_P] = dump_unary_getclass_P;
 }

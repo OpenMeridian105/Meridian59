@@ -30,6 +30,9 @@ int num_interpreted = 0; /* number of instructions in this top level call */
 
 int trace_session_id = INVALID_ID;
 
+// Static NIL.
+static val_type nil_val;
+
 post_queue_type post_q;
 
 // Structs for unary/binary op to read data quicker. Can't include the
@@ -111,6 +114,14 @@ void InitProfiling(void)
       kod_stat.ccall_total_time[i] = 0;
    }
 
+#if KOD_OPCODE_TESTING
+   for (i = 0; i < NUMBER_OF_OPCODES; ++i)
+   {
+      kod_stat.opcode_total_time[i] = 0;
+      kod_stat.opcode_count[i] = 0;
+   }
+#endif
+
    message_depth = 0;
 
    if (ConfigBool(DEBUG_TIME_CALLS))
@@ -140,6 +151,9 @@ void InitBkodInterpret(void)
    post_q.next = 0;
    post_q.last = 0;
    
+   // Init the nil value.
+   nil_val.int_val = NIL;
+
    // Create the opcode table.
    CreateOpcodeTable();
 
@@ -147,7 +161,6 @@ void InitBkodInterpret(void)
       ccall_table[i] = C_Invalid;
    
    ccall_table[CREATEOBJECT] = C_CreateObject;
-   ccall_table[GETCLASS] = C_GetClass;
    
    ccall_table[SENDMESSAGE] = C_SendMessage;
    ccall_table[POSTMESSAGE] = C_PostMessage;
@@ -205,8 +218,6 @@ void InitBkodInterpret(void)
 
    ccall_table[APPENDLISTELEM] = C_AppendListElem;
    ccall_table[CONS] = C_Cons;
-   ccall_table[FIRST] = C_First;
-   ccall_table[REST] = C_Rest;
    ccall_table[LENGTH] = C_Length;
    ccall_table[LAST] = C_Last;
    ccall_table[NTH] = C_Nth;
@@ -711,7 +722,9 @@ int InterpretAtMessage(int object_id,class_node* c,message_node* m,
       char *op_id = bkod++;
 
       // Opcode counter - disabled on live server (unnecessary overhead).
-      //kod_stat.opcode_count[*op_id]++;
+#if KOD_OPCODE_TESTING
+      kod_stat.opcode_count[*op_id]++;
+#endif
 
       // Zero opcode is return.
       if (!*op_id)
@@ -754,7 +767,13 @@ int InterpretAtMessage(int object_id,class_node* c,message_node* m,
       }*/
 
       // Otherwise call the opcode function.
+#if KOD_OPCODE_TESTING
+      double startOpTime = GetMicroCountDouble();
+#endif
       opcode_table[*op_id](object_id, &local_vars);
+#if KOD_OPCODE_TESTING
+      kod_stat.opcode_total_time[*op_id] += (GetMicroCountDouble() - startOpTime);
+#endif
    }
 }
 
@@ -1555,6 +1574,124 @@ void InterpretUnaryPreDec(int object_id, local_var_type *local_vars)
    StoreValue(object_id, local_vars, opcode->source2, opnode->dest, source_data);
 }
 
+// Unary list instructions.
+#define LIST_CHECK_UNARY(a, b) \
+   if (a.v.tag != TAG_LIST) \
+   { \
+      bprintf(b, a.v.tag, a.v.data); \
+      return; \
+   }
+#define INVALID_LIST_CHECK_UNARY(a, b) \
+   if (!IsListNodeByID(a.v.data)) \
+   { \
+      bprintf(b, a.v.tag, a.v.data); \
+      return; \
+   }
+
+// OP_UNARY_FIRST_L: Unary First (data from list node), store in local.
+void InterpretUnaryFirst_L(int object_id, local_var_type *local_vars)
+{
+   UNARY_OP_INIT
+   UNARY_OP_RETRIEVE(object_id, local_vars, opcode, opnode)
+   LIST_CHECK_UNARY(source_data, "InterpretUnaryFirst_L object %i can't take First of a non-list %i,%i\n")
+   INVALID_LIST_CHECK_UNARY(source_data, "InterpretUnaryFirst_L object %i can't take First of an invalid list %i,%i\n")
+
+   list_node *l = GetListNodeByID(source_data.v.data);
+
+   StoreLocal(local_vars, opnode->dest, l ? l->first : nil_val);
+}
+// OP_UNARY_FIRST_P: Unary First (data from list node), store in property.
+void InterpretUnaryFirst_P(int object_id, local_var_type *local_vars)
+{
+   UNARY_OP_INIT
+   UNARY_OP_RETRIEVE(object_id, local_vars, opcode, opnode)
+   LIST_CHECK_UNARY(source_data, "InterpretUnaryFirst_P object %i can't take First of a non-list %i,%i\n")
+   INVALID_LIST_CHECK_UNARY(source_data, "InterpretUnaryFirst_P object %i can't take First of an invalid list %i,%i\n")
+
+   list_node *l = GetListNodeByID(source_data.v.data);
+
+   StoreProperty(object_id, opnode->dest, l ? l->first : nil_val);
+}
+// OP_REST_L: Unary Rest (data from list node), store in local.
+void InterpretUnaryRest_L(int object_id, local_var_type *local_vars)
+{
+   UNARY_OP_INIT
+   UNARY_OP_RETRIEVE(object_id, local_vars, opcode, opnode)
+   LIST_CHECK_UNARY(source_data, "InterpretUnaryRest_L object %i can't take Rest of a non-list %i,%i\n")
+   INVALID_LIST_CHECK_UNARY(source_data, "InterpretUnaryRest_L object %i can't take Rest of an invalid list %i,%i\n")
+
+   list_node *l = GetListNodeByID(source_data.v.data);
+
+   StoreLocal(local_vars, opnode->dest, l ? l->rest : nil_val);
+}
+// OP_REST_P: Unary Rest (data from list node), store in property.
+void InterpretUnaryRest_P(int object_id, local_var_type *local_vars)
+{
+   UNARY_OP_INIT
+   UNARY_OP_RETRIEVE(object_id, local_vars, opcode, opnode)
+   LIST_CHECK_UNARY(source_data, "InterpretUnaryRest_P object %i can't take Rest of a non-list %i,%i\n")
+   INVALID_LIST_CHECK_UNARY(source_data, "InterpretUnaryRest_P object %i can't take Rest of an invalid list %i,%i\n")
+
+   list_node *l = GetListNodeByID(source_data.v.data);
+
+   StoreProperty(object_id, opnode->dest, l ? l->rest : nil_val);
+}
+// OP_GETCLASS_L: Unary GetClass (return class ID or $), store in local.
+void InterpretUnaryGetClass_L(int object_id, local_var_type *local_vars)
+{
+   UNARY_OP_INIT;
+   UNARY_OP_RETRIEVE(object_id, local_vars, opcode, opnode);
+   val_type store_val;
+
+   if (source_data.v.tag != TAG_OBJECT)
+   {
+      bprintf("InterpretUnaryGetClass_L can't deal with non-object %i,%i\n",
+         source_data.v.tag, source_data.v.data);
+      StoreLocal(local_vars, opnode->dest, nil_val);
+      return;
+   }
+
+   object_node *o = GetObjectByIDInterp(source_data.v.data);
+   if (o == NULL)
+   {
+      bprintf("InterpretUnaryGetClass_L can't find object %i\n", source_data.v.data);
+      StoreLocal(local_vars, opnode->dest, nil_val);
+      return;
+   }
+
+   store_val.v.tag = TAG_CLASS;
+   store_val.v.data = o->class_id;
+
+   StoreLocal(local_vars, opnode->dest, store_val);
+}
+// OP_GETCLASS_P: Unary GetClass (return class ID or $), store in local.
+void InterpretUnaryGetClass_P(int object_id, local_var_type *local_vars)
+{
+   UNARY_OP_INIT;
+   UNARY_OP_RETRIEVE(object_id, local_vars, opcode, opnode);
+   val_type store_val;
+
+   if (source_data.v.tag != TAG_OBJECT)
+   {
+      bprintf("InterpretUnaryGetClass_P can't deal with non-object %i,%i\n",
+         source_data.v.tag, source_data.v.data);
+      StoreProperty(object_id, opnode->dest, nil_val);
+      return;
+   }
+
+   object_node *o = GetObjectByIDInterp(source_data.v.data);
+   if (o == NULL)
+   {
+      bprintf("InterpretUnaryGetClass_P can't find object %i\n", source_data.v.data);
+      StoreProperty(object_id, opnode->dest, nil_val);
+      return;
+   }
+   store_val.v.tag = TAG_CLASS;
+   store_val.v.data = o->class_id;
+
+   StoreProperty(object_id, opnode->dest, store_val);
+}
+
 // Binary instructions. Two opcodes for each, depending on where we
 // store the result (local or property). Each binary instruction has:
 // 1 byte opcode, 1 byte source1/source2 type, 8 bytes source IDs, 4 bytes dest ID.
@@ -2190,4 +2327,10 @@ void CreateOpcodeTable(void)
    opcode_table[OP_ISCLASS_P] = InterpretIsClass_P;
    opcode_table[OP_ISCLASS_CONST_L] = InterpretIsClassConst_L;
    opcode_table[OP_ISCLASS_CONST_P] = InterpretIsClassConst_P;
+   opcode_table[OP_FIRST_L] = InterpretUnaryFirst_L;
+   opcode_table[OP_FIRST_P] = InterpretUnaryFirst_P;
+   opcode_table[OP_REST_L] = InterpretUnaryRest_L;
+   opcode_table[OP_REST_P] = InterpretUnaryRest_P;
+   opcode_table[OP_GETCLASS_L] = InterpretUnaryGetClass_L;
+   opcode_table[OP_GETCLASS_P] = InterpretUnaryGetClass_P;
 }

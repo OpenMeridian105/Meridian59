@@ -62,7 +62,10 @@ typedef struct
    int c_count_timed[MAX_C_FUNCTION];
 
    // Count for each opcode. Disabled live.
-   // UINT64 opcode_count[NUMBER_OF_OPCODES];
+#if KOD_OPCODE_TESTING
+    UINT64 opcode_count[NUMBER_OF_OPCODES];
+    double opcode_total_time[NUMBER_OF_OPCODES];
+#endif
 } kod_statistics;
 
 /* stuff for PostMessage queue */

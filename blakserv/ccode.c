@@ -346,7 +346,7 @@ int C_GodLog(int object_id,local_var_type *local_vars,
 				}
 				
 				if (c->class_id == USER_CLASS || c->class_id == DM_CLASS ||
-					c->class_id == GUEST_CLASS || c->class_id == ADMIN_CLASS)
+					 c->class_id == ADMIN_CLASS)
 				{
 					u = GetUserByObjectID(o->object_id);
 					if (u == NULL)
@@ -489,7 +489,7 @@ int C_Debug(int object_id,local_var_type *local_vars,
 				}
 				
 				if (c->class_id == USER_CLASS || c->class_id == DM_CLASS ||
-					c->class_id == GUEST_CLASS || c->class_id == ADMIN_CLASS)
+					 c->class_id == ADMIN_CLASS)
 				{
 					u = GetUserByObjectID(o->object_id);
 					if (u == NULL)
@@ -1047,34 +1047,6 @@ int C_CreateObject(int object_id,local_var_type *local_vars,
 	
 	ret_val.v.tag = TAG_OBJECT;
 	ret_val.v.data = CreateObject(class_val.v.data,num_name_parms,name_parm_array);
-	return ret_val.int_val;
-}
-
-int C_GetClass(int object_id,local_var_type *local_vars,
-			   int num_normal_parms,parm_node normal_parm_array[],
-			   int num_name_parms,parm_node name_parm_array[])
-{
-	val_type object_val,ret_val;
-	object_node *o;
-	
-	object_val = RetrieveValue(object_id,local_vars,normal_parm_array[0].type,
-		normal_parm_array[0].value);
-	if (object_val.v.tag != TAG_OBJECT)
-	{
-		bprintf("C_GetClass can't deal with non-object %i,%i\n",
-			object_val.v.tag,object_val.v.data);
-		return NIL;
-	}
-	
-	o = GetObjectByID(object_val.v.data);
-	if (o == NULL)
-	{
-		bprintf("C_GetClass can't find object %i\n",object_val.v.data);
-		return NIL;
-	}
-	
-	ret_val.v.tag = TAG_CLASS;
-	ret_val.v.data = o->class_id;
 	return ret_val.int_val;
 }
 
@@ -3763,52 +3735,6 @@ int C_Cons(int object_id,local_var_type *local_vars,
    ret_val.v.tag = TAG_LIST;
    ret_val.v.data = Cons(source_val,dest_val);
    return ret_val.int_val;
-}
-
-int C_First(int object_id,local_var_type *local_vars,
-			int num_normal_parms,parm_node normal_parm_array[],
-			int num_name_parms,parm_node name_parm_array[])
-{
-	val_type list_val;
-	
-	list_val = RetrieveValue(object_id,local_vars,normal_parm_array[0].type,
-		normal_parm_array[0].value);
-	if (list_val.v.tag != TAG_LIST)
-	{
-		bprintf("C_First object %i can't take First of a non-list %i,%i\n",
-			object_id,list_val.v.tag,list_val.v.data);
-		return NIL;
-	}
-	if (!IsListNodeByID(list_val.v.data))
-	{
-		bprintf("C_First object %i can't take First of an invalid list %i,%i\n",
-			object_id,list_val.v.tag,list_val.v.data);
-		return NIL;
-	}
-	return First(list_val.v.data);
-}
-
-int C_Rest(int object_id,local_var_type *local_vars,
-		   int num_normal_parms,parm_node normal_parm_array[],
-		   int num_name_parms,parm_node name_parm_array[])
-{
-	val_type list_val;
-	
-	list_val = RetrieveValue(object_id,local_vars,normal_parm_array[0].type,
-		normal_parm_array[0].value);
-	if (list_val.v.tag != TAG_LIST)
-	{
-		bprintf("C_Rest object %i can't take Rest of a non-list %i,%i\n",
-			object_id,list_val.v.tag,list_val.v.data);
-		return NIL;
-	}
-	if (!IsListNodeByID(list_val.v.data))
-	{
-		bprintf("C_Rest object %i can't take Rest of an invalid list %i,%i\n",
-			object_id,list_val.v.tag,list_val.v.data);
-		return NIL;
-	}
-	return Rest(list_val.v.data);
 }
 
 int C_Length(int object_id,local_var_type *local_vars,

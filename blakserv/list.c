@@ -108,6 +108,8 @@ Bool IsListNodeByID(int list_id)
 	return True;
 }
 
+// Note that the C call for First is now handled as an opcode in the
+// interpreter, so it doesn't call this message. Other places do call it.
 int First(int list_id)
 {
 	list_node *l;
@@ -116,6 +118,8 @@ int First(int list_id)
 	return (l? l->first.int_val : NIL);
 }
 
+// Note that the C call for Rest is now handled as an opcode in the
+// interpreter, so it doesn't call this message.
 int Rest(int list_id)
 {
 	list_node *l;

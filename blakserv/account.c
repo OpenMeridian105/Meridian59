@@ -42,7 +42,7 @@ void InitAccount(void)
    console_account->type = ACCOUNT_ADMIN;
    console_account->last_login_time = 0;
    console_account->suspend_time = 0;
-   console_account->credits = 0;
+   console_account->seconds_logged_in = 0;
 }
 
 void ResetAccount(void)
@@ -92,7 +92,7 @@ void InsertAccount(account_node *a)
    {
       temp = accounts;
       while (temp->next != NULL && temp->next->account_id < a->account_id)
-	 temp = temp->next;
+         temp = temp->next;
       a->next = temp->next;
       temp->next = a;
    }
@@ -106,40 +106,40 @@ bool AccountValidateEmail(char *email)
    return true;
 }
 
-Bool CreateAccount(char *name,char *password,char *email,int type,int *account_id)
+Bool CreateAccount(char *name, char *password, char *email, int type, int *account_id)
 {
-   char buf[ENCRYPT_LEN+1];
+   char buf[ENCRYPT_LEN + 1];
    account_node *a;
 
-	if (GetAccountByName(name) != NULL)
-		return False;
+   if (GetAccountByName(name) != NULL)
+      return False;
 
-   a = (account_node *)AllocateMemory(MALLOC_ID_ACCOUNT,sizeof(account_node));
+   a = (account_node *)AllocateMemory(MALLOC_ID_ACCOUNT, sizeof(account_node));
    a->account_id = next_account_id++;
 
-   a->name = (char *)AllocateMemory(MALLOC_ID_ACCOUNT,strlen(name)+1);
-   strcpy(a->name,name);
+   a->name = (char *)AllocateMemory(MALLOC_ID_ACCOUNT, strlen(name) + 1);
+   strcpy(a->name, name);
 
-   MDString(password,(unsigned char *) buf);
+   MDString(password, (unsigned char *)buf);
    buf[ENCRYPT_LEN] = 0;
-   a->password = (char *)AllocateMemory(MALLOC_ID_ACCOUNT,strlen(buf)+1);
-   strcpy(a->password,buf);
+   a->password = (char *)AllocateMemory(MALLOC_ID_ACCOUNT, strlen(buf) + 1);
+   strcpy(a->password, buf);
 
    if (!email || !AccountValidateEmail(email))
       email = "\0";
 
-   a->email = (char *)AllocateMemory(MALLOC_ID_ACCOUNT,strlen(email)+1);
-   strcpy(a->email,email);
+   a->email = (char *)AllocateMemory(MALLOC_ID_ACCOUNT, strlen(email) + 1);
+   strcpy(a->email, email);
 
    a->type = type;
    a->last_login_time = 0;
    a->suspend_time = 0;
-   a->credits = 100*ConfigInt(CREDIT_INIT);
+   a->seconds_logged_in = 0;
 
    InsertAccount(a);
 
-	*account_id = a->account_id;
-	return True;
+   *account_id = a->account_id;
+   return True;
 }
 
 int CreateAccountSecurePassword(char *name,char *password,char *email,int type)
@@ -176,23 +176,23 @@ int CreateAccountSecurePassword(char *name,char *password,char *email,int type)
    a->type = type;
    a->last_login_time = 0;
    a->suspend_time = 0;
-   a->credits = 100*ConfigInt(CREDIT_INIT);
+   a->seconds_logged_in = 0;
 
    InsertAccount(a);
 
    return a->account_id;
 }
 
-int RecreateAccountSecurePassword(int account_id,char *name,char *password,char *email,int type)
+int RecreateAccountSecurePassword(int account_id, char *name, char *password, char *email, int type)
 {
-   char buf[100],*ptr;
+   char buf[100], *ptr;
    int index;
    account_node *a;
    unsigned int ch;
 
    index = 0;
    ptr = password;
-   while (sscanf(ptr,"%02x",&ch) == 1)
+   while (sscanf(ptr, "%02x", &ch) == 1)
    {
       buf[index++] = ch;
       ptr += 2;
@@ -207,59 +207,59 @@ int RecreateAccountSecurePassword(int account_id,char *name,char *password,char 
    if (next_account_id < account_id)
       next_account_id = account_id;
 
-   a = (account_node *)AllocateMemory(MALLOC_ID_ACCOUNT,sizeof(account_node));
+   a = (account_node *)AllocateMemory(MALLOC_ID_ACCOUNT, sizeof(account_node));
    a->account_id = account_id;
    if (account_id >= next_account_id)
-      next_account_id = account_id+1;
+      next_account_id = account_id + 1;
 
-   a->name = (char *)AllocateMemory(MALLOC_ID_ACCOUNT,strlen(name)+1);
-   strcpy(a->name,name);
+   a->name = (char *)AllocateMemory(MALLOC_ID_ACCOUNT, strlen(name) + 1);
+   strcpy(a->name, name);
 
-   a->password = (char *)AllocateMemory(MALLOC_ID_ACCOUNT,strlen(buf)+1);
-   strcpy(a->password,buf);
+   a->password = (char *)AllocateMemory(MALLOC_ID_ACCOUNT, strlen(buf) + 1);
+   strcpy(a->password, buf);
 
    if (!email || !AccountValidateEmail(email))
       email = "\0";
 
-   a->email = (char *)AllocateMemory(MALLOC_ID_ACCOUNT,strlen(email)+1);
-   strcpy(a->email,email);
+   a->email = (char *)AllocateMemory(MALLOC_ID_ACCOUNT, strlen(email) + 1);
+   strcpy(a->email, email);
 
    a->type = type;
    a->last_login_time = 0;
    a->suspend_time = 0;
-   a->credits = 100*ConfigInt(CREDIT_INIT);
+   a->seconds_logged_in = 0;
 
    InsertAccount(a);
 
    return a->account_id;
 }
 
-void LoadAccount(int account_id,char *name,char *password,char *email,int type,
-                 int last_login_time,int suspend_time, int credits)
+void LoadAccount(int account_id, char *name, char *password, char *email, int type,
+                 int last_login_time, int suspend_time, int sec_logged_in)
 {
    account_node *a;
 
-   a = (account_node *)AllocateMemory(MALLOC_ID_ACCOUNT,sizeof(account_node));
+   a = (account_node *)AllocateMemory(MALLOC_ID_ACCOUNT, sizeof(account_node));
 
    a->account_id = account_id;
    if (account_id >= next_account_id)
       next_account_id = account_id + 1;
 
-   a->name = (char *)AllocateMemory(MALLOC_ID_ACCOUNT,strlen(name)+1);
-   strcpy(a->name,name);
-   a->password = (char *)AllocateMemory(MALLOC_ID_ACCOUNT,strlen(password)+1);
-   strcpy(a->password,password);
+   a->name = (char *)AllocateMemory(MALLOC_ID_ACCOUNT, strlen(name) + 1);
+   strcpy(a->name, name);
+   a->password = (char *)AllocateMemory(MALLOC_ID_ACCOUNT, strlen(password) + 1);
+   strcpy(a->password, password);
 
    if (!email || !AccountValidateEmail(email))
       email = "\0";
 
-   a->email = (char *)AllocateMemory(MALLOC_ID_ACCOUNT,strlen(email)+1);
-   strcpy(a->email,email);
+   a->email = (char *)AllocateMemory(MALLOC_ID_ACCOUNT, strlen(email) + 1);
+   strcpy(a->email, email);
 
    a->type = type;
    a->last_login_time = last_login_time;
    a->suspend_time = suspend_time;
-   a->credits = credits;
+   a->seconds_logged_in = sec_logged_in;
    a->next = NULL;
    InsertAccount(a);
 }

@@ -111,14 +111,6 @@ config_table_type config_table[] =
 { MOTD_GROUP,             F, "[MessageOfTheDay]", CONFIG_GROUP, "" },
 { MOTD_DEFAULT,           F, "Default",       CONFIG_STR,   "<Default>" },
 
-{ CREDIT_GROUP,           F, "[Credit]",      CONFIG_GROUP, "" },
-{ CREDIT_DRAIN_AMOUNT,    F, "DrainAmount",   CONFIG_INT,   "-1" },
-{ CREDIT_DRAIN_TIME,      F, "DrainTime",     CONFIG_INT,   "1" },
-{ CREDIT_WARN1,           F, "Warn1",         CONFIG_INT,   "5" },
-{ CREDIT_WARN2,           F, "Warn2",         CONFIG_INT,   "1" },
-{ CREDIT_INIT,            F, "Initial",       CONFIG_INT,   "0" },
-{ CREDIT_ADMIN,           T, "Admin",         CONFIG_INT,   "25" },
-
 { SESSION_GROUP,          F, "[Session]",     CONFIG_GROUP, "" },
 { SESSION_MAX_ACTIVE,     T, "MaxActive",     CONFIG_INT,   "300" },
 { SESSION_MAX_CONNECT,    F, "MaxConnect",    CONFIG_INT,   "300" },
@@ -194,8 +186,6 @@ config_table_type config_table[] =
 { ADVERTISE_URL2,         T, "Url2",          CONFIG_STR,   "https://www.meridiannext.com/phpbb3/" },
 
 { DEBUG_GROUP,            F, "[Debug]",       CONFIG_GROUP, "" },
-{ DEBUG_CANMOVEINROOM,    T, "CanMoveInRoom", CONFIG_BOOL,  "No" },
-{ DEBUG_CANMOVEINROOMHIGHRES,    T, "CanMoveInRoomHighRes", CONFIG_BOOL,  "No" },
 { DEBUG_HEAP,             T, "Heap",          CONFIG_BOOL,  "No" },
 { DEBUG_TRANSMITTED_BYTES,T, "TransmittedBytes",CONFIG_BOOL,"No" },
 { DEBUG_HASH,             T, "Hash",          CONFIG_BOOL,  "No" },

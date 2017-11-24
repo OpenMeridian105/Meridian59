@@ -261,14 +261,7 @@ void SynchedProtocolParse(session_node *s,client_msg *msg)
             break;
          }
       }
-/*
-  if (s->account->credits <= 0)
-  {
-  AddByteToPacket(AP_NOCREDITS);
-  SendPacket(s->session_id);
-  break;
-  }
-*/
+
       last_download_time = *(int *)(msg->data + index);
       index += 4; 
       
@@ -755,17 +748,6 @@ void LogUserData(session_node *s)
 void SynchedDoMenu(session_node *s)
 {
    SynchedSendMenuChoice(s);
-             
-   AddByteToPacket(AP_CREDITS);
-   /* round any fraction up */
-   AddIntToPacket(20);
-   /*
-   if (s->account->credits%100 == 0)
-      AddIntToPacket(s->account->credits/100);
-   else
-      AddIntToPacket(s->account->credits/100+1);
-      */
-   SendPacket(s->session_id);
 }
 
 void SynchedSendMenuChoice(session_node *s)
@@ -785,16 +767,11 @@ void SynchedSendMenuChoice(session_node *s)
    for (i=0;i<SEED_COUNT;i++)
       AddIntToPacket(s->seeds[i]);
    SendPacket(s->session_id);
-
 }
 
 void SynchedGotoGame(session_node *s,int last_download_time)
 {
-   int num_new_files;
-   char *str;
-   
    /* first check to see if they can goto game (if they have >= 1 char) */
-
    if (CountUserByAccountID(s->account->account_id) <= 0)
    {
       /* Tell user that he has no characters */
@@ -809,9 +786,12 @@ void SynchedGotoGame(session_node *s,int last_download_time)
 
    s->last_download_time = last_download_time;
 
+   // Old package downloader.
+#if 0
    /* dprintf("sess %i has %i new files to delete\n",s->session_id,CountNewDelresFile(s)); */
 
-   num_new_files = CountNewDLFile(s);
+   int num_new_files = CountNewDLFile(s);
+   char *str;
    if (num_new_files > 0)
    {
       // Tell client there's files to be downloaded, and don't go into game mode.
@@ -873,6 +853,7 @@ void SynchedGotoGame(session_node *s,int last_download_time)
 
       SendPacket(s->session_id);
    }
+#endif
 
    // All set to go to game mode.
 

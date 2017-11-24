@@ -13,20 +13,13 @@
  when the session is selecting their character or in the game.  Since
  the protocol in this mode has a message header and text, if things
  get garbled resynchronization must occur.  This is done with the game
- state's own state, game_state.  Also, credits are drained in this
- mode.
+ state's own state, game_state.
 
  */
 
 #include "blakserv.h"
 
-/* 
- * Credit draining in game mode (after character is selected) is
- * ConfigInt(CREDIT_DRAIN_AMOUNT) 100ths of a credit every
- * ConfigInt(CREDIT_DRAIN_TIME) seconds.  This is equivalent to
- * 36*Amount/Time credits per hour.
- * 
- */
+#define SESSION_POLL_TIME 1 // seconds
 
 /* local function prototypes */
 
@@ -35,7 +28,6 @@ void GameSendResync(session_node *s);
 void GameSyncInit(session_node *s);
 void GameSyncProcessSessionBuffer(session_node *s);
 void GameSyncInputChar(session_node *s,char ch);
-void GameWarnLowCredits(session_node *s);
 void GameProtocolParse(session_node *s,client_msg *msg);
 void GameStartUser(session_node *s,user_node *u);
 void GameTryGetUser(session_node *s);
@@ -84,7 +76,7 @@ void GameProcessSessionTimer(session_node *s)
 {
    if (s->game->object_id == INVALID_OBJECT)
    {
-      /* timed out before credits drain means took too long picking character */
+      /* Took too long picking character */
       HangupSession(s);
       return;
    }
@@ -93,38 +85,23 @@ void GameProcessSessionTimer(session_node *s)
       message in a while, even ping.  If so, they are so lagged they should
       be hung up. */
 
-   /* dprintf("%u %u %u\n",GetTime(),s->game->game_last_message_time,ConfigInt(INACTIVE_GAME)); */
+      /* dprintf("%u %u %u\n",GetTime(),s->game->game_last_message_time,ConfigInt(INACTIVE_GAME)); */
 
    if (GetTime() - s->game->game_last_message_time > ConfigInt(INACTIVE_GAME))
    {
       lprintf("GameProcessSessionTimer logging out ACCOUNT %i (%s) which hasn't been heard from.\n",
-	 s->account->account_id, s->account->name);
+         s->account->account_id, s->account->name);
       HangupSession(s);
       return;
    }
 
-   SetSessionTimer(s,ConfigInt(CREDIT_DRAIN_TIME));
+   SetSessionTimer(s, SESSION_POLL_TIME);
 
-   s->account->credits -= ConfigInt(CREDIT_DRAIN_AMOUNT);
+   // Works because SetSessionTimer() requires seconds.
+   s->account->seconds_logged_in += SESSION_POLL_TIME;
 
    if (s->game->game_state != GAME_NORMAL)
       return;
-
-#if 0   
-   /* warn them when they are low */
-   if ((s->account->credits <= 100*ConfigInt(CREDIT_WARN1)) &&
-       (s->account->credits + ConfigInt(CREDIT_DRAIN_AMOUNT) > 100*ConfigInt(CREDIT_WARN1)) ||
-       (s->account->credits == 100*ConfigInt(CREDIT_WARN2)) &&
-       (s->account->credits + ConfigInt(CREDIT_DRAIN_AMOUNT) > 100*ConfigInt(CREDIT_WARN2)))
-      GameWarnLowCredits(s);
-
-   if (s->account->credits == 0)
-   {
-      /* send them an out-of-credits message */
-      GameClientExit(s);
-      SetSessionState(s,STATE_SYNCHED);
-   }
-#endif
 }
 
 void GameProcessSessionBuffer(session_node *s)
@@ -143,30 +120,30 @@ void GameProcessSessionBuffer(session_node *s)
    /* need to copy only as many bytes as we can hold */
    while (s->receive_list != NULL)
    {
-      if (PeekSessionBytes(s,HEADERBYTES,&msg) == False)
-	 return;
+      if (PeekSessionBytes(s, HEADERBYTES, &msg) == False)
+         return;
 
       if (msg.len != msg.len_verify)
       {
-	 /* dprintf("GPSB found len != len_verify %i %i\n",msg_len,msg_len_verify); */
-	 GameSendResync(s);
-	 GameSyncInit(s);
-	 GameSyncProcessSessionBuffer(s);
-	 return;
+         /* dprintf("GPSB found len != len_verify %i %i\n",msg_len,msg_len_verify); */
+         GameSendResync(s);
+         GameSyncInit(s);
+         GameSyncProcessSessionBuffer(s);
+         return;
       }
 
       if (msg.len > LEN_MAX_CLIENT_MSG)
       {
-         eprintf("GameProcessSessionBuffer got message too long %i\n",msg.len);
-	 GameSendResync(s);
-	 GameSyncInit(s);
-	 GameSyncProcessSessionBuffer(s);
-	 return;
+         eprintf("GameProcessSessionBuffer got message too long %i\n", msg.len);
+         GameSendResync(s);
+         GameSyncInit(s);
+         GameSyncProcessSessionBuffer(s);
+         return;
       }
-      
+
       /* now read the header for real, plus the actual data */
-      if (ReadSessionBytes(s,msg.len+HEADERBYTES,&msg) == False)
-	 return;
+      if (ReadSessionBytes(s, msg.len + HEADERBYTES, &msg) == False)
+         return;
 
       /* dprintf("got crc %08x\n",msg.crc16); */
 
@@ -176,60 +153,60 @@ void GameProcessSessionBuffer(session_node *s)
 
       security ^= msg.len;
       security ^= ((unsigned int)msg.data[0] << 4);
-      security ^= GetCRC16(msg.data,msg.len);
+      security ^= GetCRC16(msg.data, msg.len);
 
       /* dprintf("%08x is the next stream thing after xor\n",security); */
 
       if (msg.crc16 != security && !s->seeds_hacked)
       {
-			s->seeds_hacked = True;
-			if (ConfigBool(SECURITY_LOG_SPOOFS))
-			{
-				lprintf("GameProcessSessionBuffer found invalid security account %i\n",
-						  s->account->account_id);
-			}
-			if (ConfigBool(SECURITY_HANGUP_SPOOFS))
-			{
-				HangupSession(s);
-			}
+         s->seeds_hacked = True;
+         if (ConfigBool(SECURITY_LOG_SPOOFS))
+         {
+            lprintf("GameProcessSessionBuffer found invalid security account %i\n",
+               s->account->account_id);
+         }
+         if (ConfigBool(SECURITY_HANGUP_SPOOFS))
+         {
+            HangupSession(s);
+         }
 
-			// can't use the packet, so throw it away and go into resync mode
-			GameSendResync(s);
-			GameSyncInit(s);
-			GameSyncProcessSessionBuffer(s);
-			return;
+         // can't use the packet, so throw it away and go into resync mode
+         GameSendResync(s);
+         GameSyncInit(s);
+         GameSyncProcessSessionBuffer(s);
+         return;
       }
 
       if (msg.seqno != GetEpoch()) /* old sequence ok, just ignore */
       {
-	 /* dprintf("Game got bad epoch from session %i\n",s->session_id); */
-	 continue;
+         /* dprintf("Game got bad epoch from session %i\n",s->session_id); */
+         continue;
       }
-      
+
       /* give up receive mutex, so the interface/socket thread can
-	 read data for us, even if doing something long (GC/save/reload sys) */
-      
-        if (!MutexRelease(s->muxReceive))
-            eprintf("GPSB released mutex it didn't own in session %i\n",s->session_id);
-	 
-      GameProtocolParse(s,&msg);
-      
-      if (!MutexAcquireWithTimeout(s->muxReceive,10000))
+    read data for us, even if doing something long (GC/save/reload sys) */
+
+      if (!MutexRelease(s->muxReceive))
+         eprintf("GPSB released mutex it didn't own in session %i\n", s->session_id);
+
+      GameProtocolParse(s, &msg);
+
+      if (!MutexAcquireWithTimeout(s->muxReceive, 10000))
       {
-	 eprintf("GPSB bailed waiting for mutex on session %i\n",s->session_id);
-	 return;
+         eprintf("GPSB bailed waiting for mutex on session %i\n", s->session_id);
+         return;
       }
-      
+
       /* if hung up, don't touch */
       if (s->hangup == True)
-	 return;
+         return;
 
       if (s->state != STATE_GAME)
-	 return;
-      
+         return;
+
       if (s->game->game_state != GAME_NORMAL)
-	 return;
-      
+         return;
+
    }
 }
 
@@ -300,38 +277,38 @@ void GameSyncProcessSessionBuffer(session_node *s)
 
    while (s->receive_list != NULL)
    {
-      if (ReadSessionBytes(s,1,&ch) == False)
-	 return;
-      
-      GameSyncInputChar(s,ch);
+      if (ReadSessionBytes(s, 1, &ch) == False)
+         return;
+
+      GameSyncInputChar(s, ch);
 
       /* any character could change our state back to game normal.  if so, leave */
       if (s->game->game_state == GAME_NORMAL)
       {
-	 if (s->game->object_id == INVALID_OBJECT)
-	    GameSendSystemEnter(s);
-	 GameProcessSessionBuffer(s);
-	 break;
+         if (s->game->object_id == INVALID_OBJECT)
+            GameSendSystemEnter(s);
+         GameProcessSessionBuffer(s);
+         break;
       }
    }
 }
 
-void GameSyncInputChar(session_node *s,char ch)
+void GameSyncInputChar(session_node *s, char ch)
 {
    int sync_len;
    unsigned char *sync_buf = NULL;
 
    switch (s->game->game_state)
    {
-   case GAME_BEACON :
+   case GAME_BEACON:
       sync_buf = beacon_str;
       sync_len = LENGTH_BEACON;
       break;
-   case GAME_FINAL_SYNC :
+   case GAME_FINAL_SYNC:
       sync_buf = detect_str;
       sync_len = LENGTH_DETECT;
       break;
-   default :
+   default:
       eprintf("GameSyncInputChar can't get here\n");
       return;
    }
@@ -342,55 +319,34 @@ void GameSyncInputChar(session_node *s,char ch)
    {
       if (s->game->game_state == GAME_FINAL_SYNC)
       {
-	 /* bad char here means line noise */
-/* 	 dprintf("bad char on final sync\n"); */
-	 GameSendResync(s);
-	 GameSyncInit(s);
-	 return;
+         /* bad char here means line noise */
+     /* 	 dprintf("bad char on final sync\n"); */
+         GameSendResync(s);
+         GameSyncInit(s);
+         return;
       }
       s->game->game_sync_index = 0;
    }
 
-/*   dprintf("GameSync got char %i, pos %i for sync\n",ch,s->game->game_sync_index); */
+   /*   dprintf("GameSync got char %i, pos %i for sync\n",ch,s->game->game_sync_index); */
 
    if (s->game->game_sync_index == sync_len)
    {
       switch (s->game->game_state)
       {
-      case GAME_BEACON :
-         SendBytes(s,(char *) tell_cli_str,LENGTH_TELL_CLI); /* sends exact bytes, no header */
-	 s->game->game_state = GAME_FINAL_SYNC;
-	 s->game->game_sync_index = 0;
-	 InterfaceUpdateSession(s);
-	 break;
-      case GAME_FINAL_SYNC :
-	 s->game->game_state = GAME_NORMAL;
-	 InterfaceUpdateSession(s);
-	 break;
+      case GAME_BEACON:
+         SendBytes(s, (char *)tell_cli_str, LENGTH_TELL_CLI); /* sends exact bytes, no header */
+         s->game->game_state = GAME_FINAL_SYNC;
+         s->game->game_sync_index = 0;
+         InterfaceUpdateSession(s);
+         break;
+      case GAME_FINAL_SYNC:
+         s->game->game_state = GAME_NORMAL;
+         InterfaceUpdateSession(s);
+         break;
       }
-/*      dprintf("Changed to game state %i\n",s->game->game_state); */
+      /*      dprintf("Changed to game state %i\n",s->game->game_state); */
    }
-   
-}
-
-void GameWarnLowCredits(session_node *s)
-{
-   val_type str_val;
-   parm_node blak_parm[1];
-   char text[100];
-
-   sprintf(text,"You have only %i credit%s remaining",s->account->credits/100,
-	   (s->account->credits/100 == 1) ? "" : "s");
-
-   SetTempString(text,strlen(text));
-   str_val.v.tag = TAG_TEMP_STRING;
-   str_val.v.data = 0;		/* the data field doesn't matter for TAG_TEMP_STRING */
-
-   blak_parm[0].type = CONSTANT;
-   blak_parm[0].value = str_val.int_val;
-   blak_parm[0].name_id = STRING_PARM;   
-
-   SendTopLevelBlakodMessage(s->game->object_id,SYSTEM_STRING_MSG,1,blak_parm);
 }
 
 void GameEchoPing(session_node *s)
@@ -398,13 +354,13 @@ void GameEchoPing(session_node *s)
    unsigned int token;
 
    if (!s || s->state != STATE_GAME ||
-       !s->game || s->game->game_state != GAME_NORMAL ||
-       s->conn.type == CONN_CONSOLE)
+      !s->game || s->game->game_state != GAME_NORMAL ||
+      s->conn.type == CONN_CONSOLE)
    {
       if (s)
       {
-	 s->secure_token = 0;
-	 s->sliding_token = NULL;
+         s->secure_token = 0;
+         s->sliding_token = NULL;
       }
       return;
    }
@@ -428,14 +384,14 @@ void GameEchoPing(session_node *s)
    s->sliding_token = GetSecurityRedbook();
 }
 
-void GameProtocolParse(session_node *s,client_msg *msg)
+void GameProtocolParse(session_node *s, client_msg *msg)
 {
    user_node *u;
    int object_id;
    char *ptr;
 
-   char password[MAX_LOGIN_PASSWORD+1],new_password[MAX_LOGIN_PASSWORD+1];
-   int len,index;
+   char password[MAX_LOGIN_PASSWORD + 1], new_password[MAX_LOGIN_PASSWORD + 1];
+   int len, index;
 
    char admin_cmd[500];
    int admin_len;
@@ -446,47 +402,47 @@ void GameProtocolParse(session_node *s,client_msg *msg)
 
    switch ((unsigned char)msg->data[0])
    {
-   case BP_REQ_QUIT :
+   case BP_REQ_QUIT:
       GameClientExit(s);
-      SetSessionState(s,STATE_SYNCHED);
+      SetSessionState(s, STATE_SYNCHED);
       break;
-      
-   case BP_RESYNC :
+
+   case BP_RESYNC:
       // dprintf("client said it had an error\n");
       GameSyncInit(s);
       GameSyncProcessSessionBuffer(s);
       break;
 
-   case BP_PING :
+   case BP_PING:
       GameEchoPing(s);
       break;
 
-   case BP_AD_SELECTED :
+   case BP_AD_SELECTED:
       /* they clicked on an ad; log it */
       switch (msg->data[1])
       {
       case 1:
-	 ptr = LockConfigStr(ADVERTISE_URL1);
-	 lprintf("GameProtocolParse found account %i visited ad 1, %s\n",s->account->account_id,
-		 ptr);
-	 UnlockConfigStr();
-	 break;
+         ptr = LockConfigStr(ADVERTISE_URL1);
+         lprintf("GameProtocolParse found account %i visited ad 1, %s\n", s->account->account_id,
+            ptr);
+         UnlockConfigStr();
+         break;
       case 2:
-	 ptr = LockConfigStr(ADVERTISE_URL2);
-	 lprintf("GameProtocolParse found account %i visited ad 2, %s\n",s->account->account_id,
-		 ptr);
-	 UnlockConfigStr();
-	 break;
-      default :
-	 eprintf("GameProtocolParse found account %i visited unknown ad %i\n",
-		 s->account->account_id,msg->data[1]);
+         ptr = LockConfigStr(ADVERTISE_URL2);
+         lprintf("GameProtocolParse found account %i visited ad 2, %s\n", s->account->account_id,
+            ptr);
+         UnlockConfigStr();
+         break;
+      default:
+         eprintf("GameProtocolParse found account %i visited unknown ad %i\n",
+            s->account->account_id, msg->data[1]);
       }
       break;
-         
-   case BP_USE_CHARACTER :
+
+   case BP_USE_CHARACTER:
       if (s->game->object_id == INVALID_OBJECT)
       {
-         object_id = *((int *)(msg->data+1));
+         object_id = *((int *)(msg->data + 1));
          u = GetUserByObjectID(object_id);
          if (u != NULL && u->account_id == s->account->account_id)
          {
@@ -494,7 +450,7 @@ void GameProtocolParse(session_node *s,client_msg *msg)
             invalidCharacter.int_val = SendTopLevelBlakodMessage(object_id, IS_FIRST_TIME_MSG, 0, NULL);
             if (!invalidCharacter.v.data)
             {
-               GameStartUser(s,u);
+               GameStartUser(s, u);
                InterfaceUpdateSession(s);
             }
             else
@@ -502,7 +458,7 @@ void GameProtocolParse(session_node *s,client_msg *msg)
                eprintf("GameProtocolParse got acct %i trying to log on illegal object %i!\n",
                   u->account_id, object_id);
                // Block IP for 1 minute, and hangup connection.
-               AddBlock(ConfigInt(SOCKET_BLOCK_TIME)/5, &s->conn.addr);
+               AddBlock(ConfigInt(SOCKET_BLOCK_TIME) / 5, &s->conn.addr);
                HangupSession(s);
             }
          }
@@ -511,90 +467,90 @@ void GameProtocolParse(session_node *s,client_msg *msg)
             eprintf("GameProtocolParse can't find user for obj %i in use char!!!\n",
                object_id);
             // Block IP for 1 minute, and hangup connection.
-            AddBlock(ConfigInt(SOCKET_BLOCK_TIME)/5, &s->conn.addr);
+            AddBlock(ConfigInt(SOCKET_BLOCK_TIME) / 5, &s->conn.addr);
             HangupSession(s);
 
          }
       }
       break;
 
-   case BP_REQ_ADMIN :
+   case BP_REQ_ADMIN:
       if (s->account->type != ACCOUNT_ADMIN)
       {
-	 eprintf("GameProtocolParse got admin command from non admin account %i\n",
-		 s->account->account_id);
-	 break;
+         eprintf("GameProtocolParse got admin command from non admin account %i\n",
+            s->account->account_id);
+         break;
       }
       admin_len = (int) * ((short *)(msg->data + 1));
       if (admin_len > msg->len - 3)
-	 return;
-      if (admin_len > sizeof(admin_cmd)-2)
-	 return;
-      memcpy(admin_cmd,&msg->data[3],admin_len);
+         return;
+      if (admin_len > sizeof(admin_cmd) - 2)
+         return;
+      memcpy(admin_cmd, &msg->data[3], admin_len);
       admin_cmd[admin_len] = 0;
-      SendSessionAdminText(s->session_id,"> %s\n",admin_cmd); /* echo it to 'em */
-      TryAdminCommand(s->session_id,admin_cmd);
+      SendSessionAdminText(s->session_id, "> %s\n", admin_cmd); /* echo it to 'em */
+      TryAdminCommand(s->session_id, admin_cmd);
       break;
 
-   case BP_REQ_DM :
+   case BP_REQ_DM:
       if (s->account->type != ACCOUNT_ADMIN && s->account->type != ACCOUNT_DM)
       {
-	 eprintf("GameProtocolParse got DM command from non admin or DM account %i\n",
-		 s->account->account_id);
-	 break;
+         eprintf("GameProtocolParse got DM command from non admin or DM account %i\n",
+            s->account->account_id);
+         break;
       }
       dm_type = msg->data[1];
 
       admin_len = (int) * ((short *)(msg->data + 2));
       if (admin_len > msg->len - 4)
-	 return;
-      if (admin_len > sizeof(admin_cmd)-2)
-	 return;
-      memcpy(admin_cmd,&msg->data[4],admin_len);
+         return;
+      if (admin_len > sizeof(admin_cmd) - 2)
+         return;
+      memcpy(admin_cmd, &msg->data[4], admin_len);
       admin_cmd[admin_len] = 0;
-      GameDMCommand(s,dm_type,admin_cmd);
+      GameDMCommand(s, dm_type, admin_cmd);
       break;
 
-   case BP_SEND_CHARACTERS :
+   case BP_SEND_CHARACTERS:
       GameTryGetUser(s);
       break;
 
-   case BP_CHANGE_PASSWORD :
+   case BP_CHANGE_PASSWORD:
       index = 1;
-      len = *(short *)(msg->data+index);
+      len = *(short *)(msg->data + index);
       if (index + 2 + len > msg->len) /* 2 = length word len */
-	 break;
-      if (len-1 > sizeof(password))
-	 break;
-      memcpy(password,msg->data+index+2,len);
+         break;
+      if (len - 1 > sizeof(password))
+         break;
+      memcpy(password, msg->data + index + 2, len);
       password[len] = 0; /* null terminate string */
       index += 2 + len;
-      
-      len = *(short *)(msg->data+index);
+
+      len = *(short *)(msg->data + index);
       if (index + 2 + len > msg->len)
-	 break;
-      if (len-1 > sizeof(new_password))
-	 break;
-      memcpy(new_password,msg->data+index+2,len);
+         break;
+      if (len - 1 > sizeof(new_password))
+         break;
+      memcpy(new_password, msg->data + index + 2, len);
       new_password[len] = 0; /* null terminate string */
       index += 2 + len;
 
-      if (strcmp(s->account->password,password))
+      if (strcmp(s->account->password, password))
       {
-	 AddByteToPacket(BP_PASSWORD_NOT_OK);
-	 SendPacket(s->session_id);
-	 break;
+         AddByteToPacket(BP_PASSWORD_NOT_OK);
+         SendPacket(s->session_id);
+         break;
       }
 
-      SetAccountPasswordAlreadyEncrypted(s->account,new_password);
+      SetAccountPasswordAlreadyEncrypted(s->account, new_password);
       AddByteToPacket(BP_PASSWORD_OK);
       SendPacket(s->session_id);
 
       break;
 
-   default :
-      ClientToBlakodUser(s,msg->len,msg->data);
-      
+   default:
+      ClientToBlakodUser(s, msg->len, msg->data);
+
       break;
    }
 }
@@ -625,7 +581,7 @@ void GameStartUser(session_node *s,user_node *u)
      MySQLRecordPlayerLogin(s->account->name,r->resource_val[0],s->conn.name);
 #endif
 
-   SetSessionTimer(s,ConfigInt(CREDIT_DRAIN_TIME));
+   SetSessionTimer(s, SESSION_POLL_TIME);
 }
 
 void GameTryGetUser(session_node *s)
@@ -658,36 +614,35 @@ void GameTryGetUser(session_node *s)
 
 void GameSendEachUserChoice(user_node *u)
 {
-   val_type name_val,num_val;
+   val_type name_val, num_val;
    resource_node *r;
-   
+
    AddIntToPacket(u->object_id);
 
-   name_val.int_val = SendTopLevelBlakodMessage(u->object_id,USER_NAME_MSG,0,NULL);
+   name_val.int_val = SendTopLevelBlakodMessage(u->object_id, USER_NAME_MSG, 0, NULL);
    if (name_val.v.tag != TAG_RESOURCE)
    {
       eprintf("GameSendEachUserChoice object %i has non-resource name %i,%i\n",
-	      u->object_id,name_val.v.tag,name_val.v.data);
-      AddStringToPacket(0,"");
+         u->object_id, name_val.v.tag, name_val.v.data);
+      AddStringToPacket(0, "");
    }
    else
    {
       r = GetResourceByID(name_val.v.data);
       if (r == NULL)
       {
-	 bprintf("GameSendEachUserChoice can't find resource %i as a resource/string\n",
-		 name_val.v.data);
-	    return;
+         bprintf("GameSendEachUserChoice can't find resource %i as a resource/string\n",
+            name_val.v.data);
+         return;
       }
-      AddStringToPacket(strlen(r->resource_val[0]),r->resource_val[0]);
+      AddStringToPacket(strlen(r->resource_val[0]), r->resource_val[0]);
    }
 
-   num_val.int_val = SendTopLevelBlakodMessage(u->object_id,IS_FIRST_TIME_MSG,0,NULL);
+   num_val.int_val = SendTopLevelBlakodMessage(u->object_id, IS_FIRST_TIME_MSG, 0, NULL);
    if (num_val.v.data != 0)
       AddByteToPacket(1);   /* char has been in game before */
    else
       AddByteToPacket(0);   /* char has NOT been in game before */
-      
 }
 
 void GameSendSystemEnter(session_node *s)
@@ -697,16 +652,15 @@ void GameSendSystemEnter(session_node *s)
 
    session_id_const.v.tag = TAG_SESSION;
    session_id_const.v.data = s->session_id;
-   
+
    p.type = CONSTANT;
    p.value = session_id_const.int_val;
    p.name_id = SESSION_ID_PARM;
-   
-   SendTopLevelBlakodMessage(GetSystemObjectID(),SYSTEM_ENTER_GAME_MSG,1,&p);
 
+   SendTopLevelBlakodMessage(GetSystemObjectID(),SYSTEM_ENTER_GAME_MSG,1,&p);
 }
 
-void GameDMCommand(session_node *s,int type,char *str)
+void GameDMCommand(session_node *s, int type, char *str)
 {
    char buf[LEN_MAX_CLIENT_MSG + 200];
    int acctype;
@@ -717,66 +671,65 @@ void GameDMCommand(session_node *s,int type,char *str)
 
    acctype = s->account->type;
 
-//   dprintf("DM command %i by session %i account %i acctype %i; string is \"%s\".\n",
-//      type, s->session_id, s->account->account_id, acctype, str);
+   //   dprintf("DM command %i by session %i account %i acctype %i; string is \"%s\".\n",
+   //      type, s->session_id, s->account->account_id, acctype, str);
 
    switch (type)
    {
-   case DM_CMD_GO_ROOM :
+   case DM_CMD_GO_ROOM:
       if (0 != atoi(str))
       {
-	 //ASSERT(0 != ACCOUNT_ADMIN);
-	 //ASSERT(0 != ACCOUNT_DM);
-	 if (ConfigInt(RIGHTS_GOROOMBYNUM) == 0)
-	 {
-	    dprintf("DM Command GOROOM (by number) disabled.");
-	    break;
-	 }
-	 if (ConfigInt(RIGHTS_GOROOMBYNUM) == ACCOUNT_ADMIN && acctype == ACCOUNT_DM)
-	 {
-	    dprintf("DM Command GOROOM (by number) disabled for DMs; must be Admin.");
-	    break;
-	 }
+         //ASSERT(0 != ACCOUNT_ADMIN);
+         //ASSERT(0 != ACCOUNT_DM);
+         if (ConfigInt(RIGHTS_GOROOMBYNUM) == 0)
+         {
+            dprintf("DM Command GOROOM (by number) disabled.");
+            break;
+         }
+         if (ConfigInt(RIGHTS_GOROOMBYNUM) == ACCOUNT_ADMIN && acctype == ACCOUNT_DM)
+         {
+            dprintf("DM Command GOROOM (by number) disabled for DMs; must be Admin.");
+            break;
+         }
       }
       if (ConfigInt(RIGHTS_GOROOM) == 0)
       {
-	 dprintf("DM Command GOROOM disabled.");
-	 break;
+         dprintf("DM Command GOROOM disabled.");
+         break;
       }
       if (ConfigInt(RIGHTS_GOROOM) == ACCOUNT_ADMIN && acctype == ACCOUNT_DM)
       {
-	 dprintf("DM Command GOROOM disabled for DMs; must be Admin.");
-	 break;
+         dprintf("DM Command GOROOM disabled for DMs; must be Admin.");
+         break;
       }
-      sprintf(buf,"send object %i teleportto rid int %s",s->game->object_id,str);
-      SendSessionAdminText(s->session_id,"~B> %s\n",buf); /* echo it to 'em */
-      TryAdminCommand(s->session_id,buf); 
+      sprintf(buf, "send object %i teleportto rid int %s", s->game->object_id, str);
+      SendSessionAdminText(s->session_id, "~B> %s\n", buf); /* echo it to 'em */
+      TryAdminCommand(s->session_id, buf);
       break;
 
-   case DM_CMD_GO_PLAYER :
+   case DM_CMD_GO_PLAYER:
       if (ConfigInt(RIGHTS_GOPLAYER) == 0)
-	 break;
+         break;
       if (ConfigInt(RIGHTS_GOPLAYER) == ACCOUNT_ADMIN && acctype == ACCOUNT_DM)
-	 break;
-      sprintf(buf,"send object %i admingotoobject what object %s",s->game->object_id,str);
-      SendSessionAdminText(s->session_id,"~B> %s\n",buf); /* echo it to 'em */
-      TryAdminCommand(s->session_id,buf); 
+         break;
+      sprintf(buf, "send object %i admingotoobject what object %s", s->game->object_id, str);
+      SendSessionAdminText(s->session_id, "~B> %s\n", buf); /* echo it to 'em */
+      TryAdminCommand(s->session_id, buf);
       break;
 
-   case DM_CMD_GET_PLAYER :
+   case DM_CMD_GET_PLAYER:
       if (ConfigInt(RIGHTS_GETPLAYER) == 0)
-	 break;
+         break;
       if (ConfigInt(RIGHTS_GETPLAYER) == ACCOUNT_ADMIN && acctype == ACCOUNT_DM)
-	 break;
-      sprintf(buf,"send object %s admingotoobject what object %i",str,s->game->object_id);
-      SendSessionAdminText(s->session_id,"~B> %s\n",buf); /* echo it to 'em */
-      TryAdminCommand(s->session_id,buf); 
+         break;
+      sprintf(buf, "send object %s admingotoobject what object %i", str, s->game->object_id);
+      SendSessionAdminText(s->session_id, "~B> %s\n", buf); /* echo it to 'em */
+      TryAdminCommand(s->session_id, buf);
       break;
 
-   default :
-     eprintf("GameDMCommand got invalid DM command type %i\n",type);
-     break;
-      
+   default:
+      eprintf("GameDMCommand got invalid DM command type %i\n", type);
+      break;
    }
 }
 
@@ -810,10 +763,10 @@ void UpdateSecurityRedbook()
 
    if (r)
    {
-      if (!old || (r->resource_val[0] && 0 != strcmp(old,r->resource_val[0])))
-	 _redbookstring = strdup(r->resource_val[0]);
+      if (!old || (r->resource_val[0] && 0 != strcmp(old, r->resource_val[0])))
+         _redbookstring = strdup(r->resource_val[0]);
       else
-	 _redbookstring = old;
+         _redbookstring = old;
       _redbookid = r->resource_id;
    }
 
@@ -821,7 +774,7 @@ void UpdateSecurityRedbook()
    {
       ForEachSession(GameEchoPing);
       if (old)
-	 free(old);
+         free(old);
    }
 }
 

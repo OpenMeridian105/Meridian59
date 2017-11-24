@@ -2531,40 +2531,37 @@ messages:
       }
       else
       {
-         if NOT IsClass(self,&Guest)
+         foreach i in lSpells
          {
-            foreach i in lSpells
+            oSpell = Send(SYS, @FindSpellByNum, #num=i);
+            // Not offered to new characters -> cheating, skip spell
+            if (oSpell <> $ AND Send(oSpell,@OfferToNewCharacters))
             {
-               oSpell = Send(SYS, @FindSpellByNum, #num=i);
-               // Not offered to new characters -> cheating, skip spell
-               if (oSpell <> $ AND Send(oSpell,@OfferToNewCharacters))
+               iLevel = Send(oSpell,@GetLevel);
+               if (iLevel <= 2)
                {
-                  iLevel = Send(oSpell,@GetLevel);
-                  if (iLevel <= 2)
-                  {
-                     Send(self,@AddSpell,#num=i,#initial=TRUE);
-                  }
-                  if (Send(oSpell,@GetSchool) = SS_QOR)
-                  {
-                     bQor = TRUE;
-                  }
-                  if (Send(oSpell,@GetSchool) = SS_SHALILLE)
-                  {
-                     bShalille = TRUE;
-                  }
+                  Send(self,@AddSpell,#num=i,#initial=TRUE);
+               }
+               if (Send(oSpell,@GetSchool) = SS_QOR)
+               {
+                  bQor = TRUE;
+               }
+               if (Send(oSpell,@GetSchool) = SS_SHALILLE)
+               {
+                  bShalille = TRUE;
                }
             }
+         }
 
-            foreach i in lSkills
+         foreach i in lSkills
+         {
+            oSkill = Send(SYS,@FindSkillByNum,#num=i);
+            if (oSkill <> $)
             {
-               oSkill = Send(SYS,@FindSkillByNum,#num=i);
-               if (oSkill <> $)
+               iLevel = Send(oSkill,@GetLevel);
+               if (iLevel <= 2)
                {
-                  iLevel = Send(oSkill,@GetLevel);
-                  if (iLevel <= 2)
-                  {
-                     Send(self,@AddSkill,#num=i,#initial=TRUE);
-                  }
+                  Send(self,@AddSkill,#num=i,#initial=TRUE);
                }
             }
          }
@@ -4637,12 +4634,7 @@ messages:
             // have your 'safety' off to attack anyone.
             if report
             {
-               if IsClass(self,&Guest)
-               {
-                  Send(self,@MsgSendUser,#message_rsc=player_guardian_angel,
-                       #parm1=Send(victim,@GetDef),#parm2=Send(victim,@GetName));
-               }
-               else if minion
+               if minion
                {
                   Send(self,@MsgSendUser,#message_rsc=player_safety_caught_minion,
                         #parm1=Send(victim,@GetDef),#parm2=Send(victim,@GetName));

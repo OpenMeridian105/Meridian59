@@ -345,7 +345,7 @@ Bool SuspendAccountAbsolute(account_node *a, int suspend_time)
 
    if (suspend_time < 0)
    {
-      eprintf("SuspendAccountAbsolute: invalid suspend time %d; ignored\n",suspend_time);
+      eprintf("SuspendAccountAbsolute: invalid suspend time %d; ignored\n", suspend_time);
       return False;
    }
 
@@ -361,12 +361,12 @@ Bool SuspendAccountAbsolute(account_node *a, int suspend_time)
    {
       if (a->suspend_time <= now)
       {
-	 /* no report for lifting suspension on unsuspended account */
+         /* no report for lifting suspension on unsuspended account */
       }
       else
       {
-	 lprintf("Suspension of account %i (%s) lifted\n",
-	         a->account_id, a->name);
+         lprintf("Suspension of account %i (%s) lifted\n",
+            a->account_id, a->name);
       }
       a->suspend_time = 0;
       return True;
@@ -376,8 +376,12 @@ Bool SuspendAccountAbsolute(account_node *a, int suspend_time)
 
    a->suspend_time = suspend_time;
 
+   char suspend_timestr[80];
+   strncpy(suspend_timestr, TimeStr(suspend_time), 80);
+   suspend_timestr[79] = 0;
+
    lprintf("Suspended account %i (%s) until %s\n",
-           a->account_id, a->name, TimeStr(suspend_time));
+      a->account_id, a->name, suspend_timestr);
 
    s = GetSessionByAccount(a);
    if (s != NULL)
@@ -386,8 +390,8 @@ Bool SuspendAccountAbsolute(account_node *a, int suspend_time)
       PollSession(s->session_id);
       if (GetSessionByAccount(a) != NULL)
       {
-	 eprintf("SuspendAccountAbsolute: tried to hangup account %i but failed\n",
-		 a->account_id);
+         eprintf("SuspendAccountAbsolute: tried to hangup account %i but failed\n",
+            a->account_id);
       }
    }
 
@@ -396,13 +400,14 @@ Bool SuspendAccountAbsolute(account_node *a, int suspend_time)
 
 Bool SuspendAccountRelative(account_node *a, int hours)
 {
-   int suspend_time;
+   // Cap at a reasonable level (i.e. 1hr before 32-bit time breaks in 2038).
+   int avail_time = (INT_MAX - 3600 - GetTime()) / 3600;
+   if (hours >= avail_time)
+      hours = avail_time;
 
-   /* if not suspended, hours is relative to now.
-    * if suspended, hours is relative to their current suspension.
-    */
-
-   suspend_time = std::max(GetTime(), a->suspend_time) + hours*60*60;
+   // if not suspended, hours is relative to now.
+   // if suspended, hours is relative to their current suspension.
+   int suspend_time = std::max(GetTime(), a->suspend_time) + hours * 60 * 60;
 
    return SuspendAccountAbsolute(a, suspend_time);
 }
@@ -528,7 +533,7 @@ void DeleteAccountAndAssociatedUsersByID(int account_id)
    a = GetAccountByID(account_id);
    if (a == NULL)
    {
-      eprintf("DeleteAccountAndAssociatedUsersByID: can't delete account %i\n",account_id);
+      eprintf("DeleteAccountAndAssociatedUsersByID: can't delete account %i\n", account_id);
       return;
    }
    s = GetSessionByAccount(a);
@@ -538,30 +543,32 @@ void DeleteAccountAndAssociatedUsersByID(int account_id)
       PollSession(s->session_id);
       if (GetSessionByAccount(a) != NULL)
       {
-	 eprintf("DeleteAccountAndAssociatedUsersByID: tried to hangup account %i but failed\n",
-		 account_id);
-	 return;
+         eprintf("DeleteAccountAndAssociatedUsersByID: tried to hangup account %i but failed\n",
+            account_id);
+         return;
       }
    }
 
-   lprintf("Attempting delete of account %i (%s) (last login %s)\n",
-           account_id, a->name, TimeStr(a->last_login_time));
+   char last_timestr[80];
+   strncpy(last_timestr, TimeStr(a->last_login_time), 80);
+   last_timestr[79] = 0;
 
-   ForEachUserByAccountID(AdminDeleteEachUserObject,account_id);
-   
+   lprintf("Attempting delete of account %i (%s) (last login %s)\n",
+      account_id, a->name, last_timestr);
+
+   ForEachUserByAccountID(AdminDeleteEachUserObject, account_id);
+
    DeleteUserByAccountID(account_id);
-   
+
    if (!DeleteAccount(account_id))
    {
       eprintf("DeleteAccountAndAssociatedUsersByID: unable to delete account %i - unknown reason\n",
-	      account_id);
-      lprintf("Delete of account %i failed - unknown reason\n",
-	      account_id);
+         account_id);
+      lprintf("Delete of account %i failed - unknown reason\n", account_id);
    }
    else
    {
-      lprintf("Delete of account %i successful\n",
-	      account_id);
+      lprintf("Delete of account %i successful\n", account_id);
    }
 }
 

@@ -307,9 +307,9 @@ admin_table_type admin_setacco_table[] =
 admin_table_type admin_suspend_table[] =
 {
 	{ AdminSuspendAccount,  {I,R,N}, F, A|M, NULL, 0, "account", 
-	"Suspends account by name or id for number of hours" },
+	"Suspends account by name or id (parm2) for number of hours (parm1)" },
 	{ AdminSuspendUser,     {I,R,N}, F, A|M, NULL, 0, "user", 
-		"Suspends account by user name for number of hours" },
+		"Suspends account by user name for number (parm2) of hours (parm1)" },
 };
 #define LEN_ADMIN_SUSPEND_TABLE (sizeof(admin_suspend_table)/sizeof(admin_table_type))
 
@@ -3736,6 +3736,12 @@ void AdminSuspendAccount(int session_id,admin_parm_type parms[],
 		return;
 	}
 	
+   if (hours < 1)
+   {
+      aprintf("Got num hours smaller than 1, please enter a valid number (e.g. 1-150000)\n");
+      return;
+   }
+
 	is_by_number = True;
 	
 	ptr = arg_str;

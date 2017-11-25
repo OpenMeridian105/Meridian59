@@ -151,7 +151,6 @@ void AdminSetObjInt(int session_id, admin_parm_type parms[], int num_blak_parm, 
 void AdminSetAccountName(int session_id, admin_parm_type parms[], int num_blak_parm, parm_node blak_parm[]);
 void AdminSetAccountPassword(int session_id, admin_parm_type parms[], int num_blak_parm, parm_node blak_parm[]);
 void AdminSetAccountEmail(int session_id, admin_parm_type parms[], int num_blak_parm, parm_node blak_parm[]);
-void AdminSetAccountCredits(int session_id, admin_parm_type parms[], int num_blak_parm, parm_node blak_parm[]);
 void AdminSetAccountObject(int session_id, admin_parm_type parms[], int num_blak_parm, parm_node blak_parm[]);
 /*void AdminSetResource(int session_id,admin_parm_type parms[]);*/
 void AdminSetConfigInt(int session_id, admin_parm_type parms[], int num_blak_parm, parm_node blak_parm[]);
@@ -192,8 +191,6 @@ void AdminSendClass(int session_id, admin_parm_type parms[], int num_blak_parm, 
 
 void AdminTraceOnMessage(int session_id, admin_parm_type parms[], int num_blak_parm, parm_node blak_parm[]);
 void AdminTraceOffMessage(int session_id, admin_parm_type parms[], int num_blak_parm, parm_node blak_parm[]);
-
-void AdminAddCredits(int session_id, admin_parm_type parms[], int num_blak_parm, parm_node blak_parm[]);
 
 void AdminKickoffAll(int session_id, admin_parm_type parms[], int num_blak_parm, parm_node blak_parm[]);
 void AdminKickoffEachSession(session_node *s);
@@ -296,8 +293,6 @@ admin_table_type admin_show_table[] =
 
 admin_table_type admin_setacco_table[] =
 {
-	{ AdminSetAccountCredits,  {I,I,N}, F, A|M, NULL, 0, "credits", 
-	"Set an account's number of credits--use Add Account Credit instead" },
 	{ AdminSetAccountName,     {I,R,N}, F, A|M, NULL, 0, "name", 
 		"Set account name by account number and password" },
 	{ AdminSetAccountObject,   {I,I,N}, F, A|M, NULL, 0, "object", 
@@ -312,9 +307,9 @@ admin_table_type admin_setacco_table[] =
 admin_table_type admin_suspend_table[] =
 {
 	{ AdminSuspendAccount,  {I,R,N}, F, A|M, NULL, 0, "account", 
-	"Suspends account by name or id for number of hours" },
+	"Suspends account by name or id (parm2) for number of hours (parm1)" },
 	{ AdminSuspendUser,     {I,R,N}, F, A|M, NULL, 0, "user", 
-		"Suspends account by user name for number of hours" },
+		"Suspends account by user name for number (parm2) of hours (parm1)" },
 };
 #define LEN_ADMIN_SUSPEND_TABLE (sizeof(admin_suspend_table)/sizeof(admin_table_type))
 
@@ -407,13 +402,6 @@ admin_table_type admin_trace_table[] =
 };
 #define LEN_ADMIN_TRACE_TABLE (sizeof(admin_trace_table)/sizeof(admin_table_type))
 
-admin_table_type admin_add_table[] =
-{
-	{ AdminAddCredits,   {I,I,N}, F, A|M, NULL, 0, "credits", 
-		"Add credits by account number and credits" },
-};
-#define LEN_ADMIN_ADD_TABLE (sizeof(admin_add_table)/sizeof(admin_table_type))
-
 admin_table_type admin_kickoff_table[] =
 {
 	{ AdminKickoffAccount, {I,N},  F, A|M, NULL, 0, "account", "Kick one account out of the game" },
@@ -481,7 +469,6 @@ admin_table_type admin_save_table[] =
 
 admin_table_type admin_main_table[] = 
 { 
-	{ NULL, {N}, F, A|M, admin_add_table,    LEN_ADMIN_ADD_TABLE,    "add",    "Add subcommand" },
 	{ NULL, {N}, F, A|M, admin_check_table,  LEN_ADMIN_CHECK_TABLE,  "check",  "Check subcommand" },
 	{ NULL, {N}, F, A|M, admin_create_table, LEN_ADMIN_CREATE_TABLE, "create", "Create subcommand" },
 	{ NULL, {N}, F, A|M, admin_delete_table, LEN_ADMIN_DELETE_TABLE, "delete", "Delete subcommand" },
@@ -1762,7 +1749,7 @@ void AdminShowUser(int session_id,admin_parm_type parms[],
 void AdminShowUsage(int session_id, admin_parm_type parms[],
                     int num_blak_parm, parm_node blak_parm[])
 {
-   aprintf(":< sessions %i\n", GetUsedSessions);
+   aprintf(":< sessions %i\n", GetUsedSessions());
    aprintf(":>\n");
 }
 
@@ -1875,37 +1862,38 @@ void AdminShowAccount(int session_id,admin_parm_type parms[],
 
 void AdminShowAccountHeader()
 {
-	aprintf("%-6s%-23s%-23s%-10s%-8s%-30s\n","Acct","Name","Email","Suspended","Credits",
-		"Last login");
+   aprintf("%-6s%-23s%-23s%-10s%-8s%-30s\n", "Acct", "Name", "Email",
+      "Suspended", "Sec logged in", "Last login");
 }
 
 void AdminShowOneAccount(account_node *a)
 {
-	char ch = ' ';
-	static const char* types = " ADG"; // see enum ACCOUNT_* in account.h
+   char ch = ' ';
+   static const char* types = " AD"; // see enum ACCOUNT_* in account.h
    char buff[9];
-	
-	if (a->type >= 0 && a->type <= (int)strlen(types))
-		ch = types[a->type];
+
+   if (a->type >= 0 && a->type <= (int)strlen(types))
+      ch = types[a->type];
 
    // Check the suspend time.  We don't print a negative time.
    if (a->suspend_time <= GetTime())
    {
       a->suspend_time = 0;
-   }   			
+   }
 
    if (a->suspend_time > 0)
    {
       // Print suspended time left in hours.
-      sprintf(buff,"%7.1fh",(a->suspend_time - GetTime())/(60.0*60.0));
+      sprintf(buff, "%7.1fh", (a->suspend_time - GetTime()) / (60.0*60.0));
    }
    else
    {
-      sprintf(buff,"");
+      sprintf(buff, "");
    }
-	
-	aprintf("%4i%c %-23s%-23s%8s %4i.%02i %-30s\n",a->account_id,ch,a->name,a->email,
-        buff, a->credits/100,a->credits%100,TimeStr(a->last_login_time));
+
+   aprintf("%4i%c %-23s%-23s%8s %4i.%02i %-30s\n", a->account_id, ch, a->name, a->email,
+      buff, a->seconds_logged_in / 60, a->seconds_logged_in % 60,
+      TimeStr(a->last_login_time));
 }
 
 void AdminShowSuspended(int session_id, admin_parm_type parms[],
@@ -3424,25 +3412,6 @@ void AdminSetAccountEmail(int session_id, admin_parm_type parms[],
    SetAccountEmail(a, email);
 }
 
-void AdminSetAccountCredits(int session_id,admin_parm_type parms[],
-                            int num_blak_parm,parm_node blak_parm[])
-{
-	account_node *a;
-	
-	int account_id,credits;
-	account_id = (int)parms[0];
-	credits = (int)parms[1];
-	
-	a = GetAccountByID(account_id);
-	if (a == NULL)
-	{
-		aprintf("Cannot find account %i.\n",account_id);
-		return;
-	}
-	lprintf("AdminSetAccountCredits setting account %i to have %i credits\n",account_id,credits);
-	a->credits = 100*credits + 5;
-}
-
 void AdminSetAccountObject(int session_id,admin_parm_type parms[],
                            int num_blak_parm,parm_node blak_parm[])
 {
@@ -3767,6 +3736,12 @@ void AdminSuspendAccount(int session_id,admin_parm_type parms[],
 		return;
 	}
 	
+   if (hours < 1)
+   {
+      aprintf("Got num hours smaller than 1, please enter a valid number (e.g. 1-150000)\n");
+      return;
+   }
+
 	is_by_number = True;
 	
 	ptr = arg_str;
@@ -4733,26 +4708,6 @@ void AdminTraceOffMessage(int session_id,admin_parm_type parms[],
 	}
 	
 	m->trace_session_id = INVALID_ID;
-}
-
-void AdminAddCredits(int session_id,admin_parm_type parms[],
-                     int num_blak_parm,parm_node blak_parm[])                     
-{
-	account_node *a;
-	
-	int account_id;
-	int credits;
-	account_id = (int)parms[0];
-	credits = (int)parms[1];
-	
-	a = GetAccountByID(account_id);
-	if (a == NULL)
-	{
-		aprintf("Cannot find ACCOUNT %i.\n",account_id);
-		return;
-	}
-	lprintf("AdminAddAccount adding %i credits to ACCOUNT %i (%s)\n",credits,account_id,a->name);
-	a->credits += 100*credits;
 }
 
 void AdminKickoffAll(int session_id,admin_parm_type parms[],

@@ -17,12 +17,11 @@ typedef struct {
    int     name;          // Resource id of name
    int     template_id;   // Resource id of dialog template
    DLGPROC dialog_proc;   // Dialog procedure for tab
-   Bool    guest;         // True if we should show tab for guest accounts
 } TabPage;
 
 // Window handles of modeless dialogs, one per tab
 TabPage tab_pages[] = {
-{ IDS_CHARSTATS,      IDD_CHARSTATS,      CharStatsDialogProc,  True, },
+{ IDS_CHARSTATS,      IDD_CHARSTATS,      CharStatsDialogProc, },
 };
 
 #define NUM_TAB_PAGES (sizeof(tab_pages) / sizeof(TabPage))
@@ -58,10 +57,6 @@ void MakeStats(int *stats_in, int *levels_in)
    // Prepare property sheets
    for (i=0; i < NUM_TAB_PAGES; i++)
    {
-      // Skip non-guest pages if we're a guest
-      if (cinfo->config->guest && !tab_pages[i].guest)
-	 continue;
-      
       psh.nPages++;
       psp[i].dwSize = sizeof(PROPSHEETPAGE);
       psp[i].dwFlags = PSP_USETITLE;

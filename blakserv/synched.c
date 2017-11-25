@@ -261,14 +261,7 @@ void SynchedProtocolParse(session_node *s,client_msg *msg)
             break;
          }
       }
-/*
-  if (s->account->credits <= 0)
-  {
-  AddByteToPacket(AP_NOCREDITS);
-  SendPacket(s->session_id);
-  break;
-  }
-*/
+
       last_download_time = *(int *)(msg->data + index);
       index += 4; 
       
@@ -361,11 +354,10 @@ void SynchedAcceptLogin(session_node *s,char *name,char *password)
    account_node *a;
    int now = GetTime();
 
-   a = AccountLoginByName(name); /* maps the GUEST_ACCOUNT_NAME into a real account */
+   a = AccountLoginByName(name);
 
    /* bad username, bad password, or suspended? */
-   if (a == NULL ||
-       (a->type != ACCOUNT_GUEST && strcmp(a->password,password) != 0))
+   if (a == NULL || strcmp(a->password, password) != 0)
    {
       s->syn->failed_tries++;
       if (s->syn->failed_tries == ConfigInt(LOGIN_MAX_ATTEMPTS))
@@ -375,30 +367,9 @@ void SynchedAcceptLogin(session_node *s,char *name,char *password)
          HangupSession(s);
          return;
       }
-      if (!stricmp(name,ConfigStr(GUEST_ACCOUNT)))
-      {
-         AddByteToPacket(AP_GUEST);
-         AddByteToPacket(1); /* we're hanging 'em up */
-         AddIntToPacket(ConfigInt(GUEST_SERVER_MIN));
-         AddIntToPacket(ConfigInt(GUEST_SERVER_MAX));
-         
-         /*
-           char *too_many_str;
-           
-           too_many_str = ConfigStr(GUEST_TOO_MANY);
-           AddByteToPacket(AP_MESSAGE);
-           AddStringToPacket(strlen(too_many_str),too_many_str);
-           AddByteToPacket(LA_LOGOFF);
-         */
-         
-         SendPacket(s->session_id);
-         HangupSession(s);
-      }
-      else
-      {
-         AddByteToPacket(AP_LOGINFAILED);
-         SendPacket(s->session_id);
-      }
+
+      AddByteToPacket(AP_LOGINFAILED);
+      SendPacket(s->session_id);
       return;
    }
 
@@ -436,17 +407,7 @@ void SynchedAcceptLogin(session_node *s,char *name,char *password)
    /* suspension lifted naturally? */
    if (a->suspend_time)
       SuspendAccountAbsolute(a, 0);
-   
-   /* tell guest client what other servers may be available */
-   if (!stricmp(name,ConfigStr(GUEST_ACCOUNT)))
-   {
-      AddByteToPacket(AP_GUEST);
-      AddByteToPacket(0); /* we're letting 'em stay, give 'em the new range */
-      AddIntToPacket(ConfigInt(GUEST_SERVER_MIN));
-      AddIntToPacket(ConfigInt(GUEST_SERVER_MAX));
-      SendPacket(s->session_id);
-   }
-   
+
    /* check if anyone already logged in on same account */
    other = GetSessionByAccount(a);
    if (other != NULL)
@@ -787,17 +748,6 @@ void LogUserData(session_node *s)
 void SynchedDoMenu(session_node *s)
 {
    SynchedSendMenuChoice(s);
-             
-   AddByteToPacket(AP_CREDITS);
-   /* round any fraction up */
-   AddIntToPacket(20);
-   /*
-   if (s->account->credits%100 == 0)
-      AddIntToPacket(s->account->credits/100);
-   else
-      AddIntToPacket(s->account->credits/100+1);
-      */
-   SendPacket(s->session_id);
 }
 
 void SynchedSendMenuChoice(session_node *s)
@@ -817,16 +767,11 @@ void SynchedSendMenuChoice(session_node *s)
    for (i=0;i<SEED_COUNT;i++)
       AddIntToPacket(s->seeds[i]);
    SendPacket(s->session_id);
-
 }
 
 void SynchedGotoGame(session_node *s,int last_download_time)
 {
-   int num_new_files;
-   char *str;
-   
    /* first check to see if they can goto game (if they have >= 1 char) */
-
    if (CountUserByAccountID(s->account->account_id) <= 0)
    {
       /* Tell user that he has no characters */
@@ -841,9 +786,12 @@ void SynchedGotoGame(session_node *s,int last_download_time)
 
    s->last_download_time = last_download_time;
 
+   // Old package downloader.
+#if 0
    /* dprintf("sess %i has %i new files to delete\n",s->session_id,CountNewDelresFile(s)); */
 
-   num_new_files = CountNewDLFile(s);
+   int num_new_files = CountNewDLFile(s);
+   char *str;
    if (num_new_files > 0)
    {
       // Tell client there's files to be downloaded, and don't go into game mode.
@@ -905,6 +853,7 @@ void SynchedGotoGame(session_node *s,int last_download_time)
 
       SendPacket(s->session_id);
    }
+#endif
 
    // All set to go to game mode.
 

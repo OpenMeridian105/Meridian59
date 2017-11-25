@@ -46,10 +46,6 @@ static char INIDownload[]    = "Download";
 static char INIBrowser[]     = "Browser";
 static char INIDefaultBrowser[] = "DefaultBrowser";
 static char INIVersion[]     = "INIVersion";
-static char INIGuest[]       = "Guest";
-static char INIServerLow[]   = "ServerLow";
-static char INIServerHigh[]  = "ServerHigh";
-static char INIServerGuest[] = "ServerGuest";
 static char INILastPass[]    = "Sentinel";
 static char INISoundLibrary[] = "SoundLibrary";
 static char INICacheBalance[] = "CacheBalance";
@@ -255,10 +251,6 @@ void ConfigLoad(void)
    config.xp_display_percent = GetConfigInt(interface_section, XPDisplay, False, ini_file);
    config.chat_time_stamps = GetConfigInt(interface_section, INITimeStamps, False, ini_file);
    config.language     = GetConfigInt(interface_section, INILanguage, 0, ini_file);
-   config.guest        = GetConfigInt(misc_section, INIGuest, False, ini_file);
-   config.server_low   = GetConfigInt(misc_section, INIServerLow, 0, ini_file);
-   config.server_high  = GetConfigInt(misc_section, INIServerHigh, 0, ini_file);
-   config.server_guest = GetConfigInt(misc_section, INIServerGuest, 0, ini_file);
    config.lastPasswordChange = GetConfigInt(misc_section, INILastPass, 0, ini_file);
 
    /* charlie: 
@@ -372,11 +364,6 @@ void ConfigSave(void)
    WriteConfigInt(interface_section, INITimeStamps, config.chat_time_stamps, ini_file);
    WriteConfigInt(interface_section, INILanguage, config.language, ini_file);
 
-   // Don't write out "guest" option; user can't set it
-
-   WriteConfigInt(misc_section, INIServerLow, config.server_low, ini_file);
-   WriteConfigInt(misc_section, INIServerHigh, config.server_high, ini_file);
-   WriteConfigInt(misc_section, INIServerGuest, config.server_guest, ini_file);
    WriteConfigInt(misc_section, INILastPass, config.lastPasswordChange, ini_file);
    WriteConfigInt(special_section, INIShowFPS, config.showFPS, ini_file);
    // "Special" section options NOT saved, so that they're not normally visible (except FPS)

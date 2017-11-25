@@ -43,7 +43,6 @@ static handler_struct login_handler_table[] = {
 { AP_DELETERSC,         HandleDeleteRsc },
 { AP_DELETEALLRSC,      HandleDeleteAllRsc },
 { AP_NOCHARACTERS,      HandleNoCharacters },
-{ AP_GUEST,             HandleGuest },
 { AP_CLIENT_PATCH,      HandleClientPatch },
 { 0, NULL},   // must end table this way
 }; 
@@ -2165,24 +2164,6 @@ Bool HandleClientPatch(char *ptr, long len)
    DownloadClientPatch(patchhost, patchpath, patchcachepath, cachefile,
       clubfile, reason);
 
-   return True;
-}
-/********************************************************************/
-Bool HandleGuest(char *ptr, long len)
-{
-   BYTE status;
-   int low, high;
-   char *start = ptr;
-
-   Extract(&ptr, &status, 1);
-   Extract(&ptr, &low, 4);
-   Extract(&ptr, &high, 4);
-   
-   len -= (ptr - start);
-   if (len != 0)
-      return False;
-
-   GuestLoggingIn(status, low, high);
    return True;
 }
 /********************************************************************/

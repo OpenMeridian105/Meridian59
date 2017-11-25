@@ -13,7 +13,7 @@
 #ifndef _ACCOUNT_H
 #define _ACCOUNT_H
 
-enum { ACCOUNT_NORMAL = 0, ACCOUNT_ADMIN = 1, ACCOUNT_DM = 2, ACCOUNT_GUEST = 3};
+enum { ACCOUNT_NORMAL = 0, ACCOUNT_ADMIN = 1, ACCOUNT_DM = 2 };
 
 typedef struct account_node_struct
 {
@@ -22,7 +22,7 @@ typedef struct account_node_struct
    char *password;
    char *email;
    int type;
-   int credits;			/* remember, stored as 1/100 of a credit */
+   int seconds_logged_in;
    int last_login_time;
    int suspend_time;
    struct account_node_struct *next;
@@ -33,12 +33,11 @@ void InitAccount(void);
 void ResetAccount(void);
 account_node * GetConsoleAccount(void);
 int GetNextAccountID(void);
-int GetUsedGuestAccounts(void);
 Bool CreateAccount(char *name,char *password,char *email,int type,int *account_id);
 int CreateAccountSecurePassword(char *name,char *password,char *email,int type);
 int RecreateAccountSecurePassword(int account_id,char *name,char *password,char *email,int type);
 void LoadAccount(int account_id,char *name,char *password,char *email,int type,int last_login_time,
-		 int suspend_time, int credits);
+                 int suspend_time, int sec_logged_in);
 Bool DeleteAccount(int account_id);
 void SetAccountName(account_node *a,char *name);
 void SetAccountPassword(account_node *a,char *password);

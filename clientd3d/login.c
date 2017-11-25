@@ -13,7 +13,7 @@
 
 #define MAXSERVERNUM 3      /* Max # of digits in server number */
 
-static int user_type;       /* Tells if user is administrator, guest, etc.. */
+static int user_type;       /* Tells if user is administrator/normal user */
 Bool logged_in;             /* True iff we're past login dialog */
 int session_id;             /* Session-ID in blakserv */
 extern int connection;
@@ -173,10 +173,8 @@ void EnterGame(void)
 Bool GetLogin(void)
 {
    admin_mode = False;
-   // Have guests log in automatically
-   if (config.guest)
-      return GuestGetLogin();
-   else if (config.quickstart)
+
+   if (config.quickstart)
    {
       logged_in = False;
    }
@@ -184,18 +182,11 @@ Bool GetLogin(void)
    {
       logged_in = False;
       if (DialogBox(hInst, MAKEINTRESOURCE(IDD_LOGIN), hMain, LoginDialogProc) == IDCANCEL)
-	 return False;
+         return False;
       // Go into admin mode if control key is held down
       admin_mode = (GetKeyState(VK_CONTROL) < 0);
-
-      // See if "guest" typed as account name
-      if (!stricmp(config.username, GetString(hInst, IDS_GUEST)))
-      {
-	 config.guest = True;
-	 return GuestGetLogin();
-      }
    }
-      
+
    return True;
 }
 
@@ -240,125 +231,95 @@ BOOL CALLBACK LoginDialogProc(HWND hDlg, UINT message, UINT wParam, LONG lParam)
       if (config.comm.server_num != -1)
       {
          SetDlgItemInt(hDlg, IDC_SERVERNUM, config.comm.server_num, FALSE);
-	 
-	 // If already logged in, can't change server number
-	 if (connection != CON_NONE)
-	    EnableWindow(hServer, FALSE);
+
+         // If already logged in, can't change server number
+         if (connection != CON_NONE)
+            EnableWindow(hServer, FALSE);
       }
 
       /* If we have a default name, go to password edit box */
       Edit_SetText(hUser, config.username);
       Edit_SetSel(hUser, 0, -1);
-      if (config.guest)
+      if (strlen(config.username) > 0)
       {
-	 RECT rc;
-	 int bottom;
-	 Edit_SetText(hUser, "GUEST");
-	 Edit_SetText(hPasswd, "GUEST");
-	 EnableWindow(hUser, FALSE);
-	 EnableWindow(hPasswd, FALSE);
-	 EnableWindow(hServer, FALSE);	 
-	 EnableWindow(GetDlgItem(hDlg,IDC_OK), FALSE);
-	 GetWindowRect(hGroupBox, &rc);
-	 bottom = rc.bottom + 5;
-	 GetWindowRect(hDlg, &rc);
-	 MoveWindow(hDlg, rc.left, rc.top, rc.right - rc.left, bottom - rc.top, TRUE);
-      }
-      else if (strlen(config.username) > 0)
-      {
-	 Edit_SetText(hPasswd, config.password);
-	 Edit_SetSel(hPasswd, 0, -1);
-	 SetFocus(hPasswd);
-	 return 0;  /* We have already set focus */
+         Edit_SetText(hPasswd, config.password);
+         Edit_SetSel(hPasswd, 0, -1);
+         SetFocus(hPasswd);
+         return 0;  /* We have already set focus */
       }
       return 1;     /* Set focus to default window */
-      
+
    case BK_DIALOGDONE:
       EndDialog(hDlg, IDOK);
       return TRUE;
 
    case WM_COMMAND:
-      switch(GET_WM_COMMAND_ID(wParam, lParam))
+      switch (GET_WM_COMMAND_ID(wParam, lParam))
       {
-      case IDC_GUEST:
-	 strcpy(config.username, "GUEST");
-	 strcpy(config.password, "GUEST");
-	 ConfigSetServerNameByNumber(config.server_guest);
-	 ConfigSetSocketPortByNumber(config.server_guest);
-	 config.comm.server_num = config.server_guest;
-	 EndDialog(hDlg, IDOK);
-	 return TRUE;
-
       case IDC_HOMEPAGE:
-	 {
-	    char url[256];
-	    LoadString(hInst,IDS_HOMEPAGEURL,url,sizeof(url));
-	    if (*url)
-	    {
-	       WebLaunchBrowser(url);
-	       EndDialog(hDlg, IDCANCEL);
-	       PostMessage(hMain,WM_SYSCOMMAND,SC_CLOSE,0);
-	    }
-	 }
-	 return TRUE;
+      {
+         char url[256];
+         LoadString(hInst, IDS_HOMEPAGEURL, url, sizeof(url));
+         if (*url)
+         {
+            WebLaunchBrowser(url);
+            EndDialog(hDlg, IDCANCEL);
+            PostMessage(hMain, WM_SYSCOMMAND, SC_CLOSE, 0);
+         }
+      }
+      return TRUE;
 
       case IDOK:
-	 /* User has pressed return on one of the edit boxes */
-	 if (GetFocus() == hUser)
-	 {
-	    SetFocus(hPasswd);
-	    return True;
-	 }
-	 
-	 if (GetFocus() == hPasswd)
-	 {
-	    // Go to server edit box if it's empty
-	    value = GetDlgItemInt(hDlg, IDC_SERVERNUM, &success, FALSE);
-	    
-	    if (success)
-	       PostMessage(hDlg, WM_COMMAND, IDC_OK, 0);
-	    else SetFocus(hServer);
-	    return True;	    
-	 }
+         /* User has pressed return on one of the edit boxes */
+         if (GetFocus() == hUser)
+         {
+            SetFocus(hPasswd);
+            return True;
+         }
 
-	 if (GetFocus() == hServer)
-	    PostMessage(hDlg, WM_COMMAND, IDC_OK, 0);
-	 return TRUE;
+         if (GetFocus() == hPasswd)
+         {
+            // Go to server edit box if it's empty
+            value = GetDlgItemInt(hDlg, IDC_SERVERNUM, &success, FALSE);
+
+            if (success)
+               PostMessage(hDlg, WM_COMMAND, IDC_OK, 0);
+            else SetFocus(hServer);
+            return True;
+         }
+
+         if (GetFocus() == hServer)
+            PostMessage(hDlg, WM_COMMAND, IDC_OK, 0);
+         return TRUE;
 
       case IDC_OK:
-	 /* Get username & password */
-	 Edit_GetText(hUser, config.username, MAXUSERNAME + 1);
-	 Edit_GetText(hPasswd, config.password, MAXPASSWORD + 1);
+         /* Get username & password */
+         Edit_GetText(hUser, config.username, MAXUSERNAME + 1);
+         Edit_GetText(hPasswd, config.password, MAXPASSWORD + 1);
 
-	 value = GetDlgItemInt(hDlg, IDC_SERVERNUM, &success, FALSE);
-	 if (!success)
-	 {
-	    // If logging in as "guest", no server number required
-	    if (!stricmp(config.username, GetString(hInst, IDS_GUEST)))
-	       value = config.server_guest;
-	    else
-	    {
-	       ClientError(hInst, hDlg, IDS_NOSERVERNUM);
-	       return TRUE;
-	    }
-	 }
-	 
-	 // If value changed, set server name and socketport
-	 if (value != config.comm.server_num)
-	 {
-	    ConfigSetServerNameByNumber(value);
-	    ConfigSetSocketPortByNumber(value);
-	    config.comm.server_num = value;
-	 }
+         value = GetDlgItemInt(hDlg, IDC_SERVERNUM, &success, FALSE);
+         if (!success)
+         {
+            ClientError(hInst, hDlg, IDS_NOSERVERNUM);
+            return TRUE;
+         }
 
-	 /* Kill off dialog */
-	 EndDialog(hDlg, IDOK);
-	 return TRUE;
+         // If value changed, set server name and socketport
+         if (value != config.comm.server_num)
+         {
+            ConfigSetServerNameByNumber(value);
+            ConfigSetSocketPortByNumber(value);
+            config.comm.server_num = value;
+         }
+
+         /* Kill off dialog */
+         EndDialog(hDlg, IDOK);
+         return TRUE;
 
       case IDC_HANGUP:
       case IDCANCEL:
-	 EndDialog(hDlg, IDCANCEL);
-	 return TRUE;
+         EndDialog(hDlg, IDCANCEL);
+         return TRUE;
       }
       break;
    }

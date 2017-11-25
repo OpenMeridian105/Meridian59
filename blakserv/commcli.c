@@ -268,3 +268,54 @@ void SendBlakodEndSystemEvent(int type)
 
    SendTopLevelBlakodMessage(GetSystemObjectID(),GARBAGE_DONE_MSG,1,p);
 }
+
+#define BLAK_TAG_PARM_CREATE(a, b, c, d, e) \
+   do \
+   { \
+      a[b].type = CONSTANT; \
+      a[b].value = (c << KOD_SHIFT) + d; \
+      a[b].name_id = GetIDByName(e); \
+   } while (0)
+
+#define BLAK_PARM_CREATE(a, b, c, d) \
+   do \
+   { \
+      a[b].type = CONSTANT; \
+      a[b].value = c.int_val; \
+      a[b].name_id = GetIDByName(d); \
+   } while (0)
+
+void SendBlakodRegisterCallback(blakod_reg_callback *reg)
+{
+   parm_node p[12];
+
+   // Obj ID.
+   BLAK_TAG_PARM_CREATE(p, 0, TAG_OBJECT, reg->object_id, "oObject");
+   // Msg ID.
+   BLAK_TAG_PARM_CREATE(p, 1, TAG_MESSAGE, reg->message_id, "message");
+
+   // Second.
+   BLAK_TAG_PARM_CREATE(p, 2, TAG_INT, reg->second, "iSecond");
+   // Minute.
+   BLAK_TAG_PARM_CREATE(p, 3, TAG_INT, reg->minute, "iMinute");
+   // Hour.
+   BLAK_TAG_PARM_CREATE(p, 4, TAG_INT, reg->hour, "iHour");
+   // Day.
+   BLAK_TAG_PARM_CREATE(p, 5, TAG_INT, reg->day, "iDay");
+   // Month.
+   BLAK_TAG_PARM_CREATE(p, 6, TAG_INT, reg->month, "iMonth");
+   // Year.
+   BLAK_TAG_PARM_CREATE(p, 7, TAG_INT, reg->year, "iYear");
+
+   // Optional parameters.
+   // parm1
+   BLAK_PARM_CREATE(p, 8, reg->parm1, "parm1");
+   // parm2
+   BLAK_PARM_CREATE(p, 9, reg->parm2, "parm2");
+   // parm3
+   BLAK_PARM_CREATE(p, 10, reg->parm3, "parm3");
+   // parm4
+   BLAK_PARM_CREATE(p, 11, reg->parm4, "parm4");
+
+   SendTopLevelBlakodMessage(GetRealTimeObjectID(), GetIDByName("registercallback"), 12, p);
+}

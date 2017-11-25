@@ -647,20 +647,20 @@ void InterfaceCreateTabControl(HWND hwnd)
     SendMessage(hwndCtl,WM_SETFONT,(WPARAM)GetStockObject(ANSI_FIXED_FONT),
 		MAKELPARAM(TRUE,0));
 	
-    lf.lfHeight = 8;
+    lf.lfHeight = 13;
     lf.lfWidth = 0;
     lf.lfEscapement = 0;
     lf.lfOrientation = 0;
-    lf.lfWeight = 400;
+    lf.lfWeight = 800;
     lf.lfItalic = 0; 
     lf.lfUnderline = 0;
     lf.lfStrikeOut = 0;
     lf.lfCharSet = 255;
     lf.lfOutPrecision = 1;
     lf.lfClipPrecision = 2;
-    lf.lfQuality = 1;
+    lf.lfQuality = CLEARTYPE_QUALITY;
     lf.lfPitchAndFamily = 49;
-    strcpy(lf.lfFaceName,"Terminal");
+    strcpy(lf.lfFaceName,"Consolas");
     
     font = CreateFontIndirect(&lf);
     if (font != NULL)
@@ -676,6 +676,11 @@ void InterfaceCreateTabControl(HWND hwnd)
     hwndCtl = GetDlgItem(HWND_ADMIN,IDC_ADMIN_COMMAND);
     lpfnDefAdminInputProc = SubclassWindow(hwndCtl,InterfaceAdminInputProc);
 	
+    if (font != NULL)
+    {
+       SendMessage(hwndCtl, WM_SETFONT, (WPARAM)font, MAKELPARAM(TRUE, 0));
+    }
+
     hwndTab_page = NULL;
 	
     InterfaceTabChange();
@@ -806,44 +811,62 @@ void InterfaceSetup()
 
 void InterfaceCreateListControl()
 {
-	LV_COLUMN lvc; 
-	
-	hwndLV = GetDlgItem(HWND_STATUS,IDC_CONNECTION_LIST);
-	
-	/* Initialize the LV_COLUMN structure. */
-	lvc.mask = LVCF_FMT | LVCF_WIDTH | LVCF_TEXT | LVCF_SUBITEM; 
-	lvc.fmt = LVCFMT_LEFT; 
-	
-	/* make the columns */
-	
-	lvc.pszText = "#";
-	lvc.iSubItem = 0;
-	lvc.cx = 29; 
-	ListView_InsertColumn(hwndLV,0,&lvc);
-	
-	lvc.pszText = "Name";
-	lvc.iSubItem = 1;
-	lvc.cx = 113; 
-	ListView_InsertColumn(hwndLV,1,&lvc);
-	
-	lvc.pszText = "Since";
-	lvc.iSubItem = 2;
-	lvc.cx = 80; 
-	ListView_InsertColumn(hwndLV,2,&lvc);
-	
-	lvc.pszText = "State";
-	lvc.iSubItem = 3;
-	lvc.cx = 118; 
-	ListView_InsertColumn(hwndLV,3,&lvc);
-	
-	lvc.pszText = "From";
-	lvc.iSubItem = 4;
-	lvc.cx = 127; 
-	ListView_InsertColumn(hwndLV,4,&lvc);
-	
+   LV_COLUMN lvc;
+   LOGFONT lf;
+   HFONT font;
+
+   hwndLV = GetDlgItem(HWND_STATUS, IDC_CONNECTION_LIST);
+
+   lf.lfHeight = 14;
+   lf.lfWidth = 0;
+   lf.lfEscapement = 0;
+   lf.lfOrientation = 0;
+   lf.lfWeight = 800;
+   lf.lfItalic = 0;
+   lf.lfUnderline = 0;
+   lf.lfStrikeOut = 0;
+   lf.lfCharSet = 255;
+   lf.lfOutPrecision = 1;
+   lf.lfClipPrecision = 2;
+   lf.lfQuality = CLEARTYPE_QUALITY;
+   lf.lfPitchAndFamily = 49;
+   strcpy(lf.lfFaceName, "Consolas");
+
+   font = CreateFontIndirect(&lf);
+   if (font != NULL)
+      SendMessage(hwndLV, WM_SETFONT, (WPARAM)font, MAKELPARAM(TRUE, 0));
+
+   /* Initialize the LV_COLUMN structure. */
+   lvc.mask = LVCF_FMT | LVCF_WIDTH | LVCF_TEXT | LVCF_SUBITEM;
+   lvc.fmt = LVCFMT_LEFT;
+
+   /* make the columns */
+
+   lvc.pszText = "#";
+   lvc.iSubItem = 0;
+   lvc.cx = 29;
+   ListView_InsertColumn(hwndLV, 0, &lvc);
+
+   lvc.pszText = "Acct Name";
+   lvc.iSubItem = 1;
+   lvc.cx = 125;
+   ListView_InsertColumn(hwndLV, 1, &lvc);
+
+   lvc.pszText = "Since";
+   lvc.iSubItem = 2;
+   lvc.cx = 106;
+   ListView_InsertColumn(hwndLV, 2, &lvc);
+
+   lvc.pszText = "State";
+   lvc.iSubItem = 3;
+   lvc.cx = 110;
+   ListView_InsertColumn(hwndLV, 3, &lvc);
+
+   lvc.pszText = "From";
+   lvc.iSubItem = 4;
+   lvc.cx = 160;
+   ListView_InsertColumn(hwndLV, 4, &lvc);
 }
-
-
 
 void InterfaceCommand(HWND hwnd,int id, HWND hwndCtl, UINT codeNotify)
 {
@@ -893,7 +916,6 @@ void InterfaceCommand(HWND hwnd,int id, HWND hwndCtl, UINT codeNotify)
 		ShowWindow(hwndTab_page,FALSE);
 		return;
 	}
-	
 }
 
 void InterfaceDrawText(HWND hwnd)
@@ -935,49 +957,53 @@ void InterfaceDrawText(HWND hwnd)
 
 void InterfaceCheckChannels()
 {
-	int num_items;
-	channel_buffer_node *cb;
-	HWND hwndList;
-	
-	while (IsNewChannelText())
-	{
-		cb = GetChannelBuffer();
-		switch (cb->channel_id)
-		{
-		case CHANNEL_L :
-			/* show channel text in status window */
-			SendDlgItemMessage(hwndMain,IDS_STATUS_WINDOW,SB_SETTEXT,0,(LPARAM)cb->buf);
-			if (is_timer_pending)
-				KillTimer(hwndMain,WIN_TIMER_ID);
-			SetTimer(hwndMain,WIN_TIMER_ID,STATUS_CLEAR_TIME,NULL);
-			
-			hwndList = GetDlgItem(HWND_CHANNEL,IDC_LOG_LIST);
-			break;
-		case CHANNEL_E :
-			hwndList = GetDlgItem(HWND_CHANNEL,IDC_ERROR_LIST);
-			break;
+   int num_items;
+   channel_buffer_node *cb;
+   HWND hwndList;
+
+   while (IsNewChannelText())
+   {
+      cb = GetChannelBuffer();
+      switch (cb->channel_id)
+      {
+      case CHANNEL_L:
+         /* show channel text in status window */
+         SendDlgItemMessage(hwndMain, IDS_STATUS_WINDOW, SB_SETTEXT, 0, (LPARAM)cb->buf);
+         if (is_timer_pending)
+            KillTimer(hwndMain, WIN_TIMER_ID);
+         SetTimer(hwndMain, WIN_TIMER_ID, STATUS_CLEAR_TIME, NULL);
+
+         hwndList = GetDlgItem(HWND_CHANNEL, IDC_LOG_LIST);
+         break;
+      case CHANNEL_E:
+         hwndList = GetDlgItem(HWND_CHANNEL, IDC_ERROR_LIST);
+         break;
       case CHANNEL_A:
          hwndList = NULL;
          break;
-		default:
-			hwndList = GetDlgItem(HWND_CHANNEL,IDC_DEBUG_LIST);
-			break;
-		}
+      case CHANNEL_G:
+         hwndList = GetDlgItem(HWND_CHANNEL, IDC_GODLOG_LIST);
+         break;
+      default:
+         hwndList = GetDlgItem(HWND_CHANNEL, IDC_DEBUG_LIST);
+         break;
+      }
 
-		SendMessage(hwndList,WM_SETREDRAW,FALSE,0);
-		num_items = ListBox_GetCount(hwndList);
-		if (num_items >= CHANNEL_INTERFACE_LINES)
-			ListBox_DeleteString(hwndList,0);
-		ListBox_AddString(hwndList,cb->buf);
-		ListBox_SetTopIndex(hwndList,std::max(0,num_items-1));
-		SendMessage(hwndList,WM_SETREDRAW,TRUE,0);
-		
-		DoneChannelBuffer();
-	}
-	
-	UpdateWindow(GetDlgItem(HWND_CHANNEL,IDC_LOG_LIST));
-	UpdateWindow(GetDlgItem(HWND_CHANNEL,IDC_ERROR_LIST));
-	UpdateWindow(GetDlgItem(HWND_CHANNEL,IDC_DEBUG_LIST));
+      SendMessage(hwndList, WM_SETREDRAW, FALSE, 0);
+      num_items = ListBox_GetCount(hwndList);
+      if (num_items >= CHANNEL_INTERFACE_LINES)
+         ListBox_DeleteString(hwndList, 0);
+      ListBox_AddString(hwndList, cb->buf);
+      ListBox_SetTopIndex(hwndList, std::max(0, num_items - 1));
+      SendMessage(hwndList, WM_SETREDRAW, TRUE, 0);
+
+      DoneChannelBuffer();
+   }
+
+   UpdateWindow(GetDlgItem(HWND_CHANNEL, IDC_LOG_LIST));
+   UpdateWindow(GetDlgItem(HWND_CHANNEL, IDC_ERROR_LIST));
+   UpdateWindow(GetDlgItem(HWND_CHANNEL, IDC_DEBUG_LIST));
+   UpdateWindow(GetDlgItem(HWND_CHANNEL, IDC_GODLOG_LIST));
 }
 
 void InterfaceSave()
@@ -1146,7 +1172,6 @@ BOOL CALLBACK InterfaceDialogTabPage(HWND hwnd,UINT message,UINT wParam,LONG lPa
 		
 	}
 	return FALSE;
-	
 }
 
 void InterfaceTabPageCommand(HWND hwnd,int id, HWND hwndCtl, UINT codeNotify)
@@ -1156,7 +1181,7 @@ void InterfaceTabPageCommand(HWND hwnd,int id, HWND hwndCtl, UINT codeNotify)
 	switch (codeNotify)
 	{
 	case LBN_DBLCLK :
-		if (id == IDC_LOG_LIST || id == IDC_ERROR_LIST || id == IDC_DEBUG_LIST)
+		if (id == IDC_LOG_LIST || id == IDC_ERROR_LIST || id == IDC_DEBUG_LIST || id == IDC_GODLOG_LIST)
 		{
 			ListBox_GetText(hwndCtl,ListBox_GetCurSel(hwndCtl),s);
 			MessageBox(hwndMain,s,BlakServNameString(),MB_OK | MB_ICONINFORMATION);

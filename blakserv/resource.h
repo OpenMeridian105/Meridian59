@@ -59,8 +59,10 @@
 #define IDC_LOG                         1036
 #define IDC_ERROR                       1037
 #define IDC_DEBUG                       1038
+#define IDC_GODLOG                      1039
 #define IDC_MOTD                        1040
 #define IDC_ABOUT_TEXT                  1041
+#define IDC_GODLOG_LIST                 1042
 #define IDC_ABOUT_TEXT3                 1044
 #define IDC_ABOUT_TEXT2                 1045
 #define IDC_ABOUT_TITLE                 1045

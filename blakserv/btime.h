@@ -16,6 +16,7 @@
 void InitTime();
 int GetTime();
 
+const char * GetShortMonthStr(int month);
 const char * TimeStr(time_t time);
 const char * ShortTimeStr(time_t time);
 const char * FileTimeStr(time_t time);

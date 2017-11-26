@@ -116,6 +116,7 @@ void CenterWindow(HWND hwnd, HWND hwndParent);
 BOOL CALLBACK InterfaceDialogMotd(HWND hwnd,UINT message,UINT wParam,LONG lParam);
 BOOL CALLBACK InterfaceDialogAbout(HWND hwnd,UINT message,UINT wParam,LONG lParam);
 BOOL CALLBACK InterfaceDialogTabPage(HWND hwnd,UINT message,UINT wParam,LONG lParam);
+BOOL CALLBACK InterfaceDialogRegCallback(HWND hwnd, UINT message, UINT wParam, LONG lParam);
 void InterfaceTabPageCommand(HWND hwnd,int id, HWND hwndCtl, UINT codeNotify);
 long CALLBACK InterfaceAdminInputProc(HWND hwnd, UINT message, UINT wParam, LONG lParam);
 long CALLBACK InterfaceAdminResponseProc(HWND hwnd, UINT message, UINT wParam, LONG lParam);
@@ -264,6 +265,9 @@ long WINAPI InterfaceWindowProc(HWND hwnd,UINT message,UINT wParam,LONG lParam)
 				case IDM_MESSAGES_MESSAGEOFTHEDAY :
 					lpttt->lpszText = "Message of the Day";
 					break;
+            case IDM_REGISTER_CALLBACK:
+               lpttt->lpszText = "Register a kod callback";
+               break;
 				case IDM_HELP_ABOUT :
 					lpttt->lpszText = "About";
 					break; 
@@ -601,7 +605,8 @@ void StartupComplete()
 		      MAKELPARAM(TRUE,0));
 	SendDlgItemMessage(hwndMain,IDC_TOOLBAR,TB_ENABLEBUTTON,IDM_MESSAGES_MESSAGEOFTHEDAY,
 		      MAKELPARAM(TRUE,0));
-	
+   SendDlgItemMessage(hwndMain, IDC_TOOLBAR, TB_ENABLEBUTTON, IDM_REGISTER_CALLBACK,
+      MAKELPARAM(TRUE, 0));
 }
 
 void InterfaceCreate(HWND hwnd,UINT wParam,LONG lParam)
@@ -647,20 +652,20 @@ void InterfaceCreateTabControl(HWND hwnd)
     SendMessage(hwndCtl,WM_SETFONT,(WPARAM)GetStockObject(ANSI_FIXED_FONT),
 		MAKELPARAM(TRUE,0));
 	
-    lf.lfHeight = 8;
+    lf.lfHeight = 13;
     lf.lfWidth = 0;
     lf.lfEscapement = 0;
     lf.lfOrientation = 0;
-    lf.lfWeight = 400;
+    lf.lfWeight = 800;
     lf.lfItalic = 0; 
     lf.lfUnderline = 0;
     lf.lfStrikeOut = 0;
     lf.lfCharSet = 255;
     lf.lfOutPrecision = 1;
     lf.lfClipPrecision = 2;
-    lf.lfQuality = 1;
+    lf.lfQuality = CLEARTYPE_QUALITY;
     lf.lfPitchAndFamily = 49;
-    strcpy(lf.lfFaceName,"Terminal");
+    strcpy(lf.lfFaceName,"Consolas");
     
     font = CreateFontIndirect(&lf);
     if (font != NULL)
@@ -676,6 +681,11 @@ void InterfaceCreateTabControl(HWND hwnd)
     hwndCtl = GetDlgItem(HWND_ADMIN,IDC_ADMIN_COMMAND);
     lpfnDefAdminInputProc = SubclassWindow(hwndCtl,InterfaceAdminInputProc);
 	
+    if (font != NULL)
+    {
+       SendMessage(hwndCtl, WM_SETFONT, (WPARAM)font, MAKELPARAM(TRUE, 0));
+    }
+
     hwndTab_page = NULL;
 	
     InterfaceTabChange();
@@ -719,7 +729,7 @@ void InterfaceSetup()
 {
 	HWND hwndTB; 
 	TBADDBITMAP tbab; 
-	TBBUTTON tbb[8];
+	TBBUTTON tbb[9];
 	
 	RECT rcClient;
 	int status_widths[2];
@@ -775,21 +785,30 @@ void InterfaceSetup()
 	tbb[4].dwData = 0; 
 	tbb[4].iString = 0;
 	
-	tbb[5].iBitmap = 0;
-	tbb[5].idCommand = 0;
-	tbb[5].fsState = 0; 
-	tbb[5].fsStyle = TBSTYLE_SEP; 
-	tbb[5].dwData = 0; 
-	tbb[5].iString = 0;
-	
-	tbb[6].iBitmap = STD_FIND;
-	tbb[6].idCommand = IDM_HELP_ABOUT;
-	tbb[6].fsState = TBSTATE_ENABLED; 
-	tbb[6].fsStyle = TBSTYLE_BUTTON; 
+   tbb[5].iBitmap = STD_FILENEW;
+   tbb[5].idCommand = IDM_REGISTER_CALLBACK;
+   tbb[5].fsState = 0;
+   tbb[5].fsStyle = TBSTYLE_BUTTON;
+   tbb[5].dwData = 0;
+   tbb[5].iString = 0;
+
+	tbb[6].iBitmap = 0;
+	tbb[6].idCommand = 0;
+	tbb[6].fsState = 0; 
+	tbb[6].fsStyle = TBSTYLE_SEP; 
 	tbb[6].dwData = 0; 
 	tbb[6].iString = 0;
 	
-	SendMessage(hwndTB,TB_ADDBUTTONS,7,(LPARAM)&tbb); 
+	tbb[7].iBitmap = STD_FIND;
+	tbb[7].idCommand = IDM_HELP_ABOUT;
+	tbb[7].fsState = TBSTATE_ENABLED; 
+	tbb[7].fsStyle = TBSTYLE_BUTTON; 
+	tbb[7].dwData = 0; 
+	tbb[7].iString = 0;
+	
+
+
+	SendMessage(hwndTB,TB_ADDBUTTONS,8,(LPARAM)&tbb); 
 	
 	ShowWindow(hwndTB,SW_SHOW);
 	
@@ -806,44 +825,62 @@ void InterfaceSetup()
 
 void InterfaceCreateListControl()
 {
-	LV_COLUMN lvc; 
-	
-	hwndLV = GetDlgItem(HWND_STATUS,IDC_CONNECTION_LIST);
-	
-	/* Initialize the LV_COLUMN structure. */
-	lvc.mask = LVCF_FMT | LVCF_WIDTH | LVCF_TEXT | LVCF_SUBITEM; 
-	lvc.fmt = LVCFMT_LEFT; 
-	
-	/* make the columns */
-	
-	lvc.pszText = "#";
-	lvc.iSubItem = 0;
-	lvc.cx = 29; 
-	ListView_InsertColumn(hwndLV,0,&lvc);
-	
-	lvc.pszText = "Name";
-	lvc.iSubItem = 1;
-	lvc.cx = 113; 
-	ListView_InsertColumn(hwndLV,1,&lvc);
-	
-	lvc.pszText = "Since";
-	lvc.iSubItem = 2;
-	lvc.cx = 80; 
-	ListView_InsertColumn(hwndLV,2,&lvc);
-	
-	lvc.pszText = "State";
-	lvc.iSubItem = 3;
-	lvc.cx = 118; 
-	ListView_InsertColumn(hwndLV,3,&lvc);
-	
-	lvc.pszText = "From";
-	lvc.iSubItem = 4;
-	lvc.cx = 127; 
-	ListView_InsertColumn(hwndLV,4,&lvc);
-	
+   LV_COLUMN lvc;
+   LOGFONT lf;
+   HFONT font;
+
+   hwndLV = GetDlgItem(HWND_STATUS, IDC_CONNECTION_LIST);
+
+   lf.lfHeight = 14;
+   lf.lfWidth = 0;
+   lf.lfEscapement = 0;
+   lf.lfOrientation = 0;
+   lf.lfWeight = 800;
+   lf.lfItalic = 0;
+   lf.lfUnderline = 0;
+   lf.lfStrikeOut = 0;
+   lf.lfCharSet = 255;
+   lf.lfOutPrecision = 1;
+   lf.lfClipPrecision = 2;
+   lf.lfQuality = CLEARTYPE_QUALITY;
+   lf.lfPitchAndFamily = 49;
+   strcpy(lf.lfFaceName, "Consolas");
+
+   font = CreateFontIndirect(&lf);
+   if (font != NULL)
+      SendMessage(hwndLV, WM_SETFONT, (WPARAM)font, MAKELPARAM(TRUE, 0));
+
+   /* Initialize the LV_COLUMN structure. */
+   lvc.mask = LVCF_FMT | LVCF_WIDTH | LVCF_TEXT | LVCF_SUBITEM;
+   lvc.fmt = LVCFMT_LEFT;
+
+   /* make the columns */
+
+   lvc.pszText = "#";
+   lvc.iSubItem = 0;
+   lvc.cx = 29;
+   ListView_InsertColumn(hwndLV, 0, &lvc);
+
+   lvc.pszText = "Acct Name";
+   lvc.iSubItem = 1;
+   lvc.cx = 125;
+   ListView_InsertColumn(hwndLV, 1, &lvc);
+
+   lvc.pszText = "Since";
+   lvc.iSubItem = 2;
+   lvc.cx = 106;
+   ListView_InsertColumn(hwndLV, 2, &lvc);
+
+   lvc.pszText = "State";
+   lvc.iSubItem = 3;
+   lvc.cx = 110;
+   ListView_InsertColumn(hwndLV, 3, &lvc);
+
+   lvc.pszText = "From";
+   lvc.iSubItem = 4;
+   lvc.cx = 160;
+   ListView_InsertColumn(hwndLV, 4, &lvc);
 }
-
-
 
 void InterfaceCommand(HWND hwnd,int id, HWND hwndCtl, UINT codeNotify)
 {
@@ -886,14 +923,16 @@ void InterfaceCommand(HWND hwnd,int id, HWND hwndCtl, UINT codeNotify)
 		InterfaceReloadSystem();
 		return;
 	case IDM_MESSAGES_MESSAGEOFTHEDAY :
-		DialogBox(hInst,MAKEINTRESOURCE(IDD_MOTD),hwnd,InterfaceDialogMotd);    
+		DialogBox(hInst,MAKEINTRESOURCE(IDD_MOTD),hwnd,InterfaceDialogMotd);
 		return;
+   case IDM_REGISTER_CALLBACK:
+      DialogBox(hInst, MAKEINTRESOURCE(IDD_REGCALLBACK), hwnd, InterfaceDialogRegCallback);
+      return;
 	case IDM_HELP_ABOUT :
 		ShowWindow(tab_about,TRUE);
 		ShowWindow(hwndTab_page,FALSE);
 		return;
 	}
-	
 }
 
 void InterfaceDrawText(HWND hwnd)
@@ -935,49 +974,55 @@ void InterfaceDrawText(HWND hwnd)
 
 void InterfaceCheckChannels()
 {
-	int num_items;
-	channel_buffer_node *cb;
-	HWND hwndList;
-	
-	while (IsNewChannelText())
-	{
-		cb = GetChannelBuffer();
-		switch (cb->channel_id)
-		{
-		case CHANNEL_L :
-			/* show channel text in status window */
-			SendDlgItemMessage(hwndMain,IDS_STATUS_WINDOW,SB_SETTEXT,0,(LPARAM)cb->buf);
-			if (is_timer_pending)
-				KillTimer(hwndMain,WIN_TIMER_ID);
-			SetTimer(hwndMain,WIN_TIMER_ID,STATUS_CLEAR_TIME,NULL);
-			
-			hwndList = GetDlgItem(HWND_CHANNEL,IDC_LOG_LIST);
-			break;
-		case CHANNEL_E :
-			hwndList = GetDlgItem(HWND_CHANNEL,IDC_ERROR_LIST);
-			break;
+   int num_items;
+   channel_buffer_node *cb;
+   HWND hwndList;
+
+   while (IsNewChannelText())
+   {
+      cb = GetChannelBuffer();
+      switch (cb->channel_id)
+      {
+      case CHANNEL_L:
+         /* show channel text in status window */
+         SendDlgItemMessage(hwndMain, IDS_STATUS_WINDOW, SB_SETTEXT, 0, (LPARAM)cb->buf);
+         if (is_timer_pending)
+            KillTimer(hwndMain, WIN_TIMER_ID);
+         SetTimer(hwndMain, WIN_TIMER_ID, STATUS_CLEAR_TIME, NULL);
+
+         hwndList = GetDlgItem(HWND_CHANNEL, IDC_LOG_LIST);
+         break;
+      case CHANNEL_E:
+         hwndList = GetDlgItem(HWND_CHANNEL, IDC_ERROR_LIST);
+         break;
       case CHANNEL_A:
          hwndList = NULL;
          break;
-		default:
-			hwndList = GetDlgItem(HWND_CHANNEL,IDC_DEBUG_LIST);
-			break;
-		}
+      case CHANNEL_G:
+         hwndList = GetDlgItem(HWND_CHANNEL, IDC_GODLOG_LIST);
+         break;
+      default:
+         hwndList = GetDlgItem(HWND_CHANNEL, IDC_DEBUG_LIST);
+         break;
+      }
 
-		SendMessage(hwndList,WM_SETREDRAW,FALSE,0);
-		num_items = ListBox_GetCount(hwndList);
-		if (num_items >= CHANNEL_INTERFACE_LINES)
-			ListBox_DeleteString(hwndList,0);
-		ListBox_AddString(hwndList,cb->buf);
-		ListBox_SetTopIndex(hwndList,std::max(0,num_items-1));
-		SendMessage(hwndList,WM_SETREDRAW,TRUE,0);
-		
-		DoneChannelBuffer();
-	}
-	
-	UpdateWindow(GetDlgItem(HWND_CHANNEL,IDC_LOG_LIST));
-	UpdateWindow(GetDlgItem(HWND_CHANNEL,IDC_ERROR_LIST));
-	UpdateWindow(GetDlgItem(HWND_CHANNEL,IDC_DEBUG_LIST));
+      if (hwndList)
+      {
+         SendMessage(hwndList, WM_SETREDRAW, FALSE, 0);
+         num_items = ListBox_GetCount(hwndList);
+         if (num_items >= CHANNEL_INTERFACE_LINES)
+            ListBox_DeleteString(hwndList, 0);
+         ListBox_AddString(hwndList, cb->buf);
+         ListBox_SetTopIndex(hwndList, std::max(0, num_items - 1));
+         SendMessage(hwndList, WM_SETREDRAW, TRUE, 0);
+      }
+      DoneChannelBuffer();
+   }
+
+   UpdateWindow(GetDlgItem(HWND_CHANNEL, IDC_LOG_LIST));
+   UpdateWindow(GetDlgItem(HWND_CHANNEL, IDC_ERROR_LIST));
+   UpdateWindow(GetDlgItem(HWND_CHANNEL, IDC_DEBUG_LIST));
+   UpdateWindow(GetDlgItem(HWND_CHANNEL, IDC_GODLOG_LIST));
 }
 
 void InterfaceSave()
@@ -1072,6 +1117,358 @@ void CenterWindow(HWND hwnd, HWND hwndParent)
 	SetWindowPos(hwnd, NULL, x, y, 0, 0, SWP_NOSIZE | SWP_NOACTIVATE);
 }
 
+/*
+ * RegCallbackGetIntData: Get the data from an integer editbox field.
+ *   Returns TRUE if successful, else FALSE. Displays an error box
+ *   to the user if something goes wrong.
+ */
+BOOL RegCallbackGetIntData(HWND hwnd, int *retval, int dlg_field, char *errormsg, int min, int max)
+{
+   BOOL dResult;
+   if (!errormsg)
+   {
+      MessageBox(hwnd, "Missing error message in RegCallbackGetData\n",
+         BlakServNameString(), MB_OK | MB_ICONEXCLAMATION);
+      return FALSE;
+   }
+
+   *retval = GetDlgItemInt(hwnd, dlg_field, &dResult, FALSE);
+   if (!dResult)
+   {
+      MessageBox(hwnd, errormsg, BlakServNameString(), MB_OK | MB_ICONEXCLAMATION);
+      return FALSE;
+   }
+   
+   if (*retval < min || *retval > max)
+   {
+      MessageBox(hwnd, errormsg, BlakServNameString(), MB_OK | MB_ICONEXCLAMATION);
+      return FALSE;
+   }
+
+   return dResult;
+}
+
+/*
+ * RegCallbackVerifyDate: Verify that the date/time in a blakod callback
+ *   structure is valid and in the future. Returns TRUE for success, does
+ *   not display its own error box.
+ */
+BOOL RegCallbackVerifyDate(blakod_reg_callback *b)
+{
+   tm time;
+   time.tm_year = b->year - 1900; // tm year is from 1900
+   time.tm_mon = b->month - 1; // tm month is 0-11
+   time.tm_mday = b->day;
+   time.tm_hour = b->hour;
+   time.tm_min = b->minute;
+   time.tm_sec = b->second;
+   time_t epoch = mktime(&time);
+
+   if (epoch == -1)
+      return FALSE;
+
+   return epoch > (time_t)GetTime();
+}
+
+/*
+ * RegCallbackStrToKodInt: Converts a string received from an editbox
+ *   to a kod int, and places it in the given val_type structure. Checks
+ *   that the number is within valid kod int bounds. Returns TRUE for
+ *   success, and displays an error box if something goes wrong.
+ */
+BOOL RegCallbackStrToKodInt(HWND hwnd, char *str, val_type *v)
+{
+   if (!str)
+   {
+      MessageBox(hwnd, "RegCallbackStrToKodInt received no data!",
+         BlakServNameString(), MB_OK | MB_ICONEXCLAMATION);
+      return FALSE;
+   }
+
+   long num = strtol(str, NULL, 10);
+   if (num > MAX_KOD_INT)
+   {
+      MessageBox(hwnd, "Got parameter over max kod int (134,217,727)",
+         BlakServNameString(), MB_OK | MB_ICONEXCLAMATION);
+      return FALSE;
+   }
+   if (num < -MIN_KOD_INT)
+   {
+      MessageBox(hwnd, "Got parameter less than min kod int (-134,217,728)",
+         BlakServNameString(), MB_OK | MB_ICONEXCLAMATION);
+      return FALSE;
+   }
+
+   v->v.data = (int)num;
+   return TRUE;
+}
+
+/*
+ * RegCallbackGetParmData: Gets the data for a given dialog/type box combo.
+ *   Verifies the data is valid kod data and places it in the given val_type
+ *   structure. Returns TRUE for success, FALSE for failure. Displays an error
+ *   box if something goes wrong.
+ */
+BOOL RegCallbackGetParmData(HWND hwnd, val_type *v, int dlg_field, int type_field)
+{
+   char dlg_data[64], type_data[32];
+
+   // Get data editbox field.
+   Edit_GetText(GetDlgItem(hwnd, dlg_field), dlg_data, sizeof(dlg_data) - 1);
+
+   // Get type from combobox.
+   int index = ComboBox_GetCurSel(GetDlgItem(hwnd, type_field));
+   if (index == CB_ERR)
+   {
+      MessageBox(hwnd, "Error getting type data in RegCallbackGetParmData",
+         BlakServNameString(), MB_OK | MB_ICONEXCLAMATION);
+      return FALSE;
+   }
+
+   int result = ComboBox_GetLBText(GetDlgItem(hwnd, type_field), index, type_data);
+   if (result == CB_ERR)
+   {
+      MessageBox(hwnd, "Error in type parameter in RegCallbackGetParmData",
+         BlakServNameString(), MB_OK | MB_ICONEXCLAMATION);
+      return FALSE;
+   }
+   v->v.tag = GetTagNum(type_data);
+   if (v->v.tag == INVALID_TAG)
+   {
+      MessageBox(hwnd, "Error getting tag for type parm in RegCallbackGetParmData",
+         BlakServNameString(), MB_OK | MB_ICONEXCLAMATION);
+      return FALSE;
+   }
+
+   // Decide what to do with the data from editbox.
+   if (v->v.tag == TAG_NIL)
+   {
+      v->v.data = 0;
+      return TRUE;
+   }
+   if (v->v.tag == TAG_CLASS)
+   {
+      // Got class name, get ID.
+      v->v.data = GetClassIDByName(dlg_data);
+      if (v->v.data == INVALID_CLASS)
+      {
+         MessageBox(hwnd, "Invalid class ID in parameter field",
+            BlakServNameString(), MB_OK | MB_ICONEXCLAMATION);
+         return FALSE;
+      }
+      return TRUE;
+   }
+
+   // Other parameters use kod int data.
+   if (!RegCallbackStrToKodInt(hwnd, dlg_data, v))
+   {
+      // Error message already handled.
+      return FALSE;
+   }
+
+   if (v->v.tag == TAG_OBJECT && !IsObjectByID(v->v.data))
+   {
+      MessageBox(hwnd, "Invalid object ID in parameter field",
+         BlakServNameString(), MB_OK | MB_ICONEXCLAMATION);
+      return FALSE;
+   }
+   else if (v->v.tag == TAG_RESOURCE && !IsResourceByID(v->v.data))
+   {
+      MessageBox(hwnd, "Invalid resource ID in parameter field",
+         BlakServNameString(), MB_OK | MB_ICONEXCLAMATION);
+      return FALSE;
+   }
+   else if (v->v.tag == TAG_LIST && !IsListNodeByID(v->v.data))
+   {
+      MessageBox(hwnd, "Invalid list ID in parameter field",
+         BlakServNameString(), MB_OK | MB_ICONEXCLAMATION);
+      return FALSE;
+   }
+   else if (v->v.tag == TAG_STRING && !IsStringByID(v->v.data))
+   {
+      MessageBox(hwnd, "Invalid string ID in parameter field",
+         BlakServNameString(), MB_OK | MB_ICONEXCLAMATION);
+      return FALSE;
+   }
+
+   return TRUE;
+}
+
+/*
+* RegCallbackSetupComboBox: Set the strings and initial selection for
+*   the parm type comboboxes.
+*/
+void RegCallbackSetupComboBox(HWND hwnd, int combo_id)
+{
+   HWND combo_hwnd = GetDlgItem(hwnd, combo_id);
+
+   if (!combo_hwnd)
+      return;
+
+   ComboBox_ResetContent(combo_hwnd);
+   ComboBox_AddString(combo_hwnd, "Nil");
+   ComboBox_AddString(combo_hwnd, "Class Name");
+   ComboBox_AddString(combo_hwnd, "Integer");
+   ComboBox_AddString(combo_hwnd, "Object ID");
+   ComboBox_AddString(combo_hwnd, "List ID");
+   ComboBox_AddString(combo_hwnd, "Resource ID");
+   ComboBox_AddString(combo_hwnd, "String ID");
+   ComboBox_SetCurSel(combo_hwnd, 0);
+   EnableWindow(combo_hwnd, TRUE);
+}
+
+BOOL CALLBACK InterfaceDialogRegCallback(HWND hwnd, UINT message, UINT wParam, LONG lParam)
+{
+   switch (message)
+   {
+   case WM_INITDIALOG:
+      CenterWindow(hwnd, NULL);
+
+      // Limit entry amount.
+      Edit_LimitText(GetDlgItem(hwnd, IDC_INPUTOBJECTID), 8);
+      Edit_LimitText(GetDlgItem(hwnd, IDC_INPUTMESSAGE), 32);
+      Edit_LimitText(GetDlgItem(hwnd, IDC_INPUTYEAR), 4);
+      Edit_LimitText(GetDlgItem(hwnd, IDC_INPUTMONTH), 2);
+      Edit_LimitText(GetDlgItem(hwnd, IDC_INPUTDAY), 2);
+      Edit_LimitText(GetDlgItem(hwnd, IDC_INPUTHOUR), 2);
+      Edit_LimitText(GetDlgItem(hwnd, IDC_INPUTMINUTE), 2);
+      Edit_LimitText(GetDlgItem(hwnd, IDC_INPUTSECOND), 2);
+      // Parms limited to 64 chars
+      Edit_LimitText(GetDlgItem(hwnd, IDC_INPUTPARM1), 64);
+      Edit_LimitText(GetDlgItem(hwnd, IDC_INPUTPARM2), 64);
+      Edit_LimitText(GetDlgItem(hwnd, IDC_INPUTPARM3), 64);
+      Edit_LimitText(GetDlgItem(hwnd, IDC_INPUTPARM4), 64);
+
+      // Set defaults.
+      SetDlgItemInt(hwnd, IDC_INPUTOBJECTID, 0, FALSE);
+      SetDlgItemInt(hwnd, IDC_INPUTYEAR, 2017, FALSE);
+      SetDlgItemInt(hwnd, IDC_INPUTMONTH, 0, FALSE);
+      SetDlgItemInt(hwnd, IDC_INPUTDAY, 0, FALSE);
+      SetDlgItemInt(hwnd, IDC_INPUTHOUR, 0, FALSE);
+      SetDlgItemInt(hwnd, IDC_INPUTMINUTE, 0, FALSE);
+      SetDlgItemInt(hwnd, IDC_INPUTSECOND, 0, FALSE);
+      Edit_SetText(GetDlgItem(hwnd, IDC_INPUTPARM1), "0");
+      Edit_SetText(GetDlgItem(hwnd, IDC_INPUTPARM2), "0");
+      Edit_SetText(GetDlgItem(hwnd, IDC_INPUTPARM3), "0");
+      Edit_SetText(GetDlgItem(hwnd, IDC_INPUTPARM4), "0");
+
+      // Since this will probably be most common.
+      Edit_SetText(GetDlgItem(hwnd, IDC_INPUTMESSAGE), "StartChaosNight");
+
+      // Combobox text.
+      RegCallbackSetupComboBox(hwnd, IDC_INPUTPARM1TYPE);
+      RegCallbackSetupComboBox(hwnd, IDC_INPUTPARM2TYPE);
+      RegCallbackSetupComboBox(hwnd, IDC_INPUTPARM3TYPE);
+      RegCallbackSetupComboBox(hwnd, IDC_INPUTPARM4TYPE);
+
+      return TRUE;
+
+   case WM_COMMAND:
+      switch (wParam)
+      {
+      case IDOK:
+         blakod_reg_callback reg;
+         char msg_name[64];
+
+         // Get time/date and verify sane data (RegCallbackGetData handles error message box).
+         if (!RegCallbackGetIntData(hwnd, &reg.year, IDC_INPUTYEAR, "Invalid data in year field!", 2017, 9999))
+            return TRUE;
+         if (!RegCallbackGetIntData(hwnd, &reg.month, IDC_INPUTMONTH, "Invalid data in month field!", 1, 12))
+            return TRUE;
+         if (!RegCallbackGetIntData(hwnd, &reg.day, IDC_INPUTDAY, "Invalid data in day field!", 1, 31))
+            return TRUE;
+         if (!RegCallbackGetIntData(hwnd, &reg.hour, IDC_INPUTHOUR, "Invalid data in hour field!", 0, 23))
+            return TRUE;
+         if (!RegCallbackGetIntData(hwnd, &reg.minute, IDC_INPUTMINUTE, "Invalid data in minute field!", 0, 59))
+            return TRUE;
+         if (!RegCallbackGetIntData(hwnd, &reg.second, IDC_INPUTSECOND, "Invalid data in second field!", 0, 59))
+            return TRUE;
+
+         // Verify date is a valid future date and not in the past.
+         if (!RegCallbackVerifyDate(&reg))
+         {
+            MessageBox(hwnd, "Got invalid date, or date in the past!",
+               BlakServNameString(), MB_OK | MB_ICONEXCLAMATION);
+            return TRUE;
+         }
+
+         // Get object ID and verify it is a valid object.
+         if (!RegCallbackGetIntData(hwnd, &reg.object_id, IDC_INPUTOBJECTID,
+            "Invalid data in object ID field!", 0, MAX_KOD_INT))
+         {
+            return TRUE;
+         }
+         if (!IsObjectByID(reg.object_id))
+         {
+            MessageBox(hwnd, "Cannot find object for given object ID!",
+               BlakServNameString(), MB_OK | MB_ICONEXCLAMATION);
+            return TRUE;
+         }
+
+         // Get message name and verify it is a valid message.
+         Edit_GetText(GetDlgItem(hwnd, IDC_INPUTMESSAGE), msg_name, sizeof(msg_name) - 1);
+         reg.message_id = GetIDByName(msg_name);
+         if (reg.message_id == INVALID_ID)
+         {
+            MessageBox(hwnd, "Cannot find ID for given message name!",
+               BlakServNameString(), MB_OK | MB_ICONEXCLAMATION);
+            return TRUE;
+         }
+
+         // Optional parameters to the message to call (set to NIL by default).
+         if (!RegCallbackGetParmData(hwnd, &reg.parm1, IDC_INPUTPARM1, IDC_INPUTPARM1TYPE))
+         {
+            // Error message handled in RegCallbackGetParmData.
+            return TRUE;
+         }
+         if (!RegCallbackGetParmData(hwnd, &reg.parm2, IDC_INPUTPARM2, IDC_INPUTPARM2TYPE))
+         {
+            // Error message handled in RegCallbackGetParmData.
+            return TRUE;
+         }
+         if (!RegCallbackGetParmData(hwnd, &reg.parm3, IDC_INPUTPARM3, IDC_INPUTPARM3TYPE))
+         {
+            // Error message handled in RegCallbackGetParmData.
+            return TRUE;
+         }
+         if (!RegCallbackGetParmData(hwnd, &reg.parm4, IDC_INPUTPARM4, IDC_INPUTPARM4TYPE))
+         {
+            // Error message handled in RegCallbackGetParmData.
+            return TRUE;
+         }
+
+         // Success! Log it.
+         gprintf("Registering callback of %s to obj %i, to activate %.2i:%i:%.2i on %i %s %i\n",
+            msg_name, reg.object_id, reg.hour, reg.minute, reg.second, reg.day,
+            GetShortMonthStr(reg.month),reg.year);
+
+         EnterServerLock();
+         SendBlakodRegisterCallback(&reg);
+         LeaveServerLock();
+
+         EndDialog(hwnd, 0);
+         return TRUE;
+
+      case IDCANCEL:
+         EndDialog(hwnd, 0);
+         return TRUE;
+
+      case IDHELP:
+         MessageBox(hwnd,
+            "Enter a date in the future to send the entered message name to the entered "
+            "object ID (look the ID up beforehand).\n\nParameters are optional, and "
+            "correspond to the literal 'parm1', 'parm2' etc names in kod message headers."
+            "\n\nClass names can be entered as parameters, but all other data must be "
+            "numbers (integer, or an ID).\n\nTo start a 1 hour frenzy, use the message "
+            "StartChaosNight, object ID 0 and set the time to whenever you'd like the "
+            "frenzy to start.",
+            BlakServNameString(), MB_OK | MB_ICONQUESTION);
+         return TRUE;
+      }
+   }
+   return FALSE;
+}
+
 BOOL CALLBACK InterfaceDialogMotd(HWND hwnd,UINT message,UINT wParam,LONG lParam)
 {
 	char s[2000];
@@ -1146,23 +1543,30 @@ BOOL CALLBACK InterfaceDialogTabPage(HWND hwnd,UINT message,UINT wParam,LONG lPa
 		
 	}
 	return FALSE;
-	
 }
 
-void InterfaceTabPageCommand(HWND hwnd,int id, HWND hwndCtl, UINT codeNotify)
+void InterfaceTabPageCommand(HWND hwnd, int id, HWND hwndCtl, UINT codeNotify)
 {
-	char s[4096];
-	
-	switch (codeNotify)
-	{
-	case LBN_DBLCLK :
-		if (id == IDC_LOG_LIST || id == IDC_ERROR_LIST || id == IDC_DEBUG_LIST)
-		{
-			ListBox_GetText(hwndCtl,ListBox_GetCurSel(hwndCtl),s);
-			MessageBox(hwndMain,s,BlakServNameString(),MB_OK | MB_ICONINFORMATION);
-		}
-		break;
-	}
+   char s[4096];
+
+   switch (codeNotify)
+   {
+   case LBN_DBLCLK:
+      if (id == IDC_LOG_LIST || id == IDC_ERROR_LIST || id == IDC_DEBUG_LIST || id == IDC_GODLOG_LIST)
+      {
+         int len = ListBox_GetTextLen(hwndCtl, ListBox_GetCurSel(hwndCtl));
+         if (len >= 4096)
+         {
+            MessageBox(hwndMain, "Selected item too long to display!\n",
+               BlakServNameString(), MB_OK | MB_ICONINFORMATION);
+            break;
+         }
+         ListBox_GetText(hwndCtl, ListBox_GetCurSel(hwndCtl), s);
+         s[4095] = 0;
+         MessageBox(hwndMain, s, BlakServNameString(), MB_OK | MB_ICONINFORMATION);
+      }
+      break;
+   }
 }
 
 long CALLBACK InterfaceAdminInputProc(HWND hwnd, UINT message, UINT wParam, LONG lParam)

@@ -34,6 +34,16 @@ int GetTime()
 	return (int)time(NULL);
 }
 
+const char * GetShortMonthStr(int month)
+{
+   static const char * months[13] =
+   { "Err", "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec" };
+
+   if (month < 1 || month > 12)
+      return months[0];
+   return months[month];
+}
+
 const char * TimeStr(time_t time)
 {
 	struct tm *tm_time;

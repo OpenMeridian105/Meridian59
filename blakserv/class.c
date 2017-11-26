@@ -361,6 +361,16 @@ class_node * GetClassByName(const char *class_name)
 	return NULL;
 }
 
+int GetClassIDByName(const char *class_name)
+{
+   int class_id;
+
+   if (SIHashFind(class_name_map, class_name, &class_id))
+      return class_id;
+
+   return INVALID_CLASS;
+}
+
 // Always returns a string, not NULL.
 const char * GetClassNameByID(int class_id)
 {

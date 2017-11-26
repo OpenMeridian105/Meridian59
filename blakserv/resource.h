@@ -1,10 +1,3 @@
-// Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
-// All rights reserved.
-//
-// This software is distributed under a license that is described in
-// the LICENSE file that accompanies it.
-//
-// Meridian is a registered trademark.
 //{{NO_DEPENDENCIES}}
 // Microsoft Visual C++ generated include file.
 // Used by blakserv.rc
@@ -14,6 +7,7 @@
 #define IDR_MENU                        103
 #define IDD_MOTD                        104
 #define IDD_ABOUT                       105
+#define IDD_REGCALLBACK                 106
 #define IDI_MERIDIAN                    107
 #define IDD_TAB_PAGE_STATUS             111
 #define IDD_TAB_PAGE_ADMINISTRATION     112
@@ -59,23 +53,43 @@
 #define IDC_LOG                         1036
 #define IDC_ERROR                       1037
 #define IDC_DEBUG                       1038
+#define IDC_GODLOG                      1039
 #define IDC_MOTD                        1040
 #define IDC_ABOUT_TEXT                  1041
+#define IDC_GODLOG_LIST                 1042
+#define IDC_OBJECTID                    1043
+#define IDC_INPUTOBJECTID               1043
 #define IDC_ABOUT_TEXT3                 1044
+#define IDC_INPUTMESSAGE                1044
 #define IDC_ABOUT_TEXT2                 1045
 #define IDC_ABOUT_TITLE                 1045
+#define IDC_INPUTYEAR                   1045
 #define IDC_LOGO_BITMAP                 1046
 #define IDC_ABOUT_TEXT4                 1046
+#define IDC_INPUTMONTH                  1046
 #define IDC_ABOUT_TEXT5                 1047
+#define IDC_INPUTDAY                    1047
 #define IDC_TOOLBAR                     1048
 #define IDC_ABOUT_TEXT6                 1048
+#define IDC_INPUTHOUR                   1048
+#define IDC_INPUTMINUTE                 1049
+#define IDC_INPUTSECOND                 1050
 #define IDC_ADMIN_COMMAND               1051
+#define IDC_INPUTDAY2                   1051
+#define IDC_INPUTPARM1                  1051
 #define IDC_ADMIN_RESPONSE              1052
+#define IDC_INPUTPARM2                  1052
 #define IDC_SET_PAGE_STATUS             1053
+#define IDC_INPUTPARM3                  1053
 #define IDC_SET_PAGE_CHANNELS           1054
+#define IDC_INPUTPARM4                  1054
 #define IDC_SET_PAGE_ADMINISTRATION     1055
+#define IDC_INPUTPARM1TYPE              1055
 #define IDC_SET_PAGE_NEXT               1056
+#define IDC_INPUTPARM2TYPE              1056
 #define IDC_ABOUT_GROUP                 1057
+#define IDC_INPUTPARM3TYPE              1057
+#define IDC_INPUTPARM4TYPE              1058
 #define IDC_ABOUT_GROUP2                1063
 #define IDC_TAB_MAIN                    1064
 #define IDC_ABOUT_ARCH_ICON             1066
@@ -84,10 +98,21 @@
 #define IDC_RICHEDIT21                  1068
 #define IDC_STATIC3                     1069
 #define IDC_STATIC4                     1070
+#define IDC_STATIC5                     1071
+#define IDC_STATIC6                     1072
+#define IDC_STATIC7                     1073
+#define IDC_STATIC8                     1074
+#define IDC_STATIC9                     1075
+#define IDC_STATIC10                    1076
+#define IDC_STATIC11                    1077
+#define IDC_STATIC12                    1078
+#define IDC_STATIC13                    1079
+#define IDC_STATIC14                    1080
 #define IDM_FILE_EXIT                   40001
 #define IDM_FILE_SAVE                   40003
 #define IDM_FILE_RELOADSYSTEM           40004
 #define IDM_MESSAGES_MESSAGEOFTHEDAY    40005
+#define IDM_REGISTER_CALLBACK           40006
 #define IDM_HELP_ABOUT                  40007
 #define IDC_SET_PAGE_PREV               40010
 #define IDC_MEMORY                      -1
@@ -97,7 +122,7 @@
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE        122
+#define _APS_NEXT_RESOURCE_VALUE        123
 #define _APS_NEXT_COMMAND_VALUE         40028
 #define _APS_NEXT_CONTROL_VALUE         1069
 #define _APS_NEXT_SYMED_VALUE           101

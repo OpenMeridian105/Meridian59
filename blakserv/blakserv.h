@@ -193,6 +193,14 @@ typedef struct
    char data[LEN_MAX_CLIENT_MSG];
 } client_msg;
 
+typedef struct
+{
+   int object_id;
+   int message_id;
+   int year, month, day, hour, minute, second;
+   val_type parm1, parm2, parm3, parm4;
+} blakod_reg_callback;
+
 /* in main.c */
 extern DWORD main_thread_id;
 void MainReloadGameData();

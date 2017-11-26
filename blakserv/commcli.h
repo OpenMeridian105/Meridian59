@@ -38,5 +38,6 @@ void ClientHangupToBlakod(session_node *session);
 
 void SendBlakodBeginSystemEvent(int type);
 void SendBlakodEndSystemEvent(int type);
+void SendBlakodRegisterCallback(blakod_reg_callback *reg);
 
 #endif

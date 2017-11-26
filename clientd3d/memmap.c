@@ -18,8 +18,8 @@
  */
 Bool CliMappedFileOpenRead(char *filename, file_node *f)
 {
-   f->fh = CreateFile(filename,GENERIC_READ,0,NULL,
-		      OPEN_EXISTING,FILE_ATTRIBUTE_NORMAL | FILE_FLAG_SEQUENTIAL_SCAN,NULL);
+   f->fh = CreateFile(filename, GENERIC_READ, FILE_SHARE_READ, NULL,
+      OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL | FILE_FLAG_SEQUENTIAL_SCAN, NULL);
    if (f->fh == INVALID_HANDLE_VALUE)
    {
       return False;
@@ -52,8 +52,8 @@ Bool CliMappedFileOpenRead(char *filename, file_node *f)
  */
 Bool MappedFileOpenCopy(char *filename, file_node *f)
 {
-   f->fh = CreateFile(filename,GENERIC_READ | GENERIC_WRITE,0,NULL,
-		      OPEN_EXISTING,FILE_ATTRIBUTE_NORMAL | FILE_FLAG_SEQUENTIAL_SCAN,NULL);
+   f->fh = CreateFile(filename, GENERIC_READ, FILE_SHARE_READ, NULL,
+      OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL | FILE_FLAG_SEQUENTIAL_SCAN, NULL);
    if (f->fh == INVALID_HANDLE_VALUE)
    {
       return False;

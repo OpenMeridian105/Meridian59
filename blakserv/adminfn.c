@@ -1224,32 +1224,35 @@ void AdminUnlock(int session_id,admin_parm_type parms[],
 	InterfaceUpdate();
 }
 
-void AdminMail(int session_id,admin_parm_type parms[],
-               int num_blak_parm,parm_node blak_parm[])
+void AdminMail(int session_id, admin_parm_type parms[],
+   int num_blak_parm, parm_node blak_parm[])
 {
-	enum { MAIL_BUFSIZE = 400 }; /* because we aprintf this buffer, keep small */
-	
-	int infile, numread;
-	char loadname[MAX_PATH+FILENAME_MAX];
-	char buf[MAIL_BUFSIZE + 2];
-	
-	sprintf(loadname, "%s%s",ConfigStr(PATH_FORMS),NOTE_FILE);
-	
-	if ((infile = open(loadname, O_RDONLY | O_TEXT)) == -1)
-	{
-		aprintf("Couldn't open mail file.\n");
-		return;
-	}
-	
-	buf[MAIL_BUFSIZE+1] = 0;
-	do 
-	{
-		numread = read(infile, buf, MAIL_BUFSIZE);
-		buf[numread] = 0;
-		aprintf("%s",buf);
-	} while (numread > 0);
-	
-	close(infile);
+   enum { MAIL_BUFSIZE = 400 }; /* because we aprintf this buffer, keep small */
+
+   int infile, numread;
+   char loadname[MAX_PATH + FILENAME_MAX];
+   char buf[MAIL_BUFSIZE + 2];
+
+   sprintf(loadname, "%s%s", ConfigStr(PATH_FORMS), NOTE_FILE);
+
+   if ((infile = open(loadname, O_RDONLY | O_TEXT)) == -1)
+   {
+      aprintf("Couldn't open mail file.\n");
+      return;
+   }
+
+   buf[MAIL_BUFSIZE + 1] = 0;
+   do
+   {
+      numread = read(infile, buf, MAIL_BUFSIZE);
+      if (numread > 0)
+      {
+         buf[numread] = 0;
+         aprintf("%s", buf);
+      }
+   } while (numread > 0);
+
+   close(infile);
 }
 
 void AdminPage(int session_id,admin_parm_type parms[],

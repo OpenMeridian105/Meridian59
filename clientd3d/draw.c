@@ -342,6 +342,30 @@ HDC CreateMemBitmap(int width, int height, HBITMAP *gOldBitmap, BYTE **gBits)
    SetDIBPalette(gDC);
    return gDC;
 }
+// Prints a small amount of character above the graphics window.
+void DrawDebugDataInBorder(char *data)
+{
+   static char err_msg[40] = "Invalid data sent to debug draw!";
+   char *use_data;
+   if (!data || strlen(data) > BORDER_DEBUG_LENGTH)
+      use_data = err_msg;
+   else
+      use_data = data;
+
+   RECT rc, lagBox;
+   HDC hdc = GetDC(hMain);
+   ZeroMemory(&rc, sizeof(rc));
+   rc.bottom = DrawText(hdc, use_data, -1, &rc, DT_SINGLELINE | DT_CALCRECT | DT_NOCLIP);
+   Lagbox_GetRect(&lagBox);
+   OffsetRect(&rc, lagBox.right + 150, lagBox.top);
+   DrawWindowBackground(hdc, &rc, rc.left, rc.top);
+   int oldMode = SetBkMode(hdc, TRANSPARENT);
+   DrawText(hdc, use_data, -1, &rc, DT_SINGLELINE | DT_NOCLIP);
+   SetBkMode(hdc, oldMode);
+
+   GdiFlush();
+   ReleaseDC(hMain, hdc);
+}
 /************************************************************************/
 Bool DrawInitialize(void)
 {

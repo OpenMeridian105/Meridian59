@@ -18,6 +18,7 @@
 // new border colors for grey background in new client - mistery
 #define HIGHLIGHT_INDEX 195
 
+void DrawDebugDataInBorder(char *data);
 Bool DrawInitialize(void);
 void DrawClose(void);
 void DrawChangeColor(void);

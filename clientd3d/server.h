@@ -69,6 +69,7 @@ M59EXPORT Bool LookupMessage(char *message, int len, HandlerTable table);
 /* Game mode handlers */
 Bool HandlePlayer(char *ptr, long len);
 Bool HandleRoomContents(char *ptr, long len);
+Bool HandleRoomContentsFlags(char *ptr, long len);
 Bool HandleObjectContents(char *ptr, long len);
 Bool HandleMove(char *ptr, long len);
 Bool HandleCreate(char *ptr,long len);

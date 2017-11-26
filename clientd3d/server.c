@@ -81,6 +81,7 @@ static handler_struct game_handler_table[] = {
 { BP_INVENTORY,         HandleInventory },
 { BP_PLAYER,            HandlePlayer },
 { BP_ROOM_CONTENTS,     HandleRoomContents },
+{ BP_ROOM_CONTENTS_FLAGS, HandleRoomContentsFlags },
 { BP_PLAYERS,           HandlePlayers },
 { BP_WAIT,              HandleWait },
 { BP_UNWAIT,            HandleUnwait },
@@ -187,6 +188,25 @@ void ExtractCoordinates(char **ptr, int *x, int *y)
    *y = FinenessKodToClient(((int) word) - KOD_FINENESS);
    Extract(ptr, &word, SIZE_COORD);
    *x = FinenessKodToClient(((int) word) - KOD_FINENESS);
+}
+/********************************************************************/
+/*
+ * ExtractFlags:  Extract the object flag fields (obj flags, drawingflags,
+ *   minimap, name color, object type, moveon type).
+ */
+void ExtractFlags(char **ptr, object_node *o)
+{
+   Extract(ptr, &o->flags, SIZE_VALUE);
+   Extract(ptr, &o->drawingtype, SIZE_TYPE);
+   Extract(ptr, &o->minimapflags, SIZE_VALUE);
+   Extract(ptr, &o->namecolor, SIZE_VALUE);
+
+   BYTE temptype = 0;
+   Extract(ptr, &temptype, SIZE_TYPE);
+   o->objecttype = (object_type)temptype;
+
+   Extract(ptr, &temptype, SIZE_TYPE);
+   o->moveontype = (moveon_type)temptype;
 }
 /********************************************************************/
 /*
@@ -331,17 +351,9 @@ void ExtractObject(char **ptr, object_node *item)
       item->amount = 0;
    Extract(ptr, &item->icon_res, SIZE_ID);
    Extract(ptr, &item->name_res, SIZE_ID);
-   Extract(ptr, &item->flags, 4);
-   Extract(ptr, &item->drawingtype, 1);
-   Extract(ptr, &item->minimapflags, 4);
-   Extract(ptr, &item->namecolor, 4);
 
-   BYTE temptype = 0;
-   Extract(ptr, &temptype, 1);
-   item->objecttype = (object_type)temptype;
-
-   Extract(ptr, &temptype, 1);
-   item->moveontype = (moveon_type)temptype;
+   // Flag fields.
+   ExtractFlags(ptr, item);
 
    ExtractDLighting(ptr, &item->dLighting);
 
@@ -374,17 +386,8 @@ void ExtractObjectNoLight(char **ptr, object_node *item)
       item->amount = 0;
    Extract(ptr, &item->icon_res, SIZE_ID);
    Extract(ptr, &item->name_res, SIZE_ID);
-   Extract(ptr, &item->flags, 4);
-   Extract(ptr, &item->drawingtype, 1);
-   Extract(ptr, &item->minimapflags, 4);
-   Extract(ptr, &item->namecolor, 4);
 
-   BYTE temptype = 0;
-   Extract(ptr, &temptype, 1);
-   item->objecttype = (object_type)temptype;
-
-   Extract(ptr, &temptype, 1);
-   item->moveontype = (moveon_type)temptype;
+   ExtractFlags(ptr, item);
 
    ExtractPaletteTranslation(ptr,&item->translation,&item->effect);
    item->normal_translation = item->translation;
@@ -728,6 +731,51 @@ Bool HandleRoomContents(char *ptr, long len)
    SetPlayerRemoteView(0,0,0,0);
    SetRoomInfo(room_id, room_contents_list);
    return True;   
+}
+/********************************************************************/
+Bool HandleRoomContentsFlags(char *ptr, long len)
+{
+   //StartWatch();
+   WORD list_len;
+   int i;
+   ID room_id;
+   char *start;
+   ID object_id;
+   room_contents_node *r;
+
+   if (len < SIZE_ID + SIZE_LIST_LEN)
+      return False;
+   len -= SIZE_ID + SIZE_LIST_LEN;
+
+   Extract(&ptr, &room_id, SIZE_ID);
+
+   Extract(&ptr, &list_len, SIZE_LIST_LEN);
+   start = ptr;
+   bool found = false;
+   for (i = 0; i < list_len; i++)
+   {
+      Extract(&ptr, &object_id, SIZE_ID);
+      r = GetRoomObjectById(object_id);
+      if (!r)
+      {
+         ptr += SIZE_OBJECTFLAGS;
+         continue;
+      }
+      ExtractFlags(&ptr, &r->obj);
+
+      found = true;
+   }
+
+   if (found)
+      RedrawAll();
+
+   len -= (ptr - start);
+
+   //char buffer[BORDER_DEBUG_LENGTH];
+   //sprintf(buffer, "Handled in %.3f us", StopWatch());
+   //DrawDebugDataInBorder(buffer);
+
+   return True;
 }
 /********************************************************************/
 Bool HandleMove(char *ptr, long len)
@@ -1278,21 +1326,9 @@ Bool HandlePlayers(char *ptr,long len)
       len = ExtractString(&ptr, len, name, MAXNAME);
       ChangeResource(obj->name_res, name);
 
-      Extract(&ptr, &obj->flags, SIZE_VALUE);
-      len -= SIZE_VALUE;
-      Extract(&ptr, &obj->drawingtype, SIZE_TYPE);
-      len -= SIZE_TYPE;
-      Extract(&ptr, &obj->minimapflags, SIZE_VALUE);
-      Extract(&ptr, &obj->namecolor, SIZE_VALUE);
-      len -= 2 * SIZE_VALUE;
-
-      BYTE temptype = 0;
-      Extract(&ptr, &temptype, SIZE_TYPE);
-      obj->objecttype = (object_type)temptype;
-
-      Extract(&ptr, &temptype, SIZE_TYPE);
-      obj->moveontype = (moveon_type)temptype;
-      len -= 2 * SIZE_TYPE;
+      // Flags
+      ExtractFlags(&ptr, obj);
+      len -= SIZE_OBJECTFLAGS;
 
       list = list_add_item(list, obj);
    }
@@ -1321,21 +1357,9 @@ Bool HandleAddPlayer(char *ptr,long len)
    len = ExtractString(&ptr, len, name, MAXNAME);
    ChangeResource(obj->name_res, name);
 
-   Extract(&ptr, &obj->flags, SIZE_VALUE);
-   len -= SIZE_VALUE;
-   Extract(&ptr, &obj->drawingtype, SIZE_TYPE);
-   len -= SIZE_TYPE;
-   Extract(&ptr, &obj->minimapflags, SIZE_VALUE);
-   Extract(&ptr, &obj->namecolor, SIZE_VALUE);
-   len -= 2 * SIZE_VALUE;
-
-   BYTE temptype = 0;
-   Extract(&ptr, &temptype, SIZE_TYPE);
-   obj->objecttype = (object_type)temptype;
-
-   Extract(&ptr, &temptype, SIZE_TYPE);
-   obj->moveontype = (moveon_type)temptype;
-   len -= 2 * SIZE_TYPE;
+   // Flags
+   ExtractFlags(&ptr, obj);
+   len -= SIZE_OBJECTFLAGS;
 
    if (len != 0)
    {

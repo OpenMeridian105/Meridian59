@@ -993,7 +993,10 @@ messages:
    SetHanging(value = TRUE)
    {
       pbHanging = value;
-      if poOwner { send(poOwner,@SomethingChanged,#what=self); }
+      if poOwner
+      {
+         Send(poOwner,@SomethingChangedFlags,#what=self);
+      }
 
       return;
    }
@@ -1001,7 +1004,10 @@ messages:
    SetNoMoveOn(value = TRUE)
    {
       pbNoMoveOn = value;
-      if poOwner { send(poOwner,@SomethingChanged,#what=self); }
+      if poOwner
+      {
+         Send(poOwner,@SomethingChangedFlags,#what=self);
+      }
 
       return;
    }
@@ -2051,7 +2057,7 @@ messages:
 
    SendLookAnimation()
    {
-      send(self,@SendAnimation);      
+      Send(self,@SendAnimation);
 
       return;
    }
@@ -2060,11 +2066,7 @@ messages:
    {
       if pbFlicker
       {
-         AddPacket(2,LIGHT_FLAG_ON);
-         // intensity out of 255
-         AddPacket(1,20);
-         // Color.  Most ornamental objects are fire-type objects.
-         AddPacket(2,LIGHT_FIRE);
+         AddPacket(2,LIGHT_FLAG_ON, 1,20, 2,LIGHT_FIRE);
 
          return;
       }

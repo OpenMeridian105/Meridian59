@@ -571,6 +571,21 @@ messages:
       return Send(poOriginal,@GetSpellType,#what=what,#use_weapon=use_weapon);
    }
 
+   SomethingChangedFlags(what=$)
+   {
+      if (what = poOriginal)
+      {
+         piDrawfx = Send(self,@GetDrawingEffects);
+
+         if poOwner <> $
+         {
+            Send(poOwner,@SomethingChangedFlags,#what=self);
+         }
+      }
+
+      propagate;
+   }
+
    SomethingChanged(what=$)
    {
       local oWeapon, iRange, i;

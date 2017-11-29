@@ -542,7 +542,96 @@ void ChangeObject(object_node *new_obj, BYTE translation, BYTE effect, Animate *
       OverlayListDestroy(overlays);
 }
 /************************************************************************/
+void ChangeObjectFlags(object_node *new_obj)
+{
+   room_contents_node *r;
+   object_node *inv;
 
+   // Check room first.
+   r = GetRoomObjectById(new_obj->id);
+   if (r)
+   {
+      // No redraw unless flags actually change.
+      bool changed = false;
+      if (new_obj->flags != r->obj.flags)
+      {
+         changed = true;
+         r->obj.flags = new_obj->flags;
+      }
+      if (new_obj->drawingtype != r->obj.drawingtype)
+      {
+         changed = true;
+         r->obj.drawingtype = new_obj->drawingtype;
+      }
+      if (new_obj->minimapflags != r->obj.minimapflags)
+      {
+         changed = true;
+         r->obj.minimapflags = new_obj->minimapflags;
+      }
+      if (new_obj->objecttype != r->obj.objecttype)
+      {
+         changed = true;
+         r->obj.objecttype = new_obj->objecttype;
+      }
+      if (new_obj->namecolor != r->obj.namecolor)
+      {
+         changed = true;
+         r->obj.namecolor = new_obj->namecolor;
+      }
+      if (new_obj->moveontype != r->obj.moveontype)
+      {
+         changed = true;
+         r->obj.moveontype = new_obj->moveontype;
+      }
+
+      if (changed)
+         RedrawAll();
+   }
+   else
+   {
+      // Check inventory.
+      inv = (object_node *)
+         list_find_item(player.inventory, (void *)new_obj->id, CompareIdObject);
+      if (inv)
+      {
+         // No redraw unless flags actually change.
+         bool changed = false;
+         if (new_obj->flags != inv->flags)
+         {
+            changed = true;
+            inv->flags = new_obj->flags;
+         }
+         if (new_obj->drawingtype != inv->drawingtype)
+         {
+            changed = true;
+            inv->drawingtype = new_obj->drawingtype;
+         }
+         if (new_obj->minimapflags != inv->minimapflags)
+         {
+            changed = true;
+            inv->minimapflags = new_obj->minimapflags;
+         }
+         if (new_obj->objecttype != inv->objecttype)
+         {
+            changed = true;
+            inv->objecttype = new_obj->objecttype;
+         }
+         if (new_obj->namecolor != inv->namecolor)
+         {
+            changed = true;
+            inv->namecolor = new_obj->namecolor;
+         }
+         if (new_obj->moveontype != inv->moveontype)
+         {
+            changed = true;
+            inv->moveontype = new_obj->moveontype;
+         }
+
+         if (changed)
+            ModuleEvent(EVENT_INVENTORY, INVENTORY_CHANGE, &inv);
+      }
+   }
+}
 
 /************************************************************************/
 void SetInventory(list_type inventory)

@@ -75,6 +75,7 @@ Bool HandleMove(char *ptr, long len);
 Bool HandleCreate(char *ptr,long len);
 Bool HandleRemove(char *ptr,long len);
 Bool HandleChange(char *ptr,long len);
+Bool HandleChangeFlags(char *ptr, long len);
 Bool HandleInventoryAdd(char *ptr,long len);
 Bool HandleInventoryRemove(char *ptr,long len);
 Bool HandleInventory(char *ptr,long len);

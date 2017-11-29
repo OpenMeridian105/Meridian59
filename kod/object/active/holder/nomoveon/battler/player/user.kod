@@ -3111,6 +3111,7 @@ messages:
    }
 
    ToCliFlags(what=$)
+   "Sends just the ObjectFlags (OF, DF, MM, NC, OT, MT) for 'what'."
    {
       local iFlags, iEnemyKarma, iSelfKarma, iMinimapFlags, iDrawingFlags;
 
@@ -8829,6 +8830,28 @@ messages:
             AddPacket(1,BP_SAID, 4,what, 4,rName, 1,type, 4,rSay_format,
                       4,rName, 0,string);
          }
+
+         SendPacket(poSession);
+      }
+
+      propagate;
+   }
+
+   SomethingChangedFlags(what = $)
+   "Like SomethingChanged(), but only object ID and flags get sent."
+   {
+      if IsClass(what,&DM)
+         AND Send(what,@IsDMStealthed)
+         AND what <> self
+      {
+         return;
+      }
+
+      if pbLogged_on
+      {
+         AddPacket(1,BP_CHANGE_FLAGS, 4,what);
+
+         Send(self,@ToCliFlags,#what=what);
 
          SendPacket(poSession);
       }

@@ -53,6 +53,7 @@ static handler_struct game_handler_table[] = {
 { BP_CREATE,            HandleCreate },
 { BP_REMOVE,            HandleRemove },
 { BP_CHANGE,            HandleChange },
+{ BP_CHANGE_FLAGS,      HandleChangeFlags },
 { BP_LOOK,              HandleLook },
 { BP_LOOK_SPELL,        HandleLookSpell },
 { BP_LOOK_SKILL,        HandleLookSkill },
@@ -891,6 +892,28 @@ Bool HandleChange(char *ptr, long len)
    // something changed, so we probably need to rebuild static lists
 //   gD3DRedrawAll |= D3DRENDER_REDRAW_UPDATE;
    
+   return True;
+}
+/********************************************************************/
+Bool HandleChangeFlags(char *ptr, long len)
+{
+   char *start;
+   object_node o;
+
+   if (len < SIZE_ID + SIZE_OBJECTFLAGS)
+      return False;
+
+   start = ptr;
+
+   Extract(&ptr, &o.id, SIZE_ID);
+   ExtractFlags(&ptr, &o);
+
+   len -= (ptr - start);
+   if (len != 0)
+      return False;
+
+   ChangeObjectFlags(&o);
+
    return True;
 }
 /********************************************************************/

@@ -150,6 +150,11 @@ resources:
    dm_detect_invis_no_rmv = \
       "User %q doesn't appear to be enchanted with greater DI."
 
+   dm_squelched_players_rsc = "Squelched players: ~c%q."
+   dm_squelched_none_rsc = "No squelched players."
+   dm_damned_players_rsc = "Damned players: ~c%q."
+   dm_damned_none_rsc = "No damned players."
+
    dm_spawn_command = "spawn"
    dm_spawn_random_command = "spawn random"
    dm_spawn_gen_command = "spawn generator"
@@ -246,7 +251,9 @@ resources:
       "available objects to place.\nYou can also send custom messages to users "
       "globally or to those in the same room as yourself. Type ~bdm help "
       "messages~n for more information on those commands.\n"
-      "~cNew! ~nUse ~bdm help spawn~n to see room mob spawn-related commands."
+      "~cNew! ~nUse ~bdm help spawn~n to see room mob spawn-related commands.\n"
+      "~cNew! ~nUse ~bdm get squelched~n to list squelched players, and ~bdm "
+      "get damned~n to list damned players (players in OoG)."
 
    // Help strings for flagged commands.
    dm_help_turnoff_pk = \
@@ -1042,6 +1049,20 @@ messages:
          return;
       }
 
+      if StringEqual(string,"get squelched")
+      {
+         Send(self,@DMSayGetSquelched);
+
+         return;
+      }
+
+      if StringEqual(string,"get damned")
+      {
+         Send(self,@DMSayGetDamned);
+
+         return;
+      }
+
       // Appeal commands; all DMs can use.
       if StringEqual(string,dm_appeal_off_command)
       {
@@ -1674,6 +1695,70 @@ messages:
    }
 
 #region DM Say Command Handling
+
+   DMSayGetSquelched()
+   {
+      local i, iFlags, iCount;
+
+      ClearTempString();
+
+      iCount = 0;
+      foreach i in Send(SYS,@GetUsers)
+      {
+         if (Send(i,@IsPlayerSquelched))
+         {
+            if (iCount++)
+            {
+               AppendTempString(", ");
+            }
+            AppendTempString(Send(i,@GetTrueName));
+         }
+      }
+
+      if (iCount = 0)
+      {
+         Send(self,@MsgSendUser,#message_rsc=dm_squelched_none_rsc);
+      }
+      else
+      {
+         Send(self,@MsgSendUser,#message_rsc=dm_squelched_players_rsc,
+               #parm1=GetTempString());
+      }
+
+      return;
+   }
+
+   DMSayGetDamned()
+   {
+      local i, iFlags, iCount;
+
+      ClearTempString();
+
+      iCount = 0;
+      foreach i in Send(SYS,@GetUsers)
+      {
+         if (Send(i,@IsPlayerDamned))
+         {
+            if (iCount++)
+            {
+               AppendTempString(", ");
+            }
+            AppendTempString(Send(i,@GetTrueName));
+         }
+      }
+
+      if (iCount = 0)
+      {
+         Send(self,@MsgSendUser,#message_rsc=dm_damned_none_rsc);
+      }
+      else
+      {
+         Send(self,@MsgSendUser,#message_rsc=dm_damned_players_rsc,
+               #parm1=GetTempString());
+      }
+
+      return;
+   }
 
    DMSayDetectInvis(string=$)
    {

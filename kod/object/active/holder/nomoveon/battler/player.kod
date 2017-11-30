@@ -5896,19 +5896,8 @@ messages:
          Send(poOwner,@SomethingKilled,#what=self,#victim=what);
       }
 
-      // Let our shield know we killed something.
-      oSoldierShield = Send(self,@FindUsing,#class=&SoldierShield);
-      if oSoldierShield <> $
-      {
-         Send(oSoldierShield,@KilledSomething,#what=what);
-      }
-
-      // Let JOF know we killed something.
-      oObject = Send(self,@FindUsing,#class=&JewelOfFroz);
-      if oObject <> $
-      {
-         Send(oObject,@KilledSomething,#what=what);
-      }
+      // Let the objects we're using know we killed something.
+      SendList(plUsing,0,@KilledSomething,#what=what);
 
       if IsClass(what,&User)
          AND what <> self

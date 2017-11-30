@@ -78,47 +78,57 @@ messages:
       {
          oMonster = First(i);
 
-         if IsClass(oMonster,&Monster)
-            AND NOT (Send(oMonster,@GetBehavior) & AI_NPC)
+         if (NOT IsClass(oMonster,&Monster))
          {
-            iBaseChance = 25;
-            if Send(oMonster,@GetTarget) = $
-            {
-               // easier if monster doesn't have a target
-               iModifier = 2;
-            }
-            else
-            {
-               // harder if monster already has a target
-               iModifier = 4;
-            }
+            continue;
+         }
+         // Can the monster attack the caster? If not possible to attack,
+         // don't bait them. Example would be minions with a master that
+         // can't fight the bait caster. This also checks for AI_NPC.
+         if (NOT Send(oMonster,@AllowBattlerAttack,#victim=who,#actual=FALSE,
+                     #report=FALSE))
+         {
+            continue;
+         }
 
-            // Human mobs fall for bait less often.
-            if IsClass(oMonster,&Human)
-            {
-               iBaseChance = 0;
-               iModifier += 4;
-            }
+         iBaseChance = 25;
+         if Send(oMonster,@GetTarget) = $
+         {
+            // easier if monster doesn't have a target
+            iModifier = 2;
+         }
+         else
+         {
+            // harder if monster already has a target
+            iModifier = 4;
+         }
 
-            // Avoid faction problems, don't make it work on aligned people.
-            iMonsterFaction = Send(oMonster,@GetFaction);
-            if NOT (iMonsterFaction = FACTION_NEUTRAL)
-               AND (send(who,@GetFaction) = iMonsterFaction)
-            {
-               iBaseChance = -200;
-            }
+         // Human mobs and minions fall for bait less often.
+         if IsClass(oMonster,&Human)
+            OR Send(oMonster,@IsMinion)
+         {
+            iBaseChance = 0;
+            iModifier += 4;
+         }
 
-            // Don't allow in happyland, unless the monster has no master.
-            // Also must be in range.
-            if (Random(1,100) < (iBaseChance + (iSpellPower/iModifier))
-               AND (Send(SYS,@IsPKAllowed)
-                  OR Send(oMonster,@GetMaster) = $)
-               AND Send(who,@SquaredDistanceTo,#what=oMonster)
-                  < (piBaitRange * piBaitRange))
-            {
-               Send(oMonster,@TargetSwitch,#what=who,#iHatred=100);
-               Send(oMonster,@EnterStateEngage,#target=who,#actnow=TRUE);
-            }
+         // Avoid faction problems, don't make it work on aligned people.
+         iMonsterFaction = Send(oMonster,@GetFaction);
+         if NOT (iMonsterFaction = FACTION_NEUTRAL)
+            AND (send(who,@GetFaction) = iMonsterFaction)
+         {
+            iBaseChance = -200;
+         }
+
+         // Don't allow in happyland, unless the monster has no master.
+         // Also must be in range.
+         if (Random(1,100) < (iBaseChance + (iSpellPower/iModifier))
+            AND (Send(SYS,@IsPKAllowed)
+               OR Send(oMonster,@GetMaster) = $)
+            AND Send(who,@SquaredDistanceTo,#what=oMonster)
+               < (piBaitRange * piBaitRange))
+         {
+            Send(oMonster,@TargetSwitch,#what=who,#iHatred=100);
+            Send(oMonster,@EnterStateEngage,#target=who,#actnow=TRUE);
          }
       }
 

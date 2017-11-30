@@ -9721,9 +9721,8 @@ messages:
    "Sends the user to their hometown, whether they're logged in or not!\n"
    "Called by constructor for initial placement as well"
    {
-      local oNew_Room,iRow,iCol,oRoom;
+      local oNew_Room, iRow, iCol, oRoom, oSpell;
 
-      oRoom = $;
       if piHomeroom <> $
       {
          oRoom = Send(SYS,@FindRoomByNum,#num=abs(piHomeroom));
@@ -9733,6 +9732,16 @@ messages:
       {
          Send(self,@SetRandomHomeroom);
          oRoom = Send(SYS,@FindRoomByNum,#num=piHomeroom);
+      }
+
+      // Remove damned string if rescuing from OoG.
+      if (Send(self,@IsPlayerDamned))
+      {
+         oSpell = Send(SYS,@FindSpellByNum,#num=SID_DAMN);
+         if (oSpell <> $)
+         {
+            Send(self,@RemoveHonorString,#string=Send(oSpell,@GetDamnedRsc));
+         }
       }
 
       piSave_room = piHomeroom;
@@ -9791,6 +9800,16 @@ messages:
       }
 
       return TRUE;
+   }
+
+   IsPlayerDamned()
+   {
+      if (poOwner <> $)
+      {
+         return Send(poOwner,@GetRoomNum) = RID_OOG;
+      }
+
+      return piSave_Room = RID_OOG;
    }
 
    TeleportToInitialLocation()

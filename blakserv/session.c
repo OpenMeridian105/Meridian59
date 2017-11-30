@@ -194,17 +194,26 @@ session_node * GetSessionBySocket(SOCKET sock)
 		return NULL;
 }
 
-void ForEachSession(void (*callback_func)(session_node *s))
+void ForEachSession(void(*callback_func)(session_node *s))
 {
-	int i;
-	
-	/* the callback function shouldn't delete the session,
-	in case it becomes a linked list */
-	
-	for (i=0;i<num_sessions;i++)
-		if (sessions[i].connected)
-			callback_func(&sessions[i]);
+   /* the callback function shouldn't delete the session,
+   in case it becomes a linked list */
+
+   for (int i = 0; i < num_sessions; i++)
+      if (sessions[i].connected)
+         callback_func(&sessions[i]);
 }
+
+void ForEachSessionWithString(void(*callback_func)(session_node *a, char *str), char *str)
+{
+   /* the callback function shouldn't delete the session,
+   in case it becomes a linked list */
+
+   for (int i = 0; i < num_sessions; i++)
+      if (sessions[i].connected)
+         callback_func(&sessions[i], str);
+}
+
 /*
 int GetUsedSessions()
 {

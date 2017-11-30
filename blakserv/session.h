@@ -173,6 +173,7 @@ void InitSessionState(session_node *s,int state);
 session_node * CreateSession(connection_node conn);
 session_node *GetSessionByAccount(account_node *a);
 session_node * GetSessionBySocket(SOCKET sock);
+void ForEachSessionWithString(void(*callback_func)(session_node *a, char *str), char *str);
 void ForEachSession(void (*callback_func)(session_node *s));
 int GetUsedSessions(void);
 const char * GetStateName(session_node *s);

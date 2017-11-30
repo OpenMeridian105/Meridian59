@@ -88,6 +88,8 @@ void AdminShowMemory(int session_id, admin_parm_type parms[], int num_blak_parm,
 void AdminShowCalled(int session_id, admin_parm_type parms[], int num_blak_parm, parm_node blak_parm[]);
 void AdminShowCalledClass(class_node *c);
 void AdminShowRoomTable(int session_id, admin_parm_type parms[], int num_blak_parm, parm_node blak_parm[]);
+void AdminShowMatchingIP(int session_id, admin_parm_type parms[], int num_blak_parm, parm_node blak_parm[]);
+void PrintSessionMatchingIP(session_node *s, char *match_ip);
 void AdminShowBlockers(int session_id, admin_parm_type parms[], int num_blak_parm, parm_node blak_parm[]);
 void AdminShowObject(int session_id, admin_parm_type parms[], int num_blak_parm, parm_node blak_parm[]);
 void AdminShowObjects(int session_id, admin_parm_type parms[], int num_blak_parm, parm_node blak_parm[]);
@@ -276,6 +278,7 @@ admin_table_type admin_show_table[] =
 	{ AdminShowReferences,    {S,S,N}, F, A|M, NULL, 0, "references",  "Show what objects or lists reference a particular data value" },
 	{ AdminShowResource,      {S,N}, F, A|M, NULL, 0, "resource",      "Show a resource by resource name" },
 	{ AdminShowRoomTable,     {N},   F, A|M, NULL, 0, "roomtable",     "Show the rooms table" },
+	{ AdminShowMatchingIP,    {I,N}, F, A|M, NULL, 0, "sameip",        "Lists all logged on accounts matching IP of the given session ID." },
 	{ AdminShowStatus,        {N},   F, A|M, NULL, 0, "status",        "Show system status" },
 	{ AdminShowString,        {I,N}, F, A|M, NULL, 0, "string",        "Show one string by string id" },
 	{ AdminShowSuspended,     {N},   F, A|M, NULL, 0, "suspended",     "Show all suspended accounts" },
@@ -1442,6 +1445,48 @@ void AdminShowCalledClass(class_node *c)
          }
          m = m->next;
       }
+   }
+}
+
+
+void AdminShowMatchingIP(int session_id, admin_parm_type parms[],
+                        int num_blak_parm, parm_node blak_parm[])
+{
+   int user_session_id = (int)parms[0];
+   session_node *s = GetSessionByID(user_session_id);
+   if (!s)
+   {
+      aprintf("Session %i not found!\n", user_session_id);
+      return;
+   }
+
+   if (!s->connected)
+   {
+      aprintf("Session %i not connected!\n", user_session_id);
+      return;
+   }
+
+   if (s->conn.name == NULL)
+   {
+      aprintf("Session %i missing IP address!\n");
+
+      return;
+   }
+
+   aprintf("Accounts matching IP of session %i:\n",user_session_id);
+   aprintf("Name                Act Ver Sess Port                   Where\n");
+   aprintf("--------------------------------------------------------"
+      "--------------------\n");
+   // Data valid, iterate sessions and print matching.
+   ForEachSessionWithString(PrintSessionMatchingIP, s->conn.name);
+}
+
+void PrintSessionMatchingIP(session_node *s, char *match_ip)
+{
+   if (s && s->conn.name && stricmp(s->conn.name, match_ip) == 0)
+   {
+      // Got a match
+      AdminWhoEachSession(s);
    }
 }
 

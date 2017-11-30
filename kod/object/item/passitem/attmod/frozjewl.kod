@@ -68,6 +68,9 @@ classvars:
     // Jof recharges victim level/viRechargeFactor hits on kills.
    viRechargeFactor = 15
 
+   // Percent of a full heal each JoF receives if player wields multiple.
+   viDoubleRechargePct = 65
+
 properties:
 
    vrDesc = frozjewel_desc_rsc
@@ -391,6 +394,8 @@ messages:
    KilledSomething(what=$)
    "Called when our owner killed something. Recharges hits on the JOF."
    {
+      local i, iNumJofs, iHealAmount;
+
       if (what = $
          OR NOT Send(SETTINGS_OBJECT,@CanFrozRechargeOnKill)
          OR (IsClass(what,&Monster) AND Send(what,@IsIllusion)))
@@ -398,8 +403,35 @@ messages:
          return;
       }
 
-      piHits = Bound(piHits + (Send(what,@GetLevel) / viRechargeFactor),
-                     1, Send(self,@GetMaxHits));
+      iNumJofs = 0;
+      foreach i in Send(poOwner,@GetPlayerUsing)
+      {
+         if IsClass(i,&JewelOfFroz)
+         {
+            ++iNumJofs;
+         }
+      }
+
+      if (iNumJofs <= 0)
+      {
+         Debug("Got ",iNumJofs," JOFs when should have had 1+, killer is ",
+               Send(poOwner,@GetTrueName));
+
+         return;
+      }
+
+      iHealAmount = Send(what,@GetLevel) / viRechargeFactor;
+
+      // Heal over 50% for two JoFs else the player could lose potential hits
+      // through rounding, and the best strategy then would be to unequip one
+      // JoF before each kill.
+      if (iNumJofs > 1)
+      {
+         iHealAmount = iHealAmount * viDoubleRechargePct / 100;
+      }
+
+      piHits = Bound(piHits + iHealAmount, 1, Send(self,@GetMaxHits));
+
       if (poOwner <> $)
       {
          Send(poOwner,@MsgSendUser,#message_rsc=frozjewel_recharge_rsc);

@@ -2498,17 +2498,18 @@ messages:
       return  (iRow_diff * iRow_diff + iCol_diff * iCol_diff);
    }
 
+   // Note that these messages use SomethingChangedFlags and not
+   // SomethingChanged, if adding/removing magic flag changes the
+   // item graphics in the future, SomethingChanged should be used
+   // or perhaps added as an override for those effects/items.
    AddMagicFlag()
    {
-      if viObject_flags <> (OF_GETTABLE | OF_ITEM_MAGIC)
-      {
-         viObject_flags = viObject_flags | OF_ITEM_MAGIC;
-      }
+      viObject_flags |= OF_ITEM_MAGIC;
 
       if poOwner <> $
          AND IsClass(poOwner,&User)
       {
-         Send(poOwner,@SomethingChanged,#what=self);
+         Send(poOwner,@SomethingChangedFlags,#what=self);
       }
 
       return;
@@ -2518,31 +2519,32 @@ messages:
    {
       local i, iNum, oItemAtt;
 
+      // Double check if we should keep magic flag due to another itematt.
       foreach i in plItem_attributes
       {
          iNum = Send(self,@GetNumFromCompound,#compound=First(i));
          oItemAtt = Send(SYS,@FindItemAttByNum,#num=iNum);
-         
+
          if Send(oItemAtt,@IsMagicalEffect)
          {
-            viObject_flags = viObject_flags | OF_ITEM_MAGIC;
+            viObject_flags |= OF_ITEM_MAGIC;
 
             if poOwner <> $
                AND IsClass(poOwner,&User)
             {
-               Send(poOwner,@SomethingChanged,#what=self);
+               Send(poOwner,@SomethingChangedFlags,#what=self);
             }
 
             return;
          }
       }
 
-      viObject_flags = viObject_flags & ~OF_ITEM_MAGIC;
+      viObject_flags &= ~OF_ITEM_MAGIC;
 
       if poOwner <> $
          AND IsClass(poOwner,&User)
       {
-         Send(poOwner,@SomethingChanged,#what=self);
+         Send(poOwner,@SomethingChangedFlags,#what=self);
       }
 
       return;

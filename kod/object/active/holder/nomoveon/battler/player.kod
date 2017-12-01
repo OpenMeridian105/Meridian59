@@ -3051,12 +3051,8 @@ messages:
                }
             }
 
+            // Calls SomethingChanged.
             Send(self,@ResetPlayerFlagList,#who=self);
-
-            if poOwner <> $
-            {
-               Send(poOwner,@SomethingChanged,#what=self);
-            }
 
             return;
          }
@@ -3088,12 +3084,8 @@ messages:
                }
             }
 
+            // Calls SomethingChanged
             Send(self,@ResetPlayerFlagList,#who=self);
-
-            if poOwner <> $
-            {
-               Send(poOwner,@SomethingChanged,#what=self);
-            }
 
             return;
          }
@@ -11523,7 +11515,7 @@ messages:
 
       if (poOwner <> $)
       {
-         Send(poOwner,@SomethingChanged,#what=self);
+         Send(poOwner,@SomethingChangedFlags,#what=self);
       }
 
       return;
@@ -12574,6 +12566,10 @@ messages:
       {
          ptTempSafe = CreateTimer(self,@EndTempSafe,iTime);
          Send(self,@MsgSendUser,#message_rsc=player_temp_safe);
+         if (poOwner <> $)
+         {
+            Send(poOwner,@SomethingChangedFlags,#what=self);
+         }
       }
       else
       {
@@ -12589,7 +12585,7 @@ messages:
       if poOwner <> $
       {
          Send(self,@MsgSendUser,#message_rsc=player_temp_safe_end);
-         Send(poOwner,@SomethingChanged,#what=self);
+         Send(poOwner,@SomethingChangedFlags,#what=self);
       }
 
       ptTempSafe = $;
@@ -12647,7 +12643,7 @@ messages:
 
       if (poOwner <> $)
       {
-         Send(poOwner,@SomethingChanged,#what=self);
+         Send(poOwner,@SomethingChangedFlags,#what=self);
       }
 
       return;
@@ -12659,7 +12655,7 @@ messages:
 
       if (poOwner <> $)
       {
-         Send(poOwner,@SomethingChanged,#what=self);
+         Send(poOwner,@SomethingChangedFlags,#what=self);
       }
 
       return;
@@ -14518,16 +14514,16 @@ messages:
       if poOwner <> $
       {
          Send(poOwner,@RemoveFromBuilderGroup,#who=self);
-         Send(poOwner,@SomethingChanged,#what=self);
+         Send(poOwner,@SomethingChangedFlags,#what=self);
 
          // Let's see that we left the group
          foreach i in Send(poOwner,@GetPlActive)
          {
-            each_obj = Send(poOwner,@HolderExtractObject,#data=i);
+            each_obj = First(i);
             if IsClass(each_obj,&User)
                AND Send(poOwner,@AreGroupedHere,#who=self,#what=each_obj)
             {
-               Send(self,@SomethingChanged,#what=each_obj);
+               Send(self,@SomethingChangedFlags,#what=each_obj);
             }
          }
       }
@@ -14552,18 +14548,18 @@ messages:
       if poOwner <> $
       {
          Send(poOwner,@AddToBuilderGroup,#who=self);
-         Send(poOwner,@SomethingChanged,#what=self);
+         Send(poOwner,@SomethingChangedFlags,#what=self);
          ptLeaveBuilderGroupTimer = CreateTimer(self,@LeaveBuilderGroupTimer,
                                        Send(poOwner,@GetGroupTime));
 
          // Let's see our new group
          foreach i in Send(poOwner,@GetPlActive)
          {
-            each_obj = Send(poOwner,@HolderExtractObject,#data=i);
+            each_obj = First(i);
             if IsClass(each_obj,&User)
                AND Send(poOwner,@AreGroupedHere,#who=self,#what=each_obj)
             {
-               Send(self,@SomethingChanged,#what=each_obj);
+               Send(self,@SomethingChangedFlags,#what=each_obj);
             }
          }
       }
@@ -15185,6 +15181,8 @@ messages:
          // troops, as long as they aren't necromancers.
          else if IsClass(what,&FactionTroop)
             AND (iFaction <> FACTION_NECROMANCER)
+            AND (poKill_target <> what
+               AND Send(what,@GetTarget) <> self)
          {
             return TRUE;
          }

@@ -136,7 +136,8 @@ enum {
    BP_REQ_BUY_ITEMS         = 125,
    BP_CHANGE_DESCRIPTION    = 126,
    BP_REQ_INVENTORY_MOVE    = 127,
-
+   BP_ROOM_CONTENTS_FLAGS   = 128,
+   BP_CHANGE_FLAGS          = 129,
    BP_PLAYER                = 130,
    BP_STAT                  = 131,
    BP_STAT_GROUP            = 132,
@@ -628,6 +629,7 @@ enum {
 #define SIZE_PROJECTILE_RESERVED 2
 #define SIZE_SESSION_ID      4
 #define SIZE_CHARINFO_ERROR 1
+#define SIZE_OBJECTFLAGS (3 * SIZE_VALUE + 3 * SIZE_TYPE)
 
 // new defines for dynamic lighting of d3d client
 #define LIGHT_FLAG_NONE		0x0000

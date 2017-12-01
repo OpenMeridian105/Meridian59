@@ -70,6 +70,10 @@ enum {False = 0, True = 1};
 #define P_CATCH 3
 
 extern void GetGamePath( char *szGamePath );
+
+#define BORDER_DEBUG_LENGTH 64
+void StartWatch();
+double StopWatch();
 double GetMicroCountDouble();
 
 extern long CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam);

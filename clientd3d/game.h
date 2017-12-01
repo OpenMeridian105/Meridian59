@@ -80,6 +80,7 @@ void TurnObject(ID object_id, WORD angle);
 void CreateObject(room_contents_node *r);
 void RemoveObject(ID obj_id);
 void ChangeObject(object_node *new_obj, BYTE translation, BYTE effect, Animate *a, list_type overlays);
+void ChangeObjectFlags(object_node *new_obj);
 void SetObjectContents(ID object_id, list_type contents);
 
 void SetInventory(list_type inventory);

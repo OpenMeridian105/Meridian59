@@ -356,6 +356,34 @@ void GetGamePath( char *szGamePath )
     debug(("Unable to get current directory!\n"));
 }
 
+LARGE_INTEGER watch;
+void StartWatch()
+{
+   static LARGE_INTEGER microFrequency;
+
+   if (microFrequency.QuadPart == 0)
+      QueryPerformanceFrequency(&microFrequency);
+
+   if (microFrequency.QuadPart == 0)
+      return;
+
+   QueryPerformanceCounter(&watch);
+}
+double StopWatch()
+{
+   static LARGE_INTEGER microFrequency, end, diff;
+
+   if (microFrequency.QuadPart == 0)
+      QueryPerformanceFrequency(&microFrequency);
+
+   if (microFrequency.QuadPart == 0)
+      return -1.0;
+   QueryPerformanceCounter(&end);
+
+   diff.QuadPart = end.QuadPart - watch.QuadPart;
+   return ((double)diff.QuadPart * (1000000.0 / (double)microFrequency.QuadPart));
+}
+
 double GetMicroCountDouble()
 {
    static LARGE_INTEGER microFrequency;

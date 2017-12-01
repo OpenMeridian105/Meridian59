@@ -760,6 +760,8 @@ messages:
    //  since performing a quest
    GetTimeLoggedIn()
    {
+      local iTime;
+
       if piLastLoginTime = 0
       {
          return 0;
@@ -767,7 +769,11 @@ messages:
 
       if pbLogged_on
       {
-         return (GetTime() - piLastLoginTime + piTimeLoggedIn);
+         iTime = GetTime() - piLastLoginTime + piTimeLoggedIn;
+         if (iTime >= 0)
+         {
+            return iTime;
+         }
       }
 
       return piTimeLoggedIn;
@@ -3110,14 +3116,66 @@ messages:
       return Send(SYS,@GetSuccessRsc);
    }
 
+   ToCliFlags(what=$)
+   "Sends just the ObjectFlags (OF, DF, MM, NC, OT, MT) for 'what'."
+   {
+      local iFlags, iEnemyKarma, iSelfKarma, iMinimapFlags, iDrawingFlags;
+
+      iDrawingFlags = Send(what,@GetDrawingEffects);
+      iFlags = Send(what,@GetObjectFlags,#what=self);
+      // If we can see the invisible object, remove its invis drawing flag
+      // and set it to flash instead (in object flags).
+      if (piFlags2 & PFLAG2_DETECT_INVIS)
+         AND (iDrawingFlags & DRAWFX_MASK) = DRAWFX_INVISIBLE
+      {
+         iDrawingFlags &= (~DRAWFX_MASK);
+         iFlags &= (~OF_FLICKERING);
+         iFlags |= OF_FLASHING;
+      }
+
+      if IsClass(what,&Battler)
+      {
+         iEnemyKarma = Send(what,@GetKarma,#detect=TRUE);
+         iSelfKarma = Send(self,@GetKarma);
+
+         if (piFlags2 & PFLAG2_DETECT_EVIL)
+            AND iSelfKarma > 0
+            AND iEnemyKarma < -10
+         {
+            iFlags &= (~OF_FLICKERING);
+            iFlags |= OF_FLASHING;
+         }
+
+         if (piFlags2 & PFLAG2_DETECT_GOOD)
+            AND iSelfKarma < 0
+            AND iEnemyKarma > 10
+         {
+            iFlags &= (~OF_FLICKERING);
+            iFlags |= OF_FLASHING;
+         }
+      }
+
+      iMinimapFlags = Send(self,@BuildMinimapDotFlag,#what=what);
+      if iMinimapFlags = $
+      {
+         Debug("Got $ minimapflags for self ",self,Send(self,@GetTrueName),
+            " for object ",what,Send(what,@GetTrueName));
+         iMinimapFlags = 0;
+      }
+
+      AddPacket(4,iFlags, 1,iDrawingFlags, 4,iMinimapFlags,
+                4,Send(what,@GetPlayerNameColor),
+                1,Send(what,@GetClientObjectType),
+                1,Send(what,@GetMoveOnType));
+
+      return;
+   }
+
    ToCliObject(what=$,show_type=SHOW_NORMAL,bShow_all=FALSE)
    "show_type is used to get the look or inventory animation and overlays "
    "instead of the normal animation and overlays."
    {
-      local iFlags, iEnemyKarma, iSelfKarma, iMinimapFlags, iDrawingFlags;
-
       // Send given object's id number, name, icon, and animation info
-
       if IsClass(what,&NumberItem)
       {
          AddPacket(NUMBER_OBJECT,what, 4,Send(what,@GetNumber),
@@ -3139,56 +3197,7 @@ messages:
          AddPacket(4,Send(what,@GetApparentName));
       }
 
-      iDrawingFlags = Send(what,@GetDrawingEffects);
-      iFlags = Send(what,@GetObjectFlags,#what=self);
-      // If we can see the invisible object, remove its invis drawing flag
-      // and set it to flash instead (in object flags).
-      if (piFlags2 & PFLAG2_DETECT_INVIS)
-         AND (iDrawingFlags & DRAWFX_MASK) = DRAWFX_INVISIBLE
-      {
-         iDrawingFlags = (iDrawingFlags & (~DRAWFX_MASK));
-         iFlags = (iFlags & (~OF_FLICKERING));
-         iFlags = (iFlags | OF_FLASHING);
-      }
-
-      if IsClass(what,&Battler)
-      {
-         iEnemyKarma = Send(what,@GetKarma,#detect=TRUE);
-         iSelfKarma = Send(self,@GetKarma);
-
-         if (piFlags2 & PFLAG2_DETECT_EVIL)
-            AND iSelfKarma > 0
-            AND iEnemyKarma < -10
-            AND (IsClass(what,&Player)
-                 OR (IsClass(what,&Monster) AND abs(iEnemyKarma) > iSelfKarma))
-         {
-            iFlags = (iFlags & (~OF_FLICKERING));
-            iFlags = (iFlags | OF_FLASHING);
-         }
-
-         if (piFlags2 & PFLAG2_DETECT_GOOD)
-            AND iSelfKarma < 0
-            AND iEnemyKarma > 10
-            AND (IsClass(what,&Player)
-                 OR (IsClass(what,&Monster) AND iEnemyKarma > abs(iSelfKarma)))
-         {
-            iFlags = (iFlags & (~OF_FLICKERING));
-            iFlags = (iFlags | OF_FLASHING);
-         }
-      }
-
-      iMinimapFlags = Send(self,@BuildMinimapDotFlag,#what=what);
-      if iMinimapFlags = $
-      {
-         Debug("Got $ minimapflags for self ",self,Send(self,@GetTrueName),
-            " for object ",what,Send(what,@GetTrueName));
-         iMinimapFlags = 0;
-      }
-
-      AddPacket(4,iFlags, 1,iDrawingFlags, 4,iMinimapFlags,
-                4,Send(what,@GetPlayerNameColor),
-                1,Send(what,@GetClientObjectType),
-                1,Send(what,@GetMoveOnType));
+      Send(self,@ToCliFlags,#what=what);
 
       // Send the lighting information.
       Send(what,@SendLightingInformation);
@@ -3512,6 +3521,179 @@ messages:
                    4,Send(i,@GetPlayerNameColor),
                    1,Send(i,@GetClientObjectType),
                    1,0); // MoveOn type, don't need it here.
+      }
+
+      SendPacket(poSession);
+
+      return;
+   }
+
+   ToCliGoodKarma()
+   {
+      local i, iEnemyKarma, iSelfKarma, each_obj, objs;
+
+      if (NOT pbLogged_on)
+      {
+         return;
+      }
+
+      objs = 0;
+
+      foreach i in Send(poOwner,@GetHolderActive)
+      {
+         each_obj = First(i);
+         if IsClass(each_obj,&Battler)
+         {
+            iEnemyKarma = Send(each_obj,@GetKarma,#detect=TRUE);
+            iSelfKarma = Send(self,@GetKarma);
+
+            if iSelfKarma < 0
+               AND iEnemyKarma > 10
+            {
+               ++objs;
+            }
+         }
+      }
+
+      AddPacket(1,BP_ROOM_CONTENTS_FLAGS, 4,poOwner, 2,objs);
+
+      foreach i in Send(poOwner,@GetHolderActive)
+      {
+         each_obj = First(i);
+         if IsClass(each_obj,&Battler)
+         {
+            iEnemyKarma = Send(each_obj,@GetKarma,#detect=TRUE);
+            iSelfKarma = Send(self,@GetKarma);
+
+            if iSelfKarma < 0
+               AND iEnemyKarma > 10
+            {
+               AddPacket(4,each_obj);
+               Send(self,@ToCliFlags,#what=each_obj);
+            }
+         }
+      }
+
+      return;
+   }
+
+   ToCliEvilKarma()
+   {
+      local i, iEnemyKarma, iSelfKarma, each_obj, objs;
+
+      if (NOT pbLogged_on)
+      {
+         return;
+      }
+
+      objs = 0;
+
+      foreach i in Send(poOwner,@GetHolderActive)
+      {
+         each_obj = First(i);
+         if IsClass(each_obj,&Battler)
+         {
+            iEnemyKarma = Send(each_obj,@GetKarma,#detect=TRUE);
+            iSelfKarma = Send(self,@GetKarma);
+
+            if iSelfKarma > 0
+               AND iEnemyKarma < -10
+            {
+               ++objs;
+            }
+         }
+      }
+
+      AddPacket(1,BP_ROOM_CONTENTS_FLAGS, 4,poOwner, 2,objs);
+
+      foreach i in Send(poOwner,@GetHolderActive)
+      {
+         each_obj = First(i);
+         if IsClass(each_obj,&Battler)
+         {
+            iEnemyKarma = Send(each_obj,@GetKarma,#detect=TRUE);
+            iSelfKarma = Send(self,@GetKarma);
+
+            if iSelfKarma > 0
+               AND iEnemyKarma < -10
+            {
+               AddPacket(4,each_obj);
+               Send(self,@ToCliFlags,#what=each_obj);
+            }
+         }
+      }
+
+      return;
+   }
+
+   ToCliInvisible()
+   "Send BP_ROOM_CONTENTS_FLAGS and the flags of each invisible room object.  "
+   "Called when DI is cast on us or when it wears off.  Faster than sending "
+   "a lot of unnecessary data."
+   {
+      local i, each_obj, objs;
+
+      if (NOT pbLogged_on)
+      {
+         return;
+      }
+
+      objs = 0;
+
+      foreach i in Send(poOwner,@GetHolderPassive)
+      {
+         each_obj = First(i);
+         if (Send(each_obj,@GetDrawingEffects) = DRAWFX_INVISIBLE)
+         {
+            ++objs;
+         }
+      }
+      foreach i in Send(poOwner,@GetHolderActive)
+      {
+         each_obj = First(i);
+
+         // Don't do stealthed DMs, only do invisible players.
+         if IsClass(each_obj,&DM)
+            AND Send(each_obj,@IsDMStealthed)
+            AND each_obj <> self
+         {
+            continue;
+         }
+
+         if (Send(each_obj,@GetDrawingEffects) = DRAWFX_INVISIBLE)
+         {
+            ++objs;
+         }
+      }
+
+      AddPacket(1,BP_ROOM_CONTENTS_FLAGS, 4,poOwner, 2,objs);
+
+      foreach i in Send(poOwner,@GetHolderActive)
+      {
+         each_obj = First(i);
+
+         // Don't do stealthed DMs.
+         if IsClass(each_obj,&DM)
+            AND Send(each_obj,@IsDMStealthed)
+            AND each_obj <> self
+         {
+            continue;
+         }
+         if (Send(each_obj,@GetDrawingEffects) = DRAWFX_INVISIBLE)
+         {
+            AddPacket(4,each_obj);
+            Send(self,@ToCliFlags,#what=each_obj);
+         }
+      }
+
+      foreach i in Send(poOwner,@GetHolderPassive)
+      {
+         each_obj = First(i);
+         if (Send(each_obj,@GetDrawingEffects) = DRAWFX_INVISIBLE)
+         {
+            AddPacket(4,each_obj);
+            Send(self,@ToCliFlags,#what=each_obj);
+         }
       }
 
       SendPacket(poSession);
@@ -8654,6 +8836,28 @@ messages:
             AddPacket(1,BP_SAID, 4,what, 4,rName, 1,type, 4,rSay_format,
                       4,rName, 0,string);
          }
+
+         SendPacket(poSession);
+      }
+
+      propagate;
+   }
+
+   SomethingChangedFlags(what = $)
+   "Like SomethingChanged(), but only object ID and flags get sent."
+   {
+      if IsClass(what,&DM)
+         AND Send(what,@IsDMStealthed)
+         AND what <> self
+      {
+         return;
+      }
+
+      if pbLogged_on
+      {
+         AddPacket(1,BP_CHANGE_FLAGS, 4,what);
+
+         Send(self,@ToCliFlags,#what=what);
 
          SendPacket(poSession);
       }

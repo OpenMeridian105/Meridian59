@@ -2649,7 +2649,7 @@ messages:
          AND NOT (viDefault_behavior & AI_NPC)
       {
          Send(self,@SetBehaviorFlag,#flag=AI_NPC,#value=FALSE);
-         Send(poOwner,@SomethingChanged,#what=self);
+         Send(poOwner,@SomethingChangedFlags,#what=self);
       }
 
       // Revoke temporary go through walls status if necessary.
@@ -8264,7 +8264,7 @@ messages:
 
       if poOwner <> $
       {
-         Post(poOwner,@SomethingChanged,#what=self);
+         Post(poOwner,@SomethingChangedFlags,#what=self);
       }
 
       return;
@@ -8303,7 +8303,7 @@ messages:
                // This may happen when the player isn't even logged on.
                if poOwner <> $
                {
-                  Send(poOwner,@SomethingChanged,#what=self);
+                  Send(poOwner,@SomethingChangedFlags,#what=self);
                }
             }
          }
@@ -8332,7 +8332,7 @@ messages:
             // This may happen when the player isn't even logged on.
             if poOwner <> $
             {
-               Send(poOwner,@SomethingChanged,#what=self);
+               Send(poOwner,@SomethingChangedFlags,#what=self);
             }
          }
          // We won't take a new leader if we already got one. Return FALSE.
@@ -9665,7 +9665,7 @@ messages:
 
          // Notify the room that we changed our target. This allows
          // the Users' minimap dots to update accordingly.
-         Send(poOwner,@SomethingChanged,#what=self);
+         Send(poOwner,@SomethingChangedFlags,#what=self);
       }
 
       return;
@@ -9983,10 +9983,10 @@ messages:
       // ...or over time effects the monster may have.
       Send(self,@DeleteAllOverTimeEffects);
 
-      // Gramt temporary NPC status while returning to spawn.
+      // Grant temporary NPC status while returning to spawn.
       Send(self,@SetBehaviorFlag,#flag=AI_NPC,#value=TRUE);
       Send(self,@SetBehaviorFlag,#flag=AI_MOVE_WALKTHROUGH_WALLS,#value=TRUE);
-      Send(poOwner,@SomethingChanged,#what=self);
+      Send(poOwner,@SomethingChangedFlags,#what=self);
 
       // Start moving...
       Send(self,@EnterStateMove);

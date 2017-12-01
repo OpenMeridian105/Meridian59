@@ -368,7 +368,7 @@ messages:
          piBehavior |= AI_NPC | AI_NOMOVE;
          if (poOwner <> $)
          {
-            Send(poOwner,@SomethingChanged,#what=self);
+            Send(poOwner,@SomethingChangedFlags,#what=self);
          }
       }
 
@@ -382,7 +382,7 @@ messages:
 
       if (poOwner <> $)
       {
-         Send(poOwner,@SomethingChanged,#what=self);
+         Send(poOwner,@SomethingChangedFlags,#what=self);
       }
 
       if (poMaster = poCaster)
@@ -573,7 +573,7 @@ messages:
          piBehavior |= AI_NPC | AI_NOMOVE;
          if (poOwner <> $)
          {
-            Send(poOwner,@SomethingChanged,#what=self);
+            Send(poOwner,@SomethingChangedFlags,#what=self);
          }
       }
 
@@ -765,6 +765,21 @@ messages:
       if detect
       {
          return Send(poOriginal,@GetKarma);
+      }
+
+      propagate;
+   }
+
+   SomethingChangedFlags(what=$)
+   {
+      if (what = poOriginal)
+      {
+         piDrawfx = Send(self,@GetDrawingEffects);
+
+         if poOwner <> $
+         {
+            Send(poOwner,@SomethingChangedFlags,#what=self);
+         }
       }
 
       propagate;

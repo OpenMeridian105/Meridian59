@@ -3701,6 +3701,65 @@ messages:
       return;
    }
 
+   ToCliRoomContentsFlags()
+   "Sends BP_ROOM_CONTENTS_FLAGS for all objects in the room.  "
+   "Like ToCliRoomContents, but just for ObjectFlags."
+   {
+      local i, objs, oThing;
+
+      if NOT pbLogged_On
+      {
+         return;
+      }
+
+      objs = Length(Send(poOwner,@GetHolderPassive));
+
+      // We might not include all active.
+      foreach i in Send(poOwner,@GetHolderActive)
+      {
+         oThing = Send(poOwner,@HolderExtractObject,#data=i);
+
+         // Don't do stealthed DMs.
+         if IsClass(oThing,&DM)
+            AND Send(oThing,@IsDMStealthed)
+            AND oThing <> self
+         {
+            continue;
+         }
+
+         ++objs;
+      }
+
+      AddPacket(1,BP_ROOM_CONTENTS_FLAGS, 4,poOwner, 2,objs);
+
+      foreach i in Send(poOwner,@GetHolderActive)
+      {
+         oThing = Send(poOwner,@HolderExtractObject,#data=i);
+
+         // Don't do stealthed DMs.
+         if IsClass(oThing,&DM)
+            AND Send(oThing,@IsDMStealthed)
+            AND oThing <> self
+         {
+            continue;
+         }
+
+         AddPacket(4,oThing);
+         Send(self,@ToCliFlags,#what=oThing);
+      }
+
+      foreach i in Send(poOwner,@GetHolderPassive)
+      {
+         oThing = Send(poOwner,@HolderExtractObject,#data=i);
+         AddPacket(4,oThing);
+         Send(self,@ToCliFlags,#what=oThing);
+      }
+
+      SendPacket(poSession);
+
+      return;
+   }
+
    ToCliRoomContents()
    {
       local i, objs, oThing;

@@ -394,7 +394,7 @@ void AsyncSocketReadUDP(SOCKET sock)
    // 1) invalid session or hangup
    if (!session || session->hangup)
    {
-      eprintf("AsyncSocketReadUDP error unknown session-Id or hangup session \n");
+      dprintf("AsyncSocketReadUDP error unknown session-Id or hangup session \n");
       return;
    }
 
@@ -424,9 +424,9 @@ void AsyncSocketReadUDP(SOCKET sock)
    }
    else
    {
-      // log missed or malformed UDP
-      if (seqno > session->receive_seqno_udp + 1)
-         dprintf("AsyncSocketReadUDP detected lost or malformed UDP on Session %i", session->session_id);
+      // log missed or malformed UDP (don't print, happens a bit too often live)
+      //if (seqno > session->receive_seqno_udp + 1)
+         //dprintf("AsyncSocketReadUDP detected lost or malformed UDP on Session %i", session->session_id);
 
       // update seqno
       session->receive_seqno_udp = seqno;

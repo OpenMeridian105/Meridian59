@@ -188,7 +188,7 @@ messages:
 
    FigureRoomKarma(bForceChange=FALSE)
    {
-      local i, gCount, eCount, oldKarma, iIndex, oObj;
+      local i, gCount, eCount, oldKarma, iIndex, cFairy;
 
       gCount = 0;
       eCount = 0;
@@ -196,18 +196,14 @@ messages:
 
       foreach i in plActive
       {
-         oObj = First(i);
-         if IsClass(oObj,&Fairy)
-            OR IsClass(oObj,&EvilFairy)
+         cFairy = GetClass(First(i));
+         if (cFairy = &Fairy)
          {
-            if Send(oObj,@GetKarma) > 0
-            {
-               ++gCount;
-            }
-            else
-            {
-               ++eCount;
-            }
+            ++gCount;
+         }
+         else if (cFairy = &EvilFairy)
+         {
+            ++eCount;
          }
       }
 

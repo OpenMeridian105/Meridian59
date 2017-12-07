@@ -1,0 +1,350 @@
+// Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+// All rights reserved.
+//
+// This software is distributed under a license that is described in
+// the LICENSE file that accompanies it.
+//
+// Meridian is a registered trademark.
+
+
+////////////////////////////////////////////////////////////////////////////////
+QormasLand is Room
+
+constants:
+
+   OOG_DOOR_SECTOR = 1
+
+   LIGHTS_OFF = 0
+   LIGHTS_ON = 1
+   LIGHTS_RANDOM = 2
+
+   include blakston.khd
+
+resources:
+
+   include qormasland.lkod
+
+   room_name_qormasland = "Winter Forest"
+   room_qormasland = qormasland.roo
+   qormasland_music = qormas.ogg
+
+   qormasland_oog = "naughty"
+   qormasland_openoog = "release"
+
+   lights_on_command = "lights on"
+   lights_off_command = "lights off"
+   lights_random_command = "lights random"
+
+classvars:
+
+   viTeleport_row = 30
+   viTeleport_col = 19
+   viTerrain_type = TERRAIN_FOREST
+   viPermanent_flags = ROOM_SAFELOGOFF | ROOM_NO_COMBAT
+
+   vrName = room_name_qormasland
+
+properties:
+
+   prData = room_name_field1
+
+   prRoom = room_qormasland
+   piRoom_num = RID_QORMASLAND
+   prMusic = qormasland_music
+
+   piBaseLight = LIGHT_NICE
+   piRoom_flags = ROOM_SNOWING
+   piOutside_factor = 8
+
+   plLights = $
+
+   ptQormasLights = $
+   piLightsTime = 1500 // Amount of time after which the random lights change.
+
+   piLightsSetting = LIGHTS_OFF
+
+messages:
+
+   Constructed()
+   {
+      Send(self,@SetRoomFlag,#flag=ROOM_SNOWING,#value=TRUE);
+
+      propagate;
+   }
+
+   SomeoneSaid(what=$,type=$,string=$)
+   {
+      local i, each_obj;
+
+      if what <> $ 
+         AND IsClass(what,&DM)
+             AND type = SAY_DM
+      {
+
+         if StringEqual(string,lights_off_command)
+         {
+            send(self,@SetQormasLights,#value=LIGHTS_OFF);
+         }
+         if StringEqual(string,lights_on_command)
+         {
+            send(self,@SetQormasLights,#value=LIGHTS_ON);
+         }
+         if StringEqual(string,lights_random_command)
+         {
+            send(self,@SetQormasLights,#value=LIGHTS_RANDOM);
+         }
+
+         if (StringEqual(string,qormasland_openoog))
+         {
+            send(self,@OpenOog);
+         }
+
+         if (StringContain(string,qormasland_oog))
+         {
+            StringSubstitute(string,qormasland_oog," ");
+
+            foreach i in plActive
+            {
+               each_obj = First(i);
+               if (IsClass(each_obj,&User))
+               {
+                  if StringEqual(string,Send(each_obj,@GetTrueName))
+                  {
+                     Send(SYS,@UtilGoNearSquare,#what=each_obj,#where=self,
+                          #new_row=5,#new_col=18,#fine_row=32,#fine_col=32);
+
+                     Send(self,@CloseOog);
+
+                     break;
+                  }
+               }
+            }
+            return;
+         }
+
+      }
+
+      propagate;
+   }
+
+   SetQormasLights(value=$)
+   {
+      local oLight, lColors, iIndex;
+
+      if value <> $
+      {
+         piLightsSetting = value;
+      }
+
+      if ptQormasLights <> $
+      {
+         DeleteTimer(ptQormasLights);
+         ptQormasLights = $;
+      }
+
+      // Did we get turned off?
+      if piLightsSetting = LIGHTS_OFF
+      {
+         // Make sure each light is off.
+         foreach oLight in plLights
+         {
+            Send(oLight,@SetSwitch,#bSwitch=OFF);
+         }
+      }
+      else
+      {
+         lColors = [ LIGHT_BPURPLE, LIGHT_BORANGE, LIGHT_BGREEN, LIGHT_BRED, LIGHT_BBLUE ];
+
+         // Are we on?
+         if piLightsSetting = LIGHTS_ON
+         {
+            // Make sure each light is on and set to the original color
+            iIndex = 1;
+
+            foreach oLight in plLights
+            {
+               Send(oLight,@SetLight,#iColor=Nth(lColors,iIndex));
+               Send(oLight,@SetSwitch,#bSwitch=ON);
+               iIndex = iIndex + 1;
+            }
+         }
+
+         // Are we in Random EXTREME PARTY MODE(tm)?
+         if piLightsSetting = LIGHTS_RANDOM
+         {
+            // Make the lights flash and change color
+            foreach oLight in plLights
+            {
+               iIndex = Nth(lColors,random(1,length(lColors)));
+               lColors = DelListElem(lColors,iIndex);
+               // Switch the light on with a random color
+               Send(oLight,@SetLight,#iColor=iIndex);
+               Send(oLight,@SetSwitch,#bSwitch=ON);
+            }
+
+            // Create a timer to switch them again.
+            ptQormasLights = CreateTimer(self,@QormasLightsTimer,piLightsTime);
+         }
+      }
+
+      return;
+   }
+
+   QormasLightsTimer()
+   {
+      ptQormasLights = $;
+
+      Send(self,@SetQormasLights);
+
+      return;
+   }
+
+   OpenOog()
+   {
+      Send(self,@SetSector,#sector=OOG_DOOR_SECTOR,#animation=ANIMATE_FLOOR_LIFT,
+           #height = 512,#speed=8);
+
+      return;
+   }
+
+   CloseOog()
+   {
+      Send(self,@SetSector,#sector=OOG_DOOR_SECTOR,#animation=ANIMATE_FLOOR_LIFT,
+           #height = 544,#speed=64);
+
+      return;
+   }
+
+   
+   CreateStandardObjects()
+   {
+      local oLight;
+
+      //Braziers and Shrubs
+      Send(self,@NewHold,#what=Create(&Brazier),
+           #new_row=30,#new_col=17,#fine_row=00,#fine_col=00);
+      Send(self,@NewHold,#what=Create(&Brazier),
+           #new_row=30,#new_col=21,#fine_row=00,#fine_col=00);
+
+      Send(self,@NewHold,#what=Create(&Brazier),
+           #new_row=25,#new_col=17,#fine_row=00,#fine_col=00);
+      Send(self,@NewHold,#what=Create(&Brazier),
+           #new_row=25,#new_col=21,#fine_row=00,#fine_col=00);
+
+      Send(self,@NewHold,#what=Create(&Brazier),
+           #new_row=20,#new_col=17,#fine_row=00,#fine_col=00);
+      Send(self,@NewHold,#what=Create(&Brazier),
+           #new_row=20,#new_col=21,#fine_row=00,#fine_col=00);
+
+      Send(self,@NewHold,#what=Create(&OrnamentalObject,#type=OO_RAZA_SHRUB),
+           #new_row=27,#new_col=17,#fine_row=32,#fine_col=00,#new_angle=ANGLE_EAST);
+      Send(self,@NewHold,#what=Create(&OrnamentalObject,#type=OO_RAZA_SHRUB),
+           #new_row=27,#new_col=21,#fine_row=32,#fine_col=00,#new_angle=ANGLE_EAST);
+
+      Send(self,@NewHold,#what=Create(&OrnamentalObject,#type=OO_RAZA_SHRUB),
+           #new_row=22,#new_col=17,#fine_row=32,#fine_col=00,#new_angle=ANGLE_EAST);
+      Send(self,@NewHold,#what=Create(&OrnamentalObject,#type=OO_RAZA_SHRUB),
+           #new_row=22,#new_col=21,#fine_row=32,#fine_col=00,#new_angle=ANGLE_EAST);
+
+
+      //Qormas Decoration
+      Send(self,@NewHold,#what=Create(&OrnamentalObject,#type=OO_QORMAS_TREE_BIG),
+           #new_row=11,#new_col=19,#fine_row=00,#fine_col=00,#new_angle=ANGLE_EAST);
+
+      Send(self,@NewHold,#what=Create(&OrnamentalObject,#type=OO_QORMAS_TREE),
+           #new_row=17,#new_col=17,#fine_row=00,#fine_col=00,#new_angle=ANGLE_EAST);
+      Send(self,@NewHold,#what=Create(&OrnamentalObject,#type=OO_QORMAS_TREE),
+           #new_row=17,#new_col=21,#fine_row=00,#fine_col=00,#new_angle=ANGLE_EAST);
+
+      Send(self,@NewHold,#what=Create(&OrnamentalObject,#type=OO_QORMAS_SNOWMAN),
+           #new_row=14,#new_col=31,#fine_row=00,#fine_col=00,#new_angle=ANGLE_WEST);
+
+       //Normal Trees
+      Send(self,@NewHold,#what=Create(&Tree,#top=TREE_PINE,#bottom=TREE_PINE),
+           #new_row=18,#new_col=7);
+      Send(self,@NewHold,#what=Create(&Tree,#top=TREE_PINE,#bottom=TREE_PINE),
+           #new_row=13,#new_col=5);
+      Send(self,@NewHold,#what=Create(&Tree,#top=TREE_PINE,#bottom=TREE_PINE),
+           #new_row=11,#new_col=8);
+      Send(self,@NewHold,#what=Create(&Tree,#top=TREE_PINE,#bottom=TREE_PINE),
+           #new_row=6,#new_col=16);
+      Send(self,@NewHold,#what=Create(&Tree,#top=TREE_PINE,#bottom=TREE_PINE),
+           #new_row=9,#new_col=29);
+      Send(self,@NewHold,#what=Create(&Tree,#top=TREE_PINE,#bottom=TREE_PINE),
+           #new_row=7,#new_col=40);
+      Send(self,@NewHold,#what=Create(&Tree,#top=TREE_PINE,#bottom=TREE_PINE),
+           #new_row=13,#new_col=44);
+      Send(self,@NewHold,#what=Create(&Tree,#top=TREE_PINE,#bottom=TREE_PINE),
+           #new_row=16,#new_col=41);
+      Send(self,@NewHold,#what=Create(&Tree,#top=TREE_PINE,#bottom=TREE_PINE),
+           #new_row=23,#new_col=26);
+      Send(self,@NewHold,#what=Create(&Tree,#top=TREE_PINE,#bottom=TREE_PINE),
+           #new_row=28,#new_col=10);
+           
+      Send(self,@NewHold,#what=Create(&Throne),
+           #new_row=13,#new_col=19,#fine_row=00,#fine_col=00,#new_angle=ANGLE_SOUTH);
+
+      Send(self,@NewHold,#what=Create(&Firepit,#iSoundRadius=5),#new_row=14,
+           #new_col=9,#fine_row=52,#fine_col=34);
+
+      Send(self,@NewHold,#what=Create(&DynamicLight,#iColor=LIGHT_RED,#iIntensity=2),
+           #new_row=5,#new_col=19,#fine_row=56,#fine_col=00);
+
+      Send(self,@NewHold,#what=Create(&DynamicLight,#iColor=LIGHT_WHITE,#iIntensity=20),
+           #new_row=13,#new_col=19,#fine_row=00,#fine_col=00);
+
+       //Qormas Lights
+      oLight = Create(&DynamicLight,#iColor=LIGHT_BPURPLE,#iIntensity=15);
+      Send(oLight,@SetSwitch,#bSwitch=OFF);
+      plLights = cons(oLight,plLights);
+      Send(self,@NewHold,#what=oLight,#new_row=15,#new_col=16,
+           #fine_row=40,#fine_col=56);
+
+      oLight = Create(&DynamicLight,#iColor=LIGHT_BORANGE,#iIntensity=15);
+      Send(oLight,@SetSwitch,#bSwitch=OFF);
+      plLights = cons(oLight,plLights);
+      Send(self,@NewHold,#what=oLight,#new_row=11,#new_col=15,
+           #fine_row=16,#fine_col=40);
+
+      oLight = Create(&DynamicLight,#iColor=LIGHT_BGREEN,#iIntensity=15);
+      Send(oLight,@SetSwitch,#bSwitch=OFF);
+      plLights = cons(oLight,plLights);
+      Send(self,@NewHold,#what=oLight,#new_row=9,#new_col=19,
+           #fine_row=40,#fine_col=00);
+
+      oLight = Create(&DynamicLight,#iColor=LIGHT_BRED,#iIntensity=15);
+      Send(oLight,@SetSwitch,#bSwitch=OFF);
+      plLights = cons(oLight,plLights);
+      Send(self,@NewHold,#what=oLight,#new_row=11,#new_col=22,
+           #fine_row=16,#fine_col=24);
+
+      oLight = Create(&DynamicLight,#iColor=LIGHT_BBLUE,#iIntensity=15);
+      Send(oLight,@SetSwitch,#bSwitch=OFF);
+      plLights = cons(oLight,plLights);
+      Send(self,@NewHold,#what=oLight,#new_row=15,#new_col=21,
+           #fine_row=40,#fine_col=8);
+
+      propagate;
+   }
+
+   Delete()
+   {
+      if ptQormasLights <> $
+      {
+         DeleteTimer(ptQormasLights);
+         ptQormasLights = $;
+      }
+
+      plLights = $;
+
+      propagate;
+   }
+
+   CanHavePlayerPortal()
+   {
+      return FALSE;
+   }
+
+
+end
+////////////////////////////////////////////////////////////////////////////////

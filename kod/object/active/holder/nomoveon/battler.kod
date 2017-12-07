@@ -2080,7 +2080,9 @@ messages:
 
    DeleteAllOverTimeEffects()
    {
-      local i, oSpell;
+      local i, oSpell, bRemoved;
+
+      bRemoved = FALSE;
 
       foreach i in plOverTimeEffects
       {
@@ -2096,6 +2098,12 @@ messages:
          }
 
          plOverTimeEffects = DelListElem(plOverTimeEffects,i);
+         bRemoved = TRUE;
+      }
+
+      if bRemoved
+      {
+         Send(self,@UpdateRates);
       }
 
       return;

@@ -3176,7 +3176,7 @@ messages:
    "instead of the normal animation and overlays."
    {
       // Send given object's id number, name, icon, and animation info
-      if IsClass(what,&NumberItem)
+      if Send(what,@IsStackable)
       {
          AddPacket(NUMBER_OBJECT,what, 4,Send(what,@GetNumber),
                    4,Send(what,@GetIcon));
@@ -5193,7 +5193,7 @@ messages:
 
       if NOT Send(self,@ReqNewHold,#what=what)
       {
-         if IsClass(what,&NumberItem)
+         if Send(what,@IsStackable)
          {
             iCan_hold = Send(self,@GetNumberCanHold,#what=what);
             if iCan_hold > 0
@@ -5278,7 +5278,7 @@ messages:
          return FALSE;
       }
 
-      if IsClass(what,&NumberItem)
+      if Send(what,@IsStackable)
       {
          if number <= 0
          {
@@ -5431,7 +5431,7 @@ messages:
          return;
       }
 
-      if IsClass(what,&NumberItem)
+      if Send(what,@IsStackable)
       {
          if number <= 0
          {
@@ -7082,7 +7082,7 @@ messages:
       lNumbers = number_list;
       foreach i in item_list
       {
-         if IsClass(i,&NumberItem)
+         if Send(i,@IsStackable)
          {
             oOffer_num = Create(GetClass(i),#number=Bound(First(lNumbers),
                                 0,Send(i,@GetNumber)));
@@ -7162,7 +7162,7 @@ messages:
       lNumbers = number_list;
       foreach i in item_list
       {
-         if IsClass(i,&NumberItem)
+         if Send(i,@IsStackable)
          {
             iNumber = Bound(First(lNumbers),0,Send(i,@GetNumber));
             oOffer_num = Create(GetClass(i),#number=iNumber);
@@ -7355,7 +7355,7 @@ messages:
       poOffer_who = $;
       foreach i in plOffer_items
       {
-         if IsClass(i,&NumberItem)
+         if Send(i,@IsStackable)
          {
             Send(i,@Delete);
          }
@@ -7444,7 +7444,7 @@ messages:
             return FALSE;
          }
 
-         if IsClass(i,&NumberItem)
+         if Send(i,@IsStackable)
          {
             if First(lNumbers) <= 0 OR First(lNumbers) > Send(i,@GetNumber)
             {
@@ -7537,7 +7537,7 @@ messages:
             return FALSE;
          }
 
-         if IsClass(i,&NumberItem)
+         if Send(i,@IsStackable)
          {
             bFound = FALSE;
             foreach j in plPassive
@@ -7615,7 +7615,7 @@ messages:
 
       foreach i in plOffer_items
       {
-         if IsClass(i,&NumberItem)
+         if Send(i,@IsStackable)
          {
             foreach j in plPassive
             {
@@ -8152,10 +8152,7 @@ messages:
          return;
       }
 
-      if IsClass(what,&NumberItem)
-         AND NOT IsClass(what,&Food)
-         AND NOT IsClass(what,&Ammo)
-         AND NOT IsClass(what,&Money)
+      if IsClass(what,&Reagent)
          AND NOT bFromReagentBag
          AND Send(self,@GetReagentBag) <> $
          AND (piPreferences & CF_REAGENTBAG)

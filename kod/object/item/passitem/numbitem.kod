@@ -45,8 +45,7 @@ classvars:
 properties:
 
    piNumber = 1
-   
-   viObject_flags = OF_APPLYABLE | OF_GETTABLE
+   viObject_flags = OF_GETTABLE
 
 messages:
 
@@ -78,34 +77,7 @@ messages:
 
    ReqNewApply(what = $,apply_on = $)
    {
-      if what = Send(self,@GetOwner)
-         AND apply_on <> $
-         AND IsClass(apply_on,&ReagentBag)
-         AND NOT IsClass(self,&Food)
-         AND NOT IsClass(self,&Ammo)
-         AND NOT IsClass(self,&Money)
-      {
-         return TRUE;
-      }
-
       return FALSE;
-   }
-
-   NewApplied(what = $,apply_on = $)
-   {
-      if what = Send(self,@GetOwner)
-         AND apply_on <> $
-         AND IsClass(apply_on,&ReagentBag)
-         AND NOT IsClass(self,&Food)
-         AND NOT IsClass(self,&Ammo)
-         AND NOT IsClass(self,&Money)
-      {
-         Send(Send(what,@GetReagentBag),@NewHold,#what=self,
-               #where=Send(what,@GetReagentBag),
-               #number=Send(self,@GetNumber));
-      }
-
-      return;
    }
 
    GetNumber()
@@ -397,6 +369,11 @@ messages:
    IsPlural()
    {
       return (piNumber > 1);
+   }
+
+   IsStackable()
+   {
+      return TRUE;
    }
 
 end

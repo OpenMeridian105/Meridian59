@@ -22,7 +22,35 @@ classvars:
 
 properties:
 
+   viObject_flags = OF_APPLYABLE | OF_GETTABLE
+
 messages:
+
+   ReqNewApply(what = $,apply_on = $)
+   {
+      if what = Send(self,@GetOwner)
+         AND apply_on <> $
+         AND IsClass(apply_on,&ReagentBag)
+      {
+         return TRUE;
+      }
+
+      return FALSE;
+   }
+
+   NewApplied(what = $,apply_on = $)
+   {
+      if what = Send(self,@GetOwner)
+         AND apply_on <> $
+         AND IsClass(apply_on,&ReagentBag)
+      {
+         Send(Send(what,@GetReagentBag),@NewHold,#what=self,
+               #where=Send(what,@GetReagentBag),
+               #number=Send(self,@GetNumber));
+      }
+
+      return;
+   }
 
 end
 ////////////////////////////////////////////////////////////////////////////////

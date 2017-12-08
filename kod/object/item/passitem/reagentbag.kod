@@ -143,15 +143,7 @@ messages:
          return FALSE;
       }
 
-      if NOT IsClass(what,&NumberItem)
-         OR IsClass(what,&Food)
-         OR IsClass(what,&Ammo)
-         OR IsClass(what,&Money)
-      {
-         return FALSE;
-      }
-
-      return;
+      return IsClass(what,&Reagent);
    }
 
    NewHold(what=$)
@@ -165,23 +157,19 @@ messages:
       }
 
       Send(poOwner,@MsgSendUser,#message_rsc=stash_in_bag,
-            #parm1=Send(what,@GetNumber),
-            #parm2=Send(what,@GetName));
+            #parm1=Send(what,@GetNumber),#parm2=Send(what,@GetName));
 
-      if IsClass(what,&NumberItem)
+      foreach i in plReagents
       {
-         foreach i in plReagents
+         if i <> what
          {
-            if i <> what
+            if GetClass(what) = GetClass(i)
             {
-               if GetClass(what) = GetClass(i)
-               {
-                  // Should only be one of these, so can quit loop if found
-                  Send(i,@AddNumber,#number=Send(what,@GetNumber));
-                  Send(what,@Delete);
+               // Should only be one of these, so can quit loop if found
+               Send(i,@AddNumber,#number=Send(what,@GetNumber));
+               Send(what,@Delete);
 
-                  return;
-               }
+               return;
             }
          }
       }

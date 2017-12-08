@@ -212,14 +212,14 @@ else
       dz = q->motion.dest_z - q->motion.source_z;
 
       if (speed == 0 || (dx == 0 && dy == 0 && dz == 0))
-         q->motion.increment = p->motion.incrementstart = 1.0f;
+         q->motion.increment = q->motion.incrementstart = 1.0f;
       else
       {
          distance = sqrtf(dx * dx + dy * dy + dz * dz) / FINENESS;
          if (distance > 0.001f)
-            q->motion.increment = p->motion.incrementstart = ((float)speed) / 1000.0f / distance;
+            q->motion.increment = q->motion.incrementstart = ((float)speed) / 1000.0f / distance;
          else
-            q->motion.increment = p->motion.incrementstart = 1.0f;
+            q->motion.increment = q->motion.incrementstart = 1.0f;
       }
 
       q->motion.x = q->motion.source_x;

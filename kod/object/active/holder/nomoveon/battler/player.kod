@@ -1963,7 +1963,7 @@ messages:
          foreach i in j
          {
             // (example) He is holding a purple pickle princess figurine.
-            obj = Send(self,@FindHolding,#class=i);
+            obj = GetListElemByClass(plPassive,i);
             if obj <> $
             {
                if IsClass(obj,&Ring)
@@ -4263,6 +4263,15 @@ messages:
          return TRUE;
       }
 
+         // If snowballs are set to do 0 damage, bypass checks.
+         if (actual
+            AND use_weapon <> $
+            AND IsClass(use_weapon,&Snowball)
+            AND NOT Send(use_weapon,@CanDoDamage))
+         {
+            return TRUE;
+         }
+
       // Frenzies!  Anything goes if allowed by the room!
       if Send(SYS,@GetChaosNight)
       {
@@ -4870,7 +4879,7 @@ messages:
       }
 
       // Holding a token?  Then don't let them attack
-      if send(self,@FindHolding,#class=&Token) <> $
+      if GetListElemByClass(plPassive,&Token) <> $
       {
          return FALSE;
       }
@@ -4990,7 +4999,9 @@ messages:
 
       // Special case:  Ranged weapons in windy room.
       //  Do this after paying the costs so that the arrow is used.
-      if use_weapon <> $ AND IsClass(use_weapon,&RangedWeapon)
+      if use_weapon <> $
+         AND (IsClass(use_weapon,&RangedWeapon)
+            OR IsClass(use_weapon,&ThrownWeapon))
       {
          oSpell = Send(SYS,@FindSpellByNum,#num=SID_WINDS);
          state = Send(poOwner,@GetEnchantedState,#what=oSpell);
@@ -5172,7 +5183,8 @@ messages:
       //  then half our offense.
       if what <> $
          AND oWeapon <> $
-         AND IsClass(oWeapon,&RangedWeapon)
+         AND (IsClass(oWeapon,&RangedWeapon)
+            OR IsClass(oWeapon,&ThrownWeapon))
          AND NOT Send(poOwner,@LineOfSight,#obj1=self,#obj2=what)
          AND NOT (IsClass(self,&DM) AND Send(self,@PlayerIsImmortal))
       {
@@ -5350,6 +5362,12 @@ messages:
          // Stroke sets damage
          iDamage = Send(oStroke,@FindDamage,#weapon_used=Send(self,@GetWeapon),
                         #who=self,#victim=what); 
+      }
+
+      // Don't boost 0 damage hits with modifiers.
+      if (iDamage = 0)
+      {
+         return 0;
       }
 
       // Spells and attmods that modify damage
@@ -5676,12 +5694,12 @@ messages:
       }
 
       // Report to shrunken head
-      shrunken = Send(self,@FindHolding,#class=&ShrunkenHead);
+      shrunken = GetListElemByClass(plPassive,&ShrunkenHead);
       if damage > 0 AND shrunken <> $
       {
          Send(shrunken,@DamageTaken,#what=what,#amount=damage/100);
       }
-      
+
       Send(self,@AddHurtMeRecently,#who=what,#amount=damage);
 
       return damage;
@@ -5720,7 +5738,7 @@ messages:
          Send(self,@SetPlayerFlag,#flag=PFLAG_DID_DAMAGE,#value=TRUE);
 
          // Report to shrunken head
-         shrunken = Send(self,@FindHolding,#class=&ShrunkenHead);
+         shrunken = GetListElemByClass(plPassive,&ShrunkenHead);
          if shrunken <> $
          {
             Send(shrunken,@DamageDealt,#what=what,#amount=amount/100);
@@ -6014,7 +6032,7 @@ messages:
       Send(self,@DrawXP);
 
       // Report to shrunken head
-      oObject = Send(self,@FindHolding,#class=&ShrunkenHead);
+      oObject = GetListElemByClass(plPassive,&ShrunkenHead);
       if oObject <> $
       {
          Send(oObject,@OpponentKilled,#what=what,#stroke_obj=stroke_obj);
@@ -7689,7 +7707,7 @@ messages:
                   #wave_rsc=player_improved_wav_rsc);
 
             // Report to shrunken head.
-            shrunken = Send(self,@FindHolding,#class=&ShrunkenHead);
+            shrunken = GetListElemByClass(plPassive,&ShrunkenHead);
             if shrunken <> $
             {
                Send(shrunken,@Improvement,#spellName=spellName);
@@ -8972,7 +8990,7 @@ messages:
             Post(self,@DrawDefense);
 
             // Report to shrunken head, if they have one.
-            oShrunken = Send(self,@FindHolding,#class=&ShrunkenHead);
+            oShrunken = GetListElemByClass(plPassive,&ShrunkenHead);
             if oShrunken <> $
             {
                Send(oShrunken,@Tougher,#hp=Send(self,@GetBaseMaxHealth));
@@ -11229,6 +11247,7 @@ messages:
          if (atype & ATCK_WEAP_BLUDGEON) > 0 { return player_was_bludgeoned;}
          if (atype & ATCK_WEAP_PIERCE) > 0 { return player_was_pierced;}
          if (atype & ATCK_WEAP_THRUST) > 0 { return player_was_thrusted;}
+         if (atype & ATCK_WEAP_COLD) > 0 { return player_was_frozen;}
 
          // Put non-weapon strokes here.
          if (atype & ATCK_WEAP_PUNCH) > 0 {return player_was_punched;}
@@ -14030,7 +14049,7 @@ messages:
       {
          // si: removed (and what <> self) to allow communication
          // between shrunken head and owner.
-         oSnoop = Send(self,@FindHolding,#class=&ShrunkenHead);
+         oSnoop = GetListElemByClass(plPassive,&ShrunkenHead);
          if oSnoop <> $
          {
             Send(oSnoop,@SomeoneOverheard,#from=what,#to=self,#string=string);

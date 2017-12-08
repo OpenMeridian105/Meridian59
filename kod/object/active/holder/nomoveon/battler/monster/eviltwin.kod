@@ -807,6 +807,7 @@ messages:
                iRange *= iRange;
 
                if IsClass(oWeapon,&RangedWeapon)
+                  OR IsClass(oWeapon,&ThrownWeapon)
                {
                   plActions = Cons([SKID_FIRE,0,0,iRange,100,1,99,COMBAT_ACTION_HARM],plActions);
                }
@@ -947,8 +948,9 @@ messages:
       if IsClass(poOriginal,&User)
       {
          oWeapon = Send(poOriginal,@GetWeapon);
-         oAmmo = poArrow;
 
+         // Default.
+         oAmmo = poArrow;
 
          if IsClass(oWeapon,&Bow)
          {
@@ -963,6 +965,12 @@ messages:
             }
 
             Send(poOwner,@SomethingShot,#who=self,#target=poTarget,#projectile=oAmmo);
+         }
+         else if IsClass(oWeapon,&ThrownWeapon)
+         {
+            piAnimation = PANM_WEAPON_ATTACK;
+            Send(poOwner,@SomethingShot,#who=self,#target=poTarget,
+                  #projectile=oWeapon);
          }
          else
          {

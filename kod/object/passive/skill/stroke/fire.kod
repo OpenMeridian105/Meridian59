@@ -29,6 +29,7 @@ resources:
    fire_wrong_ammo = "You do not have the proper ammunition equipped to use with %s%s."
 
    fire_new_ammo = "You reach for your %s, and nock one back for a shot."
+   fire_new_throw = "You launch one of your %s with all your might."
    fire_skill_intro = "Weaponcraft Lv. 4: Key to mastering any type of missile weapon."
    fire_no_ammo = "You have no ammunition for this weapon ready!"
 
@@ -62,6 +63,18 @@ messages:
 
    // General combat messages:
 
+   FindDamage(weapon_used = $)
+   {
+      if (weapon_used <> $
+         AND IsClass(weapon_used,&Snowball)
+         AND NOT Send(weapon_used,@CanDoDamage))
+      {
+         return 0;
+      }
+
+      propagate;
+   }
+
    // Finds ammo and uses it if not used.
    FindLikelyAmmo(who=$,report=FALSE)
    {
@@ -70,18 +83,34 @@ messages:
       oWeapon = Send(who,@LookupPlayerWeapon);
       if oWeapon = $
       {
-         if report { Send(who,@MsgSendUser,#message_rsc=fire_need_weapon); }
+         if report
+         {
+            Send(who,@MsgSendUser,#message_rsc=fire_need_weapon);
+         }
+
          return $;
       }
-      if not IsClass(oWeapon,&RangedWeapon)
+
+      if NOT (IsClass(oWeapon,&RangedWeapon)
+         OR IsClass(oWeapon,&ThrownWeapon))
       {
-         if report { Send(who,@MsgSendUser,#message_rsc=fire_only_missile_weapon); }
+         if report
+         {
+            Send(who,@MsgSendUser,#message_rsc=fire_only_missile_weapon);
+         }
+
          return $;
       }
 
       cAmmoType = Send(oWeapon,@GetAmmoType);
 
-      oLikelyAmmo = $;
+      // Thrown weapons.
+      if (cAmmoType = AMMO_WEAPON)
+      {
+         // Weapon itself is the ammo.
+         // Return it here.
+         return oWeapon;
+      }
 
       foreach i in Send(who,@GetPlayerUsing)
       {
@@ -153,8 +182,16 @@ messages:
          return;
       }
 
-      Send(who,@MsgSendUser,#message_rsc=fire_new_ammo,
-        #parm1=Send(oAmmo,@GetName));
+      if (IsClass(oAmmo,&ThrownWeapon))
+      {
+         Send(who,@MsgSendUser,#message_rsc=fire_new_throw,
+               #parm1=Send(oAmmo,@GetName));
+      }
+      else
+      {
+         Send(who,@MsgSendUser,#message_rsc=fire_new_ammo,
+               #parm1=Send(oAmmo,@GetName));
+      }
 
       Send(Send(who,@GetOwner),@SomethingShot,#who=who,
         #target=Send(who,@GetKillTarget), #projectile=oAmmo);

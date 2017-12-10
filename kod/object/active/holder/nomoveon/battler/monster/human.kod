@@ -337,12 +337,88 @@ messages:
             plUsing = DelListElem(plUsing,i);
 
             Send(what,@NewUnused,#what=self);
-
+            if (IsClass(what,&Weapon))
+            {
+               Send(self,@RemoveWeaponAction,#what=what);
+            }
             return TRUE;
          }
       }
 
       return FALSE;
+   }
+
+   RemoveWeaponAction(what=$)
+   {
+      local i, iSKID, lAction, lTemp;
+
+      if (IsClass(what,&ThrownWeapon)
+         OR IsClass(what,&RangedWeapon))
+      {
+         // Unusing a ranged weapon, remove fire.
+         iSKID = SKID_FIRE;
+      }
+      else
+      {
+         iSKID = SKID_SLASH;
+      }
+
+      foreach i in plActions
+      {
+         if (First(i) = iSKID)
+         {
+            plActions = DelListElem(plActions,i);
+         }
+      }
+
+      // Add punch action.
+      lTemp = [SKID_SLASH,0,100,piMeleeRange*piMeleeRange,viMeleePriority,0,100,COMBAT_ACTION_HARM];
+      plActions = Cons(lTemp,plActions);
+
+      return;
+   }
+
+   AddWeaponAction(what=$)
+   {
+      local iRange, lTemp;
+
+      // Assume the old action has been removed by RemoveWeaponAction.
+      // RemoveWeaponAction will add Punch.
+      if (what = $)
+      {
+         // No weapon = punch, don't add.
+         return;
+      }
+
+      iRange = Send(what,@GetRange);
+      iRange *= iRange;
+
+      if (IsClass(what,&ThrownWeapon)
+         OR IsClass(what,&RangedWeapon))
+      {
+         lTemp = [SKID_FIRE,0,100,iRange,viFirePriority,0,100,COMBAT_ACTION_HARM];
+         // Don't add a duplicate.
+         if (GetListNode(plActions, 1, SKID_FIRE) = $)
+         {
+            plActions = Cons(lTemp,plActions);
+         }
+      }
+      else
+      {
+         // Find our existing SKID_SLASH action, and update the range.
+         lTemp = GetListNode(plActions, 1, SKID_SLASH);
+         if (lTemp <> $)
+         {
+            SetNth(lTemp,4, iRange);
+         }
+         else
+         {
+            lTemp = [SKID_SLASH,0,100,iRange,viMeleePriority,0,100,COMBAT_ACTION_HARM];
+            plActions = Cons(lTemp,plActions);
+         }
+      }
+
+      return;
    }
 
    LeaveHold(what = $)
@@ -874,6 +950,10 @@ messages:
       {
          Send(self,@DoCast);
       }
+      else if IsClass(oWeapon,&ThrownWeapon)
+      {
+         Send(self,@DoThrowWeapon,#oWeapon=oWeapon);
+      }
       else
       {
          Send(self,@DoSlash);
@@ -891,16 +971,24 @@ messages:
       return;
    }
 
-   DoBowFire()
+   DoThrowWeapon(what = $)
    {
-      piAnimation = PANM_BOW_FIRE;
+      piAnimation = PANM_WEAPON_ATTACK;
       Send(poOwner,@SomethingChanged,#what=self);
-      piAnimation = PANM_NONE;
+      piAnimation = ANIM_NONE;
 
-      Send(poOwner,@SomethingShot,#who=self,#target=poTarget,
-            #projectile=poArrow);
+      if (what <> $)
+      {
+         Send(poOwner,@SomethingShot,#who=self,#target=poTarget,
+               #projectile=what);
+      }
 
       return;
+   }
+
+   DoBowFire()
+   {
+      return Send(self,@DoMissileAnimation);
    }
 
    DoFistAttack()
@@ -927,6 +1015,48 @@ messages:
    {
       piAnimation = PANM_CAST;
       Send(poOwner,@SomethingChanged,#what=self);
+      piAnimation = PANM_NONE;
+
+      return;
+   }
+
+   DoMissileAnimation()
+   "Handles ranged attack animation. Default is same as melee."
+   {
+      local oWeapon, oAmmo, i;
+
+      oWeapon = Send(self,@GetWeapon);
+
+      // Default.
+      oAmmo = poArrow;
+
+      if IsClass(oWeapon,&Bow)
+      {
+         piAnimation = PANM_BOW_FIRE;
+
+         foreach i in plUsing
+         {
+            if Send(i,@GetItemUseType) = ITEM_USE_QUIVER
+            {
+               oAmmo = i;
+            }
+         }
+
+         Send(poOwner,@SomethingShot,#who=self,#target=poTarget,#projectile=oAmmo);
+      }
+      else if IsClass(oWeapon,&ThrownWeapon)
+      {
+         piAnimation = PANM_WEAPON_ATTACK;
+         Send(poOwner,@SomethingShot,#who=self,#target=poTarget,
+               #projectile=oWeapon);
+      }
+      else
+      {
+         piAnimation = PANM_FIST_ATTACK;
+      }
+
+      Send(poOwner,@SomethingChanged,#what=self);
+
       piAnimation = PANM_NONE;
 
       return;
@@ -1895,8 +2025,14 @@ messages:
       return;
    }
 
-   NewUsing()
+   NewUsing(what = $)
    {
+      if (what <> $
+         AND IsClass(what,&Weapon))
+      {
+         Send(self,@AddWeaponAction,#what=what);
+      }
+
       return;
    }
 
@@ -2339,6 +2475,13 @@ messages:
       if (oWeapon = $) OR NOT IsClass(oWeapon,&Weapon)
       {
          propagate;
+      }
+
+      // Special case for snowball weapon.
+      if (IsClass(oWeapon,&Snowball)
+         AND NOT Send(oWeapon,@CanDoDamage))
+      {
+         return 0;
       }
 
       // Let's get the raw weapon damage and convert it to precision mode.

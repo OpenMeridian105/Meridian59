@@ -1,0 +1,190 @@
+// Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+// All rights reserved.
+//
+// This software is distributed under a license that is described in
+// the LICENSE file that accompanies it.
+//
+// Meridian is a registered trademark.
+
+
+////////////////////////////////////////////////////////////////////////////////
+Snowball is ThrownWeapon
+
+constants:
+
+   include blakston.khd
+
+resources:
+
+   include snowball.lkod
+
+   snowball_name_rsc = "snowball"
+   snowball_name_plural_rsc = "snowballs"
+   snowball_icon_rsc = snowball.bgf
+   snowball_desc_rsc = \
+      "A solidly packed snowball."
+
+   snowball_window_overlay_rsc = povsnwbl.bgf
+   snowball_player_overlay = snwblov.bgf
+
+   snowball_disp_name = "snowball pile"
+   snowball_disp_icon = snowpile.bgf
+   snowball_disp_desc = \
+     "A pile of snowballs, ready for the taking."
+   snowball_got_one = "You scoop up a snowball from the pile."
+
+classvars:
+
+   vrName = snowball_name_rsc
+   vrName_plural = snowball_name_plural_rsc
+   vrIcon = snowball_icon_rsc
+   vrDesc = snowball_desc_rsc
+   vrDisp_name = snowball_disp_name
+   vrDisp_icon = snowball_disp_icon
+   vrDisp_desc = snowball_disp_desc
+
+   // Snowballs are low quality bludgeon weapons
+   viWeaponType = WEAPON_TYPE_BLUDGEON
+   viWeaponQuality = WEAPON_QUALITY_LOW
+
+   viProficiency_Needed = SKID_PROFICIENCY_BOW
+
+   viValue_average = 0
+   viWeight = 8
+   viBulk = 8
+
+   vrWeapon_window_overlay = snowball_window_overlay_rsc
+   vrWeapon_overlay = snowball_player_overlay
+
+   viGround_group = 2
+   viInventory_group = 2
+   viBroken_group = 2
+
+   vbDoesDamage = FALSE
+
+properties:
+
+   piAttack_type = ATCK_WEAP_NONMAGIC + ATCK_WEAP_COLD
+
+messages:
+
+   NewHoldMessage(who=$,disp=$)
+   "Called whenever a stackable item is created from a dispenser."
+   {
+      Send(who,@MsgSendUser,#message_rsc=snowball_got_one);
+
+      return;
+   }
+
+   GetBaseSpellModifier()
+   {
+      return 0;
+   }
+
+   #region Damage Override
+   // Messages we have to override to work as a 0 damage weapon.
+   // Setting vbDoesDamage turns snowball into a real weapon.
+
+   CanDoDamage()
+   {
+      return vbDoesDamage;
+   }
+
+   GetDamage()
+   {
+      if (vbDoesDamage)
+      {
+         propagate;
+      }
+
+      return 0;
+   }
+
+   GetHitBonus()
+   {
+      if (vbDoesDamage)
+      {
+         propagate;
+      }
+
+      return 0;
+   }
+
+   GetMinDamage()
+   {
+      if (vbDoesDamage)
+      {
+         propagate;
+      }
+
+      return 0;
+   }
+
+   GetMaxDamage()
+   {
+      if (vbDoesDamage)
+      {
+         propagate;
+      }
+
+      return 0;
+   }
+
+   GetMinDamageWithOwnerStats()
+   {
+      if (vbDoesDamage)
+      {
+         propagate;
+      }
+
+      return 0;
+   }
+
+   GetMaxDamageWithOwnerStats()
+   {
+      if (vbDoesDamage)
+      {
+         propagate;
+      }
+
+      return 0;
+   }
+   #endregion Damage Override
+
+/*
+   // Change graphic depending on number.
+   SendAnimation()
+   {
+      if piNumber <= 1
+      {
+         AddPacket(1,ANIMATE_NONE, 2,2);
+      }
+      else if (piNumber = 2)
+      {
+         AddPacket(1,ANIMATE_NONE, 2,3);
+      }
+      else if (piNumber = 3)
+      {
+         AddPacket(1,ANIMATE_NONE, 2,4);
+      }
+      else
+      {
+         AddPacket(1,ANIMATE_NONE, 2,5);
+      }
+
+      return;
+   }
+
+   SendInventoryAnimation()
+   {
+      return Send(self,@SendAnimation);
+   }
+
+   SendLookAnimation()
+   {
+      return Send(self,@SendAnimation);
+   }
+*/
+
+end
+////////////////////////////////////////////////////////////////////////////////

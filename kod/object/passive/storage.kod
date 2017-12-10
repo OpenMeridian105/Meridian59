@@ -120,7 +120,7 @@ messages:
       if plItemsStored <> $
          AND (Length(plItemsStored) + Length(lItems)) > VAULT_ITEMS_MAX
          AND NOT (Length(lItems) = 1
-            AND IsClass(First(lItems),&NumberItem))
+            AND Send(First(lItems),@IsStackable))
       {
          return FALSE;
       }
@@ -158,7 +158,7 @@ messages:
       // been passed.  Remove number items from that player's possession.
       foreach oItem in lItems
       {
-         if IsClass(oItem,&NumberItem)
+         if Send(oItem,@IsStackable)
          {
             // The number item will be deleted at the end of the ReqGive Call
             // (in CleanUpCancelOffer).  Make a copy of the item and give that
@@ -257,7 +257,7 @@ messages:
          return FALSE;
       }
 
-      if IsClass(what,&NumberItem)
+      if Send(what,@IsStackable)
       {
          iCanHold = Send(who,@GetNumberCanHold,#what=what);
 

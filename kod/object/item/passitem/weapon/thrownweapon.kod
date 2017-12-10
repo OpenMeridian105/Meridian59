@@ -1,0 +1,543 @@
+// Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+// All rights reserved.
+//
+// This software is distributed under a license that is described in
+// the LICENSE file that accompanies it.
+//
+// Meridian is a registered trademark.
+
+
+////////////////////////////////////////////////////////////////////////////////
+ThrownWeapon is Weapon
+
+constants:
+
+   include blakston.khd
+
+resources:
+
+   include thrownweapon.lkod
+
+   thrownweapon_desc_rsc = "\n\nYou are looking at %i %s."
+   thrownweapon_got_one = "You retrieve a %s%s from %s%s."
+   thrownweapon_dispenser_name = "magic item creator"
+   thrownweapon_dispenser_desc = \
+      "This is a magic weapon creator.  It creates weapons."
+   thrownweapon_dispenser_icon = lever.bgf
+   thrownweapon_run_out = "You have run out of %s!"
+
+classvars:
+
+   vrDisp_name = thrownweapon_dispenser_name
+   vrDisp_desc = thrownweapon_dispenser_desc
+   vrDisp_icon = thrownweapon_dispenser_icon
+   // Negative numbers are 1/100th of bulk and weight
+   viBulk = 0
+   viWeight = 0
+   vrName_plural = $
+   viIndefinite_plural = ARTICLE_SOME
+   //viUse_type = ITEM_SINGLE_USE (weapons need ITEM_USE_HAND)
+   //viItem_type = ITEMTYPE_REAGENT (weapons need ITEMTYPE_WEAPON)
+
+   vbShow_Condition = FALSE // Use stack number
+   viHits_init_min = 1 // Stackable
+   viHits_init_max = 1 // Stackable
+
+   // Use fire/arch for now.
+   viProficiency_Needed = SKID_PROFICIENCY_BOW
+
+   viHit_roll_modifier = 0
+   viSpell_modifier = 0
+   viUse_Amount = 1
+
+   vrDesc = thrownweapon_desc_rsc
+   vrWeaponBroke = thrownweapon_run_out
+   viRange = 100 * FINENESS
+
+   // Allow setting defaults for all weapons live.
+   viProjSpeed = 14
+   viProjLightFlags = LIGHT_FLAG_NONE
+   viProjLightColor = LIGHT_DBLUE
+   viProjLightIntensity = 50
+
+properties:
+
+   piAttack_Type = ATCK_WEAP_NONMAGIC + ATCK_WEAP_PIERCE
+
+   // NumberItem stuff.
+   piNumber = 1
+
+   // Could use OF_APPLYABLE so they can be stored in stuff,
+   // but nothing to store them in yet. Apply code not added
+   // to this class.
+   viObject_flags = OF_GETTABLE
+
+   // Projectile properties.
+   piProjSpeed
+   piProjLightFlags
+   piProjLightColor
+   piProjLightIntensity
+
+messages:
+
+   // remember, split number items don't have owners.
+   Constructor(number = $, tl = $, model = $)
+   {
+      if number <> $
+      {
+         piNumber = number;
+      }
+      if tl <> $
+      {
+         Send(SYS,@AddTempList,#oItem=self);
+      }
+      Send(self,@NewNumber);
+
+      if (model <> $)
+      {
+         Send(self,@SetPaletteTranslation,
+               #translation=Send(model,@GetPaletteTranslation));
+      }
+
+      // Set to defaults.
+      Send(self,@ResetProjectileData);
+
+      propagate;
+   }
+
+   #region Weapon related code
+   GetDefaultStrokeNumber()
+   {
+      // Use fire/arch for now.
+      return SKID_FIRE;
+   }
+
+   GetAmmoType()
+   {
+      return AMMO_WEAPON;
+   }
+
+   ReqWeaponAttack(what=$)
+   {
+      local oRoom, bConsumeAmmo;
+
+      // Default FALSE since mobs don't use up ammo.
+      bConsumeAmmo = FALSE;
+
+      if (poOwner <> $
+         AND IsClass(poOwner,&User))
+      {
+         oRoom = Send(poOwner,@GetOwner);
+         if (oRoom <> $)
+         {
+            bConsumeAmmo = NOT Send(oRoom,@NoReagents);
+         }
+      }
+
+      Send(self,@WeaponAttack,#what=what,#bConsumeAmmo=bConsumeAmmo);
+
+      return TRUE;
+   }
+
+   WeaponAttack(bConsumeAmmo=TRUE)
+   {
+      // Should happen every time the weapon is used (thrown).
+      // Check for '1' because this is called before subtracting
+      // the weapon.
+      if (bConsumeAmmo
+         AND piNumber <= 1)
+      {
+         Send(self,@WeaponBroke);
+      }
+
+      propagate;
+   }
+
+   WeaponHitTarget()
+   {
+      // Handles damage to weapon (piHits). Don't take damage.
+      return;
+   }
+
+   WeaponBroke()
+   {
+      local i, oItemAtt, rName;
+
+      // Remove itematts from us, since we're not gonna use 'em anymore.
+      // This also lets cursed items finally remove themselves from us.
+      foreach i in plItem_Attributes
+      {
+         oItemAtt = Send(SYS,@FindItemAttByNum,
+                         #num=Send(self,@GetNumFromCompound,#compound=First(i)));
+         Send(oItemAtt,@RemoveFromItem,#oItem=self);
+      }
+
+      Send(poOwner,@SomethingChanged,#what=self);
+      Post(poOwner,@MsgSendUser,#message_rsc=vrWeaponBroke,
+            #parm1=Send(self,@GetPluralName));
+
+      return;
+   }
+
+   #endregion Weapon related code
+
+   #region Projectile code
+   GetProjectileIcon()
+   {
+      return vrIcon;
+   }
+
+   ResetProjectileData()
+   "Can call this on a class from admin UI to reset all objects to the new "
+   "default, e.g. 'send c Snowball ResetProjectileData'."
+   {
+      piProjSpeed = viProjSpeed;
+      piProjLightFlags = viProjLightFlags;
+      piProjLightColor = viProjLightColor;
+      piProjLightIntensity = viProjLightIntensity;
+
+      return;
+   }
+
+   GetProjectileSpeed()
+   {
+      return piProjSpeed;
+   }
+
+   SendProjectileAnimation()
+   {
+      if (piItem_flags & ITEM_PALETTE_MASK) <> 0
+      {
+         AddPacket(1,ANIMATE_TRANSLATION, 1,piItem_flags & ITEM_PALETTE_MASK);
+      }
+      AddPacket(1,ANIMATE_NONE,2,1);
+
+      return;
+   }
+
+   GetProjectileLightFlags()
+   {
+      // No lighting information.
+      return piProjLightFlags;
+   }
+
+   GetProjectileLightColor()
+   {
+      return piProjLightColor;
+   }
+
+   GetProjectileLightIntensity()
+   {
+      return piProjLightIntensity;
+   }
+   #endregion Projectile code
+
+   #region NumberItem stuff
+   // Code from numbitem.kod since these need to be treated as both
+   // weapons and number items. Care needs to be taken in other parts
+   // if the codebase to not assume all stackables are of class NumberItem.
+
+   GetNumber()
+   {
+      return piNumber;
+   }
+
+   GetWeight()
+   {
+      if viWeight < 0
+      {
+         return (-viWeight) * piNumber / 100;
+      }
+
+      return viWeight * piNumber;
+   }
+
+   GetBulk()
+   {
+      if viBulk < 0
+      {
+         return (-viBulk) * piNumber / 100;
+      }
+
+      return viBulk * piNumber;
+   }
+
+   GetNumberCanHold(what = $, weight = 0, bulk = 0)
+   {
+      local iBulk_can_hold, iWeight_can_hold;
+
+      // Sanity checks, if these can be less than 0 there's a chance
+      // they can be -1 (INFINITE_COUNT). This could allow players to
+      // carry more than their max bulk/weight limit.
+      if bulk < 0
+      {
+         bulk = 0;
+      }
+
+      if weight < 0
+      {
+         weight = 0;
+      }
+
+      if viBulk = 0
+      {
+         iBulk_can_hold = INFINITE_COUNT;
+      }
+      else if viBulk > 0
+      {
+         iBulk_can_hold = bulk / viBulk;
+      }
+      else
+      {
+         iBulk_can_hold = bulk * 100 / (-viBulk);
+      }
+
+      if viWeight = 0
+      {
+         iWeight_can_hold = INFINITE_COUNT;
+      }
+      else if viWeight > 0
+      {
+         iWeight_can_hold = weight / viWeight;
+      }
+      else
+      {
+         iWeight_can_hold = weight * 100 / (-viWeight);
+      }
+
+      if iBulk_can_hold = INFINITE_COUNT
+      {
+         return iWeight_can_hold;
+      }
+
+      if iWeight_can_hold = INFINITE_COUNT
+      {
+         return iBulk_can_hold;
+      }
+
+      if iBulk_can_hold < iWeight_can_hold
+      {
+         return iBulk_can_hold;
+      }
+
+      return iWeight_can_hold;
+   }
+
+   GetName(number = 0)
+   {
+      if (number > 0)
+      {
+         if (number = 1)
+         {
+            propagate;
+         }
+         else
+         {
+            return vrName_plural;
+         }
+      }
+
+      if piNumber = 1
+      {
+         propagate;
+      }
+
+      if vrName_plural <> $
+      {
+         return vrName_plural;
+      }
+
+      propagate;
+   }
+
+   GetPluralName()
+   {
+      if vrName_plural <> $
+      {
+         return vrName_plural;
+      }
+
+      return Send(self,@GetName);
+   }
+
+   AppendDesc()
+   {
+      // You are looking at 8 snowballs.
+      AddPacket(4,thrownweapon_desc_rsc, 4,piNumber, 4,Send(self,@GetName));
+
+      return;
+   }
+
+   GetValue()
+   {
+      return piNumber * Send(self,@GetInitValue);
+   }
+
+   AddNumber(number = 0)
+   "Admin supported\n"
+   "Increases the number amount of a number object by the parameter <number>,"
+   "which must be positive!"
+   {
+      local iOld_weight, iOld_bulk;
+
+      if number < 0
+      {
+         return;
+      }
+
+      iOld_weight = Send(self,@GetWeight);
+      iOld_bulk = Send(self,@GetBulk);
+
+      piNumber += number;
+      Send(self,@NewNumber);
+
+      if poOwner <> $
+      {
+         Send(poOwner,@ChangeBulkAndWeight,#what=self,
+               #bulk_change=Send(self,@GetBulk)-iOld_bulk,
+               #weight_change=Send(self,@GetWeight)-iOld_weight);
+      }
+
+      return;
+   }
+
+   SubtractNumber(number = 0)
+   "Admin supported\n"
+   "Decreases the number amount of a number object by the parameter <number>"
+   "<number> must be positive!"
+   {
+      local iOld_weight, iOld_bulk;
+
+      // this can delete self, so can only do return after calling this
+
+      if (piNumber - number) <= 0
+      {
+         // TODO: Test this, NumberItems send Delete() instead of posting it.
+         // Possible bugs with item still existing at some point?
+         piNumber -= number;
+         Post(self,@Delete);
+
+         return;
+      }
+
+      iOld_weight = Send(self,@GetWeight);
+      iOld_bulk = Send(self,@GetBulk);
+
+      piNumber -= number;
+
+      Send(self,@NewNumber);
+
+      if poOwner <> $
+      {
+         Send(poOwner,@ChangeBulkAndWeight,#what=self,
+               #bulk_change=Send(self,@GetBulk)-iOld_bulk,
+               #weight_change=Send(self,@GetWeight)-iOld_weight);
+      }
+
+      return;
+   }
+
+   NewNumber()
+   {
+      if poOwner <> $
+      {
+         Send(poOwner,@SomethingChanged,#what=self);
+      }
+
+      return;
+   }
+
+   Split(number = $)
+   {
+      local oSplit;
+
+      if number >= 1 AND number <= piNumber
+      {
+         oSplit = Create(GetClass(self),#number=number,#model=self);
+
+         Send(self,@SubtractNumber,#number=number);
+
+         return oSplit;
+      }
+
+      return $;
+   }
+
+   Join(what = $)
+   {
+      if GetClass(self) = GetClass(what)
+      {
+         Send(self,@AddNumber,#number=Send(what,@GetNumber));
+         Send(what,@Delete);
+      }
+
+      return;
+   }
+
+   GetCapDef()
+   {
+      // Return resource of capitalized definite article, for number items
+      return Send(self,@LookupCapitalArticle,#article_num=viDefinite);
+   }
+
+   GetCapIndef()
+   {
+      // return resource of capitalized indefinite article, for number items
+      if piNumber <> 1
+      {
+         return Send(self,@LookupCapitalArticle,
+                     #article_num=viIndefinite_plural);
+      }
+
+      return Send(self,@LookupCapitalArticle,#article_num=viIndefinite);
+   }
+
+   GetIndef()
+   {
+      // return resource of capitalized indefinite article, for number items
+      if piNumber <> 1
+      {
+         return Send(self,@LookupArticle,#article_num=viIndefinite_plural);
+      }
+
+      return Send(self,@LookupArticle,#article_num=viIndefinite);
+   }
+
+   NewHoldMessage(who=$,disp=$)
+   "Called whenever a number item is created from a dispenser."
+   {
+      Send(who,@MsgSendUser,#message_rsc=thrownweapon_got_one,
+           #parm1=Send(self,@GetIndef),#parm2=Send(self,@GetName),
+           #parm3=Send(disp,@GetDef),#parm4=Send(disp,@GetName));
+
+      return;
+   }
+
+   GetDispenserName()
+   {
+      return vrDisp_name;
+   }
+
+   GetDispenserDesc()
+   {
+      return vrDisp_desc;
+   }
+   
+   GetDispenserIcon()
+   {
+      return vrDisp_icon;
+   }
+
+   IsPlural()
+   {
+      return (piNumber > 1);
+   }
+
+   IsStackable()
+   {
+      return TRUE;
+   }
+   #endregion NumberItem stuff
+
+end
+////////////////////////////////////////////////////////////////////////////////

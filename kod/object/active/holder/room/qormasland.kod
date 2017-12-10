@@ -76,52 +76,44 @@ messages:
    {
       local i, each_obj;
 
-      if what <> $ 
+      if what <> $
          AND IsClass(what,&DM)
              AND type = SAY_DM
       {
-
          if StringEqual(string,lights_off_command)
          {
-            send(self,@SetQormasLights,#value=LIGHTS_OFF);
+            Send(self,@SetQormasLights,#value=LIGHTS_OFF);
          }
-         if StringEqual(string,lights_on_command)
+         else if StringEqual(string,lights_on_command)
          {
-            send(self,@SetQormasLights,#value=LIGHTS_ON);
+            Send(self,@SetQormasLights,#value=LIGHTS_ON);
          }
-         if StringEqual(string,lights_random_command)
+         else if StringEqual(string,lights_random_command)
          {
-            send(self,@SetQormasLights,#value=LIGHTS_RANDOM);
+            Send(self,@SetQormasLights,#value=LIGHTS_RANDOM);
          }
-
-         if (StringEqual(string,qormasland_openoog))
+         else if (StringEqual(string,qormasland_openoog))
          {
-            send(self,@OpenOog);
+            Send(self,@OpenOog);
          }
-
-         if (StringContain(string,qormasland_oog))
+         else if (StringContain(string,qormasland_oog))
          {
             StringSubstitute(string,qormasland_oog," ");
 
             foreach i in plActive
             {
                each_obj = First(i);
-               if (IsClass(each_obj,&User))
+               if (IsClass(each_obj,&User)
+                  AND StringEqual(string,Send(each_obj,@GetTrueName)))
                {
-                  if StringEqual(string,Send(each_obj,@GetTrueName))
-                  {
-                     Send(SYS,@UtilGoNearSquare,#what=each_obj,#where=self,
-                          #new_row=5,#new_col=18,#fine_row=32,#fine_col=32);
+                  Send(SYS,@UtilGoNearSquare,#what=each_obj,#where=self,
+                        #new_row=5,#new_col=18,#fine_row=32,#fine_col=32);
+                  Send(self,@CloseOog);
 
-                     Send(self,@CloseOog);
-
-                     break;
-                  }
+                  break;
                }
             }
-            return;
          }
-
       }
 
       propagate;
@@ -168,9 +160,8 @@ messages:
                iIndex = iIndex + 1;
             }
          }
-
          // Are we in Random EXTREME PARTY MODE(tm)?
-         if piLightsSetting = LIGHTS_RANDOM
+         else if piLightsSetting = LIGHTS_RANDOM
          {
             // Make the lights flash and change color
             foreach oLight in plLights
@@ -210,12 +201,11 @@ messages:
    CloseOog()
    {
       Send(self,@SetSector,#sector=OOG_DOOR_SECTOR,#animation=ANIMATE_FLOOR_LIFT,
-           #height = 544,#speed=64);
+            #height = 544,#speed=64);
 
       return;
    }
 
-   
    CreateStandardObjects()
    {
       local oLight;
@@ -344,7 +334,6 @@ messages:
    {
       return FALSE;
    }
-
 
 end
 ////////////////////////////////////////////////////////////////////////////////

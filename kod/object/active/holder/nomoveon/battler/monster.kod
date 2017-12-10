@@ -888,21 +888,30 @@ messages:
       plActions = Cons(lTemp,plActions);
 
       // Melee attacks.
-      lTemp = [SKID_SLASH,0,100,piMeleeRange*piMeleeRange,viMeleePriority,0,100,COMBAT_ACTION_HARM];
-      plActions = Cons(lTemp,plActions);
+      if (GetListNode(plActions, 1, SKID_SLASH) = $)
+      {
+         lTemp = [SKID_SLASH,0,100,piMeleeRange*piMeleeRange,viMeleePriority,0,100,COMBAT_ACTION_HARM];
+         plActions = Cons(lTemp,plActions);
+      }
 
       // Only add fire, if we can attack at range.
       if piFireRange > 0
       {
-         lTemp = [SKID_FIRE,0,100,piFireRange*piFireRange,viFirePriority,0,100,COMBAT_ACTION_HARM];
-         plActions = Cons(lTemp,plActions);
+         if (GetListNode(plActions, 1, SKID_FIRE) = $)
+         {
+            lTemp = [SKID_FIRE,0,100,piFireRange*piFireRange,viFirePriority,0,100,COMBAT_ACTION_HARM];
+            plActions = Cons(lTemp,plActions);
+         }
       }
 
       // Only add spin, if we have an area effect attack.
       if vbSpin
       {
-         lTemp = [SKID_SPIN,0,500,piMeleeRange*piMeleeRange,viMeleePriority+1,0,75,COMBAT_ACTION_HARM];
-         plActions = Cons(lTemp,plActions);
+         if (GetListNode(plActions, 1, SKID_SPIN) = $)
+         {
+            lTemp = [SKID_SPIN,0,500,piMeleeRange*piMeleeRange,viMeleePriority+1,0,75,COMBAT_ACTION_HARM];
+            plActions = Cons(lTemp,plActions);
+         }
       }
 
       // Check if the monster starts out socializing or minding their own business.
@@ -2883,7 +2892,17 @@ messages:
    // This returns the damage done to target "what"
    GetDamage(what = $, stroke_obj=$)
    {
-      local iDamage;
+      local iDamage, oWeapon;
+
+      // Special case for snowball weapon.
+      oWeapon = Send(self,@GetWeapon);
+      if (oWeapon <> self // most cases
+         AND oWeapon <> $
+         AND IsClass(oWeapon,&Snowball)
+         AND NOT Send(oWeapon,@CanDoDamage))
+      {
+         return 0;
+      }
 
       if piMinDamage = $ and piMaxDamage = $
       {
@@ -4129,7 +4148,7 @@ messages:
       }
 
       //Lets dispose of the offered item.
-      if IsClass(obj,&NumberItem)
+      if Send(obj,@IsStackable)
       {
          Send(who,@RemoveNumberItemFromPossession,#ToBeRemoved=obj);
       }
@@ -4170,7 +4189,7 @@ messages:
       // We say no thanks, and return the item to the giver.
       Post(who,@MsgSendUser,#message_rsc=vrUnwanted_give,
            #parm1=Send(self,@GetCapDef),#parm2=Send(self,@GetName));
-      if IsClass(obj,&NumberItem)
+      if Send(obj,@IsStackable)
       {
          // Delete the numberitem because it was created special for the offer.
          // Giver still has all the original number.
@@ -5389,7 +5408,7 @@ messages:
                bFound = TRUE;
             }
 
-            if IsClass(i,&NumberItem)
+            if Send(i,@IsStackable)
                AND GetClass(i) = GetClass(j)
             {
                // Check if we have a valid number list. Check is done here
@@ -5423,7 +5442,7 @@ messages:
 
          iFee = iFee + Send(self,@GetVaultRetrievalFee,#what=i);
 
-         if IsClass(i,&NumberItem)
+         if Send(i,@IsStackable)
             AND number_list <> $
             AND Length(number_list) >= iCount
          {
@@ -5465,7 +5484,7 @@ messages:
          // Adding this check would be difficult.
          if Send(i,@ReqNewOwner,#what=what)
          {
-            if IsClass(i,&NumberItem)
+            if Send(i,@IsStackable)
             {
                if NOT Send(oVault,@WithdrawFromStorage,#what=i,#who=what,
                     #count=First(lNumbers))
@@ -5821,7 +5840,7 @@ messages:
          if IsClass(i,&Item)
          {
             // If the item is an item (not a skill)
-            if IsClass(i,&NumberItem)
+            if Send(i,@IsStackable)
             {
                // Check if we have a valid number list. Check is done here
                // as we don't need a number list for non-number items.
@@ -5893,21 +5912,18 @@ messages:
 
          if IsClass(i,&Item)
          {
-            if IsClass(i,&NumberItem)
+            if Send(i,@IsStackable)
             {
-               oBuy = Create(GetClass(i),#number=iAmount);
+               oBuy = Create(GetClass(i),#number=iAmount,#model=i);
+            }
+            else if vbSellFromInventory
+            {
+               // Selling the item itself, or a copy?
+               oBuy = i;
             }
             else
             {
-               // Selling the item itself, or a copy?
-               if vbSellFromInventory
-               {
-                  oBuy = i;
-               }
-               else
-               {
-                  oBuy = Create(GetClass(i),#model=i);
-               }
+               oBuy = Create(GetClass(i),#model=i);
             }
 
             if Send(what,@ReqNewHold,#what=oBuy)
@@ -5916,7 +5932,7 @@ messages:
                // Get rid of the item from our inventory?
                if vbSellFromInventory
                {
-                  if IsClass(i,&NumberItem)
+                  if Send(i,@IsStackable)
                   {
                      // Sold all of the item?
                      if Send(i,@GetNumber) = iAmount
@@ -5958,7 +5974,7 @@ messages:
             else
             {
                // Check if this is a number item we're buying too much of.
-               if IsClass(oBuy,&NumberItem)
+               if Send(oBuy,@IsStackable)
                   AND Send(what,@GetNumberCanHold,#what=oBuy) > 0
                {
                   iCan_hold = Send(what,@GetNumberCanHold,#what=oBuy);
@@ -7831,7 +7847,7 @@ messages:
                ++iNumberOfItemsDropped;
             }
 
-            if IsClass(oTreasure,&NumberItem)
+            if Send(oTreasure,@IsStackable)
                AND Send(SYS,@UtilGetRoom,#what=oTreasure) = Send(who,@GetOwner)
                AND Send(oTreasure,@GetPos) <> $
                AND IsClass(who,&User)

@@ -99,6 +99,7 @@ void AdminShowListParen(int session_id, int list_id);
 void AdminShowUsers(int session_id, admin_parm_type parms[], int num_blak_parm, parm_node blak_parm[]);
 void AdminShowUser(int session_id, admin_parm_type parms[], int num_blak_parm, parm_node blak_parm[]);
 void AdminShowUsage(int session_id, admin_parm_type parms[], int num_blak_parm, parm_node blak_parm[]);
+void AdminShowUDP(int session_id, admin_parm_type parms[], int num_blak_parm, parm_node blak_parm[]);
 void AdminShowUserHeader(void);
 void AdminShowOneUser(user_node *u);
 void AdminShowAccounts(int session_id, admin_parm_type parms[], int num_blak_parm, parm_node blak_parm[]);
@@ -211,6 +212,7 @@ void AdminReloadGame(int session_id, admin_parm_type parms[], int num_blak_parm,
 void AdminReloadGameEachSession(session_node *s);
 void AdminReloadMotd(int session_id, admin_parm_type parms[], int num_blak_parm, parm_node blak_parm[]);
 void AdminReloadPackages(int session_id, admin_parm_type parms[], int num_blak_parm, parm_node blak_parm[]);
+void AdminResetUDP(int session_id, admin_parm_type parms[], int num_blak_parm, parm_node blak_parm[]);
 
 void AdminDisableSysTimer(int session_id, admin_parm_type parms[], int num_blak_parm, parm_node blak_parm[]);
 void AdminEnableSysTimer(int session_id, admin_parm_type parms[], int num_blak_parm, parm_node blak_parm[]);
@@ -288,6 +290,7 @@ admin_table_type admin_show_table[] =
 	{ NULL, {N}, F, A|M, admin_showtimer_table,  LEN_ADMIN_SHOWTIMER_TABLE, "timer", "Timer subcommand" },
 	{ AdminShowTimers,        {N},   F, A|M, NULL, 0, "timers",        "Show all timers" },
 	{ AdminShowTransmitted,   {N},   F,A, NULL, 0, "transmitted",      "Show # of bytes transmitted in last minute" },
+   { AdminShowUDP,           {N},   F, A|M, NULL, 0, "udp",           "Show UDP information (e.g. last received time" },
 	{ AdminShowUsage,         {N},   F,A|M,NULL, 0, "usage",           "Show current usage" },
 	{ AdminShowUser,          {R,N}, F, A|M, NULL, 0, "user",          "Show one user by name or object id" },
 	{ AdminShowUsers,         {N},   F, A|M, NULL, 0, "users",         "Show all users" },
@@ -436,13 +439,14 @@ admin_table_type admin_recreate_table[] =
 	{ AdminRecreateAutomated,{I,S,S,S,N},F,A|M,NULL, 0, "automated",
 		"Create specific account and user by name, password and email" },
 };
-#define LEN_ADMIN_RECREATE_TABLE (sizeof(admin_recreate_table)/sizeof(admin_recreate_table))
+#define LEN_ADMIN_RECREATE_TABLE (sizeof(admin_recreate_table)/sizeof(admin_table_type))
 
 admin_table_type admin_reset_table[] =
 {
    { AdminResetHighestTimed, {N}, F, A|M, NULL, 0, "highest", "Reset highest timed message" },
+   { AdminResetUDP,          {N}, F, A|M, NULL, 0, "udp",     "Resets UDP socket" },
 };
-#define LEN_ADMIN_RESET_TABLE (sizeof(admin_reset_table)/sizeof(admin_reset_table))
+#define LEN_ADMIN_RESET_TABLE (sizeof(admin_reset_table)/sizeof(admin_table_type))
 
 admin_table_type admin_disable_table[] =
 {
@@ -1792,6 +1796,23 @@ void AdminShowUser(int session_id,admin_parm_type parms[],
 	
 	AdminShowUserHeader();
 	AdminShowOneUser(u);
+}
+
+void AdminShowUDP(int session_id, admin_parm_type parms[],
+                  int num_blak_parm, parm_node blak_parm[])
+{
+   int last_udp_time = GetLastUDPReadTime();
+   int now = GetTime();
+
+   char now_timestr[80], udp_timestr[80];
+
+   strncpy(now_timestr, TimeStr(now), 80);
+   now_timestr[79] = 0;
+   strncpy(udp_timestr, TimeStr(last_udp_time), 80);
+   udp_timestr[79] = 0;
+
+   aprintf(":< Current time %s, last UDP packet received %s\n", now_timestr, udp_timestr);
+   aprintf(":>\n");
 }
 
 void AdminShowUsage(int session_id, admin_parm_type parms[],
@@ -5055,6 +5076,14 @@ void AdminReloadSystem(int session_id,admin_parm_type parms[],
 	aprintf("done.\n");
 	
 	UnpauseTimers();   
+}
+
+void AdminResetUDP(int session_id, admin_parm_type parms[],
+                    int num_blak_parm, parm_node blak_parm[])
+{
+   ResetUDP();
+   aprintf("<: Reset UDP socket.\n");
+   aprintf(":>\n");
 }
 
 /* stuff for foreachsession */

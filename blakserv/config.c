@@ -105,7 +105,7 @@ config_table_type config_table[] =
 { INACTIVE_SYNCHED,       T, "Synched",       CONFIG_INT,   "10" }, /* minutes */
 { INACTIVE_TRANSFER,      T, "Transfer",      CONFIG_INT,   "2" }, /* minutes */
 { INACTIVE_SELECTCHAR,    T, "SelectChar",    CONFIG_INT,   "60" }, /* minutes */
-{ INACTIVE_GAME,          T, "Game",          CONFIG_INT,   "30" }, /* seconds */
+{ INACTIVE_GAME,          T, "Game",          CONFIG_INT,   "6" }, /* seconds */
 { INACTIVE_OVERRIDE,      T, "Override",      CONFIG_BOOL,  "Yes" },
 
 { MOTD_GROUP,             F, "[MessageOfTheDay]", CONFIG_GROUP, "" },

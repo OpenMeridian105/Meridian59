@@ -2956,6 +2956,25 @@ messages:
       return piGender;
    }
 
+   LoseHealth(amount = 0)
+   "Handles phase/spectate and trance breaking, Battler handles piHealth."
+   {
+      if Send(self,@IsInCannotInteractMode)
+      {
+         Send(self,@NewHealth);
+
+         return 0;
+      }
+
+      if (amount > 0
+         AND (piFlags & PFLAG_TRANCE))
+      {
+         Send(self,@BreakTrance,#event=EVENT_DAMAGE);
+      }
+
+      propagate;
+   }
+
    GetBaseMaxHealth()
    {
       local iStamina;

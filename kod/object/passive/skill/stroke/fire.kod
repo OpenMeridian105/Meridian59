@@ -29,7 +29,8 @@ resources:
    fire_wrong_ammo = "You do not have the proper ammunition equipped to use with %s%s."
 
    fire_new_ammo = "You reach for your %s, and nock one back for a shot."
-   fire_new_throw = "You launch one of your %s with all your might."
+   fire_new_throw_many = "You launch one of your %s with all your might."
+   fire_new_throw_one = "You launch your %s with all your might."
    fire_skill_intro = "Weaponcraft Lv. 4: Key to mastering any type of missile weapon."
    fire_no_ammo = "You have no ammunition for this weapon ready!"
 
@@ -184,8 +185,16 @@ messages:
 
       if (IsClass(oAmmo,&ThrownWeapon))
       {
-         Send(who,@MsgSendUser,#message_rsc=fire_new_throw,
-               #parm1=Send(oAmmo,@GetName));
+         if (Send(oAmmo,@GetNumber) > 1)
+         {
+            Send(who,@MsgSendUser,#message_rsc=fire_new_throw_many,
+                  #parm1=Send(oAmmo,@GetName));
+         }
+         else
+         {
+            Send(who,@MsgSendUser,#message_rsc=fire_new_throw_one,
+                  #parm1=Send(oAmmo,@GetName));
+         }
       }
       else
       {

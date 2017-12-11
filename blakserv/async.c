@@ -22,11 +22,25 @@ static HANDLE name_lookup_handle;
 
 static char   udpbuf[BUFFER_SIZE + HEADERBYTES]; // same size as bufpool buffers!
 static SOCKET udpsock = INVALID_SOCKET;
+static int last_udp_read_time = 0; // track this for errors.
 
 /* local function prototypes */
 void AcceptSocketConnections(int socket_port,int connection_type);
 void AcceptUDP(int socket_port);
 void AsyncEachSessionNameLookup(session_node *s);
+
+void ResetUDP(void)
+{
+   // Potential threading issues?
+   closesocket(udpsock);
+   // WSACleanup(); Not sure if we need to do this
+   AcceptUDP(ConfigInt(SOCKET_PORT));
+}
+
+int GetLastUDPReadTime(void)
+{
+   return last_udp_read_time;
+}
 
 void AsyncSocketStart(void)
 {
@@ -347,6 +361,9 @@ void AsyncSocketReadUDP(SOCKET sock)
    int          flags = 0;
    int          lplen = sizeof(senderaddr);
 
+   // Record time.
+   last_udp_read_time = GetTime();
+
    ///////////////////////////////////////////////////////////////////////
    // try to receive the new udp datagram from socket
    ///////////////////////////////////////////////////////////////////////
@@ -474,6 +491,9 @@ void AsyncSocketReadUDP(SOCKET sock)
    ///////////////////////////////////////////////////////////////////////
    // signal mainthread (blakserv) to process data (thread transition here)
    ///////////////////////////////////////////////////////////////////////
+
+   if (ConfigBool(DEBUG_UDP))
+      dprintf("Signalling main thread with UDP read for session %i\n", session->session_id);
 
    SignalSession(session->session_id);
 }

@@ -212,18 +212,33 @@ void GameProcessSessionBuffer(session_node *s)
 
 void GameProcessSessionBufferUDP(session_node *s)
 {
+   bool debug_udp = ConfigBool(DEBUG_UDP);
+   if (debug_udp)
+   {
+      if (!s)
+         dprintf("Processing UDP packet but got null session!\n");
+      else
+         dprintf("Processing UDP packet for session %i\n", s->session_id);
+   }
+
    while (s->receive_list_udp != NULL)
    {
       int len   = s->receive_list_udp->len_buf - SIZE_HEADER_UDP;
       char* ptr = s->receive_list_udp->prebuf + SIZE_HEADER_UDP;
 
       // get epoch in header
-      char epoch = s->receive_list_udp->prebuf[SIZE_HEADER_UDP - 1];
+      unsigned char epoch = s->receive_list_udp->prebuf[SIZE_HEADER_UDP - 1];
 
       // directly forward to KOD if epoch is valid
       // note: there is no C-side parsing of some BP_ like in TCP
       if (epoch == GetEpoch())
+      {
+         if (debug_udp)
+            dprintf("Sending UDP message to kod with epoch %i\n", epoch);
          ClientToBlakodUser(s, len, ptr);
+      }
+      else if (debug_udp)
+         dprintf("Not sending UDP message to kod with bad epoch %i, current epoch %i\n", epoch, GetEpoch());
 
       // get next
       buffer_node* bn = s->receive_list_udp->next;

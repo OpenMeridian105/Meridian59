@@ -12,7 +12,7 @@
 
 #include "client.h"
 
-#define PING_DELAY           5000       // # of milliseconds between pings
+#define PING_DELAY           2000       // # of milliseconds between pings
 
 DWORD latency = 0;                      // Latest estimate of server latency, in milliseconds
 

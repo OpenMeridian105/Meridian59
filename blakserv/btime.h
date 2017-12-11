@@ -13,6 +13,9 @@
 #ifndef _BTIME_H
 #define _BTIME_H
 
+#define BTIME_UTC   0x00
+#define BTIME_LOCAL 0x01
+
 void InitTime();
 int GetTime();
 

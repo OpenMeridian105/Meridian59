@@ -38,6 +38,7 @@ void InterfaceInitialize(HWND hParent)
    EditBoxCreate(hParent);
    ToolbarCreate();
    TooltipCreate();
+   Timebox_Create();
    Lagbox_Create();
 
    MapAnnotationsInitialize();
@@ -75,6 +76,7 @@ void InterfaceClose(void)
    EditBoxDestroy();
    ToolbarDestroy();
    TooltipDestroy();
+   Timebox_Destroy();
    Lagbox_Destroy();
    
    //InvalidateRect(hMain, NULL, TRUE);
@@ -118,6 +120,7 @@ void InterfaceResize(int xsize, int ysize)
    EditBoxResize(xsize, ysize, view);
    ToolbarResize(xsize, ysize, view);
    Lagbox_Reposition();
+   Timebox_Reposition();
 
    RedrawAll();
 

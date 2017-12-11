@@ -323,7 +323,7 @@ void RedrawForce(void)
    HDC hdc;
    static DWORD lastEndFrame = 0;
    DWORD endFrame, startFrame;
-   int totalFrameTime, oldMode;
+   int totalFrameTime;
    char buffer[32];
 
    if (!GetGameDataValid() || GameGetState() == GAME_INVALID
@@ -377,16 +377,35 @@ void RedrawForce(void)
 
    if (config.showFPS)
    {
-      RECT rc,lagBox;
-      wsprintf(buffer, "FPS = %d (%dms)        ", fpsCount, msDrawFrameCount);
-      ZeroMemory(&rc,sizeof(rc));
+      RECT rc, timeBox, borderRect;
+      wsprintf(buffer, "FPS: %d (%dms)", fpsCount, msDrawFrameCount);
+      ZeroMemory(&rc, sizeof(rc));
+
+      // Set boundaries.
       rc.bottom = DrawText(hdc, buffer, -1, &rc, DT_SINGLELINE | DT_CALCRECT | DT_NOCLIP);
-      Lagbox_GetRect(&lagBox);
-      OffsetRect(&rc,lagBox.right + TOOLBAR_SEPARATOR_WIDTH,lagBox.top);
+      Timebox_GetRect(&timeBox);
+      OffsetRect(&rc, timeBox.right + TOOLBAR_SEPARATOR_WIDTH * 3, timeBox.top);
+
+      // Grey border.
+      borderRect.bottom = rc.bottom + 3;
+      borderRect.top = rc.top - 3;
+      borderRect.left = rc.left - 3;
+      borderRect.right = rc.right + 3;
+      FillRect(hdc, &borderRect, GetBrush(COLOR_TIME_BORDER));
+
+      // Background.
       DrawWindowBackground(hdc, &rc, rc.left, rc.top);
-      oldMode = SetBkMode(hdc,TRANSPARENT);
+      int oldMode = SetBkMode(hdc, TRANSPARENT);
+
+      // Text.
+      HFONT old_font = GetWindowFont(hMain);
+      SelectFont(hdc, GetFont(FONT_TOOLBAR_INFO));
       DrawText(hdc, buffer, -1, &rc, DT_SINGLELINE | DT_NOCLIP);
-      SetBkMode(hdc,oldMode);
+
+      // Replace old font/background.
+      SelectFont(hdc, old_font);
+      SetBkMode(hdc, oldMode);
+
       GdiFlush();
    }
    ReleaseDC(hMain, hdc);

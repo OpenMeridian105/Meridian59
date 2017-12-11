@@ -186,6 +186,7 @@ M59EXPORT void _cdecl dprintf(char *fmt,...);
 #include "srvrstr.h"
 #include "tooltip.h"
 #include "lagbox.h"
+#include "timebox.h"
 #include "transfer.h"
 #include "hook.h"
 #include "web.h"

@@ -193,6 +193,8 @@
 #define IDS_PROFANITYWARNING            163
 #define IDB_BLUEWHO                     164
 #define IDS_HOMEPAGEURL                 164
+#define IDS_TIMETOOLBAR                 165
+#define IDS_TIME0                       166
 #define IDA_DOWNLOAD                    170
 #define IDB_VIEWTREAT_TOPLEFT           171
 #define IDB_VIEWTREAT_TOPRIGHT          172

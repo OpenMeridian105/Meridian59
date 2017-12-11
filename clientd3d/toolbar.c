@@ -131,6 +131,7 @@ Bool __cdecl ToolbarAddButton(AddButton *s)
    num_buttons++;
 
    Lagbox_Reposition();
+   Timebox_Reposition();
 
    return True;
 }

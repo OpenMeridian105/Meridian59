@@ -29,15 +29,18 @@ static LRESULT CALLBACK Fpsbox_WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPAR
  */
 void DrawFPSboxBackground()
 {
-   RECT rect, borderRect;
+   RECT rect;
    HDC hdcFpsbox = GetDC(hwndFpsbox);
    GetClientRect(hwndFpsbox, &rect);
+
+   // Optional colored border.
+   /*RECT borderRect;
    borderRect.bottom = rect.bottom + 3;
    borderRect.top = rect.top - 3;
    borderRect.left = rect.left - 3;
    borderRect.right = rect.right + 3;
+   FillRect(hdcFpsbox, &borderRect, GetBrush(COLOR_TIME_BORDER));*/
 
-   FillRect(hdcFpsbox, &borderRect, GetBrush(COLOR_TIME_BORDER));
    DrawWindowBackground(hdcFpsbox, &rect, rect.left, rect.top);
    ReleaseDC(hwndFpsbox, hdcFpsbox);
 }
@@ -95,6 +98,7 @@ BOOL Fpsbox_Create()
    DrawText(hDC, setupString, strlen(setupString), &fpsboxRect, DT_CALCRECT);
    // Little extra padding.
    fpsboxRect.right += 2;
+   fpsboxRect.bottom += 4;
 
    // Create control.
    hwndFpsbox = CreateWindow("static", "", WS_CHILD | SS_CENTER,

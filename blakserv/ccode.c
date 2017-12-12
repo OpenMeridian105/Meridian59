@@ -4406,29 +4406,43 @@ int C_GetTickCount(int object_id,local_var_type *local_vars,
 
 /*
  * C_GetDateAndTime: Gets the date and time, places them into passed local vars.
- * 
+ *    Gets local or UTC time depending on type requested by kod.
  */
 int C_GetDateAndTime(int object_id,local_var_type *local_vars,
             int num_normal_parms,parm_node normal_parm_array[],
             int num_name_parms,parm_node name_parm_array[])
 {
-   val_type year_val, month_val, day_val, hour_val, minute_val, second_val;
+   val_type type_val, year_val, month_val, day_val, hour_val, minute_val, second_val;
+
+   type_val = RetrieveValue(object_id, local_vars, normal_parm_array[0].type,
+      normal_parm_array[0].value);
+   if (type_val.v.tag != TAG_INT)
+   {
+      bprintf("C_GetDateAndTime got an invalid time type %i,%i, not returning time.\n",
+         type_val.v.tag, type_val.v.data);
+      return NIL;
+   }
 
    year_val = RetrieveValue(object_id, local_vars, normal_parm_array[0].type,
-      normal_parm_array[0].value);
-   month_val = RetrieveValue(object_id, local_vars, normal_parm_array[1].type,
       normal_parm_array[1].value);
-   day_val = RetrieveValue(object_id, local_vars, normal_parm_array[2].type,
+   month_val = RetrieveValue(object_id, local_vars, normal_parm_array[1].type,
       normal_parm_array[2].value);
-   hour_val = RetrieveValue(object_id, local_vars, normal_parm_array[3].type,
+   day_val = RetrieveValue(object_id, local_vars, normal_parm_array[2].type,
       normal_parm_array[3].value);
-   minute_val = RetrieveValue(object_id, local_vars, normal_parm_array[4].type,
+   hour_val = RetrieveValue(object_id, local_vars, normal_parm_array[3].type,
       normal_parm_array[4].value);
-   second_val = RetrieveValue(object_id, local_vars, normal_parm_array[5].type,
+   minute_val = RetrieveValue(object_id, local_vars, normal_parm_array[4].type,
       normal_parm_array[5].value);
+   second_val = RetrieveValue(object_id, local_vars, normal_parm_array[5].type,
+      normal_parm_array[6].value);
 
    time_t t = time(NULL);
-   struct tm tm_time = *localtime(&t);
+   struct tm tm_time;
+   
+   if (type_val.v.data == BTIME_LOCAL)
+      tm_time = *localtime(&t);
+   else
+      tm_time = *gmtime(&t);
 
    // Only set the local vars if we're passed an integer - allow leaving
    // these as null in the function call.

@@ -1769,19 +1769,20 @@ given session.
 ```
 
 #### GetDateAndTime
-`GetDateAndTime(*year, *month, *day, *hour, *minute, *second)`
+`GetDateAndTime(time_type, *year, *month, *day, *hour, *minute, *second)`
 
 Places the current date values into the appropriate local variables passed as
-arguments in the call (using the * operator). Any of the arguments can be $,
-e.g. if only the day is needed. Uses the local time of the server, accounts for
-daylight savings time.
+arguments in the call (using the * operator). Any of the localvar arguments can
+be $, e.g. if only the day is needed. Parameter time_type specifies which time
+to retrieve, BTIME_LOCAL or BTIME_UTC. If BTIME_LOCAL, uses the local time of
+the server, accounting for daylight savings time. BTIME_UTC returns UTC time.
 
 ```
    GetDay()
    {
       local iDay;
 
-      GetDateAndTime($, $, *iDay, $, $, $);
+      GetDateAndTime(BTIME_LOCAL, $, $, *iDay, $, $, $);
 
       return iDay;
    }

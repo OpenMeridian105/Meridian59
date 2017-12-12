@@ -4133,21 +4133,16 @@ messages:
 
    SystemInitGameHour()
    {
-      local i,iTime,iDay,iMinutes;
+      local i,iTime,iDay,iHour, iMinute, iMinutes;
 
-      // This assumption is no longer valid, but it's how we figure things out.
-      // Remember that GetTime() returns the UDT time in seconds since
-      //  January 1, 1996.  Assume we're 5 hours behind that.
+      // Get current UTC hour and minute values.
+      // Seconds not needed since the finest value we keep is hours,
+      // which roll over every 5 real minutes.
+      GetDateAndTime(BTIME_UTC, $, $, $, *iHour, *iMinute, $);
 
-      iTime = GetTime() - 5 * HOUR;
-
-      iDay = (iTime / (24 * HOUR)) % 365;
-
-      // Our day is 2 hours long now, so get minutes into the four hours
-      iMinutes = (iTime % (2 * HOUR)) / 60;
-
-      // That number ranges from 0 to 119, so div by 5 is our game hour
-      piHour = iMinutes / 5;
+      // Every even hour is midnight (iHour % 2). Every 2 real hours
+      // is one game day, so div by 5 to get game hour.
+      piHour = (((iHour % 2) * 60) + iMinute) / 5;
 
       Send(self,@SysRecalcLightAndDayPhase);
 

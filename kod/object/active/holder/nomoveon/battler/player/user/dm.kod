@@ -199,6 +199,12 @@ resources:
    dm_ignore_list_success = "Forced ignore list for %q: ~b%q~n."
    dm_ignore_list_fail = "Could not get the forced ignore list for %q!"
 
+   dm_sameip_rsc = "sameip"
+   dm_sameip_nouser = "No user found with that name."
+   dm_sameip_usernoip = "User has no IP. Are you sure they are logged on?"
+   dm_sameip_singleuser = "No other users with same IP as %q."
+   dm_sameip_manyuser = "Users with same IP as %q: ~b%q."
+
    // NOTE: if an internationalised string is added for dm_place_command,
    // then all the items that can be placed need to be changed also.
    dm_place_command = "place"
@@ -328,6 +334,9 @@ resources:
       "Use ~bdm immortal~n to set immortality (can't be attacked or killed).  "
       "Use ~bdm mortal~n to turn immortality off (~rnote that you can be "
       "killed, so be careful!~n)."
+   dm_help_sameip = \
+      "~cNew! ~nUse ~bdm sameip playername~n to list all players online with "
+      "the same IP address."
    // Help sub-menus.
    dm_help_messages = \
       "Sending messages to users:\n"
@@ -1206,6 +1215,14 @@ messages:
          return;
       }
 
+      if ((piDMFlags & DMFLAG_ALLOW_CHECK_IP)
+         AND StringContain(string,dm_sameip_rsc))
+      {
+         Send(self,@DMSayCheckSameIP,#string=string);
+
+         return;
+      }
+
       if (StringEqual(string,dm_rumble_command))
       {
          Send(poOwner,@Rumble);
@@ -1886,6 +1903,66 @@ messages:
       return;
    }
 
+   DMSayCheckSameIP(string = $)
+   {
+      local oUser, lIP, i, iCount;
+
+      if (string = $)
+      {
+         return;
+      }
+
+      StringSubstitute(string, dm_sameip_rsc, "");
+
+      oUser = Send(SYS,@FindUserByString,#string=string);
+      
+      if (oUser = $)
+      {
+         Send(self,@MsgSendUser,#message_rsc=dm_sameip_nouser);
+
+         return;
+      }
+
+      // Got a user, Get the IP (list).
+      lIP = Send(oUser,@GetIP);
+      if (lIP = $)
+      {
+         Send(self,@MsgSendUser,#message_rsc=dm_sameip_usernoip);
+
+         return;
+      }
+
+      ClearTempString();
+      iCount = 0;
+      foreach i in Send(SYS,@GetUsersLoggedOn)
+      {
+         if (i <> oUser
+            AND IsListMatch(lIP, Send(i,@GetIP)))
+         {
+            if (iCount++ > 0)
+            {
+               AppendTempString(", ");
+            }
+            AppendTempString(Send(i,@GetTrueName));
+         }
+      }
+
+      // Can't use 'string' as player name, temp string got clobbered.
+      if (iCount = 0)
+      {
+         Send(self,@MsgSendUser,#message_rsc=dm_sameip_singleuser,
+               #parm1=Send(oUser,@GetTrueName),#type1=STRING_RESOURCE);
+      }
+      else
+      {
+         Send(self,@MsgSendUser,#message_rsc=dm_sameip_manyuser,
+               #parm1=Send(oUser,@GetTrueName),#type1=STRING_RESOURCE,
+               #parm2=GetTempString());
+      }
+
+      return;
+   }
+
    DMSayForceIgnore(string = $)
    {
       local oUserOne, oUserTwo;
@@ -2177,6 +2254,10 @@ messages:
          if (piDMFlags & DMFLAG_ALLOW_SET_MORTAL)
          {
             Send(self,@MsgSendUser,#message_rsc=dm_help_mortality);
+         }
+         if (piDMFlags & DMFLAG_ALLOW_CHECK_IP)
+         {
+            Send(self,@MsgSendUser,#message_rsc=dm_help_sameip);
          }
          // Standard help menu.
          Send(self,@MsgSendUser,#message_rsc=dm_help_all);

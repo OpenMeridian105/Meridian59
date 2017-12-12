@@ -60,7 +60,7 @@ void LoginSendInfo(void)
 
    RequestLogin(MAJOR_REV, MINOR_REV, 
       sysinfo.platform, sysinfo.platform_major, sysinfo.platform_minor,
-      sysinfo.memory, sysinfo.chip, 
+      sysinfo.flags, sysinfo.chip, 
       sysinfo.screen_width, sysinfo.screen_height, 
       sysinfo.color_depth, sysinfo.bandwidth, sysinfo.reserved,
       config.username, buf, GetRSBHash());

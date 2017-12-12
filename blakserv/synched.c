@@ -176,7 +176,7 @@ void SynchedProtocolParse(session_node *s,client_msg *msg)
       index += 4;
       s->os_version_minor = *(int *)(msg->data+index);
       index += 4;
-      s->machine_ram = *(int *)(msg->data+index);
+      s->flags = *(int *)(msg->data+index);
       index += 4;
       s->machine_cpu = *(int *)(msg->data+index);
       index += 4;
@@ -683,7 +683,36 @@ void LogUserData(session_node *s)
 {
    char buf[500];
 
-   sprintf(buf,"LogUserData/4 got %i from %s, ",s->account->account_id,s->conn.name);
+   sprintf(buf, "LogUserData/4 got %i from %s, ",
+      s->account->account_id, s->conn.name);
+
+   if (s->version_major == 50)
+   {
+      // Add flags in int form for log parsing.
+      sprintf(buf + strlen(buf), "flags %i, ", s->flags);
+
+      // Human readable.
+      if (s->flags & LF_HARDWARE_RENDERER)
+         strcat(buf, "HW renderer, ");
+      else
+         strcat(buf, "SW renderer, ");
+      if (s->flags & LF_LARGE_GRAPHICS)
+         strcat(buf, "L graphics, ");
+      else
+         strcat(buf, "S graphics, ");
+      if (s->flags & (LF_DYNAMIC_LIGHTING | LF_HARDWARE_RENDERER))
+         strcat(buf, "dynlight ON, ");
+      else
+         strcat(buf, "dynlight OFF, ");
+      if (s->flags & LF_MUSIC_ON)
+         strcat(buf, "music ON, ");
+      else
+         strcat(buf, "music OFF, ");
+      if (s->flags & LF_WEATHER_EFFECTS)
+         strcat(buf, "particles ON, ");
+      else
+         strcat(buf, "particles OFF, ");
+   }
 
    switch (s->os_type)
    {
@@ -701,10 +730,8 @@ void LogUserData(session_node *s)
       break;
    }
    
-   sprintf(buf+strlen(buf),", %i, %i, ",s->os_version_major,s->os_version_minor);
+   sprintf(buf+strlen(buf),", %i.%i, ",s->os_version_major,s->os_version_minor);
    
-
-
    switch (s->machine_cpu&0xFFFF)	/* charlie: the cpu level is in the top 16 bits */
    {
    case PROCESSOR_INTEL_386 :
@@ -723,21 +750,22 @@ void LogUserData(session_node *s)
    
    strcat(buf,", ");
 
-   sprintf(buf+strlen(buf),"%i MB",s->machine_ram/(1024*1024));
-   strcat(buf,", ");
+   // Memory no longer sent.
+   //sprintf(buf+strlen(buf),"%i MB",s->machine_ram/(1024*1024));
+   //strcat(buf,", ");
    
    sprintf(buf+strlen(buf),"%ix%ix%i (0x%08X)",s->screen_x,s->screen_y,s->screen_color_depth,((s->machine_cpu&0xFFFF0000)|s->displays_possible));
 
    if (s->partner)
       sprintf(buf+strlen(buf),", Partner %d",s->partner);
 
-   strcat(buf,", ");
+   // Noise.
+   /*strcat(buf,", ");
    sprintf(buf+strlen(buf),"%s",LockConfigStr(ADVERTISE_FILE1));
    UnlockConfigStr();
-
    strcat(buf,", ");
    sprintf(buf+strlen(buf),"%s",LockConfigStr(ADVERTISE_FILE2));
-   UnlockConfigStr();
+   UnlockConfigStr();*/
 
    sprintf(buf + strlen(buf), " client version %i", s->version_major * 100 + s->version_minor);
    strcat(buf,"\n");

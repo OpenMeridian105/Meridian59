@@ -456,7 +456,6 @@ void GetSystemStats(SystemInfo *s)
    s->platform = version.dwPlatformId;
    s->platform_minor = version.dwMinorVersion;
    s->platform_major = version.dwMajorVersion;
-   s->memory = mem.dwTotalPhys;
    s->chip = (crc32<<16)|sys.dwProcessorType;
    iModeNum = 0;
    while (EnumDisplaySettings(NULL,iModeNum,&devMode[0]))
@@ -496,6 +495,19 @@ void GetSystemStats(SystemInfo *s)
 
    s->reserved |= (GetPartnerCode() << 8);
    s->reserved &= 0xFFFF;
+
+   s->flags = 0;
+   // Client settings flags.
+   if (D3DRenderIsEnabled())
+      s->flags |= LF_HARDWARE_RENDERER;
+   if (config.large_area)
+      s->flags |= LF_LARGE_GRAPHICS;
+   if (config.play_music)
+      s->flags |= LF_MUSIC_ON;
+   if (config.bDynamicLighting)
+      s->flags |= LF_DYNAMIC_LIGHTING;
+   if (config.weather)
+      s->flags |= LF_WEATHER_EFFECTS;
 
    ReleaseDC(GetDesktopWindow(),dc);
 }

@@ -57,15 +57,18 @@ int GetMeridianTime()
  */
 void DrawTimeboxBackground()
 {
-   RECT rect, borderRect;
+   RECT rect;
    HDC hdcTimebox = GetDC(hwndTimebox);
    GetClientRect(hwndTimebox, &rect);
+
+   // Optional colored border.
+   /*RECT borderRect;
    borderRect.bottom = rect.bottom + 3;
    borderRect.top = rect.top - 3;
    borderRect.left = rect.left - 3;
    borderRect.right = rect.right + 3;
+   FillRect(hdcTimebox, &borderRect, GetBrush(COLOR_TIME_BORDER));*/
 
-   FillRect(hdcTimebox, &borderRect, GetBrush(COLOR_TIME_BORDER));
    DrawWindowBackground(hdcTimebox, &rect, rect.left, rect.top);
    ReleaseDC(hwndTimebox, hdcTimebox);
 }
@@ -115,8 +118,8 @@ BOOL Timebox_Create()
    timeboxRect = { 0, 0, 0, 0 };
    DrawText(hDC, setupString, strlen(setupString), &timeboxRect, DT_CALCRECT);
    // Little extra padding.
-   timeboxRect.right += 12;
-
+   timeboxRect.right += 6;
+   timeboxRect.bottom += 4;
    // Create control.
    hwndTimebox = CreateWindow("static", "", WS_CHILD | SS_CENTER,
       0, 0, timeboxRect.right, timeboxRect.bottom, hMain, (HMENU)IDS_TIME0, hInst, NULL);
@@ -189,7 +192,7 @@ void Timebox_Reposition()
    }
    else
    {
-      MoveWindow(hwndTimebox, rightPos + TOOLBAR_SEPARATOR_WIDTH * 2, rcToolbar.top + 2,
+      MoveWindow(hwndTimebox, rightPos + TOOLBAR_SEPARATOR_WIDTH * 2, rcToolbar.top,// + 2,
          timeboxRect.right, timeboxRect.bottom, TRUE);
       ShowWindow(hwndTimebox, SW_NORMAL);
       InvalidateRect(hwndTimebox, NULL, FALSE);

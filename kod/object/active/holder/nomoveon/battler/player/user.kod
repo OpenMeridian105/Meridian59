@@ -126,7 +126,8 @@ resources:
    user_mail_toobig = \
       "Sorry, that message was so large the courier died trying to carry it, "
       "delivery failed."
- 
+   user_mail_forcedignore = \
+      "Not sending mail to %q due to server-enforced ignore."
    user_was_killed = \
       "You are dead, poor soul.  Go now, and take revenge on %s%s!"
    user_was_killed_bridge_faith = "Ouch, that last step was a doozy."
@@ -548,6 +549,9 @@ properties:
 
    // Steps the player has taken since their last step was recorded.
    piTrailSteps = 0
+
+   // List of user objects this user cannot receive communications from.
+   plForcedIgnore = $
 
 messages:
 
@@ -6565,6 +6569,14 @@ messages:
 
       foreach i in dest_list
       {
+         if (FindListElem(plForcedIgnore, i))
+         {
+            Send(self,@MsgSendUser,#message_rsc=user_mail_forcedignore,
+                  #parm1=Send(i,@GetTrueName),#type1=STRING_RESOURCE);
+
+            continue;
+         }
+
          Send(i,@ReceiveMail,#from=Send(self,@GetTrueName),
               #dest_list=dest_list,#perm_string=string);
       }
@@ -8671,6 +8683,114 @@ messages:
       return;
    }
 
+   AddForcedIgnore(what = $, bReciprocal = FALSE)
+   "Adds 'what' to this user's forced ignore list. Reciprocally adds this "
+   "user to 'what's forced ignore list.  Last resort for players that lose "
+   "all sense once they start arguing with each other."
+   {
+      if (what = $)
+      {
+         return FALSE;
+      }
+
+      if (GetClass(what) <> &User)
+      {
+         return FALSE;
+      }
+
+      if (FindListElem(plForcedIgnore,what))
+      {
+         return FALSE;
+      }
+
+      plForcedIgnore = Cons(what, plForcedIgnore);
+
+      if (NOT bReciprocal)
+      {
+         Send(what,@AddForcedIgnore,#what=self,#bReciprocal=TRUE);
+      }
+
+      return TRUE;
+   }
+
+   CheckForcedIgnore(what = $)
+   "Returns TRUE if users are ignoring each other, FALSE otherwise."
+   {
+      return FindListElem(plForcedIgnore,what);
+   }
+
+   RemoveForcedIgnore(what = $, bReciprocal = FALSE)
+   "Tries to remove 'what' from our list, and us from 'what's list."
+   {
+      local bRemoved;
+
+      if (FindListElem(plForcedIgnore,what))
+      {
+         bRemoved = TRUE;
+         plForcedIgnore = DelListElem(plForcedIgnore, what);
+      }
+      else
+      {
+         bRemoved = FALSE;
+      }
+
+      if (NOT bReciprocal)
+      {
+         Send(what,@RemoveForcedIgnore,#bReciprocal=TRUE);
+      }
+
+      return bRemoved;
+   }
+
+   ListForcedIgnore()
+   "Adds the names of all in the list to the temp string, sets it to a normal "
+   "string and returns it. Returns $ for empty, or if the list is over 25 names."
+   {
+      local sNames, i, iCount;
+
+      if (Length(plForcedIgnore) > 25)
+      {
+         Debug("Checking forced ignore list for ",vrName," with over 25 names!");
+
+         return;
+      }
+
+      ClearTempString();
+
+      iCount = 0;
+
+      foreach i in plForcedIgnore
+      {
+         if (iCount++)
+         {
+            AppendTempString(", ");
+         }
+         AppendTempString(Send(i,@GetTrueName));
+      }
+
+      if (iCount > 0)
+      {
+         return SetString($, GetTempString());
+      }
+
+      return;
+   }
+
+   ResetForcedIgnore(bReciprocal=FALSE)
+   "Clears this user's forced ignore, and tells all users on it to remove us."
+   {
+      local i;
+
+      foreach i in plForcedIgnore
+      {
+         Send(i,@RemoveForcedIgnore,#what=self,#bReciprocal=TRUE);
+      }
+
+      plForcedIgnore = $;
+
+      return;
+   }
+
    SomeoneSaid(what = $, type = $, string = $, parm1 = $, parm2 = $, parm3 = $,
                parm4= $, parm5 = $, parm6 = $, parm7 = $, parm8 = $)
    {
@@ -8692,6 +8812,13 @@ messages:
          if what <> $
          {
             rName = Send(what,@GetName,#cap=TRUE);
+
+            // Block players we are forced to ignore.
+            if (IsClass(what,&User)
+               AND FindListElem(plForcedIgnore,what))
+            {
+               return;
+            }
          }
 
          if type = SAY_RESOURCE

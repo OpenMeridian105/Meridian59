@@ -68,6 +68,7 @@ resources:
    dm_help_scenery_command = "help scenery"
    dm_help_messages_command = "help messages"
    dm_help_spawn_command = "help spawn"
+   dm_help_forcedignore_command = "help forceignore"
    dm_turn_off_pk = "turn off pk"
    dm_pk_off = "PvP is now OFF for this screen."
    dm_pk_already_off = "PvP is already OFF for this screen."
@@ -179,6 +180,25 @@ resources:
       "Mob spawning for this room is %s.  Random spawn is %s."
    dm_spawn_not_mobroom_rsc = "This room is not a valid monster-spawning room."
 
+   dm_forceignore_rsc = "forceignore"
+   dm_forceignore_no_flag = \
+      "You don't have the required DM flag to use this command."
+   dm_forceignore_add_rsc = "forceignore add"
+   dm_forceignore_remove_rsc = "forceignore remove"
+   dm_forceignore_check_rsc = "forceignore check"
+   dm_forceignore_list_rsc = "forceignore list"
+   dm_forceignore_missing = "Missing data for %s user!"
+   dm_ignore_not_user = "User %q could not be found!"
+   dm_ignore_add_success = "Successfully forced %q and %q to ignore each other."
+   dm_ignore_add_fail = "Forced ignore attempt failed for %q and %q."
+   dm_ignore_rem_success = "%q and %q can now communicate with each other."
+   dm_ignore_rem_fail = \
+      "Unignore attempt failed for %q and %q, possibly not on forced ignore."
+   dm_ignore_chk_success = "%q and %q are forced to ignore each other."
+   dm_ignore_chk_fail = "%q and %q can communicate with each other."
+   dm_ignore_list_success = "Forced ignore list for %q: ~b%q~n."
+   dm_ignore_list_fail = "Could not get the forced ignore list for %q!"
+
    // NOTE: if an internationalised string is added for dm_place_command,
    // then all the items that can be placed need to be changed also.
    dm_place_command = "place"
@@ -253,7 +273,9 @@ resources:
       "messages~n for more information on those commands.\n"
       "~cNew! ~nUse ~bdm help spawn~n to see room mob spawn-related commands.\n"
       "~cNew! ~nUse ~bdm get squelched~n to list squelched players, and ~bdm "
-      "get damned~n to list damned players (players in OoG)."
+      "get damned~n to list damned players (players in OoG).\n"
+      "~cNew! ~nUse ~bdm help forceignore~n to see commands related to forcing "
+      "players to ignore each other. Sad, but a last resort."
 
    // Help strings for flagged commands.
    dm_help_turnoff_pk = \
@@ -335,7 +357,15 @@ resources:
       "turn it off.\nUse ~bdm spawn random~n to make monsters spawn in random "
       "locations on the screen (within walkable boundaries).\nUse ~bdm spawn "
       "generator~n to make monsters spawn at set points."
-
+   dm_help_forcedignore = \
+      "Use ~bdm forceignore add ~cplayer1~b, ~cplayer2~n to force two players "
+      "to ignore each other.\nUse ~bdm forceignore remove ~cplayer1~b, ~cplayer2~n "
+      "to allow two players to communicate again.\nUse ~bdm forceignore check "
+      " ~cplayer1~b, ~cplayer2~n to check if two players are forced to ignore "
+      "each other.\nUse ~bdm forceignore list ~cplayer~n to get a list of the "
+      "players that they are forced to ignore\nCommas must be used to separate "
+      "player names."
+      
    dm_dontinterfere = "~B~gYou should not try to interfere with the game."
 
    dm_moderator = "An official Moderator of the land.\n"
@@ -419,6 +449,9 @@ properties:
    pbSetLowRoll = FALSE
    piLowRoll = 0
    piHighRoll = 0
+
+   psIgnoreOne
+   psIgnoreTwo
 
 messages:
 
@@ -947,6 +980,12 @@ messages:
       return TRUE;
    }
 
+   /*AddForcedIgnore()
+   {
+      // Don't add DMs accidentally.
+      return;
+   }*/
+
    UserSay(string=$,type=$)
    {
       local i, oRoom, bPrevious, bMonster, lRooms;
@@ -1156,6 +1195,13 @@ messages:
       if (StringContain(string,dm_detect_invis))
       {
          Send(self,@DMSayDetectInvis,#string=string);
+
+         return;
+      }
+
+      if (StringContain(string,dm_forceignore_rsc))
+      {
+         Send(self,@DMSayForceIgnore,#string=string);
 
          return;
       }
@@ -1840,6 +1886,186 @@ messages:
       return;
    }
 
+   DMSayForceIgnore(string = $)
+   {
+      local oUserOne, oUserTwo;
+
+      // syntax is cmd player1, player2 (separated by comma)
+      if (string = $)
+      {
+         return FALSE;
+      }
+
+      if (StringContain(string, dm_forceignore_add_rsc))
+      {
+         if (NOT (piDMFlags & DMFLAG_ALLOW_FORCE_IGNORE))
+         {
+            Send(self,@MsgSendUser,#message_rsc=dm_forceignore_no_flag);
+            return FALSE;
+         }
+         StringSubstitute(string,dm_forceignore_add_rsc,"");
+         return Send(self,@DMSayForcedIgnoreAdd,#string=string);
+      }
+
+      if (StringContain(string, dm_forceignore_remove_rsc))
+      {
+         if (NOT (piDMFlags & DMFLAG_ALLOW_FORCE_IGNORE))
+         {
+            Send(self,@MsgSendUser,#message_rsc=dm_forceignore_no_flag);
+
+            return FALSE;
+         }
+
+         StringSubstitute(string,dm_forceignore_remove_rsc,"");
+         return Send(self,@DMSayForcedIgnoreRemove,#string=string);
+      }
+
+      if (StringContain(string, dm_forceignore_check_rsc))
+      {
+         StringSubstitute(string,dm_forceignore_check_rsc,"");
+         return Send(self,@DMSayForcedIgnoreCheck,#string=string);
+      }
+
+      if (StringContain(string, dm_forceignore_list_rsc))
+      {
+         StringSubstitute(string,dm_forceignore_list_rsc,"");
+         return Send(self,@DMSayForcedIgnoreList,#string=string);
+      }
+
+      return FALSE;
+   }
+
+   DMSayForcedIgnoreList(string = $)
+   {
+      local sNames, oUser;
+
+      oUser = Send(SYS,@FindUserByString,#string=string);
+      if (oUser = $)
+      {
+         Send(self,@MsgSendUser,#message_rsc=dm_forceignore_missing,
+               #parm1=system_ordinal_1);
+
+         return FALSE;
+      }
+
+      sNames = Send(oUser,@ListForcedIgnore);
+
+      if (sNames = $)
+      {
+         Send(self,@MsgSendUser,#message_rsc=dm_ignore_list_fail,
+               #parm1=Send(oUser,@GetTrueName),#type1=STRING_RESOURCE);
+
+         return FALSE;
+      }
+
+      Send(self,@MsgSendUser,#message_rsc=dm_ignore_list_success,
+            #parm1=Send(oUser,@GetTrueName),#type1=STRING_RESOURCE,
+            #parm2=sNames);
+
+      return TRUE;
+   }
+
+   DMSayForcedIgnoreAdd(string = $)
+   {
+      return Send(self,@DMForcedIgnoreParseTwo,#string=string,
+                  #sCallback=SetString($,@AddForcedIgnore),
+                  #rSuccess=dm_ignore_add_success,#rFail=dm_ignore_add_fail);
+   }
+
+   DMSayForcedIgnoreRemove(string = $)
+   {
+      return Send(self,@DMForcedIgnoreParseTwo,#string=string,
+                  #sCallback=SetString($,@RemoveForcedIgnore),
+                  #rSuccess=dm_ignore_rem_success,#rFail=dm_ignore_rem_fail);
+   }
+
+   DMSayForcedIgnoreCheck(string = $)
+   {
+      return Send(self,@DMForcedIgnoreParseTwo,#string=string,
+                  #sCallback=SetString($,@CheckForcedIgnore),
+                  #rSuccess=dm_ignore_chk_success,#rFail=dm_ignore_chk_fail);
+   }
+
+   DMForcedIgnoreParseTwo(string = $, sCallback = $, rSuccess = $, rFail = $)
+   {
+      local oUserOne, oUserTwo;
+
+      if (NOT IsString(sCallback)
+         OR rSuccess = $
+         OR rFail = $)
+      {
+         Debug("Bad params to DMForceIgnoreParseTwo",sCallback, rSuccess, rFail);
+
+         return FALSE;
+      }
+
+      psIgnoreOne = $;
+      psIgnoreTwo = $;
+
+      ParseString(string,",",@DMParseIgnore);
+
+      if (psIgnoreOne = $)
+      {
+         Send(self,@MsgSendUser,#message_rsc=dm_forceignore_missing,
+               #parm1=system_ordinal_1);
+
+         return FALSE;
+      }
+
+      if (psIgnoreTwo = $)
+      {
+         Send(self,@MsgSendUser,#message_rsc=dm_forceignore_missing,
+               #parm1=system_ordinal_2);
+
+         return FALSE;
+      }
+
+      oUserOne = Send(SYS,@FindUserByString,#string=psIgnoreOne);
+      if (oUserOne = $)
+      {
+         Send(self,@MsgSendUser,#message_rsc=dm_ignore_not_user,
+               #parm1=psIgnoreOne);
+
+         return FALSE;
+      }
+
+      oUserTwo = Send(SYS,@FindUserByString,#string=psIgnoreTwo);
+      if (oUserTwo = $)
+      {
+         Send(self,@MsgSendUser,#message_rsc=dm_ignore_not_user,
+               #parm1=psIgnoreTwo);
+
+         return FALSE;
+      }
+
+      if (Send(oUserOne,sCallback,#what=oUserTwo))
+      {
+         Send(self,@MsgSendUser,#message_rsc=rSuccess,
+               #parm1=psIgnoreOne,#parm2=psIgnoreTwo);
+      }
+      else
+      {
+         Send(self,@MsgSendUser,#message_rsc=rFail,
+               #parm1=psIgnoreOne,#parm2=psIgnoreTwo);
+      }
+
+      return TRUE;
+   }
+
+   DMParseIgnore(string = $)
+   {
+      if (psIgnoreOne = $)
+      {
+         psIgnoreOne = SetString($,string);
+      }
+      else
+      {
+         psIgnoreTwo = SetString($,string);
+      }
+
+      return;
+   }
+
    DMSayHelp(string=$)
    "Return TRUE if handled here, FALSE otherwise."
    {
@@ -1872,6 +2098,13 @@ messages:
       if StringEqual(string,dm_help_spawn_command)
       {
          Send(self,@MsgSendUser,#message_rsc=dm_help_spawn);
+
+         return TRUE;
+      }
+
+      if StringEqual(string,dm_help_forcedignore_command)
+      {
+         Send(self,@MsgSendUser,#message_rsc=dm_help_forcedignore);
 
          return TRUE;
       }

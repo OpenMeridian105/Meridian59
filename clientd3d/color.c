@@ -57,7 +57,8 @@ static char colorinfo[][15] = {
    {"192,192,192"},   /* COLOR_INVNUMFGD */
    {"0,0,0" },        /* COLOR_INVNUMBGD */
    {"255,80,0"},      /* COLOR_ITEM_MAGIC_FG */
-   {"0,196,50"}       /* COLOR_QUEST_HEADER */
+   {"0,196,50"},      /* COLOR_QUEST_HEADER */
+   {"150, 120, 120"}  /* COLOR_TIME_BORDER */
 };
 
 static char color_section[] = "Colors";  /* Section for colors in INI file */
@@ -364,6 +365,10 @@ HBRUSH MainCtlColor(HWND hwnd, HDC hdc, HWND hwndChild, int type)
 		//return (HBRUSH) FALSE;
 		return (HBRUSH) GetStockObject( BLACK_BRUSH );		//	xxx
 
+   case CTLCOLOR_STATIC: /* Transparent background for toolbar info text */
+      SetBkMode(hdc, TRANSPARENT);
+      SetTextColor(hdc, GetColor(COLOR_BGD));
+      return (HBRUSH)GetStockObject(HOLLOW_BRUSH);
 	default:
 		SelectPalette(hdc, hPal, FALSE);
 		SetTextColor(hdc, GetColor(COLOR_FGD));

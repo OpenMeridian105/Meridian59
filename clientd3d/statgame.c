@@ -39,6 +39,7 @@ void GameInit(void)
 
    LogoffTimerStart();
    PingTimerStart();
+   TimeboxTimerStart();
 
    /* Redraw background so we get texture */
    InvalidateRect(hMain, NULL, TRUE);
@@ -52,6 +53,7 @@ void GameExit(void)
    
    GameSetState(GAME_NONE);
 
+   TimeboxTimerAbort();
    AnimationTimerAbort();
    LogoffTimerAbort();
    PingTimerAbort();

@@ -28,6 +28,7 @@ enum {
    FONT_MAP_LABEL,
    FONT_MAP_TEXT,
    FONT_ABILITY_INFO,
+   FONT_TOOLBAR_INFO,       /* For toolbar info e.g. time, FPS */
    MAXFONTS,
 };
 

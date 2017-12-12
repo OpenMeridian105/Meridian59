@@ -155,7 +155,7 @@ BOOL CALLBACK PreferencesDialogProc(HWND hDlg, UINT message, UINT wParam, LONG l
 {
    static HWND hBrowser;
    static Bool browser_changed;
-   Bool toolbar_changed, lagbox_changed, temp;
+   Bool toolbar_changed, lagbox_changed, fps_changed, temp;
    CommSettings *comm = &config.comm;
    OPENFILENAME ofn;
    static char *dir;   // Working directory before dialog (OpenFile may change it)
@@ -321,7 +321,6 @@ BOOL CALLBACK PreferencesDialogProc(HWND hDlg, UINT message, UINT wParam, LONG l
          else
             config.preferences &= ~CF_SPELLPOWER;
 
-         config.showFPS       = IsDlgButtonChecked(hDlg, IDC_SHOWFPS);
          config.bounce        = IsDlgButtonChecked(hDlg, IDC_BOUNCE);
          config.weather       = IsDlgButtonChecked(hDlg, IDC_WEATHER);
          config.antiprofane   = IsDlgButtonChecked(hDlg, IDC_PROFANE);
@@ -336,6 +335,9 @@ BOOL CALLBACK PreferencesDialogProc(HWND hDlg, UINT message, UINT wParam, LONG l
          temp                 = IsDlgButtonChecked(hDlg, IDS_LATENCY0);
          lagbox_changed = (temp != config.lagbox);
          config.lagbox = temp;
+         temp                 = IsDlgButtonChecked(hDlg, IDC_SHOWFPS);
+         fps_changed = (temp != config.showFPS);
+         config.showFPS = temp;
 
          // Set music volume first, music might be turned off.
          new_val = Trackbar_GetPos(GetDlgItem(hDlg, IDC_MUSIC_VOLUME));
@@ -389,7 +391,7 @@ BOOL CALLBACK PreferencesDialogProc(HWND hDlg, UINT message, UINT wParam, LONG l
          config.colorcodes = IsDlgButtonChecked(hDlg, IDC_COLORCODES);
 
          // Redraw main window to reflect new settings
-         if (toolbar_changed || lagbox_changed)
+         if (toolbar_changed || lagbox_changed || fps_changed)
          {
             ResizeAll();
          }

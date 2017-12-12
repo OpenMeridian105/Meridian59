@@ -187,6 +187,7 @@ M59EXPORT void _cdecl dprintf(char *fmt,...);
 #include "tooltip.h"
 #include "lagbox.h"
 #include "timebox.h"
+#include "fpsbox.h"
 #include "transfer.h"
 #include "hook.h"
 #include "web.h"

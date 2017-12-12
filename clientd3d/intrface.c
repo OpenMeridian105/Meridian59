@@ -40,6 +40,7 @@ void InterfaceInitialize(HWND hParent)
    TooltipCreate();
    Timebox_Create();
    Lagbox_Create();
+   Fpsbox_Create();
 
    MapAnnotationsInitialize();
    
@@ -78,6 +79,7 @@ void InterfaceClose(void)
    TooltipDestroy();
    Timebox_Destroy();
    Lagbox_Destroy();
+   Fpsbox_Destroy();
    
    //InvalidateRect(hMain, NULL, TRUE);
    interface_created = False;
@@ -121,6 +123,7 @@ void InterfaceResize(int xsize, int ysize)
    ToolbarResize(xsize, ysize, view);
    Lagbox_Reposition();
    Timebox_Reposition();
+   Fpsbox_Reposition();
 
    RedrawAll();
 

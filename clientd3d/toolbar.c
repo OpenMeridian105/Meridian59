@@ -132,6 +132,7 @@ Bool __cdecl ToolbarAddButton(AddButton *s)
 
    Lagbox_Reposition();
    Timebox_Reposition();
+   Fpsbox_Reposition();
 
    return True;
 }

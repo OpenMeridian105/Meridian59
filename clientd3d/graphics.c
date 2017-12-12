@@ -324,7 +324,6 @@ void RedrawForce(void)
    static DWORD lastEndFrame = 0;
    DWORD endFrame, startFrame;
    int totalFrameTime;
-   char buffer[32];
 
    if (!GetGameDataValid() || GameGetState() == GAME_INVALID
       || /*!need_redraw ||*/ IsIconic(hMain)
@@ -354,7 +353,7 @@ void RedrawForce(void)
    if (1 > totalFrameTime)
 	   totalFrameTime = 1;
    fps = 1000 / (int)totalFrameTime;
-   if (timeGetTime() >= fpsDrawTime + 250)
+   if (timeGetTime() >= fpsDrawTime + 500)
    {
       fpsCount = fps;
       msDrawFrameCount = msDrawFrame;
@@ -375,39 +374,10 @@ void RedrawForce(void)
    // Try to redraw new graphics
    //gD3DRedrawAll |= D3DRENDER_REDRAW_ALL;
 
+   // Show FPS if enabled.
    if (config.showFPS)
-   {
-      RECT rc, timeBox, borderRect;
-      wsprintf(buffer, "FPS: %d (%dms)", fpsCount, msDrawFrameCount);
-      ZeroMemory(&rc, sizeof(rc));
+      SetFPSDisplay(fpsCount, msDrawFrameCount);
 
-      // Set boundaries.
-      rc.bottom = DrawText(hdc, buffer, -1, &rc, DT_SINGLELINE | DT_CALCRECT | DT_NOCLIP);
-      Timebox_GetRect(&timeBox);
-      OffsetRect(&rc, timeBox.right + TOOLBAR_SEPARATOR_WIDTH * 3, timeBox.top);
-
-      // Grey border.
-      borderRect.bottom = rc.bottom + 3;
-      borderRect.top = rc.top - 3;
-      borderRect.left = rc.left - 3;
-      borderRect.right = rc.right + 3;
-      FillRect(hdc, &borderRect, GetBrush(COLOR_TIME_BORDER));
-
-      // Background.
-      DrawWindowBackground(hdc, &rc, rc.left, rc.top);
-      int oldMode = SetBkMode(hdc, TRANSPARENT);
-
-      // Text.
-      HFONT old_font = GetWindowFont(hMain);
-      SelectFont(hdc, GetFont(FONT_TOOLBAR_INFO));
-      DrawText(hdc, buffer, -1, &rc, DT_SINGLELINE | DT_NOCLIP);
-
-      // Replace old font/background.
-      SelectFont(hdc, old_font);
-      SetBkMode(hdc, oldMode);
-
-      GdiFlush();
-   }
    ReleaseDC(hMain, hdc);
 
    GameWindowSetCursor();   // We may have moved; reset cursor

@@ -122,6 +122,7 @@ OBJS = \
     $(OUTDIR)\objdraw.obj \
     $(OUTDIR)\lagbox.obj \
     $(OUTDIR)\timebox.obj \
+    $(OUTDIR)\fpsbox.obj \
     $(OUTDIR)\regexpr.obj \
     $(OUTDIR)\fixed.obj \
     $(OUTDIR)\d3dcache.obj \

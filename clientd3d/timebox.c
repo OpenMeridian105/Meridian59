@@ -67,6 +67,7 @@ void DrawTimeboxBackground()
 
    FillRect(hdcTimebox, &borderRect, GetBrush(COLOR_TIME_BORDER));
    DrawWindowBackground(hdcTimebox, &rect, rect.left, rect.top);
+   ReleaseDC(hwndTimebox, hdcTimebox);
 }
 /****************************************************************************/
 /*

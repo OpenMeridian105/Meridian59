@@ -88,6 +88,7 @@ resources:
 
    player_cant_broadcast = \
       "You can't broadcast a message--you don't have enough mana."
+   player_broadcasts_off = "The broadcast channel is currently muted."
    player_squelched = "You are prevented from communicating for now."
    player_cant_send = \
       "You can't send this message--you don't have enough mana."
@@ -3822,8 +3823,18 @@ messages:
          return FALSE;
       }
 
+      // Percent, 0-100 (101+ means broadcasts off).
+      iCost = Send(SETTINGS_OBJECT,@GetBroadcastManaCost);
+
+      if (iCost > 100)
+      {
+         Send(self,@MsgSendUser,#message_rsc=player_broadcasts_off);
+
+         return FALSE;
+      }
+
       // Don't need to divide by 100 as piMana is scaled by a factor of 100.
-      iCost = piMax_mana * Send(SETTINGS_OBJECT,@GetBroadcastManaCost);
+      iCost *= piMax_mana;
 
       if (iCost > 0)
       {
@@ -3835,7 +3846,7 @@ messages:
          }
 
          // Override so phased players lose mana too.
-         Send(self,@LoseMana,#amount=iCost,#override=TRUE);
+         Send(self,@LoseMana,#amount=iCost,#precision=TRUE,#override=TRUE);
       }
 
       return TRUE;

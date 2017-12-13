@@ -356,7 +356,7 @@ void DrawDebugDataInBorder(char *data)
    HDC hdc = GetDC(hMain);
    ZeroMemory(&rc, sizeof(rc));
    rc.bottom = DrawText(hdc, use_data, -1, &rc, DT_SINGLELINE | DT_CALCRECT | DT_NOCLIP);
-   Lagbox_GetRect(&fpsbox);
+   Fpsbox_GetRect(&fpsbox);
    OffsetRect(&rc, fpsbox.right + 15, fpsbox.top);
    DrawWindowBackground(hdc, &rc, rc.left, rc.top);
    int oldMode = SetBkMode(hdc, TRANSPARENT);

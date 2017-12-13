@@ -304,6 +304,13 @@ enum {
    CC_INVALID_GENDER = 13,
 };
 
+// Login data flags
+#define LF_HARDWARE_RENDERER 0x0001
+#define LF_LARGE_GRAPHICS    0x0002
+#define LF_MUSIC_ON          0x0004
+#define LF_DYNAMIC_LIGHTING  0x0008
+#define LF_WEATHER_EFFECTS   0x0010
+
 // Login error action constants
 #define LA_NOTHING   0
 #define LA_LOGOFF    1

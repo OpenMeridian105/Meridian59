@@ -41,11 +41,12 @@ void ParseClientSendBlakod(int session_id,int msg_len,unsigned char *msg_data,in
 inline void ParseClientSendBlakodError(int err_type, int session_id, int data, int protocol, int parm)
 {
    session_node *s = GetSessionByID(session_id);
-   int client_version = 0, account_id = 0;
+   int client_version = 0, client_major = 0, account_id = 0;
 
    if (s)
    {
       client_version = s->version_minor + 100 * s->version_major;
+      client_major = s->version_major;
       if (s->account)
          account_id = s->account->account_id;
    }
@@ -60,8 +61,10 @@ inline void ParseClientSendBlakodError(int err_type, int session_id, int data, i
    case LENGTH_ERROR1:
    case LENGTH_ERROR2:
    case LENGTH_ERROR3:
-      eprintf("ParseClientSendBlakod %i got invalid short message len %i, protocol %i, cli parm %i, cli vers %i, acct id %i\n",
-         err_type - 3, data, protocol, parm, client_version, account_id);
+      // Only print for Classic/Ogre, bots might be using an outdated (mass-error generating) client.
+      if (client_major == 5 || client_major == 9)
+         eprintf("ParseClientSendBlakod %i got invalid short message len %i, protocol %i, cli parm %i, cli vers %i, acct id %i\n",
+            err_type - 3, data, protocol, parm, client_version, account_id);
       break;
    case OBJECT_LIST_ERROR:
       eprintf("ParseClientSendBlakod got invalid obj ref %i in a list, protocol %i, cli parm %i, cli vers %i, acct id %i\n",

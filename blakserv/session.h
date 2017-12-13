@@ -93,7 +93,7 @@ typedef struct
    int os_type;
    int os_version_major;
    int os_version_minor;
-   int machine_ram;
+   int flags;
    int machine_cpu;
    short screen_x;
    short screen_y;

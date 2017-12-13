@@ -57,7 +57,7 @@ typedef struct {
    int  platform;           // Operating system identifier
    int  platform_major;     // Major version of OS
    int  platform_minor;     // Minor version of OS
-   int  memory;             // Amount of physical memory, in bytes
+   int  flags;              // Client info (e.g. render mode)
    int chip;                // Chip type
    WORD screen_width;
    WORD screen_height;

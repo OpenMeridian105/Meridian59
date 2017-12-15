@@ -662,6 +662,24 @@ void D3DRenderBegin(room_type *room, Draw3DParams *params)
    /*                             PREPARATIONS                                */
    /***************************************************************************/
 
+   // Check if we have the D3D device.
+   // https://msdn.microsoft.com/en-us/library/windows/desktop/bb174472(v=vs.85).aspx
+   hr = IDirect3DDevice9_TestCooperativeLevel(gpD3DDevice);
+
+   // Device needs to be reset, but can be used afterwards.
+   if (hr == D3DERR_DEVICENOTRESET)
+   {
+      D3DRenderReset();
+      // Test again, in case the reset failed.
+      hr = IDirect3DDevice9_TestCooperativeLevel(gpD3DDevice);
+   }
+
+   // Just return if not OK (should potentially handle D3DERR_DRIVERINTERNALERROR
+   // by switching to software, but drawing nothing is fine for now.
+   if (hr != D3D_OK)
+      return;
+
+
    // If blind, don't draw anything
    if (effects.blind)
    {
@@ -1374,19 +1392,6 @@ void D3DRenderBegin(room_type *room, Draw3DParams *params)
    rect.right = gScreenWidth;
 
    hr = IDirect3DDevice9_Present(gpD3DDevice, &rect, &gD3DRect, NULL, NULL);
-
-   if (hr == D3DERR_DEVICELOST)
-   {
-      // Keep checking until we can reset.
-      while (hr == D3DERR_DEVICELOST)
-         hr = IDirect3DDevice9_TestCooperativeLevel(gpD3DDevice);
-
-      // completely shutdown & restart D3D9
-      if (hr == D3DERR_DEVICENOTRESET)
-      {      
-         D3DRenderReset();
-      }
-   }
 
    timeOverall = timeGetTime() - timeOverall;
 

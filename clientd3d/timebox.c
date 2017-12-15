@@ -58,9 +58,18 @@ int GetMeridianTime()
 void DrawTimeboxBackground()
 {
    RECT rect;
-   HDC hdcTimebox = GetDC(hwndTimebox);
-   GetClientRect(hwndTimebox, &rect);
 
+   if (hwndTimebox == NULL)
+      return;
+
+   HDC hdcTimebox = GetDC(hwndTimebox);
+   if (hdcTimebox == NULL)
+      return;
+
+   BOOL res = GetClientRect(hwndTimebox, &rect);
+   if (!res)
+      return;
+   
    // Optional colored border.
    /*RECT borderRect;
    borderRect.bottom = rect.bottom + 3;
@@ -78,6 +87,9 @@ void DrawTimeboxBackground()
  */
 void SetMeridianTime()
 {
+   if (hwndTimebox == NULL)
+      return;
+
    char time_combined[80];
    int game_time = GetMeridianTime();
 

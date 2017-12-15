@@ -29,9 +29,18 @@ static LRESULT CALLBACK Fpsbox_WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPAR
  */
 void DrawFPSboxBackground()
 {
+   if (hwndFpsbox == NULL)
+      return;
+
    RECT rect;
    HDC hdcFpsbox = GetDC(hwndFpsbox);
-   GetClientRect(hwndFpsbox, &rect);
+
+   if (hdcFpsbox == NULL)
+      return;
+
+   BOOL res = GetClientRect(hwndFpsbox, &rect);
+   if (!res)
+      return;
 
    // Optional colored border.
    /*RECT borderRect;
@@ -52,7 +61,7 @@ void SetFPSDisplay(int fps, int frameTime)
 {
    char fps_combined[80];
 
-   if (!config.showFPS)
+   if (!config.showFPS || hwndFpsbox == NULL)
       return;
 
    // Don't redraw if the number is the same.

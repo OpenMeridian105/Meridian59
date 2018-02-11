@@ -2542,6 +2542,7 @@ messages:
       Send(self,@CreateOneRoomIfNew,#num=RID_GUILDH13,#class=&GuildHall13);
       Send(self,@CreateOneRoomIfNew,#num=RID_GUILDH14,#class=&GuildHall14);
       Send(self,@CreateOneRoomIfNew,#num=RID_GUILDH15,#class=&GuildHall15);
+      Send(self,@CreateOneRoomIfNew,#num=RID_GUILDH16,#class=&GuildHall16);
 
       Send(self,@CreateOneRoomIfNew,#num=RID_TEMPLE_KRAANAN,#class=&TempleKraanan);
       Send(self,@CreateOneRoomIfNew,#num=RID_TEMPLE_QOR,#class=&TempleQor);
@@ -4901,6 +4902,13 @@ messages:
    {
       if hall <> $ AND IsClass(hall,&GuildHall)
       {
+         if (Send(hall,@GetRoomNum) > RID_GUILDH_MAX)
+         {
+            // Don't add halls above this number, could be
+            // inaccessible for now.
+            return TRUE;
+         }
+
          plGuild_halls = Cons(hall,plGuild_halls);
 
          return TRUE;
@@ -4923,6 +4931,14 @@ messages:
 
             return TRUE;
          }
+      }
+
+      if (hall <> $
+         AND Send(hall,@GetRoomNum) > RID_GUILDH_MAX)
+      {
+         // These ones are okay, inaccessible halls aren't added
+         // to plGuild_halls in the first place.
+         return TRUE;
       }
 
       Debug("Tried to remove a guild hall that was not in plGuild_halls!");

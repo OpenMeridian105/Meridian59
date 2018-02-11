@@ -1,0 +1,109 @@
+// Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+// All rights reserved.
+//
+// This software is distributed under a license that is described in
+// the LICENSE file that accompanies it.
+//
+// Meridian is a registered trademark.
+
+
+////////////////////////////////////////////////////////////////////////////////
+Berg1 is MonsterRoom
+
+constants:
+
+   include blakston.khd
+
+resources:
+
+   include berg1.lkod
+
+   room_berg1 = berg1.roo
+   room_name_berg1 = "Outskirts of Berg"
+
+   berg1_music = walk8.ogg
+
+classvars:
+
+   vrName = room_name_berg1
+
+   viTeleport_row = 10
+   viTeleport_col = 24
+   
+   viFlag_row = 9
+   viFlag_col = 12
+   
+   viWeatherZone = WEATHER_ZONE_BERG
+
+properties:
+
+   viTerrain_type = TERRAIN_FOREST | TERRAIN_RIVER | TERRAIN_ROAD | TERRAIN_HILLS
+
+   prRoom = room_berg1
+   piRoom_num = RID_BERG_1
+   prMusic = berg1_music
+   
+   piBaseLight = LIGHT_NICE
+   piOutside_factor = 8
+
+   piDirectional_percent = DIRECTIONAL_PERCENT_OUTDOORS
+
+   pbSnowGroundTexture = TRUE
+
+   piGen_percent = 70
+
+   piInit_count_min = 3
+   piInit_count_max = 5
+
+   piMonster_count_max = 5
+
+messages:
+
+   CreateStandardExits()
+   {
+   
+      plExits = $;
+
+      plEdge_Exits = $;
+
+      plEdge_Exits = Cons([ LEAVE_SOUTH, RID_BERG_MG, 2, 10, ROTATE_NONE, COL_IS_LESS_THAN, 12 ], plEdge_exits);  
+      plEdge_Exits = Cons([ LEAVE_SOUTH, RID_BERG_MG, 2, 20, ROTATE_NONE, COL_IS_GREATER_THAN, 12 ], plEdge_exits);
+      plEdge_Exits = Cons([ LEAVE_NORTH, RID_BERG_2, 20, 42, ROTATE_NONE, COL_IS_LESS_THAN, 44 ], plEdge_exits);  
+      plEdge_Exits = Cons([ LEAVE_NORTH, RID_BERG_2, 20, 48, ROTATE_NONE, COL_IS_GREATER_THAN, 44 ], plEdge_exits);
+
+      propagate;
+   }
+   
+   Constructed()
+   {
+      plMonsters = [ [&GiantRat, 60], [&Centipede, 40] ];
+
+      plGenerators = [ [4, 44], [11, 47], [11, 34], [10, 23], [8, 12],
+            [7, 4], [10, 42] ];
+ 
+      propagate;
+   }
+   
+   CreateStandardObjects()
+   {
+
+      // Trees
+      Send(self,@NewHold,#what=Create(&Tree),
+         #new_row=13,#new_col=17,#fine_row=0,#fine_col=0,#angle=ANGLE_EAST);
+      Send(self,@NewHold,#what=Create(&Tree),
+         #new_row=14,#new_col=31,#fine_row=0,#fine_col=32,#angle=ANGLE_EAST);
+      Send(self,@NewHold,#what=Create(&Tree),
+         #new_row=3,#new_col=35,#fine_row=32,#fine_col=32,#angle=ANGLE_EAST);
+      Send(self,@NewHold,#what=Create(&Tree),
+         #new_row=12,#new_col=49,#fine_row=32,#fine_col=32,#angle=ANGLE_EAST);
+      Send(self,@NewHold,#what=Create(&Tree),
+         #new_row=3,#new_col=52,#fine_row=0,#fine_col=0,#angle=ANGLE_EAST);
+ 
+      Send(self,@NewHold,#what=Create(&DynamicLight,#iColor=LIGHT_FIRE,#iIntensity=30),
+         #new_row=15,#new_col=47,#fine_row=44,#fine_col=56);
+
+      propagate;
+   }
+
+end
+////////////////////////////////////////////////////////////////////////////////

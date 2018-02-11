@@ -1,0 +1,101 @@
+// Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+// All rights reserved.
+//
+// This software is distributed under a license that is described in
+// the LICENSE file that accompanies it.
+//
+// Meridian is a registered trademark.
+
+
+////////////////////////////////////////////////////////////////////////////////
+Berg3 is MonsterRoom
+
+constants:
+
+   include blakston.khd
+
+resources:
+
+   include berg3.lkod
+
+   room_berg3 = berg3.roo
+   room_name_berg3 = "Gorge of Berg"
+
+   berg3_music = walk8.ogg
+
+classvars:
+
+   vrName = room_name_berg3
+
+   viTeleport_row = 20
+   viTeleport_col = 12
+   
+   viFlag_row = 13
+   viFlag_col = 21
+      
+   viWeatherZone = WEATHER_ZONE_BERG
+
+properties:
+
+   viTerrain_type = TERRAIN_FOREST | TERRAIN_RIVER | TERRAIN_ROAD | TERRAIN_HILLS
+
+   prRoom = room_berg3
+   piRoom_num = RID_BERG_3
+   prMusic = berg3_music
+   
+   piBaseLight = LIGHT_NICE
+   piOutside_factor = 8
+
+   piDirectional_percent = DIRECTIONAL_PERCENT_OUTDOORS
+
+   pbSnowGroundTexture = TRUE
+
+   piGen_percent = 70
+
+   piInit_count_min = 3
+   piInit_count_max = 4
+
+   piMonster_count_max = 7
+
+messages:
+
+   CreateStandardExits()
+   {
+      plEdge_Exits = $;
+
+      plEdge_Exits = Cons([ LEAVE_EAST, RID_BERG_2, 10, 2, ROTATE_NONE, ROW_IS_LESS_THAN, 7 ], plEdge_exits);  
+      plEdge_Exits = Cons([ LEAVE_EAST, RID_BERG_2, 13, 2, ROTATE_NONE, ROW_IS_GREATER_THAN, 7 ], plEdge_exits);
+      plEdge_Exits = Cons([ LEAVE_WEST, RID_BERG_5, 13, 35, ROTATE_NONE ], plEdge_exits);
+      plEdge_Exits = Cons([ LEAVE_SOUTH, RID_BERG_3_CAVE, 2, 22, ROTATE_NONE ], plEdge_exits);  
+
+      propagate;
+   }
+   
+   Constructed()
+   {
+      plMonsters = [ [&Troll, 100] ];
+
+      plGenerators = [ [19, 3], [12, 7], [20, 9], [27, 6], [23, 14],
+            [25, 17], [9, 19] ];
+ 
+      propagate;
+   }
+   
+   CreateStandardObjects()
+   {
+
+      // Trees
+      Send(self,@NewHold,#what=Create(&Tree),
+         #new_row=22,#new_col=4,#fine_row=32,#fine_col=16,#angle=ANGLE_EAST);
+      Send(self,@NewHold,#what=Create(&Tree),
+         #new_row=18,#new_col=2,#fine_row=0,#fine_col=16,#angle=ANGLE_EAST);
+      Send(self,@NewHold,#what=Create(&Tree),
+         #new_row=4,#new_col=24,#fine_row=32,#fine_col=16,#angle=ANGLE_EAST);
+      Send(self,@NewHold,#what=Create(&Tree),
+         #new_row=6,#new_col=16,#fine_row=32,#fine_col=48,#angle=ANGLE_EAST);
+
+      propagate;
+   }
+
+end
+////////////////////////////////////////////////////////////////////////////////

@@ -1,0 +1,93 @@
+// Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+// All rights reserved.
+//
+// This software is distributed under a license that is described in
+// the LICENSE file that accompanies it.
+//
+// Meridian is a registered trademark.
+
+
+////////////////////////////////////////////////////////////////////////////////
+Jixa3 is MonsterRoom
+
+constants:
+
+   include blakston.khd
+
+resources:
+
+   include jixa3.lkod
+
+   room_ji3 = ji3.roo
+   room_name_ji3 = "Outskirts of Jixa 3"
+
+   ji3_music = walkjixa.ogg
+
+classvars:
+
+   vrName = room_name_ji3
+
+   viTeleport_row = 21
+   viTeleport_col = 10
+   
+   viWeatherZone = WEATHER_ZONE_JIXA
+
+properties:
+
+   viTerrain_type = TERRAIN_FOREST | TERRAIN_ROAD | TERRAIN_HILLS
+
+   prRoom = room_ji3
+   piRoom_num = RID_JIXA_3
+   prMusic = ji3_music
+   
+   piBaseLight = LIGHT_NICE
+   piOutside_factor = 8
+
+   piDirectional_percent = DIRECTIONAL_PERCENT_OUTDOORS
+
+   pbSnowGroundTexture = TRUE
+
+   piGen_percent = 70
+
+   piInit_count_min = 5
+   piInit_count_max = 6
+
+   piMonster_count_max = 7
+
+messages:
+
+   CreateStandardExits()
+   {
+      plEdge_Exits = $;
+
+      plEdge_Exits = Cons([ LEAVE_EAST, RID_JIXA, 17, 2, ROTATE_NONE ], plEdge_exits);
+      plEdge_Exits = Cons([ LEAVE_WEST, RID_JIXA_2, 12, 46, ROTATE_NONE ], plEdge_exits);
+
+      propagate;
+   }
+   
+   Constructed()
+   {   
+       plMonsters = [ [&Chupacabra, 100] ];
+
+       // Use Random Spawn
+       // plGenerators = [ [28, 4], [28, 17], [20, 21], [14, 14], [7, 12], [21, 14] ];
+
+       propagate;
+   }
+   
+   CreateStandardObjects()
+   {
+   
+      Send(self,@NewHold,#what=Create(&OrnamentalObject,#type=OO_RAZA_TREE1),#new_row=7,#new_col=13,
+         #fine_row=0,#fine_col=0,#new_angle=ANGLE_EAST);
+      Send(self,@NewHold,#what=Create(&OrnamentalObject,#type=OO_RAZA_TREE1),#new_row=36,#new_col=8,
+         #fine_row=0,#fine_col=0,#new_angle=ANGLE_EAST);
+      Send(self,@NewHold,#what=Create(&OrnamentalObject,#type=OO_RAZA_TREE1),#new_row=17,#new_col=23,
+         #fine_row=0,#fine_col=0,#new_angle=ANGLE_EAST);
+
+      propagate;
+   }
+
+end
+////////////////////////////////////////////////////////////////////////////////

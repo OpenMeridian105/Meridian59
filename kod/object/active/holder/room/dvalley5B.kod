@@ -1,0 +1,240 @@
+// Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+// All rights reserved.
+//
+// This software is distributed under a license that is described in
+// the LICENSE file that accompanies it.
+//
+// Meridian is a registered trademark.
+
+
+////////////////////////////////////////////////////////////////////////////////
+DValley5B is Room
+
+constants:
+
+   include blakston.khd
+
+   HOURS_PER_TOY = 100
+
+resources:
+
+   include dvalley5b.lkod
+
+   room_dvalley5b = dvalley5b.roo
+   room_name_dvalley5b = "Underbasement Death Valley"
+
+   dvalley5b_music = cave.ogg
+   
+   dv_climb_crates_rsc = "You climb up on the crate."
+   dv_dungeon_climb_down_rsc = "You jump down off the crate."
+   dv_search_crates_rsc = "You rummage around in an open crate."
+   dv_found_in_crate_rsc = "You find something of interest!"
+
+classvars:
+
+   vrName = room_name_dvalley5b
+
+   viTeleport_row = 3
+   viTeleport_col = 11
+   
+   viTerrain_Type = TERRAIN_SEWERS | TERRAIN_CASTLE
+
+properties:
+
+   prRoom = room_dvalley5b
+   piRoom_num = RID_DVALLEY_5B
+   prMusic = dvalley5b_music
+   
+   piBaseLight = 80
+   piOutside_factor = 0
+
+   piHoursCounter = HOURS_PER_TOY
+   poLastFinder = $
+
+   plFind = $
+
+messages:
+
+   CreateStandardExits()
+   {
+      plExits = $;
+
+      plExits = Cons([ 5, 15, RID_DVALLEY_5, 37, 20, ROTATE_180],plExits);
+
+      return;
+   }
+   
+   
+   CreateStandardObjects()
+   {
+   
+      if plFind = $
+      {
+         plFind = [ &TrueLute,
+                    &Tanktop,
+                    &ShrunkenHead,
+                    &Book,
+                    &Rose,
+                    &GuildShield,
+                    &AphrodesiacPotion,
+                    &LabeledWand,
+                    &SpiderBaby,
+                    &NarthylWorm,
+                    &Junk ];
+      }
+
+      Send(self,@NewHold,#what=Create(&DynamicLight,#iColor=LIGHT_FIRE,#iIntensity=30),
+           #new_row=1,#new_col=6,#fine_row=44,#fine_col=0);
+      Send(self,@NewHold,#what=Create(&DynamicLight,#iColor=LIGHT_FIRE,#iIntensity=30),
+           #new_row=1,#new_col=11,#fine_row=44,#fine_col=32);
+
+
+      Send(self,@NewHold,#what=Create(&OrnamentalObject,#type=OO_HALFSKULL),
+           #new_row=1,#new_col=15,#fine_row=48,#fine_col=0,#angle=ANGLE_EAST);
+      Send(self,@NewHold,#what=Create(&Skull),
+           #new_row=6,#new_col=9,#fine_row=56,#fine_col=56,#angle=ANGLE_EAST);      
+      Send(self,@NewHold,#what=Create(&OrnamentalObject,#type=OO_HALFSKULL),
+           #new_row=3,#new_col=4,#fine_row=48,#fine_col=56,#angle=ANGLE_EAST);
+      Send(self,@NewHold,#what=Create(&Skull),
+           #new_row=1,#new_col=2,#fine_row=48,#fine_col=56,#angle=ANGLE_EAST);      
+      Send(self,@NewHold,#what=Create(&OrnamentalObject,#type=OO_HALFSKULL),
+           #new_row=6,#new_col=15,#fine_row=8,#fine_col=0,#angle=ANGLE_EAST);
+
+      propagate;
+   }
+   
+   RecalcLightAndWeather()
+   {
+      --piHoursCounter;
+
+      propagate;
+   }
+
+   SomethingTryGo(what = $,row = $,col = $)
+   {
+      local find, iNewRow, iNewCol;
+
+      if (row = 5) AND (col = 4)
+      {
+         Send(SYS,@UtilGoNearSquare,#what=what,#where=self,#new_row=4,#new_col=4);
+         Send(what,@MsgSendUser,#message_rsc=climb_crates_rsc);
+
+         return TRUE;
+      }
+
+      // Rummaging around in the crate.
+      // If it's not the last person who found something, and enough time
+      // has elapsed, "find" (create) something of interest for them.
+      //
+      // The plFind is a list of classes.
+      // We create one instance of a randomly chosen class.
+      // If it's an item, we give it to them.
+      // Some items have special properties, such as random coloring.
+      // If it's a monster, we generate it at their feet.
+
+      if (row = 4) AND (col = 4)
+      {
+         Send(what,@MsgSendUser,#message_rsc=search_crates_rsc);
+
+         // Have to post this here, happens no matter what after the rest.
+         Post(self,@RemovePlayerFromCrate,#who=what);
+
+         if what = poLastFinder
+         {
+            return TRUE;
+         }
+
+         if piHoursCounter < 0
+         {
+            piHoursCounter = HOURS_PER_TOY + Random(0,100) - 50;
+
+            if plFind = $
+            {
+               return TRUE;
+            }
+
+            if Length(plFind) > 0
+            {
+               find = Nth(plFind,Random(1,Length(plFind)));
+            }
+            else
+            {
+               find = plFind;
+            }
+
+            if find = $
+            {
+               return TRUE;
+            }
+
+            find = Create(find);
+
+            if find = $
+            {
+               return TRUE;
+            }
+
+            Send(what,@MsgSendUser,#message_rsc=found_in_crate_rsc);
+            poLastFinder = what;
+
+            if IsClass(find,&Item)
+            {
+               if IsClass(find,&Tanktop)
+               {
+                  Send(find,@Exotic);
+               }
+               if IsClass(find,&ShirtBase)
+               {
+                  Send(find,@Randomize);
+               }
+               if IsClass(find,&GuildShield)
+               {
+                  Send(find,@Randomize);
+               }
+
+               Send(what,@NewHold,#what=find);
+            }
+
+            if IsClass(find,&Monster)
+            {
+               // Offset the monster a bit so that it appears, instead of
+               // trying to fit two things in the same space.
+               iNewRow = 4;
+               iNewCol = 5;
+
+               if Send(self,@ReqNewHold,#what=find,#new_row=iNewRow,#new_col=iNewCol)
+                  AND Send(self,@ReqSomethingMoved,#what=find,#new_row=iNewRow,#new_col=iNewCol)
+               {
+                  Send(self,@NewHold,#what=find,#new_row=iNewRow,#new_col=iNewCol);
+               }
+               else
+               {
+                  Send(find,@Delete);
+                  find = $;
+               }
+            }
+         }
+
+         return TRUE;
+      }
+
+      propagate;
+   }
+
+   RemovePlayerFromCrate(who = $)
+   {
+      if (who = $
+         OR Send(who,@GetOwner) <> self)
+      {
+         return;
+      }
+
+      // Port the player off the crate
+      Send(SYS,@UtilGoNearSquare,#what=who,#where=self,#new_row=2,#new_col=5);
+      Send(who,@MsgSendUser,#message_rsc=dungeon_climb_down_rsc);
+
+      return;
+   }
+
+end
+////////////////////////////////////////////////////////////////////////////////

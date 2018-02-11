@@ -1,0 +1,121 @@
+// Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+// All rights reserved.
+//
+// This software is distributed under a license that is described in
+// the LICENSE file that accompanies it.
+//
+// Meridian is a registered trademark.
+
+
+////////////////////////////////////////////////////////////////////////////////
+BergBlacksmith is BergTown
+
+constants:
+
+   include blakston.khd
+
+resources:
+
+   include bergsmithm.lkod
+
+   BergBlacksmith_name_rsc = "Berg Smith"
+   BergBlacksmith_icon_rsc = bergsmith.bgf
+   BergBlacksmith_desc_rsc = \
+      "This is the smith of Berg."
+
+   BergBla_entry_welcome = "Hello %s%s, and welcome."
+
+   BergBla_island_items = "I don't deal with nerudite garbage."
+
+classvars:
+
+   vrName = BergBlacksmith_name_rsc
+   vrIcon = BergBlacksmith_icon_rsc
+   vrDesc = BergBlacksmith_desc_rsc
+   viAttributes = \
+      MOB_NOFIGHT | MOB_SELLER | MOB_BUYER | MOB_RANDOM \
+      | MOB_NOMOVE | MOB_LISTEN | MOB_TEACHER
+   viOccupation = MOB_ROLE_BLACKSMITH
+   viMerchant_markup = MERCHANT_BARGAIN
+
+messages:
+
+   AffectMood(what=$,why=$)
+   {
+      if why = MOODMOD_DAWN
+      {
+         Send(self,@SetMood,#new_mood=piMood-2);
+
+         return;
+      }
+
+      if why = MOODMOD_DUSK
+      {
+         Send(self,@SetMood,#new_mood=piMood+2);
+
+         return;
+      }
+
+      if why = MOODMOD_SELL_ITEM
+      {
+         Send(self,@SetMood,#new_mood=piMood+3);
+      }
+
+      return;
+   }
+
+
+   ObjectDesired(what=$)
+   {
+      if Send(what,@CanBeGiventoNPC)
+         AND (Send(Self,@IsObjectWeapon,#what=what)
+            OR Send(Self,@IsObjectWearable,#what=what))
+      {
+         if IsClass(what,&NeruditeSword)
+            OR IsClass(what,&NeruditeArmor)
+            OR IsClass(what,&NeruditeBow)
+         {
+            Send(poOwner,@SomeoneSaid,#what=self,
+                  #string=BergBla_island_items,#type=SAY_RESOURCE);
+
+            return FALSE;
+         }
+
+         return TRUE;
+      }
+
+      return FALSE;
+   }
+
+   SetForSale()
+   {
+      plFor_sale = [
+         [ 
+            Create(&ScaleArmor),
+            Create(&LeatherArmor),
+            Create(&GoldShield),
+            Create(&ShortSword),
+            Create(&Hammer),
+            Create(&Mace)
+         ],
+         $,$,$];
+
+      return;
+   }
+
+   UserEntered(who=$)
+   {
+      if Send(who,@CheckPlayerFlag,#flag=PFLAG_OUTLAW)
+      {
+         Send(self,@SetMood,#new_mood=piMood+2);
+      }
+
+      Post(who,@SomeoneSaid,#what=self,#string=BergBla_entry_welcome,
+           #type=SAY_RESOURCE,#parm1=Send(who,@GetDef),
+           #parm2=Send(who,@GetName));
+
+      return;
+   }
+
+end
+////////////////////////////////////////////////////////////////////////////////

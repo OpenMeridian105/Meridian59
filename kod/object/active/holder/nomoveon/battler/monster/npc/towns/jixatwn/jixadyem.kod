@@ -1,0 +1,69 @@
+// Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+// All rights reserved.
+//
+// This software is distributed under a license that is described in
+// the LICENSE file that accompanies it.
+//
+// Meridian is a registered trademark.
+
+
+////////////////////////////////////////////////////////////////////////////////
+JixaDyeM is JixaTown
+
+constants:
+
+   include blakston.khd
+
+resources:
+
+   include jixadyem.lkod
+
+   jixadye_name_rsc = "Jixa Dye"
+   jixadye_icon_rsc = jixadyem.bgf
+   jixadye_desc_rsc = \
+      "In this Shop you can dry your items.. isnt it cool?"
+
+   JixaDye_entry_welcome = "Welcome to the most colorful place in the land of Meridian!"
+
+classvars:
+
+   vrName = jixadye_name_rsc
+   vrIcon = jixadye_icon_rsc
+   vrDesc = jixadye_desc_rsc
+   viAttributes = \
+      MOB_NOFIGHT | MOB_SELLER | MOB_BUYER | MOB_NOMOVE \
+      | MOB_RANDOM | MOB_LISTEN | MOB_COND_SELLER
+   viOccupation = MOB_ROLE_MERCHANT
+   viMerchant_markup = MERCHANT_RIPOFF
+
+properties:
+
+messages:
+
+   SetForSale()
+   {
+      plFor_sale = [
+         [  
+            Create(&Herbs,#number=1)
+         ],
+         $,$,$];
+
+      return;
+   }
+
+   UserEntered(who=$)
+   {
+      if Send(who,@CheckPlayerFlag,#flag=PFLAG_OUTLAW)
+      {
+         Send(self,@SetMood,#new_mood=piMood-2);
+      }
+
+      Post(who,@SomeoneSaid,#what=self,#string=JixaDye_entry_welcome,
+            #type=SAY_RESOURCE);
+
+      propagate;
+   }
+
+end
+////////////////////////////////////////////////////////////////////////////////
+

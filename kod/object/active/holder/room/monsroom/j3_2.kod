@@ -1,0 +1,96 @@
+// Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+// All rights reserved.
+//
+// This software is distributed under a license that is described in
+// the LICENSE file that accompanies it.
+//
+// Meridian is a registered trademark.
+
+
+////////////////////////////////////////////////////////////////////////////////
+OutdoorsJ3_2 is MonsterRoom
+
+constants:
+
+   include blakston.khd
+
+resources:
+
+   include j3_2.lkod
+
+   room_OutdoorsJ3_2 = j3_2.roo
+   room_name_OutdoorsJ3_2 = "The Queen's Way"
+
+   OutdoorsJ3_2_music = forest.ogg
+   
+classvars:
+
+   vrName = room_name_OutdoorsJ3_2
+
+   viTeleport_row = 13
+   viTeleport_col = 33
+
+   viTerrain_type = TERRAIN_ROAD | TERRAIN_FOREST
+
+   viWeatherZone = WEATHER_ZONE_BARLOQUE
+
+properties:
+
+   prMusic = OutdoorsJ3_2_music
+
+   prRoom = room_OutdoorsJ3_2
+   piRoom_num = RID_J3_2
+
+   piBaseLight = LIGHT_NICE
+   piOutside_factor = 8
+
+   piDirectional_percent = DIRECTIONAL_PERCENT_OUTDOORS
+
+   pbSnowGroundTexture = TRUE
+
+   piGen_time = 20000
+   piGen_percent = 90
+
+   piInit_count_min = 2
+   piInit_count_max = 3
+
+   piMonster_count_max = 5
+
+messages:
+
+   Constructed()
+   {
+      plMonsters = [ [&SpiderBaby, 40], [&GiantRat, 60] ];
+
+      // Use Random Spawn
+      // plGenerators = [ [6, 34], [14, 32], [21, 33], [27, 29], [16, 21] ];
+      
+      propagate;
+   }
+
+   CreateStandardObjects()
+   {
+   
+      Send(self,@NewHold,#what=Create(&Tree),
+         #new_row=27,#new_col=28,#fine_row=0,#fine_col=0,#angle=ANGLE_EAST);
+      Send(self,@NewHold,#what=Create(&Tree),
+         #new_row=21,#new_col=34,#fine_row=0,#fine_col=0,#angle=ANGLE_EAST);
+      Send(self,@NewHold,#what=Create(&Tree),
+         #new_row=8,#new_col=29,#fine_row=0,#fine_col=0,#angle=ANGLE_EAST);
+
+      propagate;
+   }
+
+   CreateStandardExits()
+   {         
+      plEdge_exits = $;
+      plEdge_Exits = Cons([ LEAVE_SOUTH, RID_BERG_8, 2, 13, ROTATE_NONE ], plEdge_exits);
+      plEdge_Exits = Cons([ LEAVE_WEST, RID_K5, 43, 54, ROTATE_NONE ], plEdge_exits);
+      plEdge_Exits = Cons([ LEAVE_NORTH, RID_J3_1, 19, 20, ROTATE_NONE ], plEdge_exits);
+      plEdge_Exits = Cons([ LEAVE_EAST, RID_SURVIVAL_ARENA, 30, 2, ROTATE_NONE ], plEdge_exits);
+     
+      propagate;
+   }
+
+end
+////////////////////////////////////////////////////////////////////////////////

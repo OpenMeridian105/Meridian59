@@ -1,0 +1,122 @@
+// Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+// All rights reserved.
+//
+// This software is distributed under a license that is described in
+// the LICENSE file that accompanies it.
+//
+// Meridian is a registered trademark.
+
+
+////////////////////////////////////////////////////////////////////////////////
+Berg8 is MonsterRoom
+
+constants:
+
+   include blakston.khd
+
+resources:
+
+   include berg8.lkod
+
+   room_berg8 = berg8.roo
+   room_name_berg8 = "The Flatlands of Berg"
+
+   berg8_music = walkberg.ogg
+
+classvars:
+
+   vrName = room_name_berg8
+
+   viTeleport_row = 20
+   viTeleport_col = 6
+      
+   viWeatherZone = WEATHER_ZONE_BERG
+
+properties:
+
+   viTerrain_type = TERRAIN_ROAD | TERRAIN_HILLS
+
+   prRoom = room_berg8
+   piRoom_num = RID_BERG_8
+   prMusic = berg8_music
+   
+   piBaseLight = LIGHT_NICE
+   piOutside_factor = 8
+
+   piDirectional_percent = DIRECTIONAL_PERCENT_OUTDOORS
+
+   pbSnowGroundTexture = TRUE
+
+   piGen_percent = 70
+
+   piInit_count_min = 3
+   piInit_count_max = 4
+
+   piMonster_count_max = 6
+   
+messages:
+
+   CreateStandardExits()
+   {
+      plEdge_Exits = $;
+
+      plEdge_Exits = Cons([ LEAVE_SOUTH, RID_BERG_5, 2, 20, ROTATE_NONE, COL_IS_LESS_THAN,31], plEdge_exits);
+      plEdge_Exits = Cons([ LEAVE_SOUTH, RID_GOLEM_DUNGEON, 2, 33, ROTATE_NONE, COL_IS_GREATER_THAN,32], plEdge_exits);
+
+      plEdge_Exits = Cons([ LEAVE_NORTH, RID_J3_2, 32, 30, ROTATE_NONE, COL_IS_LESS_THAN,31], plEdge_exits);
+      plEdge_Exits = Cons([ LEAVE_NORTH, RID_SURVIVAL_ARENA, 60, 43, ROTATE_NONE, COL_IS_GREATER_THAN,32], plEdge_exits);
+
+      propagate;
+   }
+   
+   Constructed()
+   {   plMonsters = [ [&Spider, 45], [&Ant, 55] ];
+
+       // Use Random Spawn
+       // plGenerators = [ [8, 13], [20, 4], [27, 11], [22, 24], [16, 36], [26, 54] ];
+
+       propagate;
+   }
+   
+   CreateStandardObjects()
+   {
+   
+      Send(self,@NewHold,#what=Create(&OrnamentalObject,#type=OO_RAZA_SHRUB),
+            #new_row=16,#new_col=18,#fine_row=48,#fine_col=32);
+      Send(self,@NewHold,#what=Create(&OrnamentalObject,#type=OO_RAZA_SHRUB),
+            #new_row=21,#new_col=35,#fine_row=16,#fine_col=0);
+      Send(self,@NewHold,#what=Create(&OrnamentalObject,#type=OO_RAZA_SHRUB),
+            #new_row=26,#new_col=56,#fine_row=16,#fine_col=0);
+
+      Send(self,@NewHold,#what=Create(&Tallbush),
+            #new_row=21,#new_col=53,#fine_row=16,#fine_col=0);
+
+      // Trees
+      Send(self,@NewHold,#what=Create(&Tree),
+         #new_row=31,#new_col=4,#fine_row=16,#fine_col=0,#angle=ANGLE_EAST);
+      Send(self,@NewHold,#what=Create(&Tree),
+         #new_row=22,#new_col=11,#fine_row=48,#fine_col=0,#angle=ANGLE_EAST);
+      Send(self,@NewHold,#what=Create(&Tree),
+         #new_row=15,#new_col=10,#fine_row=16,#fine_col=0,#angle=ANGLE_EAST);
+      Send(self,@NewHold,#what=Create(&Tree),
+         #new_row=5,#new_col=15,#fine_row=16,#fine_col=0,#angle=ANGLE_EAST);
+      Send(self,@NewHold,#what=Create(&Tree),
+         #new_row=13,#new_col=31,#fine_row=48,#fine_col=0,#angle=ANGLE_EAST);
+
+      Send(self,@NewHold,#what=Create(&Tree),
+         #new_row=14,#new_col=39,#fine_row=48,#fine_col=0,#angle=ANGLE_EAST);
+      Send(self,@NewHold,#what=Create(&Tree),
+         #new_row=27,#new_col=43,#fine_row=48,#fine_col=32,#angle=ANGLE_EAST);
+
+       // Lightning
+      Send(self,@NewHold,#what=Create(&DynamicLight,#iColor=LIGHT_FIRE,#iIntensity=30),
+         #new_row=32,#new_col=47,#fine_row=36,#fine_col=16);
+      Send(self,@NewHold,#what=Create(&DynamicLight,#iColor=LIGHT_FIRE,#iIntensity=30),
+         #new_row=31,#new_col=51,#fine_row=50,#fine_col=16);
+
+      propagate;
+   }
+   
+   
+end
+////////////////////////////////////////////////////////////////////////////////

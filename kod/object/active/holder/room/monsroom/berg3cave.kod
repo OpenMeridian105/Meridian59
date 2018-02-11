@@ -1,0 +1,94 @@
+// Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+// All rights reserved.
+//
+// This software is distributed under a license that is described in
+// the LICENSE file that accompanies it.
+//
+// Meridian is a registered trademark.
+
+
+////////////////////////////////////////////////////////////////////////////////
+Berg3Cave is MonsterRoom
+
+constants:
+
+   include blakston.khd
+
+resources:
+
+   include berg3cave.lkod
+
+   room_berg3cave = berg3_cave.roo
+   room_name_berg3cave = "Hidden Cave of Berg"
+
+   berg3cave_music = orc1.ogg
+
+classvars:
+
+   vrName = room_name_berg3cave
+
+   viTeleport_row = 14
+   viTeleport_col = 15
+      
+   viWeatherZone = WEATHER_ZONE_BERG
+
+properties:
+
+   viTerrain_type = TERRAIN_CAVES
+
+   prRoom = room_berg3cave
+   piRoom_num = RID_BERG_3_CAVE
+   prMusic = berg3cave_music
+   
+   piBaseLight = LIGHT_MIN
+   piOutside_factor = 8
+
+   piDirectional_percent = DIRECTIONAL_PERCENT_OUTDOORS
+
+   pbSnowGroundTexture = TRUE
+
+   piGen_percent = 70
+
+   piInit_count_min = 2
+   piInit_count_max = 3
+
+   piMonster_count_max = 4
+
+messages:
+
+   CreateStandardExits()
+   {
+      plEdge_Exits = $;
+
+      plEdge_Exits = Cons([ LEAVE_NORTH, RID_BERG_3, 32, 7, ROTATE_NONE ], plEdge_exits);  
+      plEdge_Exits = Cons([ LEAVE_EAST, RID_BERG_4, 42, 12, ROTATE_NONE ], plEdge_exits);
+      plEdge_Exits = Cons([ LEAVE_WEST, RID_BERG_6, 12, 22, ROTATE_NONE ], plEdge_exits);
+
+      propagate;
+   }
+
+   Constructed()
+   {
+      plMonsters = [ [&DuskRat, 100] ];
+
+      // Use Random Spawn
+      // plGenerators = [ [6, 21], [22, 4], [13, 29], [15, 15] ];
+
+      propagate;
+   }
+   
+   CreateStandardObjects()
+   {
+
+      Send(self,@NewHold,#what=Create(&DynamicLight,#iColor=LIGHT_FIRE,#iIntensity=65),
+         #new_row=21,#new_col=1,#fine_row=48,#fine_col=48);
+      Send(self,@NewHold,#what=Create(&DynamicLight,#iColor=LIGHT_FIRE,#iIntensity=65),
+         #new_row=13,#new_col=37,#fine_row=28,#fine_col=48);
+      Send(self,@NewHold,#what=Create(&DynamicLight,#iColor=LIGHT_FIRE,#iIntensity=65),
+         #new_row=3,#new_col=24,#fine_row=8,#fine_col=4);
+
+      propagate;
+   }
+
+end
+////////////////////////////////////////////////////////////////////////////////

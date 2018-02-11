@@ -1,0 +1,257 @@
+// Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+// All rights reserved.
+//
+// This software is distributed under a license that is described in
+// the LICENSE file that accompanies it.
+//
+// Meridian is a registered trademark.
+
+
+////////////////////////////////////////////////////////////////////////////////
+BergCity is BergRoom
+
+constants:
+
+   include blakston.khd
+
+resources:
+
+   include bergcity.lkod
+
+   room_bergcity = bergcity.roo
+   room_name_bergcity = "Berg"
+
+   bergcity_music = berg.ogg
+   wind_sound_berg = rs_wind.ogg
+   
+classvars:
+
+   vrName = room_name_bergcity
+
+   viTeleport_row = 23
+   viTeleport_col = 49
+   
+   viFlag_row = 14
+   viFlag_col = 10
+   
+   viPermanent_flags = ROOM_GUILD_PK_ONLY | ROOM_LAMPS
+
+   viTerrain_Type = TERRAIN_CITY | TERRAIN_ROAD | TERRAIN_LAKE
+   
+properties:
+
+   piRoom_num = RID_BERG_CITY
+   prRoom = room_bergcity
+
+   prMusic = bergcity_music
+
+   piBaseLight = LIGHT_NICE
+   piOutside_factor = 8
+
+   piDirectional_percent = DIRECTIONAL_PERCENT_OUTDOORS
+
+   pbSnowGroundTexture = TRUE
+
+messages:
+
+   CreatePeriodicSounds()
+   {
+      plPeriodic_sounds = [ wind_sound_berg ];
+      pbPeriodic_sound_random_location = TRUE;
+
+      propagate;
+   }
+
+   CreateStandardExits()
+   {
+      plExits = $;
+
+      // MG 1
+      plExits = Cons([ 13, 1, RID_BERG_MG, 10, 26, ROTATE_NONE ],plExits);
+      plExits = Cons([ 14, 1, RID_BERG_MG, 10, 26, ROTATE_NONE ],plExits);
+
+      // MG 2
+      plExits = Cons([ 26, 1, RID_BERG_MG, 23, 27, ROTATE_NONE ],plExits);
+      plExits = Cons([ 26, 2, RID_BERG_MG, 23, 27, ROTATE_NONE ],plExits);
+      plExits = Cons([ 27, 2, RID_BERG_MG, 23, 27, ROTATE_NONE ],plExits);
+      plExits = Cons([ 28, 2, RID_BERG_MG, 23, 27, ROTATE_NONE ],plExits);
+
+      // Adv
+      plExits = Cons([ 28, 27, RID_BERG_HALL, 2, 8, ROTATE_NONE ],plExits);
+      plExits = Cons([ 27, 27, RID_BERG_HALL, 2, 8, ROTATE_NONE ],plExits);
+
+      plExits = Cons([ 30, 23, RID_BERG_HALL, 3, 4, ROTATE_NONE ],plExits);
+      plExits = Cons([ 29, 23, RID_BERG_HALL, 3, 4, ROTATE_NONE ],plExits);
+
+      // Vault
+      plExits = Cons([ 12, 19, RID_BERG_VAULT, 7, 5, ROTATE_NONE ],plExits);
+
+      // Smith
+      plExits = Cons([ 11, 41, RID_BERG_SMITH, 2, 9, ROTATE_NONE ],plExits);
+      plExits = Cons([ 11, 42, RID_BERG_SMITH, 2, 9, ROTATE_NONE ],plExits);
+
+      // Store
+      plExits = Cons([ 34, 64, RID_BERG_STORE, 4, 2, ROTATE_NONE ],plExits);
+      plExits = Cons([ 34, 65, RID_BERG_STORE, 4, 2, ROTATE_NONE ],plExits);
+
+      // Inn
+      plExits = Cons([ 45, 80, RID_BERG_INN, 4, 2, ROTATE_NONE ],plExits);
+      plExits = Cons([ 45, 79, RID_BERG_INN, 4, 2, ROTATE_NONE ],plExits);
+      plExits = Cons([ 46, 79, RID_BERG_INN, 4, 2, ROTATE_NONE ],plExits);
+      plExits = Cons([ 46, 80, RID_BERG_INN, 4, 2, ROTATE_NONE ],plExits);
+  
+      propagate;
+   }
+   
+   CreateStandardObjects()
+   {
+      // Lighting
+      Send(self,@NewHold,#what=Create(&DynamicLight,#iColor=LIGHT_FIRE,#iIntensity=30),
+         #new_row=35,#new_col=65,#fine_row=24,#fine_col=48);
+      Send(self,@NewHold,#what=Create(&DynamicLight,#iColor=LIGHT_FIRE,#iIntensity=30),
+         #new_row=51,#new_col=79,#fine_row=28,#fine_col=0);
+      Send(self,@NewHold,#what=Create(&DynamicLight,#iColor=LIGHT_FIRE,#iIntensity=30),
+         #new_row=24,#new_col=87,#fine_row=0,#fine_col=16);
+      Send(self,@NewHold,#what=Create(&DynamicLight,#iColor=LIGHT_FIRE,#iIntensity=30),
+         #new_row=20,#new_col=78,#fine_row=32,#fine_col=48);
+
+      // Firepit
+      Send(self,@NewHold,#what=Create(&Firepit,#iSoundRadius=5),#new_row=15,#new_col=85,
+         #fine_row=50,#fine_col=18);
+ 
+      // Lamps
+      Send(self,@NewHold,#what=Create(&Lamp),
+         #new_row=13,#new_col=4,#fine_row=5,#fine_col=36);
+      Send(self,@NewHold,#what=Create(&Lamp),
+         #new_row=15,#new_col=15,#fine_row=29,#fine_col=29);
+      Send(self,@NewHold,#what=Create(&Lamp),
+         #new_row=17,#new_col=26,#fine_row=19,#fine_col=34);
+      Send(self,@NewHold,#what=Create(&Lamp),
+         #new_row=15,#new_col=36,#fine_row=25,#fine_col=48);
+      Send(self,@NewHold,#what=Create(&Lamp),
+         #new_row=20,#new_col=47,#fine_row=43,#fine_col=52);
+ 
+      Send(self,@NewHold,#what=Create(&Lamp),
+         #new_row=27,#new_col=47,#fine_row=51,#fine_col=24);
+      Send(self,@NewHold,#what=Create(&Lamp),
+         #new_row=34,#new_col=43,#fine_row=13,#fine_col=60);
+      Send(self,@NewHold,#what=Create(&Lamp),
+         #new_row=30,#new_col=33,#fine_row=37,#fine_col=26);
+      Send(self,@NewHold,#what=Create(&Lamp),
+         #new_row=23,#new_col=22,#fine_row=51,#fine_col=20);
+      Send(self,@NewHold,#what=Create(&Lamp),
+         #new_row=24,#new_col=13,#fine_row=43,#fine_col=44);
+
+      Send(self,@NewHold,#what=Create(&Lamp),
+         #new_row=28,#new_col=9,#fine_row=11,#fine_col=28);
+      Send(self,@NewHold,#what=Create(&Lamp),
+         #new_row=37,#new_col=55,#fine_row=16,#fine_col=31);
+      Send(self,@NewHold,#what=Create(&Lamp),
+         #new_row=37,#new_col=62,#fine_row=7,#fine_col=28);
+      Send(self,@NewHold,#what=Create(&Lamp),
+         #new_row=40,#new_col=68,#fine_row=13,#fine_col=46);
+      Send(self,@NewHold,#what=Create(&Lamp),
+         #new_row=19,#new_col=73,#fine_row=23,#fine_col=6);
+ 
+      Send(self,@NewHold,#what=Create(&Lamp),
+         #new_row=22,#new_col=64,#fine_row=27,#fine_col=58);
+      Send(self,@NewHold,#what=Create(&Lamp),
+         #new_row=23,#new_col=59,#fine_row=25,#fine_col=46);
+      Send(self,@NewHold,#what=Create(&Lamp),
+         #new_row=27,#new_col=29,#fine_row=47,#fine_col=16);
+      Send(self,@NewHold,#what=Create(&Lamp),
+         #new_row=13,#new_col=43,#fine_row=7,#fine_col=44);
+      Send(self,@NewHold,#what=Create(&Lamp),
+         #new_row=13,#new_col=21,#fine_row=35,#fine_col=32);
+
+      Send(self,@NewHold,#what=Create(&Lamp),
+         #new_row=20,#new_col=83,#fine_row=51,#fine_col=16);
+      Send(self,@NewHold,#what=Create(&Lamp),
+         #new_row=25,#new_col=81,#fine_row=19,#fine_col=8);
+      Send(self,@NewHold,#what=Create(&Lamp),
+         #new_row=46,#new_col=77,#fine_row=43,#fine_col=4);
+      Send(self,@NewHold,#what=Create(&Lamp),
+         #new_row=49,#new_col=73,#fine_row=31,#fine_col=0);
+
+      // Chimney smoke
+      Send(self,@NewHold,#what=Create(&SmokeColumn),
+         #new_row=10,#new_col=22,#fine_row=28,#fine_col=4);
+      Send(self,@NewHold,#what=Create(&SmokeColumn),
+         #new_row=12,#new_col=35,#fine_row=20,#fine_col=36);
+      Send(self,@NewHold,#what=Create(&SmokeColumn),
+         #new_row=15,#new_col=85,#fine_row=50,#fine_col=18);
+
+      // Trees
+      Send(self,@NewHold,#what=Create(&Tree),
+         #new_row=30,#new_col=11,#fine_row=0,#fine_col=0,#angle=ANGLE_EAST);
+      Send(self,@NewHold,#what=Create(&Tree),
+         #new_row=27,#new_col=16,#fine_row=32,#fine_col=32,#angle=ANGLE_EAST);
+      Send(self,@NewHold,#what=Create(&Tree),
+         #new_row=26,#new_col=23,#fine_row=0,#fine_col=0,#angle=ANGLE_EAST);
+      Send(self,@NewHold,#what=Create(&Tree),
+         #new_row=22,#new_col=23,#fine_row=32,#fine_col=32,#angle=ANGLE_EAST);
+      Send(self,@NewHold,#what=Create(&Tree),
+         #new_row=26,#new_col=23,#fine_row=0,#fine_col=0,#angle=ANGLE_EAST);
+
+      Send(self,@NewHold,#what=Create(&Tree),
+         #new_row=29,#new_col=31,#fine_row=32,#fine_col=32,#angle=ANGLE_EAST);
+      Send(self,@NewHold,#what=Create(&Tree),
+         #new_row=34,#new_col=45,#fine_row=32,#fine_col=48,#angle=ANGLE_EAST);
+      Send(self,@NewHold,#what=Create(&Tree),
+         #new_row=28,#new_col=51,#fine_row=16,#fine_col=32,#angle=ANGLE_EAST);
+      Send(self,@NewHold,#what=Create(&Tree),
+         #new_row=24,#new_col=52,#fine_row=0,#fine_col=32,#angle=ANGLE_EAST);
+      Send(self,@NewHold,#what=Create(&Tree),
+         #new_row=13,#new_col=47,#fine_row=0,#fine_col=0,#angle=ANGLE_EAST);
+
+      Send(self,@NewHold,#what=Create(&Tree),
+         #new_row=15,#new_col=35,#fine_row=0,#fine_col=32,#angle=ANGLE_EAST);
+      Send(self,@NewHold,#what=Create(&Tree),
+         #new_row=20,#new_col=34,#fine_row=16,#fine_col=32,#angle=ANGLE_EAST);
+      Send(self,@NewHold,#what=Create(&Tree),
+         #new_row=13,#new_col=27,#fine_row=32,#fine_col=48,#angle=ANGLE_EAST);
+      Send(self,@NewHold,#what=Create(&Tree),
+         #new_row=17,#new_col=25,#fine_row=32,#fine_col=16,#angle=ANGLE_EAST);
+      Send(self,@NewHold,#what=Create(&Tree),
+         #new_row=12,#new_col=16,#fine_row=48,#fine_col=0,#angle=ANGLE_EAST);
+
+      Send(self,@NewHold,#what=Create(&Tree),
+         #new_row=11,#new_col=8,#fine_row=16,#fine_col=0,#angle=ANGLE_EAST);
+      Send(self,@NewHold,#what=Create(&Tree),
+         #new_row=29,#new_col=36,#fine_row=32,#fine_col=0,#angle=ANGLE_EAST);
+      Send(self,@NewHold,#what=Create(&Tree),
+         #new_row=33,#new_col=36,#fine_row=32,#fine_col=0,#angle=ANGLE_EAST);
+      Send(self,@NewHold,#what=Create(&Tree),
+         #new_row=32,#new_col=48,#fine_row=16,#fine_col=48,#angle=ANGLE_EAST);
+      Send(self,@NewHold,#what=Create(&Tree),
+         #new_row=16,#new_col=44,#fine_row=48,#fine_col=0,#angle=ANGLE_EAST);
+
+      Send(self,@NewHold,#what=Create(&Tree),
+         #new_row=16,#new_col=2,#fine_row=0,#fine_col=32,#angle=ANGLE_EAST);
+      Send(self,@NewHold,#what=Create(&Tree),
+         #new_row=25,#new_col=3,#fine_row=16,#fine_col=0,#angle=ANGLE_EAST);
+
+      // Small deco
+  
+      Send(self,@NewHold,#what=Create(&OrnamentalObject,#type=OO_RICE),
+         #new_row=12,#new_col=21,#fine_row=48,#fine_col=16,#new_angle=ANGLE_EAST);
+      Send(self,@NewHold,#what=Create(&OrnamentalObject,#type=OO_RICE),
+         #new_row=33,#new_col=77,#fine_row=44,#fine_col=44,#new_angle=ANGLE_EAST);
+      Send(self,@NewHold,#what=Create(&OrnamentalObject,#type=OO_RICE),
+         #new_row=32,#new_col=77,#fine_row=16,#fine_col=48,#new_angle=ANGLE_EAST);
+   
+      Send(self,@NewHold,#what=Create(&OrnamentalObject,#type=OO_BARREL),
+         #new_row=43,#new_col=80,#fine_row=0,#fine_col=48,#new_angle=ANGLE_EAST);
+      Send(self,@NewHold,#what=Create(&OrnamentalObject,#type=OO_BARREL),
+         #new_row=43,#new_col=81,#fine_row=56,#fine_col=8,#new_angle=ANGLE_EAST);
+   
+      Send(self,@NewHold,#what=Create(&OrnamentalObject,#type=OO_DECORATIVE_POT),
+         #new_row=27,#new_col=24,#fine_row=48,#fine_col=48,#new_angle=ANGLE_EAST);
+      Send(self,@NewHold,#what=Create(&OrnamentalObject,#type=OO_BIGURN),
+         #new_row=11,#new_col=43,#fine_row=44,#fine_col=36,#new_angle=ANGLE_EAST);
+   
+      propagate;
+   }
+
+end
+////////////////////////////////////////////////////////////////////////////////

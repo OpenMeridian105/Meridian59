@@ -1,0 +1,75 @@
+// Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+// All rights reserved.
+//
+// This software is distributed under a license that is described in
+// the LICENSE file that accompanies it.
+//
+// Meridian is a registered trademark.
+
+
+////////////////////////////////////////////////////////////////////////////////
+BergMerchant is BergTown
+
+constants:
+
+   include blakston.khd
+
+resources:
+
+   include bergmerch.lkod
+
+   bergmerchant_name_rsc = "Berg Merch"
+   bergmerchant_icon_rsc = bergmerch.bgf
+   bergmerchant_desc_rsc = \
+      "This is the Berg Merch"
+
+   BergMerch_entry_welcome = "Might I interest you in some fine merchandise?"
+
+classvars:
+
+   vrName = bergmerchant_name_rsc
+   vrIcon = bergmerchant_icon_rsc
+   vrDesc = bergmerchant_desc_rsc
+   viAttributes = \
+      MOB_NOFIGHT | MOB_SELLER | MOB_BUYER | MOB_NOMOVE \
+      | MOB_RANDOM | MOB_LISTEN | MOB_COND_SELLER
+   viOccupation = MOB_ROLE_MERCHANT
+   viMerchant_markup = MERCHANT_RIPOFF
+
+properties:
+
+messages:
+
+   SetForSale()
+   {
+      plFor_sale = [
+         [  
+            Create(&Sapphire,#number=1),
+            Create(&Emerald,#number=2),
+            Create(&PurpleMushroom,#number=2),
+            Create(&BlueMushroom,#number=4),
+            Create(&Mushroom,#number=4),
+            Create(&Elderberry,#number=4),
+            Create(&Herbs,#number=4)
+         ],
+         $,$,$];
+
+      return;
+   }
+
+   UserEntered(who=$)
+   {
+      if Send(who,@CheckPlayerFlag,#flag=PFLAG_OUTLAW)
+      {
+         Send(self,@SetMood,#new_mood=piMood-2);
+      }
+
+      Post(who,@SomeoneSaid,#what=self,#string=BergMerch_entry_welcome,
+            #type=SAY_RESOURCE);
+
+      propagate;
+   }
+
+end
+////////////////////////////////////////////////////////////////////////////////
+

@@ -1,0 +1,105 @@
+// Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+// All rights reserved.
+//
+// This software is distributed under a license that is described in
+// the LICENSE file that accompanies it.
+//
+// Meridian is a registered trademark.
+
+
+////////////////////////////////////////////////////////////////////////////////
+JixaInn is JixaRoom
+
+constants:
+
+   include blakston.khd
+
+resources:
+
+   include jixa_inn.lkod
+
+   room_jixa_inn = jixa_inn.roo
+   room_name_jixa_inn = "The Inn of Jixa"
+
+   jixa_inn_music = bar2.ogg
+   
+   news_jixa_inn = "General News"
+   news_jixa_inn_desc = "Find out what's going on around Meridian."
+
+classvars:
+
+   vrName = room_name_jixa_inn
+
+   viTeleport_row = 5
+   viTeleport_col = 8
+   
+properties:
+
+   viTerrain_Type = TERRAIN_CITY | TERRAIN_SHOP
+   viPermanent_flags = ROOM_NO_COMBAT | ROOM_SANCTUARY | ROOM_HOMETOWN | ROOM_SAFELOGOFF
+
+   prRoom = room_jixa_inn
+   piRoom_num = RID_JIXA_INN
+
+   piBaseLight = LIGHT_NICE
+   piOutside_factor = 3
+
+   prMusic = jixa_inn_music
+   
+
+messages:
+
+   CreateStandardExits()
+   {
+      plExits = $;
+
+      /// TO TOWN
+      plExits = Cons([ 9, 8, RID_JIXA, 19, 30, ROTATE_NONE ],plExits);
+      plExits = Cons([ 8, 8, RID_JIXA, 19, 30, ROTATE_NONE ],plExits);
+
+      propagate;
+   }
+
+   CreateStandardObjects()
+   {
+
+      local oNews;
+
+      oNews = Create(&Newslink,#nid=NID_TOS_HALL,
+                        #name=news_jixa_inn,#desc=news_jixa_inn_desc);
+      Send(self,@NewHold,#what=oNews,#new_row=5,#new_col=2,
+            #fine_row=36,#fine_col=56);
+
+      oNews = Send(SYS,@FindNewsByNum,#num=NID_ADVENTURE);
+      if oNews = $
+      {
+         oNews = Create(&NewsAdventure,#nid=NID_ADVENTURE);
+      }
+
+
+      // NPC
+      Send(self,@NewHold,#what=Create(&JixaInnkeeper),
+            #new_row=3,#new_col=8,#fine_row=0,#fine_col=48);
+
+      // Decoration
+
+
+      Send(self,@NewHold,#what=Create(&Stool),
+            #new_row=4,#new_col=6,#fine_row=24,#fine_col=56);
+      Send(self,@NewHold,#what=Create(&Stool),
+            #new_row=4,#new_col=8,#fine_row=24,#fine_col=0);
+      Send(self,@NewHold,#what=Create(&Stool),
+            #new_row=4,#new_col=9,#fine_row=24,#fine_col=8);
+      Send(self,@NewHold,#what=Create(&Stool),
+            #new_row=3,#new_col=5,#fine_row=40,#fine_col=548);
+  
+      Send(self,@NewHold,#what=Create(&Table),
+           #new_row=3,#new_col=3,#fine_row=0,#fine_col=32,#angle=ANGLE_EAST); 
+      Send(self,@NewHold,#what=Create(&Table),
+           #new_row=8,#new_col=6,#fine_row=0,#fine_col=32,#angle=ANGLE_EAST);
+   
+      propagate;
+   }
+
+end
+////////////////////////////////////////////////////////////////////////////////

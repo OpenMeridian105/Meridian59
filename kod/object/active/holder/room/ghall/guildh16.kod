@@ -1,0 +1,204 @@
+// Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+// All rights reserved.
+//
+// This software is distributed under a license that is described in
+// the LICENSE file that accompanies it.
+//
+// Meridian is a registered trademark.
+
+
+//////////////////////////////////////////////////////////////////////////////////
+GuildHall16 is GuildHall
+
+constants:
+
+   OUT1 = 1
+
+   ENTRANCE = 2
+
+   LIFT_DELAY = 10000
+
+   include blakston.khd
+
+resources:
+
+   include guildh16.lkod
+
+   room_name_guildh16 = "Berg Outlook"
+   room_guildh16 = guildh16.roo
+
+classvars:
+
+   vrName = room_name_guildh16
+
+   viTeleport_row = 13
+   viTeleport_col = 23
+
+   viInner_teleport_row = 6
+   viInner_teleport_col = 17
+
+   viNews_row = 5
+   viNews_col = 23
+   viNews_finerow = 0
+   viNews_finecol = 0
+
+   viFoyer_north = 10
+   viFoyer_south = 16
+   viFoyer_west = 20
+   viFoyer_east = 27
+
+   viLever_row = 11
+   viLever_col = 10
+   viLever_fine_row = 0
+   viLever_fine_col = 40
+
+   viQuality = 4
+
+   viSeconds_til_close = 16
+
+properties:
+
+   prRoom = room_guildh16
+   piRoom_num = RID_GUILDH16
+
+   piBaseLight = LIGHT_NICE
+
+   ptSecret = $
+   ptEntrance = $
+
+messages:
+
+   Constructor()
+   {
+      plGuild_doors = [ [13,20] ];
+
+      // This is a box containing the guild door, used
+      // for removing players from it when it closes.
+      plEntrance = [ 1300, 1400, 2000, 2000 ];
+
+      propagate;
+   }
+
+   CreateStandardExits()
+   {
+      plExits = $;
+
+      // TO BERG
+      plExits = Cons([ 12, 25, RID_BERG_1, 10, 52, ROTATE_180 ],plExits);
+
+      // TO BERG MOUNTAIN
+      plExits = Cons([ 8, 27, RID_BERG_1, 14, 50, ROTATE_180 ],plExits);
+
+      propagate;
+   }
+
+   Delete()
+   {
+      if ptSecret <> $
+      {
+         DeleteTimer(ptSecret);
+         ptSecret = $;
+      }
+
+      if ptEntrance <> $
+      {
+         DeleteTimer(ptEntrance);
+         ptEntrance = $;
+      }
+
+      propagate;
+   }
+
+   SomethingTryGo(what=$, row=$,  col = $)
+   {
+      if row = 13 AND col = 20
+      {
+         Send(self,@OpenEntrancedoor);
+
+         return TRUE;
+      }
+      if row = 13 AND col = 19
+      {
+         Send(self,@OpenEntrancedoor);
+
+         return TRUE;
+      }
+
+      propagate;
+   }
+
+   OpenEntranceDoor()
+   {
+      if ptEntrance = $
+      {
+         Send(self,@TimeStampDoor);
+         Send(self,@SetSector,#sector=ENTRANCE,#animation=ANIMATE_FLOOR_LIFT,
+              #height=64,#speed=50);
+         ptEntrance = CreateTimer(self,@CloseEntranceDoor,LIFT_DELAY);
+         Send(self,@OpenEntranceDoorSound);
+      }
+
+      return;
+   }
+
+   CloseEntranceDoor()
+   {
+      Send(self,@SetSector,#sector=ENTRANCE,#animation=ANIMATE_FLOOR_LIFT,
+            #height=144,#speed=50);
+      Send(self,@CloseEntranceDoorSound);
+
+      // We now propagate this to handle removing players from the door,
+      // and so the door can still be entered while it is closing.
+      propagate;
+   }
+
+   OpenSecretDoor()
+   {
+      if ptSecret = $
+      {
+         Send(self,@SetSector,#sector=OUT1,#animation=ANIMATE_FLOOR_LIFT,
+              #height=0,#speed=16);
+         ptSecret = CreateTimer(self,@CloseSecretDoor,LIFT_DELAY);
+         Send(self,@OpenSecretDoorSound);
+      }
+
+      return;
+   }
+
+   CloseSecretDoor()
+   {
+      ptSecret = $;
+      Send(self,@SetSector,#sector=OUT1,#animation=ANIMATE_FLOOR_LIFT,
+           #height=88,#speed=16);
+      Send(self,@CloseSecretDoorSound);
+
+      return;
+   }
+
+   CreateStandardObjects()
+   {
+      Send(self,@NewHold,#what=Create(&Table),
+           #new_row=6,#new_col=25,#fine_row=32,#fine_col=32);
+      Send(self,@NewHold,#what=Create(&Table),
+           #new_row=2,#new_col=23,#fine_row=32,#fine_col=16);
+
+      Send(self,@NewHold,#what=Create(&Brazier),
+           #new_row=15,#new_col=26,#fine_row=0,#fine_col=0);
+      Send(self,@NewHold,#what=Create(&Brazier),
+           #new_row=2,#new_col=2,#fine_row=32,#fine_col=48);
+      Send(self,@NewHold,#what=Create(&Brazier),
+           #new_row=5,#new_col=2,#fine_row=32,#fine_col=48);
+      Send(self,@NewHold,#what=Create(&Brazier),
+           #new_row=7,#new_col=26,#fine_row=32,#fine_col=32);
+
+      Send(self,@NewHold,#what=Create(&Chest),
+           #new_row=4,#new_col=4,#fine_row=0,#fine_col=16,#new_angle=ANGLE_EAST);
+  
+      Send(self,@NewHold,#what=Create(&Firepit,#iSoundRadius=5),
+            #new_row=2,#new_col=26,#fine_row=36,#fine_col=28);
+
+      propagate;
+   }
+
+end
+////////////////////////////////////////////////////////////////////////////////

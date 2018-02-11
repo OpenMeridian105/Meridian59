@@ -4901,6 +4901,13 @@ messages:
    {
       if hall <> $ AND IsClass(hall,&GuildHall)
       {
+         if (Send(hall,@GetRoomNum) > RID_GUILDH_MAX)
+         {
+            // Don't add halls above this number, could be
+            // inaccessible for now.
+            return TRUE;
+         }
+
          plGuild_halls = Cons(hall,plGuild_halls);
 
          return TRUE;
@@ -4923,6 +4930,14 @@ messages:
 
             return TRUE;
          }
+      }
+
+      if (hall <> $
+         AND Send(hall,@GetRoomNum) > RID_GUILDH_MAX)
+      {
+         // These ones are okay, inaccessible halls aren't added
+         // to plGuild_halls in the first place.
+         return TRUE;
       }
 
       Debug("Tried to remove a guild hall that was not in plGuild_halls!");

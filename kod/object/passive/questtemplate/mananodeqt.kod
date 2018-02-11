@@ -106,7 +106,7 @@ messages:
    ShowDesc(who=$)
    "Override for mana node quest to handle whole description."
    {
-      local i, iCount, iNodeList, lDoneNodes, lNeedNodes;
+      local i, iCount, iNodeList, lDoneNodes, lNeedNodes, iNodeNum;
 
       if who = $
       {
@@ -133,7 +133,15 @@ messages:
 
          foreach i in Send(SYS,@GetNodes)
          {
-            if (Send(i,@GetNodeNum) & iNodeList)
+            iNodeNum = Send(i,@GetNodeNum);
+
+            // Skip inactive nodes.
+            if (NOT (iNodeNum & NODE_ALL))
+            {
+               continue;
+            }
+
+            if (iNodeNum & iNodeList)
             {
                lDoneNodes = Cons(i,lDoneNodes);
             }

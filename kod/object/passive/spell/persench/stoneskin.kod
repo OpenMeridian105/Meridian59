@@ -1,0 +1,149 @@
+// Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+// All rights reserved.
+//
+// This software is distributed under a license that is described in
+// the LICENSE file that accompanies it.
+//
+// Meridian is a registered trademark.
+
+
+////////////////////////////////////////////////////////////////////////////////
+Stoneskin is PersonalEnchantment
+
+constants:
+
+   include blakston.khd
+
+resources:
+
+   include stoneskin.lkod
+
+   stoneskin_name_rsc = "stoneskin"
+   stoneskin_icon_rsc = ishadfrm.bgf
+   stoneskin_desc_rsc = \
+      "Hardens the skin of the target into extremely tough yet flexible "
+      "stone, reducing the effectiveness of weapon attacks."
+   stoneskin_already_enchanted = \
+      "Your skin has already been hardened to stone."
+   stoneskin_already_affected = \
+      "The target's skin has already been modified, preventing your spell "
+      "from having any effect."
+
+   stoneskin_on = "Your skin hardens to stone."
+   stoneskin_off = "The stone crumbles off your skin."
+
+   stoneskin_wave_rsc = shadI11m.ogg
+
+classvars:
+
+   vrName = stoneskin_name_rsc
+   vrIcon = stoneskin_icon_rsc
+   vrDesc = stoneskin_desc_rsc
+
+   vrEnchantment_On = stoneskin_on
+
+   viSpell_num = SID_STONESKIN
+   viSpell_level = 6
+   viSchool = SS_FAREN
+   viMana = 12
+   viSpellExertion = 1
+   viCast_time = 0
+
+   vrSucceed_wav = stoneskin_wave_rsc
+   viChance_To_Increase = 10
+   viMeditate_ratio = 20
+   viFlash = FLASH_GOOD_SELF
+
+   viDefensive = TRUE
+
+properties:
+
+   // The effectiveness of purge on the target spell as a percentage.
+   // 100 will cause purge to remove its entire spellpower, 0 will
+   // prevent purge from removing this spell.
+   viPurgeFactor = 0
+
+messages:
+
+   ResetReagents()
+   {
+      plReagents = $;
+
+      return;
+   }
+
+   CanPayCosts(who=$,lTargets=$)
+   {
+      local oTarget, iDrawFX;
+
+      oTarget = First(lTargets);
+
+      if NOT IsClass(oTarget,&Player)
+      {
+         return FALSE;
+      }
+
+      iDrawfX = Send(oTarget,@GetDrawingEffects);
+
+      // Can't enchant over other drawing effects (i.e. shadow form).
+      if ((iDrawFX & DRAWFX_BLACK) = DRAWFX_BLACK)
+      {
+         Send(who,@MsgSendUser,#message_rsc=stoneskin_already_affected);
+
+         return FALSE;
+      }
+
+      // Check for greyscale effect already applied.
+      if (oTarget <> who
+         AND (iDrawFX & DRAWFX_SECONDTRANS) = DRAWFX_SECONDTRANS)
+      {
+         Send(who,@MsgSendUser,#message_rsc=stoneskin_already_affected);
+
+         return FALSE;
+      }
+
+      propagate;
+   }
+
+   GetDuration(caster=$,iSpellPower=0)
+   {
+      if (caster <> $
+         AND IsClass(caster,&DM))
+      {
+         return MS_PER_DAY; // Lasts 1 day if cast by DM (event spell).
+      }
+
+      return 60000 + (iSpellPower * 3000);
+   }
+
+   SetSpellPlayerFlag(who=$)
+   {
+      // Use secondtrans until a proper greyscale effect is added.
+      Send(who,@SetPlayerDrawFX,#drawfx=DRAWFX_SECONDTRANS,
+            #SendSomethingChanged=TRUE);
+
+      return;
+   }
+
+   EndEnchantment(who=$,report=TRUE)
+   {
+      Send(who,@ResetPlayerDrawfx);
+      Send(who,@RemoveDefenseModifier,#what=self);
+
+      if report
+      {
+         Send(who,@MsgSendUser,#message_rsc=stoneskin_off);
+      }
+
+      return;
+   }
+
+   GetStateValue(who=$,iSpellPower=0,target=$)
+   {
+      Send(target,@AddDefenseModifier,#what=self);
+
+      return iSpellPower;
+   }
+
+end
+////////////////////////////////////////////////////////////////////////////////

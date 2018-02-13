@@ -15,6 +15,7 @@
 
 #include "club.h"
 #include <vector>
+#include <fstream>
 
 /* time to wait at program start */
 #define INIT_TIME 3000
@@ -125,23 +126,24 @@ std::vector<std::string> split(const std::string &s, char delim) {
 /************************************************************************/
 Bool ParseCommandLine(const char *args)
 {
-#if !VANILLA_UPDATER
-   char buf[MAX_CMDLINE + 1];
+   std::string argstring;
    if (strcmp(args, "") == 0)
    {
-      FILE *fp;
-      fp = fopen("dlinfo.txt", "rb");
-      if (!fp)
+      std::ifstream fp("dlinfo.txt", std::ifstream::in);
+
+      if (fp.fail())
       {
          StartupError();
          return False;
       }
-      fgets(buf, MAX_CMDLINE, fp);
-      fclose(fp);
-      args = buf;
+      std::getline(fp, argstring);
+      fp.close();
    }
-#endif
-   std::string argstring(args);
+   else
+   {
+      argstring.assign(args);
+   }
+
    std::vector<std::string> arguments = split(argstring, ' ');
 
    if (arguments.size() == CLUB_NUM_ARGUMENTS)
@@ -293,12 +295,6 @@ long WINAPI InterfaceWindowProc(HWND hwnd,UINT message,UINT wParam,LONG lParam)
       {
         PostMessage(hwndMain, WM_CLOSE, 0, 0);
       }
-      break;
-      
-   case CM_DEARCHIVE :
-#if VANILLA_UPDATER
-      Dearchive(dest_path.c_str(), transfer_local_filename.c_str());
-#endif
       break;
 
    case CM_FILESIZE:

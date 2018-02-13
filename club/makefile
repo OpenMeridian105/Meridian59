@@ -16,14 +16,12 @@ LINKFLAGS = $(LINKFLAGS) /SUBSYSTEM:WINDOWS",5.01"
 
 SOURCEDIR = $(TOPDIR)\club
 
-LIBS = user32.lib gdi32.lib advapi32.lib libarchive.lib zlib.lib \
-       comctl32.lib wininet.lib jansson.lib
+LIBS = user32.lib gdi32.lib advapi32.lib comctl32.lib wininet.lib jansson.lib
 
 all: makedirs $(OUTDIR)\club.exe
 
 OBJS = \
     $(OUTDIR)\club.obj \
-    $(OUTDIR)\clubarchive.obj \
     $(OUTDIR)\util.obj \
     $(OUTDIR)\md5.obj \
     $(OUTDIR)\transfer.obj

@@ -1,0 +1,131 @@
+// Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+// All rights reserved.
+//
+// This software is distributed under a license that is described in
+// the LICENSE file that accompanies it.
+//
+// Meridian is a registered trademark.
+
+
+////////////////////////////////////////////////////////////////////////////////
+Swamp1 is ObjectRoom
+
+constants:
+
+   include blakston.khd
+
+resources:
+
+   include swamp1.lkod
+
+   room_swamp1 = swamp1.roo
+   room_name_swamp1 = "Swamp 1"
+
+   swamp1_music = Badfor.ogg
+
+classvars:
+
+   vrName = room_name_swamp1
+
+   viTeleport_row = 16
+   viTeleport_col = 8
+
+   viTerrain_type = TERRAIN_CAVES | TERRAIN_TEMPLE
+
+properties:
+
+   prRoom = room_swamp1
+   piRoom_num = RID_SWAMP1
+
+   prMusic = swamp1_music
+
+   piBaseLight = LIGHT_DARK
+
+   piDirectional_percent = DIRECTIONAL_PERCENT_OUTDOORS
+
+   piOutside_factor = OUTDOORS_2
+
+   //piGen_percent = 80
+
+   piInit_count_min = 4
+   piInit_count_max = 8
+
+   piMonster_count_max = 15
+
+
+   
+
+messages:
+
+   CreateStandardExits()
+   {
+      plEdge_Exits = $;
+
+      plEdge_Exits = Cons([LEAVE_NORTH, RID_SWAMPTOJIXA, 47, 14, ROTATE_NONE], plEdge_exits);
+      plEdge_Exits = Cons([LEAVE_WEST, RID_EMGTOSWAMP, 19, 32, ROTATE_NONE], plEdge_exits);
+      plEdge_Exits = Cons([LEAVE_EAST, RID_SWAMP2, 27, 4, ROTATE_NONE], plEdge_exits);
+
+//      plExits = Cons([ 56, 39, RID_SWAMP1, 56, 37, ROTATE_NONE ],plExits);
+
+      propagate;
+   }
+
+   Constructed()
+   {
+      plMonsters = [ [&Frogman, 100] ];
+
+      plGenerators = [ [13, 13], [11, 29], [17, 31], [17, 25], [18, 36],
+                       [26, 9], [28, 16], [32, 14], [35, 28], [29, 30] ];
+
+      propagate;
+   }
+
+   SomethingTryGo(What=$,Row=$,Col=$)
+   {
+      if (Col >= 38 AND Col <= 39 AND Row = 56)
+      {
+         Send(SYS,@UtilGoNearSquare,#what=what,#where=self,#new_row=56,#new_col=37);
+
+         return TRUE;
+      }
+
+      propagate;
+   }
+
+   CreateStandardObjects()
+   {
+      Send(self,@NewHold,#what=Create(&OrnamentalObject,#type=OO_NECTREE2),
+           #new_row=26,#new_col=6,#fine_row=0,#fine_col=0,#angle=ANGLE_EAST);
+
+      Send(self,@NewHold,#what=Create(&OrnamentalObject,#type=OO_NECTREE2),
+           #new_row=18,#new_col=38,#fine_row=0,#fine_col=0,#angle=ANGLE_EAST);
+
+      Send(self,@NewHold,#what=Create(&OrnamentalObject,#type=OO_HALFSKULL),
+           #new_row=31,#new_col=24,#fine_row=16,#fine_col=32,#angle=ANGLE_EAST);
+
+      Send(self,@NewHold,#what=Create(&OrnamentalObject,#type=OO_RAZA_SHRUB),
+           #new_row=58,#new_col=35,#fine_row=0,#fine_col=0,#new_angle=ANGLE_EAST);
+
+      Send(self,@NewHold,#what=Create(&OrnamentalObject,#type=OO_RAZA_SHRUB),
+           #new_row=50,#new_col=15,#fine_row=0,#fine_col=0,#new_angle=ANGLE_EAST);
+
+      Send(self,@NewHold,#what=Create(&OrnamentalObject,#type=OO_RAZA_SHRUB),
+           #new_row=59,#new_col=23,#fine_row=0,#fine_col=0,#new_angle=ANGLE_EAST);
+
+      Send(self,@NewHold,#what=Create(&Tree),#new_row=54,#new_col=39,
+           #fine_row=0,#fine_col=0,#new_angle=ANGLE_EAST);
+
+      Send(self,@NewHold,#what=Create(&Tree),#new_row=15,#new_col=29,
+           #fine_row=0,#fine_col=0,#new_angle=ANGLE_EAST);
+
+      Send(self,@NewHold,#what=Create(&OrnamentalObject,#type=OO_BARREL),
+           #new_row=55,#new_col=40,#fine_row=0,#fine_col=24,#new_angle=ANGLE_EAST);
+
+      Send(self,@NewHold,#what=Create(&Brazier),#new_row=54,#new_col=19,
+           #fine_row=48,#fine_col=48);
+
+      propagate;
+   }
+
+end
+////////////////////////////////////////////////////////////////////////////////

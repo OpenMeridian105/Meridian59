@@ -3430,6 +3430,7 @@ messages:
 
       Send(self,@CreateOneSpellIfNew,#num=SID_SHADOW_FORM,#class=&Shadowform);
       Send(self,@CreateOneSpellIfNew,#num=SID_ILLUSIONARY_FORM,#class=&Illusionaryform);
+      Send(self,@CreateOneSpellIfNew,#num=SID_STONESKIN,#class=&Stoneskin);
 
       Send(self,@CreateOneSpellIfNew,#num=SID_BONK,#class=&Bonk);
       Send(self,@CreateOneSpellIfNew,#num=SID_ARMAGEDDON,#class=&Armageddon);
@@ -4527,10 +4528,18 @@ messages:
    {
       local i, lBadNameContain, lBadNameIs, oLookup;
 
-      if StringLength(sName) < MIN_CHAR_NAME_LEN
+      if sName = $
+         OR StringLength(sName) < MIN_CHAR_NAME_LEN
          OR StringLength(sName) > MAX_CHAR_NAME_LEN
       {
-         Debug("Got char name length out of range for user ", oUser);
+         if (sName = $)
+         {
+            Debug("ALERT: Got $ name for user ",oUser);
+         }
+         else
+         {
+            Debug("Got char name length out of range for user ", oUser);
+         }
 
          return CC_NAME_TOO_LONG;
       }

@@ -7621,13 +7621,29 @@ messages:
    "This should never be called directly, except from 'RemoveFromGuild' in"
    "guild.kod!  Otherwise, the guild lists may not match with player's poGuild!"
    {
+      local oWatcher;
+
       poGuild = $;
       piGuild_commands = 0;
-      if poOwner <> $ AND Send(poOwner,@GetWatcher) <> $
+
+      if (poOwner <> $)
       {
-         Send(Send(poOwner,@GetWatcher),@PlayerQuitGuild,#who=self);
+         oWatcher = Send(poOwner,@GetWatcher);
+         if (oWatcher <> $)
+         {
+            Send(oWatcher,@PlayerQuitGuild,#who=self);
+         }
       }
 
+      // If we are logged off unsafely or phased, we pen instantly.
+      Send(self,@InstantPenIfUnsafe);
+
+      return;
+   }
+
+   // Stub (probably unnecessary), User handles it.
+   InstantPenIfUnsafe()
+   {
       return;
    }
 
@@ -14953,9 +14969,15 @@ messages:
       return;
    }
 
-   PhaseTimerEnd()
+   PhaseTimerEnd(timer = $)
    {
       local oPhase;
+
+      if (timer = $
+         OR timer <> ptPhaseTimer)
+      {
+         DeleteTimer(ptPhaseTimer);
+      }
 
       ptPhaseTimer = $;
 

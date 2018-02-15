@@ -1503,6 +1503,44 @@ messages:
       return iPointsLost;
    }
 
+   InstantPenIfUnsafe()
+   "Causes an instant logoff pen if the user is phased or has a logoff ghost."
+   "Won't do anything to logged-on users who are not phased."
+   {
+      local oRoom, i, each_obj;
+
+      if (pbLogged_on)
+      {
+         if (piFlags & PFLAG_PHASED)
+         {
+            // End the phase timer prematurely, Phase spell handles penalty.
+            Send(self,@PhaseTimerEnd);
+
+            return;
+         }
+      }
+      else
+      {
+         oRoom = Send(SYS,@FindRoomByNum,#num=piSave_room);
+         if (oRoom <> $)
+         {
+            foreach i in Send(oRoom,@GetHolderActive)
+            {
+               each_obj = First(i);
+               if (IsClass(each_obj,&LogoffGhost)
+                  AND Send(each_obj,@GetGhostedPlayer) = self)
+               {
+                  // Logoff ghost will delete itself and handle penalties.
+                  Send(each_obj,@PenaltyTrigger);
+
+                  return;
+               }
+            }
+         }
+      }
+
+      return;
+   }
 #endregion Penalties
 
    AdminSystemMessage(string = $)

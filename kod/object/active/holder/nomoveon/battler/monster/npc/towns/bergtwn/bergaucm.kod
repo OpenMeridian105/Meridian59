@@ -1,0 +1,59 @@
+// Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+// All rights reserved.
+//
+// This software is distributed under a license that is described in
+// the LICENSE file that accompanies it.
+//
+// Meridian is a registered trademark.
+
+
+////////////////////////////////////////////////////////////////////////////////
+BergAucM is BergTown
+
+constants:
+
+   include blakston.khd
+
+resources:
+
+   include bergaucm.lkod
+
+   bergauc_name_rsc = "Berg Auctioneer"
+   bergauc_icon_rsc = bergmerch.bgf
+   bergauc_desc_rsc = \
+      "This is the Berg Auctioneer"
+
+   BergAuc_entry_welcome = "Got something special to sell for me?"
+
+classvars:
+
+   vrName = bergauc_name_rsc
+   vrIcon = bergauc_icon_rsc
+   vrDesc = bergauc_desc_rsc
+   viAttributes = \
+      MOB_NOFIGHT | MOB_SELLER | MOB_BUYER | MOB_NOMOVE \
+      | MOB_RANDOM | MOB_LISTEN | MOB_COND_SELLER
+   viOccupation = MOB_ROLE_MERCHANT
+   viMerchant_markup = MERCHANT_RIPOFF
+
+properties:
+
+messages:
+
+
+   UserEntered(who=$)
+   {
+      if Send(who,@CheckPlayerFlag,#flag=PFLAG_OUTLAW)
+      {
+         Send(self,@SetMood,#new_mood=piMood-2);
+      }
+
+      Post(who,@SomeoneSaid,#what=self,#string=BergAuc_entry_welcome,
+            #type=SAY_RESOURCE);
+
+      propagate;
+   }
+
+end
+////////////////////////////////////////////////////////////////////////////////
+

@@ -1,0 +1,95 @@
+// Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+// All rights reserved.
+//
+// This software is distributed under a license that is described in
+// the LICENSE file that accompanies it.
+//
+// Meridian is a registered trademark.
+
+
+////////////////////////////////////////////////////////////////////////////////
+BergBank is BergRoom
+
+constants:
+
+   include blakston.khd
+
+resources:
+
+   include bergbank.lkod
+
+   room_name_bergbank = "The Bank of Berg"
+   room_bergbank = bergbank.roo
+   bergbank_music = bank.ogg
+
+   bergbank_sign_name = "Welcome to the Bank of Berg"
+   bergbank_sign_desc = \
+      "Use the commands \"deposit amount\", \"withdraw amount\", and "
+      "\"balance\" to access your bank account.\n\nDeposits made here can "
+      "also be accessed from the First Royal Bank of Tos in East Tos or "
+      "in the Bank of Jasper."
+   bergbank_locked_doors = "The door is locked."
+
+classvars:
+
+   vrName = room_name_bergbank
+
+   viTeleport_row = 5
+   viTeleport_col = 6
+
+   viTerrain_type = TERRAIN_CITY | TERRAIN_SHOP
+
+properties:
+
+   viPermanent_flags = ROOM_NO_COMBAT
+
+   prRoom = room_bergbank
+   piRoom_num = RID_BERG_BANK
+
+   prMusic = bergbank_music
+
+   piBaseLight = LIGHT_NICE
+   piOutside_factor = 3
+
+messages:
+
+   CreateStandardExits()
+   {
+      plExits = $;
+
+      /// TO TOWN
+      plExits = Cons([ 5, 2, RID_BERG_CITY, 30, 88, ROTATE_NONE ],plExits);
+      plExits = Cons([ 5, 1, RID_BERG_CITY, 30, 88, ROTATE_NONE ],plExits);
+
+      plExits = Cons([ 8, 9, ROOM_LOCKED_DOOR, bergbank_locked_doors ],plExits);
+
+      propagate;
+   }
+
+   CreateStandardObjects()
+   {
+      Send(self,@NewHold,#what=Create(&Sign,#name=bergbank_sign_name,
+            #desc=bergbank_sign_desc),
+            #new_row=9,#new_col=7,#fine_row=8,#fine_col=56);
+
+      // NPC
+      Send(self,@NewHold,#what=Create(&BergBanker),
+             #new_row=6,#new_col=11,#fine_row=24,#fine_col=0);
+
+      Send(self,@NewHold,#what=Create(&DynamicLight,#iColor=LIGHT_FIRE,#iIntensity=50),
+         #new_row=7,#new_col=2,#fine_row=8,#fine_col=8);
+      Send(self,@NewHold,#what=Create(&DynamicLight,#iColor=LIGHT_FIRE,#iIntensity=50),
+         #new_row=3,#new_col=2,#fine_row=56,#fine_col=4);
+      Send(self,@NewHold,#what=Create(&DynamicLight,#iColor=LIGHT_FIRE,#iIntensity=50),
+         #new_row=3,#new_col=12,#fine_row=26,#fine_col=4);
+
+      Send(self,@NewHold,#what=Create(&QuillPen),
+         #new_row=4,#new_col=9,#fine_row=34,#fine_col=20);
+
+
+      propagate;
+   }
+
+
+end
+////////////////////////////////////////////////////////////////////////////////

@@ -125,9 +125,9 @@ icon, next to the 'save game' disk icon.
 
 Third-Party Code
 --------------
-Meridian uses the third party libraries zlib, libarchive, libpng and jansson.
+Meridian uses the third party libraries zlib, libpng and jansson.
 Each of these is built from source which is included in the appropriately-named
-directories (libzlib, libarchive, libpng and libjansson).
+directories (libzlib, libpng and libjansson).
 
 Contact Information
 --------------

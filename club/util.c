@@ -70,7 +70,7 @@ void ClearMessageQueue(void)
 char *GetString(HMODULE hModule, int idnum)
 {
    static int index = 0;
-   static char szLoadedString[4][MAXSTRINGLEN];
+   static char szLoadedString[4][MAXSTRINGLEN + 1];
 
    index = (index + 1) % 4;
    

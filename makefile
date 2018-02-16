@@ -8,7 +8,7 @@ TOPDIR=.
 .SILENT:
 
 # make ignores targets if they match directory names
-all: Bzlib Blibarchive Blibpng Bjansson Bserver Bclient Bmodules Bkod Bdeco Bupdater Bbbgun Bkeybind Bresource
+all: Bzlib Blibpng Bjansson Bserver Bclient Bmodules Bkod Bdeco Bupdater Bbbgun Bkeybind Bresource
 
 Bserver: Bresource Bjansson
 	echo Making $(COMMAND) in $(BLAKSERVDIR)
@@ -98,12 +98,6 @@ Blibpng:
 	$(MAKE) /$(MAKEFLAGS) $(COMMAND)
 	cd ..
 	
-Blibarchive:
-	echo Making $(COMMAND) in $(LIBARCHIVEDIR)
-	cd $(LIBARCHIVEDIR)
-	$(MAKE) /$(MAKEFLAGS) $(COMMAND)
-	cd ..
-
 Bzlib:
 	echo Making $(COMMAND) in $(ZLIBDIR)
 	cd $(ZLIBDIR)

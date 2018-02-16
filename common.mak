@@ -27,7 +27,6 @@ CLUBDIR       = $(TOPDIR)\club
 KEYBINDDIR    = $(TOPDIR)\keybind
 WAVEMIXDIR    = $(TOPDIR)\wavemix
 LIBPNGDIR     = $(TOPDIR)\libpng
-LIBARCHIVEDIR = $(TOPDIR)\libarchive
 ZLIBDIR       = $(TOPDIR)\libzlib
 JANSSONDIR    = $(TOPDIR)\libjansson
 
@@ -42,7 +41,6 @@ BLAKINCLUDEDIR       = $(TOPDIR)\include
 MYSQLINCLUDEDIR      = $(TOPDIR)\include\mysql
 DX9INCLUDEDIR        = $(TOPDIR)\include\dx9
 LIBPNGINCLUDEDIR     = $(TOPDIR)\include\libpng
-LIBARCHIVEINCLUDEDIR = $(TOPDIR)\include\libarchive
 ZLIBINCLUDEDIR       = $(TOPDIR)\include\zlib
 IRRKLANGINCLUDEDIR   = $(TOPDIR)\include\irrklang
 JANSSONINCLUDEDIR    = $(TOPDIR)\libjansson
@@ -64,8 +62,7 @@ PALETTEFILE = $(TOPDIR)\blakston.pal
 # /fp:precise             Use precise floating-point calculations
 #                         /fp:fast causes issues with BSP tree calcs
 # /DBLAK_PLATFORM_WINDOWS Build blakserv for Windows
-# /DLIBARCHIVE_STATIC     For static libarchive build
-# /DHAVE_CONFIG_H         For libarchive and jansson builds
+# /DHAVE_CONFIG_H         For jansson builds
 # /WX                     Treat warnings as errors
 # /W3                     Warnings level
 # /wdXXXX                 Disable specific warnings
@@ -74,7 +71,6 @@ CCOMMONFLAGS = /nologo /GR- /EHsc- /MP /fp:precise \
     /D_CRT_SECURE_NO_WARNINGS \
     /D_CRT_NONSTDC_NO_DEPRECATE \
     /D_WINSOCK_DEPRECATED_NO_WARNINGS \
-    /DLIBARCHIVE_STATIC \
     /DHAVE_CONFIG_H \
     /WX /W3 /wd4996 /wd4390 
 
@@ -150,4 +146,4 @@ MAKEBGF   = $(BLAKBINDIR)\makebgf
 # -----------------------------------------------------------------
 # LIB and INCLUDE directories for compiler and linker
 LIB     = $(LIB);$(BLAKLIBDIR)
-INCLUDE = $(INCLUDE);$(BLAKINCLUDEDIR);$(MYSQLINCLUDEDIR);$(DX9INCLUDEDIR);$(LIBPNGINCLUDEDIR);$(ZLIBINCLUDEDIR);$(LIBARCHIVEINCLUDEDIR);$(IRRKLANGINCLUDEDIR);$(JANSSONINCLUDEDIR)
+INCLUDE = $(INCLUDE);$(BLAKINCLUDEDIR);$(MYSQLINCLUDEDIR);$(DX9INCLUDEDIR);$(LIBPNGINCLUDEDIR);$(ZLIBINCLUDEDIR);$(IRRKLANGINCLUDEDIR);$(JANSSONINCLUDEDIR)

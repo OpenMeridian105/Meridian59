@@ -2173,18 +2173,7 @@ Bool HandleNoCharacters(char *ptr, long len)
 /********************************************************************/
 Bool HandleGetClient(char *ptr, long len)
 {
-   char hostname[MAXMESSAGE], filename[MAXMESSAGE];
-   debug(("Got GetClient\n"));
-   
-   if ((len = ExtractString(&ptr, len, hostname, MAXMESSAGE)) == -1)
-      return False;
-
-   if ((len = ExtractString(&ptr, len, filename, MAXMESSAGE)) == -1)
-      return False;
-
-   debug(("server = %s, filename = %s\n", hostname, filename));
-
-   DownloadNewClient(hostname, filename);
+   debug(("Protocol AP_GETCLIENT no longer supported!"));
 
    return True;
 }

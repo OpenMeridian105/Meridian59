@@ -31,7 +31,6 @@
 #define False 0
 
 /* our special window messages */
-#define CM_DEARCHIVE  (WM_USER + 1002)
 #define CM_ASYNCDONE  (WM_USER + 1003)
 #define CM_RETRYABORT (WM_USER + 1004)
 #define CM_FILESIZE   (WM_USER + 1005)
@@ -44,8 +43,6 @@
 #define MAX_CMDLINE	2048	 // Maximum program command line size
 
 #include "resource.h"
-
-#include "clubarchive.h"
 #include "util.h"
 #include "transfer.h"
 #include <string>

@@ -48,9 +48,6 @@ void DownloadFiles(DownloadInfo *params);
 Bool DownloadCheckDirs(HWND hParent);
 void DownloadSetTime(int new_time);
 
-Bool DownloadBferHandleMessage(char *ptr, long len);
-
-void DownloadNewClient(char *hostname, char *filename);
 void DownloadClientPatch(char *patchhost, char *patchpath, char *patchcachepath,
                          char *cachefile, char *clubfile, char *reason);
 

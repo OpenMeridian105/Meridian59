@@ -10,8 +10,6 @@
 */
 
 #include "client.h"
-#include "archive.h"
-#include "archive_entry.h"
 
 static DownloadInfo *info;  // Info on download
 
@@ -28,15 +26,11 @@ static Bool abort_download = FALSE;   // True if user aborts download
 static Bool advert = FALSE;           // True if user aborts download
 bool download_in_progress = false;
 bool retry_download = false;
-static int  extraction_error = 0;        // Resource id of error string; 0 if none
 
 static int total = 0;
 static char format[256];
 
-extern int  connection;        /* Type of connection (serial, etc.) */
-
 static char update_program[] = "club.exe";  // Program to run to update the client executable
-static char update_filename[] = "blakston.arq"; // Name to call updated archive
 
 #define PING_DELAY 30000       // # of milliseconds between pings to server
 static int  timer_id;          // Timer for sending pings to server during download (0 if none)
@@ -49,8 +43,6 @@ static BOOL CALLBACK AskDownloadDialogProc(HWND hDlg, UINT message, UINT wParam,
 static void _cdecl TransferMessage(char *fmt, ...);
 static void AbortDownloadDialog(void);
 static Bool DownloadDone(DownloadFileInfo *file_info);
-static Bool DownloadDeleteFile(char *filename);
-static Bool DownloadUnarchiveFile(char *zip_name, char *dir);
 
 static void DownloadUpdater(DownloadInfo *params);
 static void DownloadUpdaterFile(DownloadInfo *params);
@@ -410,248 +402,10 @@ void AbortDownloadDialog(void)
 Bool DownloadDone(DownloadFileInfo *file_info)
 {
    download_in_progress = false;
-#if VANILLA_UPDATER
-   char zip_name[MAX_PATH + FILENAME_MAX];    // Name of uncompressed file
-   char *destination_dir;
 
-   sprintf(zip_name, "%s\\%s", download_dir, file_info->filename);
-
-   switch (DownloadLocation(file_info->flags))
-   {
-   case DF_DIRRESOURCE:
-      destination_dir = resource_dir;
-      break;
-
-   case DF_DIRCLIENT:
-      destination_dir = run_dir;
-      break;
-
-   case DF_DIRHELP:
-      destination_dir = help_dir;
-      break;
-
-   case DF_DIRMAIL:
-      destination_dir = mail_dir;
-      break;
-
-   case DF_ADVERTISEMENT:
-      destination_dir = ad_dir;
-      break;
-
-   case DF_DIRWIN:
-   case DF_DIRWINSYS:
-      // XXX Unimplemented
-      debug(("Windows dir file flags unimplemented\n"));
-      destination_dir = run_dir;
-      break;
-
-   default:
-      debug(("Got bad file location flags %d\n", DownloadLocation(file_info->flags)));
-      return False;
-   }
-
-   debug(("destination = %s\n", destination_dir));
-
-   // Post-processing on file
-   switch (DownloadCommand(file_info->flags))
-   {
-   case DF_DELETE:
-      sprintf(zip_name, "%s\\%s", destination_dir, file_info->filename);
-      if (!DownloadDeleteFile(zip_name))
-         return False;
-      break;
-
-   case DF_RETRIEVE:
-      if (!DownloadUnarchiveFile(zip_name, destination_dir))
-      {
-         unlink(zip_name);
-         return False;
-      }
-      unlink(zip_name);
-      break;
-
-   default:
-      debug(("Got unknown download command %d\n", DownloadCommand(file_info->flags)));
-      break;
-   }
-#endif
    debug(("Got file successfully\n"));
 
    return True;
-}
-/*****************************************************************************/
-/*
- * DownloadDeleteFile:  Delete given file.  Return True on success.
- */
-Bool DownloadDeleteFile(char *filename)
-{
-   struct stat s;
-   Bool done = False;
-
-   debug(("deleting file %s\n", filename));
-
-   // Ignore if file doesn't exist
-   if (stat(filename, &s) != 0)
-      return True;
-
-   while (!done)
-   {
-      if (!DeleteFile(filename))
-      {
-         if (!AreYouSure(hInst, hMain, YES_BUTTON, IDS_CANTDELETEFILE, filename))
-            return False;
-      }
-      else done = True;
-   }
-   return True;
-}
-/*****************************************************************************/
-static int CopyArchiveData(struct archive *ar, struct archive *aw)
-{
-   const void *buff;
-   size_t size;
-   __int64 offset;
-
-   while (true)
-   {
-      int r = archive_read_data_block(ar, &buff, &size, &offset);
-      if (r == ARCHIVE_EOF)
-         return ARCHIVE_OK;
-      if (r != ARCHIVE_OK)
-         return r;
-      r = archive_write_data_block(aw, buff, size, offset);
-      if (r != ARCHIVE_OK)
-         return r;
-   }
-}
-/*****************************************************************************/
-bool ExtractArchive(const char *zip_file, const char *out_dir)
-{
-   struct archive *input = archive_read_new();
-   archive_read_support_format_all(input);
-   archive_read_support_compression_all(input);
-   struct archive *output = archive_write_disk_new();
-   archive_write_disk_set_options(output, ARCHIVE_EXTRACT_TIME);
-   archive_write_disk_set_standard_lookup(output);
-   const int BLOCK_SIZE = 65536;
-   int r = archive_read_open_filename(input, zip_file, BLOCK_SIZE);
-
-   if (r != ARCHIVE_OK)
-   {
-      debug(("Error opening archive %s: %s\n", zip_file, archive_error_string(input)));
-      extraction_error = IDS_BADARCHIVE;
-      return false;
-   }
-
-   // libarchive can only extract into the current directory, so we
-   // need to set it and restore it.
-   char original_dir[MAX_PATH];
-   getcwd(original_dir, sizeof(original_dir));
-   chdir(out_dir);
-
-   bool retval = true;
-   while (true)
-   {
-      struct archive_entry *entry;
-      r = archive_read_next_header(input, &entry);
-      if (r == ARCHIVE_EOF)
-         break;
-
-      if (r != ARCHIVE_OK)
-      {
-         debug(("Error reading archive header: %s\n", archive_error_string(input)));
-         extraction_error = IDS_BADARCHIVE;
-         retval = false;
-         break;
-      }
-      r = archive_write_header(output, entry);
-      if (r != ARCHIVE_OK)
-      {
-         debug(("Error writing archive header: %s\n", archive_error_string(input)));
-         extraction_error = IDS_UNKNOWNERROR;
-         retval = false;
-         break;
-      }
-
-      if (archive_entry_size(entry) > 0)
-      {
-         r = CopyArchiveData(input, output);
-         if (r != ARCHIVE_OK)
-         {
-            debug(("CopyArchiveData error: %s\n", archive_error_string(input)));
-            extraction_error = IDS_UNKNOWNERROR;
-            retval = false;
-            break;
-         }
-      }
-      r = archive_write_finish_entry(output);
-      if (r != ARCHIVE_OK)
-      {
-         debug(("write_finish_entry error: %s\n", archive_error_string(input)));
-         extraction_error = IDS_UNKNOWNERROR;
-         retval = false;
-         break;
-      }
-
-      debug(("Archive file %s extracted\n", archive_entry_pathname(entry)));
-
-      // Extraction went OK; process Windows messages
-      ClearMessageQueue();  // Check for user hitting abort button
-
-      // Check for user abort
-      if (abort_download)
-      {
-         retval = false;
-         break;
-      }
-   }
-   archive_read_close(input);
-   archive_read_free(input);
-   archive_write_close(output);
-   archive_write_free(output);
-
-   // Go back to original working directory
-   chdir(original_dir);
-
-   return retval;
-}
-/*****************************************************************************/
-/*
- * DownloadUnarchiveFile: Unarchive archive zip_name to given
- *   directory.  Return True on success.
- */
-Bool DownloadUnarchiveFile(char *zip_name, char *dir)
-{
-   Bool retval = True;
-
-   // Does file exist?
-   struct stat s;
-   if (stat(zip_name, &s) != 0)
-   {
-      ClientError(hInst, hDownloadDialog, IDS_MISSINGARCHIVE, zip_name);
-      return False;
-   }
-
-   while (1)
-   {
-      extraction_error = 0;
-      TransferMessage(GetString(hInst, IDS_DECOMPRESSING));
-
-      ExtractArchive(zip_name, dir);
-
-      if (extraction_error == 0)
-         // This means the user hit the abort button
-         break;
-
-      if (!AreYouSure(hInst, hDownloadDialog, YES_BUTTON, IDS_CANTUNCOMPRESS,
-         zip_name, GetString(hInst, extraction_error)))
-      {
-         retval = False;
-         break;
-      }
-   }
-
-   return retval;
 }
 /*****************************************************************************/
 /*
@@ -692,75 +446,6 @@ void DownloadExit(void)
       KillTimer(NULL, timer_id);
       timer_id = 0;
    }
-}
-
-/*****************************************************************************/
-/*
- * DownloadNewClient:  Spawn external program to get new client executable.
- *   Arguments are passed as command line paramenters to external program.
- */
-void DownloadNewClient(char *hostname, char *filename)
-{
-   SHELLEXECUTEINFO shExecInfo;
-   char command_line[MAX_CMDLINE];
-   char exe_name[MAX_PATH];
-   char client_directory[MAX_PATH];
-   char update_program_path[MAX_PATH];
-   char *ptr;
-   SystemInfo sysinfo;
-
-   if (AreYouSure(hInst, hMain, YES_BUTTON, IDS_NEEDNEWVERSION))
-   {
-      // Make download dir if not already there
-      DownloadCheckDirs(hMain);
-
-      // Destination directory is wherever client executable is running.
-      // Because of UAC, this is likely not the current working directory.
-      GetModuleFileName(NULL, exe_name, MAX_PATH);
-      strcpy(client_directory, exe_name);
-      ptr = strrchr(client_directory, '\\');
-      if (ptr != NULL)
-         *ptr = 0;
-
-      // Due to UAC (and arguably a bad design decision), the club binary is
-      // in Program Files by default, where we can't necessarily update it.
-      // We can, however, update anything in the current directory (usually
-      // in the user's private directory).  So we first look for club.exe there,
-      // and only fall back to the one in Program files if it's not there.
-      sprintf(update_program_path, "%s\\%s", run_dir, update_program);
-      if (!FileExists(update_program_path))
-         sprintf(update_program_path, "%s\\%s", client_directory, update_program);
-
-      sprintf(command_line, "\"%s\" UPDATE \"%s\" \"%s\" \"%s\\%s\" \"%s\"",
-         exe_name, hostname, filename, download_dir, update_filename,
-         client_directory);
-
-      // Using full pathname of client can overrun 128 character DOS command line limit
-      GetSystemStats(&sysinfo);
-      if (strlen(command_line) >= 127 &&
-         (sysinfo.platform == VER_PLATFORM_WIN32_WINDOWS))
-      {
-         ClientError(hInst, hMain, IDS_LONGCMDLINE, command_line);
-      }
-
-      shExecInfo.cbSize = sizeof(SHELLEXECUTEINFO);
-      shExecInfo.fMask = 0;
-      shExecInfo.hwnd = NULL;
-      shExecInfo.lpVerb = "runas";
-      shExecInfo.lpFile = update_program_path;
-      shExecInfo.lpParameters = command_line;
-      // Run in parent of resource directory; club will take care of copying
-      // exes to Program Files if necessary.
-      shExecInfo.lpDirectory = NULL;
-      shExecInfo.nShow = SW_NORMAL;
-      shExecInfo.hInstApp = NULL;
-
-      if (!ShellExecuteEx(&shExecInfo))
-         ClientError(hInst, hMain, IDS_CANTUPDATE, update_program);
-   }
-
-   // Quit client
-   PostMessage(hMain, WM_DESTROY, 0, 0);
 }
 /*****************************************************************************/
 /*

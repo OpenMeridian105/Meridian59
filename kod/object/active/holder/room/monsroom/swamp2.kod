@@ -1,0 +1,319 @@
+// Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+// All rights reserved.
+//
+// This software is distributed under a license that is described in
+// the LICENSE file that accompanies it.
+//
+// Meridian is a registered trademark.
+
+
+////////////////////////////////////////////////////////////////////////////////
+Swamp2 is ObjectRoom
+
+constants:
+
+   include blakston.khd
+   
+   TIME_PER_KILL = 6000 //How much each kill adds to the puzzle timer.
+   TIME_REQUIRED = 25000 //Amount of time needed to accumulate to spawn the boss.
+   TIME_CAP = 100000 //Can't go above this amount.
+
+resources:
+
+   include swamp2.lkod
+
+   room_swamp2 = swamp2.roo
+   room_name_swamp2 = "The desolate Mire"
+
+   swamp2_music = Badfor.ogg
+
+   swamp2_boss_msg = \
+      "~BA Dark Angel has been "
+      "summoned!"
+
+classvars:
+
+   vrName = room_name_swamp2
+
+   viTeleport_row = 36
+   viTeleport_col = 23
+
+   viTerrain_type = TERRAIN_NECROPOLIS | TERRAIN_LAKE | TERRAIN_FOREST
+
+properties:
+
+   prRoom = room_swamp2
+   piRoom_num = RID_SWAMP2
+
+   prMusic = swamp2_music
+
+   piBaseLight = LIGHT_DARK
+
+   piDirectional_percent = DIRECTIONAL_PERCENT_OUTDOORS
+
+   piOutside_factor = OUTDOORS_2
+   
+   //piGen_percent = 80
+
+   piInit_count_min = 4
+   piInit_count_max = 10
+
+   piMonster_count_max = 15
+
+   piSummonCount = 0
+
+   poLight1 = $
+   poLight2 = $
+   poLight3 = $
+   poLight4 = $
+   poLight5 = $
+
+   ptLightTimer = $
+
+
+
+messages:
+
+   CreateStandardExits()
+   {
+      plEdge_Exits = $;
+
+      plEdge_Exits = Cons([LEAVE_WEST, RID_SWAMP1, 26, 46, ROTATE_NONE], plEdge_exits);
+      plEdge_Exits = Cons([LEAVE_EAST, RID_BERG_7, 16, 2, ROTATE_NONE], plEdge_exits);
+      plEdge_Exits = Cons([LEAVE_NORTH, RID_JIXA_4, 31, 20, ROTATE_NONE], plEdge_exits);
+
+      propagate;
+   }
+
+   Constructed()
+   {
+      plMonsters = [ [&Frogman, 100] ];
+
+      plGenerators = [ [32, 11], [44, 11], [49, 14], [56, 22], [47, 22],
+                       [51, 27], [50, 33], [42, 37], [39, 33], [32, 38] ];
+
+      propagate;
+   }
+
+   TryCreateMonster(initroom = FALSE,loadfirst = FALSE)
+   {
+      local iHour;
+
+      iHour = Send(SYS,@GetHour);
+      if iHour < 5 OR iHour > 18
+      {
+         plMonsters = [ [&DaemonSkeleton, 100] ];
+         propagate;
+      }
+
+      plMonsters = [ [&Frogman, 100] ];
+      propagate;
+   }
+
+   SomethingKilled(what = $,victim = $)
+   {
+      local cClass, iTimeRemaining, iTimeAdded, iTime;
+
+      if what <> $
+            AND IsClass(what,&Player)
+      {
+        cClass = GetClass(victim);
+        if (cClass = &DaemonSkeleton)
+        {
+           if ptLightTimer <> $
+           {
+              iTimeRemaining = GetTimeRemaining(ptLightTimer);
+              iTimeAdded = TIME_PER_KILL + iTimeRemaining;
+
+              if iTimeRemaining <= TIME_CAP //Put a cap on accumulated time
+              {
+                 DeleteTimer(ptLightTimer);
+                 ptLightTimer = CreateTimer(self,@TurnOffLights,iTimeAdded);
+                 iTime = GetTimeRemaining(ptLightTimer);
+              }
+
+           }
+           if ptLightTimer = $
+           {
+              iTimeAdded = TIME_PER_KILL;
+              ptLightTimer = CreateTimer(self,@TurnOffLights,iTimeAdded);
+              iTime = GetTimeRemaining(ptLightTimer);
+           }
+
+           Send(self,@CheckLights);
+
+           if GetTimeRemaining(ptLightTimer) >= TIME_REQUIRED
+           {
+              Send(self,@NewHold,#what=create(&DarkAngel),
+                   #new_row=33,#new_col=21,#fine_row=32,#fine_col=16
+              );
+
+              Send(self,@SomeoneSaid,#type=SAY_MESSAGE,#what=self,
+                   #string=swamp2_boss_msg);
+              DeleteTimer(ptLightTimer);
+              ptLightTimer = $;
+           }   
+
+        }
+      }
+   propagate;
+
+   }
+
+   CheckLights()
+   {
+      local iRem;
+
+      if ptLightTimer <> $
+      {
+         iRem = GetTimeRemaining(ptLightTimer);
+      }
+
+      if ptLightTimer = $
+      {
+         Send(poLight1,@SetSwitch,#bSwitch=OFF);
+         Send(poLight2,@SetSwitch,#bSwitch=OFF);
+         Send(poLight3,@SetSwitch,#bSwitch=OFF);
+         Send(poLight4,@SetSwitch,#bSwitch=OFF);
+         Send(poLight5,@SetSwitch,#bSwitch=OFF);
+         //iRem = 0;
+         return;
+      }
+
+
+       if iRem < ((TIME_REQUIRED / 10) * 2)
+      {
+         Send(poLight1,@SetSwitch,#bSwitch=OFF);
+         Send(poLight2,@SetSwitch,#bSwitch=OFF);
+         Send(poLight3,@SetSwitch,#bSwitch=OFF);
+         Send(poLight4,@SetSwitch,#bSwitch=OFF);
+         Send(poLight5,@SetSwitch,#bSwitch=OFF);
+      }
+
+         else if iRem >= ((TIME_REQUIRED / 10) * 2)
+            AND iRem < ((TIME_REQUIRED / 10) * 4)
+         {
+             Send(poLight1,@SetSwitch,#bSwitch=ON);
+             Send(poLight2,@SetSwitch,#bSwitch=OFF);
+             Send(poLight3,@SetSwitch,#bSwitch=OFF);
+             Send(poLight4,@SetSwitch,#bSwitch=OFF);
+             Send(poLight5,@SetSwitch,#bSwitch=OFF);
+         }
+
+         else if iRem >= ((TIME_REQUIRED / 10) * 4)
+            AND iRem < ((TIME_REQUIRED / 10) * 6)
+         {
+             Send(poLight1,@SetSwitch,#bSwitch=ON);
+             Send(poLight2,@SetSwitch,#bSwitch=ON);
+             Send(poLight3,@SetSwitch,#bSwitch=OFF);
+             Send(poLight4,@SetSwitch,#bSwitch=OFF);
+             Send(poLight5,@SetSwitch,#bSwitch=OFF);
+         }
+
+         else if iRem >= ((TIME_REQUIRED / 10) * 6)
+            AND iRem < ((TIME_REQUIRED / 10) * 8)
+         {
+             Send(poLight1,@SetSwitch,#bSwitch=ON);
+             Send(poLight2,@SetSwitch,#bSwitch=ON);
+             Send(poLight3,@SetSwitch,#bSwitch=ON);
+             Send(poLight4,@SetSwitch,#bSwitch=OFF);
+             Send(poLight5,@SetSwitch,#bSwitch=OFF);
+         }
+
+         else if iRem >= ((TIME_REQUIRED / 10) * 8)
+            AND iRem < TIME_REQUIRED
+         {
+             Send(poLight1,@SetSwitch,#bSwitch=ON);
+             Send(poLight2,@SetSwitch,#bSwitch=ON);
+             Send(poLight3,@SetSwitch,#bSwitch=ON);
+             Send(poLight4,@SetSwitch,#bSwitch=ON);
+             Send(poLight5,@SetSwitch,#bSwitch=OFF);
+         }
+
+         else if iRem >= TIME_REQUIRED
+         {
+             Send(poLight1,@SetSwitch,#bSwitch=ON);
+             Send(poLight2,@SetSwitch,#bSwitch=ON);
+             Send(poLight3,@SetSwitch,#bSwitch=ON);
+             Send(poLight4,@SetSwitch,#bSwitch=ON);
+             Send(poLight5,@SetSwitch,#bSwitch=ON);
+         }
+         else
+         {
+            Send(poLight1,@SetSwitch,#bSwitch=OFF);
+            Send(poLight2,@SetSwitch,#bSwitch=OFF);
+            Send(poLight3,@SetSwitch,#bSwitch=OFF);
+            Send(poLight4,@SetSwitch,#bSwitch=OFF);
+            Send(poLight5,@SetSwitch,#bSwitch=OFF);
+         }
+
+      return;
+   }
+
+   SomethingMoved()
+   {
+      Send(self,@CheckLights);
+      propagate;
+   }
+
+   TurnOffLights()
+   {
+      if ptLightTimer <> $
+      {
+         ptLightTimer = $;
+         Send(self,@CheckLights);
+      }
+
+      return;
+   }
+
+   Delete()
+   {
+      if ptLightTimer <> $
+      {
+         DeleteTimer(ptLightTimer);
+         ptLightTimer = $;
+      }
+
+      propagate;
+   }
+   
+   CreateStandardObjects()
+   {
+      poLight1 = Create(&DynamicLight,#iColor=LIGHT_SPECTRAL,#iIntensity=40);
+      Send(self,@NewHold,#what=poLight1,
+           #new_row=36,#new_col=21,#fine_row=0,#fine_col=16); 
+
+      poLight2 = Create(&DynamicLight,#iColor=LIGHT_SPECTRAL,#iIntensity=40);
+      Send(self,@NewHold,#what=poLight2,
+           #new_row=34,#new_col=19,#fine_row=0,#fine_col=16);
+
+      poLight3 = Create(&DynamicLight,#iColor=LIGHT_SPECTRAL,#iIntensity=40);
+      Send(self,@NewHold,#what=poLight3,
+           #new_row=32,#new_col=19,#fine_row=0,#fine_col=48);
+
+      poLight4 = Create(&DynamicLight,#iColor=LIGHT_SPECTRAL,#iIntensity=40);
+      Send(self,@NewHold,#what=poLight4,
+           #new_row=32,#new_col=22,#fine_row=0,#fine_col=48);
+
+      poLight5 = Create(&DynamicLight,#iColor=LIGHT_SPECTRAL,#iIntensity=40);
+      Send(self,@NewHold,#what=poLight5,
+           #new_row=34,#new_col=23,#fine_row=0,#fine_col=16);
+
+      Send(self,@NewHold,#what=Create(&OrnamentalObject,#type=OO_NECTREE2),
+           #new_row=39,#new_col=17,#fine_row=0,#fine_col=0,#angle=ANGLE_EAST);
+
+      Send(self,@NewHold,#what=Create(&OrnamentalObject,#type=OO_NECTREE2),
+           #new_row=30,#new_col=26,#fine_row=32,#fine_col=32,#angle=ANGLE_EAST);
+
+      Send(self,@NewHold,#what=Create(&OrnamentalObject,#type=OO_NECTREE2),
+           #new_row=33,#new_col=18,#fine_row=0,#fine_col=0,#angle=ANGLE_EAST);
+
+      Send(self,@NewHold,#what=Create(&Skull),
+           #new_row=33,#new_col=21,#fine_row=32,#fine_col=16,#angle=ANGLE_EAST);
+
+      propagate;
+   }
+
+end
+////////////////////////////////////////////////////////////////////////////////

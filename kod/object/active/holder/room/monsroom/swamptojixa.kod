@@ -1,0 +1,86 @@
+// Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+// All rights reserved.
+//
+// This software is distributed under a license that is described in
+// the LICENSE file that accompanies it.
+//
+// Meridian is a registered trademark.
+
+
+////////////////////////////////////////////////////////////////////////////////
+Swamptojixa is ObjectRoom
+
+constants:
+
+   include blakston.khd
+
+resources:
+
+   include swamptojixa.lkod
+
+   room_swamptojixa = swamptojixa.roo
+   room_name_swamptojixa = "Eastern Duke's Way"
+
+   swamptojixa_music = walk1.ogg
+
+classvars:
+
+   vrName = room_name_swamptojixa
+
+   viTeleport_row = 38
+   viTeleport_col = 35
+
+   viTerrain_type = TERRAIN_FOREST | TERRAIN_ROAD | TERRAIN_FIELDS | TERRAIN_RIVER
+
+properties:
+
+   prRoom = room_swamptojixa
+   piRoom_num = RID_SWAMPTOJIXA
+
+   prMusic = swamptojixa_music
+
+   piBaseLight = LIGHT_NICE
+ 
+   piDirectional_percent = DIRECTIONAL_PERCENT_OUTDOORS
+
+   piOutside_factor = OUTDOORS_2
+
+   //piGen_percent = 80
+
+   piInit_count_min = 4
+   piInit_count_max = 7
+
+   piMonster_count_max = 10
+
+
+
+messages:
+
+   CreateStandardExits()
+   {
+      plEdge_Exits = $;
+
+      plEdge_Exits = Cons([LEAVE_WEST, RID_EMGTOSWAMP, 3, 28, ROTATE_NONE], plEdge_exits);
+      plEdge_Exits = Cons([LEAVE_SOUTH, RID_SWAMP1, 3, 21, ROTATE_NONE], plEdge_exits);
+      plEdge_Exits = Cons([LEAVE_NORTH, RID_JIXA, 21, 2, ROTATE_NONE], plEdge_exits);
+
+      propagate;
+   }
+
+   Constructed()
+   {
+      plMonsters = [ [&Spider, 40], [&Ant, 60] ];
+
+      plGenerators = [ [35, 11], [43, 37], [23, 36], [7, 35], [24, 27], [24, 6], [43, 26] ];
+
+      propagate;
+   }
+
+   CreateStandardObjects()
+   {
+
+      propagate;
+   }
+
+end
+////////////////////////////////////////////////////////////////////////////////

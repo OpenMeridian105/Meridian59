@@ -1,0 +1,87 @@
+// Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+// All rights reserved.
+//
+// This software is distributed under a license that is described in
+// the LICENSE file that accompanies it.
+//
+// Meridian is a registered trademark.
+
+
+////////////////////////////////////////////////////////////////////////////////
+Emgtoswamp is ObjectRoom
+
+constants:
+
+   include blakston.khd
+
+resources:
+
+   include emgtoswamp.lkod
+
+   room_emgtoswamp = emgtoswamp.roo
+   room_name_emgtoswamp = "The Duke's Way"
+
+   emgtoswamp_music = walk1.ogg
+
+classvars:
+
+   vrName = room_name_emgtoswamp
+
+   viTeleport_row = 9
+   viTeleport_col = 20
+
+   viTerrain_type = TERRAIN_FOREST | TERRAIN_ROAD | TERRAIN_FIELDS
+
+properties:
+
+   prRoom = room_emgtoswamp
+   piRoom_num = RID_EMGTOSWAMP
+
+   prMusic = emgtoswamp_music
+
+   piBaseLight = LIGHT_NICE
+
+   piDirectional_percent = DIRECTIONAL_PERCENT_OUTDOORS
+
+   piOutside_factor = OUTDOORS_2
+
+   //piGen_percent = 80
+
+   piInit_count_min = 4
+   piInit_count_max = 7
+
+   piMonster_count_max = 10
+
+
+   
+
+messages:
+
+   CreateStandardExits()
+   {
+      plEdge_Exits = $;
+
+      plEdge_Exits = Cons([LEAVE_NORTH, RID_SWAMPTOJIXA, 40, 3, ROTATE_NONE], plEdge_exits);
+      plEdge_Exits = Cons([LEAVE_EAST, RID_SWAMP1, 17, 6, ROTATE_NONE], plEdge_exits);
+      plEdge_Exits = Cons([LEAVE_SOUTH, RID_TOSEAST_MG, 1, 15, ROTATE_NONE], plEdge_exits);
+
+      propagate;
+   }
+
+   Constructed()
+   {
+      plMonsters = [ [&GiantRat, 70], [&Ant, 30] ];
+
+      plGenerators = [ [9, 4], [4, 3], [4, 11], [6, 19], [12, 25], [8, 30], [3, 24] ];
+
+      propagate;
+   }
+
+   CreateStandardObjects()
+   {
+
+      propagate;
+   }
+
+end
+////////////////////////////////////////////////////////////////////////////////

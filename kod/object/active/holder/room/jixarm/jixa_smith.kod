@@ -1,0 +1,95 @@
+// Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+// All rights reserved.
+//
+// This software is distributed under a license that is described in
+// the LICENSE file that accompanies it.
+//
+// Meridian is a registered trademark.
+
+
+////////////////////////////////////////////////////////////////////////////////
+JixaSmith is JixaRoom
+
+constants:
+
+   include blakston.khd
+
+resources:
+
+   include jixa_smith.lkod
+
+   room_jixa_smith = jixa_smith.roo
+   room_name_jixa_smith = "The Smith of Jixa"
+
+   jixa_smith_music = smithy.ogg
+
+   hammer_jixa_name = "smith hammer"
+   hammer_jixa_icon = hammer.bgf
+   hammer_jixa_desc = "The smiths hammer."
+
+classvars:
+
+   vrName = room_name_jixa_smith
+
+   viTeleport_row = 9
+   viTeleport_col = 9
+   
+properties:
+
+   viPermanent_flags = ROOM_NO_COMBAT
+   viTerrain_Type = TERRAIN_CITY | TERRAIN_SHOP
+
+   prRoom = room_jixa_smith
+   piRoom_num = RID_JIXA_SMITH
+
+   piBaseLight = LIGHT_NICE
+   piOutside_factor = 3
+
+   prMusic = jixa_smith_music
+   
+
+messages:
+
+   CreateStandardExits()
+   {
+      plExits = $;
+
+      /// TO TOWN
+      plExits = Cons([ 10, 7, RID_JIXA, 11, 18, ROTATE_NONE ],plExits);
+      plExits = Cons([ 10, 8, RID_JIXA, 11, 18, ROTATE_NONE ],plExits);
+
+
+      propagate;
+   }
+
+   CreateStandardObjects()
+   {
+
+      // NPC
+      Send(self,@NewHold,#what=Create(&JixaBlacksmith),
+            #new_row=7,#new_col=9,#fine_row=36,#fine_col=12);
+
+      // Decoration
+
+      Send(self,@NewHold,#what=Create(&SmokeColumn),
+         #new_row=5,#new_col=8,#fine_row=62,#fine_col=44);
+      Send(self,@NewHold,#what=Create(&DynamicLight,#iColor=LIGHT_FIRE,#iIntensity=30),
+         #new_row=5,#new_col=8,#fine_row=62,#fine_col=44);
+
+      Send(self,@NewHold,#what=Create(&QuillPen),
+         #new_row=8,#new_col=8,#fine_row=12,#fine_col=44);
+
+      Send(self,@NewHold,#what=Create(&DynamicLight,#iColor=LIGHT_FIRE,#iIntensity=45),
+         #new_row=8,#new_col=8,#fine_row=12,#fine_col=44);
+
+      Send(self,@NewHold,#what=Create(&DynamicLight,#iColor=LIGHT_FIRE,#iIntensity=30),
+         #new_row=9,#new_col=6,#fine_row=8,#fine_col=12);
+
+      Send(self,@NewHold,#what=Create(&DecoItem,#name=hammer_name,#icon=hammer_icon,#desc=hammer_desc),
+         #new_row=6,#new_col=9,#fine_row=46,#fine_col=56);
+
+      propagate;
+   }
+
+end
+////////////////////////////////////////////////////////////////////////////////

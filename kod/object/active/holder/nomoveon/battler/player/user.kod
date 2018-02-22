@@ -480,6 +480,9 @@ resources:
       "%s has regained physical touch with this reality."
    user_self_spectate_off = \
       "You have regained your physical connection to this place."
+   user_autolog_complete = "Autolog test complete!"
+   user_autophase_detected = \
+      "Autophase use detected! This event has been logged."
 
 classvars:
 
@@ -552,6 +555,10 @@ properties:
 
    // List of user objects this user cannot receive communications from.
    plForcedIgnore = $
+
+   // Uses GetTickCount, must be reset after detection period ends.
+   piLastAutologTest = -1
+   piLastAutologHP = 0
 
 messages:
 
@@ -977,7 +984,22 @@ messages:
 
    UserLogoff()
    {
-      local i;
+      local i, iTime;
+
+      // Autolog time check.
+      if (piLastAutologTest >= 0)
+      {
+         iTime = GetTickCount() - piLastAutologTest;
+         if (iTime > 0
+            AND iTime <= Send(SETTINGS_OBJECT,@GetAutologDetectionPeriod))
+         {
+            Debug("ALERT: ", vrName, self, " potential autolog detected",
+                  " milliseconds since last test: ", iTime, "test HP: ",
+                  piLastAutologHP," room: ",Send(poOwner,@GetName));
+         }
+      }
+
+      piLastAutologTest = -1;
 
       piTimeLoggedIn = Send(self,@GetTimeLoggedIn);
       Send(self,@BreakTrance);
@@ -6868,7 +6890,8 @@ messages:
 
    UserCast(oSpell=$,lTargets=$)
    {
-      local i, bFound, iSpell, iSpellNum, iSpellPower, lFinalTargets, iCost;
+      local i, bFound, iSpell, iSpellNum, iSpellPower, lFinalTargets, iCost,
+            iTime;
 
       // Check for valid spell first. This is mainly an issue during
       // system saves where a user might cast something with the wrong
@@ -6895,6 +6918,22 @@ messages:
       }
 
       iSpellNum = Send(oSpell,@GetSpellNum);
+
+      // Autophase check.
+      if (iSpellNum = SID_PHASE
+         AND piLastAutologTest >= 0)
+      {
+         iTime = GetTickCount() - piLastAutologTest;
+         if (iTime > 0
+            AND iTime <= Send(SETTINGS_OBJECT,@GetAutologDetectionPeriod))
+         {
+            Debug("ALERT: ", vrName, self, " potential autophase detected",
+                  " milliseconds since last test: ", iTime, "test HP: ",
+                  piLastAutologHP," room: ",Send(poOwner,@GetName));
+            Send(self,@MsgSendUser,#message_rsc=user_autophase_detected);
+         }
+         piLastAutologTest = -1;
+      }
 
       bFound = FALSE;
       foreach i in plSpells
@@ -9190,6 +9229,83 @@ messages:
                         plNew_mail);
 
       Send(self,@MsgSendUser,#message_rsc=user_new_nested_mail);
+
+      return;
+   }
+
+   AutologTestManual(iAmount = 15, iTime = 100)
+   "Sends health draws to client with low followed by correct health."
+   "Would cause autophase/loggers relying on the health bar or received "
+   "number to activate."
+   {
+      local t;
+
+      if (pbLogged_on
+         AND iAmount >= 0
+         AND iTime > 0)
+      {
+         AddPacket(1,BP_STAT,1,1, 1,1, 4,user_stat_health, 1,STAT_VALUE,
+                   1,STAT_INTEGER,4,iAmount, 4,0, 4,100, 4,piMax_health);
+         SendPacket(poSession);
+
+         // Local-stored timer, could be deleted on system save.
+         t = CreateTimer(self,@AutologTestReverse,iTime);
+      }
+
+      return;
+   }
+
+   AutologTest(iPercent = 15)
+   "Send the specified low-HP value to client.  Won't send if this value is "
+   "lower than the current HP value, or if the user is already phased."
+   {
+      local iHealth;
+
+      if (iPercent < 0
+         OR iPercent >= 100)
+      {
+         return;
+      }
+
+      iHealth = Send(self,@GetBaseMaxHealth) * iPercent / 100;
+
+      if (NOT (piFlags & PFLAG_PHASED)
+         AND pbLogged_on
+         AND iHealth < Send(self,@GetHealth))
+      {
+         AddPacket(1,BP_STAT,1,1, 1,1, 4,user_stat_health, 1,STAT_VALUE,
+                   1,STAT_INTEGER,4,iHealth, 4,0, 4,100, 4,piMax_health);
+         SendPacket(poSession);
+
+         // Record time/HP of test.
+         piLastAutologTest = GetTickCount();
+         piLastAutologHP = iHealth;
+      }
+
+      return;
+   }
+
+   AutologTestReverse(report = FALSE)
+   {
+      if (pbLogged_on)
+      {
+         AddPacket(1,BP_STAT,1,1, 1,1, 4,user_stat_health, 1,STAT_VALUE,
+                   1,STAT_INTEGER,4,Send(self,@GetHealth), 4,0, 4,100,
+                   4,piMax_health);
+         SendPacket(poSession);
+
+         if (report)
+         {
+            Send(self,@MsgSendUser,#message_rsc=user_autolog_complete);
+         }
+      }
+
+      return;
+   }
+
+   ResetAutologTestTime()
+   {
+      piLastAutologTest = -1;
 
       return;
    }

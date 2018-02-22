@@ -164,11 +164,23 @@ properties:
    pbReportHotPlates = FALSE
 
    //
-   // Speedhack & Teleport protection
+   // Speedhack, Teleport and auto-phase/log protection
    //
-   
+
    // Maximum amount of tokens in the movement bucket
    piMovementBucketMax = 15000000
+
+   // Minutes between tests.
+   piAutologTestScheduleMin = 10
+   piAutologTestScheduleMax = 720
+
+   // Milliseconds before correct HP shown.
+   piAutologTestDurationMin = 1
+   piAutologTestDurationMax = 500
+
+   // How soon after a test (in ms) should we log a potential detection?
+   // Set high by default to catch higher-latency players.
+   piAutologDetectionPeriod = 1000
 
    //
    // Penalties
@@ -599,12 +611,47 @@ messages:
    }
 
    //
-   // Speedhack & teleport protection
+   // Speedhack, autolog and teleport protection
    //
-
    GetMovementBucketMax()
    {
       return piMovementBucketMax;
+   }
+
+   GetAutologTestScheduleMin()
+   {
+      return piAutologTestScheduleMin;
+   }
+
+   GetAutologTestScheduleMax()
+   {
+      return piAutologTestScheduleMax;
+   }
+
+   GetAutologTestSchedule()
+   "Saves calling both min/max messages."
+   {
+      return Random(piAutologTestScheduleMin, piAutologTestScheduleMax);
+   }
+
+   GetAutologTestDurationMin()
+   {
+      return piAutologTestDurationMin;
+   }
+
+   GetAutologTestDurationMax()
+   {
+      return piAutologTestDurationMax;
+   }
+
+   GetAutologTestDuration()
+   {
+      return Random(piAutologTestDurationMin, piAutologTestDurationMax);
+   }
+
+   GetAutologDetectionPeriod()
+   {
+      return piAutologDetectionPeriod;
    }
 
    //

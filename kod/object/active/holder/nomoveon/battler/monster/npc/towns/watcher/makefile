@@ -5,6 +5,6 @@
 !include $(TOPDIR)\common.mak
 
 DEPEND = ..\watcher.bof
-BOFS  = tswatch.bof goad.bof darenawatcher.bof
+BOFS  = tswatch.bof goad.bof darenawatcher.bof surwatch.bof
 
 !include $(KODDIR)\kod.mak

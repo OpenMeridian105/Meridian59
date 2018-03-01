@@ -2376,6 +2376,8 @@ messages:
    ////  Auxiliary Routines
 
    DoRandomWalk(override=FALSE)
+   "Tries to immediately move the monster exactly one random step into direction N, E, S or W"
+   "Does NOT use MoveTowardsCoords to perform the step. Legacy."
    {
       local iNew_row, iNew_col, iNew_finerow, iNew_finecol;
 
@@ -2469,8 +2471,10 @@ messages:
    }
 
    MoveToMaster()
+   "Tries to immediately move the monster exactly one step towards its master."
+   "Uses path-aware MoveTowardsCoords to perform the step."
    {
-      local iRadius, drow, dcol;
+      local iRadius, iDist2;
 
       // Can be called for apparitions also ($ poMaster), return in that case.
       if poMaster = $
@@ -2478,21 +2482,14 @@ messages:
          return FALSE;
       }
 
-      // calculate distance in highres-grid squares (steps we can still make)
-      drow = ((Send(poMaster,@GetRow) * FINENESS) + Send(poMaster,@GetFineRow)) / 16;
-      dcol = ((Send(poMaster,@GetCol) * FINENESS) + Send(poMaster,@GetFineCol)) / 16;
-      drow = Abs(drow - (((piRow * FINENESS) + piFine_row) / 16));
-      dcol = Abs(dcol - (((piCol * FINENESS) + piFine_col) / 16));
+      // get squared 3d distance to master and how close we should get
+      iDist2 = Send(self, @SquaredFineDistanceTo3D, #what=poMaster);
+      iRadius = Send(self,@HowCloseToCommander) * FINENESS;
 
-      iRadius = Send(self,@HowCloseToCommander) * 4;
-
-      // Try step closer to the master, if we're not yet close enough.
-      // The move-timer is configured to make this movement seamless.
-      if (drow * drow + dcol * dcol > iRadius * iRadius)
+      // Try to get closer to the master, if we're not yet close enough.
+      if (iDist2 > iRadius * iRadius)
       {
-         // Clear any other move commands we might have.
          Send(self,@MoveTowards,#oTarget=poMaster,#face_target=TRUE);
-
          return TRUE;
       }
 
@@ -2500,8 +2497,10 @@ messages:
    }
 
    MoveToLeader()
+   "Tries to immediately move the monster exactly one step towards its leader."
+   "Uses path-aware MoveTowardsCoords to perform the step."
    {
-      local drow, dcol, iRadius, iRow, iCol, iFineRow, iFineCol, bSight;
+      local iRadius, iDist2;
 
       if poLeader = $
       {
@@ -2509,45 +2508,40 @@ messages:
          return FALSE;
       }
 
-      iRow = Send(poLeader,@GetRow);
-      iCol = Send(poLeader,@GetCol);
-      iFineRow = Send(poLeader,@GetFineRow);
-      iFineCol = Send(poLeader,@GetFineCol);
+      // get squared 3d distance to master and how close we should get
+      iDist2 = Send(self, @SquaredFineDistanceTo3D, #what=poLeader);
+      iRadius = Send(self,@HowCloseToCommander) * FINENESS;
 
-      // calculate distance in highres-grid squares (steps we can still make)
-      drow = (iRow * FINENESS + iFineRow) / 16;
-      dcol = (iCol * FINENESS + iFineCol) / 16;
-      drow = Abs(drow - (((piRow * FINENESS) + piFine_row) / 16));
-      dcol = Abs(dcol - (((piCol * FINENESS) + piFine_col) / 16));
-
-      iRadius = Send(self,@HowCloseToCommander) * 4;
-      bSight = LineOfSightBSP(Send(poOwner,@GetRoomData),piRow,piCol,piFine_row,piFine_col,
-               iRow,iCol,iFineRow,iFineCol);
-
-      // Let's move up to the leader unless we are close enough already.
-      // Also, if the leader moves out of sight, it's really time to check on him.
-      if (drow * drow + dcol * dcol > iRadius * iRadius)
-         OR NOT bSight
+      // Try to get closer to the leader, if we're not yet close enough.
+      if (iDist2 > iRadius * iRadius)
       {
-         // If we see the leader or we can't pick up on their trail, try to move
-         // towards them directly.
-         if bSight
-            OR NOT Send(self,@FollowTrail,#oTarget=poLeader)
-         {
-            // Pass through walls if they can be passed in opposite directions.
-            // This allows the follower to make jumps.
-            Send(self,@MoveTowardsCoords,#iRow=iRow,#iCol=iCol,
-               #face_target=TRUE,#pass_walls=CanMoveInRoomBSP(
-               Send(poOwner,@GetRoomData),iRow,iCol,iFineRow,iFineCol,
-               piRow,piCol,piFine_row,piFine_col,self,FALSE));
-         }
-
+         Send(self,@MoveTowards,#oTarget=poLeader,#face_target=TRUE);
          return TRUE;
       }
 
       return FALSE;
    }
+ 
+   MoveToTriggerObject()
+   "Tries to immediately move the monster exactly one step towards its triggerobject."
+   "Uses path-aware MoveTowardsCoords to perform the step."
+   {
+      local iDist2;
+	  
+      // get squared 3d distance to poObject
+      iDist2 = Send(self, @SquaredFineDistanceTo3D, #what=poObject);
 
+      // Let's move up to the object unless we are close enough already.
+      // 4096=64*64 (1 big row/col)
+      if (iDist2 > 4096)
+      {
+         Send(self,@MoveTowards,#oTarget=poObject,#face_target=TRUE);
+         return TRUE;
+      }
+
+      return FALSE;
+   }
+   
    FollowTrail(oTarget=$)
    {
       local lTrail, i, iRow, iCol, iFineRow, iFineCol;
@@ -2568,9 +2562,9 @@ messages:
 
          // Move to the most recent location the user has been in that we can reach.
          if CanMoveInRoomBSP(Send(poOwner,@GetRoomData),piRow,piCol,piFine_row,
-            piFine_col,iRow,iCol,iFineRow,iFineCol,self,FALSE)
+            piFine_col,piHeight,iRow,iCol,iFineRow,iFineCol,piSpeed,self,FALSE,FALSE)
             OR (CanMoveInRoomBSP(Send(poOwner,@GetRoomData),iRow,iCol,
-            iFineRow,iFineCol,piRow,piCol,piFine_row,piFine_col,self,FALSE)
+            iFineRow,iFineCol,piHeight,piRow,piCol,piFine_row,piFine_col,piSpeed,self,FALSE,FALSE)
                AND IsClass(self,&Follower))
          {
             // We already checked for a valid move. Move freely.
@@ -2579,29 +2573,6 @@ messages:
 
             return TRUE;
          }
-      }
-
-      return FALSE;
-   }
-
-   MoveToTriggerObject()
-   {
-      local leverrow, levercol;
-
-      //// Calculate distance in highres-grid squares (steps we can still make)
-      // Distance to lever
-      leverrow = ((Send(poObject,@GetRow) * FINENESS) + Send(poObject,@GetFineRow)) / 16;
-      levercol = ((Send(poObject,@GetCol) * FINENESS) + Send(poObject,@GetFineCol)) / 16;
-      leverrow = Abs(leverrow - (((piRow * FINENESS) + piFine_row) / 16));
-      levercol = Abs(levercol - (((piCol * FINENESS) + piFine_col) / 16));
-
-      // Let's move up to the object unless we are close enough already.
-      if (leverrow * leverrow + levercol * levercol > 16)
-      {
-         // Clear any other move commands we might have.
-         Send(self,@MoveTowards,#oTarget=poObject,#face_target=TRUE);
-
-         return TRUE;
       }
 
       return FALSE;
@@ -2634,12 +2605,6 @@ messages:
       }
 
       return;
-   }
-
-   MoveTowardsTargetLocation()
-   {
-      return Send(self,@MoveTowardsCoords,#iRow=piTargetLocationRow,#iCol=piTargetLocationCol,
-         #iFineRow=piTargetLocationFineRow,#iFineCol=piTargetLocationFineCol);
    }
 
    // Time to stop walking and reset temporary behavior modifications.
@@ -3410,6 +3375,8 @@ messages:
    //// Movement messages
 
    MoveTowards(oTarget = $, face_target=FALSE, face_away=FALSE,pass_walls=FALSE)
+   "Tries to immediately move the monster exactly one step towards oTarget"
+   "Uses MoveTowardsCoords to perform the step."
    {
       if oTarget = $
       {
@@ -3429,6 +3396,8 @@ messages:
    }
 
    MoveAway(oTarget = $, face_target=FALSE, face_away=FALSE)
+   "Tries to immediately move the monster exactly one step away from oTarget"
+   "Uses MoveTowardsCoords to perform the step."
    {
       local drow, dcol;
   
@@ -3460,10 +3429,21 @@ messages:
                    #face_target=face_target,
                    #face_away=face_away);
    }
+   
+   MoveTowardsTargetLocation()
+   "Tries to immediately move the monster exactly one step towards its current target-location."
+   "Uses MoveTowardsCoords to perform the step."
+   {
+      return Send(self,@MoveTowardsCoords,#iRow=piTargetLocationRow,#iCol=piTargetLocationCol,
+         #iFineRow=piTargetLocationFineRow,#iFineCol=piTargetLocationFineCol);
+   }
 
    // We can pass a direction (-10 to 10) to RandomCombatMove.
    // 10 is a guaranteed step towards the target, -10 away from it.
    RandomCombatMove(direction=FALSE)
+   "Tries to immediately move the monster exactly one step into"
+   "a random direction or towards/away from its current target."
+   "Uses MoveTowardsCoords to perform the step."
    {
       local iMRow, iMCol, iMRowFine, iMColFine, iSpeed;
 
@@ -3499,8 +3479,9 @@ messages:
       }
 
       if (NOT direction)
-         AND GetRandomPointBSP(Send(poOwner,@GetRoomData),15,*iMRow,*iMCol,
-                  *iMRowFine,*iMColFine)
+         AND GetRandomMoveDestBSP(Send(poOwner,@GetRoomData), 48, 128, 1536,
+                                   piRow, piCol, piFine_row, piFine_col, 
+                                   *iMRow, *iMCol, *iMRowFine, *iMColFine)
       {
          Send(self,@MoveTowardsCoords,#iRow=iMRow,#iCol=iMCol,
                #iFineRow=iMRowFine,#iFineCol=iMColFine,
@@ -3606,6 +3587,7 @@ messages:
       if (piBehavior & AI_STROLLING)
       {
          Send(self, @ClearStrollLocation);
+         return FALSE;
          //Debug("Discarded current stroll location!!");
       }
 
@@ -3613,16 +3595,22 @@ messages:
       if (piBehavior & AI_RETURN_TO_SPAWN)
       {
          Send(self, @ClearSpawnReturnLocation);
+         return FALSE;
          //Debug("Discarded SPAWN return location!!");
       }
 	   
-      return;
+      return TRUE;
    }
    
    MoveTowardsCoords(iRow=$,iCol=$,iFineRow=FINENESS_HALF,iFineCol=FINENESS_HALF,
                      face_target=FALSE,face_away=FALSE,pass_walls=FALSE)
+   "Tries to immediately move the monster exactly one step towards the location specified in arguments."
+   "The performed step can be straight towards the location or a step on a astar path or"
+   "a step determined by the move-heuristic. Raises @ReconsiderMoveDestination if two steps in a row"
+   "were performed by the heuristic. In this case it's unlikely the monster will ever reach"
+   "the desired location passed in arguments and going elsewhere should be considered."
    {
-      local iState, iMoveFlags, iSpeed, oCommander;
+      local iState, iMoveFlags, iSpeed, oCommander, iStillGo;
 
       if (iRow = $ or iCol = $)
       {
@@ -3638,19 +3626,25 @@ messages:
          iMoveFlags |= MSTATE_MOVE_OUTSIDE_BSP;
       }
 
+      // WORKAROUND/TODO: existing monsters don't have a height yet
+      Send(self, @InitHeight);
+
       // query where to step next
       // note: these need some persistent info across
       // calls which are stored in piState (flags from old KOD code)
       iState = GetStepTowardsBSP(
                 Send(poOwner, @GetRoomData),
-                piRow, piCol, piFine_row, piFine_col,
-                *iRow, *iCol, *iFineRow, *iFineCol,
+                piRow, piCol, piFine_row, piFine_col, piHeight,
+                *iRow, *iCol, *iFineRow, *iFineCol, piSpeed,
                 piState | iMoveFlags, self);
 
       if iState <> $
       {
          piState = iState;
 
+         // stores if we reconsidered our move destination
+         iStillGo = TRUE;
+		 
          // check if this was a 'good' step (=on a path or directly towards)
          if (iState & STATE_MOVE_PATH) OR (iState & STATE_MOVE_DIRECT)
          {
@@ -3665,11 +3659,11 @@ messages:
             // too many heuristic steps, consider going elsewhere
             if (piBadSteps % 2 = 0)
             {
-               Send(self,@ReconsiderMoveDestination);
+               iStillGo = Send(self,@ReconsiderMoveDestination);
             }
          }
 		 
-		 if Send(self,@ReqMonsterMove,#new_row=iRow,#new_col=iCol,
+		 if iStillGo AND Send(self,@ReqMonsterMove,#new_row=iRow,#new_col=iCol,
                   #new_finerow=iFineRow,#new_finecol=iFineCol)
          {
             Send(self,@MonsterOrient,#new_row=iRow,#new_col=iCol,
@@ -3694,9 +3688,8 @@ messages:
    }
 
    GotoCoords(iRow=$,iCol=$,iFineRow=FINENESS_HALF,iFineCol=FINENESS_HALF)
-   "Move to a specific row and column. warning! fineness really"
-   "isn't accurate as the monster will stop when it reaches the destination"
-   "row and column"
+   "Sets a new target location for the monster to get to."
+   "Does not perform any move steps directly."
    {
       if (iRow = $ OR iCol = $)
       {
@@ -3715,7 +3708,8 @@ messages:
    }
 
    GoStrolling()
-   "Set a random location to stroll to."
+   "Sets a random new target location to stroll to."
+   "Does not perform any move steps directly."
    {
       local iMRow,iMCol,iMRowFine,iMColFine;
 
@@ -7065,7 +7059,7 @@ messages:
    GetSpeed()
    {
       // Set our current speed based on classvar and agility.
-      piSpeed = Bound(viSpeed + (piAgility/10) - 2,0,30);
+      piSpeed = Bound(viSpeed + (piAgility/10) - 2,0,USER_RUNNING_SPEED);
 
       // Strolling, not in a rush, unless we are under orders.
       if (piState & STATE_MOVE) 
@@ -7135,7 +7129,7 @@ messages:
 
          // make sure timer interval does not get negative
          // and also not like "run all the time"
-         iTime = Bound(iTime, 10, 10000);
+         iTime = Bound(iTime, 16, 10000);
       }
       else
       {

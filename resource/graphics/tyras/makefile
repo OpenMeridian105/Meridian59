@@ -8,7 +8,7 @@ SOURCEDIR = .
 OUTDIR = $(CLIENTRUNDIR)\resource
 OUTDIRSUB = ..\$(OUTDIR)
 
-DIRS = cornoth dhelm cnmuseumguard objects grds historic giantdaemon npc
+DIRS = cornoth dhelm cnmuseumguard objects grds historic giantdaemon npc truffle
 
 all:
    @-for %i in (*.bgf) do @$(CP) %i $(OUTDIR) >nul

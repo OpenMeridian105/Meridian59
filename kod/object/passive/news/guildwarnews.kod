@@ -40,5 +40,33 @@ messages:
       return NEWS_PERMISSION_READ;
    }
 
+   FixPostAuthors()
+   "Frular is the poster on this globe and is remade on recreateall, so the "
+   "object ID of the author must be updated to point to the new Frular."
+   {
+      local i, oFrular, oPoster;
+
+      // Get new Frular.
+      oFrular = Send(Send(SYS,@FindRoomByNum,#num=RID_GMHALL),@GetMaster);
+      if (oFrular = $)
+      {
+         Debug("Couldn't find Frular to fix GuildWarNews posts!");
+
+         return;
+      }
+
+      foreach i in plMessages
+      {
+         oPoster = Nth(i,NEWS_ARTICLE_POSTER);
+         if (oPoster <> oFrular
+            AND IsClass(oPoster,&GuildCreator))
+         {
+            SetNth(i,NEWS_ARTICLE_POSTER,oFrular);
+         }
+      }
+
+      return;
+   }
+
 end
 ////////////////////////////////////////////////////////////////////////////////

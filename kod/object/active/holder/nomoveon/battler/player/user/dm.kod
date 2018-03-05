@@ -2688,7 +2688,7 @@ messages:
 
    DMSayBlank()
    {
-      local i, lObjects, oObject;
+      local i, lObjects, oObject, bDisappearing;
 
       // Make everyone think we left the room.
       lObjects = Send(poOwner,@GetHolderActive);
@@ -2716,15 +2716,21 @@ messages:
       Send(self,@MsgSendUser,#message_rsc=dm_blank);
       Send(self,@SetPlayerFlag,#flag=PFLAG_INVISIBLE,#value=TRUE);
       Send(self,@SetPlayerFlag,#flag=PFLAG_ANONYMOUS,#value=TRUE);
-      piDMFlags = piDMFlags | DMFLAG_INVISIBLE;
+      bDisappearing = NOT (piDMFlags & DMFLAG_INVISIBLE);
+      piDMFlags |= DMFLAG_INVISIBLE;
       Send(self,@ResetPlayerFlagList);
+
+      if (bDisappearing)
+      {
+         Send(poOwner,@DMPlainToBlank,#what=self);
+      }
 
       return;
    }
 
    DMSayDisguise(string=$)
    {
-      local oObject, temp;
+      local i, oObject, temp, bAppearing;
 
       if (string = $)
       {
@@ -2771,17 +2777,33 @@ messages:
       piAttack_start = 1;
       piAttack_end = 1;
       piAttack_delay = 500;
+
+      bAppearing = (piDMFlags & DMFLAG_INVISIBLE);
       Send(self,@ResetPlayerDrawfx,#drawfx=DRAWFX_NONE);
       piDMFlags = piDMFlags & ~DMFLAG_INVISIBLE;
       piDMFlags = piDMFlags & ~DMFLAG_SHADOW;
       Send(self,@ResetPlayerFlagList);
+
+      if (bAppearing)
+      {
+         foreach i in Send(poOwner,@GetHolderActive)
+         {
+            oObject = First(i);
+
+            if IsClass(oObject,&User)
+            {
+               Send(oObject,@SomethingEntered,#what=self);
+            }
+         }
+         Send(poOwner,@DMBlankToPlain,#what=self);
+      }
 
       return;
    }
 
    DMSayPlain()
    {
-      local i, oObject;
+      local i, oObject, bAppearing;
 
       pbMorph = FALSE;
 
@@ -2797,6 +2819,8 @@ messages:
       Send(self,@SetPlayerFlag,#flag=PFLAG_ANONYMOUS,#value=FALSE);
       Send(self,@ResetPlayerDrawfx,#drawfx=DRAWFX_NONE);
 
+      bAppearing = (piDMFlags & DMFLAG_INVISIBLE);
+
       piDMFlags &= ~DMFLAG_INVISIBLE;
       piDMFlags &= ~DMFLAG_SHADOW;
 
@@ -2804,14 +2828,18 @@ messages:
 
       Send(self,@ResetPlayerIcon);
 
-      foreach i in Send(poOwner,@GetHolderActive)
+      if (bAppearing)
       {
-         oObject = First(i);
-
-         if IsClass(oObject,&User)
+         foreach i in Send(poOwner,@GetHolderActive)
          {
-            Send(oObject,@ToCliRoomContents);
+            oObject = First(i);
+
+            if IsClass(oObject,&User)
+            {
+               Send(oObject,@SomethingEntered,#what=self);
+            }
          }
+         Send(poOwner,@DMBlankToPlain,#what=self);
       }
 
       return;
@@ -3226,6 +3254,11 @@ messages:
    IsDMStealthed()
    {
       return (piDMFlags & DMFLAG_INVISIBLE);
+   }
+
+   CountsAsHero()
+   {
+      return NOT (piDMFlags & DMFLAG_INVISIBLE);
    }
 
    ResetPlayerIcon(alldone=TRUE)

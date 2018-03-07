@@ -1,0 +1,324 @@
+// Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+// All rights reserved.
+//
+// This software is distributed under a license that is described in
+// the LICENSE file that accompanies it.
+//
+// Meridian is a registered trademark.
+
+
+////////////////////////////////////////////////////////////////////////////////
+Bandit is Human
+
+constants:
+
+   include blakston.khd
+
+   EQUIPMENT_DROP_PERCENT = 20
+
+resources:
+
+   include bandit.lkod
+
+   Bandit_name_rsc = "bandit"
+   Bandit_desc_rsc = \
+   "This is a bandit."
+   Bandit_dead_name_rsc = "dead bandit"
+
+classvars:
+
+   vrName = Bandit_name_rsc
+   vrDesc = Bandit_desc_rsc
+   vrDead_name = Bandit_dead_name_rsc
+
+   viTreasure_type = TID_EMPTY
+
+   viSpeed = SPEED_FASTER
+   viAttack_type = ATCK_WEAP_SLASH
+   viAttributes = 0
+   viDefault_behavior = AI_FIGHT_AGGRESSIVE | AI_FIGHT_SWITCHALOT
+
+   viColorTranslate1 = XLAT_TO_RED     // Shirt
+   viColorTranslate2 = XLAT_TO_GREEN   // Pants
+
+   /*
+   vcShieldClass = &GuildShield
+   viShieldColor1 = XLAT_TO_RED
+   viShieldColor2 = XLAT_TO_RED
+   viShieldShape = SHIELDSHAPE_SLASH
+   viInsignia = $
+   */
+
+   viVisionDistance = 12
+
+   viCashMin = 200
+   viCashMax = 600
+
+   viWimpy = 20
+
+   vbCanRally = TRUE
+
+   viSocial = 70
+
+properties:
+
+   piBaseLevel = 80
+   piBaseDifficulty = 6
+
+   //Here so they can be set
+   vrIcon = human_male_icon_rsc
+   vrDead_Icon = human_dead_male_icona_rsc
+   vrDead_Legs = human_dead_male_iconb_rsc
+   viLevel = 80         // piBaseLevel
+   viDifficulty = 4     // piBaseDifficulty
+   piGender = GENDER_MALE
+   viKarma = 0
+
+messages:
+
+   Constructed()
+   {
+      // Excluses troops from monster count.
+      pbEvent = TRUE;
+
+      propagate;
+   }
+
+   SetClothes()
+   {
+      Send(self,@SetDefaultClothes,#shirt_color=viColorTranslate1);
+      Send(self,@SetTroopLegs,#translation=viColorTranslate2);
+
+      return;
+   }
+
+   SetEquipment()
+   {
+      local oEquipmentItem, iRandomNumber, iBonusModifier;
+
+      iRandomNumber = Random(1,100);
+      if iRandomNumber <= 35
+      {
+         oEquipmentItem = Create(&Longsword);
+         iBonusModifier = 3;
+      }
+      else if iRandomNumber <= 55
+      {
+         oEquipmentItem = Create(&Axe);
+         iBonusModifier = 2;
+      }
+      else if iRandomNumber <= 65
+      {
+         oEquipmentItem = Create(&Hammer);
+         iBonusModifier = 2;
+      }
+      else if iRandomNumber <= 80
+      {
+         oEquipmentItem = Create(&Mace);
+         iBonusModifier = 1;
+      }
+      else if iRandomNumber <= 90
+      {
+         oEquipmentItem = Create(&ShortSword);
+         iBonusModifier = 1;
+      }
+      else
+      {
+         oEquipmentItem = Create(&Scimitar);
+         iBonusModifier = 4;
+      }
+      /*
+      else
+      {
+         oEquipmentItem = Create(&LongBow);
+         poArrow = Create(&NeruditeArrow);
+         iBonusModifier = 4;
+      }
+      */
+
+      viDifficulty = piBaseDifficulty + iBonusModifier;
+      Send(self,@AddEquipmentObject,#what=oEquipmentItem);
+
+      iRandomNumber = Random(1,100);
+      if iRandomNumber <= 45
+      {
+         oEquipmentItem = Create(&LeatherArmor);
+         iBonusModifier = 20;
+      }
+      else if iRandomNumber <= 90
+      {
+         oEquipmentItem = Create(&ChainArmor);
+         iBonusModifier = 50;
+      }
+      else
+      {
+         oEquipmentItem = Create(&PlateArmor);
+         iBonusModifier = 100;
+      }
+
+      viLevel = piBaseLevel + iBonusModifier;
+      Send(self,@AddEquipmentObject,#what=oEquipmentItem);
+
+      iRandomNumber = Random(1,100);
+      if iRandomNumber <= 50
+      {
+         oEquipmentItem = Create(&MetalShield);
+      }
+      else
+      {
+         oEquipmentItem = Create(&WoodenShield);
+      }
+
+      Send(self,@AddEquipmentObject,#what=oEquipmentItem);
+
+      // Gauntlets?
+      iRandomNumber = Random(1,100);
+      if iRandomNumber < 20
+      {
+         oEquipmentItem = Create(&Gauntlet);
+         viDifficulty = viDifficulty + 1;
+         viLevel = viLevel + 20;
+         Send(self,@AddEquipmentObject,#what=oEquipmentItem);
+      }
+
+      /*
+      // Helmet?
+      if Random(1,100) < 30
+      {
+         oEquipmentItem = Create(&SimpleHelm);
+         Send(self,@AddEquipmentObject,#what=oEquipmentItem);
+      }
+      */
+
+      return;
+   }
+
+   /*
+   SetShield()
+   {
+      local oEquipmentItem;
+
+      oEquipmentItem = Create(vcShieldClass,#color1=viShieldColor1,#color2=viShieldColor2,
+                              #shape=viShieldShape);
+      if viInsignia <> $
+      {
+         Send(oEquipmentItem,@ChangeGuildInsignia,#insignia=viInsignia);
+      }
+
+      Send(self,@AddEquipmentObject,#what=oEquipmentItem);
+
+      return;
+   }
+   */
+
+   // Override from monster superclass
+   // We drop some of our carried items when we die.
+   CreateTreasure(who = $, corpse = $)
+   {
+      local oUsedItem, oItemAtt;
+
+      oItemAtt = Send(SYS,@FindItemAttByNum,#num=IA_CORPSEPOINTER);
+
+      foreach oUsedItem in plUsing
+      {
+         // Only a percentage chance to drop each item.  Too much stuff otherwise.
+         // Don't drop the shield!  It's a quest/special item!
+         if (Random(1,100) <= EQUIPMENT_DROP_PERCENT)
+            //AND (NOT IsClass(oUsedItem,vcShieldClass))
+            AND NOT pbIllusion
+         {
+            if (oItemAtt <> $) AND Send(oItemAtt,@ReqAddToItem,#oItem=oUsedItem)
+            {
+               Send(oItemAtt,@AddToItem,#oItem=oUsedItem,#state1=corpse);
+            }
+
+            Send(poOwner,@NewHold,#what=oUsedItem,
+                  #new_row=piRow,#new_col=piCol,
+                  #fine_row=piFine_row,#fine_col=piFine_col);
+         }
+         else
+         {
+            Send(oUsedItem,@Delete);
+         }
+      }
+
+      plUsing = $;
+
+      propagate;
+   }
+
+   /*
+   IsAlliedClass(what=$)
+   {
+      local iFaction;
+
+      if IsClass(what,&Battler)
+      {
+         iFaction = Send(what,@GetFaction);
+
+         // Players or mobs could be same faction.
+         if (iFaction = viFaction)
+         {
+            return TRUE;
+         }
+
+         // We also defend lowbies that are unfactioned.
+         if IsClass(what,&User)
+            AND (Send(what,@GetBaseMaxHealth) < Send(SETTINGS_OBJECT,@GetPKillEnableHP))
+         {
+            // Players not of same faction.
+            if (iFaction = FACTION_NEUTRAL)
+            {
+               return TRUE;
+            }
+
+            // Other players aren't allies.
+            return FALSE;
+         }
+      }
+
+      return FALSE;
+   }
+
+   SpecialHatredBehavior(what=$)
+   {
+      local iFaction;
+
+      if (IsClass(what,&User)
+         AND (Send(SETTINGS_OBJECT,@TroopsAttackNonShielded)
+            OR Send(what,@FindUsing,#class=&SoldierShield) <> $))
+         OR IsClass(what,&Bandit)
+      {
+         iFaction = Send(what,@GetFaction);
+         if iFaction = viFaction
+         {
+            return -300;
+         }
+
+         if (iFaction <> FACTION_NEUTRAL)
+            AND (iFaction <> viFaction)
+         {
+            return 300;
+         }
+      }
+
+      return 0;
+   }
+
+   // Troops don't follow their leader to the next zone.
+   SomethingLeft(what = $, iRow=0, iCol=0)
+   {
+
+     // Our leader may have left. Good riddance.
+      if poLeader <> $ AND what = poLeader
+      {
+         // SetLeader sets leader to nil if none is passed.
+         Send(self,@SetLeader);
+      }
+
+      propagate;
+   }
+   */
+
+end
+////////////////////////////////////////////////////////////////////////////////

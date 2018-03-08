@@ -21,14 +21,18 @@ resources:
    include bandit.lkod
 
    Bandit_name_rsc = "bandit"
+   Bandit_sniper_name_rsc = "bandit sniper"
+   Bandit_captain_name_rsc = "bandit captain"
    Bandit_desc_rsc = \
    "This is a bandit."
+   Bandit_sniper_desc_rsc = \
+   "This is a bandit sniper."
+   Bandit_captain_desc_rsc = \
+   "This is a bandit captain."
    Bandit_dead_name_rsc = "dead bandit"
 
 classvars:
 
-   vrName = Bandit_name_rsc
-   vrDesc = Bandit_desc_rsc
    vrDead_name = Bandit_dead_name_rsc
 
    viTreasure_type = TID_EMPTY
@@ -39,47 +43,47 @@ classvars:
    viDefault_behavior = AI_FIGHT_AGGRESSIVE | AI_FIGHT_SWITCHALOT
 
    viColorTranslate1 = XLAT_TO_RED     // Shirt
-   viColorTranslate2 = XLAT_TO_GREEN   // Pants
+   viColorTranslate2 = XLAT_TO_DGREEN   // Pants
 
-   /*
-   vcShieldClass = &GuildShield
-   viShieldColor1 = XLAT_TO_RED
-   viShieldColor2 = XLAT_TO_RED
-   viShieldShape = SHIELDSHAPE_SLASH
-   viInsignia = $
-   */
+   viBanditChance = 85
+   viSniperChance = 12
+   viCaptainChance = 3
 
-   viVisionDistance = 12
+   viVisionDistance = 15
 
    viCashMin = 200
    viCashMax = 600
 
    viWimpy = 20
 
-   vbCanRally = TRUE
+   // vbCanRally = TRUE
 
    viSocial = 70
 
 properties:
 
-   piBaseLevel = 80
+   piBaseLevel = 100
    piBaseDifficulty = 6
 
    //Here so they can be set
    vrIcon = human_male_icon_rsc
    vrDead_Icon = human_dead_male_icona_rsc
    vrDead_Legs = human_dead_male_iconb_rsc
-   viLevel = 80         // piBaseLevel
-   viDifficulty = 4     // piBaseDifficulty
+   viLevel = 100         // piBaseLevel
+   viDifficulty = 6     // piBaseDifficulty
    piGender = GENDER_MALE
    viKarma = 0
+
+   vrName = Bandit_name_rsc
+   vrDesc = Bandit_desc_rsc
+
+   // Relative chance for each type of bandit to spawn
+
 
 messages:
 
    Constructed()
    {
-      // Excluses troops from monster count.
-      pbEvent = TRUE;
 
       propagate;
    }
@@ -94,122 +98,111 @@ messages:
 
    SetEquipment()
    {
-      local oEquipmentItem, iRandomNumber, iBonusModifier;
+      local oArmor, oWeapon, oShield, iRandomNumber, iBonusModifier, iRndMax;
 
-      iRandomNumber = Random(1,100);
-      if iRandomNumber <= 35
+      iRndMax = viBanditChance + viSniperChance + viCaptainChance;
+      iRandomNumber = Random(1, iRndMax);
+      if iRandomNumber <= viBanditChance // Bandit
       {
-         oEquipmentItem = Create(&Longsword);
-         iBonusModifier = 3;
+         vrName = Bandit_name_rsc;
+         vrDesc = Bandit_desc_rsc;
+         iBonusModifier = 0;
+         viDifficulty = piBaseDifficulty + iBonusModifier;
+         iBonusModifier = 0;
+         viLevel = piBaseLevel + iBonusModifier;
+
+         // Armor
+         iRandomNumber = Random(1, 100);
+         if iRandomNumber <= 50
+         {
+            oArmor = Create(&LeatherArmor);
+         }
+         else
+         {
+            oArmor = Create(&ChainArmor);
+         }
+
+         // Weapon
+         iRandomNumber = Random(1, 100);
+         if iRandomNumber <= 33
+         {
+            oWeapon = Create(&ShortSword);
+         }
+         else if iRandomNumber <= 66
+         {
+            oWeapon = Create(&LongSword);
+         }
+         else
+         {
+            oWeapon = Create(&Axe);
+         }
+
+         // Shield
+         iRandomNumber = Random(1, 100);
+         if iRandomNumber <= 50
+         {
+            oShield = Create(&MetalShield);
+         }
+         else
+         {
+            oShield = Create(&WoodenShield);
+         }
       }
-      else if iRandomNumber <= 55
+
+      else if iRandomNumber <= (viSniperChance + viBanditChance) // Sniper
       {
-         oEquipmentItem = Create(&Axe);
-         iBonusModifier = 2;
-      }
-      else if iRandomNumber <= 65
-      {
-         oEquipmentItem = Create(&Hammer);
-         iBonusModifier = 2;
-      }
-      else if iRandomNumber <= 80
-      {
-         oEquipmentItem = Create(&Mace);
+         vrName = Bandit_sniper_name_rsc;
+         vrDesc = Bandit_sniper_desc_rsc;
          iBonusModifier = 1;
-      }
-      else if iRandomNumber <= 90
-      {
-         oEquipmentItem = Create(&ShortSword);
-         iBonusModifier = 1;
-      }
-      else
-      {
-         oEquipmentItem = Create(&Scimitar);
-         iBonusModifier = 4;
-      }
-      /*
-      else
-      {
-         oEquipmentItem = Create(&LongBow);
-         poArrow = Create(&NeruditeArrow);
-         iBonusModifier = 4;
-      }
-      */
-
-      viDifficulty = piBaseDifficulty + iBonusModifier;
-      Send(self,@AddEquipmentObject,#what=oEquipmentItem);
-
-      iRandomNumber = Random(1,100);
-      if iRandomNumber <= 45
-      {
-         oEquipmentItem = Create(&LeatherArmor);
+         viDifficulty = piBaseDifficulty + iBonusModifier;
          iBonusModifier = 20;
-      }
-      else if iRandomNumber <= 90
-      {
-         oEquipmentItem = Create(&ChainArmor);
-         iBonusModifier = 50;
-      }
-      else
-      {
-         oEquipmentItem = Create(&PlateArmor);
-         iBonusModifier = 100;
+         viLevel = piBaseLevel + iBonusModifier;
+
+         // Armor
+         iRandomNumber = Random(1, 100);
+         if iRandomNumber <= 50
+         {
+            oArmor = Create(&LeatherArmor);
+         }
+         else
+         {
+            oArmor = Create(&ChainArmor);
+         }
+
+         // Weapon
+         oWeapon = Create(&LongBow);
+
+         // Shield - snipers get ammo for their bow instead
+         oShield = Create(&NeruditeArrow);
       }
 
-      viLevel = piBaseLevel + iBonusModifier;
-      Send(self,@AddEquipmentObject,#what=oEquipmentItem);
-
-      iRandomNumber = Random(1,100);
-      if iRandomNumber <= 50
+      else // Captain
       {
-         oEquipmentItem = Create(&MetalShield);
-      }
-      else
-      {
-         oEquipmentItem = Create(&WoodenShield);
-      }
+         vrName = Bandit_captain_name_rsc;
+         vrDesc = Bandit_captain_desc_rsc;
+         iBonusModifier = 2;
+         viDifficulty = piBaseDifficulty + iBonusModifier;
+         iBonusModifier = 40;
+         viLevel = piBaseLevel + iBonusModifier;
 
-      Send(self,@AddEquipmentObject,#what=oEquipmentItem);
+         // Armor
+         oArmor = Create(&PlateArmor);
 
-      // Gauntlets?
-      iRandomNumber = Random(1,100);
-      if iRandomNumber < 20
-      {
-         oEquipmentItem = Create(&Gauntlet);
-         viDifficulty = viDifficulty + 1;
-         viLevel = viLevel + 20;
-         Send(self,@AddEquipmentObject,#what=oEquipmentItem);
+         // Weapon
+         oWeapon = Create(&Scimitar);
+
+         // Shield
+         oShield = Create(&Knightshield);
+
+         Send(self,@AddEquipmentObject,#what=Create(&Gauntlet));
       }
 
-      /*
-      // Helmet?
-      if Random(1,100) < 30
-      {
-         oEquipmentItem = Create(&SimpleHelm);
-         Send(self,@AddEquipmentObject,#what=oEquipmentItem);
-      }
-      */
+         Send(self,@AddEquipmentObject,#what=oArmor);
+         Send(self,@AddEquipmentObject,#what=oWeapon);
+         Send(self,@AddEquipmentObject,#what=oShield);
 
       return;
    }
-
-   /*
-   SetShield()
-   {
-      local oEquipmentItem;
-
-      oEquipmentItem = Create(vcShieldClass,#color1=viShieldColor1,#color2=viShieldColor2,
-                              #shape=viShieldShape);
-      if viInsignia <> $
-      {
-         Send(oEquipmentItem,@ChangeGuildInsignia,#insignia=viInsignia);
-      }
-
-      Send(self,@AddEquipmentObject,#what=oEquipmentItem);
-
-      return;
-   }
-   */
 
    // Override from monster superclass
    // We drop some of our carried items when we die.
@@ -247,78 +240,6 @@ messages:
       propagate;
    }
 
-   /*
-   IsAlliedClass(what=$)
-   {
-      local iFaction;
-
-      if IsClass(what,&Battler)
-      {
-         iFaction = Send(what,@GetFaction);
-
-         // Players or mobs could be same faction.
-         if (iFaction = viFaction)
-         {
-            return TRUE;
-         }
-
-         // We also defend lowbies that are unfactioned.
-         if IsClass(what,&User)
-            AND (Send(what,@GetBaseMaxHealth) < Send(SETTINGS_OBJECT,@GetPKillEnableHP))
-         {
-            // Players not of same faction.
-            if (iFaction = FACTION_NEUTRAL)
-            {
-               return TRUE;
-            }
-
-            // Other players aren't allies.
-            return FALSE;
-         }
-      }
-
-      return FALSE;
-   }
-
-   SpecialHatredBehavior(what=$)
-   {
-      local iFaction;
-
-      if (IsClass(what,&User)
-         AND (Send(SETTINGS_OBJECT,@TroopsAttackNonShielded)
-            OR Send(what,@FindUsing,#class=&SoldierShield) <> $))
-         OR IsClass(what,&Bandit)
-      {
-         iFaction = Send(what,@GetFaction);
-         if iFaction = viFaction
-         {
-            return -300;
-         }
-
-         if (iFaction <> FACTION_NEUTRAL)
-            AND (iFaction <> viFaction)
-         {
-            return 300;
-         }
-      }
-
-      return 0;
-   }
-
-   // Troops don't follow their leader to the next zone.
-   SomethingLeft(what = $, iRow=0, iCol=0)
-   {
-
-     // Our leader may have left. Good riddance.
-      if poLeader <> $ AND what = poLeader
-      {
-         // SetLeader sets leader to nil if none is passed.
-         Send(self,@SetLeader);
-      }
-
-      propagate;
-   }
-   */
 
 end
 ////////////////////////////////////////////////////////////////////////////////

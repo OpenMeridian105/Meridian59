@@ -89,6 +89,7 @@ void AdminShowCalled(int session_id, admin_parm_type parms[], int num_blak_parm,
 void AdminShowCalledClass(class_node *c);
 void AdminShowRoomTable(int session_id, admin_parm_type parms[], int num_blak_parm, parm_node blak_parm[]);
 void AdminShowMatchingIP(int session_id, admin_parm_type parms[], int num_blak_parm, parm_node blak_parm[]);
+void AdminShowPost(int session_id, admin_parm_type parms[], int num_blak_parm, parm_node blak_parm[]);
 void PrintSessionMatchingIP(session_node *s, char *match_ip);
 void AdminShowBlockers(int session_id, admin_parm_type parms[], int num_blak_parm, parm_node blak_parm[]);
 void AdminShowObject(int session_id, admin_parm_type parms[], int num_blak_parm, parm_node blak_parm[]);
@@ -281,6 +282,7 @@ admin_table_type admin_show_table[] =
 	{ AdminShowResource,      {S,N}, F, A|M, NULL, 0, "resource",      "Show a resource by resource name" },
 	{ AdminShowRoomTable,     {N},   F, A|M, NULL, 0, "roomtable",     "Show the rooms table" },
 	{ AdminShowMatchingIP,    {I,N}, F, A|M, NULL, 0, "sameip",        "Lists all logged on accounts matching IP of the given session ID." },
+	{ AdminShowPost,          {I,I,N},F,A|M, NULL, 0, "post",          "Show a post by news ID and post ID" },
 	{ AdminShowStatus,        {N},   F, A|M, NULL, 0, "status",        "Show system status" },
 	{ AdminShowString,        {I,N}, F, A|M, NULL, 0, "string",        "Show one string by string id" },
 	{ AdminShowSuspended,     {N},   F, A|M, NULL, 0, "suspended",     "Show all suspended accounts" },
@@ -1492,6 +1494,141 @@ void PrintSessionMatchingIP(session_node *s, char *match_ip)
       // Got a match
       AdminWhoEachSession(s);
    }
+}
+
+// Posts are stored in kod lists of:
+// [ TAG_INT post_id,
+//   TAG_OBJECT author object,
+//   TAG_INT post_time (with kod offset for int overflow),
+//   TAG_STRING unix_time (no offset),
+//   TAG_STRING post_title,
+//   TAG_STRING post_body ]
+void AdminShowPost(int session_id, admin_parm_type parms[],
+   int num_blak_parm, parm_node blak_parm[])
+{
+   val_type blak_val, news_obj_id, post_list_id, retrieved_post_id,
+      author_id, name_val, post_title_id, post_body_id;
+   resource_node *r;
+   char *author_name_ptr, author_name[1];
+
+   // Passed in post/news IDs.
+   int news_id = (int)parms[0];
+   int post_id = (int)parms[1];
+
+   // Step 1: Get newsglobe object.
+   blak_val.v.tag = TAG_INT;
+   blak_val.v.data = news_id;
+
+   blak_parm[0].type = CONSTANT;
+   blak_parm[0].value = blak_val.int_val;
+
+   int blakparm_id = GetIDByName("num");
+   if (blakparm_id == INVALID_ID)
+   {
+      aprintf("Couldn't find ID for parameter num!\n");
+      return;
+   }
+   blak_parm[0].name_id = blakparm_id;
+
+   int message_id = GetIDByName("FindNewsByNum");
+   if (message_id == INVALID_ID)
+   {
+      aprintf("Couldn't find ID for message FindNewsByNum!\n");
+      return;
+   }
+
+   news_obj_id.int_val = SendTopLevelBlakodMessage(0, message_id, 1, blak_parm);
+   if (news_obj_id.int_val == NIL)
+   {
+      aprintf("Couldn't find news object for news ID %i!\n", news_id);
+      return;
+   }
+
+   // Step 2: Get the requested news post list.
+   blak_val.v.data = post_id;
+   blak_parm[0].value = blak_val.int_val;
+
+   blakparm_id = GetIDByName("index");
+   if (blakparm_id == INVALID_ID)
+   {
+      aprintf("Couldn't find ID for parameter index!\n");
+      return;
+   }
+   blak_parm[0].name_id = blakparm_id;
+   message_id = GetIDByName("GetArticle");
+   if (message_id == INVALID_ID)
+   {
+      aprintf("Couldn't find ID for message GetArticle!\n");
+      return;
+   }
+
+   post_list_id.int_val = SendTopLevelBlakodMessage(news_obj_id.v.data, message_id, 1, blak_parm);
+   if (post_list_id.int_val == NIL)
+   {
+      aprintf("Couldn't find post %i!\n",post_id);
+      return;
+   }
+
+   // Step 3: Confirm we got the right post.
+   retrieved_post_id.int_val = First(post_list_id.v.data);
+   if (retrieved_post_id.v.data != post_id)
+   {
+      aprintf("Got mismatch in post ID! Asked for %i, received %i.\n",
+         post_id, retrieved_post_id.v.data);
+
+      return;
+   }
+
+   // Step 4: Get author name.
+   author_id.int_val = Nth(2, post_list_id.v.data); // Reverse from kod Nth
+   if (author_id.v.tag != TAG_OBJECT)
+   {
+      aprintf("Bad object ID for post author\n");
+      return;
+   }
+
+   name_val.int_val = SendTopLevelBlakodMessage(author_id.v.data, USER_NAME_MSG, 0, NULL);
+   author_name[0] = 0;
+   author_name_ptr = author_name;
+   if (name_val.v.tag == TAG_RESOURCE)
+   {
+      r = GetResourceByID(name_val.v.data);
+      if (r)
+         author_name_ptr = r->resource_val[0];
+   }
+
+   // Step 5: Get post title.
+   post_title_id.int_val = Nth(5, post_list_id.v.data);
+   if (post_title_id.v.tag != TAG_STRING)
+   {
+      aprintf("Bad string ID for post title\n");
+      return;
+   }
+   string_node *post_title = GetStringByID(post_title_id.v.data);
+   if (!post_title)
+   {
+      aprintf("Couldn't find string for post title\n");
+      return;
+   }
+
+   // Step 6: Get post body.
+   post_body_id.int_val = Nth(6, post_list_id.v.data);
+   if (post_body_id.v.tag != TAG_STRING)
+   {
+      aprintf("Bad string ID for post body\n");
+      return;
+   }
+   string_node *post_body = GetStringByID(post_body_id.v.data);
+   if (!post_body)
+   {
+      aprintf("Couldn't find string for post body\n");
+      return;
+   }
+
+   // Step 7: Print post data.
+   aprintf("Showing post ID %i by author: %s, title: %s:\n",
+      post_id, author_name_ptr, post_title->data);
+   aprintf(post_body->data);
 }
 
 void AdminShowRoomTable(int session_id, admin_parm_type parms[],

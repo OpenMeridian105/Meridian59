@@ -28,6 +28,9 @@ resources:
       "You can only delete your own posts."
    news_del_time_expired_header = \
       "You may only delete your post within %r%r%r%r%r%r%r of posting."
+   news_new_post = \
+      "~B~U~k[###]~n ~B~vNew post on %s (index %i) by ~r%s~n, title: ~b%q~n.  "
+      "Post index %i."
 
 classvars:
 
@@ -182,6 +185,10 @@ messages:
       {
          timestring = GetUnixTimeString();
       }
+
+      SendList(Send(SYS,@GetGlobeWatchers),0,@MsgSendUser,
+            #message_rsc=news_new_post,#parm1=vrName,#parm2=piNews,
+            #parm3=Send(what,@GetName),#parm4=title,#parm5=iMessage_num);
 
       plMessages = Cons([iMessage_num,what,GetTime(),timestring,title,body],plMessages);
 

@@ -1,0 +1,103 @@
+// Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+// All rights reserved.
+//
+// This software is distributed under a license that is described in
+// the LICENSE file that accompanies it.
+//
+// Meridian is a registered trademark.
+
+
+////////////////////////////////////////////////////////////////////////////////
+BanditCave is MonsterRoom
+
+constants:
+
+   include blakston.khd
+
+resources:
+
+   include banditcave.lkod
+
+   room_banditcave = banditcave.roo
+   room_name_banditcave = "Bandit Cave"
+
+   banditcave_music = orc1.ogg
+
+classvars:
+
+   vrName = room_name_banditcave
+
+   viTeleport_row = 16
+   viTeleport_col = 10
+
+   viWeatherZone = WEATHER_ZONE_BERG
+
+properties:
+
+   viTerrain_type = TERRAIN_CAVES
+
+   prRoom = room_banditcave
+   piRoom_num = RID_BANDIT_CAVE
+   prMusic = banditcave_music
+
+   piBaseLight = LIGHT_DARK
+   piOutside_factor = 8
+
+   piDirectional_percent = DIRECTIONAL_PERCENT_OUTDOORS
+
+   //piGen_percent = 70
+
+   piInit_count_min = 2
+   piInit_count_max = 3
+
+   piMonster_count_max = 7
+
+messages:
+
+   CreateStandardExits()
+   {
+      plEdge_Exits = $;
+
+      plEdge_Exits = Cons([ LEAVE_SOUTH, RID_BANDIT_CAMP, 2, 28, ROTATE_NONE ], plEdge_exits);
+
+      propagate;
+   }
+
+   Constructed()
+   {
+      plMonsters = [ [&Bandit, 100] ];
+
+      // Use Random Spawn
+      plGenerators = [ [15, 15], [8, 16], [7, 21], [5, 14], [4, 18] ];
+
+      propagate;
+   }
+   
+   CreateStandardObjects()
+   {
+
+      Send(self,@NewHold,#what=Create(&Brazier),
+           #new_row=14,#new_col=8,#fine_row=0,#fine_col=0);
+
+      Send(self,@NewHold,#what=Create(&Firepit),
+           #new_row=7,#new_col=18,#fine_row=32,#fine_col=0);
+
+      Send(self,@NewHold,#what=Create(&OrnamentalObject,#type=OO_BARREL2),
+           #new_row=3,#new_col=21,#fine_row=0,#fine_col=0,#new_angle=ANGLE_EAST);
+      Send(self,@NewHold,#what=Create(&OrnamentalObject,#type=OO_BARREL2),
+           #new_row=3,#new_col=20,#fine_row=0,#fine_col=0,#new_angle=ANGLE_EAST);
+
+      Send(self,@NewHold,#what=Create(&OrnamentalObject,#type=OO_FIXINS),
+           #new_row=5,#new_col=15,#fine_row=0,#fine_col=0,#angle=ANGLE_NORTH);
+
+      Send(self,@NewHold,#what=Create(&OrnamentalObject,#type=OO_GREY_JUG),
+           #new_row=5,#new_col=19,#fine_row=48,#fine_col=0,#angle=ANGLE_NORTH);
+
+      Send(self,@NewHold,#what=Create(&OrnamentalObject,#type=OO_BAG_OF_BEANS),
+           #new_row=4,#new_col=23,#fine_row=0,#fine_col=0,#angle=ANGLE_NORTH);
+
+      propagate;
+   }
+
+end
+////////////////////////////////////////////////////////////////////////////////

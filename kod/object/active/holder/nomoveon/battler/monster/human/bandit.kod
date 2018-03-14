@@ -1,0 +1,245 @@
+// Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+// All rights reserved.
+//
+// This software is distributed under a license that is described in
+// the LICENSE file that accompanies it.
+//
+// Meridian is a registered trademark.
+
+
+////////////////////////////////////////////////////////////////////////////////
+Bandit is Human
+
+constants:
+
+   include blakston.khd
+
+   EQUIPMENT_DROP_PERCENT = 20
+
+resources:
+
+   include bandit.lkod
+
+   Bandit_name_rsc = "bandit"
+   Bandit_sniper_name_rsc = "bandit sniper"
+   Bandit_captain_name_rsc = "bandit captain"
+   Bandit_desc_rsc = \
+   "This is a bandit."
+   Bandit_sniper_desc_rsc = \
+   "This is a bandit sniper."
+   Bandit_captain_desc_rsc = \
+   "This is a bandit captain."
+   Bandit_dead_name_rsc = "dead bandit"
+
+classvars:
+
+   vrDead_name = Bandit_dead_name_rsc
+
+   viTreasure_type = TID_EMPTY
+
+   viSpeed = SPEED_FASTER
+   viAttack_type = ATCK_WEAP_SLASH
+   viAttributes = 0
+   viDefault_behavior = AI_FIGHT_AGGRESSIVE | AI_FIGHT_SWITCHALOT
+
+   viColorTranslate1 = XLAT_TO_RED     // Shirt
+   viColorTranslate2 = XLAT_TO_DGREEN   // Pants
+
+   viBanditChance = 85
+   viSniperChance = 12
+   viCaptainChance = 3
+
+   viVisionDistance = 15
+
+   viCashMin = 200
+   viCashMax = 600
+
+   viWimpy = 20
+
+   // vbCanRally = TRUE
+
+   viSocial = 70
+
+properties:
+
+   piBaseLevel = 100
+   piBaseDifficulty = 6
+
+   //Here so they can be set
+   vrIcon = human_male_icon_rsc
+   vrDead_Icon = human_dead_male_icona_rsc
+   vrDead_Legs = human_dead_male_iconb_rsc
+   viLevel = 100         // piBaseLevel
+   viDifficulty = 6     // piBaseDifficulty
+   piGender = GENDER_MALE
+   viKarma = 0
+
+   vrName = Bandit_name_rsc
+   vrDesc = Bandit_desc_rsc
+
+   // Relative chance for each type of bandit to spawn
+
+
+messages:
+
+   Constructed()
+   {
+
+      propagate;
+   }
+
+   SetClothes()
+   {
+      Send(self,@SetDefaultClothes,#shirt_color=viColorTranslate1);
+      Send(self,@SetTroopLegs,#translation=viColorTranslate2);
+
+      return;
+   }
+
+   SetEquipment()
+   {
+      local oArmor, oWeapon, oShield, iRandomNumber, iBonusModifier, iRndMax;
+
+      iRndMax = viBanditChance + viSniperChance + viCaptainChance;
+      iRandomNumber = Random(1, iRndMax);
+      if iRandomNumber <= viBanditChance // Bandit
+      {
+         vrName = Bandit_name_rsc;
+         vrDesc = Bandit_desc_rsc;
+         iBonusModifier = 0;
+         viDifficulty = piBaseDifficulty + iBonusModifier;
+         iBonusModifier = 0;
+         viLevel = piBaseLevel + iBonusModifier;
+
+         // Armor
+         iRandomNumber = Random(1, 100);
+         if iRandomNumber <= 50
+         {
+            oArmor = Create(&LeatherArmor);
+         }
+         else
+         {
+            oArmor = Create(&ChainArmor);
+         }
+
+         // Weapon
+         iRandomNumber = Random(1, 100);
+         if iRandomNumber <= 33
+         {
+            oWeapon = Create(&ShortSword);
+         }
+         else if iRandomNumber <= 66
+         {
+            oWeapon = Create(&LongSword);
+         }
+         else
+         {
+            oWeapon = Create(&Axe);
+         }
+
+         // Shield
+         iRandomNumber = Random(1, 100);
+         if iRandomNumber <= 50
+         {
+            oShield = Create(&MetalShield);
+         }
+         else
+         {
+            oShield = Create(&WoodenShield);
+         }
+      }
+
+      else if iRandomNumber <= (viSniperChance + viBanditChance) // Sniper
+      {
+         vrName = Bandit_sniper_name_rsc;
+         vrDesc = Bandit_sniper_desc_rsc;
+         iBonusModifier = 1;
+         viDifficulty = piBaseDifficulty + iBonusModifier;
+         iBonusModifier = 20;
+         viLevel = piBaseLevel + iBonusModifier;
+
+         // Armor
+         iRandomNumber = Random(1, 100);
+         if iRandomNumber <= 50
+         {
+            oArmor = Create(&LeatherArmor);
+         }
+         else
+         {
+            oArmor = Create(&ChainArmor);
+         }
+
+         // Weapon
+         oWeapon = Create(&LongBow);
+
+         // Shield - snipers get ammo for their bow instead
+         oShield = Create(&NeruditeArrow);
+      }
+
+      else // Captain
+      {
+         vrName = Bandit_captain_name_rsc;
+         vrDesc = Bandit_captain_desc_rsc;
+         iBonusModifier = 2;
+         viDifficulty = piBaseDifficulty + iBonusModifier;
+         iBonusModifier = 40;
+         viLevel = piBaseLevel + iBonusModifier;
+
+         // Armor
+         oArmor = Create(&PlateArmor);
+
+         // Weapon
+         oWeapon = Create(&Scimitar);
+
+         // Shield
+         oShield = Create(&Knightshield);
+
+         Send(self,@AddEquipmentObject,#what=Create(&Gauntlet));
+      }
+
+         Send(self,@AddEquipmentObject,#what=oArmor);
+         Send(self,@AddEquipmentObject,#what=oWeapon);
+         Send(self,@AddEquipmentObject,#what=oShield);
+
+      return;
+   }
+
+   // Override from monster superclass
+   // We drop some of our carried items when we die.
+   CreateTreasure(who = $, corpse = $)
+   {
+      local oUsedItem, oItemAtt;
+
+      oItemAtt = Send(SYS,@FindItemAttByNum,#num=IA_CORPSEPOINTER);
+
+      foreach oUsedItem in plUsing
+      {
+         // Only a percentage chance to drop each item.  Too much stuff otherwise.
+         // Don't drop the shield!  It's a quest/special item!
+         if (Random(1,100) <= EQUIPMENT_DROP_PERCENT)
+            //AND (NOT IsClass(oUsedItem,vcShieldClass))
+            AND NOT pbIllusion
+         {
+            if (oItemAtt <> $) AND Send(oItemAtt,@ReqAddToItem,#oItem=oUsedItem)
+            {
+               Send(oItemAtt,@AddToItem,#oItem=oUsedItem,#state1=corpse);
+            }
+
+            Send(poOwner,@NewHold,#what=oUsedItem,
+                  #new_row=piRow,#new_col=piCol,
+                  #fine_row=piFine_row,#fine_col=piFine_col);
+         }
+         else
+         {
+            Send(oUsedItem,@Delete);
+         }
+      }
+
+      plUsing = $;
+
+      propagate;
+   }
+
+
+end
+////////////////////////////////////////////////////////////////////////////////

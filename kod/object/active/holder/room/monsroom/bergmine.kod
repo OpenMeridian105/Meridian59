@@ -1,0 +1,101 @@
+// Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+// All rights reserved.
+//
+// This software is distributed under a license that is described in
+// the LICENSE file that accompanies it.
+//
+// Meridian is a registered trademark.
+
+
+////////////////////////////////////////////////////////////////////////////////
+BergMine is ObjectRoom
+
+constants:
+
+   include blakston.khd
+
+resources:
+
+   include bergmine.lkod
+
+   room_bergmine = bergmine.roo
+   room_name_bergmine = "The mines of Berg"
+
+   bergmine_music = orc1.ogg
+
+classvars:
+
+   vrName = room_name_bergmine
+
+   viTeleport_row = 17
+   viTeleport_col = 18
+
+   viWeatherZone = WEATHER_ZONE_BERG
+
+properties:
+
+   viTerrain_type = TERRAIN_CAVES
+
+   prRoom = room_bergmine
+   piRoom_num = RID_BERG_MINE
+   prMusic = bergmine_music
+
+   piBaseLight = LIGHT_DARK
+   piOutside_factor = 8
+
+   piDirectional_percent = DIRECTIONAL_PERCENT_OUTDOORS
+
+   //piGen_percent = 70
+
+   piInit_count_min = 2
+   piInit_count_max = 3
+
+   piMonster_count_max = 9
+
+   piGen_object_time = 24 * 60 * 60 * 1000 // 24 hours
+
+messages:
+
+   CreateObjectGeneration()
+   {
+      plObject_gen = $;
+
+      // Spawn ore (rare)
+
+      plObject_gen = Cons([ &OreChunk, GEN_ONE, 1, 31, 9, 0, 0 ],plObject_gen);
+
+      propagate;
+   }
+
+   CreateStandardExits()
+   {
+      plEdge_Exits = $;
+
+      plEdge_Exits = Cons([ LEAVE_SOUTH, RID_BERG_CITY, 3, 48, ROTATE_NONE ], plEdge_exits);
+      plEdge_Exits = Cons([ LEAVE_WEST, RID_BERG_2, 15, 49, ROTATE_NONE, ROW_IS_GREATER_THAN,10], plEdge_exits);
+      plEdge_Exits = Cons([ LEAVE_WEST, RID_BANDIT_CAMP, 23, 38, ROTATE_NONE, ROW_IS_LESS_THAN,10], plEdge_exits);
+
+      propagate;
+   }
+
+   Constructed()
+   {
+      plMonsters = [ [&Orc, 100] ];
+
+      // Use Random Spawn
+      plGenerators = [ [26, 13], [20, 6], [22, 23], [20, 29], [13, 23] ];
+
+      propagate;
+   }
+   
+   CreateStandardObjects()
+   {
+
+      Send(self,@NewHold,#what=Create(&Brazier),
+           #new_row=38,#new_col=22,#fine_row=0,#fine_col=0);
+
+      propagate;
+   }
+
+end
+////////////////////////////////////////////////////////////////////////////////

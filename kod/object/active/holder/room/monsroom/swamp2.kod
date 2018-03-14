@@ -14,9 +14,9 @@ constants:
 
    include blakston.khd
    
-   TIME_PER_KILL = 6000 //How much each kill adds to the puzzle timer.
-   TIME_REQUIRED = 25000 //Amount of time needed to accumulate to spawn the boss.
-   TIME_CAP = 100000 //Can't go above this amount.
+   TIME_PER_KILL = 6000 // How much each kill adds to the puzzle timer.
+   TIME_REQUIRED = 25000 // Amount of time needed to accumulate to spawn the boss.
+   TIME_CAP = 100000 // Can't go above this amount.
 
 resources:
 
@@ -26,10 +26,17 @@ resources:
    room_name_swamp2 = "The desolate Mire"
 
    swamp2_music = Badfor.ogg
+   
+   swamp2_sound_evil = lich_awr.ogg
 
    swamp2_boss_msg = \
       "~BA Dark Angel has been "
       "summoned!"
+
+   swamp2_dusk_msg = \
+      "A dark force spreads across the area as the sun begins to sink below the horizon."
+   swamp2_dawn_msg = \
+      "The dark force fades away as the first rays of sunlight touch the ground."
 
 classvars:
 
@@ -70,6 +77,8 @@ properties:
 
    ptLightTimer = $
 
+   pbDay = TRUE
+
 
 
 messages:
@@ -87,7 +96,7 @@ messages:
 
    Constructed()
    {
-      plMonsters = [ [&Frogman, 100] ];
+      plMonsters = [ [&EvilEnt, 100] ];
 
       plGenerators = [ [32, 11], [44, 11], [49, 14], [56, 22], [47, 22],
                        [51, 27], [50, 33], [42, 37], [39, 33], [32, 38] ];
@@ -100,13 +109,36 @@ messages:
       local iHour;
 
       iHour = Send(SYS,@GetHour);
-      if iHour < 5 OR iHour > 18
+      if iHour < 5 OR iHour > 20
       {
          plMonsters = [ [&DaemonSkeleton, 100] ];
          propagate;
       }
 
-      plMonsters = [ [&Frogman, 100] ];
+      plMonsters = [ [&EvilEnt, 100] ];
+      propagate;
+   }
+
+   RecalcLightAndWeather()
+   {
+      local iHour;
+      iHour = Send(SYS,@GetHour);
+      if iHour = 21 AND pbDay = TRUE
+      {
+         pbDay = FALSE;
+         Send(self,@SomeoneSaid,#type=SAY_MESSAGE,#what=self,
+                   #string=swamp2_dusk_msg);
+         Send(self,@SomethingWaveRoom,#wave_rsc=swamp2_sound_evil);
+         propagate;
+      }
+      if iHour = 5 AND pbDay = FALSE
+      {
+         pbDay = TRUE;
+         Send(self,@SomeoneSaid,#type=SAY_MESSAGE,#what=self,
+                   #string=swamp2_dawn_msg);
+         propagate;
+      }
+
       propagate;
    }
 
@@ -150,6 +182,7 @@ messages:
 
               Send(self,@SomeoneSaid,#type=SAY_MESSAGE,#what=self,
                    #string=swamp2_boss_msg);
+              Send(self,@SomethingWaveRoom,#wave_rsc=swamp2_sound_evil);
               DeleteTimer(ptLightTimer);
               ptLightTimer = $;
            }   

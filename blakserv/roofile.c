@@ -46,6 +46,11 @@
 #define DEPTHMODIFY2    (2.0f * ROOFINENESS / 5.0f)
 #define DEPTHMODIFY3    (3.0f * ROOFINENESS / 5.0f)
 
+#define ROOM_OVERRIDE_DEPTH1 0x00000001
+#define ROOM_OVERRIDE_DEPTH2 0x00000002
+#define ROOM_OVERRIDE_DEPTH3 0x00000004
+#define ROOM_OVERRIDE_MASK   0x00000007
+
 /*****************************************************************************************
 ********* from clientd3d/bsp.h ***********************************************************
 *****************************************************************************************/
@@ -68,27 +73,58 @@
 /*                                   These are not defined in header                                          */
 /**************************************************************************************************************/
 
-__forceinline float BSPGetSectorHeightFloorWithDepth(const SectorNode* Sector, const V2* P)
+// stores potential intersections during recursive CanMoveInRoom3D query
+Intersections intersects;
+
+__forceinline void BSPIntersectionsSwap(Intersection **a, Intersection **b)
+{
+   Intersection* t = *a; *a = *b; *b = t;
+}
+
+void BSPIntersectionsSort(Intersection* arr[], unsigned int beg, unsigned int end)
+{
+   // Recursive QuickSort implementation
+   // sorting (potential) intersections by squared distance from start
+
+   if (end > beg + 1)
+   {
+      Intersection* piv = arr[beg];
+      unsigned int l = beg + 1, r = end;
+      while (l < r)
+      {
+         if (arr[l]->Distance2 <= piv->Distance2)
+            l++;
+         else
+            BSPIntersectionsSwap(&arr[l], &arr[--r]);
+      }
+      BSPIntersectionsSwap(&arr[--l], &arr[beg]);
+      BSPIntersectionsSort(arr, beg, l);
+      BSPIntersectionsSort(arr, r, end);
+   }
+}
+
+__forceinline float BSPGetSectorHeightFloorWithDepth(const room_type* Room, const SectorNode* Sector, const V2* P)
 {
    const float height = SECTORHEIGHTFLOOR(Sector, P);
    const unsigned int depthtype = Sector->Flags & SF_MASK_DEPTH;
+   const unsigned int depthoverride = Room->DepthFlags & ROOM_OVERRIDE_MASK;
 
-   if (depthtype == SF_DEPTH0)           
+   if (depthtype == SF_DEPTH0)
       return (height - DEPTHMODIFY0);
 
    if (depthtype == SF_DEPTH1)
-      return (height - DEPTHMODIFY1);
+      return (depthoverride != ROOM_OVERRIDE_DEPTH1) ? (height - DEPTHMODIFY1) : Room->OverrideDepth1;
 
    if (depthtype == SF_DEPTH2)
-      return (height - DEPTHMODIFY2);
+      return (depthoverride != ROOM_OVERRIDE_DEPTH2) ? (height - DEPTHMODIFY2) : Room->OverrideDepth2;
 
    if (depthtype == SF_DEPTH3)
-      return (height - DEPTHMODIFY3);
+      return (depthoverride != ROOM_OVERRIDE_DEPTH3) ? (height - DEPTHMODIFY3) : Room->OverrideDepth3;
 
    return height;
 }
 
-__forceinline bool BSPCanMoveInRoomTreeInternal(const SectorNode* SectorS, const SectorNode* SectorE, const Side* SideS, const Side* SideE, const V2* Q)
+__forceinline bool BSPCanMoveInRoomTreeInternal(const room_type* Room, const SectorNode* SectorS, const SectorNode* SectorE, const Side* SideS, const Side* SideE, const V2* Q)
 {
    // block moves with end outside
    if (!SectorE || !SideE)
@@ -107,8 +143,8 @@ __forceinline bool BSPCanMoveInRoomTreeInternal(const SectorNode* SectorS, const
       return false;
 
    // get floor heights
-   const float hFloorS = BSPGetSectorHeightFloorWithDepth(SectorS, Q);
-   const float hFloorE = BSPGetSectorHeightFloorWithDepth(SectorE, Q);
+   const float hFloorS = BSPGetSectorHeightFloorWithDepth(Room, SectorS, Q);
+   const float hFloorE = BSPGetSectorHeightFloorWithDepth(Room, SectorE, Q);
 
    // check stepheight (this also requires a lower texture set)
    if (SideS->TextureLower > 0 && (hFloorE - hFloorS > MAXSTEPHEIGHT))
@@ -124,6 +160,48 @@ __forceinline bool BSPCanMoveInRoomTreeInternal(const SectorNode* SectorS, const
    // check endsector height
    if (hCeilingE - hFloorE < OBJECTHEIGHTROO)
       return false;
+
+   return true;
+}
+
+__forceinline bool BSPCanMoveInRoomTree3DInternal(const room_type* Room, SectorNode* SectorS, SectorNode* SectorE, Side* SideS, Side* SideE, const V2* Q)
+{
+   // block moves with end outside
+   if (!SectorE || !SideE)
+      return false;
+
+   // sides which have no passable flag set always block
+   if (SideS && !((SideS->Flags & WF_PASSABLE) == WF_PASSABLE))
+      return false;
+
+   // endsector must not be marked SF_NOMOVE
+   if ((SectorE->Flags & SF_NOMOVE) == SF_NOMOVE)
+      return false;
+
+   // get floor and ceiling height at end
+   const float hFloorE   = BSPGetSectorHeightFloorWithDepth(Room, SectorE, Q);
+   const float hCeilingE = SECTORHEIGHTCEILING(SectorE, Q);
+
+   // check endsector height
+   if (hCeilingE - hFloorE < OBJECTHEIGHTROO)
+      return false;
+
+   // must evaluate heights at transition later
+   unsigned int size = intersects.Size;
+   if (size < MAXINTERSECTIONS)
+   {
+      intersects.Data[size].SectorS = SectorS;
+      intersects.Data[size].SectorE = SectorE;
+      intersects.Data[size].SideS = SideS;
+      intersects.Data[size].SideE = SideE;
+      intersects.Data[size].Q.X = Q->X;
+      intersects.Data[size].Q.Y = Q->Y;
+      intersects.Ptrs[size] = &intersects.Data[size];
+      size++;
+      intersects.Size = size;
+   }
+   else
+      eprintf("BSPCanMoveInRoomTree3DInternal: Maximum trackable intersections reached!");
 
    return true;
 }
@@ -405,7 +483,7 @@ bool BSPLineOfSightTree(const BspNode* Node, const V3* S, const V3* E)
    }
 }
 
-bool BSPCanMoveInRoomTree(const BspNode* Node, const V2* S, const V2* E, Wall** BlockWall)
+template <bool USE3D, int MINDIST, int MINDIST2> bool BSPCanMoveInRoomTree(const room_type* Room, const BspNode* Node, const V2* S, const V2* E, Wall** BlockWall)
 {
    // reached a leaf or nullchild, movements not blocked by leafs
    if (!Node || Node->Type != BspInternalType)
@@ -421,13 +499,13 @@ bool BSPCanMoveInRoomTree(const BspNode* Node, const V2* S, const V2* E, Wall** 
 
    // both endpoints far away enough on positive (right) side
    // --> climb down only right subtree
-   if ((distS > WALLMINDISTANCE) & (distE > WALLMINDISTANCE))
-      return BSPCanMoveInRoomTree(Node->u.internal.RightChild, S, E, BlockWall);
+   if ((distS > (float)MINDIST) & (distE > (float)MINDIST))
+      return BSPCanMoveInRoomTree<USE3D, MINDIST, MINDIST2>(Room, Node->u.internal.RightChild, S, E, BlockWall);
 
    // both endpoints far away enough on negative (left) side
    // --> climb down only left subtree
-   else if ((distS < -WALLMINDISTANCE) & (distE < -WALLMINDISTANCE))
-      return BSPCanMoveInRoomTree(Node->u.internal.LeftChild, S, E, BlockWall);
+   else if ((distS < (float)-MINDIST) & (distE < (float)-MINDIST))
+      return BSPCanMoveInRoomTree<USE3D, MINDIST, MINDIST2>(Room, Node->u.internal.LeftChild, S, E, BlockWall);
 
    // endpoints are on different sides, or one/both on infinite line or potentially too close
    // --> check walls of splitter first and then possibly climb down both subtrees
@@ -486,7 +564,11 @@ bool BSPCanMoveInRoomTree(const BspNode* Node, const V2* S, const V2* E, Wall** 
                }
 
                // check the transition data for this wall, use intersection point q
-               if (!BSPCanMoveInRoomTreeInternal(sectorS, sectorE, sideS, sideE, &q))
+               bool ok = (USE3D) ?
+                  BSPCanMoveInRoomTree3DInternal(Room, sectorS, sectorE, sideS, sideE, &q) :
+                  BSPCanMoveInRoomTreeInternal(Room, sectorS, sectorE, sideS, sideE, &q);
+
+               if (!ok)
                {
                   *BlockWall = wall;
                   return false;
@@ -512,7 +594,7 @@ bool BSPCanMoveInRoomTree(const BspNode* Node, const V2* S, const V2* E, Wall** 
                float dist2 = MinSquaredDistanceToLineSegment(E, &wall->P1, &wall->P2);
 
                // skip if far enough away
-               if (dist2 > WALLMINDISTANCE2)
+               if (dist2 > (float)MINDIST2)
                {
                   wall = wall->NextWallInPlane;
                   continue;
@@ -537,7 +619,11 @@ bool BSPCanMoveInRoomTree(const BspNode* Node, const V2* S, const V2* E, Wall** 
                }
 
                // check the transition data for this wall, use E for intersectpoint
-               if (!BSPCanMoveInRoomTreeInternal(sectorS, sectorE, sideS, sideE, E))
+               bool ok = (USE3D) ?
+                  BSPCanMoveInRoomTree3DInternal(Room, sectorS, sectorE, sideS, sideE, E) :
+                  BSPCanMoveInRoomTreeInternal(Room, sectorS, sectorE, sideS, sideE, E);
+
+               if (!ok)
                {
                   *BlockWall = wall;
                   return false;
@@ -551,14 +637,14 @@ bool BSPCanMoveInRoomTree(const BspNode* Node, const V2* S, const V2* E, Wall** 
       /****************************************************************/
 
       // try right subtree first
-      bool retval = BSPCanMoveInRoomTree(Node->u.internal.RightChild, S, E, BlockWall);
+      bool retval = BSPCanMoveInRoomTree<USE3D, MINDIST, MINDIST2>(Room, Node->u.internal.RightChild, S, E, BlockWall);
 
       // found a collision there? return it
       if (!retval)
          return retval;
 
       // otherwise try left subtree
-      return BSPCanMoveInRoomTree(Node->u.internal.LeftChild, S, E, BlockWall);
+      return BSPCanMoveInRoomTree<USE3D, MINDIST, MINDIST2>(Room, Node->u.internal.LeftChild, S, E, BlockWall);
    }
 }
 #pragma endregion
@@ -603,7 +689,7 @@ bool BSPGetHeight(room_type* Room, V2* P, float* HeightF, float* HeightFWD, floa
          // set output params
          *Leaf = &n->u.leaf;
          *HeightF = SECTORHEIGHTFLOOR(n->u.leaf.Sector, P);
-         *HeightFWD = BSPGetSectorHeightFloorWithDepth(n->u.leaf.Sector, P);
+         *HeightFWD = BSPGetSectorHeightFloorWithDepth(Room, n->u.leaf.Sector, P);
          *HeightC = SECTORHEIGHTCEILING(n->u.leaf.Sector, P);
          return true;
       }
@@ -720,6 +806,8 @@ bool BSPLineOfSight(room_type* Room, V3* S, V3* E)
 
 /*********************************************************************************************/
 /* BSPCanMoveInRoom:  Checks if you can walk a straight line from (S)tart to (E)nd           */
+/*                    This is a 2D variant which assumes all wall transitions are made on    */
+/*                    ground level. For better variant see 3D. Still used in Astar           */
 /*********************************************************************************************/
 bool BSPCanMoveInRoom(room_type* Room, V2* S, V2* E, int ObjectID, bool moveOutsideBSP, bool checkObjects, bool ignoreEndBlocker, Wall** BlockWall)
 {
@@ -738,7 +826,7 @@ bool BSPCanMoveInRoom(room_type* Room, V2* S, V2* E, int ObjectID, bool moveOuts
    }
 
    // first check against room geometry
-   bool roomok = (moveOutsideBSP || BSPCanMoveInRoomTree(&Room->TreeNodes[0], S, E, BlockWall));
+   bool roomok = (moveOutsideBSP || BSPCanMoveInRoomTree<false, (int)WALLMINDISTANCE, (int)WALLMINDISTANCE2>(Room, &Room->TreeNodes[0], S, E, BlockWall));
 
    // already found a collision in room
    if (!roomok)
@@ -807,6 +895,203 @@ bool BSPCanMoveInRoom(room_type* Room, V2* S, V2* E, int ObjectID, bool moveOuts
 
    return true;
 }
+
+/*********************************************************************************************/
+/* BSPCanMoveInRoom3D:  Works like 2D variant but supports dynamic height of objects along   */
+/*                      the move-line. Hence jumps are supported here.                       */
+/*********************************************************************************************/
+template<bool ISPLAYER> bool BSPCanMoveInRoom3D(room_type* Room, V2* S, V2* E, float Height, float Speed, int ObjectID, bool moveOutsideBSP, bool checkObjects, bool ignoreEndBlocker, Wall** BlockWall)
+{
+   // sanity check: these are binary or operations because it's very unlikely
+   // any condition is met. So next ones can't be skipped, so binary is faster.
+   if (!Room || ((Room->TreeNodesCount == 0) | !S | !E))
+      return false;
+
+   // allow move to same location
+   if (ISZERO(S->X - E->X) && ISZERO(S->Y - E->Y))
+   {
+#if DEBUGMOVE
+      dprintf("MOVEALLOW (START=END)");
+#endif
+      return true;
+   }
+
+   // first check against room geometry
+   if (!moveOutsideBSP)
+   {
+      // reset intermediate intersections results
+      intersects.Size = 0;
+
+      // basic roomtest, might return false already for a block
+      // template branching for user/monsters
+      if (ISPLAYER)
+      {
+         if (!BSPCanMoveInRoomTree<true, (int)WALLMINDISTANCEUSER, (int)WALLMINDISTANCEUSER2>(Room, &Room->TreeNodes[0], S, E, BlockWall))
+            return false;
+      }
+      else
+      {
+         // basic roomtest, might return false already for a block
+         if (!BSPCanMoveInRoomTree<true, (int)WALLMINDISTANCE, (int)WALLMINDISTANCE2>(Room, &Room->TreeNodes[0], S, E, BlockWall))
+            return false;
+      }
+
+      // but still got to validate height transitions list
+      // calculate the squared distances
+      for (unsigned int i = 0; i < intersects.Size; i++)
+      {
+         V2 v;
+         V2SUB(&v, &intersects.Data[i].Q, S);
+         intersects.Data[i].Distance2 = V2LEN2(&v);
+      }
+
+      // sort the potential intersections by squared distance from start
+      BSPIntersectionsSort(intersects.Ptrs, 0, intersects.Size);
+
+      // debug
+      /*if (intersects.Size > 2)
+      {
+         //dprintf("%f %f %f", intersects.Ptrs[0]->Distance, intersects.Ptrs[1]->Distance, intersects.Ptrs[2]->Distance);
+         dprintf("%i", intersects.Size);
+         dprintf("-----------------------------");
+      }*/
+
+      // iterate from intersection to intersection, starting and start and ending at end
+      // check the transition data for each one, use intersection point q
+      float distanceDone = 0.0f;
+      float heightModified = Height;
+      V2* p = S;
+      for (unsigned int i = 0; i < intersects.Size; i++)
+      {
+         Intersection* transit = intersects.Ptrs[i];
+
+         // deal with null start sector/side
+         if (!transit->SideS || !transit->SectorS)
+         {
+            if (i == 0) break; // allow if first segment (start outside)
+            else return false; // deny otherwise (segment on the line outside)
+         }
+
+         // get floor heights
+         float hFloorSP = BSPGetSectorHeightFloorWithDepth(Room, transit->SectorS, p);
+         float hFloorSQ = BSPGetSectorHeightFloorWithDepth(Room, transit->SectorS, &transit->Q);
+         float hFloorEQ = BSPGetSectorHeightFloorWithDepth(Room, transit->SectorE, &transit->Q);
+
+         // squared length of this segment
+         float stepLen2 = transit->Distance2 - distanceDone;
+
+         // reduce height by what we lose across the SectorS from p to q
+         if (heightModified > hFloorSP)
+         {
+            // workaround div by 0, todo? these are teleports
+            if (Speed < 0.001f && Speed > -0.001f) Speed = 9999999;
+
+            // S = 1/2*a*t² where t=dist/speed
+            // S = 1/2*a*(dist²/speed²)
+            // t² = (dist/speed)² = dist²/speed²
+            float stepDt2 = stepLen2 / (Speed*Speed);
+            float stepFall = 0.5f * GRAVITYACCELERATION * stepDt2;
+
+            // apply fallheight
+            heightModified += stepFall;
+            heightModified = MAX(hFloorSQ, heightModified);
+         }
+
+         // check stepheight (this also requires a lower texture set)
+         //if (transit->SideS->TextureLower > 0 && (hFloorE - hFloorQ > MAXSTEPHEIGHT))
+         if (transit->SideS->TextureLower > 0 && (hFloorEQ - heightModified > MAXSTEPHEIGHT))
+            return false;
+
+         // get ceiling height
+         const float hCeilingEQ = SECTORHEIGHTCEILING(transit->SectorE, &transit->Q);
+
+         // check ceilingheight (this also requires an upper texture set)
+         if (transit->SideS->TextureUpper > 0 && (hCeilingEQ - hFloorSQ < OBJECTHEIGHTROO))
+            return false;
+
+         // we actually made it across that intersection
+         heightModified = MAX(hFloorEQ, heightModified); // keep our height or set it at least to sector
+         distanceDone += stepLen2;                       // add squared length of processed segment
+         p = &transit->Q;                                // set end to next start
+      }
+   }
+
+   // don't validate objects, we're done
+   if (!checkObjects)
+      return true;
+
+   // get current ms tick
+   const unsigned int tick = (unsigned int)GetMilliCount();
+
+   // otherwise also check against blockers
+   BlockerNode* blocker = Room->Blocker;
+   while (blocker)
+   {
+      // ignore this blocker if we're a player
+      // and it has moved too recently
+      if (ISPLAYER && (tick - blocker->TickLastMove < NOBLOCKOBJUSERDELAY))
+      {
+         blocker = blocker->Next;
+         continue;
+      }
+
+      // don't block ourself
+      if (blocker->ObjectID == ObjectID)
+      {
+         blocker = blocker->Next;
+         continue;
+      }
+
+      // don't block by object at end
+      if (ignoreEndBlocker)
+      {
+         V2 db; // from blocker to end
+         V2SUB(&db, &blocker->Position, E);
+         const float db2 = V2LEN2(&db);
+         if (db2 <= EPSILON)
+         {
+            blocker = blocker->Next;
+            continue;
+         }
+      }
+
+      V2 ms; // from m to s  
+      V2SUB(&ms, S, &blocker->Position);
+      float ds2 = V2LEN2(&ms);
+
+      // CASE 1) Start is too close
+      // Note: IntersectLineCircle below will reject moves starting or ending exactly
+      //   on the circle as well as moves going from inside to outside of the circle.
+      //   So this case here must handle moves until the object is out of radius again.
+      if (ds2 <= ((ISPLAYER) ? OBJMINDISTANCEUSER2 : OBJMINDISTANCE2))
+      {
+         V2 me;
+         V2SUB(&me, E, &blocker->Position); // from m to e
+         float de2 = V2LEN2(&me);
+
+         // end must be farer away than start
+         if (de2 <= ds2)
+            return false;
+      }
+
+      // CASE 2) Start is outside blockradius, verify by intersection algorithm.
+      else
+      {
+         if (IntersectLineCircle(&blocker->Position, (ISPLAYER) ? OBJMINDISTANCEUSER : OBJMINDISTANCE, S, E))
+         {
+#if DEBUGMOVE
+            dprintf("MOVEBLOCK BY OBJ %i", blocker->ObjectID);
+#endif
+            return false;
+         }
+      }
+      blocker = blocker->Next;
+   }
+
+   return true;
+}
+template bool BSPCanMoveInRoom3D<true>(room_type* Room, V2* S, V2* E, float Height, float Speed, int ObjectID, bool moveOutsideBSP, bool checkObjects, bool ignoreEndBlocker, Wall** BlockWall);
+template bool BSPCanMoveInRoom3D<false>(room_type* Room, V2* S, V2* E, float Height, float Speed, int ObjectID, bool moveOutsideBSP, bool checkObjects, bool ignoreEndBlocker, Wall** BlockWall);
 
 /*********************************************************************************************/
 /* BSPChangeTexture: Sets textures of sides and/or sectors to given NewTexture num based on Flags
@@ -899,6 +1184,26 @@ void BSPMoveSector(room_type* Room, unsigned int ServerID, bool Floor, float Hei
 }
 
 /*********************************************************************************************/
+/* BSPGetSectorHeight:  Returns the floor or ceiling height of the first sector matching ID
+/*********************************************************************************************/
+bool BSPGetSectorHeightByID(room_type* Room, unsigned int ServerID, bool Floor, float* Height)
+{
+   for (int i = 0; i < Room->SectorsCount; i++)
+   {
+      SectorNode* sector = &Room->Sectors[i];
+
+      // server ID match
+      if (sector->ServerID == ServerID)
+      {
+         *Height = (Floor) ? sector->FloorHeight : sector->CeilingHeight;
+         return true;
+      }
+   }
+
+   return false;
+}
+
+/*********************************************************************************************/
 /* BSPGetLocationInfo:  Returns several infos about a location depending on 'QueryFlags'
 /*********************************************************************************************/
 bool BSPGetLocationInfo(room_type* Room, V2* P, unsigned int QueryFlags, unsigned int* ReturnFlags,
@@ -983,8 +1288,9 @@ bool BSPGetLocationInfo(room_type* Room, V2* P, unsigned int QueryFlags, unsigne
 /*                    If return is true, P's coordinates are guaranteed to be:
 /*                    (a) inside a sector               (b) inside thingsbox 
 /*                    (c) outside any obj blockradius   (d) not on sector marked SF_NOMOVE
+/*                    (e) capable of a step in each direction with 'UnblockedRadius' length
 /*********************************************************************************************/
-bool BSPGetRandomPoint(room_type* Room, int MaxAttempts, V2* P)
+bool BSPGetRandomPoint(room_type* Room, int MaxAttempts, float UnblockedRadius, V2* P)
 {
    // sanity check: these are binary or operations because it's very unlikely
    // any condition is met. So next ones can't be skipped, so binary is faster.
@@ -1014,7 +1320,35 @@ bool BSPGetRandomPoint(room_type* Room, int MaxAttempts, V2* P)
       if (leaf && (leaf->Sector->FloorTexture == 0 || ((leaf->Sector->Flags & SF_NOMOVE) == SF_NOMOVE)))
          continue;
 
-      // 3. check for being too close to a blocker
+      // 3. make sure we can step in all directions
+      // prevents points too close to walls and object collisions
+      Wall* wall;
+      V2 v, stepend;
+
+      // try rotating test-vector in 8 steps of 45° up to 360°
+      if (UnblockedRadius >= 1.0f)
+      {
+         v.X = UnblockedRadius;
+         v.Y = 0;
+         bool radiuscheck = true;
+         for (int j = 0; j < 8; j++)
+         {
+            V2ROTATE(&v, 0.25f * (float)-M_PI);
+            V2ADD(&stepend, P, &v);
+            V2ROUNDROOTOKODFINENESS(&stepend);
+            if (!BSPCanMoveInRoom(Room, P, &stepend, 0, false, true, false, &wall))
+            {
+               radiuscheck = false;
+               break;
+            }
+         }
+
+         // radiuscheck failed
+         if (!radiuscheck)
+            continue;
+      }
+
+      // 4. check for being too close to a blocker
       BlockerNode* blocker = Room->Blocker;
       bool collision = false;
       while (blocker)
@@ -1150,7 +1484,7 @@ bool BSPGetRandomMoveDest(room_type* Room, int MaxAttempts, float MinDistance, f
 /* BSPGetStepTowards:  Returns a location in P param, in a distant of 16 kod fineness units
 /*                     away from S on the way towards E.
 /*********************************************************************************************/
-bool BSPGetStepTowards(room_type* Room, V2* S, V2* E, V2* P, unsigned int* Flags, int ObjectID)
+bool BSPGetStepTowards(room_type* Room, V2* S, V2* E, V2* P, unsigned int* Flags, int ObjectID, float Speed, float Height)
 {
    // sanity check: these are binary or operations because it's very unlikely
    // any condition is met. So next ones can't be skipped, so binary is faster.
@@ -1196,7 +1530,7 @@ bool BSPGetStepTowards(room_type* Room, V2* S, V2* E, V2* P, unsigned int* Flags
    Wall* blockWall = NULL;
 
    // we do not care about object blocks here, since this is no real step
-   if (BSPCanMoveInRoom(Room, S, E, ObjectID, moveOutsideBSP, true, true, &blockWall))
+   if (BSPCanMoveInRoom3D<false>(Room, S, E, Height, Speed, ObjectID, moveOutsideBSP, true, true, &blockWall))
    {
       // note: we must verify the location the object is actually going to end up in KOD,
       // this means we must round to the next closer kod-fineness value,  
@@ -1205,7 +1539,7 @@ bool BSPGetStepTowards(room_type* Room, V2* S, V2* E, V2* P, unsigned int* Flags
       // this time object blocks matter
       V2ADD(&stepend, S, &se);
       V2ROUNDROOTOKODFINENESS(&stepend);
-      if (BSPCanMoveInRoom(Room, S, &stepend, ObjectID, moveOutsideBSP, true, false, &blockWall))
+      if (BSPCanMoveInRoom3D<false>(Room, S, &stepend, Height, Speed, ObjectID, moveOutsideBSP, true, false, &blockWall))
       {
          //dprintf("Astar-SKIP-Direct Step (%s)", GetResourceByID(Room->resource_id)->resource_name);
          *P = stepend;
@@ -1245,7 +1579,7 @@ bool BSPGetStepTowards(room_type* Room, V2* S, V2* E, V2* P, unsigned int* Flags
       /****************************************************/
       V2ADD(&stepend, S, &se);
       V2ROUNDROOTOKODFINENESS(&stepend);
-      if (BSPCanMoveInRoom(Room, S, &stepend, ObjectID, moveOutsideBSP, true, false, &blockWall))
+      if (BSPCanMoveInRoom3D<false>(Room, S, &stepend, Height, Speed, ObjectID, moveOutsideBSP, true, false, &blockWall))
       {
          *P = stepend;
          *Flags &= ~ESTATE_AVOIDING;
@@ -1317,7 +1651,7 @@ bool BSPGetStepTowards(room_type* Room, V2* S, V2* E, V2* P, unsigned int* Flags
                V2ROTATE(&v, 0.5f * (float)-M_PI_4);
                V2ADD(&stepend, S, &v);
                V2ROUNDROOTOKODFINENESS(&stepend);
-               if (BSPCanMoveInRoom(Room, S, &stepend, ObjectID, moveOutsideBSP, true, false, &blockWall))
+               if (BSPCanMoveInRoom3D<false>(Room, S, &stepend, Height, Speed, ObjectID, moveOutsideBSP, true, false, &blockWall))
                {
                   *P = stepend;
                   *Flags |= ESTATE_AVOIDING;
@@ -1341,7 +1675,7 @@ bool BSPGetStepTowards(room_type* Room, V2* S, V2* E, V2* P, unsigned int* Flags
                V2ROTATE(&v, 0.5f * (float)M_PI_4);
                V2ADD(&stepend, S, &v);
                V2ROUNDROOTOKODFINENESS(&stepend);
-               if (BSPCanMoveInRoom(Room, S, &stepend, ObjectID, moveOutsideBSP, true, false, &blockWall))
+               if (BSPCanMoveInRoom3D<false>(Room, S, &stepend, Height, Speed, ObjectID, moveOutsideBSP, true, false, &blockWall))
                {
                   *P = stepend;
                   *Flags |= ESTATE_AVOIDING;
@@ -1435,8 +1769,9 @@ bool BSPBlockerAdd(room_type* Room, int ObjectID, V2* P)
    // set values on new blocker
    newblocker->ObjectID = ObjectID;
    newblocker->Position = *P;
+   newblocker->TickLastMove = 0;
    newblocker->Next = NULL;
-
+   
    // first blocker
    if (!Room->Blocker)
       Room->Blocker = newblocker;
@@ -1469,6 +1804,7 @@ bool BSPBlockerMove(room_type* Room, int ObjectID, V2* P)
       if (blocker->ObjectID == ObjectID)
       {
          blocker->Position = *P;
+         blocker->TickLastMove = (unsigned int)GetMilliCount();
          return true;
       }
       blocker = blocker->Next;
@@ -2037,6 +2373,12 @@ bool BSPLoadRoom(char *fname, room_type *room)
 
    // no initial blockers
    room->Blocker = NULL;
+
+   // depth override settings
+   room->DepthFlags     = 0;
+   room->OverrideDepth1 = 0;
+   room->OverrideDepth2 = 0;
+   room->OverrideDepth3 = 0;
 
    /****************************************************************************/
    /****************************************************************************/

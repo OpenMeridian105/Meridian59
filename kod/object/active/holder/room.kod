@@ -267,6 +267,13 @@ properties:
    // sector ID #, animation (floor or ceiling), and height.
    plSector_changes = $
 
+   // List of all sectors that are currently in motion up/down
+   // sector ID #, animation (floor or ceiling), end-height, speed, last-update-tick, remainder
+   plSector_moves = $
+   
+   // Timer that updates moving sectors in increments
+   ptSectorUpdate = $
+   
    // List of all sectors that have flag changes. Each element in list is
    // sector ID #, depth value and scroll speed value.
    plSector_flag_changes = $
@@ -332,11 +339,11 @@ properties:
    piWeather = WEATHER_PATTERN_CLEAR
 
    // Some zones may have tighter turns and require a more narrow step size.
-   // By default, every step will be recorded.
-   piTrailSteps = 1
+   // By default, only every 2nd step will be recorded because users move in 100ms intervals.
+   piTrailSteps = 2
 
    // Some zones may require a longer trail than others.
-   piTrailLength = 40
+   piTrailLength = 10
 
 messages:
 
@@ -1176,6 +1183,12 @@ messages:
          ptNoPKTimer = $;
       }
 
+      if ptSectorUpdate <> $  
+      {
+         DeleteTimer(ptSectorUpdate);
+         ptSectorUpdate = $;
+      }
+  
       Send(SYS,@DeleteRoom,#what=self);
       Send(self,@RemoveAllEnchantments);
 
@@ -1230,6 +1243,9 @@ messages:
       piRowsHighRes = Nth(lRoom_data,4);
       piColsHighRes = Nth(lRoom_data,5);
 
+      // set depth override flags and values
+      SetRoomDepthOverrideBSP(prmRoom,viClientFlags,viOverrideDepth1,viOverrideDepth2,viOverrideDepth3);
+	  
       foreach lList in [plActive, plPassive]
       {
          foreach i in lList
@@ -2313,14 +2329,28 @@ messages:
    SendSectorChanges(who = $)
    "Called by user when gets into new room"
    {
-      local i;
-
-      // it's a user, so send sector changes (with infinite speed)
+      local i, lMovedSector, iAnim, iSector;
 
       foreach i in plSector_changes
       {
-         Send(who,@SectorSendUser,#sector=First(i),#animation=Nth(i,2),
-              #height=Nth(i,3),#speed=0);
+         iSector = First(i);
+         lMovedSector = GetListNode(plSector_moves,1,iSector);
+         if (lMovedSector <> $)
+         {
+            iAnim = Nth(lMovedSector,2);
+            // Set initial height.
+            Send(who,@SectorSendUser,#sector=iSector,#animation=iAnim,
+                  #height=GetSectorHeightBSP(prmRoom,iSector,iAnim),#speed=0);
+            // Set moving.
+            Send(who,@SectorSendUser,#sector=iSector,#animation=iAnim,
+                  #height=Nth(lMovedSector,3),#speed=Nth(lMovedSector,4));
+         }
+         else
+         {
+            // Not moving, infinite speed.
+            Send(who,@SectorSendUser,#sector=iSector,#animation=Nth(i,2),
+                  #height=Nth(i,3),#speed=0);
+         }
       }
 
       return;
@@ -2492,7 +2522,7 @@ messages:
    "<server_validate> is set to false for user moves, which have already been "
    "checked by client (HAHA!)."
    {
-      local i, each_obj, iRow, iCol, iFineRow, iFineCol, iLOS, bMoveOffBSP;
+      local i, each_obj, iRow, iCol, iFineRow, iFineCol, iHeight, iSpeed, iLOS, bMoveOffBSP;
 
       if new_row > piRows OR new_row < 1 OR new_col > piCols OR new_col < 1
       {
@@ -2530,6 +2560,22 @@ messages:
          if iFineCol = 0
          {
             iFineCol = Send(what,@GetFineCol);
+         }
+
+         // WORKAROUND/TODO: existing monsters don't have a height yet
+         if IsClass(what, &NoMoveOn) { Send(what, @InitHeight); }
+ 
+         // get height of object to move
+         iHeight = Send(what,@GetHeight);
+
+         // for battler get speed, otherwise use a default
+         if IsClass(what, &Battler)
+         {
+            iSpeed = Send(what,@GetSpeed);
+         }
+         else
+         {
+            iSpeed = SPEED_MAXIMUM;
          }
       }
       else
@@ -2569,6 +2615,9 @@ messages:
             iRow = -10;
             iCol = -10;
          }
+
+         iHeight = 0;
+         iSpeed = SPEED_MAXIMUM;
       }
 
       if server_validate
@@ -2581,8 +2630,8 @@ messages:
             bMoveOffBSP = TRUE;
          }
 
-         if NOT CanMoveInRoomBSP(prmRoom,iRow,iCol,iFineRow,iFineCol,new_row,
-                     new_col,new_finerow,new_finecol,what,bMoveOffBSP)
+         if NOT CanMoveInRoomBSP(prmRoom,iRow,iCol,iFineRow,iFineCol,iHeight,new_row,
+                     new_col,new_finerow,new_finecol,iSpeed,what,bMoveOffBSP,FALSE)
          {
             return FALSE;
          }
@@ -2637,23 +2686,52 @@ messages:
    LineOfSight(obj1 = $, obj2 = $)
    "Returns TRUE if there is a line of sight between obj1 and obj2"
    {
-      local start_row, start_col, start_finerow, start_finecol,
-            end_row, end_col, end_finerow, end_finecol, los;
+      local start_row, start_col, start_finerow, start_finecol, start_height,
+            end_row, end_col, end_finerow, end_finecol, end_height, los;
+
+      // WORKAROUND/TODO: existing monsters don't have a height yet
+      if IsClass(obj1, &NoMoveOn) { Send(obj1, @InitHeight); }
 
       // get coordinates of source (obj1) and target (obj2)
       start_row = Send(obj1, @GetRow);
       start_col = Send(obj1, @GetCol);
       start_finerow = Send(obj1, @GetFineRow);
       start_finecol = Send(obj1, @GetFineCol);
+      start_height = Send(obj1, @GetHeight);
+
+      // modify startheight
+      if Send(obj1, @GetObjectFlags) & OF_HANGING
+      {
+         start_height -= LOS_DEFAULT_ZOFFSET;
+      }
+      else
+      {
+         start_height += LOS_DEFAULT_ZOFFSET;
+      }
+
+      // WORKAROUND/TODO: existing monsters don't have a height yet
+      if IsClass(obj2, &NoMoveOn) { Send(obj2, @InitHeight); }
+
       end_row = Send(obj2, @GetRow);
       end_col = Send(obj2, @GetCol);
       end_finerow = Send(obj2, @GetFineRow);
       end_finecol = Send(obj2, @GetFineCol);
+      end_height = Send(obj2, @GetHeight);
+
+      // modify endheight
+      if Send(obj2, @GetObjectFlags) & OF_HANGING
+      {
+         end_height -= LOS_DEFAULT_ZOFFSET;
+      }
+      else
+      {
+         end_height += LOS_DEFAULT_ZOFFSET;
+      }
 
       // call BSP LoS in C code  
       return LineOfSightBSP(prmRoom,
-         start_row, start_col, start_finerow, start_finecol,
-         end_row, end_col, end_finerow, end_finecol);
+         start_row, start_col, start_finerow, start_finecol, start_height,
+         end_row, end_col, end_finerow, end_finecol, end_height);
    }
 
    SomethingMoved(what = $, new_row = $, new_col = $, fine_row = FINENESS/2,
@@ -3125,25 +3203,80 @@ messages:
    }
 
    SetSector(sector=$,animation=$,height=$,speed=$)
-   "Call this to change the height of a sector (affects clients only, not "
-   "move grid)."
+   "Call this to change the height of a sector."
    {
-      local i,each_obj;
+      local i,found,each_obj;
 
-      // Update BSP room data
-      MoveSectorBSP(prmRoom, sector, animation, height, speed);
+      // for speed = 0 the move should be instant
+      if speed <= 0
+      {
+         //Debug("Setting new instant height ",height," of sector ",sector);
 
-      // Tell everyone in the room at the moment about the change
+         // hence update BSP room data instantly to end height
+         MoveSectorBSP(prmRoom, sector, animation, height, speed);
 
+         // and see if we got this sector moving somehow
+         foreach i in plSector_moves
+         {
+            // if so delete the move since it's outdated
+            if First(i) = sector AND Nth(i,2) = animation
+            {
+               plSector_moves = DelListElem(plSector_moves, i);
+            }
+         }
+      }
+
+      // otherwise the move will be done over time by increments
+      else
+      {
+         //Debug("Created incremented move for sector ",sector,animation," with h:",height," v:",speed);
+         found = FALSE;
+
+         // hence see if we got this sector moving already
+         foreach i in plSector_moves
+         {
+            // match on existing moving sector, update it
+            if First(i) = sector AND Nth(i,2) = animation
+            {
+               found = TRUE;
+               SetNth(i,3,height); // set new endheight
+               SetNth(i,4,speed);  // set new speed
+            }
+         }
+
+         // not in list, create a new sectormove over time
+         if NOT found
+         {
+            plSector_moves = Cons([ sector, animation, height, speed, GetTickCount(), 0 ],plSector_moves);
+         }
+
+         // init (or continue) sector move increments by timer
+         // this will repeat itself until all moves are done
+         Send(self, @UpdateSectorHeightTimer);
+      }
+	  
+      // now deal with objects/users
+      // tell everyone in the room at the moment about the change
+      // we'll tell them the endheight and speed, not increments!
       foreach i in plActive
       {
          each_obj = First(i);
+
+         // tell user (objects will ignore this)
          Send(each_obj,@SectorSendUser,#animation=animation,#sector=sector,
               #height=height,#speed=speed);
+
+         // if the move was instant, update heights of all 
+         // objects that are actually on that sector also instantly
+         // otherwise their heights will be adjusted in timer function
+         if speed <= 0 AND Send(each_obj, @GetSectorID) = sector
+         {
+            //Debug("Updating height of ",Send(each_obj,@GetTrueName)," on moving sector ",sector," instantly");
+            Send(each_obj, @UpdateHeight);
+         }
       }
 
       // And store so that new people in room will get the change
-
       foreach i in plSector_changes
       {
          if First(i) = sector AND Nth(i,2) = animation
@@ -3160,6 +3293,125 @@ messages:
       return;
    }
 
+   UpdateSectorHeightTimer(timer = $)
+   "Increments all moving sectors further towards their end height"
+   {
+      local i, k, each_obj, sector, animation, current_height, end_height, 
+            speed, last_tick, current_tick, tick_delta, height_delta,
+            all_done, remainder;
+
+      // controls recreation of timer at the end
+      all_done = TRUE;
+
+      // delete a possible existing timer
+      if ptSectorUpdate <> $ AND ptSectorUpdate <> timer 
+      {
+         DeleteTimer(ptSectorUpdate); 
+      }
+
+      // unset timer
+      ptSectorUpdate = $;
+
+      // loop all currently moving sectors
+      foreach i in plSector_moves
+      {
+         // get list entry values
+         sector         = First(i);
+         animation      = Nth(i,2);
+         end_height     = Nth(i,3);
+         speed          = Nth(i,4);
+         last_tick      = Nth(i,5);
+         remainder      = Nth(i,6);
+         current_height = GetSectorHeightBSP(prmRoom, sector, animation);
+
+         // sector still moving
+         if current_height <> end_height
+         {
+            //Debug("MOVSECT",sector,"anim",animation,"from",current_height,"to",
+            //      end_height,"speed",speed,"room",Send(self, @GetTrueName));
+
+            // get current tick and tickdelta   
+            current_tick = GetTickCount();
+            tick_delta   = Bound(current_tick - last_tick, 0, 1000);
+
+            // calculate height delta
+            // note: sectorspeed has different unit than object speed
+            // it's also defined per 10s, but neither big units nor fine units
+            // also we need fully precision here, hence store and use the remainder
+            height_delta = (tick_delta * (speed*16)) + remainder;
+            remainder    = height_delta % 10000;
+            height_delta = height_delta / 10000;
+
+            // moving up
+            if end_height > current_height
+            {
+               current_height += height_delta;
+               if (current_height >= end_height) 
+               { 
+                  current_height = end_height; 
+                  all_done = FALSE; //must run at least once more 
+               }
+            }
+
+            // moving down
+            else if end_height < current_height
+            {
+               current_height -= height_delta;
+               if (current_height <= end_height) 
+               { 
+                  current_height = end_height; 
+                  all_done = FALSE; //must run at least once more 
+               }
+            }
+
+            // Update BSP room data
+            MoveSectorBSP(prmRoom, sector, animation, current_height, speed);
+
+            // update height of objects on that sector
+            // note: this requires updated BSP data!
+            foreach k in plActive
+            {
+               each_obj = First(k);
+
+               // check if that obj is actually on that sector
+               // if so make it update its height
+               if Send(each_obj, @GetSectorID) = sector
+               {
+                  /*Debug("Updating height of ",Send(each_obj,@GetTrueName),
+                        "on moving sector ",sector," incrementally");*/
+
+                  Send(each_obj, @UpdateHeight);
+               }
+            }
+
+            // still not finished
+            if end_height <> current_height 
+            { 
+               all_done = FALSE; 
+            }
+
+            // save back lasttick and remainder
+            SetNth(i,5,current_tick);
+            SetNth(i,6,remainder);
+         }
+
+         // this move is done, remove it from list
+         else
+         {
+            //Debug("Finished moving sector",sector);
+            plSector_moves = DelListElem(plSector_moves, i);
+         }
+      }
+
+      // recreate timer if not all moves are finished	  
+      if NOT all_done
+      {
+         ptSectorUpdate = CreateTimer(self,@UpdateSectorHeightTimer,100);
+      }
+
+      return;
+   }
+   
    SetSectorFlags(sector=$,depth=0,scrollSpeed=0)
    "Call this to change the depth and scroll speed of a sector."
    {
@@ -5220,7 +5472,8 @@ messages:
             // this point is guaranteed to have the following properties:
             // (a) inside ThingsBox  (b) inside a sector with a texture set
             // (c) not blocked by another object
-            if NOT GetRandomPointBSP(prmRoom, 24, *iMRow, *iMCol, *iMRowFine, *iMColFine)
+            // (d) a step with specified length can be made in all directions 
+            if NOT GetRandomPointBSP(prmRoom, 24, viSpawnRadius, *iMRow, *iMCol, *iMRowFine, *iMColFine)
             {
                Debug("failed to place monster ",oMonster,Send(oMonster,@GetName),
                      " in room ",self,Send(self,@GetName));
@@ -5685,23 +5938,8 @@ messages:
    }
 
    // Used to exempt certain areas from random monster spawning.
-   // Also double checks a location is valid by checking locations
-   // direcly next to it to prevent wall spawns.
    IsValidSpawnLocation(iRow=0,iCol=0,iFineRow=0,iFineCol=0,what=$)
    {
-      if viSpawnRadius
-         AND (NOT CanMoveInRoomBSP(prmRoom,iRow,iCol,iFineRow,iFineCol,
-               iRow,iCol,iFineRow+viSpawnRadius,iFineCol+viSpawnRadius,what,FALSE)
-            OR NOT CanMoveInRoomBSP(prmRoom,iRow,iCol,iFineRow,iFineCol,
-               iRow,iCol,iFineRow-viSpawnRadius,iFineCol+viSpawnRadius,what,FALSE)
-            OR NOT CanMoveInRoomBSP(prmRoom,iRow,iCol,iFineRow,iFineCol,
-               iRow,iCol,iFineRow+viSpawnRadius,iFineCol-viSpawnRadius,what,FALSE)
-            OR NOT CanMoveInRoomBSP(prmRoom,iRow,iCol,iFineRow,iFineCol,
-               iRow,iCol,iFineRow-viSpawnRadius,iFineCol-viSpawnRadius,what,FALSE))
-      {
-         return FALSE;
-      }
-
       return TRUE;
    }
 

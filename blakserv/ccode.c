@@ -2501,42 +2501,169 @@ int C_GetLocationInfoBSP(int object_id, local_var_type *local_vars,
 	return ret_val.int_val;
 }
 
+
+int C_GetSectorHeightBSP(int object_id, local_var_type *local_vars,
+   int num_normal_parms, parm_node normal_parm_array[],
+   int num_name_parms, parm_node name_parm_array[])
+{
+   val_type ret_val, room_val, serverid, animation;
+   room_node *r;
+
+   ret_val.v.tag = TAG_INT;
+   ret_val.v.data = 0;
+
+   room_val = RetrieveValue(object_id, local_vars, normal_parm_array[0].type,
+      normal_parm_array[0].value);
+   serverid = RetrieveValue(object_id, local_vars, normal_parm_array[1].type,
+      normal_parm_array[1].value);
+   animation = RetrieveValue(object_id, local_vars, normal_parm_array[2].type,
+      normal_parm_array[2].value);
+
+   if (room_val.v.tag != TAG_ROOM_DATA)
+   {
+      bprintf("C_GetSectorHeightBSP can't use non room %i,%i\n",
+         room_val.v.tag, room_val.v.data);
+      return ret_val.int_val;
+   }
+   if (serverid.v.tag != TAG_INT)
+   {
+      bprintf("C_GetSectorHeightBSP serverid can't use non int %i,%i\n",
+         serverid.v.tag, serverid.v.data);
+      return ret_val.int_val;
+   }
+   if (animation.v.tag != TAG_INT)
+   {
+      bprintf("C_GetSectorHeightBSP animation can't use non int %i,%i\n",
+         animation.v.tag, animation.v.data);
+      return ret_val.int_val;
+   }
+
+   r = GetRoomDataByID(room_val.v.data);
+   if (r == NULL)
+   {
+      bprintf("C_GetSectorHeightBSP can't find room %i\n", room_val.v.data);
+      return ret_val.int_val;
+   }
+
+   float height;
+   bool is_floor = (animation.v.data == ANIMATE_FLOOR_LIFT);
+
+   // query
+   ret_val.v.data = (BSPGetSectorHeightByID(&r->data, serverid.v.data, is_floor, &height)) ?
+      (int)FINENESSROOTOKOD(height) : 0;
+
+   return ret_val.int_val;
+}
+
+int C_SetRoomDepthOverrideBSP(int object_id, local_var_type *local_vars,
+   int num_normal_parms, parm_node normal_parm_array[],
+   int num_name_parms, parm_node name_parm_array[])
+{
+   val_type ret_val, room_val, flags, depth1, depth2, depth3;
+   room_node *r;
+
+   ret_val.v.tag = TAG_INT;
+   ret_val.v.data = 0;
+
+   room_val = RetrieveValue(object_id, local_vars, normal_parm_array[0].type,
+      normal_parm_array[0].value);
+   flags = RetrieveValue(object_id, local_vars, normal_parm_array[1].type,
+      normal_parm_array[1].value);
+   depth1 = RetrieveValue(object_id, local_vars, normal_parm_array[2].type,
+      normal_parm_array[2].value);
+   depth2 = RetrieveValue(object_id, local_vars, normal_parm_array[3].type,
+      normal_parm_array[3].value);
+   depth3 = RetrieveValue(object_id, local_vars, normal_parm_array[4].type,
+      normal_parm_array[4].value);
+
+   if (room_val.v.tag != TAG_ROOM_DATA)
+   {
+      bprintf("C_SetRoomDepthOverrideBSP can't use non room %i,%i\n",
+         room_val.v.tag, room_val.v.data);
+      return ret_val.int_val;
+   }
+   if (flags.v.tag != TAG_INT)
+   {
+      bprintf("C_SetRoomDepthOverrideBSP flags can't use non int %i,%i\n",
+         flags.v.tag, flags.v.data);
+      return ret_val.int_val;
+   }
+   if (depth1.v.tag != TAG_INT)
+   {
+      bprintf("C_SetRoomDepthOverrideBSP depth1 can't use non int %i,%i\n",
+         depth1.v.tag, depth1.v.data);
+      return ret_val.int_val;
+   }
+   if (depth2.v.tag != TAG_INT)
+   {
+      bprintf("C_SetRoomDepthOverrideBSP depth2 can't use non int %i,%i\n",
+         depth2.v.tag, depth2.v.data);
+      return ret_val.int_val;
+   }
+   if (depth3.v.tag != TAG_INT)
+   {
+      bprintf("C_SetRoomDepthOverrideBSP depth3 can't use non int %i,%i\n",
+         depth3.v.tag, depth3.v.data);
+      return ret_val.int_val;
+   }
+
+   r = GetRoomDataByID(room_val.v.data);
+   if (r == NULL)
+   {
+      bprintf("C_SetRoomDepthOverrideBSP can't find room %i\n", room_val.v.data);
+      return ret_val.int_val;
+   }
+
+   // update flags and depth values
+   r->data.DepthFlags = flags.v.data;
+   r->data.OverrideDepth1 = FINENESSKODTOROO(depth1.v.data);
+   r->data.OverrideDepth2 = FINENESSKODTOROO(depth2.v.data);
+   r->data.OverrideDepth3 = FINENESSKODTOROO(depth3.v.data);
+
+   return ret_val.int_val;
+}
+
 int C_CanMoveInRoomBSP(int object_id, local_var_type *local_vars,
 	int num_normal_parms, parm_node normal_parm_array[],
 	int num_name_parms, parm_node name_parm_array[])
 {
 	val_type ret_val, room_val;
-	val_type row_source, col_source, finerow_source, finecol_source;
+	val_type row_source, col_source, finerow_source, finecol_source, height_source;
 	val_type row_dest, col_dest, finerow_dest, finecol_dest;
-	val_type objectid, move_outside_bsp;
+	val_type speed, objectid, move_outside_bsp, isplayer;
 	room_node *r;
 
 	ret_val.v.tag = TAG_INT;
 	ret_val.v.data = false;
 
-	room_val = RetrieveValue(object_id, local_vars, normal_parm_array[0].type,
-		normal_parm_array[0].value);
-	row_source = RetrieveValue(object_id, local_vars, normal_parm_array[1].type,
-		normal_parm_array[1].value);
-	col_source = RetrieveValue(object_id, local_vars, normal_parm_array[2].type,
-		normal_parm_array[2].value);
-	finerow_source = RetrieveValue(object_id, local_vars, normal_parm_array[3].type,
-		normal_parm_array[3].value);
-	finecol_source = RetrieveValue(object_id, local_vars, normal_parm_array[4].type,
-		normal_parm_array[4].value);
-
-	row_dest = RetrieveValue(object_id, local_vars, normal_parm_array[5].type,
-		normal_parm_array[5].value);
-	col_dest = RetrieveValue(object_id, local_vars, normal_parm_array[6].type,
-		normal_parm_array[6].value);
-	finerow_dest = RetrieveValue(object_id, local_vars, normal_parm_array[7].type,
-		normal_parm_array[7].value);
-	finecol_dest = RetrieveValue(object_id, local_vars, normal_parm_array[8].type,
-		normal_parm_array[8].value);
-	objectid = RetrieveValue(object_id, local_vars, normal_parm_array[9].type,
-		normal_parm_array[9].value);
-	move_outside_bsp = RetrieveValue(object_id, local_vars, normal_parm_array[10].type,
-		normal_parm_array[10].value);
+   room_val = RetrieveValue(object_id, local_vars, normal_parm_array[0].type,
+      normal_parm_array[0].value);
+   row_source = RetrieveValue(object_id, local_vars, normal_parm_array[1].type,
+      normal_parm_array[1].value);
+   col_source = RetrieveValue(object_id, local_vars, normal_parm_array[2].type,
+      normal_parm_array[2].value);
+   finerow_source = RetrieveValue(object_id, local_vars, normal_parm_array[3].type,
+      normal_parm_array[3].value);
+   finecol_source = RetrieveValue(object_id, local_vars, normal_parm_array[4].type,
+      normal_parm_array[4].value);
+   height_source = RetrieveValue(object_id, local_vars, normal_parm_array[5].type,
+      normal_parm_array[5].value);
+   row_dest = RetrieveValue(object_id, local_vars, normal_parm_array[6].type,
+      normal_parm_array[6].value);
+   col_dest = RetrieveValue(object_id, local_vars, normal_parm_array[7].type,
+      normal_parm_array[7].value);
+   finerow_dest = RetrieveValue(object_id, local_vars, normal_parm_array[8].type,
+      normal_parm_array[8].value);
+   finecol_dest = RetrieveValue(object_id, local_vars, normal_parm_array[9].type,
+      normal_parm_array[9].value);
+   speed = RetrieveValue(object_id, local_vars, normal_parm_array[10].type,
+      normal_parm_array[10].value);
+   objectid = RetrieveValue(object_id, local_vars, normal_parm_array[11].type,
+      normal_parm_array[11].value);
+   move_outside_bsp = RetrieveValue(object_id, local_vars, normal_parm_array[12].type,
+      normal_parm_array[12].value);
+   isplayer = RetrieveValue(object_id, local_vars, normal_parm_array[13].type,
+      normal_parm_array[13].value);
 
 	if (room_val.v.tag != TAG_ROOM_DATA)
 	{
@@ -2573,6 +2700,13 @@ int C_CanMoveInRoomBSP(int object_id, local_var_type *local_vars,
 		return ret_val.int_val;
 	}
 
+   if (height_source.v.tag != TAG_INT)
+   {
+      bprintf("C_CanMoveInRoomBSP height source can't use non int %i,%i\n",
+         height_source.v.tag, height_source.v.data);
+      return ret_val.int_val;
+   }
+
 	if (row_dest.v.tag != TAG_INT)
 	{
 		bprintf("C_CanMoveInRoomBSP row dest can't use non int %i,%i\n",
@@ -2601,6 +2735,13 @@ int C_CanMoveInRoomBSP(int object_id, local_var_type *local_vars,
 		return ret_val.int_val;
 	}
 
+   if (speed.v.tag != TAG_INT)
+   {
+      bprintf("C_CanMoveInRoomBSP speed can't use non int %i,%i\n",
+         speed.v.tag, speed.v.data);
+      return ret_val.int_val;
+   }
+
 	if (objectid.v.tag != TAG_OBJECT)
 	{
 		bprintf("C_CanMoveInRoomBSP objectid can't use non obj %i,%i\n",
@@ -2614,6 +2755,13 @@ int C_CanMoveInRoomBSP(int object_id, local_var_type *local_vars,
 			move_outside_bsp.v.tag, move_outside_bsp.v.data);
 		return ret_val.int_val;
 	}
+
+   if (isplayer.v.tag != TAG_INT)
+   {
+      bprintf("C_CanMoveInRoomBSP isplayer can't use non int %i,%i\n",
+         isplayer.v.tag, isplayer.v.data);
+      return ret_val.int_val;
+   }
 
 	r = GetRoomDataByID(room_val.v.data);
 	if (r == NULL)
@@ -2630,10 +2778,15 @@ int C_CanMoveInRoomBSP(int object_id, local_var_type *local_vars,
 	e.X = GRIDCOORDTOROO(col_dest.v.data, finecol_dest.v.data);
 	e.Y = GRIDCOORDTOROO(row_dest.v.data, finerow_dest.v.data);
 
+   float height = FINENESSKODTOROO(height_source.v.data);
+   float fSpeed = SPEEDKODTOROO(speed.v.data);
+
 	Wall* blockWall;
 
    // todo: consider making "ignoreEndBlocker" a KOD param, "false" means any query using an object position as "END" will return FALSE
-	ret_val.v.data = BSPCanMoveInRoom(&r->data, &s, &e, objectid.v.data, (move_outside_bsp.v.data != 0), true, false, &blockWall);
+   ret_val.v.data = ((bool)isplayer.v.data) ?
+      BSPCanMoveInRoom3D<true>(&r->data, &s, &e, height, fSpeed, objectid.v.data, (move_outside_bsp.v.data != 0), true, false, &blockWall) :
+      BSPCanMoveInRoom3D<false>(&r->data, &s, &e, height, fSpeed, objectid.v.data, (move_outside_bsp.v.data != 0), true, false, &blockWall);
 
 #if DEBUGMOVE
 	//dprintf("MOVE:%i R:%i S:(%1.2f/%1.2f) E:(%1.2f/%1.2f)", ret_val.v.data, r->data.roomdata_id, s.X, s.Y, e.X, e.Y);
@@ -2754,8 +2907,8 @@ int C_LineOfSightBSP(int object_id, local_var_type *local_vars,
 	int num_name_parms, parm_node name_parm_array[])
 {
 	val_type ret_val, room_val;
-	val_type row_source, col_source, finerow_source, finecol_source;
-	val_type row_dest, col_dest, finerow_dest, finecol_dest;
+	val_type row_source, col_source, finerow_source, finecol_source, height_source;
+	val_type row_dest, col_dest, finerow_dest, finecol_dest, height_dest;
 	room_node *r;
  
 	ret_val.v.tag = TAG_INT;
@@ -2771,15 +2924,19 @@ int C_LineOfSightBSP(int object_id, local_var_type *local_vars,
 		normal_parm_array[3].value);
 	finecol_source = RetrieveValue(object_id, local_vars, normal_parm_array[4].type,
 		normal_parm_array[4].value);
+   height_source = RetrieveValue(object_id, local_vars, normal_parm_array[5].type,
+      normal_parm_array[5].value);
 
-	row_dest = RetrieveValue(object_id, local_vars, normal_parm_array[5].type,
-		normal_parm_array[5].value);
-	col_dest = RetrieveValue(object_id, local_vars, normal_parm_array[6].type,
+	row_dest = RetrieveValue(object_id, local_vars, normal_parm_array[6].type,
 		normal_parm_array[6].value);
-	finerow_dest = RetrieveValue(object_id, local_vars, normal_parm_array[7].type,
+	col_dest = RetrieveValue(object_id, local_vars, normal_parm_array[7].type,
 		normal_parm_array[7].value);
-	finecol_dest = RetrieveValue(object_id, local_vars, normal_parm_array[8].type,
+	finerow_dest = RetrieveValue(object_id, local_vars, normal_parm_array[8].type,
 		normal_parm_array[8].value);
+	finecol_dest = RetrieveValue(object_id, local_vars, normal_parm_array[9].type,
+		normal_parm_array[9].value);
+   height_dest = RetrieveValue(object_id, local_vars, normal_parm_array[10].type,
+      normal_parm_array[10].value);
 
 	if (room_val.v.tag != TAG_ROOM_DATA)
 	{
@@ -2816,6 +2973,13 @@ int C_LineOfSightBSP(int object_id, local_var_type *local_vars,
 		return ret_val.int_val;
 	}
 
+   if (height_source.v.tag != TAG_INT)
+   {
+      bprintf("C_LineOfSightBSP height source can't use non int %i,%i\n",
+         height_source.v.tag, height_source.v.data);
+      return ret_val.int_val;
+   }
+
 	if (row_dest.v.tag != TAG_INT)
 	{
 		bprintf("C_LineOfSightBSP row dest can't use non int %i,%i\n",
@@ -2844,6 +3008,13 @@ int C_LineOfSightBSP(int object_id, local_var_type *local_vars,
 		return ret_val.int_val;
 	}
 
+   if (height_dest.v.tag != TAG_INT)
+   {
+      bprintf("C_LineOfSightBSP height dest can't use non int %i,%i\n",
+         height_dest.v.tag, height_dest.v.data);
+      return ret_val.int_val;
+   }
+
 	r = GetRoomDataByID(room_val.v.data);
 	if (r == NULL)
 	{
@@ -2851,27 +3022,15 @@ int C_LineOfSightBSP(int object_id, local_var_type *local_vars,
 		return ret_val.int_val;
 	}
 
-	BspLeaf* leaf;
-	float tmp1;
-	float tmp2;
+   V3 s;
+   s.X = GRIDCOORDTOROO(col_source.v.data, finecol_source.v.data);
+   s.Y = GRIDCOORDTOROO(row_source.v.data, finerow_source.v.data);
+   s.Z = FINENESSKODTOROO(height_source.v.data);
 
-	V3 s;
-	s.X = GRIDCOORDTOROO(col_source.v.data, finecol_source.v.data);
-	s.Y = GRIDCOORDTOROO(row_source.v.data, finerow_source.v.data);
-
-	// use floor height with depth modifier
-	V2 s2d = { s.X, s.Y };
-	BSPGetHeight(&r->data, &s2d, &tmp1, &s.Z, &tmp2, &leaf);
-	s.Z += OBJECTHEIGHTROO;
-
-	V3 e;
-	e.X = GRIDCOORDTOROO(col_dest.v.data, finecol_dest.v.data);
-	e.Y = GRIDCOORDTOROO(row_dest.v.data, finerow_dest.v.data);
-
-	// use floor height with depth modifier
-	V2 e2d = { e.X, e.Y };
-	BSPGetHeight(&r->data, &e2d, &tmp1, &e.Z, &tmp2, &leaf);
-	e.Z += OBJECTHEIGHTROO;
+   V3 e;
+   e.X = GRIDCOORDTOROO(col_dest.v.data, finecol_dest.v.data);
+   e.Y = GRIDCOORDTOROO(row_dest.v.data, finerow_dest.v.data);
+   e.Z = FINENESSKODTOROO(height_dest.v.data);
 
 	ret_val.v.data = BSPLineOfSight(&r->data, &s, &e);
 
@@ -3260,7 +3419,7 @@ int C_GetRandomPointBSP(int object_id, local_var_type *local_vars,
 	int num_normal_parms, parm_node normal_parm_array[],
 	int num_name_parms, parm_node name_parm_array[])
 {
-	val_type ret_val, room_val, maxattempts_val;
+	val_type ret_val, room_val, maxattempts_val, unblockedradius_val;
 	val_type row, col, finerow, finecol;
 	room_node *r;
 
@@ -3274,14 +3433,17 @@ int C_GetRandomPointBSP(int object_id, local_var_type *local_vars,
 	maxattempts_val = RetrieveValue(object_id, local_vars, normal_parm_array[1].type,
 		normal_parm_array[1].value);
 
-	row = RetrieveValue(object_id, local_vars, normal_parm_array[2].type,
-		normal_parm_array[2].value);
-	col = RetrieveValue(object_id, local_vars, normal_parm_array[3].type,
+   unblockedradius_val = RetrieveValue(object_id, local_vars, normal_parm_array[2].type,
+      normal_parm_array[2].value);
+
+	row = RetrieveValue(object_id, local_vars, normal_parm_array[3].type,
 		normal_parm_array[3].value);
-	finerow = RetrieveValue(object_id, local_vars, normal_parm_array[4].type,
+	col = RetrieveValue(object_id, local_vars, normal_parm_array[4].type,
 		normal_parm_array[4].value);
-	finecol = RetrieveValue(object_id, local_vars, normal_parm_array[5].type,
+	finerow = RetrieveValue(object_id, local_vars, normal_parm_array[5].type,
 		normal_parm_array[5].value);
+	finecol = RetrieveValue(object_id, local_vars, normal_parm_array[6].type,
+		normal_parm_array[6].value);
 
 	if (room_val.v.tag != TAG_ROOM_DATA)
 	{
@@ -3296,6 +3458,13 @@ int C_GetRandomPointBSP(int object_id, local_var_type *local_vars,
 			maxattempts_val.v.tag, maxattempts_val.v.data);
 		return ret_val.int_val;
 	}
+
+   if (unblockedradius_val.v.tag != TAG_INT)
+   {
+      bprintf("C_GetRandomPointBSP unblockedradius can't use non int %i,%i\n",
+         unblockedradius_val.v.tag, unblockedradius_val.v.data);
+      return ret_val.int_val;
+   }
 
 	if (row.v.tag != TAG_INT)
 	{
@@ -3333,7 +3502,7 @@ int C_GetRandomPointBSP(int object_id, local_var_type *local_vars,
 	}
 
 	V2 p;
-	bool ok = BSPGetRandomPoint(&r->data, maxattempts_val.v.data, &p);
+	bool ok = BSPGetRandomPoint(&r->data, maxattempts_val.v.data, FINENESSKODTOROO((float)unblockedradius_val.v.data), &p);
 
 	if (ok)
 	{
@@ -3530,38 +3699,40 @@ int C_GetStepTowardsBSP(int object_id, local_var_type *local_vars,
 	int num_name_parms, parm_node name_parm_array[])
 {
 	val_type ret_val, room_val;
-	val_type row_source, col_source, finerow_source, finecol_source;
+	val_type row_source, col_source, finerow_source, finecol_source, height_source;
 	val_type row_dest, col_dest, finerow_dest, finecol_dest;
-	val_type state_flags, objectid;
+	val_type speed, state_flags, objectid;
 	room_node *r;
 
 	// in case it fails
 	ret_val.int_val = NIL;
 
-	room_val = RetrieveValue(object_id, local_vars, normal_parm_array[0].type,
-		normal_parm_array[0].value);
-	row_source = RetrieveValue(object_id, local_vars, normal_parm_array[1].type,
-		normal_parm_array[1].value);
-	col_source = RetrieveValue(object_id, local_vars, normal_parm_array[2].type,
-		normal_parm_array[2].value);
-	finerow_source = RetrieveValue(object_id, local_vars, normal_parm_array[3].type,
-		normal_parm_array[3].value);
-	finecol_source = RetrieveValue(object_id, local_vars, normal_parm_array[4].type,
-		normal_parm_array[4].value);
-
-	row_dest = RetrieveValue(object_id, local_vars, normal_parm_array[5].type,
-		normal_parm_array[5].value);
-	col_dest = RetrieveValue(object_id, local_vars, normal_parm_array[6].type,
-		normal_parm_array[6].value);
-	finerow_dest = RetrieveValue(object_id, local_vars, normal_parm_array[7].type,
-		normal_parm_array[7].value);
-	finecol_dest = RetrieveValue(object_id, local_vars, normal_parm_array[8].type,
-		normal_parm_array[8].value);
-
-	state_flags = RetrieveValue(object_id, local_vars, normal_parm_array[9].type,
-		normal_parm_array[9].value);
-	objectid = RetrieveValue(object_id, local_vars, normal_parm_array[10].type,
-		normal_parm_array[10].value);
+   room_val = RetrieveValue(object_id, local_vars, normal_parm_array[0].type,
+      normal_parm_array[0].value);
+   row_source = RetrieveValue(object_id, local_vars, normal_parm_array[1].type,
+      normal_parm_array[1].value);
+   col_source = RetrieveValue(object_id, local_vars, normal_parm_array[2].type,
+      normal_parm_array[2].value);
+   finerow_source = RetrieveValue(object_id, local_vars, normal_parm_array[3].type,
+      normal_parm_array[3].value);
+   finecol_source = RetrieveValue(object_id, local_vars, normal_parm_array[4].type,
+      normal_parm_array[4].value);
+   height_source = RetrieveValue(object_id, local_vars, normal_parm_array[5].type,
+      normal_parm_array[5].value);
+   row_dest = RetrieveValue(object_id, local_vars, normal_parm_array[6].type,
+      normal_parm_array[6].value);
+   col_dest = RetrieveValue(object_id, local_vars, normal_parm_array[7].type,
+      normal_parm_array[7].value);
+   finerow_dest = RetrieveValue(object_id, local_vars, normal_parm_array[8].type,
+      normal_parm_array[8].value);
+   finecol_dest = RetrieveValue(object_id, local_vars, normal_parm_array[9].type,
+      normal_parm_array[9].value);
+   speed = RetrieveValue(object_id, local_vars, normal_parm_array[10].type,
+      normal_parm_array[10].value);
+   state_flags = RetrieveValue(object_id, local_vars, normal_parm_array[11].type,
+      normal_parm_array[11].value);
+   objectid = RetrieveValue(object_id, local_vars, normal_parm_array[12].type,
+      normal_parm_array[12].value);
 
 	if (room_val.v.tag != TAG_ROOM_DATA)
 	{
@@ -3598,6 +3769,13 @@ int C_GetStepTowardsBSP(int object_id, local_var_type *local_vars,
 		return ret_val.int_val;
 	}
 
+   if (height_source.v.tag != TAG_INT)
+   {
+      bprintf("C_GetStepTowardsBSP height source can't use non int %i,%i\n",
+         height_source.v.tag, height_source.v.data);
+      return ret_val.int_val;
+   }
+
 	if (row_dest.v.tag != TAG_INT)
 	{
 		bprintf("C_GetStepTowardsBSP row dest can't use non int %i,%i\n",
@@ -3625,6 +3803,13 @@ int C_GetStepTowardsBSP(int object_id, local_var_type *local_vars,
 			finecol_dest.v.tag, finecol_dest.v.data);
 		return ret_val.int_val;
 	}
+
+   if (speed.v.tag != TAG_INT)
+   {
+      bprintf("C_GetStepTowardsBSP speed can't use non int %i,%i\n",
+         speed.v.tag, speed.v.data);
+      return ret_val.int_val;
+   }
 
 	if (state_flags.v.tag != TAG_INT)
 	{
@@ -3655,9 +3840,12 @@ int C_GetStepTowardsBSP(int object_id, local_var_type *local_vars,
    e.X = GRIDCOORDTOROO(local_vars->locals[col_dest.v.data].v.data, local_vars->locals[finecol_dest.v.data].v.data);
    e.Y = GRIDCOORDTOROO(local_vars->locals[row_dest.v.data].v.data, local_vars->locals[finerow_dest.v.data].v.data);
 
+   float height = FINENESSKODTOROO(height_source.v.data);
+   float fSpeed = SPEEDKODTOROO(speed.v.data);
+
 	V2 p;
 	unsigned int flags = (unsigned int)state_flags.v.data;
-	bool ok = BSPGetStepTowards(&r->data, &s, &e, &p, &flags, objectid.v.data);
+	bool ok = BSPGetStepTowards(&r->data, &s, &e, &p, &flags, objectid.v.data, fSpeed, height);
 
 	if (ok)
 	{

@@ -431,6 +431,23 @@ messages:
       return Nth(lPos,4);
    }
 
+   GetHeight()
+   "Returns the current height (z-coordinate) of the object"
+   {
+      if Send(self, @GetObjectFlags) & OF_HANGING
+      {
+         return Send(self, @GetHeightCeilingAtObjectBSP);
+      }
+
+      return Send(self, @GetHeightFloorAtObjectBSP);
+   }
+   
+   GetSectorID()
+   "Returns the current sector id at the location of the object"
+   {
+      return Send(self, @GetSectorIDAtObject);
+   }
+   
    GetHeightAtObject()
    "Returns the height at the object's coordinates. If the object is not "
    "in a room, this message recursively checks the owner's coordinates "
@@ -894,6 +911,11 @@ messages:
       return FALSE;
    }
 
+   UpdateHeight()
+   {
+      return;
+   }
+    
    // Stuff that used to be in active. but no longer since passive isn't under
    //  it any more.
 

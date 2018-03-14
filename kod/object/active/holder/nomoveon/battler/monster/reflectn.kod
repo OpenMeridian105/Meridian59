@@ -983,5 +983,23 @@ messages:
       return FALSE;
    }
 
+   ReconsiderMoveDestination()
+   "Called if too many steps by heuristic"
+   {
+      // teleport back to master if we can't reach our destination
+      if poMaster <> $ 
+      {
+         Send(SYS,@UtilGoToSquare,#what=self,#where=poOwner,
+            #new_row=Send(poMaster, @GetRow),
+            #new_col=Send(poMaster, @GetCol),
+            #fine_row=Send(poMaster, @GetFineRow),
+            #fine_col=Send(poMaster, @GetFineCol),
+            #mob_override=TRUE);
+
+         return FALSE;	  
+      }
+
+      propagate;
+   }
 end
 ////////////////////////////////////////////////////////////////////////////////

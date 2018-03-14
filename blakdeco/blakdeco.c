@@ -549,6 +549,8 @@ char * name_function(int fnum)
    case GETRANDOMPOINTBSP: return "GetRandomPointBSP";
    case GETSTEPTOWARDSBSP: return "GetStepTowardsBSP";
    case GETRANDOMMOVEDESTBSP: return "GetRandomMoveDestBSP";
+   case GETSECTORHEIGHTBSP: return "GetSectorHeightBSP";
+   case SETROOMDEPTHOVERRIDEBSP: return "SetRoomDepthOverrideBSP";
 
    case STRINGTONUMBER : return "StringToNumber";
 

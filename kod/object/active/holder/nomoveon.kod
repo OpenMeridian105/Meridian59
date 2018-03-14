@@ -26,6 +26,15 @@ properties:
    piFine_row = 0
    piFine_col = 0
 
+   //
+   piHeight
+   piHeightFWD
+   piHeightC
+   piSectorID
+   piVerticalSpeed = 0
+   piTickLastCoordsChange = 0
+   ptHeightUpdate = $
+   
    // List of enchantments applied by radius spells.
    // Each element is [timer, spell object, state, spellpower]
    plRadiusEnchantments = $
@@ -69,8 +78,36 @@ messages:
       return piFine_col;
    }
 
+   GetHeight()
+   {
+      return piHeight;
+   }
+   
+   GetHeightFWD()
+   {
+      return piHeightFWD;
+   }
+   
+   GetHeightC()
+   {
+      return piHeightC;
+   }
+   
+   GetSectorID()
+   {
+      return piSectorID;
+   }
+   
+   GetVerticalSpeed()
+   {
+      return piVerticalSpeed;
+   }
+   
    ChangeCoords(new_row = $,new_col = $,fine_row = $,fine_col = $)
    {
+      local iQflags, iRflags, iHeightDelta, iHeightF, iHeightFWD, 
+            iHeightC, iServerID, iFlags;
+		 
       /// posted so we know it happens last, and that new_row is going to be
       /// the pre-coords, and piRow is going to be the post.  This was crucial
       /// to making the spam protection on the walls work.
@@ -80,9 +117,175 @@ messages:
       piFine_row = fine_row;
       piFine_col = fine_col;
 
+      // query height at current location from ROO
+      iQflags = LIQ_GET_SECTORINFO;
+
+      if NOT GetLocationInfoBSP(
+                      Send(poOwner,@GetRoomData), iQflags, 
+                      new_row, new_col, fine_row, fine_col,
+                      *iRflags, *iHeightF, *iHeightFWD, *iHeightC, *iServerID)
+      {
+         debug("Failed to get location info in ", Send(poOwner,@GetRoomData));
+         iRflags = 0;
+      }
+	  
+      // save floor and ceiling heights and sector id
+      piHeightFWD = iHeightFWD;
+      piHeightC   = iHeightC;
+      piSectorID  = iServerID;
+	  
+      // no previous height known (e.g. after spawn/first placement)
+      // so just put on floor or ceiling
+      if piHeight = $
+      {	  	  
+         // get flags
+         iFlags = Send(self, @GetObjectFlags);
+
+         // put hanging objects at ceiling, others at floor
+         if iFlags & OF_HANGING
+         {
+            piHeight = piHeightC;
+         }
+         else
+         {
+            piHeight = piHeightFWD;
+         }
+
+         piVerticalSpeed = 0;
+         piTickLastCoordsChange = GetTickCount();	 
+         //Debug("Set initial height of object:", piHeight);
+      }
+
+      // otherwise use height adjustment over time
+      else
+      {
+         Send(self, @HeightUpdateTimer);
+      }
+
       return;
    }
+   
+   InitHeight()
+   "Calls UpdateHeight to initialize a nil/$ value in piHeight."
+   "Does nothing if not $ right now."
+   {
+      if piHeight = $
+      {
+         Send(self, @UpdateHeight); 
+      }
 
+      return;
+   }
+   
+   UpdateHeight()
+   "Calls ChangeCoords with the objects own current coordinates."
+   "Useful to force a manual height update of the object"
+   {
+      Send(self, @ChangeCoords, 
+         #new_row = piRow, #new_col = piCol, 
+         #fine_row = piFine_row, #fine_col = piFine_col);
+
+      return;		 
+   }
+   
+   HeightUpdateTimer(timer = $)
+   "Adjusts the object's current height position."
+   "Called regularly either by moves or, if absent, by timer"
+   {
+      local iCurrentTime, iTimeDelta, iFlags;
+
+      // delete a possible existing timer
+      // e.g. in case a new move is received before timer elapsed
+      if ptHeightUpdate <> $ AND ptHeightUpdate <> timer 
+      { 
+         DeleteTimer(ptHeightUpdate); 
+      }
+
+      // unset timer
+      ptHeightUpdate = $;
+
+      // get flags
+      iFlags = Send(self, @GetObjectFlags);
+	  
+      // get current ms tick
+      iCurrentTime = GetTickCount();
+
+      // hanging objects don't fall
+      if iFlags & OF_HANGING
+      {
+         piVerticalSpeed = 0;
+         piHeight = piHeightC;
+      }
+
+      // otherwise handle possible falling
+      else if piHeight > piHeightFWD
+      {
+         // vspeed pos or 0, start falling
+         if (piVerticalSpeed >= 0)
+         {
+            piVerticalSpeed = -1;
+         }
+		 
+         // vspeed already neg, continue falling
+         else
+         {
+            // time since last height adjustement
+            iTimeDelta = Bound(iCurrentTime - piTickLastCoordsChange, 0, 1000);
+
+            // adjust vertical speed according to time and acceleration
+            // note: speed has only 1/100 of the precision of acceleration
+            piVerticalSpeed += (iTimeDelta * GRAVITY_ACCELERATION) / 100;
+
+            // adjust height according to time and current vertical speed
+            // note: height has only 1/1000 of the precision of speed (=kod fineness)
+            piHeight += (iTimeDelta * piVerticalSpeed) / 1000;
+
+            // bound it so we don't fall below floor
+            piHeight = Bound(piHeight, piHeightFWD, piHeightC);
+         }
+
+         // recreate timer
+         if piHeight > piHeightFWD
+         {
+            ptHeightUpdate = CreateTimer(self,@HeightUpdateTimer,150);
+         }
+         else
+         {
+            piVerticalSpeed = 0;
+            piHeight = piHeightFWD;
+         }
+      }
+
+      // step-up or equal height
+      else
+      {
+         piVerticalSpeed = 0;
+         piHeight = piHeightFWD;
+      }
+	 
+      // save tick we adjusted for next calc
+      piTickLastCoordsChange = iCurrentTime;
+	  
+      // DEBUG  
+      /*if (IsClass(self, &User))
+      {
+         Debug("Heights:", piHeightFWD, piHeight, piHeightC);
+      }*/
+
+      return;
+   }
+   
+   Delete()
+   {
+      if ptHeightUpdate <> $
+      { 
+         DeleteTimer(ptHeightUpdate);
+         ptHeightUpdate = $;
+      }
+
+      propagate;
+   }
+   
    ReqSomethingMoved(what = $,new_row = $,new_col = $,new_finerow = $,
                      new_finecol = $)
    {
@@ -655,11 +858,14 @@ messages:
       iWhatRow = Send(what,@GetRow) * FINENESS + Send(what,@GetFineRow);
       iWhatCol = Send(what,@GetCol) * FINENESS + Send(what,@GetFineCol);
 
+      // WORKAROUND/TODO: existing monsters don't have a height yet
+      Send(self, @InitHeight);
+      if IsClass(what, &NoMoveOn) { Send(what, @InitHeight); }
+
       // Deltas.
       iRow_diff = iRow - iWhatRow;
       iCol_diff = iCol - iWhatCol;
-      iHeight_diff = Send(self,@GetHeightFloorAtObjectBSP)
-                          - Send(what,@GetHeightFloorAtObjectBSP);
+      iHeight_diff = piHeight - Send(what,@GetHeight);
 
       iResult = iRow_diff * iRow_diff + iCol_diff * iCol_diff
                   + iHeight_diff * iHeight_diff;
@@ -686,11 +892,10 @@ messages:
       // set query-flags, here we're only interested in the sectorinfo
       iQflags = LIQ_GET_SECTORINFO;
 
-      // query data from bsp in c-function
+      // query height at destination
       if NOT GetLocationInfoBSP(
                       Send(poOwner,@GetRoomData), iQflags, 
-                      Send(self,@GetRow), Send(self,@GetCol),
-                      Send(self,@GetFineRow), Send(self,@GetFineCol),
+                      iWhatRow, iWhatCol, fine_row, fine_col,
                       *iRflags, *iHeightF, *iHeightFWD, *iHeightC, *iServerID)
       {
          debug("Failed to get location info in ", Send(poOwner,@GetRoomData));
@@ -698,9 +903,12 @@ messages:
       }
       else
       {
-         iHeight_diff = Send(self,@GetHeightFloorAtObjectBSP) - iHeightFWD;
-      }
+         // WORKAROUND/TODO: existing monsters don't have a height yet
+         Send(self, @InitHeight);
 
+         iHeight_diff = piHeight - iHeightFWD;
+      }
+	  
       // Deltas.
       iRow_diff = iRow - iWhatRow;
       iCol_diff = iCol - iWhatCol;

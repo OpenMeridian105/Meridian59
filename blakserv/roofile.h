@@ -33,16 +33,26 @@
 #define V2FINENESSROOTOKOD(x) V2SCALE((x), 0.0625f)  // scales a V2 instance from ROO fineness to KOD fineness
 #define MAX_KOD_DEGREE        4096.0f                // max value of KOD angle
 #define HALFFRUSTUMWIDTH      600.0f                 // half player view frustum, * ~1.5x to account for latency
+#define MAXINTERSECTIONS      2048                   // max. trackable intersections in BSPCanMoveInRoom3D
+#define NOBLOCKOBJUSERDELAY   2000                   // ms since last objmove to cause user-move validations
 
-#define MAXSTEPHEIGHT         ((float)(24 << 4))                     // (from clientd3d/move.c)
-#define PLAYERWIDTH           (31.0f * (float)KODFINENESS * 0.25f)   // (from clientd3d/game.c)
-#define WALLMINDISTANCE       (PLAYERWIDTH / 2.0f)                   // (from clientd3d/game.c)
-#define WALLMINDISTANCE2      (WALLMINDISTANCE * WALLMINDISTANCE)    // (from clientd3d/game.c)
-#define OBJMINDISTANCE        512.0f                                 // 2 astar rows/cols, MUST BE MULTIPLE OF 256
-#define OBJMINDISTANCE2       (OBJMINDISTANCE * OBJMINDISTANCE)
+#define SPEEDKODTOROO(x)      ((x) * ROOFINENESS * 0.0001f)             // converts big.sq. per 10s in ROO fine units per 1ms
+#define GRAVITYACCELERATION   FINENESSKODTOROO(-0.00032f)               // dist/ms² (dist=1:1024)
+#define MAXSTEPHEIGHT         ((float)(24 << 4))                        // (from clientd3d/move.c)
+#define PLAYERWIDTH           (31.0f * (float)KODFINENESS * 0.25f)      // (from clientd3d/game.c)
+#define WALLMINDISTANCE       (PLAYERWIDTH / 2.0f)                      // (from clientd3d/game.c)
+#define WALLMINDISTANCE2      (WALLMINDISTANCE * WALLMINDISTANCE)       // (from clientd3d/game.c)
+#define WALLTOLERANCEUSER     96                                        // 96 ROO units = 6 KOD fine units
+#define WALLMINDISTANCEUSER   (WALLMINDISTANCE - WALLTOLERANCEUSER)     // let users get a bit closer (tolerance for check)
+#define WALLMINDISTANCEUSER2  (WALLMINDISTANCEUSER*WALLMINDISTANCEUSER) // squared WALLMINDISTANCEUSER
+#define OBJMINDISTANCE        512.0f                                    // 2 astar rows/cols, MUST BE MULTIPLE OF 256
+#define OBJMINDISTANCE2       (OBJMINDISTANCE * OBJMINDISTANCE)         // squared OBJMINDISTANCE
+#define OBJTOLERANCEUSER      96                                        // 96 ROO units = 6 KOD fine units (max 256!)
+#define OBJMINDISTANCEUSER    (ROOFINENESS/4 - OBJTOLERANCEUSER)        // See MIN_NOMOVEON in 'clientd3d/move.c'
+#define OBJMINDISTANCEUSER2   (OBJMINDISTANCEUSER * OBJMINDISTANCEUSER) // squared OBJMINDISTANCEUSER
 #define LOSEXTEND             64.0f
-#define MAXRNDMOVEDELTAH      (5.0f * MAXSTEPHEIGHT)                 // ignore rnd gen move dest pnt if above/below this
-#define MAXRNDMOVEDELTAH2     (MAXRNDMOVEDELTAH * MAXRNDMOVEDELTAH)  // squared MAXRNDMOVEDELTAH
+#define MAXRNDMOVEDELTAH      (5.0f * MAXSTEPHEIGHT)                    // ignore rnd gen move dest pnt if above/below this
+#define MAXRNDMOVEDELTAH2     (MAXRNDMOVEDELTAH * MAXRNDMOVEDELTAH)     // squared MAXRNDMOVEDELTAH
 
 // Calculation to convert KOD angles to radians.
 #define KODANGLETORADIANS(x) ((float)((x) % (int)MAX_KOD_DEGREE) * PI_MULT_2 / MAX_KOD_DEGREE)
@@ -217,8 +227,26 @@ typedef struct BlockerNode
 {
    int ObjectID;
    V2 Position;
+   unsigned int TickLastMove;
    BlockerNode* Next;
 } BlockerNode;
+
+typedef struct Intersection
+{
+   SectorNode* SectorS;
+   SectorNode* SectorE;
+   Side* SideS;
+   Side* SideE;
+   V2 Q;
+   float Distance2;
+} Intersection;
+
+typedef struct Intersections
+{
+   Intersection  Data[MAXINTERSECTIONS];
+   Intersection* Ptrs[MAXINTERSECTIONS];
+   unsigned int  Size;
+} Intersections;
 
 typedef struct room_type
 {
@@ -244,6 +272,11 @@ typedef struct room_type
    SectorNode*    Sectors;
    unsigned short SectorsCount;
 
+   unsigned int DepthFlags;
+   float        OverrideDepth1;
+   float        OverrideDepth2;
+   float        OverrideDepth3;
+
 #if ASTARENABLED
    unsigned short* EdgesCache;
    int             EdgesCacheSize;
@@ -261,15 +294,17 @@ typedef struct room_type
 /**************************************************************************************************************/
 bool  BSPGetHeight(room_type* Room, V2* P, float* HeightF, float* HeightFWD, float* HeightC, BspLeaf** Leaf);
 bool  BSPCanMoveInRoom(room_type* Room, V2* S, V2* E, int ObjectID, bool moveOutsideBSP, bool checkObjects, bool ignoreEndBlocker, Wall** BlockWall);
+template <bool ISPLAYER> extern bool BSPCanMoveInRoom3D(room_type* Room, V2* S, V2* E, float Height, float Speed, int ObjectID, bool moveOutsideBSP, bool checkObjects, bool ignoreEndBlocker, Wall** BlockWall);
 bool  BSPLineOfSightView(V2 *S, V2 *E, int kod_angle);
 bool  BSPLineOfSight(room_type* Room, V3* S, V3* E);
 bool  BSPLineOfSightTree(const BspNode* Node, const V3* S, const V3* E);
 void  BSPChangeTexture(room_type* Room, unsigned int ServerID, unsigned short NewTexture, unsigned int Flags);
 void  BSPMoveSector(room_type* Room, unsigned int ServerID, bool Floor, float Height, float Speed);
+bool  BSPGetSectorHeightByID(room_type* Room, unsigned int ServerID, bool Floor, float* Height);
 bool  BSPGetLocationInfo(room_type* Room, V2* P, unsigned int QueryFlags, unsigned int* ReturnFlags, float* HeightF, float* HeightFWD, float* HeightC, BspLeaf** Leaf);
-bool  BSPGetRandomPoint(room_type* Room, int MaxAttempts, V2* P);
+bool  BSPGetRandomPoint(room_type* Room, int MaxAttempts, float UnblockedRadius, V2* P);
 bool  BSPGetRandomMoveDest(room_type* Room, int MaxAttempts, float MinDistance, float MaxDistance, V2* S, V2* E);
-bool  BSPGetStepTowards(room_type* Room, V2* S, V2* E, V2* P, unsigned int* Flags, int ObjectID);
+bool  BSPGetStepTowards(room_type* Room, V2* S, V2* E, V2* P, unsigned int* Flags, int ObjectID, float Speed, float Height);
 bool  BSPBlockerAdd(room_type* Room, int ObjectID, V2* P);
 bool  BSPBlockerMove(room_type* Room, int ObjectID, V2* P);
 bool  BSPBlockerRemove(room_type* Room, int ObjectID);

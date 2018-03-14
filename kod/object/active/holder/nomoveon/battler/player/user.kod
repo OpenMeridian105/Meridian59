@@ -3064,7 +3064,8 @@ messages:
 
    UserLogonSetPosition()
    {
-      local i,oNew_room;
+      local i, oNew_room, iQflags, iRflags, iHeightF, iHeightFWD, iHeightC,
+            iServerID;
 
       if piSave_room <> $
       {
@@ -3076,6 +3077,23 @@ messages:
                   #fine_row=piSave_fine_row,
                   #fine_col=piSave_fine_col,
                   #new_angle=piSave_angle);
+
+            // query height at current location from ROO
+            iQflags = LIQ_GET_SECTORINFO;
+
+            if (NOT GetLocationInfoBSP(Send(oNew_room,@GetRoomData), iQflags,
+               piSave_row,piSave_col, piSave_fine_row, piSave_fine_col,
+               *iRflags, *iHeightF, *iHeightFWD, *iHeightC, *iServerID))
+            {
+               Debug("Failed to get location info in ",
+                     Send(oNew_room,@GetRoomData));
+            }
+
+            // save floor and ceiling heights and sector id
+            piHeightFWD = iHeightFWD;
+            piHeightC   = iHeightC;
+            piSectorID  = iServerID;
+            piHeight = piHeightFWD;
 
             return;
          }

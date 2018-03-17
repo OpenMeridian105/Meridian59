@@ -39,6 +39,7 @@
 #define SPEEDKODTOROO(x)      ((x) * ROOFINENESS * 0.0001f)             // converts big.sq. per 10s in ROO fine units per 1ms
 #define GRAVITYACCELERATION   FINENESSKODTOROO(-0.00032f)               // dist/ms² (dist=1:1024)
 #define MAXSTEPHEIGHT         ((float)(24 << 4))                        // (from clientd3d/move.c)
+#define MAXSTEPHEIGHTUSER     (MAXSTEPHEIGHT + 96)                      // for user validation, with some tolerance
 #define PLAYERWIDTH           (31.0f * (float)KODFINENESS * 0.25f)      // (from clientd3d/game.c)
 #define WALLMINDISTANCE       (PLAYERWIDTH / 2.0f)                      // (from clientd3d/game.c)
 #define WALLMINDISTANCE2      (WALLMINDISTANCE * WALLMINDISTANCE)       // (from clientd3d/game.c)

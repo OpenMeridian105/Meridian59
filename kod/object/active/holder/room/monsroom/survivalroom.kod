@@ -1023,6 +1023,13 @@ messages:
 
       if IsClass(what,&User)
       {
+         // Ignore hidden DMs.
+         if (IsClass(what,&DM)
+            AND Send(what,@IsDMStealthed))
+         {
+            propagate;
+         }
+
          foreach i in plCrashProtection
          {
             if what = First(i)
@@ -1492,6 +1499,14 @@ messages:
    BootUser(who=$,inform=TRUE,booting_all=FALSE)
    {
       local oRoom, i, p, crashprot;
+
+      // Toggle inform if stealthed DM leaving.
+      if (inform
+         AND (IsClass(who,&DM)
+            AND Send(who,@IsDMStealthed)))
+      {
+         inform = FALSE;
+      }
 
       // Take this person out of the crash protection list if they're there.
       foreach crashprot in plCrashProtection

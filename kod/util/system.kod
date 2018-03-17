@@ -508,6 +508,13 @@ properties:
 
    plAttackTypes = $
    plSpellTypes = $
+
+   // Toggle to enable/disable autolog/phase tests.
+   pbAutologTestEnabled = TRUE
+
+   // Timer to trigger autolog test.
+   ptAutologTestTimer = $
+
 messages:
 
    GetName()
@@ -869,6 +876,106 @@ messages:
 
       return;
    }
+
+#region Autolog Testing
+   EnableAutologTests()
+   {
+      pbAutologTestEnabled = TRUE;
+
+      if (ptAutologTestTimer <> $)
+      {
+         DeleteTimer(ptAutologTestTimer);
+      }
+      ptAutologTestTimer = CreateTimer(self,@SystemAutologTestPhaseOne,
+                              Send(SETTINGS_OBJECT,@GetAutologTestSchedule) * 60000);
+
+      return;
+   }
+
+   DisableAutologTests()
+   {
+      pbAutologTestEnabled = FALSE;
+
+      if (ptAutologTestTimer <> $)
+      {
+         DeleteTimer(ptAutologTestTimer);
+         ptAutologTestTimer = $;
+      }
+
+      return;
+   }
+
+   SystemAutologTestPhaseOne(timer = $)
+   "Initialises an autolog test on all users.  This part triggers all online "
+   "players to receive a (fake) low-HP packet, and sets a timer for the next "
+   "part."
+   {
+      local iTestHP;
+
+      if (ptAutologTestTimer <> $
+         AND (timer = $
+            OR timer <> ptAutologTestTimer))
+      {
+         DeleteTimer(ptAutologTestTimer);
+      }
+      ptAutologTestTimer = $;
+
+      if (NOT pbAutologTestEnabled)
+      {
+         return;
+      }
+
+      // Get a test HP (%) to use.
+      iTestHP = Random(0,Random(25,50));
+
+      SendList(plUsers_logged_on,0,@AutologTest,#iPercent=iTestHP);
+
+      // Use a random duration.
+      ptAutologTestTimer = CreateTimer(self,@SystemAutologTestPhaseTwo,
+                              Send(SETTINGS_OBJECT,@GetAutologTestDuration));
+
+      return;
+   }
+
+   SystemAutologTestPhaseTwo(timer = $)
+   "This part of the autolog test sends a correct-HP packet to all users."
+   "Calls the next part in the test after 3000 ms."
+   {
+      if (ptAutologTestTimer <> $
+         AND (timer = $
+            OR timer <> ptAutologTestTimer))
+      {
+         DeleteTimer(ptAutologTestTimer);
+      }
+
+      SendList(plUsers_logged_on,0,@AutologTestReverse,#report=TRUE);
+
+      ptAutologTestTimer = CreateTimer(self,@SystemAutologTestPhaseThree,3000);
+
+      return;
+   }
+
+   SystemAutologTestPhaseThree(timer = $)
+   "This part of the test clears the test time on all users, and sets the "
+   "timer for the next automated test."
+   {
+      if (ptAutologTestTimer <> $
+         AND (timer = $
+            OR timer <> ptAutologTestTimer))
+      {
+         DeleteTimer(ptAutologTestTimer);
+      }
+
+      // Don't need to worry about logged-off users since test start,
+      // since they reset their own test times.
+      SendList(plUsers_logged_on,0,@ResetAutologTestTime);
+
+      ptAutologTestTimer = CreateTimer(self,@SystemAutologTestPhaseOne,
+                              Send(SETTINGS_OBJECT,@GetAutologTestSchedule) * 60000);
+
+      return;
+   }
+#endregion Autolog testing
 
    CheckUserTable()
    {
@@ -1925,7 +2032,7 @@ messages:
 
    GetLastMurderer()
    {
-      if findListElem(plUsers,poLastMurderer)
+      if FindListElem(plUsers,poLastMurderer)
       {
          return poLastMurderer;
       }
@@ -2171,16 +2278,14 @@ messages:
       AddPacket(1,BP_CHARINFO);
 
       // 14 hair translations
-      AddPacket(1,14);
-      AddPacket(1,0, 1,PT_GRAY_TO_ORANGE, 1,PT_GRAY_TO_RED);
-      AddPacket(1,PT_GRAY_TO_SKIN1, 1,PT_GRAY_TO_SKIN2, 1,PT_GRAY_TO_SKIN3);
-      AddPacket(1,PT_GRAY_TO_SKIN4, 1,PT_GRAY_TO_SKIN5, 1,PT_GRAY_TO_PLATBLOND);
-      AddPacket(1,PT_GRAY_TO_KORANGE, 1,PT_GRAY_TO_KRED, 1,PT_GRAY_TO_KGRAY);
-      AddPacket(1,PT_GRAY_TO_BLACK, 1,PT_GRAY_TO_BLOND);
+      AddPacket(1,14, 1,0, 1,PT_GRAY_TO_ORANGE, 1,PT_GRAY_TO_RED,
+                1,PT_GRAY_TO_SKIN1, 1,PT_GRAY_TO_SKIN2, 1,PT_GRAY_TO_SKIN3,
+                1,PT_GRAY_TO_SKIN4, 1,PT_GRAY_TO_SKIN5, 1,PT_GRAY_TO_PLATBLOND,
+                1,PT_GRAY_TO_KORANGE, 1,PT_GRAY_TO_KRED, 1,PT_GRAY_TO_KGRAY,
+                1,PT_GRAY_TO_BLACK, 1,PT_GRAY_TO_BLOND);
 
       // 4 skin translations
-      AddPacket(1,4);
-      AddPacket(1,PT_BLUE_TO_SKIN1, 1,PT_BLUE_TO_SKIN2,
+      AddPacket(1,4, 1,PT_BLUE_TO_SKIN1, 1,PT_BLUE_TO_SKIN2,
                 1,PT_BLUE_TO_SKIN3, 1,PT_BLUE_TO_SKIN4);
 
       // Face options
@@ -2192,9 +2297,7 @@ messages:
 
       foreach i in plNewCharSpells
       {
-         AddPacket(4,Send(i,@GetSpellNum));
-         AddPacket(4,Send(i,@GetName));
-         AddPacket(4,Send(i,@GetIntro));
+         AddPacket(4,Send(i,@GetSpellNum), 4,Send(i,@GetName), 4,Send(i,@GetIntro));
 
          // Cost of spell
          if Send(i,@GetLevel) = 2
@@ -2228,9 +2331,7 @@ messages:
             continue;
          }
 
-         AddPacket(4,Send(i,@GetSkillNum));
-         AddPacket(4,Send(i,@GetName));
-         AddPacket(4,Send(i,@GetIntro));
+         AddPacket(4,Send(i,@GetSkillNum), 4,Send(i,@GetName), 4,Send(i,@GetIntro));
 
          if Send(i,@GetLevel) = 2
          {
@@ -2693,6 +2794,9 @@ messages:
       Send(self,@CreateOneRoomIfNew,#num=RID_SWAMPTOJIXA,#class=&Swamptojixa);
       Send(self,@CreateOneRoomIfNew,#num=RID_SWAMP1,#class=&Swamp1);
       Send(self,@CreateOneRoomIfNew,#num=RID_SWAMP2,#class=&Swamp2);
+      Send(self,@CreateOneRoomIfNew,#num=RID_BERG_MINE,#class=&BergMine);
+      Send(self,@CreateOneRoomIfNew,#num=RID_BANDIT_CAMP,#class=&BanditCamp);
+      Send(self,@CreateOneRoomIfNew,#num=RID_BANDIT_CAVE,#class=&BanditCave);
 
       if poRentableRoomMaintenance <> $  // After a clean build, for example.
       {
@@ -2910,7 +3014,6 @@ messages:
 
       return TRUE;
    }
-
 
    DeleteRoom(what = $)
    "Called by the room when it is deleted, so we can remove it from our list of rooms."
@@ -5564,6 +5667,7 @@ messages:
       plMonsterTemplates = cons(create(&NecromancerTroop,#template=TRUE),plMonsterTemplates);
       plMonsterTemplates = cons(create(&Necromancer,#template=TRUE),plMonsterTemplates);
       plMonsterTemplates = cons(create(&Follower,#template=TRUE),plMonsterTemplates);
+      plMonsterTemplates = cons(create(&Bandit,#template=TRUE),plMonsterTemplates);
 
       plMonsterTemplates = cons(create(&XeoFire,#template=TRUE),plMonsterTemplates);
       plMonsterTemplates = cons(create(&XeoWater,#template=TRUE),plMonsterTemplates);
@@ -5903,6 +6007,7 @@ messages:
       plItemTemplates = cons(create(&Pear),plItemTemplates);
       plItemTemplates = cons(create(&Orange),plItemTemplates);
       plItemTemplates = cons(create(&TeloFruit),plItemTemplates);
+      plItemTemplates = cons(create(&Truffle),plItemTemplates);
 
       plItemTemplates = cons(create(&EasterEgg),plItemTemplates);
 
@@ -5912,7 +6017,7 @@ messages:
       plItemTemplates = cons(create(&QormasHelm),plItemTemplates);
       plItemTemplates = cons(create(&IvyCirclet),plItemTemplates);
       plItemTemplates = cons(create(&Circlet),plItemTemplates);
-	  plItemTemplates = cons(create(&DaemonHelm),plItemTemplates);
+      plItemTemplates = cons(create(&DaemonHelm),plItemTemplates);
 
       // Shields
       plItemTemplates = cons(create(&GuildShield),plItemTemplates);

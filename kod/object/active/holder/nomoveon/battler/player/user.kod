@@ -480,6 +480,12 @@ resources:
    user_autophase_detected = \
       "Autophase use detected! This event has been logged."
 
+   user_honor_gain_penalty = \
+      "You gain %i honor points from your victory over %s as they cowardly "
+      "flee the battlefield."
+   user_honor_loss_penalty = \
+      "You lose %i honor points as you retreat from the battlefield."
+
 classvars:
 
    viIndefinite = ARTICLE_NONE
@@ -1172,7 +1178,8 @@ messages:
    "'what' is the calling object, i.e. logoff ghost, phase spell."
    {
       local iPenCount, iEquivDeath, iPointLoss, iItemLoss, oDrop,
-            iXPLoss, iNumItems, iNumSpellPts, iNumSkillPts, oSoldierShield;
+            iXPLoss, iNumItems, iNumSpellPts, iNumSkillPts, oSoldierShield,
+            iHonorLoss;
 
       // Check if we're eligible for a free pen.
       if (Send(SETTINGS_OBJECT,@GetFreeNoPvPPenActive,
@@ -1259,6 +1266,7 @@ messages:
       iNumSkillPts = Send(self,@PenaltyLoseSkillPoints,
                            #iNumPoints=iPointLoss,#iPenCount=iPenCount,
                            #iEquivDeath=iEquivDeath);
+      iHonorLoss = Send(self,@PenaltyLoseHonor);
 
       // Let the faction shield know of this person's naughtiness if we took a
       // penalty.
@@ -1283,6 +1291,77 @@ messages:
       }
 
       return;
+   }
+
+   PenaltyLoseHonor(honor=0)
+   {
+      local i, j, iHonorLost, iNumHurters, iHonorEach, iLostTotal, oHurter, plHurt, bIsNear;
+
+      iHonorLost = 0;
+      iNumHurters = 0;
+      iHonorEach = 0;
+      iLostTotal = 0;
+      plHurt = Send(self,@GetHurtMeRecently);
+
+      // Find out how many people attacked us recently.
+      foreach i in plHurt
+      {
+         oHurter = First(i);
+         if IsClass (oHurter,&Player)
+         {
+            ++iNumHurters;
+         }
+      }
+
+      iHonorEach = 50 / iNumHurters;
+
+      // Attempt to give the honor points from the victim to the attacker(s).
+      foreach i in plHurt
+      {
+         bIsNear = FALSE;
+         oHurter = First(i);
+         // Only count players that can fight.
+         if IsClass (oHurter,&Player)
+            AND NOT Send(oHurter,@IsOfflineOrCannotInteract)
+         {
+            if Send(self,@GetOwner) = Send(oHurter,@GetOwner)
+            {
+               bIsNear = TRUE;
+            }
+            else
+            {
+               // The attacker can fight but isn't in the same room as the victim.
+               // Check if they are in a nearby combat area since PvP involves movement.
+               foreach j in Send(Send(self,@GetOwner),@GetYellZone)
+               {
+                  if Send(SYS,@FindRoomByNum,#num=j) = Send(oHurter,@GetOwner)
+                     AND NOT Send(Send(oHurter,@GetOwner),@CheckRoomFlag,#flag=ROOM_NO_COMBAT)
+                     AND NOT Send(Send(oHurter,@GetOwner),@CheckRoomFlag,#flag=ROOM_NO_PK)
+                     AND NOT Send(Send(oHurter,@GetOwner),@CheckRoomFlag,#flag=ROOM_SAFE_DEATH)
+                  {
+                     bIsNear = TRUE;
+                  }
+               }
+            }
+            if bIsNear
+            {
+               // The attacker is nearby and can participate in PvP. Give them the points.
+               iHonorLost = Send(self,@TransferHonorPoints,#who=self,
+                                 #what=oHurter,#honor=iHonorEach);
+               iLostTotal += iHonorLost;
+               Send(oHurter,@MsgSendUser,#message_rsc=user_honor_gain_penalty,
+                     #parm1=iHonorLost,#parm2=Send(self,@GetName));
+            }
+         }
+      }
+      // Don't inform the player if they didn't lose any points. Reasons for this can include
+      // them not having any to give or all attackers having fled the battlefield.
+      if iLostTotal > 0
+      {
+         Send (self,@MsgSendUser,#message_rsc=user_honor_loss_penalty,#parm1=iLostTotal);
+      }
+
+      return iLostTotal;
    }
 
    PenaltyLoseXP(iPenCount=0, iEquivDeath=0)

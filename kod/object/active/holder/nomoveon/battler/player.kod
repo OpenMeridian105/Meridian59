@@ -803,6 +803,13 @@ resources:
    player_bonus_tp = "You are awarded ~B~k%i~v~B bonus training points for "
       "your impressive accomplishment!"
 
+   player_honor_gain_kill = \
+      "You gain %i honor points from your victory over %s."
+   player_honor_gain_assist = \
+      "You are awarded %i honor points for your role in %s's death."
+   player_honor_loss_death = \
+      "Your defeat in battle costs you %i honor points."
+
 classvars:
 
    viHand_space = 2
@@ -1096,6 +1103,8 @@ properties:
 
    // Our stored follower in case of the feature being disabled temporarily.
    poSavedFollower = $
+
+   piHonorPoints = 0
 
 messages:
 
@@ -3382,6 +3391,23 @@ messages:
             }
 
             SetFirst(i,iTime);
+         }
+      }
+
+      foreach i in Send(self,@GetHurtMeRecently)
+      {
+         tTimer = Nth(i,3);
+         if tTimer <> $
+         {
+            if IsTimer(tTimer)
+            {
+               iTime = GetTimeRemaining(tTimer);
+               DeleteTimer(tTimer);
+               // Add some time to prevent people from flashing on and off
+               // in order to escape honor point loss.
+               iTime += 5000;
+            }
+         SetNth(i,3,iTime);
          }
       }
 
@@ -9584,6 +9610,12 @@ messages:
          Send(poMercenary,@Killed);
       }
 
+      if NOT bNo_drop_death
+         AND piDeathCost
+      {
+         Send(self,@DeathLoseHonor,#killer=what);
+      }
+
       // Teleport to the Underworld.
       Send(self,@UserGotoDeadRoom);
 
@@ -9638,6 +9670,94 @@ messages:
       }
 
       propagate;
+   }
+
+   DeathLoseHonor(killer = $)
+   {
+      local i, j, iHonorLost, iNumHurters, iHonorEach, iLostTotal, iKillHonor, oHurter, plHurt, bIsNear;
+
+      iHonorLost = 0;
+      iNumHurters = 0;
+      iHonorEach = 0;
+      iLostTotal = 0;
+      iKillHonor = 500;
+      plHurt = Send(self,@GetHurtMeRecently);
+
+      if IsClass(killer,&Player)
+         AND killer <> self
+      {
+         iHonorLost = Send(self,@TransferHonorPoints,#who=self,
+                                 #what=killer,#honor=iKillHonor);
+         Send(killer,@MsgSendUser,#message_rsc=player_honor_gain_kill,
+               #parm1=iHonorLost,#parm2=Send(self,@GetName));
+         iLostTotal += iHonorLost;
+      }
+
+      // Find out how many people assisted in the kill.
+      foreach i in plHurt
+      {
+         oHurter = First(i);
+         // Don't count the killer for assists.
+         if oHurter = killer
+         {
+            plHurt = DelListElem(plHurt,i);
+            continue;
+         }
+         if IsClass (oHurter,&Player)
+         {
+            ++iNumHurters;
+         }
+      }
+
+      iHonorEach = 150 / iNumHurters;
+
+      // Attempt to give the honor points from the victim to the attacker(s).
+      foreach i in plHurt
+      {
+         bIsNear = FALSE;
+         oHurter = First(i);
+         // Only count players that can fight.
+         if IsClass (oHurter,&Player)
+            AND NOT Send(oHurter,@IsOfflineOrCannotInteract)
+         {
+            if Send(self,@GetOwner) = Send(oHurter,@GetOwner)
+            {
+               bIsNear = TRUE;
+            }
+            else
+            {
+               // The attacker can fight but isn't in the same room as the victim.
+               // Check if they are in a nearby combat area since PvP involves movement.
+               foreach j in Send(Send(self,@GetOwner),@GetYellZone)
+               {
+                  if Send(SYS,@FindRoomByNum,#num=j) = Send(oHurter,@GetOwner)
+                     AND NOT Send(Send(oHurter,@GetOwner),@CheckRoomFlag,#flag=ROOM_NO_COMBAT)
+                     AND NOT Send(Send(oHurter,@GetOwner),@CheckRoomFlag,#flag=ROOM_NO_PK)
+                     AND NOT Send(Send(oHurter,@GetOwner),@CheckRoomFlag,#flag=ROOM_SAFE_DEATH)
+                  {
+                     bIsNear = TRUE;
+                  }
+               }
+            }
+            if bIsNear
+            {
+               // The attacker is nearby and can participate in PvP. Give them the points.
+               iHonorLost = Send(self,@TransferHonorPoints,#who=self,
+                                 #what=oHurter,#honor=iHonorEach);
+               iLostTotal += iHonorLost;
+               Send(oHurter,@MsgSendUser,#message_rsc=player_honor_gain_assist,
+                     #parm1=iHonorLost,#parm2=Send(self,@GetName));
+            }
+         }
+      }
+      // Don't inform the player if they didn't lose any points. Reasons for this can include
+      // them not having any to give or all attackers having fled the battlefield.
+      if iLostTotal > 0
+      {
+         Send (self,@MsgSendUser,#message_rsc=player_honor_loss_death,#parm1=iLostTotal);
+      }
+
+      return;
    }
 
    ApplyDeathPenalties()
@@ -15362,6 +15482,76 @@ messages:
 
          poMercenary = poSavedFollower;
       }
+
+      return;
+   }
+
+   TransferHonorPoints(what = $, who = $, honor = 0)
+   {
+      // Attempts to transfer honor points from 'who' to 'what'
+      local iHonor, iInexperienced, iHealthMin;
+
+      // Amount of spell + skill levels a player must have to be considered
+      // a honorable target.
+      iInexperienced = 0;
+      // Players with less hitpoints than this will not participate in the
+      // honor system.
+      iHealthMin = 100;
+      iHonor = 0;
+
+      // Does the victim have any honor points to transfer?
+      if piHonorPoints = 0
+      {
+         iHonor = 0;
+         Debug("Honor is 0");
+      }
+      // No honor in attacking inexperienced players.
+      else if Send(who,@GetTotalLearnPoints) < iInexperienced
+      {
+         iHonor = 0;
+         Debug("Victim doesn't have enough learn points.");
+      }
+      // Players with < 100 HP don't participate in the honor system.
+      else if Send(who,@GetMaxHealth) < iHealthMin
+           OR Send(what,@GetMaxHealth) < iHealthMin
+      {
+         iHonor = 0;
+         Debug("Attacker or victim has < 100 HP");
+      }
+      // They have some, but not the full amount. Grab the rest.
+      else if piHonorPoints < honor
+      {
+         iHonor = piHonorPoints;
+         Debug("piHonor is < Honor");
+      }
+      // The victim can pay the full cost.
+      else
+      {
+         iHonor = honor;
+      }
+
+      Debug("Points transferred: ",iHonor, "out of original ",honor);
+      Send(who,@AddHonorPoints,#honor=-iHonor);
+      Send(what,@AddHonorPoints,#honor=iHonor);
+
+      return iHonor;
+   }
+
+   AddHonorPoints(honor = 0)
+   {
+      piHonorPoints += honor;
+
+      return;
+   }
+
+   GetHonorPoints()
+   {
+      return piHonorPoints;
+   }
+
+   SetHonorPoints(honor = 0)
+   {
+      piHonorPoints = honor;
 
       return;
    }

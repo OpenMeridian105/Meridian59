@@ -3373,7 +3373,9 @@ messages:
 
    AddHurtMeRecently(who=$,amount=0)
    {
-      local i;
+      local i, iTime;
+
+      iTime = piHurtMeTime;
 
       // No point adding if mob died already.
       if (poOwner = $)
@@ -3385,6 +3387,13 @@ messages:
       if (NOT IsClass(who,&Battler))
       {
          return;
+      }
+
+      // Attackers in PvP are tracked for a longer time.
+      if IsClass (self,&Player)
+         AND Send(self,@IsRecentPvPCombatant)
+      {
+         iTime = Send(SETTINGS_OBJECT,@GetRecentPvPTime)*1000;
       }
 
       foreach i in plHurtMeRecently
@@ -3399,14 +3408,14 @@ messages:
             }
             SetNth(i,2,Nth(i,2)+amount);
             DeleteTimer(Nth(i,3));
-            SetNth(i,3,CreateTimer(self,@RemoveHurtMeRecently,piHurtMeTime));
+            SetNth(i,3,CreateTimer(self,@RemoveHurtMeRecently,iTime));
 
             return;
          }
       }
 
       plHurtMeRecently = Cons([who,amount,CreateTimer(self,
-                               @RemoveHurtMeRecently,piHurtMeTime)],
+                               @RemoveHurtMeRecently,iTime)],
                                plHurtMeRecently);
 
       return;
@@ -3604,6 +3613,11 @@ messages:
    GetBonusTP()
    {
       return 0;
+   }
+
+   GetHurtMeRecently()
+   {
+      return plHurtMeRecently;
    }
 
 end

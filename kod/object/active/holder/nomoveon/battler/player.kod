@@ -1105,6 +1105,11 @@ properties:
    poSavedFollower = $
 
    piHonorPoints = 0
+   // No honor points are awarded if the player has this many penalty points.
+   // (1 pen = 1 point, decays by 1 every 12 hours)
+   piHonorMaxPenalty = 0
+   // No honor points awarded for this amount of seconds after a player has died.
+   piHonorDeathTime = 0 * 60 * 60
 
 messages:
 
@@ -15489,15 +15494,20 @@ messages:
    TransferHonorPoints(what = $, who = $, honor = 0)
    {
       // Attempts to transfer honor points from 'who' to 'what'
-      local iHonor, iInexperienced, iHealthMin;
+      local iHonor, iInexperienced, iHealthMin, bNoSameIP, bNoDM;
 
+      iHonor = 0;
       // Amount of spell + skill levels a player must have to be considered
       // a honorable target.
       iInexperienced = 0;
       // Players with less hitpoints than this will not participate in the
       // honor system.
       iHealthMin = 100;
-      iHonor = 0;
+      // If true, attackers can't gain honor points from victims with the same IP.
+      bNoSameIP = FALSE;
+      // Should normally be true. The honor pool should be shared among players,
+      // since immortals taking something out of a zero-sum system isn't fair.
+      bNoDM = FALSE;
 
       // Does the victim have any honor points to transfer?
       if piHonorPoints = 0
@@ -15505,8 +15515,32 @@ messages:
          iHonor = 0;
          Debug("Honor is 0");
       }
-      // No honor in attacking inexperienced players.
+      else if bNoDM
+      {
+         iHonor = 0;
+      }
+      // No honor in attacking your own character!
+      else if bNoSameIP
+              AND IsListMatch(Send(who,@GetIP),Send(what,@GetIP))
+      {
+         iHonor = 0;
+         Debug("Attacker and victim have the same IP.");
+      }
+      // Don't award honor if the victim died recently.
+      else if GetTime() < (piLastDeathTime + piHonorDeathTime)
+      {
+         iHonor = 0;
+         Debug("Victim died too recently.");
+      }
+      // Don't award honor if the victim took too many penalties recently.
+      else if Send(who,@GetLogoffPenaltyCount) > piHonorMaxPenalty
+      {
+         iHonor = 0;
+         Debug("Victim took too many penalties recently.");
+      }
+      // Inexperienced players don't participate in the honor system.
       else if Send(who,@GetTotalLearnPoints) < iInexperienced
+           OR Send(what,@GetTotalLearnPoints) < iInexperienced
       {
          iHonor = 0;
          Debug("Victim doesn't have enough learn points.");

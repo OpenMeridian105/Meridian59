@@ -515,6 +515,9 @@ properties:
    // Timer to trigger autolog test.
    ptAutologTestTimer = $
 
+   // List of every player's honor points.
+   plHonorList = $
+
 messages:
 
    GetName()
@@ -8417,6 +8420,98 @@ messages:
          Send(i,@SetHonorPoints,#honor=10000);
       }
 
+      Debug("Global honor reset.");
+      Send(self,@CreateHonorList);
+
+      return;
+   }
+
+   CreateHonorList()
+   {
+      local i;
+
+      if plHonorList <> $
+      {
+         foreach i in plHonorList
+         {
+            plHonorList = DelListElem(plHonorList,i);
+         }
+      }
+      foreach i in plUsers
+      {
+         // Don't include DMs, event characters or empty character slots.
+         if NOT IsClass(i,&DM)
+            AND NOT IsClass(i,&EscapedConvict)
+            AND NOT Send(i,@GetLastLoginTime) = 0
+         {
+            plHonorList = Cons([i, Send(i,@GetHonorPoints)], plHonorList);
+         }
+      }
+      Debug("Honor list created.");
+      Send(self,@SortHonorList);
+
+      return;
+   }
+
+   SortHonorList()
+   {
+      local iCount, lCur, lNext, bCheck; 
+      
+      bCheck = TRUE;
+      
+      
+      if plHonorList <> $
+      {
+         while bCheck
+         {
+            bCheck = FALSE;
+            // Sorts the list from last entry to first.
+            iCount = Length(plHonorList);
+            
+            while iCount > 1
+            {
+               lCur = Nth(plHonorList, iCount);
+               lNext = Nth(plHonorList, iCount-1);
+               // If the current place has more honor than the next, swap them.
+               if Nth(lCur, 2) > Nth(lNext, 2)
+               {
+                  SwapListElem(plHonorList, iCount, iCount-1);
+                  bCheck = TRUE;
+               }
+
+               --iCount;
+            }
+         }
+      }
+      Debug("Honor list sorted.");
+      
+      return;
+   }
+
+   GetTopTenHonor()
+   {
+      local iCount, iCountMax, iHonor, oPlayer, lPlayer;
+      
+      iCount = 0;
+      iCountMax = 10;
+      if Length(plHonorList) < iCountMax
+      {
+         iCountMax = Length(plHonorList);
+      }
+      
+      
+      if plHonorList <> $
+      {
+         while iCount < iCountMax
+         {
+            ++iCount;
+            lPlayer = Nth(plHonorList, iCount);
+            oPlayer = Send(Nth(lPlayer, 1),@GetName);
+            iHonor = Nth(lPlayer, 2);
+            Debug("Number ",iCount," is ",oPlayer," with ",iHonor," honor points.");
+         }
+      }
+      
       return;
    }
 

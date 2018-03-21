@@ -297,7 +297,7 @@ resources:
    player_dot = "."
 
    // Master fixed info resource.
-   player_fixed_info = "%r%r%s%s%r%s%q%r"
+   player_fixed_info = "%r%r%s%s%s%r%s%q%r"
 
    // Hometown strings.
    player_hometown_rsc = "%s%s%s%q%s\n"
@@ -810,6 +810,12 @@ resources:
    player_honor_loss_death = \
       "Your defeat in battle costs you %i honor points."
 
+   player_honor_rank_1 = "PvP Rank: General\n"
+   player_honor_rank_2 = "PvP Rank: Commander\n"
+   player_honor_rank_3 = "PvP Rank: Knight\n"
+   player_honor_rank_4 = "PvP Rank: Squire\n"
+   player_honor_rank_5 = "PvP Rank: Aspirant\n"
+
 classvars:
 
    viHand_space = 2
@@ -1110,6 +1116,8 @@ properties:
    piHonorMaxPenalty = 0
    // No honor points awarded for this amount of seconds after a player has died.
    piHonorDeathTime = 0 * 60 * 60
+   piHonorRank = 0
+   pbShowHonorRank = TRUE
 
 messages:
 
@@ -1925,6 +1933,38 @@ messages:
       else if (i = FACTION_REBEL)
       {
          AddPacket(4,player_faction_rebel);
+      }
+      else
+      {
+         AddPacket(4,system_blank_resource);
+      }
+
+      if pbShowHonorRank
+      {
+         if piHonorRank = 1
+         {
+            AddPacket(4,player_honor_rank_1);
+         }
+         else if piHonorRank = 2
+         {
+            AddPacket(4,player_honor_rank_2);
+         }
+         else if piHonorRank = 3
+         {
+            AddPacket(4,player_honor_rank_3);
+         }
+         else if piHonorRank = 4
+         {
+            AddPacket(4,player_honor_rank_4);
+         }
+         else if piHonorRank = 5
+         {
+            AddPacket(4,player_honor_rank_5);
+         }
+         else
+         {
+            AddPacket(4,system_blank_resource);
+         }
       }
       else
       {
@@ -15494,20 +15534,11 @@ messages:
    TransferHonorPoints(what = $, who = $, honor = 0)
    {
       // Attempts to transfer honor points from 'who' to 'what'
-      local iHonor, iInexperienced, iHealthMin, bNoSameIP, bNoDM;
+      local iHonor, bNoSameIP;
 
       iHonor = 0;
-      // Amount of spell + skill levels a player must have to be considered
-      // a honorable target.
-      iInexperienced = 0;
-      // Players with less hitpoints than this will not participate in the
-      // honor system.
-      iHealthMin = 100;
       // If true, attackers can't gain honor points from victims with the same IP.
       bNoSameIP = FALSE;
-      // Should normally be true. The honor pool should be shared among players,
-      // since immortals taking something out of a zero-sum system isn't fair.
-      bNoDM = FALSE;
 
       // Does the victim have any honor points to transfer?
       if piHonorPoints = 0
@@ -15515,9 +15546,11 @@ messages:
          iHonor = 0;
          Debug("Honor is 0");
       }
-      else if bNoDM
+      else if NOT Send(who,@CanParticipateInHonorSystem)
+              OR NOT Send(what,@CanParticipateInHonorSystem)
       {
          iHonor = 0;
+         Debug("Attacker or victim don't qualify for honor system.");
       }
       // No honor in attacking your own character!
       else if bNoSameIP
@@ -15537,20 +15570,6 @@ messages:
       {
          iHonor = 0;
          Debug("Victim took too many penalties recently.");
-      }
-      // Inexperienced players don't participate in the honor system.
-      else if Send(who,@GetTotalLearnPoints) < iInexperienced
-           OR Send(what,@GetTotalLearnPoints) < iInexperienced
-      {
-         iHonor = 0;
-         Debug("Victim doesn't have enough learn points.");
-      }
-      // Players with < 100 HP don't participate in the honor system.
-      else if Send(who,@GetMaxHealth) < iHealthMin
-           OR Send(what,@GetMaxHealth) < iHealthMin
-      {
-         iHonor = 0;
-         Debug("Attacker or victim has < 100 HP");
       }
       // They have some, but not the full amount. Grab the rest.
       else if piHonorPoints < honor
@@ -15588,6 +15607,57 @@ messages:
       piHonorPoints = honor;
 
       return;
+   }
+
+   SetHonorRank(rank = 0)
+   {
+      piHonorRank = rank;
+
+      return;
+   }
+
+   CanParticipateInHonorSystem()
+   {
+      // Checks whether a player can participate in the honor system.
+      local iHealthMin, iInexperienced, bNoDM;
+
+      // Amount of spell + skill levels a player must have to be considered
+      // a honorable target.
+      iInexperienced = 0;
+      // Players with less hitpoints than this will not participate in the
+      // honor system.
+      iHealthMin = 100;
+      // Should normally be true. The honor pool should be shared among players,
+      // since immortals taking something out of a zero-sum system isn't fair.
+      bNoDM = FALSE;
+
+      if Send(self, @GetMaxHealth) < iHealthMin
+      {
+         return FALSE;
+      }
+      else if Send(self,@GetTotalLearnPoints) < iInexperienced
+      {
+         return FALSE;
+      }
+      else if bNoDM
+      {
+         if IsClass(self,&DM)
+            OR IsClass(self,&EscapedConvict)
+         {
+            return FALSE;
+         }
+      }
+      // Unused character slots aren't counted.
+      else if Send(self,@GetLastLoginTime) = 0
+      {
+         return FALSE;
+      }
+      else if Send(self,@CheckPlayerFlag,#flag=PFLAG_PERMA_NO_PVP)
+      {
+         return FALSE;
+      }
+
+      return TRUE;
    }
 
 end

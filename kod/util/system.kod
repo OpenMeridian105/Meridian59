@@ -8439,10 +8439,9 @@ messages:
       }
       foreach i in plUsers
       {
-         // Don't include DMs, event characters or empty character slots.
-         if NOT IsClass(i,&DM)
-            AND NOT IsClass(i,&EscapedConvict)
-            AND NOT Send(i,@GetLastLoginTime) = 0
+         // Don't include DMs, event characters, ineligible characters
+         // or empty character slots.
+         if Send(i,@CanParticipateInHonorSystem)
          {
             plHonorList = Cons([i, Send(i,@GetHonorPoints)], plHonorList);
          }
@@ -8456,10 +8455,9 @@ messages:
    SortHonorList()
    {
       local iCount, lCur, lNext, bCheck; 
-      
+
       bCheck = TRUE;
-      
-      
+
       if plHonorList <> $
       {
          while bCheck
@@ -8467,7 +8465,7 @@ messages:
             bCheck = FALSE;
             // Sorts the list from last entry to first.
             iCount = Length(plHonorList);
-            
+
             while iCount > 1
             {
                lCur = Nth(plHonorList, iCount);
@@ -8478,28 +8476,27 @@ messages:
                   SwapListElem(plHonorList, iCount, iCount-1);
                   bCheck = TRUE;
                }
-
                --iCount;
             }
          }
       }
       Debug("Honor list sorted.");
-      
+      Send(self,@CalculateHonorRanks);
+
       return;
    }
 
    GetTopTenHonor()
    {
       local iCount, iCountMax, iHonor, oPlayer, lPlayer;
-      
+
       iCount = 0;
       iCountMax = 10;
       if Length(plHonorList) < iCountMax
       {
          iCountMax = Length(plHonorList);
       }
-      
-      
+
       if plHonorList <> $
       {
          while iCount < iCountMax
@@ -8511,7 +8508,62 @@ messages:
             Debug("Number ",iCount," is ",oPlayer," with ",iHonor," honor points.");
          }
       }
-      
+
+      return;
+   }
+
+   CalculateHonorRanks()
+   {
+      local iCount, iFirst, iSecond, iThird, iFourth, iPos, iCountMax, oPlayer, lPlayer;
+
+      // How many players can hold a given rank.
+      iFirst = 1;
+      iSecond = 3;
+      iThird = 10;
+      iFourth = 30;
+
+      iPos = 0;
+
+      if plHonorList = $
+      {
+         return;
+      }
+
+      iCountMax = Length(plHonorList);
+
+      while iPos < iCountMax
+      {
+         ++iPos;
+         lPlayer = Nth(plHonorList, iPos);
+         oPlayer = Nth(lPlayer,1);
+
+         if iPos >= 1
+            AND iPos <= iFirst
+         {
+            Send(oPlayer,@SetHonorRank,#rank=1);
+         }
+         else if iPos > iFirst
+                 AND iPos <= iSecond + iFirst
+         {
+            Send(oPlayer,@SetHonorRank,#rank=2);
+         }
+         else if iPos > iSecond + iFirst
+                 AND iPos <= iThird + iSecond + iFirst
+         {
+            Send(oPlayer,@SetHonorRank,#rank=3);
+         }
+         else if iPos > iThird + iSecond + iFirst
+                 AND iPos <= iFourth + iThird + iSecond + iFirst
+         {
+            Send(oPlayer,@SetHonorRank,#rank=4);
+         }
+         else
+         {
+            Send(oPlayer,@SetHonorRank,#rank=5);
+         }
+      }
+      Debug("Honor ranks calculated.");
+
       return;
    }
 

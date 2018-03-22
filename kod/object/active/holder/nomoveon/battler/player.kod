@@ -1113,7 +1113,7 @@ properties:
    piHonorPoints = 0
    // No honor points are awarded if the player has this many penalty points.
    // (1 pen = 1 point, decays by 1 every 12 hours)
-   piHonorMaxPenalty = 0
+   piHonorMaxPenalty = 5
    // No honor points awarded for this amount of seconds after a player has died.
    piHonorDeathTime = 0 * 60 * 60
    piHonorRank = 0
@@ -9754,7 +9754,10 @@ messages:
          }
       }
 
-      iHonorEach = 150 / iNumHurters;
+      if iNumHurters <> 0
+      {
+         iHonorEach = 150 / iNumHurters;
+      }
 
       // Attempt to give the honor points from the victim to the attacker(s).
       foreach i in plHurt
@@ -9801,6 +9804,9 @@ messages:
       {
          Send (self,@MsgSendUser,#message_rsc=player_honor_loss_death,#parm1=iLostTotal);
       }
+      // Clear attacker list so old attackers don't get anything if the player
+      // pens/dies again soon and they didn't participate.
+      Send(self,@ClearHurtMeRecently);
 
       return;
    }
@@ -15583,16 +15589,20 @@ messages:
          iHonor = honor;
       }
 
-      Debug("Points transferred: ",iHonor, "out of original ",honor);
-      Send(who,@AddHonorPoints,#honor=-iHonor);
-      Send(what,@AddHonorPoints,#honor=iHonor);
+      Debug("Points transferred: ",iHonor," out of original ",honor);
+      if iHonor <> 0
+      {
+         Send(who,@AddHonorPoints,#who=who,#honor=-iHonor);
+         Send(what,@AddHonorPoints,#who=what,#honor=iHonor);
+      }
 
       return iHonor;
    }
 
-   AddHonorPoints(honor = 0)
+   AddHonorPoints(who = $, honor = 0)
    {
       piHonorPoints += honor;
+      Send(SYS,@UpdateHonorList,#who=who,#honor=piHonorPoints);
 
       return;
    }

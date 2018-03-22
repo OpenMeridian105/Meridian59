@@ -517,6 +517,9 @@ properties:
 
    // List of every player's honor points.
    plHonorList = $
+   plOldHonorList = $
+   plOldHonorDate = $
+   plHonorDifference = $
 
 messages:
 
@@ -8442,6 +8445,8 @@ messages:
          // Don't include DMs, event characters, ineligible characters
          // or empty character slots.
          if Send(i,@CanParticipateInHonorSystem)
+            // Also exclude characters that haven't logged on in 60 days.
+            AND NOT Send(i,@IsUserInactive)
          {
             plHonorList = Cons([i, Send(i,@GetHonorPoints)], plHonorList);
          }
@@ -8454,10 +8459,11 @@ messages:
 
    SortHonorList()
    {
-      local iCount, lCur, lNext, bCheck; 
+      local iCount, lCur, lNext, bCheck;
 
       bCheck = TRUE;
 
+      // Sorts the list by honor points.
       if plHonorList <> $
       {
          while bCheck
@@ -8482,6 +8488,22 @@ messages:
       }
       Debug("Honor list sorted.");
       Send(self,@CalculateHonorRanks);
+
+      return;
+   }
+
+   UpdateHonorList(who = $, honor = 0)
+   {
+      local i;
+
+      foreach i in plHonorList
+      {
+         if First(i) = who
+         {
+            SetNth(i,2,honor);
+         }
+      }
+      Send(self,@SortHonorList);
 
       return;
    }
@@ -8563,6 +8585,101 @@ messages:
          }
       }
       Debug("Honor ranks calculated.");
+
+      return;
+   }
+
+   CopyHonorList()
+   {
+      // Creates a copy of the current honor list to track score changes over
+      // a period of time. Useful for events etc.
+      local iYear, iMonth, iDay, iHour, iMinute;
+
+      // Create a current list.
+      Send(self,@CreateHonorList);
+      
+      if plHonorList = $
+      {
+         return;
+      }
+      plOldHonorList = ListCopy(plHonorList);
+      GetDateAndTime(BTIME_LOCAL, *iYear, *iMonth, *iDay, *iHour, *iMinute, $);
+      plOldHonorDate = Cons([iYear, iMonth, iDay, iHour, iMinute], plOldHonorDate);
+
+      return;
+   }
+
+   CompareHonorLists()
+   {
+      // Checks each player's point gain between when the honor list was last copied
+      // and now.
+      local i, iOldHonor, iCurrentHonor, iDiff, iCount, iCountMax, iYear, iMonth, iDay,
+            iHour, iMinute, oPlayer, lPlayer, lCur, lNext, bCheck;
+
+      // Create a current list.
+      Send(self,@CreateHonorList);
+      
+      plHonorDifference = $;
+      
+      foreach i in plOldHonorList
+      {
+         iOldHonor = Nth(i,2);
+         iCurrentHonor = Send(First(i),@GetHonorPoints);
+         iDiff = iCurrentHonor - iOldHonor;
+         plHonorDifference = Cons([First(i),iDiff], plHonorDifference);
+      }
+
+      // Sorts the list from highest point gain to lowest.
+      bCheck = TRUE;
+      iCount = 0;
+
+      if plHonorDifference <> $
+      {
+         while bCheck
+         {
+            bCheck = FALSE;
+            // Sorts the list from last entry to first.
+            iCount = Length(plHonorDifference);
+
+            while iCount > 1
+            {
+               lCur = Nth(plHonorDifference, iCount);
+               lNext = Nth(plHonorDifference, iCount-1);
+               // If the current place has more points than the next, swap them.
+               if Nth(lCur, 2) > Nth(lNext, 2)
+               {
+                  SwapListElem(plHonorDifference, iCount, iCount-1);
+                  bCheck = TRUE;
+               }
+               --iCount;
+            }
+         }
+      }
+
+      // Show date when old honor list was copied.
+      iYear = First(First(plOldHonorDate));
+      iMonth = Nth(First(plOldHonorDate),2);
+      iDay = Nth(First(plOldHonorDate),3);
+      iHour = Nth(First(plOldHonorDate),4);
+      iMinute = Nth(First(plOldHonorDate),5);
+      Debug("Honor changes since ",iMonth,"/",iDay,"/",iYear,", ",iHour,":",iMinute);
+
+      // Shows a top 10 of the players with the highest point gain.
+      iCount = 0;
+      iCountMax = 10;
+      if Length(plHonorDifference) < iCountMax
+      {
+         iCountMax = Length(plHonorDifference);
+      }
+
+      while iCount < iCountMax
+      {
+         ++iCount;
+         lPlayer = Nth(plHonorDifference, iCount);
+         oPlayer = Send(Nth(lPlayer, 1),@GetName);
+         iDiff = Nth(lPlayer, 2);
+         Debug("Number ",iCount," is ",oPlayer," with ",iDiff," points difference.");
+      }
 
       return;
    }

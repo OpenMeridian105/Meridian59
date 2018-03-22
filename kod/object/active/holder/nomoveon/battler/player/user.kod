@@ -562,6 +562,8 @@ properties:
    piLastAutologTest = -1
    piLastAutologHP = 0
 
+   poPrevOwner = $
+
 messages:
 
    Constructor(name = $,icon = $)
@@ -1070,6 +1072,7 @@ messages:
          // Don't let players stay in the Underworld with Death Rift
          Post(self,@AdminGoToSafety);
       }
+      poPrevOwner = poOwner;
       poOwner = $;
 
       // If we still have an evil twin at this stage, tell it to delete itself.
@@ -1295,12 +1298,23 @@ messages:
 
    PenaltyLoseHonor(honor=0)
    {
-      local i, j, iHonorLost, iNumHurters, iHonorEach, iLostTotal, oHurter, plHurt, bIsNear;
+      local i, j, iHonorLost, iNumHurters, iHonorEach, iLostTotal, oHurter, oOwner, plHurt, bIsNear;
 
       iHonorLost = 0;
       iNumHurters = 0;
       iHonorEach = 0;
       iLostTotal = 0;
+      // Use the player's last location if they logged off, since logged off players
+      // don't have an owner.
+      if Send(self,@IsLoggedOn)
+      {
+         oOwner = poOwner;
+      }
+      else
+      {
+         oOwner = poPrevOwner;
+      }
+
       plHurt = Send(self,@GetHurtMeRecently);
 
       // Find out how many people attacked us recently.
@@ -1324,7 +1338,7 @@ messages:
          if IsClass (oHurter,&Player)
             AND NOT Send(oHurter,@IsOfflineOrCannotInteract)
          {
-            if Send(self,@GetOwner) = Send(oHurter,@GetOwner)
+            if oOwner = Send(oHurter,@Getowner)
             {
                bIsNear = TRUE;
             }
@@ -1332,7 +1346,7 @@ messages:
             {
                // The attacker can fight but isn't in the same room as the victim.
                // Check if they are in a nearby combat area since PvP involves movement.
-               foreach j in Send(Send(self,@GetOwner),@GetYellZone)
+               foreach j in Send(oOwner,@GetYellZone)
                {
                   if Send(SYS,@FindRoomByNum,#num=j) = Send(oHurter,@GetOwner)
                      AND NOT Send(Send(oHurter,@GetOwner),@CheckRoomFlag,#flag=ROOM_NO_COMBAT)
@@ -1360,6 +1374,9 @@ messages:
       {
          Send (self,@MsgSendUser,#message_rsc=user_honor_loss_penalty,#parm1=iLostTotal);
       }
+      // Clear attacker list so old attackers don't get anything if the player
+      // pens/dies again soon and they didn't participate.
+      Send(self,@ClearHurtMeRecently);
 
       return iLostTotal;
    }

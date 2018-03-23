@@ -816,8 +816,15 @@ resources:
    player_honor_rank_4 = "PvP Rank: Squire\n"
    player_honor_rank_5 = "PvP Rank: Aspirant\n"
 
+   player_honor_rank_1_alt = "PvP Rank: Reaper\n"
+   player_honor_rank_2_alt = "PvP Rank: Slayer\n"
+   player_honor_rank_3_alt = "PvP Rank: Widowmaker\n"
+   player_honor_rank_4_alt = "PvP Rank: Cutthroat\n"
+   player_honor_rank_5_alt = "PvP Rank: Thug\n"
+
    player_honor_title_on = "Your honor rank is now being displayed."
    player_honor_title_off = "Your honor rank is no longer being displayed."
+   player_honor_title_alt = "You're now displaying your alternate honor rank."
 
 classvars:
 
@@ -1114,13 +1121,9 @@ properties:
    poSavedFollower = $
 
    piHonorPoints = 0
-   // No honor points are awarded if the player has this many penalty points.
-   // (1 pen = 1 point, decays by 1 every 12 hours)
-   piHonorMaxPenalty = 5
-   // No honor points awarded for this amount of seconds after a player has died.
-   piHonorDeathTime = 0 * 60 * 60
    piHonorRank = 0
-   pbShowHonorRank = TRUE
+   // 0 = don't show title, 1 = show title, 2 = alternative title
+   piHonorTitle = 1
 
 messages:
 
@@ -1942,7 +1945,7 @@ messages:
          AddPacket(4,system_blank_resource);
       }
 
-      if pbShowHonorRank
+      if piHonorTitle = 1
       {
          if piHonorRank = 1
          {
@@ -1963,6 +1966,33 @@ messages:
          else if piHonorRank = 5
          {
             AddPacket(4,player_honor_rank_5);
+         }
+         else
+         {
+            AddPacket(4,system_blank_resource);
+         }
+      }
+      else if piHonorTitle = 2
+      {
+         if piHonorRank = 1
+         {
+            AddPacket(4,player_honor_rank_1_alt);
+         }
+         else if piHonorRank = 2
+         {
+            AddPacket(4,player_honor_rank_2_alt);
+         }
+         else if piHonorRank = 3
+         {
+            AddPacket(4,player_honor_rank_3_alt);
+         }
+         else if piHonorRank = 4
+         {
+            AddPacket(4,player_honor_rank_4_alt);
+         }
+         else if piHonorRank = 5
+         {
+            AddPacket(4,player_honor_rank_5_alt);
          }
          else
          {
@@ -9728,18 +9758,8 @@ messages:
       iNumHurters = 0;
       iHonorEach = 0;
       iLostTotal = 0;
-      iKillHonor = 500;
+      iKillHonor = Send(SETTINGS_OBJECT,@GetHonorLossKill);
       plHurt = Send(self,@GetHurtMeRecently);
-
-      if IsClass(killer,&Player)
-         AND killer <> self
-      {
-         iHonorLost = Send(self,@TransferHonorPoints,#who=self,
-                                 #what=killer,#honor=iKillHonor);
-         Send(killer,@MsgSendUser,#message_rsc=player_honor_gain_kill,
-               #parm1=iHonorLost,#parm2=Send(self,@GetName));
-         iLostTotal += iHonorLost;
-      }
 
       // Find out how many people assisted in the kill.
       foreach i in plHurt
@@ -9757,9 +9777,21 @@ messages:
          }
       }
 
+      // If other players assisted, distribute part of the kill honor among them.
       if iNumHurters <> 0
       {
-         iHonorEach = 150 / iNumHurters;
+         iHonorEach = ((iKillHonor * 3) / 10) / iNumHurters;
+         iKillHonor = (iKillHonor * 7) / 10;
+      }
+
+      if IsClass(killer,&Player)
+         AND killer <> self
+      {
+         iHonorLost = Send(self,@TransferHonorPoints,#who=self,
+                                 #what=killer,#honor=iKillHonor);
+         Send(killer,@MsgSendUser,#message_rsc=player_honor_gain_kill,
+               #parm1=iHonorLost,#parm2=Send(self,@GetName));
+         iLostTotal += iHonorLost;
       }
 
       // Attempt to give the honor points from the victim to the attacker(s).
@@ -15543,11 +15575,16 @@ messages:
    TransferHonorPoints(what = $, who = $, honor = 0)
    {
       // Attempts to transfer honor points from 'who' to 'what'
-      local iHonor, bNoSameIP;
+      local iHonor;
 
+      if who = $
+         OR what = $
+      {
+         Debug("Attempted to transfer honor points from ",who," to ",what,".");
+         return;
+      }
+      
       iHonor = 0;
-      // If true, attackers can't gain honor points from victims with the same IP.
-      bNoSameIP = FALSE;
 
       // Does the victim have any honor points to transfer?
       if piHonorPoints = 0
@@ -15562,20 +15599,20 @@ messages:
          Debug("Attacker or victim don't qualify for honor system.");
       }
       // No honor in attacking your own character!
-      else if bNoSameIP
+      else if Send(SETTINGS_OBJECT,@NoHonorSameIP)
               AND IsListMatch(Send(who,@GetIP),Send(what,@GetIP))
       {
          iHonor = 0;
          Debug("Attacker and victim have the same IP.");
       }
       // Don't award honor if the victim died recently.
-      else if GetTime() < (piLastDeathTime + piHonorDeathTime)
+      else if GetTime() < (piLastDeathTime + Send(SETTINGS_OBJECT,@GetHonorDeathTime))
       {
          iHonor = 0;
          Debug("Victim died too recently.");
       }
       // Don't award honor if the victim took too many penalties recently.
-      else if Send(who,@GetLogoffPenaltyCount) > piHonorMaxPenalty
+      else if Send(who,@GetLogoffPenaltyCount) > Send(SETTINGS_OBJECT,@GetHonorMaxPenalty)
       {
          iHonor = 0;
          Debug("Victim took too many penalties recently.");
@@ -15634,17 +15671,17 @@ messages:
       // Checks whether a player can participate in the honor system.
       local iHealthMin, iInexperienced, bNoDM;
 
-      // Amount of spell + skill levels a player must have to be considered
-      // a honorable target.
-      iInexperienced = 0;
-      // Players with less hitpoints than this will not participate in the
-      // honor system.
-      iHealthMin = 100;
+      iInexperienced = Send(SETTINGS_OBJECT,@GetHonorMinLevels);
+      iHealthMin = Send(SETTINGS_OBJECT,@GetHonorMinHP);
       // Should normally be true. The honor pool should be shared among players,
       // since immortals taking something out of a zero-sum system isn't fair.
       bNoDM = FALSE;
 
-      if Send(self, @GetMaxHealth) < iHealthMin
+      if NOT Send(SETTINGS_OBJECT,@HonorSystemActive)
+      {
+         return FALSE;
+      }
+      else if Send(self, @GetMaxHealth) < iHealthMin
       {
          return FALSE;
       }
@@ -15673,19 +15710,24 @@ messages:
       return TRUE;
    }
 
-   ShowHonorTitle(bshow=FALSE)
+   ShowHonorTitle(iTitle=0)
    {
-      if bshow
+      if iTitle = 0
       {
-         pbShowHonorRank = TRUE;
-         Send(self,@MsgSendUser,#message_rsc=player_honor_title_on);
-      }
-      else
-      {
-         pbShowHonorRank = FALSE;
+         piHonorTitle = 0;
          Send(self,@MsgSendUser,#message_rsc=player_honor_title_off);
       }
-      
+      else if iTitle = 1
+      {
+         piHonorTitle = 1;
+         Send(self,@MsgSendUser,#message_rsc=player_honor_title_on);
+      }
+      else if iTitle = 2
+      {
+         piHonorTitle = 2;
+         Send(self,@MsgSendUser,#message_rsc=player_honor_title_alt);
+      }
+
       return;
    }
 

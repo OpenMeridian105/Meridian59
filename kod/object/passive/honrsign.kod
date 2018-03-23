@@ -29,8 +29,8 @@ resources:
       "Each participant is awarded a title reflecting their current standing in the "
       "League, with the highest ranks reserved for the most successful fighters in the "
       "land.\n\n"
-      "You can say \"show my title\" if you wish to display your rank "
-      "or \"hide my title\" to turn it off.\n\n"
+      "You can say \"show my title\" or \"show my alternative title\" if you wish to "
+      "display your rank or \"hide my title\" to turn it off.\n\n"
       "The highest ranking players are:\n\n"
       "1: %q \n"
       "2: %q \n"
@@ -43,6 +43,7 @@ resources:
       "9: %q \n"
       "10: %q \n"
    HonorSign_none = ""
+   HonorSign_no_list = "Honor League currently not in progress."
 
 classvars:
 
@@ -69,6 +70,13 @@ messages:
       lHonorList = Send(SYS,@GetHonorList);
       iCount = 0;
       iCountMax = 10;
+
+      if lHonorList = $
+         OR NOT Send(SETTINGS_OBJECT,@HonorSystemActive)
+      {
+         AddPacket(4, HonorSign_no_list);
+         return;
+      }
 
       if Length(lHonorList) < iCountMax
       {

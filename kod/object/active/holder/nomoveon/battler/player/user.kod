@@ -1302,7 +1302,7 @@ messages:
 
       iHonorLost = 0;
       iNumHurters = 0;
-      iHonorEach = 0;
+      iHonorEach = Send(SETTINGS_OBJECT,@GetHonorLossPen);
       iLostTotal = 0;
       // Use the player's last location if they logged off, since logged off players
       // don't have an owner.
@@ -1313,6 +1313,11 @@ messages:
       else
       {
          oOwner = poPrevOwner;
+      }
+      if oOwner = $
+      {
+         Debug("Tried to inflict honor penalty for player ",self," with no owner.");
+         return;
       }
 
       plHurt = Send(self,@GetHurtMeRecently);
@@ -1327,7 +1332,13 @@ messages:
          }
       }
 
-      iHonorEach = 50 / iNumHurters;
+      if iNumHurters = 0
+      {
+         Debug("Tried to inflict honor penalty for player ",self," with no attackers.");
+         return;
+      }
+
+      iHonorEach = iHonorEach / iNumHurters;
 
       // Attempt to give the honor points from the victim to the attacker(s).
       foreach i in plHurt

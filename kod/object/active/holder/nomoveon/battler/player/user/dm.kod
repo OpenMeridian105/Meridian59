@@ -218,7 +218,8 @@ resources:
    dm_honor_compare_no_list = "No previous list found!"
    dm_honor_compare_no_date = "Can't find date for previous list!"
    dm_honor_compare_date = "Honor point changes since %i/%i/%i, %i:%i"
-   dm_honor_compare_list = "\n%q"
+   dm_honor_compare_list = "Top 10:\n%q"
+   dm_honor_compare_list_bottom = "Bottom 5:\n%q"
 
    // NOTE: if an internationalised string is added for dm_place_command,
    // then all the items that can be placed need to be changed also.
@@ -2221,10 +2222,10 @@ messages:
 
       lOldHonor = Send(SYS,@GetOldHonorList);
       lOldHonorDate = Send(SYS,@GetOldHonorDate);
-      
+
       // Create a current list.
       Send(SYS,@CreateHonorList);
-      
+
       if lOldHonor = $
       {
          Send(self,@MsgSendUser,#message_rsc=dm_honor_compare_no_list);
@@ -2235,10 +2236,9 @@ messages:
          Send(self,@MsgSendUser,#message_rsc=dm_honor_compare_no_date);
          return;
       }
-      
+
       lHonorDifference = $;
-      ///////////////////////////
-      
+
       foreach i in lOldHonor
       {
          iOldHonor = Nth(i,2);
@@ -2282,7 +2282,6 @@ messages:
       iMinute = Nth(First(lOldHonorDate),5);
       Send(self,@MsgSendUser,#message_rsc=dm_honor_compare_date,#parm1=iDay,#parm2=iMonth,
             #parm3=iYear,#parm4=iHour,#parm5=iMinute);
-      //Debug("Honor changes since ",iMonth,"/",iDay,"/",iYear,", ",iHour,":",iMinute);
 
       // Shows a top 10 of the players with the highest point gain.
       iCount = 0;
@@ -2299,16 +2298,34 @@ messages:
          lPlayer = Nth(lHonorDifference, iCount);
          oPlayer = Send(Nth(lPlayer, 1),@GetName);
          iDiff = Nth(lPlayer, 2);
-         AppendTempString("Number ");
          AppendTempString(iCount);
-         AppendTempString(" is ");
+         AppendTempString(". is ");
          AppendTempString(oPlayer);
          AppendTempString(" with ");
          AppendTempString(iDiff);
          AppendTempString(" points.\n");
-         //Debug("Number ",iCount," is ",oPlayer," with ",iDiff," points difference.");
       }
       Send(self,@MsgSendUser,#message_rsc=dm_honor_compare_list,#parm1=GetTempString());
+
+      // Show the bottom 5 as well.
+      iCount = Length(lHonorDifference);
+      iCountMax = Bound(iCount-5,0,iCount);
+
+      ClearTempString();
+      while iCount > iCountMax
+      {
+         lPlayer = Nth(lHonorDifference, iCount);
+         oPlayer = Send(Nth(lPlayer, 1),@GetName);
+         iDiff = Nth(lPlayer, 2);
+         AppendTempString(iCount);
+         AppendTempString(". is ");
+         AppendTempString(oPlayer);
+         AppendTempString(" with ");
+         AppendTempString(iDiff);
+         AppendTempString(" points.\n");
+         --iCount;
+      }
+      Send(self,@MsgSendUser,#message_rsc=dm_honor_compare_list_bottom,#parm1=GetTempString());
 
       return;
    }

@@ -1,0 +1,131 @@
+// Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+// All rights reserved.
+//
+// This software is distributed under a license that is described in
+// the LICENSE file that accompanies it.
+//
+// Meridian is a registered trademark.
+
+
+////////////////////////////////////////////////////////////////////////////////
+BergLeader is BergRoom
+
+constants:
+
+   include blakston.khd
+
+resources:
+
+   include bergleader.lkod
+
+   room_bergleader = bergleader.roo
+   room_name_bergleader = "Berg-Leader"
+
+   bergleader_music = berg.ogg
+   wind_sound_bergleader = rs_wind.ogg
+
+   bergleader_locked_doors = "The door is locked."
+   
+classvars:
+
+   vrName = room_name_bergleader
+
+   viTeleport_row = 11
+   viTeleport_col = 18
+   
+   viPermanent_flags = ROOM_GUILD_PK_ONLY | ROOM_LAMPS
+
+   viTerrain_Type = TERRAIN_CITY | TERRAIN_ROAD
+   
+properties:
+
+   piRoom_num = RID_BERG_LEADER
+   prRoom = room_bergleader
+
+   prMusic = bergleader_music
+
+   piBaseLight = LIGHT_NICE
+   piOutside_factor = 8
+
+   piDirectional_percent = DIRECTIONAL_PERCENT_OUTDOORS
+
+   pbSnowGroundTexture = TRUE
+
+messages:
+
+   CreatePeriodicSounds()
+   {
+      plPeriodic_sounds = [ wind_sound_bergleader ];
+      pbPeriodic_sound_random_location = TRUE;
+
+      propagate;
+   }
+
+   CreateStandardExits()
+   {
+      plExits = $;
+      plEdge_Exits = $;
+
+      plExits = Cons([ 28, 15, ROOM_LOCKED_DOOR, bergleader_locked_doors ],plExits);
+      plExits = Cons([ 28, 16, ROOM_LOCKED_DOOR, bergleader_locked_doors ],plExits);
+      plExits = Cons([ 29, 15, ROOM_LOCKED_DOOR, bergleader_locked_doors ],plExits);
+      plExits = Cons([ 29, 16, ROOM_LOCKED_DOOR, bergleader_locked_doors ],plExits);
+
+      // TO BERG CITY
+      plEdge_Exits = Cons([ LEAVE_NORTH, RID_BERG_CITY, 37, 41, ROTATE_NONE ], plEdge_exits);
+
+      propagate;
+   }
+   
+   CreateStandardObjects()
+   {
+      Send(self,@NewHold,#what=Create(&DynamicLight,#iColor=LIGHT_FIRE,#iIntensity=30),
+         #new_row=16,#new_col=12,#fine_row=8,#fine_col=16);
+      Send(self,@NewHold,#what=Create(&DynamicLight,#iColor=LIGHT_FIRE,#iIntensity=30),
+         #new_row=29,#new_col=12,#fine_row=0,#fine_col=28);
+      Send(self,@NewHold,#what=Create(&DynamicLight,#iColor=LIGHT_FIRE,#iIntensity=30),
+         #new_row=29,#new_col=20,#fine_row=0,#fine_col=12);
+
+      Send(self,@NewHold,#what=Create(&Brazier),
+            #new_row=15,#new_col=31,#fine_row=8,#fine_col=40,#new_angle=ANGLE_EAST);
+      Send(self,@NewHold,#what=Create(&Brazier),
+            #new_row=18,#new_col=31,#fine_row=16,#fine_col=40,#new_angle=ANGLE_EAST);
+
+      Send(self,@NewHold,#what=Create(&Lamp),
+         #new_row=23,#new_col=17,#fine_row=30,#fine_col=62);
+      Send(self,@NewHold,#what=Create(&Lamp),
+         #new_row=15,#new_col=25,#fine_row=47,#fine_col=30);
+      Send(self,@NewHold,#what=Create(&Lamp),
+         #new_row=11,#new_col=16,#fine_row=33,#fine_col=30);
+
+      Send(self,@NewHold,#what=Create(&OrnamentalObject,#type=OO_SHRUBEE1),
+            #new_row=19,#new_col=29,#fine_row=24,#fine_col=16);
+      Send(self,@NewHold,#what=Create(&OrnamentalObject,#type=OO_SHRUBEE1),
+            #new_row=14,#new_col=29,#fine_row=24,#fine_col=16);
+
+      Send(self,@NewHold,#what=Create(&OrnamentalObject,#type=OO_TALLTREE1),
+            #new_row=8,#new_col=28,#fine_row=40,#fine_col=32,#angle=ANGLE_EAST);
+      Send(self,@NewHold,#what=Create(&OrnamentalObject,#type=OO_TALLTREE1),
+            #new_row=22,#new_col=27,#fine_row=8,#fine_col=48,#angle=ANGLE_EAST);
+      Send(self,@NewHold,#what=Create(&OrnamentalObject,#type=OO_MIDTREE2),
+            #new_row=21,#new_col=16,#fine_row=24,#fine_col=32,#angle=ANGLE_EAST);
+      Send(self,@NewHold,#what=Create(&OrnamentalObject,#type=OO_MIDTREE2),
+            #new_row=23,#new_col=14,#fine_row=8,#fine_col=0,#angle=ANGLE_EAST);
+      Send(self,@NewHold,#what=Create(&OrnamentalObject,#type=OO_TALLTREE2),
+            #new_row=11,#new_col=10,#fine_row=24,#fine_col=32,#angle=ANGLE_EAST);
+      Send(self,@NewHold,#what=Create(&OrnamentalObject,#type=OO_TALLTREE1),
+            #new_row=5,#new_col=15,#fine_row=24,#fine_col=0,#angle=ANGLE_EAST);
+      Send(self,@NewHold,#what=Create(&OrnamentalObject,#type=OO_MIDTREE1),
+            #new_row=5,#new_col=24,#fine_row=56,#fine_col=32,#angle=ANGLE_EAST);
+
+      // Firepit
+      Send(self,@NewHold,#what=Create(&Firepit,#iSoundRadius=5),
+         #new_row=24,#new_col=12,#fine_row=40,#fine_col=16);
+      Send(self,@NewHold,#what=Create(&SmokeColumn),
+         #new_row=24,#new_col=12,#fine_row=40,#fine_col=16);
+
+      propagate;
+   }
+
+end
+////////////////////////////////////////////////////////////////////////////////

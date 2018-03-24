@@ -3388,12 +3388,18 @@ messages:
       {
          return;
       }
-
       // Attackers in PvP are tracked for a longer time.
       if IsClass (self,&Player)
          AND Send(self,@IsRecentPvPCombatant)
       {
          iTime = Send(SETTINGS_OBJECT,@GetRecentPvPTime)*1000;
+      }
+
+      if IsClass(self,&Player)
+         AND Send(self,@FindUsing,#class=&Token) <> $
+         AND IsClass(who,&Player)
+      {
+         return;
       }
 
       foreach i in plHurtMeRecently
@@ -3626,6 +3632,8 @@ messages:
 
       foreach i in plHurtMeRecently
       {
+         SetFirst(i,$);
+         SetNth(i,3,$);
          plHurtMeRecently = DelListElem(plHurtMeRecently,i);
       }
 

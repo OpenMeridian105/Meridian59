@@ -2223,8 +2223,7 @@ messages:
       lOldHonor = Send(SYS,@GetOldHonorList);
       lOldHonorDate = Send(SYS,@GetOldHonorDate);
 
-      // Create a current list.
-      Send(SYS,@CreateHonorList);
+      //Send(SYS,@UpdateHonorList);
 
       if lOldHonor = $
       {
@@ -2247,30 +2246,33 @@ messages:
          lHonorDifference = Cons([First(i),iDiff], lHonorDifference);
       }
 
+      if lHonorDifference = $
+      {
+         Debug("No entries in Honor difference list!");
+         return;
+      }
+
       // Sorts the list from highest point gain to lowest.
       bCheck = TRUE;
       iCount = 0;
 
-      if lHonorDifference <> $
+      while bCheck
       {
-         while bCheck
-         {
-            bCheck = FALSE;
-            // Sorts the list from last entry to first.
-            iCount = Length(lHonorDifference);
+         bCheck = FALSE;
+         // Sorts the list from last entry to first.
+         iCount = Length(lHonorDifference);
 
-            while iCount > 1
+         while iCount > 1
+         {
+            lCur = Nth(lHonorDifference, iCount);
+            lNext = Nth(lHonorDifference, iCount-1);
+            // If the current place has more points than the next, swap them.
+            if Nth(lCur, 2) > Nth(lNext, 2)
             {
-               lCur = Nth(lHonorDifference, iCount);
-               lNext = Nth(lHonorDifference, iCount-1);
-               // If the current place has more points than the next, swap them.
-               if Nth(lCur, 2) > Nth(lNext, 2)
-               {
-                  SwapListElem(lHonorDifference, iCount, iCount-1);
-                  bCheck = TRUE;
-               }
-               --iCount;
+               SwapListElem(lHonorDifference, iCount, iCount-1);
+               bCheck = TRUE;
             }
+            --iCount;
          }
       }
 
@@ -2308,12 +2310,13 @@ messages:
       Send(self,@MsgSendUser,#message_rsc=dm_honor_compare_list,#parm1=GetTempString());
 
       // Show the bottom 5 as well.
-      iCount = Length(lHonorDifference);
-      iCountMax = Bound(iCount-5,0,iCount);
+      iCountMax = Length(lHonorDifference);
+      iCount = Length(lHonorDifference) - Bound(5,0,iCountMax);
 
       ClearTempString();
-      while iCount > iCountMax
+      while iCount < iCountMax
       {
+         ++iCount;
          lPlayer = Nth(lHonorDifference, iCount);
          oPlayer = Send(Nth(lPlayer, 1),@GetName);
          iDiff = Nth(lPlayer, 2);
@@ -2323,7 +2326,6 @@ messages:
          AppendTempString(" with ");
          AppendTempString(iDiff);
          AppendTempString(" points.\n");
-         --iCount;
       }
       Send(self,@MsgSendUser,#message_rsc=dm_honor_compare_list_bottom,#parm1=GetTempString());
 

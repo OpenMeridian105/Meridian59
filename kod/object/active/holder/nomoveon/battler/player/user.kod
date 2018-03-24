@@ -1296,9 +1296,14 @@ messages:
       return;
    }
 
-   PenaltyLoseHonor(honor=0)
+   PenaltyLoseHonor()
    {
       local i, j, iHonorLost, iNumHurters, iHonorEach, iLostTotal, oHurter, oOwner, plHurt, bIsNear;
+
+      if NOT Send(SETTINGS_OBJECT,@HonorSystemActive)
+      {
+         return;
+      }
 
       iHonorLost = 0;
       iNumHurters = 0;
@@ -1322,10 +1327,17 @@ messages:
 
       plHurt = Send(self,@GetHurtMeRecently);
 
-      // Find out how many people attacked us recently.
+      // Find out how many people attacked us recently. Don't count ourselves.
       foreach i in plHurt
       {
          oHurter = First(i);
+         if oHurter = self
+         {
+            SetFirst(i,$);
+            SetNth(i,3,$);
+            plHurt = DelListElem(plHurt,i);
+            continue;
+         }
          if IsClass (oHurter,&Player)
          {
             ++iNumHurters;
@@ -1389,7 +1401,7 @@ messages:
       // pens/dies again soon and they didn't participate.
       Send(self,@ClearHurtMeRecently);
 
-      return iLostTotal;
+      return;
    }
 
    PenaltyLoseXP(iPenCount=0, iEquivDeath=0)

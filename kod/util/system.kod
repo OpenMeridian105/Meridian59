@@ -519,7 +519,6 @@ properties:
    plHonorList = $
    plOldHonorList = $
    plOldHonorDate = $
-   plHonorDifference = $
 
 messages:
 
@@ -1121,6 +1120,11 @@ messages:
    GarbageCollecting(type = $)
    {
       Send(self,@CleanReflectionList);
+
+      if Send(SETTINGS_OBJECT,@HonorSystemActive)
+      {
+         Send(self,@UpdateHonorList);
+      }
 
       SendList(plUsers_logged_on,0,@GarbageCollecting);
 
@@ -8458,7 +8462,8 @@ messages:
          }
       }
       Debug("Honor list created.");
-      Send(self,@SortHonorList);
+      //Send(self,@SortHonorList);
+      Send(self,@UpdateHonorList);
 
       return;
    }
@@ -8500,7 +8505,7 @@ messages:
       return;
    }
 
-   UpdateHonorList(who = $, honor = 0)
+   UpdateHonorList()
    {
       local i;
 
@@ -8512,12 +8517,46 @@ messages:
 
       foreach i in plHonorList
       {
-         if First(i) = who
+         if Send(First(i),@IsUserInactive)
          {
-            SetNth(i,2,honor);
+            plHonorList = DelListElem(plHonorList, i);
          }
+         if NOT Send(First(i),@CanParticipateInHonorSystem)
+         {
+            plHonorList = DelListElem(plHonorList, i);
+         }
+         SetNth(i,2,Send(First(i),@GetHonorPoints));
       }
-      Send(self,@SortHonorList);
+      //Send(self,@SortHonorList);
+      Send(self,@CalculateHonorRanks);
+
+      return;
+   }
+
+   UpdateHonorPoints(who=$)
+   {
+      local lPlayer;
+
+      if plHonorList = $
+      {
+         Debug("No honor list found.");
+         return;
+      }
+      if who = $
+      {
+         return;
+      }
+
+      lPlayer = GetListNode(plHonorList,1,who);
+       if lPlayer <> $
+       {
+          SetNth(lPlayer,2,0);
+       }
+      plHonorList = Send(self,@AddToSortedList,#what=who,#lList=plHonorList,
+                         #number=Send(who,@GetHonorPoints),#bIgnoreDuplicate=FALSE,
+                         #bReverse=FALSE);
+
+      Send(self,@CalculateHonorRanks);
 
       return;
    }
@@ -8533,14 +8572,13 @@ messages:
       iFourth = 30;
 
       iPos = 0;
+      iCountMax = Length(plHonorList);
 
       if plHonorList = $
       {
          Debug("No honor list found.");
          return;
       }
-
-      iCountMax = Length(plHonorList);
 
       if Send(SETTINGS_OBJECT,@ScaleHonorRanks)
       {
@@ -8583,7 +8621,7 @@ messages:
             Send(oPlayer,@SetHonorRank,#rank=5);
          }
       }
-      Debug("Honor ranks calculated.");
+      //Debug("Honor ranks calculated.");
 
       return;
    }
@@ -8595,7 +8633,7 @@ messages:
       local iYear, iMonth, iDay, iHour, iMinute;
 
       // Create a current list.
-      Send(self,@CreateHonorList);
+      Send(self,@UpdateHonorList);
 
       if plHonorList = $
       {

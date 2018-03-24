@@ -9758,6 +9758,11 @@ messages:
    {
       local i, j, iHonorLost, iNumHurters, iHonorEach, iLostTotal, iKillHonor, oHurter, plHurt, bIsNear;
 
+      if NOT Send(SETTINGS_OBJECT,@HonorSystemActive)
+      {
+         return;
+      }
+
       iHonorLost = 0;
       iNumHurters = 0;
       iHonorEach = 0;
@@ -9769,9 +9774,12 @@ messages:
       foreach i in plHurt
       {
          oHurter = First(i);
-         // Don't count the killer for assists.
+         // Don't count the killer or ourselves for assists.
          if oHurter = killer
+            OR oHurter = self
          {
+            SetFirst(i,$);
+            SetNth(i,3,$);
             plHurt = DelListElem(plHurt,i);
             continue;
          }
@@ -15594,38 +15602,38 @@ messages:
       if piHonorPoints = 0
       {
          iHonor = 0;
-         Debug("Honor is 0");
+         //Debug("Honor is 0");
       }
       else if NOT Send(who,@CanParticipateInHonorSystem)
               OR NOT Send(what,@CanParticipateInHonorSystem)
       {
          iHonor = 0;
-         Debug("Attacker or victim don't qualify for honor system.");
+         //Debug("Attacker or victim don't qualify for honor system.");
       }
       // No honor in attacking your own character!
       else if Send(SETTINGS_OBJECT,@NoHonorSameIP)
               AND IsListMatch(Send(who,@GetIP),Send(what,@GetIP))
       {
          iHonor = 0;
-         Debug("Attacker and victim have the same IP.");
+         Debug(what, "tried to gain honor from ",who," - both have the same IP.");
       }
       // Don't award honor if the victim died recently.
       else if GetTime() < (piLastDeathTime + Send(SETTINGS_OBJECT,@GetHonorDeathTime))
       {
          iHonor = 0;
-         Debug("Victim died too recently.");
+         //Debug("Victim died too recently.");
       }
       // Don't award honor if the victim took too many penalties recently.
       else if Send(who,@GetLogoffPenaltyCount) > Send(SETTINGS_OBJECT,@GetHonorMaxPenalty)
       {
          iHonor = 0;
-         Debug("Victim took too many penalties recently.");
+         //Debug("Victim took too many penalties recently.");
       }
       // They have some, but not the full amount. Grab the rest.
       else if piHonorPoints < honor
       {
          iHonor = piHonorPoints;
-         Debug("piHonor is < Honor");
+         //Debug("piHonor is < Honor");
       }
       // The victim can pay the full cost.
       else
@@ -15633,7 +15641,7 @@ messages:
          iHonor = honor;
       }
 
-      Debug("Points transferred: ",iHonor," out of original ",honor);
+      //Debug("Points transferred: ",iHonor," out of original ",honor);
       if iHonor <> 0
       {
          Send(who,@AddHonorPoints,#who=who,#honor=-iHonor);
@@ -15646,7 +15654,7 @@ messages:
    AddHonorPoints(who = $, honor = 0)
    {
       piHonorPoints += honor;
-      Send(SYS,@UpdateHonorList,#who=who,#honor=piHonorPoints);
+      Send(SYS, @UpdateHonorPoints,#who=who);
 
       return;
    }
@@ -15673,27 +15681,19 @@ messages:
    CanParticipateInHonorSystem()
    {
       // Checks whether a player can participate in the honor system.
-      local iHealthMin, iInexperienced, bNoDM;
-
-      iInexperienced = Send(SETTINGS_OBJECT,@GetHonorMinLevels);
-      iHealthMin = Send(SETTINGS_OBJECT,@GetHonorMinHP);
-      // Should normally be true. The honor pool should be shared among players,
-      // since immortals taking something out of a zero-sum system isn't fair.
-      bNoDM = FALSE;
-
       if NOT Send(SETTINGS_OBJECT,@HonorSystemActive)
       {
          return FALSE;
       }
-      else if Send(self, @GetMaxHealth) < iHealthMin
+      else if Send(self, @GetMaxHealth) < Send(SETTINGS_OBJECT,@GetHonorMinHP)
       {
          return FALSE;
       }
-      else if Send(self,@GetTotalLearnPoints) < iInexperienced
+      else if Send(self,@GetTotalLearnPoints) < Send(SETTINGS_OBJECT,@GetHonorMinLevels)
       {
          return FALSE;
       }
-      else if bNoDM
+      else if Send(SETTINGS_OBJECT,@NoHonorDM)
       {
          if IsClass(self,&DM)
             OR IsClass(self,&EscapedConvict)

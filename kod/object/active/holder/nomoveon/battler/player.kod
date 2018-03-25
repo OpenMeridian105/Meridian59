@@ -82,6 +82,10 @@ constants:
    // how long to wait before sending another pvp notify sound (seconds)
    PVP_NOTIFY_DECAY = 5 * 60
    
+   // How long since the last honor point change until a player is considered
+   // inactive for the system? Measured in seconds, currently 60 days.
+   USER_HONOR_INACTIVE_TIME = 60 * 60 * 24 * 60
+   
 resources:
 
    include player.lkod
@@ -1124,6 +1128,7 @@ properties:
    piHonorRank = 0
    // 0 = don't show title, 1 = show title, 2 = alternative title
    piHonorTitle = 1
+   piLastHonorChangeTime = 0
 
 messages:
 
@@ -9449,7 +9454,6 @@ messages:
       // Stop any rescue attempts that were going on.
       Send(self,@CancelRescue);
       
-      piLastDeathTime = GetTime();
 
       // Grab the location of the deceased.
       // Might need to grab the old location if logged off.
@@ -9697,6 +9701,8 @@ messages:
       {
          Send(self,@DeathLoseHonor,#killer=what);
       }
+
+      piLastDeathTime = GetTime();
 
       // Teleport to the Underworld.
       Send(self,@UserGotoDeadRoom);
@@ -15654,6 +15660,7 @@ messages:
    AddHonorPoints(who = $, honor = 0)
    {
       piHonorPoints += honor;
+      piLastHonorChangeTime = GetTime();
       Send(SYS, @UpdateHonorPoints,#who=who);
 
       return;
@@ -15733,6 +15740,12 @@ messages:
       }
 
       return;
+   }
+
+   IsUserHonorInactive()
+   {
+      // Returns TRUE if the player hasn't gained or lost points in the past 60 days.
+      return ((GetTime() - piLastHonorChangeTime) > USER_HONOR_INACTIVE_TIME);
    }
 
 end

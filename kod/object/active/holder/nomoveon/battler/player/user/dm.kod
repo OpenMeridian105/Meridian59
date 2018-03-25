@@ -208,6 +208,7 @@ resources:
 
    dm_honor_player_command = "gethonor"
    dm_honor_copy_command = "copyhonorlist"
+   dm_honor_copy_overwrite_command = "overwrite honorlist"
    dm_honor_compare_command = "comparehonorlists"
 
    dm_honor_player_rsc = "%q has %i honor points."
@@ -215,6 +216,9 @@ resources:
    dm_honor_copy_rsc = \
       "Honor list copied! Use ~bdm comparehonorlists ~n at at later point "
       "to track changes in points from now on."
+   dm_honor_copy_warning = \
+      "A list created by %s on %i/%i/%i, %i:%i already exists. If you're sure that "
+      "you want to overwrite it use the ~bdm overwrite honorlist ~ncommand."
    dm_honor_compare_no_list = "No previous list found!"
    dm_honor_compare_no_date = "Can't find date for previous list!"
    dm_honor_compare_date = "Honor point changes since %i/%i/%i, %i:%i"
@@ -1262,6 +1266,13 @@ messages:
          return;
       }
 
+      if (StringContain(string,dm_honor_copy_overwrite_command))
+      {
+         Send(self,@DMSayHonorOverwrite);
+
+         return;
+      }
+
       if (StringContain(string,dm_honor_compare_command))
       {
          Send(self,@DMSayHonorCompare);
@@ -2208,8 +2219,39 @@ messages:
 
    DMSayHonorCopy()
    {
+      local iYear, iMonth, iDay, iHour, iMinute, lOldHonor, lOldHonorDate, sCopied;
+
+      lOldHonor = Send(SYS,@GetOldHonorList);
+      lOldHonorDate = Send(SYS,@GetOldHonorDate);
+      sCopied = Send(SYS,@GetHonorListCopied);
+
+      // Give a warning when overwriting an existing list.
+      if lOldHonor <> $
+         AND lOldHonorDate <> $
+         AND sCopied <> $
+      {
+         iYear = First(First(lOldHonorDate));
+         iMonth = Nth(First(lOldHonorDate),2);
+         iDay = Nth(First(lOldHonorDate),3);
+         iHour = Nth(First(lOldHonorDate),4);
+         iMinute = Nth(First(lOldHonorDate),5);
+         Send(self,@MsgSendUser,#message_rsc=dm_honor_copy_warning,#parm1=sCopied,
+               #parm2=iDay,#parm3=iMonth,#parm4=iYear,#parm5=iHour,#parm6=iMinute);
+
+         return;
+      }
       Send(SYS,@CopyHonorList);
       Send(self,@MsgSendUser,#message_rsc=dm_honor_copy_rsc);
+      Send(SYS,@SetHonorListCopied,#who=self);
+
+      return;
+   }
+
+   DMSayHonorOverwrite()
+   {
+      Send(SYS,@CopyHonorList);
+      Send(self,@MsgSendUser,#message_rsc=dm_honor_copy_rsc);
+      Send(SYS,@SetHonorListCopied,#who=self);
 
       return;
    }

@@ -519,6 +519,7 @@ properties:
    plHonorList = $
    plOldHonorList = $
    plOldHonorDate = $
+   psHonorListCopied = $
 
 messages:
 
@@ -8455,52 +8456,14 @@ messages:
          // Don't include DMs, event characters, ineligible characters
          // or empty character slots.
          if Send(i,@CanParticipateInHonorSystem)
-            // Also exclude characters that haven't logged on in 60 days.
-            AND NOT Send(i,@IsUserInactive)
+            // Also exclude characters that haven't gained/lost points in 60 days.
+            AND NOT Send(i,@IsUserHonorInactive)
          {
             plHonorList = Cons([i, Send(i,@GetHonorPoints)], plHonorList);
          }
       }
       Debug("Honor list created.");
-      //Send(self,@SortHonorList);
       Send(self,@UpdateHonorList);
-
-      return;
-   }
-
-   SortHonorList()
-   {
-      local iCount, lCur, lNext, bCheck;
-
-      bCheck = TRUE;
-
-      if plHonorList = $
-      {
-         Debug("No honor list found.");
-         return;
-      }
-
-      // Sorts the list by honor points.
-      while bCheck
-      {
-         bCheck = FALSE;
-         // Sorts the list from last entry to first.
-         iCount = Length(plHonorList);
-         while iCount > 1
-         {
-            lCur = Nth(plHonorList, iCount);
-            lNext = Nth(plHonorList, iCount-1);
-            // If the current place has more honor than the next, swap them.
-            if Nth(lCur, 2) > Nth(lNext, 2)
-            {
-               SwapListElem(plHonorList, iCount, iCount-1);
-               bCheck = TRUE;
-            }
-            --iCount;
-         }
-      }
-      Debug("Honor list sorted.");
-      Send(self,@CalculateHonorRanks);
 
       return;
    }
@@ -8517,7 +8480,7 @@ messages:
 
       foreach i in plHonorList
       {
-         if Send(First(i),@IsUserInactive)
+         if Send(First(i),@IsUserHonorInactive)
          {
             plHonorList = DelListElem(plHonorList, i);
          }
@@ -8527,7 +8490,6 @@ messages:
          }
          SetNth(i,2,Send(First(i),@GetHonorPoints));
       }
-      //Send(self,@SortHonorList);
       Send(self,@CalculateHonorRanks);
 
       return;
@@ -8540,7 +8502,7 @@ messages:
       if plHonorList = $
       {
          Debug("No honor list found.");
-         return;
+         Send(self,@CreateHonorList);
       }
       if who = $
       {
@@ -8660,6 +8622,18 @@ messages:
    GetOldHonorDate()
    {
       return plOldHonorDate;
+   }
+
+   SetHonorListCopied(who=$)
+   {
+      psHonorListCopied = Send(who,@GetName);
+
+      return;
+   }
+
+   GetHonorListCopied()
+   {
+      return psHonorListCopied;
    }
 
 end

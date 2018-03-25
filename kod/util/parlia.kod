@@ -1322,7 +1322,7 @@ messages:
       return 2;
    }
 
-   GetFactionRegenBonus(who=$, hpregen=TRUE)
+   GetFactionHealthRegenBonus(who=$,maxhealth=FALSE)
    {
       local iBonus, iFaction;
 
@@ -1333,8 +1333,9 @@ messages:
 
       if who = $
       {
-         debug("bad who!");
-         return FALSE;
+         Debug("Bad who in GetFactionHealthRegenBonus!");
+
+         return 0;
       }
 
       if NOT IsClass(who,&Player)
@@ -1344,23 +1345,23 @@ messages:
 
       iBonus = 0;
 
-      iFaction = send(who,@GetFaction);
-      if (iFaction = FACTION_DUKE)
-         OR ((iFaction = FACTION_PRINCESS) AND (hpregen))
-         OR ((iFaction = FACTION_REBEL) AND (NOT hpregen))
+      iFaction = Send(who,@GetFaction);
+
+      // Only Jonas players get health bonus.
+      if (iFaction <> FACTION_REBEL)
       {
          return 0;
       }
 
-      // Player is under 40
-      if not Send(who,@PlayerIsIntriguing)
+      if NOT Send(who,@PlayerIsIntriguing)
       {
          return 5;
       }
-    
+
       iBonus = Send(self,@CalcFactionBonus,#base=30,#faction=iFaction);
 
-      if Random(0,150) = 0 AND iFaction <> FACTION_NEUTRAL
+      if NOT maxhealth
+         AND Random(0,500) = 0
       {
          if iBonus <= 0
          {
@@ -1373,7 +1374,64 @@ messages:
                  #parm1=Send(self,@GetFactionLiege,#faction=iFaction));
          }
       }
-      
+
+      return iBonus;
+   }
+
+   GetFactionManaRegenBonus(who=$,maxmana=FALSE)
+   {
+      local iBonus, iFaction;
+
+      // Rationale behind the numbers:
+      // This number is a percentage boost to regeneration.
+      // Non-intriguing mortals get a small bonus of 5%.
+      // Maximum normal power is 30%.
+
+      if who = $
+      {
+         Debug("Bad who in GetFactionManaRegenBonus!");
+
+         return 0;
+      }
+
+      if NOT IsClass(who,&Player)
+      {
+         return 0;
+      }
+
+      iBonus = 0;
+
+      iFaction = Send(who,@GetFaction);
+
+      // Only Princess players get mana bonus.
+      if (iFaction <> FACTION_PRINCESS)
+      {
+         return 0;
+      }
+
+      // Player is under 40
+      if NOT Send(who,@PlayerIsIntriguing)
+      {
+         return 5;
+      }
+
+      iBonus = Send(self,@CalcFactionBonus,#base=30,#faction=iFaction);
+
+      if NOT maxmana
+         AND Random(0,500) = 0
+      {
+         if iBonus <= 0
+         {
+            Post(who,@MsgSendUser,#message_rsc=parliament_regen_down,
+                 #parm1=Send(self,@GetFactionLiege,#faction=iFaction));
+         }
+         else
+         {
+            Post(who,@MsgSendUser,#message_rsc=parliament_regen_up,
+                 #parm1=Send(self,@GetFactionLiege,#faction=iFaction));
+         }
+      }
+
       return iBonus;
    }
 

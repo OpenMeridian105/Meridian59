@@ -584,10 +584,10 @@ WallData *IntersectNode(BSPnode *node, int old_x, int old_y, int new_x, int new_
          // Can't step up too far; watch bumping your head; see if passable
          if ((sidedef->below_bmap == NULL || 
             (sidedef->below_bmap != NULL && 
-            (wall->z1 - below_height - z) <= MAX_STEP_HEIGHT))
+            (GetFloorHeight(new_x, new_y, other_sector) - below_height - z) <= MAX_STEP_HEIGHT))
             &&
             (sidedef->above_bmap == NULL || 
-            (sidedef->above_bmap != NULL && wall->z2 - z >= player.height)) 
+            (sidedef->above_bmap != NULL && GetCeilingHeight(new_x, new_y, other_sector) - z >= player.height))
             &&
             (sidedef->flags & WF_PASSABLE))
             continue;

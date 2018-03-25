@@ -39,10 +39,11 @@
 #define SPEEDKODTOROO(x)      ((x) * ROOFINENESS * 0.0001f)             // converts big.sq. per 10s in ROO fine units per 1ms
 #define GRAVITYACCELERATION   FINENESSKODTOROO(-0.00032f)               // dist/ms² (dist=1:1024)
 #define MAXSTEPHEIGHT         ((float)(24 << 4))                        // (from clientd3d/move.c)
+#define MAXSTEPHEIGHTUSER     (MAXSTEPHEIGHT + 96)                      // for user validation, with some tolerance
 #define PLAYERWIDTH           (31.0f * (float)KODFINENESS * 0.25f)      // (from clientd3d/game.c)
 #define WALLMINDISTANCE       (PLAYERWIDTH / 2.0f)                      // (from clientd3d/game.c)
 #define WALLMINDISTANCE2      (WALLMINDISTANCE * WALLMINDISTANCE)       // (from clientd3d/game.c)
-#define WALLTOLERANCEUSER     96                                        // 96 ROO units = 6 KOD fine units
+#define WALLTOLERANCEUSER     208                                       // 208 ROO units = 13 KOD fine units
 #define WALLMINDISTANCEUSER   (WALLMINDISTANCE - WALLTOLERANCEUSER)     // let users get a bit closer (tolerance for check)
 #define WALLMINDISTANCEUSER2  (WALLMINDISTANCEUSER*WALLMINDISTANCEUSER) // squared WALLMINDISTANCEUSER
 #define OBJMINDISTANCE        512.0f                                    // 2 astar rows/cols, MUST BE MULTIPLE OF 256

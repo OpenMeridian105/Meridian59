@@ -997,9 +997,13 @@ template<bool ISPLAYER> bool BSPCanMoveInRoom3D(room_type* Room, V2* S, V2* E, f
             heightModified = MAX(hFloorSQ, heightModified);
          }
 
+         // pick max stepheight based on player/monster
+         // this gives some tolerance for users, but clients should use MAXSTEPHEIGHT
+         const float MAXSTEPH = (ISPLAYER) ? MAXSTEPHEIGHTUSER : MAXSTEPHEIGHT;
+         
          // check stepheight (this also requires a lower texture set)
          //if (transit->SideS->TextureLower > 0 && (hFloorE - hFloorQ > MAXSTEPHEIGHT))
-         if (transit->SideS->TextureLower > 0 && (hFloorEQ - heightModified > MAXSTEPHEIGHT))
+         if (transit->SideS->TextureLower > 0 && (hFloorEQ - heightModified > MAXSTEPH))
             return false;
 
          // get ceiling height

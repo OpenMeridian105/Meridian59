@@ -64,6 +64,10 @@ resources:
    // Name displayed in trophy descriptions.
    deatharena_trophy_name = "Dealers of Death"
 
+   HonorSign_title_on = "show my title"
+   HonorSign_title_off = "hide my title"
+   HonorSign_title_alt = "show my alternative title"
+
 classvars:
 
    vrName = room_name_tosdeatharena
@@ -106,6 +110,9 @@ messages:
       Send(self,@NewHold,#what=Create(&Sign,#name=deatharena_sign_name,
             #desc=deatharena_sign_desc),#new_row=22,#new_col=4,
             #fine_row=16,#fine_col=6);
+
+      Send(self,@NewHold,#what=Create(&HonorSign),#new_row=22,#new_col=18,
+            #fine_row=00,#fine_col=00);
 
       lObjCoords1 = [ [8,23,17,11,OO_ALTAR], [24,16,60,50,OO_BIG_BAG],
                       [24,8,60,34,OO_BASKET], [24,9,60,42,OO_BAG_OF_BEANS],
@@ -603,6 +610,27 @@ messages:
       return;
    }
 #endregion Entry Door
+
+   SomeoneSaid(what = $,type = $,string = $)
+   {
+      if StringContain(string,HonorSign_title_on)
+      {
+         Send(what,@ShowHonorTitle,#iTitle=1);
+         return;
+      }
+      else if StringContain(string,HonorSign_title_off)
+      {
+         Send(what,@ShowHonorTitle,#iTitle=0);
+         return;
+      }
+      else if StringContain(string,HonorSign_title_alt)
+      {
+         Send(what,@ShowHonorTitle,#iTitle=2);
+         return;
+      }
+
+      propagate;
+   }
 
 end
 ////////////////////////////////////////////////////////////////////////////////

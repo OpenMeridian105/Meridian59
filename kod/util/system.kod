@@ -515,6 +515,12 @@ properties:
    // Timer to trigger autolog test.
    ptAutologTestTimer = $
 
+   // List of every player's honor points.
+   plHonorList = $
+   plOldHonorList = $
+   plOldHonorDate = $
+   psHonorListCopied = $
+
 messages:
 
    GetName()
@@ -1115,6 +1121,11 @@ messages:
    GarbageCollecting(type = $)
    {
       Send(self,@CleanReflectionList);
+
+      if Send(SETTINGS_OBJECT,@HonorSystemActive)
+      {
+         Send(self,@UpdateHonorList);
+      }
 
       SendList(plUsers_logged_on,0,@GarbageCollecting);
 
@@ -8406,6 +8417,223 @@ messages:
       }
 
       return $;
+   }
+
+   ResetGlobalHonor()
+   {
+      local i;
+
+      foreach i in plUsers
+      {
+         Send(i,@SetHonorPoints,#honor=Send(SETTINGS_OBJECT,@GetDefaultHonor));
+      }
+
+      Debug("Global honor reset.");
+      Send(self,@CreateHonorList);
+
+      return;
+   }
+
+   CreateHonorList()
+   {
+      local i;
+
+      if plHonorList <> $
+      {
+         foreach i in plHonorList
+         {
+            plHonorList = DelListElem(plHonorList,i);
+         }
+      }
+      foreach i in plUsers
+      {
+         // No ranks for people who dropped out of the honor system.
+         // (by losing HP, school levels, opting out of PvP etc.)
+         if NOT Send(i,@CanParticipateInHonorSystem)
+         {
+            Send(i,@SetHonorRank,#rank=0);
+         }
+         // Don't include DMs, event characters, ineligible characters
+         // or empty character slots.
+         if Send(i,@CanParticipateInHonorSystem)
+            // Also exclude characters that haven't gained/lost points in 60 days.
+            AND NOT Send(i,@IsUserHonorInactive)
+         {
+            plHonorList = Cons([i, Send(i,@GetHonorPoints)], plHonorList);
+         }
+      }
+      Debug("Honor list created.");
+      Send(self,@UpdateHonorList);
+
+      return;
+   }
+
+   UpdateHonorList()
+   {
+      local i;
+
+      if plHonorList = $
+      {
+         Debug("No honor list found.");
+         return;
+      }
+
+      foreach i in plHonorList
+      {
+         if Send(First(i),@IsUserHonorInactive)
+         {
+            plHonorList = DelListElem(plHonorList, i);
+         }
+         if NOT Send(First(i),@CanParticipateInHonorSystem)
+         {
+            plHonorList = DelListElem(plHonorList, i);
+         }
+         SetNth(i,2,Send(First(i),@GetHonorPoints));
+      }
+      Send(self,@CalculateHonorRanks);
+
+      return;
+   }
+
+   UpdateHonorPoints(who=$)
+   {
+      local lPlayer;
+
+      if plHonorList = $
+      {
+         Debug("No honor list found.");
+         Send(self,@CreateHonorList);
+      }
+      if who = $
+      {
+         return;
+      }
+
+      lPlayer = GetListNode(plHonorList,1,who);
+       if lPlayer <> $
+       {
+          SetNth(lPlayer,2,0);
+       }
+      plHonorList = Send(self,@AddToSortedList,#what=who,#lList=plHonorList,
+                         #number=Send(who,@GetHonorPoints),#bIgnoreDuplicate=FALSE,
+                         #bReverse=FALSE);
+
+      Send(self,@CalculateHonorRanks);
+
+      return;
+   }
+
+   CalculateHonorRanks()
+   {
+      local iCount, iFirst, iSecond, iThird, iFourth, iPos, iCountMax, oPlayer, lPlayer;
+
+      // How many players can hold a given rank.
+      iFirst = 1;
+      iSecond = 3;
+      iThird = 10;
+      iFourth = 30;
+
+      iPos = 0;
+      iCountMax = Length(plHonorList);
+
+      if plHonorList = $
+      {
+         Debug("No honor list found.");
+         return;
+      }
+
+      if Send(SETTINGS_OBJECT,@ScaleHonorRanks)
+      {
+         // Rank 1 for the best player, 2 for the best 10%, 3 for the best 10-30%,
+         // 4 for 30-80% and 5 for everyone else.
+         iFirst = 1;
+         iSecond = (iCountMax * 10) / 100;
+         iThird = (iCountMax * 20) / 100;
+         iFourth = (iCountMax * 50) / 100;
+      }
+
+      while iPos < iCountMax
+      {
+         ++iPos;
+         lPlayer = Nth(plHonorList, iPos);
+         oPlayer = Nth(lPlayer,1);
+
+         if iPos >= 1
+            AND iPos <= iFirst
+         {
+            Send(oPlayer,@SetHonorRank,#rank=1);
+         }
+         else if iPos > iFirst
+                 AND iPos <= iSecond + iFirst
+         {
+            Send(oPlayer,@SetHonorRank,#rank=2);
+         }
+         else if iPos > iSecond + iFirst
+                 AND iPos <= iThird + iSecond + iFirst
+         {
+            Send(oPlayer,@SetHonorRank,#rank=3);
+         }
+         else if iPos > iThird + iSecond + iFirst
+                 AND iPos <= iFourth + iThird + iSecond + iFirst
+         {
+            Send(oPlayer,@SetHonorRank,#rank=4);
+         }
+         else
+         {
+            Send(oPlayer,@SetHonorRank,#rank=5);
+         }
+      }
+      //Debug("Honor ranks calculated.");
+
+      return;
+   }
+
+   CopyHonorList()
+   {
+      // Creates a copy of the current honor list to track score changes over
+      // a period of time. Useful for events etc.
+      local iYear, iMonth, iDay, iHour, iMinute;
+
+      // Create a current list.
+      Send(self,@UpdateHonorList);
+
+      if plHonorList = $
+      {
+         Debug("No honor list found.");
+         return;
+      }
+      plOldHonorList = ListCopy(plHonorList);
+      GetDateAndTime(BTIME_LOCAL, *iYear, *iMonth, *iDay, *iHour, *iMinute, $);
+      plOldHonorDate = Cons([iYear, iMonth, iDay, iHour, iMinute], plOldHonorDate);
+
+      return;
+   }
+
+   GetHonorList()
+   {
+      return plHonorList;
+   }
+
+   GetOldHonorList()
+   {
+      return plOldHonorList;
+   }
+
+   GetOldHonorDate()
+   {
+      return plOldHonorDate;
+   }
+
+   SetHonorListCopied(who=$)
+   {
+      psHonorListCopied = Send(who,@GetName);
+
+      return;
+   }
+
+   GetHonorListCopied()
+   {
+      return psHonorListCopied;
    }
 
 end

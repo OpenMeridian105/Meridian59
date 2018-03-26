@@ -1,0 +1,108 @@
+// Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+// All rights reserved.
+//
+// This software is distributed under a license that is described in
+// the LICENSE file that accompanies it.
+//
+// Meridian is a registered trademark.
+
+
+////////////////////////////////////////////////////////////////////////////////
+HonorSign is PassiveObject
+
+constants:
+
+   include blakston.khd
+   include protocol.khd
+
+resources:
+
+   include honrsign.lkod
+
+   HonorSign_name_rsc = "the Honor League"
+   HonorSign_icon_rsc = newbsign.bgf
+   HonorSign_desc_rsc = \
+      "Any worthy combatant in the world of Meridian 59 fights for honor during combat. "
+      "You gain honor by defeating opponents in combat, either by killing them or "
+      "forcing them to flee the battlefield and sever their physical connection to "
+      "this world.\n"
+      "Each participant is awarded a title reflecting their current standing in the "
+      "League, with the highest ranks reserved for the most successful fighters in the "
+      "land.\n\n"
+      "You can say \"show my title\" or \"show my alternative title\" if you wish to "
+      "display your rank or \"hide my title\" to turn it off.\n\n"
+      "The highest ranking players are:\n\n"
+      "1: %q \n"
+      "2: %q \n"
+      "3: %q \n"
+      "4: %q \n"
+      "5: %q \n"
+      "6: %q \n"
+      "7: %q \n"
+      "8: %q \n"
+      "9: %q \n"
+      "10: %q \n"
+   HonorSign_none = ""
+   HonorSign_no_list = "Honor League currently not in progress."
+
+classvars:
+
+   vrName = HonorSign_name_rsc
+   vrIcon = HonorSign_icon_rsc
+
+   viObject_flags = OF_SIGN | OF_DISPLAY_NAME
+
+properties:
+
+   piNameColor = NC_DM
+
+messages:
+
+   ReqNewOwner(what = $)
+   {
+      return FALSE;
+   }
+
+   ShowDesc()
+   {
+      local iCount, iCountMax, oPlayer, lHonorList;
+
+      lHonorList = Send(SYS,@GetHonorList);
+      iCount = 0;
+      iCountMax = 10;
+
+      if lHonorList = $
+         OR NOT Send(SETTINGS_OBJECT,@HonorSystemActive)
+      {
+         AddPacket(4, HonorSign_no_list);
+         return;
+      }
+
+      if Length(lHonorList) < iCountMax
+      {
+         iCountMax = Length(lHonorList);
+      }
+
+      AddPacket(4, HonorSign_desc_rsc);
+      // Count top 10 players. If there's fewer than 10 people participating,
+      // add a blank resource.
+      while iCount < 10
+      {
+         ++iCount;
+         if iCount <= iCountMax
+         {
+            oPlayer = Send(First(Nth(lHonorList,iCount)),@GetName);
+            AddPacket(STRING_RESOURCE, oPlayer);
+         }
+         else
+         {
+            oPlayer = HonorSign_none;
+            AddPacket(STRING_RESOURCE, oPlayer);
+         }
+      }
+
+      return;
+   }
+
+end
+////////////////////////////////////////////////////////////////////////////////

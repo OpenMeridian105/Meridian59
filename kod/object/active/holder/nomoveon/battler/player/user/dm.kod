@@ -69,6 +69,7 @@ resources:
    dm_help_messages_command = "help messages"
    dm_help_spawn_command = "help spawn"
    dm_help_forcedignore_command = "help forceignore"
+   dm_help_honor_command = "help honor"
    dm_turn_off_pk = "turn off pk"
    dm_pk_off = "PvP is now OFF for this screen."
    dm_pk_already_off = "PvP is already OFF for this screen."
@@ -205,6 +206,25 @@ resources:
    dm_sameip_singleuser = "No other users with same IP as %q."
    dm_sameip_manyuser = "Users with same IP as %q: ~b%q."
 
+   dm_honor_player_command = "gethonor"
+   dm_honor_copy_command = "copyhonorlist"
+   dm_honor_copy_overwrite_command = "overwrite honorlist"
+   dm_honor_compare_command = "comparehonorlists"
+
+   dm_honor_player_rsc = "%q has %i honor points."
+   dm_honor_player_fail = "User %q could not be found."
+   dm_honor_copy_rsc = \
+      "Honor list copied! Use ~bdm comparehonorlists ~n at at later point "
+      "to track changes in points from now on."
+   dm_honor_copy_warning = \
+      "A list created by %s on %i/%i/%i, %i:%i already exists. If you're sure that "
+      "you want to overwrite it use the ~bdm overwrite honorlist ~ncommand."
+   dm_honor_compare_no_list = "No previous list found!"
+   dm_honor_compare_no_date = "Can't find date for previous list!"
+   dm_honor_compare_date = "Honor point changes since %i/%i/%i, %i:%i"
+   dm_honor_compare_list = "Top 10:\n%q"
+   dm_honor_compare_list_bottom = "Bottom 5:\n%q"
+
    // NOTE: if an internationalised string is added for dm_place_command,
    // then all the items that can be placed need to be changed also.
    dm_place_command = "place"
@@ -281,7 +301,9 @@ resources:
       "~cNew! ~nUse ~bdm get squelched~n to list squelched players, and ~bdm "
       "get damned~n to list damned players (players in OoG).\n"
       "~cNew! ~nUse ~bdm help forceignore~n to see commands related to forcing "
-      "players to ignore each other. Sad, but a last resort."
+      "players to ignore each other. Sad, but a last resort.\n"
+      "~cNew! ~nUse ~bdm help honor~n to see commands related to the player "
+      "versus player honor system."
 
    // Help strings for flagged commands.
    dm_help_turnoff_pk = \
@@ -374,6 +396,13 @@ resources:
       "each other.\nUse ~bdm forceignore list ~cplayer~n to get a list of the "
       "players that they are forced to ignore\nCommas must be used to separate "
       "player names."
+   dm_help_honor = \
+      "Use ~bdm gethonor ~cplayer ~nto see how many points they have.\n"
+      "Use ~bdm copyhonorlist ~nto create a copy of the current honor list that "
+      "can be checked against later. ~B~rWarning! ~nThis will overwrite any "
+      "previously created list!\n"
+      "Use ~bdm comparehonorlists ~nto view a list of  players with the "
+      "highest score change since the last list was copied."
       
    dm_dontinterfere = "~B~gYou should not try to interfere with the game."
 
@@ -1219,6 +1248,34 @@ messages:
          AND StringContain(string,dm_sameip_rsc))
       {
          Send(self,@DMSayCheckSameIP,#string=string);
+
+         return;
+      }
+
+      if (StringContain(string,dm_honor_player_command))
+      {
+         Send(self,@DMSayHonorPlayer,#string=string);
+
+         return;
+      }
+
+      if (StringContain(string,dm_honor_copy_command))
+      {
+         Send(self,@DMSayHonorCopy);
+
+         return;
+      }
+
+      if (StringContain(string,dm_honor_copy_overwrite_command))
+      {
+         Send(self,@DMSayHonorOverwrite);
+
+         return;
+      }
+
+      if (StringContain(string,dm_honor_compare_command))
+      {
+         Send(self,@DMSayHonorCompare);
 
          return;
       }
@@ -2143,6 +2200,180 @@ messages:
       return;
    }
 
+   DMSayHonorPlayer(string = $)
+   {
+      local oUser, iHonor;
+
+      StringSubstitute(string, dm_honor_player_command, "");
+      oUser = Send(SYS,@FindUserByString,#string=string);
+      if oUser = $
+      {
+         Send(self,@MsgSendUser,#message_rsc=dm_honor_player_fail,#parm1=string);
+         return;
+      }
+      iHonor = Send(oUser,@GetHonorPoints);
+      Send(self,@MsgSendUser,#message_rsc=dm_honor_player_rsc,#parm1=string,#parm2=iHonor);
+
+      return;
+   }
+
+   DMSayHonorCopy()
+   {
+      local iYear, iMonth, iDay, iHour, iMinute, lOldHonor, lOldHonorDate, sCopied;
+
+      lOldHonor = Send(SYS,@GetOldHonorList);
+      lOldHonorDate = Send(SYS,@GetOldHonorDate);
+      sCopied = Send(SYS,@GetHonorListCopied);
+
+      // Give a warning when overwriting an existing list.
+      if lOldHonor <> $
+         AND lOldHonorDate <> $
+         AND sCopied <> $
+      {
+         iYear = First(First(lOldHonorDate));
+         iMonth = Nth(First(lOldHonorDate),2);
+         iDay = Nth(First(lOldHonorDate),3);
+         iHour = Nth(First(lOldHonorDate),4);
+         iMinute = Nth(First(lOldHonorDate),5);
+         Send(self,@MsgSendUser,#message_rsc=dm_honor_copy_warning,#parm1=sCopied,
+               #parm2=iDay,#parm3=iMonth,#parm4=iYear,#parm5=iHour,#parm6=iMinute);
+
+         return;
+      }
+      Send(SYS,@CopyHonorList);
+      Send(self,@MsgSendUser,#message_rsc=dm_honor_copy_rsc);
+      Send(SYS,@SetHonorListCopied,#who=self);
+
+      return;
+   }
+
+   DMSayHonorOverwrite()
+   {
+      Send(SYS,@CopyHonorList);
+      Send(self,@MsgSendUser,#message_rsc=dm_honor_copy_rsc);
+      Send(SYS,@SetHonorListCopied,#who=self);
+
+      return;
+   }
+
+   DMSayHonorCompare()
+   {
+      local i, iOldHonor, iCurrentHonor, iDiff, iCount, iCountMax, iYear, iMonth, iDay,
+            iHour, iMinute, oPlayer, lPlayer, lCur, lNext, bCheck, lOldHonor, 
+            lOldHonorDate, lHonorDifference;
+
+      lOldHonor = Send(SYS,@GetOldHonorList);
+      lOldHonorDate = Send(SYS,@GetOldHonorDate);
+
+      //Send(SYS,@UpdateHonorList);
+
+      if lOldHonor = $
+      {
+         Send(self,@MsgSendUser,#message_rsc=dm_honor_compare_no_list);
+         return;
+      }
+      else if lOldHonorDate = $
+      {
+         Send(self,@MsgSendUser,#message_rsc=dm_honor_compare_no_date);
+         return;
+      }
+
+      lHonorDifference = $;
+
+      foreach i in lOldHonor
+      {
+         iOldHonor = Nth(i,2);
+         iCurrentHonor = Send(First(i),@GetHonorPoints);
+         iDiff = iCurrentHonor - iOldHonor;
+         lHonorDifference = Cons([First(i),iDiff], lHonorDifference);
+      }
+
+      if lHonorDifference = $
+      {
+         Debug("No entries in Honor difference list!");
+         return;
+      }
+
+      // Sorts the list from highest point gain to lowest.
+      bCheck = TRUE;
+      iCount = 0;
+
+      while bCheck
+      {
+         bCheck = FALSE;
+         // Sorts the list from last entry to first.
+         iCount = Length(lHonorDifference);
+
+         while iCount > 1
+         {
+            lCur = Nth(lHonorDifference, iCount);
+            lNext = Nth(lHonorDifference, iCount-1);
+            // If the current place has more points than the next, swap them.
+            if Nth(lCur, 2) > Nth(lNext, 2)
+            {
+               SwapListElem(lHonorDifference, iCount, iCount-1);
+               bCheck = TRUE;
+            }
+            --iCount;
+         }
+      }
+
+      // Show date when old honor list was copied.
+      iYear = First(First(lOldHonorDate));
+      iMonth = Nth(First(lOldHonorDate),2);
+      iDay = Nth(First(lOldHonorDate),3);
+      iHour = Nth(First(lOldHonorDate),4);
+      iMinute = Nth(First(lOldHonorDate),5);
+      Send(self,@MsgSendUser,#message_rsc=dm_honor_compare_date,#parm1=iDay,#parm2=iMonth,
+            #parm3=iYear,#parm4=iHour,#parm5=iMinute);
+
+      // Shows a top 10 of the players with the highest point gain.
+      iCount = 0;
+      iCountMax = 10;
+      if Length(lHonorDifference) < iCountMax
+      {
+         iCountMax = Length(lHonorDifference);
+      }
+
+      ClearTempString();
+      while iCount < iCountMax
+      {
+         ++iCount;
+         lPlayer = Nth(lHonorDifference, iCount);
+         oPlayer = Send(Nth(lPlayer, 1),@GetName);
+         iDiff = Nth(lPlayer, 2);
+         AppendTempString(iCount);
+         AppendTempString(". is ");
+         AppendTempString(oPlayer);
+         AppendTempString(" with ");
+         AppendTempString(iDiff);
+         AppendTempString(" points.\n");
+      }
+      Send(self,@MsgSendUser,#message_rsc=dm_honor_compare_list,#parm1=GetTempString());
+
+      // Show the bottom 5 as well.
+      iCountMax = Length(lHonorDifference);
+      iCount = Length(lHonorDifference) - Bound(5,0,iCountMax);
+
+      ClearTempString();
+      while iCount < iCountMax
+      {
+         ++iCount;
+         lPlayer = Nth(lHonorDifference, iCount);
+         oPlayer = Send(Nth(lPlayer, 1),@GetName);
+         iDiff = Nth(lPlayer, 2);
+         AppendTempString(iCount);
+         AppendTempString(". is ");
+         AppendTempString(oPlayer);
+         AppendTempString(" with ");
+         AppendTempString(iDiff);
+         AppendTempString(" points.\n");
+      }
+      Send(self,@MsgSendUser,#message_rsc=dm_honor_compare_list_bottom,#parm1=GetTempString());
+
+      return;
+   }
+
    DMSayHelp(string=$)
    "Return TRUE if handled here, FALSE otherwise."
    {
@@ -2182,6 +2413,13 @@ messages:
       if StringEqual(string,dm_help_forcedignore_command)
       {
          Send(self,@MsgSendUser,#message_rsc=dm_help_forcedignore);
+
+         return TRUE;
+      }
+
+      if StringEqual(string,dm_help_honor_command)
+      {
+         Send(self,@MsgSendUser,#message_rsc=dm_help_honor);
 
          return TRUE;
       }

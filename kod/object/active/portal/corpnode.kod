@@ -63,7 +63,16 @@ messages:
 
    TeleportSomething(what = $,new_row = $,new_col = $)
    {
-      Send(poOwner,@ZapToCorpse,#who=what);
+      if Send(what,@GetNodeList) & piNode_num
+      {
+         Send(poOwner,@ZapToCorpse,#who=what);
+      }
+      else
+      {
+         Send(SYS,@UtilGoNearSquare,#what=what,
+               #where=Send(SYS,@FindRoomByNum,#num=RID_UNDERWORLD),
+               #new_row=17,#new_col=16,#fine_row=32,#fine_col=32);
+      }
 
       return;
    }

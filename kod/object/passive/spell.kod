@@ -1441,6 +1441,19 @@ messages:
          }
       }
 
+      // Increased fizzle chance against invisible players if the caster doesn't
+      // have detect invisible, makes cheating fairly pointless.
+      if lTargets <> $
+         AND Send(self,@GetNumSpellTargets) = 1
+         AND IsClass(First(lTargets),&Player)
+         AND First(lTargets) <> who
+         AND IsClass(who,&Player)
+         AND Send(First(lTargets),@CheckPlayerFlag,#flag=PFLAG_INVISIBLE)
+         AND NOT Send(who,@CheckPlayerFlag,#flag=PFLAG2_DETECT_INVIS,#flagset=2)
+      {
+         num = num / 2;
+      }
+
       if Random(1,100) > num
          AND (oRing = $ OR NOT Send(oRing,@InUse))
       {

@@ -2129,6 +2129,17 @@ messages:
          + Send(SETTINGS_OBJECT,@GetBaseRating);
       iChanceToHit = iOffense * Send(SETTINGS_OBJECT,@GetEqualChanceToHit) / iDefense;
       iChanceToHit = Bound(iChanceToHit,125,2000);
+
+      // Increased miss chance against invisible players if the attacker doesn't
+      // have detect invisible, makes cheating fairly pointless.
+      if IsClass(self,&Player)
+         AND IsClass(what,&Player)
+         AND Send(what,@CheckPlayerFlag,#flag=PFLAG_INVISIBLE)
+         AND NOT Send(self,@CheckPlayerFlag,#flag=PFLAG2_DETECT_INVIS,#flagset=2)
+      {
+         iChanceToHit = iChanceToHit / 2;
+      }
+
       if iChanceToHit >= Random(1,1000) OR Send(what,@IsResting)
       {
          // We hit!

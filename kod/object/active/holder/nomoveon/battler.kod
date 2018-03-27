@@ -842,16 +842,20 @@ messages:
 
    CalculateHealthPerTick()
    {
-      local iHealthPerTick, iBoost, i;
+      local iHealthPerTick, iBoost, i, bMaxHealth;
 
       // Health regeneration starts out as 1 percent of our health
       // pool per second at max vigor.
       iHealthPerTick = (piVigor/100) * piMax_health / 20;
 
+      // At or above max health?
+      bMaxHealth = piHealth >= 100 * piMax_health;
+
       // Faction bonus of up to 30%.
       if IsClass(self,&Player)
       {
-         iHealthPerTick *= Send(Send(SYS,@GetParliament),@GetFactionRegenBonus,#who=self)+100;
+         iHealthPerTick *= Send(Send(SYS,@GetParliament),@GetFactionHealthRegenBonus,
+                                 #who=self,#maxhealth=bMaxHealth) + 100;
          iHealthPerTick /= 100;
       }
 
@@ -892,7 +896,7 @@ messages:
       iHealthPerTick += piHealth_Rate;
 
       // Disable regeneration when sitting at or above max health.
-      if piHealth >= 100 * piMax_health
+      if bMaxHealth
       {
          iHealthPerTick = Bound(iHealthPerTick,$,0);
 
@@ -1170,17 +1174,20 @@ messages:
 
    CalculateManaPerTick()
    {
-      local iManaPerTick, i;
+      local iManaPerTick, i, bMaxMana;
 
       // Mana regeneration starts out as 1 percent of our mana pool
       // per second at 200 vigor.
       iManaPerTick = (piVigor/100) * piMax_mana / 20;
 
+      // At or above max mana?
+      bMaxMana = piMana >= 100 * piMax_mana;
+
       // Faction bonus of up to 30%.
       if IsClass(self,&Player)
       {
-         iManaPerTick *= (Send(Send(SYS,@GetParliament),@GetFactionRegenBonus,
-            #who=self,#hpregen=FALSE)+100);
+         iManaPerTick *= (Send(Send(SYS,@GetParliament),@GetFactionManaRegenBonus,
+                              #who=self,#maxmana=bMaxMana) + 100);
          iManaPerTick /= 100;
       }
 
@@ -1212,7 +1219,7 @@ messages:
       iManaPerTick += piMana_Rate;
 
       // Disable regeneration when sitting at or above max mana.
-      if piMana >= 100 * piMax_mana
+      if bMaxMana
       {
          iManaPerTick = Bound(iManaPerTick,$,0);
 

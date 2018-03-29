@@ -24,15 +24,9 @@ resources:
 
    room_swamp2 = swamp2.roo
    room_name_swamp2 = "The desolate Mire"
-
    swamp2_music = Badfor.ogg
-   
    swamp2_sound_evil = lich_awr.ogg
-
-   swamp2_boss_msg = \
-      "~BA Dark Angel has been "
-      "summoned!"
-
+   swamp2_boss_msg = "~BA Dark Angel has been summoned!"
    swamp2_dusk_msg = \
       "A dark force spreads across the area as the sun begins to sink below the horizon."
    swamp2_dawn_msg = \
@@ -59,7 +53,7 @@ properties:
    piDirectional_percent = DIRECTIONAL_PERCENT_OUTDOORS
 
    piOutside_factor = OUTDOORS_2
-   
+
    //piGen_percent = 80
 
    piInit_count_min = 4
@@ -78,8 +72,6 @@ properties:
    ptLightTimer = $
 
    pbDay = TRUE
-
-
 
 messages:
 
@@ -112,31 +104,33 @@ messages:
       if iHour < 5 OR iHour > 20
       {
          plMonsters = [ [&DaemonSkeleton, 100] ];
-         propagate;
+      }
+      else
+      {
+         plMonsters = [ [&EvilEnt, 100] ];
       }
 
-      plMonsters = [ [&EvilEnt, 100] ];
       propagate;
    }
 
    RecalcLightAndWeather()
    {
       local iHour;
+
       iHour = Send(SYS,@GetHour);
+
       if iHour = 21 AND pbDay = TRUE
       {
          pbDay = FALSE;
          Send(self,@SomeoneSaid,#type=SAY_MESSAGE,#what=self,
-                   #string=swamp2_dusk_msg);
+               #string=swamp2_dusk_msg);
          Send(self,@SomethingWaveRoom,#wave_rsc=swamp2_sound_evil);
-         propagate;
       }
-      if iHour = 5 AND pbDay = FALSE
+      else if iHour = 5 AND pbDay = FALSE
       {
          pbDay = TRUE;
          Send(self,@SomeoneSaid,#type=SAY_MESSAGE,#what=self,
-                   #string=swamp2_dawn_msg);
-         propagate;
+               #string=swamp2_dawn_msg);
       }
 
       propagate;
@@ -147,50 +141,47 @@ messages:
       local cClass, iTimeRemaining, iTimeAdded, iTime;
 
       if what <> $
-            AND IsClass(what,&Player)
+         AND IsClass(what,&Player)
       {
-        cClass = GetClass(victim);
-        if (cClass = &DaemonSkeleton)
-        {
-           if ptLightTimer <> $
-           {
-              iTimeRemaining = GetTimeRemaining(ptLightTimer);
-              iTimeAdded = TIME_PER_KILL + iTimeRemaining;
+         cClass = GetClass(victim);
+         if (cClass = &DaemonSkeleton)
+         {
+            if ptLightTimer <> $
+            {
+               iTimeRemaining = GetTimeRemaining(ptLightTimer);
+               iTimeAdded = TIME_PER_KILL + iTimeRemaining;
 
-              if iTimeRemaining <= TIME_CAP //Put a cap on accumulated time
-              {
-                 DeleteTimer(ptLightTimer);
-                 ptLightTimer = CreateTimer(self,@TurnOffLights,iTimeAdded);
-                 iTime = GetTimeRemaining(ptLightTimer);
-              }
+               if iTimeRemaining <= TIME_CAP //Put a cap on accumulated time
+               {
+                  DeleteTimer(ptLightTimer);
+                  ptLightTimer = CreateTimer(self,@TurnOffLights,iTimeAdded);
+                  iTime = GetTimeRemaining(ptLightTimer);
+               }
+            }
+            if ptLightTimer = $
+            {
+               iTimeAdded = TIME_PER_KILL;
+               ptLightTimer = CreateTimer(self,@TurnOffLights,iTimeAdded);
+               iTime = GetTimeRemaining(ptLightTimer);
+            }
 
-           }
-           if ptLightTimer = $
-           {
-              iTimeAdded = TIME_PER_KILL;
-              ptLightTimer = CreateTimer(self,@TurnOffLights,iTimeAdded);
-              iTime = GetTimeRemaining(ptLightTimer);
-           }
+            Send(self,@CheckLights);
 
-           Send(self,@CheckLights);
+            if GetTimeRemaining(ptLightTimer) >= TIME_REQUIRED
+            {
+               Send(self,@NewHold,#what=create(&DarkAngel),
+                     #new_row=33,#new_col=21,#fine_row=32,#fine_col=16);
 
-           if GetTimeRemaining(ptLightTimer) >= TIME_REQUIRED
-           {
-              Send(self,@NewHold,#what=create(&DarkAngel),
-                   #new_row=33,#new_col=21,#fine_row=32,#fine_col=16
-              );
-
-              Send(self,@SomeoneSaid,#type=SAY_MESSAGE,#what=self,
-                   #string=swamp2_boss_msg);
-              Send(self,@SomethingWaveRoom,#wave_rsc=swamp2_sound_evil);
-              DeleteTimer(ptLightTimer);
-              ptLightTimer = $;
-           }   
-
-        }
+               Send(self,@SomeoneSaid,#type=SAY_MESSAGE,#what=self,
+                     #string=swamp2_boss_msg);
+               Send(self,@SomethingWaveRoom,#wave_rsc=swamp2_sound_evil);
+               DeleteTimer(ptLightTimer);
+               ptLightTimer = $;
+            }
+         }
       }
-   propagate;
 
+      propagate;
    }
 
    CheckLights()
@@ -213,8 +204,59 @@ messages:
          return;
       }
 
-
-       if iRem < ((TIME_REQUIRED / 10) * 2)
+      if iRem < ((TIME_REQUIRED / 10) * 2)
+      {
+         Send(poLight1,@SetSwitch,#bSwitch=OFF);
+         Send(poLight2,@SetSwitch,#bSwitch=OFF);
+         Send(poLight3,@SetSwitch,#bSwitch=OFF);
+         Send(poLight4,@SetSwitch,#bSwitch=OFF);
+         Send(poLight5,@SetSwitch,#bSwitch=OFF);
+      }
+      else if iRem >= ((TIME_REQUIRED / 10) * 2)
+         AND iRem < ((TIME_REQUIRED / 10) * 4)
+      {
+         Send(poLight1,@SetSwitch,#bSwitch=ON);
+         Send(poLight2,@SetSwitch,#bSwitch=OFF);
+         Send(poLight3,@SetSwitch,#bSwitch=OFF);
+         Send(poLight4,@SetSwitch,#bSwitch=OFF);
+         Send(poLight5,@SetSwitch,#bSwitch=OFF);
+      }
+      else if iRem >= ((TIME_REQUIRED / 10) * 4)
+         AND iRem < ((TIME_REQUIRED / 10) * 6)
+      {
+         Send(poLight1,@SetSwitch,#bSwitch=ON);
+         Send(poLight2,@SetSwitch,#bSwitch=ON);
+         Send(poLight3,@SetSwitch,#bSwitch=OFF);
+         Send(poLight4,@SetSwitch,#bSwitch=OFF);
+         Send(poLight5,@SetSwitch,#bSwitch=OFF);
+      }
+      else if iRem >= ((TIME_REQUIRED / 10) * 6)
+         AND iRem < ((TIME_REQUIRED / 10) * 8)
+      {
+         Send(poLight1,@SetSwitch,#bSwitch=ON);
+         Send(poLight2,@SetSwitch,#bSwitch=ON);
+         Send(poLight3,@SetSwitch,#bSwitch=ON);
+         Send(poLight4,@SetSwitch,#bSwitch=OFF);
+         Send(poLight5,@SetSwitch,#bSwitch=OFF);
+      }
+      else if iRem >= ((TIME_REQUIRED / 10) * 8)
+         AND iRem < TIME_REQUIRED
+      {
+         Send(poLight1,@SetSwitch,#bSwitch=ON);
+         Send(poLight2,@SetSwitch,#bSwitch=ON);
+         Send(poLight3,@SetSwitch,#bSwitch=ON);
+         Send(poLight4,@SetSwitch,#bSwitch=ON);
+         Send(poLight5,@SetSwitch,#bSwitch=OFF);
+      }
+      else if iRem >= TIME_REQUIRED
+      {
+         Send(poLight1,@SetSwitch,#bSwitch=ON);
+         Send(poLight2,@SetSwitch,#bSwitch=ON);
+         Send(poLight3,@SetSwitch,#bSwitch=ON);
+         Send(poLight4,@SetSwitch,#bSwitch=ON);
+         Send(poLight5,@SetSwitch,#bSwitch=ON);
+      }
+      else
       {
          Send(poLight1,@SetSwitch,#bSwitch=OFF);
          Send(poLight2,@SetSwitch,#bSwitch=OFF);
@@ -223,69 +265,13 @@ messages:
          Send(poLight5,@SetSwitch,#bSwitch=OFF);
       }
 
-         else if iRem >= ((TIME_REQUIRED / 10) * 2)
-            AND iRem < ((TIME_REQUIRED / 10) * 4)
-         {
-             Send(poLight1,@SetSwitch,#bSwitch=ON);
-             Send(poLight2,@SetSwitch,#bSwitch=OFF);
-             Send(poLight3,@SetSwitch,#bSwitch=OFF);
-             Send(poLight4,@SetSwitch,#bSwitch=OFF);
-             Send(poLight5,@SetSwitch,#bSwitch=OFF);
-         }
-
-         else if iRem >= ((TIME_REQUIRED / 10) * 4)
-            AND iRem < ((TIME_REQUIRED / 10) * 6)
-         {
-             Send(poLight1,@SetSwitch,#bSwitch=ON);
-             Send(poLight2,@SetSwitch,#bSwitch=ON);
-             Send(poLight3,@SetSwitch,#bSwitch=OFF);
-             Send(poLight4,@SetSwitch,#bSwitch=OFF);
-             Send(poLight5,@SetSwitch,#bSwitch=OFF);
-         }
-
-         else if iRem >= ((TIME_REQUIRED / 10) * 6)
-            AND iRem < ((TIME_REQUIRED / 10) * 8)
-         {
-             Send(poLight1,@SetSwitch,#bSwitch=ON);
-             Send(poLight2,@SetSwitch,#bSwitch=ON);
-             Send(poLight3,@SetSwitch,#bSwitch=ON);
-             Send(poLight4,@SetSwitch,#bSwitch=OFF);
-             Send(poLight5,@SetSwitch,#bSwitch=OFF);
-         }
-
-         else if iRem >= ((TIME_REQUIRED / 10) * 8)
-            AND iRem < TIME_REQUIRED
-         {
-             Send(poLight1,@SetSwitch,#bSwitch=ON);
-             Send(poLight2,@SetSwitch,#bSwitch=ON);
-             Send(poLight3,@SetSwitch,#bSwitch=ON);
-             Send(poLight4,@SetSwitch,#bSwitch=ON);
-             Send(poLight5,@SetSwitch,#bSwitch=OFF);
-         }
-
-         else if iRem >= TIME_REQUIRED
-         {
-             Send(poLight1,@SetSwitch,#bSwitch=ON);
-             Send(poLight2,@SetSwitch,#bSwitch=ON);
-             Send(poLight3,@SetSwitch,#bSwitch=ON);
-             Send(poLight4,@SetSwitch,#bSwitch=ON);
-             Send(poLight5,@SetSwitch,#bSwitch=ON);
-         }
-         else
-         {
-            Send(poLight1,@SetSwitch,#bSwitch=OFF);
-            Send(poLight2,@SetSwitch,#bSwitch=OFF);
-            Send(poLight3,@SetSwitch,#bSwitch=OFF);
-            Send(poLight4,@SetSwitch,#bSwitch=OFF);
-            Send(poLight5,@SetSwitch,#bSwitch=OFF);
-         }
-
       return;
    }
 
    SomethingMoved()
    {
       Send(self,@CheckLights);
+
       propagate;
    }
 
@@ -310,7 +296,7 @@ messages:
 
       propagate;
    }
-   
+
    CreateStandardObjects()
    {
       poLight1 = Create(&DynamicLight,#iColor=LIGHT_SPECTRAL,#iIntensity=40);
@@ -346,6 +332,11 @@ messages:
            #new_row=33,#new_col=21,#fine_row=32,#fine_col=16,#angle=ANGLE_EAST);
 
       propagate;
+   }
+
+   SeanceCheck()
+   {
+      return FALSE;
    }
 
 end

@@ -20,9 +20,7 @@ resources:
 
    room_dvalley2 = dvalley2.roo
    room_name_dvalley2 = "Death Valley"
-
    dvalley2_music = dvalley.ogg
-   
    dvalley2_heat_on = \
       "Faren earth magic fills the room heating all armor to a molten state."
 
@@ -32,7 +30,7 @@ classvars:
 
    viTeleport_row = 8
    viTeleport_col = 13
-   
+
    viWeatherZone = WEATHER_ZONE_DVALLEY
 
 properties:
@@ -42,7 +40,7 @@ properties:
    prRoom = room_dvalley2
    piRoom_num = RID_DVALLEY_2
    prMusic = dvalley2_music
-   
+
    piBaseLight = LIGHT_NICE
    piOutside_factor = 8
 
@@ -69,7 +67,7 @@ messages:
 
       propagate;
    }
-   
+
    Constructed()
    {
       plMonsters = [ [&Minotaur, 100] ];
@@ -78,10 +76,10 @@ messages:
       // plGenerators = [ [12, 8], [5, 10], [9, 16], [14, 21] ];
 
       Post(self,@DoHeat);
- 
+
       propagate;
    }
-   
+
    DoHeat()
    {
       local oHeat;
@@ -98,7 +96,7 @@ messages:
       }
 
       oHeat = Send(SYS,@FindSpellByNum,#num=SID_HEAT);
-      
+
       if Send(self,@IsEnchanted,#what=oHeat)
       {
          return;
@@ -110,15 +108,15 @@ messages:
 
       return;
    }
-   
-      TryCreateMonster()
+
+   TryCreateMonster()
    {
       // When we try to create a monster, then make sure Heats is up.
       Send(self,@DoHeat);
 
       propagate;
    }
-   
+
    CreateStandardObjects()
    {
       Send(self,@NewHold,#what=Create(&Skull),
@@ -138,6 +136,11 @@ messages:
             #new_row=2,#new_col=16,#fine_row=38,#fine_col=44);
 
       propagate;
+   }
+
+   SeanceCheck()
+   {
+      return FALSE;
    }
 
 end

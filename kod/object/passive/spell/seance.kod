@@ -103,7 +103,17 @@ messages:
       oLocation = Send(oKiller,@GetOwner);
       if oLocation <> $
       {
-         rLocationName = Send(oLocation,@GetName);
+         // Some rooms are excluded from seance - if target is there,
+         // display a default room.
+         if (Send(oLocation,@SeanceCheck))
+         {
+            // Allowed.
+            rLocationName = Send(oLocation,@GetName);
+         }
+         else
+         {
+            rLocationName = Send(Send(SYS,@FindRoomByNum,#num=RID_TOS_INN),@GetName);
+         }
       }
 
       if Send(who,@IsEnchanted,#what=self)

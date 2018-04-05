@@ -110,7 +110,7 @@ void MoveObject2(ID object_id, int x, int y, BYTE speed, BOOL turnToFace)
 		r->motion.x = x;
 		r->motion.y = y;
 		RoomObjectSetHeight(r);
-		ObjectStopAnimation(&r->obj);
+		RoomObjectSetAnimation(r, False);
 		r->moving = False;
 		return;
 	}

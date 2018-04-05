@@ -23,6 +23,8 @@ resources:
       "three minutes."
    public_ended = \
       "The public co-op survival arena has ended at level %i."
+   survroom_not_found = \
+      "Could not find a room to use as a base for the Survival Arena!"
 
 properties:
 
@@ -43,8 +45,8 @@ properties:
    // How much extra cash on each monster kill per level?
    piSurvivalCashPerLevel = 20
 
-   // Don't use these rooms (list of RIDs)
-   plExcludedRoomsList = $
+   // Only these rooms allowed (list of RIDs)
+   plAllowedRooms = $
 
    // Default time between rounds
    piRegroupTime = 15000
@@ -63,171 +65,112 @@ messages:
    Constructor()
    {
       Send(self,@Recreate);
-      
-      plExcludedRoomsList = [RID_MAR_SMITHY,
-                             RID_MAR_ELDER_HUT,
-                             RID_SEWER_KING,
-                             RID_TEMPLE_RIIJA,
-                             RID_MAR_CRYPT3A,
-                             RID_FOREST4,
-                             RID_MAR_CRYPT2,
-                             RID_MAR_CRYPT1,
-                             RID_FOREST4,
-                             RID_FOREST5,
-                             RID_KOCATAN,
-                             RID_KOC_INN,
-                             RID_FOREST1,
-                             RID_FOREST2,
-                             RID_FOREST3,
-                             RID_ORC_PIT_B,
-                             RID_ORC_PIT_A,
-                             RID_ORC_CAVE5,
-                             RID_G8,
-                             RID_KOC_SEWER2,
-                             RID_KOC_SEWER1,
-                             RID_JASSEW1,
-                             RID_JASSEW2,
-                             RID_JASSEW3,
-                             RID_BAR_SEWER2,
-                             RID_BAR_SEWER3,
-                             RID_BAR_SEWER,
-                             RID_KC5,
-                             RID_KA3,
-                             RID_H9,
-                             RID_VICTORIA,
-                             RID_CASTLE1,
-                             RID_CASTLE1B,
-                             RID_BRAX_CASTLE2,
-                             RID_MARSMITH,
-                             RID_MARELDER,
-                             RID_SEWKING,
-                             RID_TEMPLE_RIIJA];
-
-      plExcludedRoomsList = Cons(RID_NECHALLWAY, plExcludedRoomsList);
-      plExcludedRoomsList = Cons(RID_NECROAREA6, plExcludedRoomsList);
 
       return;
    }
 
    Recreate()
    {
+      plAllowedRooms = [RID_BADLAND1, RID_C4, RID_C6, RID_D4, RID_D6E6, RID_H4,
+                        RID_D7, RID_E2, RID_E4, RID_E7, RID_F2, RID_F3, RID_F4,
+                        RID_FAROL_WEST, RID_G4, RID_G5, RID_G6, RID_H3, RID_H5,
+                        RID_H6, RID_H7, RID_I3, RID_I6, RID_I7, RID_I8,
+                        RID_NECROAREA1, RID_NECROAREA2, RID_NECROAREA3,
+                        RID_NECROAREA4, RID_ORC_CAVE1, RID_ORC_CAVE2,
+                        RID_ORC_CAVE3, RID_ORC_CAVE4, RID_ORC_CAVE6, RID_KA2];
+
+      plAllowedRooms = Cons(RID_KA4,plAllowedRooms);
+      plAllowedRooms = Cons(RID_KA5,plAllowedRooms);
+      plAllowedRooms = Cons(RID_KB1,plAllowedRooms);
+      plAllowedRooms = Cons(RID_KB2,plAllowedRooms);
+      plAllowedRooms = Cons(RID_KB3,plAllowedRooms);
+      plAllowedRooms = Cons(RID_KB4,plAllowedRooms);
+      plAllowedRooms = Cons(RID_KB5,plAllowedRooms);
+      plAllowedRooms = Cons(RID_KC2,plAllowedRooms);
+      plAllowedRooms = Cons(RID_KC3,plAllowedRooms);
+      plAllowedRooms = Cons(RID_KC4,plAllowedRooms);
+      plAllowedRooms = Cons(RID_KD1,plAllowedRooms);
+      plAllowedRooms = Cons(RID_KD2,plAllowedRooms);
+      plAllowedRooms = Cons(RID_KD3,plAllowedRooms);
+      plAllowedRooms = Cons(RID_KD4,plAllowedRooms);
+      plAllowedRooms = Cons(RID_KE2,plAllowedRooms);
+      plAllowedRooms = Cons(RID_KE4,plAllowedRooms);
+
       return;
    }
 
    CreateRoom(who=$,guild_survival=FALSE,iPublic=FALSE,sString=$,
               lSurvivalOptions=$,oForceBaseRoom=$)
    {
-      local oRoom, oBaseRoom, lAllRooms, iRID, i, lPlayersLoggedOn, z,
-            lExcludedRoomsObjs, iNatural, iPvP, o;
+      local oRoom, oBaseRoom, iRID, i, iBaseRID, iPvP;
 
       if guild_survival = TRUE
          AND NOT piGuildSurvivalEnabled
       {
-         return $;
+         return;
       }
 
       if iPublic = TRUE
          AND NOT piPublicSurvivalEnabled
       {
-         return $;
+         return;
       }
 
       if iPublic = FALSE
          AND guild_survival = FALSE
          AND NOT piSoloSurvivalEnabled
       {
-         return $;
+         return;
       }
 
-      iNatural = TRUE;
       iPvP = FALSE;
-      foreach o in lSurvivalOptions
+      foreach i in lSurvivalOptions
       {
-         if o = OPT_NATURAL
-         {
-            iNatural = FALSE;
-         }
-         
-         if o = OPT_PVP_ON
+         if i = OPT_PVP_ON
          {
             iPvP = TRUE;
          }
       }
 
-      lAllRooms = ListCopy(Send(SYS,@GetRooms));
-
-      // If we sent the string used to activate the arena (only for public)
-      // check it for a room name to use. If we sent a room name, use that
-      // for the survival room.
+      // If we sent a room name, use it for the survival room if allowed.
       if sString <> $
       {
-         foreach i in lAllRooms
+         foreach i in Send(SYS,@GetRooms)
          {
             if StringContain(sString,Send(i,@GetName))
             {
-               oForceBaseRoom = i;
+               iBaseRID = Send(i,@GetRoomNum);
+               // If room not allowed, skip it.
+               if (NOT IsClass(who,&DM)
+                  AND NOT FindListElem(plAllowedRooms,iBaseRID))
+               {
+                  continue;
+               }
+
+               oBaseRoom = i;
 
                break;
             }
          }
       }
 
-      lExcludedRoomsObjs = $;
-      foreach z in plExcludedRoomsList
+      if (oBaseRoom = $)
       {
-         lExcludedRoomsObjs = Cons(Send(SYS,@FindRoomByNum,#num=z),
-                                    lExcludedRoomsObjs);
-      }
-
-      // DMs can choose any room, but users can only pick from the allowed
-      // rooms.  Set oBaseRoom to the chosen room so it can be checked
-      // in the following code.
-      if NOT IsClass(who,&DM)
-         AND oForceBaseRoom <> $
-      {
-         oBaseRoom = oForceBaseRoom;
-         oForceBaseRoom = $;
-      }
-      else
-      {
-         oBaseRoom = Nth(lAllRooms,Random(1,Length(lAllRooms)));
-      }
-
-      // Ensure it's a monster room, and shrink the list on every failure.
-      if (NOT IsClass(oBaseRoom,&MonsterRoom))
-         OR IsClass(oBaseRoom,&SurvivalRoom)
-         OR (lExcludedRoomsObjs <> $
-            AND FindListElem(lExcludedRoomsObjs,oBaseRoom))
-         OR (iNatural AND Send(oBaseRoom,@GetGenerators) = $)
-      {
-         while (NOT IsClass(oBaseRoom,&MonsterRoom))
-            OR IsClass(oBaseRoom,&SurvivalRoom)
-            OR (lExcludedRoomsObjs <> $
-               AND FindListElem(lExcludedRoomsObjs,oBaseRoom))
-            OR (iNatural AND Send(oBaseRoom,@GetGenerators) = $)
+         iBaseRID = Nth(plAllowedRooms,Random(1,Length(plAllowedRooms)));
+         oBaseRoom = Send(SYS,@FindRoomByNum,#num=iBaseRID);
+         if (oBaseRoom = $)
          {
-            lAllRooms = DelListElem(lAllRooms,oBaseRoom);
-            oBaseRoom = Nth(lAllRooms,Random(1,Length(lAllRooms)));
+            Send(who,@MsgSendUser,#message_rsc=survroom_not_found);
+
+            return;
          }
       }
 
-      if NOT IsClass(oBaseRoom,&MonsterRoom)
-      {
-         return $;
-      }
-
-      // If we still have a forced base room, it was given by a DM.
-      // Set the base room to the forced one.
-      if oForceBaseRoom <> $
-      {
-         oBaseRoom = oForceBaseRoom;
-      }
-
       iRID = Send(self,@GetNextAvailableRID);
-      
+
       if iRID = 0
       {
-         return $;
+         return;
       }
 
       if guild_survival
@@ -251,9 +194,7 @@ messages:
 
          if iPublic
          {
-            lPlayersLoggedOn = Send(SYS,@GetUsersLoggedOn);
-         
-            foreach i in lPlayersLoggedOn
+            foreach i in Send(SYS,@GetUsersLoggedOn)
             {
                Send(i,@MsgSendUser,#message_rsc=public_survival_started,
                                    #parm1=Send(who,@GetTrueName));
@@ -422,10 +363,9 @@ messages:
 
    ExcludeRID(iRID=RID_MAR_SMITHY)
    {
-      if plExcludedRoomsList = $
-         OR FindListElem(plExcludedRoomsList,iRID) = 0
+      if FindListElem(plAllowedRooms,iRID)
       {
-         plExcludedRoomsList = Cons(iRID,plExcludedRoomsList);
+         plAllowedRooms = DelListElem(plAllowedRooms,iRID);
 
          return TRUE;
       }
@@ -435,10 +375,9 @@ messages:
 
    AllowRID(iRID=0)
    {
-      if plExcludedRoomsList <> $
-         AND FindListElem(plExcludedRoomsList,iRID) <> 0
+      if NOT FindListElem(plAllowedRooms,iRID)
       {
-         plExcludedRoomsList = DelListElem(plExcludedRoomsList,iRID);
+         plAllowedRooms = Cons(iRID, plAllowedRooms);
 
          return TRUE;
       }

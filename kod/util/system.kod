@@ -521,6 +521,11 @@ properties:
    plOldHonorDate = $
    psHonorListCopied = $
 
+   // List of DM/Admin objects that are informed every time a globe post
+   // is made. Purpose of this is to inform the IRC bot so that posts can
+   // be echoed to IRC.
+   plGlobeWatchers = $
+
 messages:
 
    GetName()
@@ -1569,6 +1574,50 @@ messages:
       }
 
       return;
+   }
+
+   AddGlobeWatcher(who = $)
+   {
+      if (who <> $
+         AND NOT IsClass(who,&DM))
+      {
+         Debug("Can only add DMs or higher to globe watchers list!");
+
+         return FALSE;
+      }
+
+      if (FindListElem(plGlobeWatchers, who))
+      {
+         Debug(Send(who,@GetTrueName)," is already watching the globes!");
+
+         return FALSE;
+      }
+
+      plGlobeWatchers = Cons(who,plGlobeWatchers);
+
+      return TRUE;
+   }
+
+   RemoveGlobeWatcher(who = $)
+   {
+      if (FindListElem(plGlobeWatchers,who))
+      {
+         plGlobeWatchers = DelListElem(plGlobeWatchers,who);
+
+         return TRUE;
+      }
+
+      return FALSE;
+   }
+
+   IsGlobeWatcher(who=$)
+   {
+      return FindListElem(plGlobeWatchers,who);
+   }
+
+   GetGlobeWatchers()
+   {
+      return plGlobeWatchers;
    }
 
    SystemNewNews(what = $)

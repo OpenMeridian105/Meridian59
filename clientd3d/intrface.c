@@ -466,8 +466,7 @@ void PerformAction(int action, void *action_data)
       break;
 
    case A_GO:
-      MoveUpdatePosition();   // Send our exact position, so that we try to go in right spot
-      RequestGo();
+      UserTryGo();
       break;
       
    case A_TARGETCLEAR:

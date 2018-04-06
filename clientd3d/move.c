@@ -89,9 +89,11 @@ enum { MOVE_BLOCKED = 1, MOVE_OK, MOVE_CHANGED, };
 extern player_info player;
 extern room_type current_room;
 extern int sector_depths[];
+extern DWORD latency;
 
 static DWORD server_time = 0;           // Last time we informed server of our position
 static DWORD last_splash = 0;           // Time of the last play of the splash wading sound
+static DWORD last_go_time = 0;
 
 static Bool pos_valid = FALSE;          // True when server_x and server_y are valid
 static int  server_x = 0, server_y = 0; // Last position we've told server we are, in FINENESS units
@@ -130,6 +132,12 @@ BOOL	gbMouselook = FALSE;
 
 extern double gravityAdjust;
 
+void UserTryGo()
+{
+   // Record the time of the last go.
+   last_go_time = timeGetTime();
+   RequestGo();
+}
 /************************************************************************/
 void UserMovePlayer(int action)
 {
@@ -821,10 +829,18 @@ void ServerMovedPlayer(void)
 void MoveUpdateServer(void)
 {
    DWORD now = timeGetTime();
+   DWORD latency_check = latency * 1.1f;
    int angle;
 
+   if (latency_check < 100)
+      latency_check = 100;
+   if (latency_check > 500)
+      latency_check = 500;
+
    // Inform server if necessary
-   if (now - server_time < MOVE_INTERVAL || !pos_valid)
+   if (now - server_time < MOVE_INTERVAL
+      || !pos_valid
+      || last_go_time + latency_check > now)
       return;
 
    // if position wasn't updated

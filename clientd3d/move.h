@@ -18,6 +18,7 @@
 
 void ResetPlayerPosition(void);
 
+void UserTryGo();
 void UserMovePlayer(int action);
 Bool ObjectsMove(int dt);
 Bool MoveSingle(Motion *m, int dt);

@@ -224,6 +224,7 @@
 #define IDC_SIZE_UPDATE_FILES_BYTES     193
 #define IDC_SIZE_UPDATE_FILES_KB        194
 #define IDC_SIZE_UPDATE_FILES_MB        195
+#define IDS_NEWSLETTERURL               196
 #define IDC_PORTNUM                     1000
 #define IDC_HOST                        1001
 #define IDC_ITEMLIST                    1002
@@ -485,13 +486,14 @@
 #define ID_HOMEPAGE                     3516
 #define ID_COLOR_QUESTHEADER            3517
 #define ID_GRAPHICS_MENU                3518
+#define ID_NEWSLETTER                   3519
 
 // Next default values for new objects
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE        197
-#define _APS_NEXT_COMMAND_VALUE         3519
+#define _APS_NEXT_COMMAND_VALUE         3520
 #define _APS_NEXT_CONTROL_VALUE         1222
 #define _APS_NEXT_SYMED_VALUE           105
 #endif

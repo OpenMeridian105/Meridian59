@@ -264,6 +264,9 @@ void MenuCommand(HWND hwnd, int id, HWND hwndCtl, UINT codeNotify)
    case ID_WIKI:
       WebLaunchBrowser(GetString(hInst, IDS_WIKIURL));
       break;
+   case ID_NEWSLETTER:
+      WebLaunchBrowser(GetString(hInst, IDS_NEWSLETTERURL));
+      break;
    case ID_HELP_ABOUT:
       DialogBox(hInst, MAKEINTRESOURCE(IDD_ABOUT), hMain, AboutDialogProc);
       break;

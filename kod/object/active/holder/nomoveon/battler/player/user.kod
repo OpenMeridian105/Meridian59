@@ -537,6 +537,9 @@ properties:
    // Keeps track of when mobs have last been alerted of our presence.
    piLastMoveNotification = 0
 
+   // Keeps track of when server last teleported this user inside the room
+   piLastServerTeleport = 0
+
    piCheaterLogs = 0
 
    // What order do you want your inventory sorted in?
@@ -4494,7 +4497,7 @@ messages:
          iQflags, iRflags, iHeightF, iHeightFWD, iHeightC, iServerID;
 
       //
-      // 1 Get current position values
+      // 1.1 Get current position values and current tick
       //
 
       iRow = piRow;
@@ -4502,6 +4505,17 @@ messages:
       iFineRow = piFine_row;
       iFineCol = piFine_col;
       iAngle = Send(self,@GetAngle);
+      iCurrentTime = GetTickCount();
+
+      //
+      // 1.2 Silently discard requests directly after server-teleports.
+      //     These would be incorrect by now.
+      //
+      if iCurrentTime < piLastServerTeleport + 300
+      {
+         //Debug("Discarded move after teleport for ",Send(self,@GetTrueName),self);
+         return;
+      }
 
       //
       // 2. Do not allow any moves if player is marked as not allowed to move or 
@@ -4525,17 +4539,12 @@ messages:
       }
 
       //
-      // 3.1 Get current tick (ms resolution)
-      //
-      iCurrentTime = GetTickCount();
-
-      //
-      // 3.2 Get time-deltas
+      // 3.1 Get time-deltas
       //
       iDelta = iCurrentTime - piLastMoveUpdateTime;
 
       //
-      // 3.3 Bound time-deltas
+      // 3.2 Bound time-deltas
       //   These must not be too big for the calculations below
       //
       iDelta = Bound(iDelta,0,2000);
@@ -11892,6 +11901,12 @@ messages:
    GetUserTrail()
    {
       return plUserTrail;
+   }
+
+   SetLastServerTeleport()
+   {
+      piLastServerTeleport = GetTickCount();
+      return;
    }
 
 end

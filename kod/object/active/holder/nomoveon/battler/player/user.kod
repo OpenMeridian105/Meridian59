@@ -564,8 +564,6 @@ properties:
    piLastAutologTest = -1
    piLastAutologHP = 0
 
-   poPrevOwner = $
-
 messages:
 
    Constructor(name = $,icon = $)
@@ -1074,7 +1072,7 @@ messages:
          // Don't let players stay in the Underworld with Death Rift
          Post(self,@AdminGoToSafety);
       }
-      poPrevOwner = poOwner;
+
       poOwner = $;
 
       // If we still have an evil twin at this stage, tell it to delete itself.
@@ -1271,7 +1269,7 @@ messages:
       iNumSkillPts = Send(self,@PenaltyLoseSkillPoints,
                            #iNumPoints=iPointLoss,#iPenCount=iPenCount,
                            #iEquivDeath=iEquivDeath);
-      iHonorLoss = Send(self,@PenaltyLoseHonor);
+      iHonorLoss = Send(self,@PenaltyLoseHonor,#where=oDrop);
 
       // Let the faction shield know of this person's naughtiness if we took a
       // penalty.
@@ -1298,112 +1296,119 @@ messages:
       return;
    }
 
-   PenaltyLoseHonor()
+   PenaltyLoseHonor(where = $)
    {
-      local i, j, iHonorLost, iNumHurters, iHonorEach, iLostTotal, oHurter, oOwner, plHurt, bIsNear;
+      local i, j, iHonorLost, iNumHurters, iHonorEach, iLostTotal, oHurter,
+            oOwner, oHurterOwner, bIsNear;
 
       if NOT Send(SETTINGS_OBJECT,@HonorSystemActive)
       {
-         return;
+         return 0;
+      }
+
+      // 'where' should be the user (logged on) or a room (logged off).
+      if (where = $)
+      {
+         return 0;
+      }
+
+      if (IsClass(where,&Room))
+      {
+         oOwner = where;
+      }
+      else if (poOwner <> $)
+      {
+         oOwner = poOwner;
+      }
+
+      // No owner at this stage, log and return.
+      if (oOwner = $)
+      {
+         Debug("Tried to inflict honor penalty for player ",self," with no owner.");
+
+         return 0;
       }
 
       iHonorLost = 0;
       iNumHurters = 0;
       iHonorEach = Send(SETTINGS_OBJECT,@GetHonorLossPen);
       iLostTotal = 0;
-      // Use the player's last location if they logged off, since logged off players
-      // don't have an owner.
-      if Send(self,@IsLoggedOn)
-      {
-         oOwner = poOwner;
-      }
-      else
-      {
-         oOwner = poPrevOwner;
-      }
-      if oOwner = $
-      {
-         Debug("Tried to inflict honor penalty for player ",self," with no owner.");
-         return;
-      }
-
-      plHurt = Send(self,@GetHurtMeRecently);
 
       // Find out how many people attacked us recently. Don't count ourselves.
-      foreach i in plHurt
+      foreach i in plHurtMeRecently
       {
          oHurter = First(i);
-         if oHurter = self
-         {
-            SetFirst(i,$);
-            SetNth(i,3,$);
-            plHurt = DelListElem(plHurt,i);
-            continue;
-         }
-         if IsClass (oHurter,&Player)
+
+         if oHurter <> self
+            AND IsClass(oHurter,&Player)
          {
             ++iNumHurters;
          }
       }
 
+      // Penned without being attacked by a player.
       if iNumHurters = 0
       {
-         Debug("Tried to inflict honor penalty for player ",self," with no attackers.");
-         return;
+         return 0;
       }
 
       iHonorEach = iHonorEach / iNumHurters;
 
       // Attempt to give the honor points from the victim to the attacker(s).
-      foreach i in plHurt
+      foreach i in plHurtMeRecently
       {
          bIsNear = FALSE;
          oHurter = First(i);
+
          // Only count players that can fight.
-         if IsClass (oHurter,&Player)
-            AND NOT Send(oHurter,@IsOfflineOrCannotInteract)
+         if (oHurter = self
+            OR NOT IsClass(oHurter,&Player)
+            OR Send(oHurter,@IsOfflineOrCannotInteract))
          {
-            if oOwner = Send(oHurter,@Getowner)
+            continue;
+         }
+
+         oHurterOwner = Send(oHurter,@GetOwner);
+         if oOwner = oHurterOwner
+         {
+            bIsNear = TRUE;
+         }
+         else
+         {
+            // The attacker can fight but isn't in the same room as the victim.
+            // Check if they are in a nearby combat area since PvP involves movement.
+            foreach j in Send(oOwner,@GetYellZone)
             {
-               bIsNear = TRUE;
-            }
-            else
-            {
-               // The attacker can fight but isn't in the same room as the victim.
-               // Check if they are in a nearby combat area since PvP involves movement.
-               foreach j in Send(oOwner,@GetYellZone)
+               if Send(SYS,@FindRoomByNum,#num=j) = oHurterOwner
+                  AND NOT Send(oHurterOwner,@CheckRoomFlag,#flag=ROOM_NO_COMBAT)
+                  AND NOT Send(oHurterOwner,@CheckRoomFlag,#flag=ROOM_NO_PK)
+                  AND NOT Send(oHurterOwner,@CheckRoomFlag,#flag=ROOM_SAFE_DEATH)
                {
-                  if Send(SYS,@FindRoomByNum,#num=j) = Send(oHurter,@GetOwner)
-                     AND NOT Send(Send(oHurter,@GetOwner),@CheckRoomFlag,#flag=ROOM_NO_COMBAT)
-                     AND NOT Send(Send(oHurter,@GetOwner),@CheckRoomFlag,#flag=ROOM_NO_PK)
-                     AND NOT Send(Send(oHurter,@GetOwner),@CheckRoomFlag,#flag=ROOM_SAFE_DEATH)
-                  {
-                     bIsNear = TRUE;
-                  }
+                  bIsNear = TRUE;
                }
             }
-            if bIsNear
-            {
-               // The attacker is nearby and can participate in PvP. Give them the points.
-               iHonorLost = Send(self,@TransferHonorPoints,#who=self,
-                                 #what=oHurter,#honor=iHonorEach);
-               iLostTotal += iHonorLost;
-               Send(oHurter,@MsgSendUser,#message_rsc=user_honor_gain_penalty,
-                     #parm1=iHonorLost,#parm2=Send(self,@GetName));
-            }
+         }
+         if bIsNear
+         {
+            // The attacker is nearby and can participate in PvP. Give them the points.
+            iHonorLost = Send(self,@TransferHonorPoints,#who=self,
+                              #what=oHurter,#honor=iHonorEach);
+            iLostTotal += iHonorLost;
+            Send(oHurter,@MsgSendUser,#message_rsc=user_honor_gain_penalty,
+                  #parm1=iHonorLost,#parm2=Send(self,@GetName));
          }
       }
-      // Don't inform the player if they didn't lose any points. Reasons for this can include
-      // them not having any to give or all attackers having fled the battlefield.
+
+      // Don't inform the player if they didn't lose any points. Reasons for
+      // this can include them not having any to give or all attackers having
+      // fled the battlefield.
       if iLostTotal > 0
       {
-         Send (self,@MsgSendUser,#message_rsc=user_honor_loss_penalty,#parm1=iLostTotal);
+         Send (self,@MsgSendUser,#message_rsc=user_honor_loss_penalty,
+               #parm1=iLostTotal);
       }
-      // Clear attacker list so old attackers don't get anything if the player
-      // pens/dies again soon and they didn't participate.
-      Send(self,@ClearHurtMeRecently);
 
-      return;
+      return iLostTotal;
    }
 
    PenaltyLoseXP(iPenCount=0, iEquivDeath=0)

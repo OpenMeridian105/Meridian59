@@ -1306,13 +1306,17 @@ messages:
          return 0;
       }
 
-      // 'where' should be the user (logged on) or a room (logged off).
+      // 'where' should be the user (logged on) or a logoff ghost (logged off).
+      // Account for $ room (try use poOwner) and room 'where' edge/future cases.
       if (where = $)
       {
-         return 0;
+         oOwner = poOwner;
       }
-
-      if (IsClass(where,&Room))
+      else if (IsClass(where,&LogoffGhost))
+      {
+         oOwner = Send(where,@GetOwner);
+      }
+      else if (IsClass(where,&Room))
       {
          oOwner = where;
       }

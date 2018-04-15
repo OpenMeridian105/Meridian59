@@ -1000,6 +1000,16 @@ messages:
       propagate;
    }
 
+   CanParticipateInHonorSystem()
+   {
+      if (Send(SETTINGS_OBJECT,@NoHonorDM))
+      {
+         return FALSE;
+      }
+
+      propagate;
+   }
+
    IsModerator()
    {
       return (prRank = dm_moderator);
@@ -2278,8 +2288,6 @@ messages:
          return;
       }
 
-      lHonorDifference = $;
-
       foreach i in lOldHonor
       {
          iOldHonor = Nth(i,2);
@@ -2324,8 +2332,8 @@ messages:
       iDay = Nth(First(lOldHonorDate),3);
       iHour = Nth(First(lOldHonorDate),4);
       iMinute = Nth(First(lOldHonorDate),5);
-      Send(self,@MsgSendUser,#message_rsc=dm_honor_compare_date,#parm1=iDay,#parm2=iMonth,
-            #parm3=iYear,#parm4=iHour,#parm5=iMinute);
+      Send(self,@MsgSendUser,#message_rsc=dm_honor_compare_date,#parm1=iDay,
+            #parm2=iMonth,#parm3=iYear,#parm4=iHour,#parm5=iMinute);
 
       // Shows a top 10 of the players with the highest point gain.
       iCount = 0;
@@ -2340,7 +2348,7 @@ messages:
       {
          ++iCount;
          lPlayer = Nth(lHonorDifference, iCount);
-         oPlayer = Send(Nth(lPlayer, 1),@GetName);
+         oPlayer = Send(First(lPlayer),@GetTrueName);
          iDiff = Nth(lPlayer, 2);
          AppendTempString(iCount);
          AppendTempString(". is ");
@@ -2349,7 +2357,8 @@ messages:
          AppendTempString(iDiff);
          AppendTempString(" points.\n");
       }
-      Send(self,@MsgSendUser,#message_rsc=dm_honor_compare_list,#parm1=GetTempString());
+      Send(self,@MsgSendUser,#message_rsc=dm_honor_compare_list,
+            #parm1=GetTempString());
 
       // Show the bottom 5 as well.
       iCountMax = Length(lHonorDifference);
@@ -2360,7 +2369,7 @@ messages:
       {
          ++iCount;
          lPlayer = Nth(lHonorDifference, iCount);
-         oPlayer = Send(Nth(lPlayer, 1),@GetName);
+         oPlayer = Send(First(lPlayer),@GetTrueName);
          iDiff = Nth(lPlayer, 2);
          AppendTempString(iCount);
          AppendTempString(". is ");
@@ -2369,7 +2378,8 @@ messages:
          AppendTempString(iDiff);
          AppendTempString(" points.\n");
       }
-      Send(self,@MsgSendUser,#message_rsc=dm_honor_compare_list_bottom,#parm1=GetTempString());
+      Send(self,@MsgSendUser,#message_rsc=dm_honor_compare_list_bottom,
+            #parm1=GetTempString());
 
       return;
    }

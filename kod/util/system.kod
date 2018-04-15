@@ -8487,30 +8487,27 @@ messages:
    {
       local i;
 
-      if plHonorList <> $
-      {
-         foreach i in plHonorList
-         {
-            plHonorList = DelListElem(plHonorList,i);
-         }
-      }
+      plHonorList = $;
+
       foreach i in plUsers
       {
-         // No ranks for people who dropped out of the honor system.
-         // (by losing HP, school levels, opting out of PvP etc.)
-         if NOT Send(i,@CanParticipateInHonorSystem)
-         {
-            Send(i,@SetHonorRank,#rank=0);
-         }
          // Don't include DMs, event characters, ineligible characters
          // or empty character slots.
          if Send(i,@CanParticipateInHonorSystem)
-            // Also exclude characters that haven't gained/lost points in 60 days.
-            AND NOT Send(i,@IsUserHonorInactive)
          {
-            plHonorList = Cons([i, Send(i,@GetHonorPoints)], plHonorList);
+            if (NOT Send(i,@IsUserHonorInactive))
+            {
+               plHonorList = Cons([i, Send(i,@GetHonorPoints)], plHonorList);
+            }
+         }
+         else
+         {
+            // No ranks for people who dropped out of the honor system.
+            // (by losing HP, school levels, opting out of PvP etc.)
+            Send(i,@SetHonorRank,#rank=0);
          }
       }
+
       Debug("Honor list created.");
       Send(self,@UpdateHonorList);
 
@@ -8519,26 +8516,29 @@ messages:
 
    UpdateHonorList()
    {
-      local i;
+      local i, each_obj;
 
       if plHonorList = $
       {
          Debug("No honor list found.");
+
          return;
       }
 
       foreach i in plHonorList
       {
-         if Send(First(i),@IsUserHonorInactive)
+         each_obj = First(i);
+         if Send(each_obj,@IsUserHonorInactive)
+            OR NOT Send(each_obj,@CanParticipateInHonorSystem)
          {
             plHonorList = DelListElem(plHonorList, i);
          }
-         if NOT Send(First(i),@CanParticipateInHonorSystem)
+         else
          {
-            plHonorList = DelListElem(plHonorList, i);
+            SetNth(i,2,Send(each_obj,@GetHonorPoints));
          }
-         SetNth(i,2,Send(First(i),@GetHonorPoints));
       }
+
       Send(self,@CalculateHonorRanks);
 
       return;
@@ -8559,10 +8559,10 @@ messages:
       }
 
       lPlayer = GetListNode(plHonorList,1,who);
-       if lPlayer <> $
-       {
-          SetNth(lPlayer,2,0);
-       }
+      if lPlayer <> $
+      {
+         SetNth(lPlayer,2,0);
+      }
       plHonorList = Send(self,@AddToSortedList,#what=who,#lList=plHonorList,
                          #number=Send(who,@GetHonorPoints),#bIgnoreDuplicate=FALSE,
                          #bReverse=FALSE);
@@ -8574,7 +8574,8 @@ messages:
 
    CalculateHonorRanks()
    {
-      local iCount, iFirst, iSecond, iThird, iFourth, iPos, iCountMax, oPlayer, lPlayer;
+      local iCount, iFirst, iSecond, iThird, iFourth, iPos, iCountMax,
+            oPlayer, lPlayer;
 
       // How many players can hold a given rank.
       iFirst = 1;
@@ -8582,12 +8583,12 @@ messages:
       iThird = 10;
       iFourth = 30;
 
-      iPos = 0;
       iCountMax = Length(plHonorList);
 
       if plHonorList = $
       {
          Debug("No honor list found.");
+
          return;
       }
 
@@ -8601,11 +8602,10 @@ messages:
          iFourth = (iCountMax * 50) / 100;
       }
 
-      while iPos < iCountMax
+      for (iPos = 1; iPos <= iCountMax; ++iPos)
       {
-         ++iPos;
-         lPlayer = Nth(plHonorList, iPos);
-         oPlayer = Nth(lPlayer,1);
+         lPlayer = Nth(plHonorList,iPos);
+         oPlayer = First(lPlayer);
 
          if iPos >= 1
             AND iPos <= iFirst

@@ -3406,18 +3406,22 @@ messages:
       {
          return;
       }
-      // Attackers in PvP are tracked for a longer time.
-      if IsClass (self,&Player)
-         AND Send(self,@IsRecentPvPCombatant)
-      {
-         iTime = Send(SETTINGS_OBJECT,@GetRecentPvPTime)*1000;
-      }
 
+      // Player-specific stuff.
       if IsClass(self,&Player)
-         AND Send(self,@FindUsing,#class=&Token) <> $
-         AND IsClass(who,&Player)
       {
-         return;
+         // Attackers in PvP are tracked for a longer time.
+         if Send(self,@IsRecentPvPCombatant)
+         {
+            iTime = Send(SETTINGS_OBJECT,@GetRecentPvPTime)*1000;
+         }
+
+         // Don't record damage from players if we are using a token.
+         if Send(self,@FindUsing,#class=&Token) <> $
+            AND IsClass(who,&Player)
+         {
+            return;
+         }
       }
 
       foreach i in plHurtMeRecently
@@ -3650,10 +3654,15 @@ messages:
 
       foreach i in plHurtMeRecently
       {
+         if IsTimer(Nth(i,3))
+         {
+            DeleteTimer(Nth(i,3));
+         }
          SetFirst(i,$);
          SetNth(i,3,$);
-         plHurtMeRecently = DelListElem(plHurtMeRecently,i);
       }
+
+      plHurtMeRecently = $;
 
       return;
    }

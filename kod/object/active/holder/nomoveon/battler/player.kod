@@ -3481,20 +3481,25 @@ messages:
          }
       }
 
-      foreach i in Send(self,@GetHurtMeRecently)
+      foreach i in plHurtMeRecently
       {
-         tTimer = Nth(i,3);
-         if tTimer <> $
+         // Increase time that player attackers are kept track of so that
+         // they can be awarded honor points if we pen.
+         if (IsClass(First(i),&Player))
          {
-            if IsTimer(tTimer)
+            tTimer = Nth(i,3);
+            if (tTimer <> $
+               AND IsTimer(tTimer))
             {
                iTime = GetTimeRemaining(tTimer);
-               DeleteTimer(tTimer);
-               // Add some time to prevent people from flashing on and off
-               // in order to escape honor point loss.
-               iTime += 5000;
+
+               if (iTime <= piRemainingPhaseTime)
+               {
+                  DeleteTimer(tTimer);
+                  iTime += piRemainingPhaseTime;
+                  SetNth(i,3,CreateTimer(self,@RemoveHurtMeRecently,iTime));
+               }
             }
-         SetNth(i,3,iTime);
          }
       }
 
@@ -8594,6 +8599,12 @@ messages:
          if num = Send(self,@DecodeSkillNum,#compound=i)
          {
             plSkills = DelListElem(plSkills,i);
+
+            if (num = SKID_SECOND_WIND)
+            {
+               piWind = 0;
+            }
+
             if Send(self,@CheckLog)
             {
                Debug("LOG:  ",vrName," lost skill ",Send(oSkill,@GetName));
@@ -9762,7 +9773,8 @@ messages:
 
    DeathLoseHonor(killer = $)
    {
-      local i, j, iHonorLost, iNumHurters, iHonorEach, iLostTotal, iKillHonor, oHurter, plHurt, bIsNear;
+      local i, j, iHonorLost, iNumHurters, iHonorEach, iLostTotal, iKillHonor,
+            oHurter, oHurterOwner, bIsNear;
 
       if NOT Send(SETTINGS_OBJECT,@HonorSystemActive)
       {
@@ -9774,22 +9786,15 @@ messages:
       iHonorEach = 0;
       iLostTotal = 0;
       iKillHonor = Send(SETTINGS_OBJECT,@GetHonorLossKill);
-      plHurt = Send(self,@GetHurtMeRecently);
 
       // Find out how many people assisted in the kill.
-      foreach i in plHurt
+      foreach i in plHurtMeRecently
       {
          oHurter = First(i);
          // Don't count the killer or ourselves for assists.
-         if oHurter = killer
-            OR oHurter = self
-         {
-            SetFirst(i,$);
-            SetNth(i,3,$);
-            plHurt = DelListElem(plHurt,i);
-            continue;
-         }
-         if IsClass (oHurter,&Player)
+         if IsClass(oHurter,&Player)
+            AND oHurter <> killer
+            AND oHurter <> self
          {
             ++iNumHurters;
          }
@@ -9806,51 +9811,56 @@ messages:
          AND killer <> self
       {
          iHonorLost = Send(self,@TransferHonorPoints,#who=self,
-                                 #what=killer,#honor=iKillHonor);
+                           #what=killer,#honor=iKillHonor);
          Send(killer,@MsgSendUser,#message_rsc=player_honor_gain_kill,
                #parm1=iHonorLost,#parm2=Send(self,@GetName));
          iLostTotal += iHonorLost;
       }
 
       // Attempt to give the honor points from the victim to the attacker(s).
-      foreach i in plHurt
+      foreach i in plHurtMeRecently
       {
          bIsNear = FALSE;
          oHurter = First(i);
          // Only count players that can fight.
-         if IsClass (oHurter,&Player)
-            AND NOT Send(oHurter,@IsOfflineOrCannotInteract)
+         if oHurter = self
+            OR oHurter = killer
+            OR NOT IsClass(oHurter,&Player)
+            OR Send(oHurter,@IsOfflineOrCannotInteract)
          {
-            if Send(self,@GetOwner) = Send(oHurter,@GetOwner)
+            continue;
+         }
+         oHurterOwner = Send(oHurter,@GetOwner);
+         if poOwner = oHurterOwner
+         {
+            bIsNear = TRUE;
+         }
+         else
+         {
+            // The attacker can fight but isn't in the same room as the victim.
+            // Check if they are in a nearby combat area since PvP involves movement.
+            foreach j in Send(poOwner,@GetYellZone)
             {
-               bIsNear = TRUE;
-            }
-            else
-            {
-               // The attacker can fight but isn't in the same room as the victim.
-               // Check if they are in a nearby combat area since PvP involves movement.
-               foreach j in Send(Send(self,@GetOwner),@GetYellZone)
+               if Send(SYS,@FindRoomByNum,#num=j) = oHurterOwner
+                  AND NOT Send(oHurterOwner,@CheckRoomFlag,#flag=ROOM_NO_COMBAT)
+                  AND NOT Send(oHurterOwner,@CheckRoomFlag,#flag=ROOM_NO_PK)
+                  AND NOT Send(oHurterOwner,@CheckRoomFlag,#flag=ROOM_SAFE_DEATH)
                {
-                  if Send(SYS,@FindRoomByNum,#num=j) = Send(oHurter,@GetOwner)
-                     AND NOT Send(Send(oHurter,@GetOwner),@CheckRoomFlag,#flag=ROOM_NO_COMBAT)
-                     AND NOT Send(Send(oHurter,@GetOwner),@CheckRoomFlag,#flag=ROOM_NO_PK)
-                     AND NOT Send(Send(oHurter,@GetOwner),@CheckRoomFlag,#flag=ROOM_SAFE_DEATH)
-                  {
-                     bIsNear = TRUE;
-                  }
+                  bIsNear = TRUE;
                }
             }
-            if bIsNear
-            {
-               // The attacker is nearby and can participate in PvP. Give them the points.
-               iHonorLost = Send(self,@TransferHonorPoints,#who=self,
-                                 #what=oHurter,#honor=iHonorEach);
-               iLostTotal += iHonorLost;
-               Send(oHurter,@MsgSendUser,#message_rsc=player_honor_gain_assist,
-                     #parm1=iHonorLost,#parm2=Send(self,@GetName));
-            }
+         }
+         if bIsNear
+         {
+            // The attacker is nearby and can participate in PvP. Give them the points.
+            iHonorLost = Send(self,@TransferHonorPoints,#who=self,
+                              #what=oHurter,#honor=iHonorEach);
+            iLostTotal += iHonorLost;
+            Send(oHurter,@MsgSendUser,#message_rsc=player_honor_gain_assist,
+                  #parm1=iHonorLost,#parm2=Send(self,@GetName));
          }
       }
+
       // Don't inform the player if they didn't lose any points. Reasons for this can include
       // them not having any to give or all attackers having fled the battlefield.
       if iLostTotal > 0
@@ -15599,9 +15609,10 @@ messages:
          OR what = $
       {
          Debug("Attempted to transfer honor points from ",who," to ",what,".");
+
          return;
       }
-      
+
       iHonor = 0;
 
       // Does the victim have any honor points to transfer?
@@ -15692,28 +15703,24 @@ messages:
       {
          return FALSE;
       }
-      else if Send(self, @GetMaxHealth) < Send(SETTINGS_OBJECT,@GetHonorMinHP)
+
+      if (piFlags & PFLAG_PERMA_NO_PVP)
       {
          return FALSE;
       }
-      else if Send(self,@GetTotalLearnPoints) < Send(SETTINGS_OBJECT,@GetHonorMinLevels)
-      {
-         return FALSE;
-      }
-      else if Send(SETTINGS_OBJECT,@NoHonorDM)
-      {
-         if IsClass(self,&DM)
-            OR IsClass(self,&EscapedConvict)
-         {
-            return FALSE;
-         }
-      }
+
       // Unused character slots aren't counted.
-      else if Send(self,@GetLastLoginTime) = 0
+      if Send(self,@GetLastLoginTime) = 0
       {
          return FALSE;
       }
-      else if Send(self,@CheckPlayerFlag,#flag=PFLAG_PERMA_NO_PVP)
+
+      if Send(self,@GetMaxHealth) < Send(SETTINGS_OBJECT,@GetHonorMinHP)
+      {
+         return FALSE;
+      }
+
+      if Send(self,@GetTotalLearnPoints) < Send(SETTINGS_OBJECT,@GetHonorMinLevels)
       {
          return FALSE;
       }

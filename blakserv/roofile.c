@@ -994,8 +994,11 @@ template<bool ISPLAYER> bool BSPCanMoveInRoom3D(room_type* Room, V2* S, V2* E, f
 
             // apply fallheight
             heightModified += stepFall;
-            heightModified = MAX(hFloorSQ, heightModified);
          }
+
+         // make sure we're at least at startsector's groundheight at Q when we reach Q from P
+         // in case we stepped up or fell below it
+         heightModified = MAX(hFloorSQ, heightModified);
 
          // pick max stepheight based on player/monster
          // this gives some tolerance for users, but clients should use MAXSTEPHEIGHT

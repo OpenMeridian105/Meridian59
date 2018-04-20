@@ -4531,10 +4531,26 @@ messages:
       // 2. Do not allow any moves if player is marked as not allowed to move or 
       //    if server-side move validation fails.
       //
-      if (piFlags & PFLAG_NO_MOVE) OR 
-	     NOT CanMoveInRoomBSP(Send(poOwner,@GetRoomData),piRow,piCol,piFine_row,
+      if (piFlags & PFLAG_NO_MOVE)
+      {
+         // Don't need to log this most of the time, can happen for mundane
+         // reasons e.g. a move sent after player getting held due to lag.
+         if (piFlags & PFLAG_LOG)
+         {
+            Debug("ALERT! ",Send(self,@GetTrueName),self," tried to move with",
+                  "PFLAG_NO_MOVE in room ",Send(poOwner,@GetName));
+         }
+
+         return;
+      }
+
+     if NOT CanMoveInRoomBSP(Send(poOwner,@GetRoomData),piRow,piCol,piFine_row,
             piFine_col,piHeight,new_row,new_col,fine_row,fine_col,piSpeed,self,FALSE,TRUE)
       {
+         Debug("ALERT! ",Send(self,@GetTrueName),self," illegal move denied in room ",
+               Send(poOwner,@GetName), "S: ",piRow,piCol,piFine_row,piFine_col,
+               ", E: ",new_row,new_col,fine_row,fine_col);
+
          // Reset position
          Send(SYS,@UtilGoNearSquare,#what=self,#where=poOwner,
                #new_row=iRow,
@@ -4542,8 +4558,6 @@ messages:
                #fine_row=iFineRow,
                #fine_col=iFineCol,
                #new_angle=iAngle);
-			   
-         Debug("ALERT!",Send(self,@GetTrueName),self,"illegal move denied");
 
          return;
       }

@@ -865,7 +865,7 @@ messages:
    SquaredFineDistanceTo3D(what=$)
    {
       local iRow, iCol, iWhatRow, iWhatCol, iRow_diff, iCol_diff, iHeight_diff,
-      iResult;
+            iResult;
 
       // Scale to fine.
       iRow = piRow * FINENESS + piFine_row;
@@ -874,8 +874,12 @@ messages:
       iWhatCol = Send(what,@GetCol) * FINENESS + Send(what,@GetFineCol);
 
       // WORKAROUND/TODO: existing monsters don't have a height yet
-      Send(self, @InitHeight);
-      if IsClass(what, &NoMoveOn) { Send(what, @InitHeight); }
+      Send(self,@InitHeight);
+
+      if (IsClass(what,&NoMoveOn))
+      {
+         Send(what,@InitHeight);
+      }
 
       // Deltas.
       iRow_diff = iRow - iWhatRow;
@@ -910,20 +914,20 @@ messages:
       // query height at destination
       if NOT GetLocationInfoBSP(
                       Send(poOwner,@GetRoomData), iQflags, 
-                      iWhatRow, iWhatCol, fine_row, fine_col,
+                      row, col, fine_row, fine_col,
                       *iRflags, *iHeightF, *iHeightFWD, *iHeightC, *iServerID)
       {
-         debug("Failed to get location info in ", Send(poOwner,@GetRoomData));
+         Debug("Failed to get location info in ", Send(poOwner,@GetRoomData));
          iHeight_diff = 0;
       }
       else
       {
          // WORKAROUND/TODO: existing monsters don't have a height yet
-         Send(self, @InitHeight);
+         Send(self,@InitHeight);
 
          iHeight_diff = piHeight - iHeightFWD;
       }
-	  
+
       // Deltas.
       iRow_diff = iRow - iWhatRow;
       iCol_diff = iCol - iWhatCol;

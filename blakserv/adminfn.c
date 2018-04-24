@@ -2617,6 +2617,7 @@ void AdminShowCalls(int session_id,admin_parm_type parms[],
 		case DELETETIMER : strcpy(c_name, "DeleteTimer"); break;
 		case GETTIMEREMAINING : strcpy(c_name, "GetTimeRemaining"); break;
 		case ISTIMER : strcpy(c_name, "IsTimer"); break;
+		case CHANGESECTORFLAGBSP: strcpy(c_name, "ChangeSectorFlagBSP"); break;
 		case MOVESECTORBSP: strcpy(c_name, "MoveSectorBSP"); break;
 		case CHANGETEXTUREBSP: strcpy(c_name, "ChangeTextureBSP"); break;
 		case CREATEROOMDATA : strcpy(c_name, "CreateRoomData"); break;

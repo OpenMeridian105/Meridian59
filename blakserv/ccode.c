@@ -3101,6 +3101,60 @@ int C_ChangeTextureBSP(int object_id, local_var_type *local_vars,
 	return ret_val.int_val;
 }
 
+// C_ChangeSectorFlagBSP: Allows changing sector flags from kod. Also allows
+//    resetting a flag to a default value. Only some flags can reasonably be
+//    changed from kod, i.e. depth and nomove status.
+int C_ChangeSectorFlagBSP(int object_id, local_var_type *local_vars,
+   int num_normal_parms, parm_node normal_parm_array[],
+   int num_name_parms, parm_node name_parm_array[])
+{
+   val_type ret_val, room_val, server_id, change_flag;
+   room_node *r;
+
+   ret_val.v.tag = TAG_INT;
+   ret_val.v.data = false;
+
+   room_val = RetrieveValue(object_id, local_vars, normal_parm_array[0].type,
+      normal_parm_array[0].value);
+   server_id = RetrieveValue(object_id, local_vars, normal_parm_array[1].type,
+      normal_parm_array[1].value);
+   change_flag = RetrieveValue(object_id, local_vars, normal_parm_array[2].type,
+      normal_parm_array[2].value);
+
+   if (room_val.v.tag != TAG_ROOM_DATA)
+   {
+      bprintf("C_ChangeSectorFlagBSP can't use non room %i,%i\n",
+         room_val.v.tag, room_val.v.data);
+      return ret_val.int_val;
+   }
+
+   if (server_id.v.tag != TAG_INT)
+   {
+      bprintf("C_ChangeSectorFlagBSP serverid can't use non int %i,%i\n",
+         server_id.v.tag, server_id.v.data);
+      return ret_val.int_val;
+   }
+
+   if (change_flag.v.tag != TAG_INT)
+   {
+      bprintf("C_ChangeSectorFlagBSP change flag can't use non int %i,%i\n",
+         change_flag.v.tag, change_flag.v.data);
+      return ret_val.int_val;
+   }
+
+   r = GetRoomDataByID(room_val.v.data);
+   if (r == NULL)
+   {
+      bprintf("C_ChangeSectorFlagBSP can't find room %i\n", room_val.v.data);
+      return ret_val.int_val;
+   }
+
+   BSPChangeSectorFlag(&r->data, (unsigned int)server_id.v.data,
+      (unsigned int)change_flag.v.data);
+
+   return ret_val.int_val;
+}
+
 int C_MoveSectorBSP(int object_id, local_var_type *local_vars,
 	int num_normal_parms, parm_node normal_parm_array[],
 	int num_name_parms, parm_node name_parm_array[])

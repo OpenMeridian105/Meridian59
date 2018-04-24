@@ -65,6 +65,21 @@
 #define WF_TRANSPARENT     0x00000002      // normal wall has some transparency
 #define WF_PASSABLE        0x00000004      // wall can be walked through
 #define WF_NOLOOKTHROUGH   0x00000020      // bitmap can't be seen through even though it's transparent
+
+// Sector flag change constants.
+// Bitfield so multiple flags can be sent together.
+// CSF_RESET_ALL sets to original flags.
+#define CSF_DEPTH_RESET  0x00000001
+#define CSF_DEPTH0       0x00000002
+#define CSF_DEPTH1       0x00000003
+#define CSF_DEPTH2       0x00000004
+#define CSF_DEPTH3       0x00000005
+#define CSF_DEPTHMASK    0x00000007
+#define CSF_NOMOVE_RESET 0x00000008
+#define CSF_NOMOVE_ON    0x00000010
+#define CSF_NOMOVE_OFF   0x00000018
+#define CSF_NOMOVEMASK   0x00000018
+#define CSF_RESET_ALL    0x00000020
 #pragma endregion
 
 #pragma region Internal
@@ -1158,6 +1173,73 @@ void BSPChangeTexture(room_type* Room, unsigned int ServerID, unsigned short New
 }
 
 /*********************************************************************************************/
+/* BSPChangeSectorFlag: Sets or resets sector flags.
+/*********************************************************************************************/
+void BSPChangeSectorFlag(room_type* Room, unsigned int ServerID, unsigned int ChangeFlag)
+{
+   bool isReset = ((ChangeFlag & CSF_RESET_ALL) == CSF_RESET_ALL);
+   bool depthReset = ((ChangeFlag & CSF_DEPTHMASK) == CSF_DEPTH_RESET);
+   bool noMoveReset = ((ChangeFlag & CSF_NOMOVEMASK) == CSF_NOMOVE_RESET);
+   bool noMoveOn = ((ChangeFlag & CSF_NOMOVEMASK) == CSF_NOMOVE_ON);
+   bool noMoveOff = ((ChangeFlag & CSF_NOMOVEMASK) == CSF_NOMOVE_OFF);
+   short depth = -1;
+   if ((ChangeFlag & CSF_DEPTHMASK) == CSF_DEPTH0)
+      depth = SF_DEPTH0;
+   else if ((ChangeFlag & CSF_DEPTHMASK) == CSF_DEPTH1)
+      depth = SF_DEPTH1;
+   else if ((ChangeFlag & CSF_DEPTHMASK) == CSF_DEPTH2)
+      depth = SF_DEPTH2;
+   else if ((ChangeFlag & CSF_DEPTHMASK) == CSF_DEPTH3)
+      depth = SF_DEPTH3;
+
+   for (int i = 0; i < Room->SectorsCount; i++)
+   {
+      SectorNode* sector = &Room->Sectors[i];
+
+      // server ID does not match
+      if (sector->ServerID != ServerID)
+         continue;
+
+      // Reset all flags to original values.
+      if (isReset)
+      {
+         sector->Flags = sector->FlagsOrig;
+         continue;
+      }
+
+      // Reset to original depth.
+      if (depthReset)
+      {
+         sector->Flags &= ~SF_MASK_DEPTH;
+         sector->Flags |= (sector->FlagsOrig & SF_MASK_DEPTH);
+      }
+      // Set a new depth.
+      else if (depth >= 0)
+      {
+         sector->Flags &= ~SF_MASK_DEPTH;
+         sector->Flags |= depth;
+      }
+
+      // Reset nomove status.
+      if (noMoveReset)
+      {
+         if ((sector->FlagsOrig & SF_NOMOVE) == SF_NOMOVE)
+            sector->Flags |= SF_NOMOVE;
+         else
+            sector->Flags &= ~SF_NOMOVE;
+      }
+      // Set a new nomove status.
+      else if (noMoveOn)
+         sector->Flags |= SF_NOMOVE;
+      else if (noMoveOff)
+         sector->Flags &= ~SF_NOMOVE;
+   }
+
+   AStarClearEdgesCache(Room);
+   AStarClearPathCaches(Room);
+}
+
+/*********************************************************************************************/
 /* BSPMoveSector:  Adjust floor or ceiling height of a non-sloped sector. 
 /*                 Always instant for now. Otherwise only for speed=0. Height must be in 1:1024.
 /*********************************************************************************************/
@@ -2110,7 +2192,7 @@ bool BSPLoadRoom(char *fname, room_type *room)
       if (fread(&sector->CeilingTexture, 1, 2, infile) != 2)
       { fclose(infile); return False; }
 
-	  // keep track of original texture nums (can change at runtime)
+      // keep track of original texture nums (can change at runtime)
       sector->FloorTextureOrig   = sector->FloorTexture;
       sector->CeilingTextureOrig = sector->CeilingTexture;
 
@@ -2135,6 +2217,9 @@ bool BSPLoadRoom(char *fname, room_type *room)
       // flags
       if (fread(&sector->Flags, 1, 4, infile) != 4)
       { fclose(infile); return False; }
+
+      // Keep track of original flags (can change at runtime)
+      sector->FlagsOrig = sector->Flags;
 
       // skip speed byte
       if (fread(&temp, 1, 1, infile) != 1)

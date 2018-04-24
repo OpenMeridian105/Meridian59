@@ -116,10 +116,16 @@ messages:
    {
       local iQflags, iRflags, iHeightDelta, iHeightF, iHeightFWD, 
             iHeightC, iServerID, iFlags;
-		 
+
       /// posted so we know it happens last, and that new_row is going to be
       /// the pre-coords, and piRow is going to be the post.  This was crucial
       /// to making the spam protection on the walls work.
+
+      // Can't update if we don't have a room.
+      if (poOwner = $)
+      {
+         return;
+      }
 
       piRow = new_row;
       piCol = new_col;
@@ -137,16 +143,16 @@ messages:
          debug("Failed to get location info in ", Send(poOwner,@GetRoomData));
          iRflags = 0;
       }
-	  
+
       // save floor and ceiling heights and sector id
       piHeightFWD = iHeightFWD;
       piHeightC   = iHeightC;
       piSectorID  = iServerID;
-	  
+
       // no previous height known (e.g. after spawn/first placement)
       // so just put on floor or ceiling
       if piHeight = $
-      {	  	  
+      {
          // get flags
          iFlags = Send(self, @GetObjectFlags);
 
@@ -161,7 +167,7 @@ messages:
          }
 
          piVerticalSpeed = 0;
-         piTickLastCoordsChange = GetTickCount();	 
+         piTickLastCoordsChange = GetTickCount();
          //Debug("Set initial height of object:", piHeight);
       }
 
@@ -173,19 +179,19 @@ messages:
 
       return;
    }
-   
+
    InitHeight()
    "Calls UpdateHeight to initialize a nil/$ value in piHeight."
    "Does nothing if not $ right now."
    {
       if piHeight = $
       {
-         Send(self, @UpdateHeight); 
+         Send(self, @UpdateHeight);
       }
 
       return;
    }
-   
+
    UpdateHeight()
    "Calls ChangeCoords with the objects own current coordinates."
    "Useful to force a manual height update of the object"
@@ -194,9 +200,9 @@ messages:
          #new_row = piRow, #new_col = piCol, 
          #fine_row = piFine_row, #fine_col = piFine_col);
 
-      return;		 
+      return;
    }
-   
+
    HeightUpdateTimer(timer = $)
    "Adjusts the object's current height position."
    "Called regularly either by moves or, if absent, by timer"
@@ -215,7 +221,7 @@ messages:
 
       // get flags
       iFlags = Send(self, @GetObjectFlags);
-	  
+
       // get current ms tick
       iCurrentTime = GetTickCount();
 
@@ -234,7 +240,7 @@ messages:
          {
             piVerticalSpeed = -1;
          }
-		 
+
          // vspeed already neg, continue falling
          else
          {
@@ -271,10 +277,10 @@ messages:
          piVerticalSpeed = 0;
          piHeight = piHeightFWD;
       }
-	 
+
       // save tick we adjusted for next calc
       piTickLastCoordsChange = iCurrentTime;
-	  
+
       // DEBUG  
       /*if (IsClass(self, &User))
       {
@@ -283,7 +289,7 @@ messages:
 
       return;
    }
-   
+
    Delete()
    {
       if ptHeightUpdate <> $

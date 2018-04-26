@@ -1471,11 +1471,25 @@ messages:
    UpdateStomach()
    "Removes consumed food from stomach"
    {
-      local now;
+      local now, iTime;
 
       now = GetTime();
-      piStomach = piStomach-(now-piTimeLastStomachUpdate)*FOOD_USE_RATE/100;
-      piStomach = Bound(piStomach,1,100);
+
+      iTime = now - piTimeLastStomachUpdate;
+
+      // Need to account for overflows. If we get a large number here we can
+      // assume the user has not logged on in a while or had stomach reset
+      // via e.g. timeoverflow fix so we can just let them eat.
+      if (iTime >= MAX_KOD_INT / FOOD_USE_RATE)
+      {
+         piStomach = 1;
+      }
+      else
+      {
+         piStomach -= (iTime * FOOD_USE_RATE / 100);
+         piStomach = Bound(piStomach,1,100);
+      }
+
       piTimeLastStomachUpdate = now;
 
       return;

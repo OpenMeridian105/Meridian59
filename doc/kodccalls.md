@@ -64,6 +64,9 @@ present in the current codebase.
   * [LineOfSightBSP](#lineofsightbsp)
   * [LineOfSightView](#lineofsightview)
   * [CanMoveInRoomBSP](#canmoveinroombsp)
+  * [ChangeSectorFlagBSP](#changesectorflagbsp)
+  * [GetSectorHeightBSP](#getsectorheightbsp)
+  * [SetRoomDepthOverrideBSP](#setroomdepthoverridebsp)
   * [MoveSectorBSP](#movesectorbsp)
   * [ChangeTextureBSP](#changetexturebsp)
   * [GetLocationInfoBSP](#getlocationinfobsp)
@@ -73,6 +76,7 @@ present in the current codebase.
   * [BlockerClearBSP](#blockerclearbsp)
   * [GetRandomPointBSP](#getrandompointbsp)
   * [GetStepTowardsBSP](#getsteptowardsbsp)
+  * [GetRandomMoveDestBSP](#getrandommovedestbsp)
 * [Hash Tables](#hash-tables)
   * [AddTableEntry](#addtableentry)
   * [CreateTable](#createtable)
@@ -1173,32 +1177,14 @@ Frees the memory associated with a room.
 ```
 
 #### LineOfSightBSP
-`LineOfSightBSP(roomdata, start coords, end coords)`
+`LineOfSightBSP(roomdata, start_coords, start_height, end_coords, end_height)`
 
 Checks if a source location has line of sight with a destination, uses the BSP tree.
 
 ```
-   LineOfSight(obj1 = $, obj2 = $)
-   "Returns TRUE if there is a line of sight between obj1 and obj2"
-   {
-      local start_row, start_col, start_finerow, start_finecol,
-            end_row, end_col, end_finerow, end_finecol, los;
-
-      // get coordinates of source (obj1) and target (obj2)
-      start_row = Send(obj1, @GetRow);
-      start_col = Send(obj1, @GetCol);
-      start_finerow = Send(obj1, @GetFineRow);
-      start_finecol = Send(obj1, @GetFineCol);
-      end_row = Send(obj2, @GetRow);
-      end_col = Send(obj2, @GetCol);
-      end_finerow = Send(obj2, @GetFineRow);
-      end_finecol = Send(obj2, @GetFineCol);
-
-      // call BSP LoS in C code  
-      return LineOfSightBSP(prmRoom,
-         start_row, start_col, start_finerow, start_finecol,
-         end_row, end_col, end_finerow, end_finecol);
-   }
+   return LineOfSightBSP(prmRoom,
+      start_row, start_col, start_finerow, start_finecol, start_height,
+      end_row, end_col, end_finerow, end_finecol, end_height);
 ```
 
 #### LineOfSightView
@@ -1215,26 +1201,119 @@ LineOfSightView(Send(self,@GetAngle), piRow, piCol, piFine_row,
 ```
 
 #### CanMoveInRoomBSP
-`CanMoveInRoomBSP(roomdata, start coords, end coords, object, flags)`
+`CanMoveInRoomBSP(roomdata, start_coords, start_height, end_coords, speed, object, move_bool, isplayer_bool)`
 
 Checks if the object can walk along a straight line from the start coords to
-the end coords. Flags parameter is used to specify whether the object can move
-outside the room's BSP tree.
+the end coords. move_bool parameter is used to specify whether the object can move
+outside the room's BSP tree. isplayer_bool is TRUE if the object to move is a player.
 
 ```
-   bMoveOffBSP = FALSE;
-
    if (IsClass(what,&Monster)
       AND (Send(what,@GetBehavior) & AI_MOVE_WALKTHROUGH_WALLS))
    {
       bMoveOffBSP = TRUE;
    }
 
-   if NOT CanMoveInRoomBSP(prmRoom,iRow,iCol,iFineRow,iFineCol,new_row,
-               new_col,new_finerow,new_finecol,what,bMoveOffBSP)
+   if NOT CanMoveInRoomBSP(prmRoom,iRow,iCol,iFineRow,iFineCol,iHeight,new_row,
+               new_col,new_finerow,new_finecol,iSpeed,what,bMoveOffBSP,FALSE)
    {
       return FALSE;
    }
+```
+
+#### ChangeSectorFlagBSP
+`ChangeSectorFlagBSP(roomdata, sector_id, flags)`
+
+Changes the sector flags stored in the room's BSP tree. Used for changing the
+server value of depth for a sector so that height calculations can work
+correctly. Can also change the 'nomove' status of a sector. The 'flags' field
+is a call-specific flag, not literal sector flags.
+
+```
+   // Adjust depth server-side too.
+   switch(depth)
+   {
+   case SF_DEPTH0:
+      ChangeSectorFlagBSP(prmRoom, sector, CSF_DEPTH0);
+      break;
+   case SF_DEPTH1:
+      ChangeSectorFlagBSP(prmRoom, sector, CSF_DEPTH1);
+      break;
+   case SF_DEPTH2:
+      ChangeSectorFlagBSP(prmRoom, sector, CSF_DEPTH2);
+      break;
+   case SF_DEPTH3:
+      ChangeSectorFlagBSP(prmRoom, sector, CSF_DEPTH3);
+      break;
+   }
+```
+
+#### GetSectorHeightBSP
+`GetSectorHeightBSP(roomdata, sector_id, animation)`
+
+Used to retrieve the current floor/ceiling height of an ID tagged sector from
+KOD. Since it's technically possible to tag sectors with totally different
+heights to the same ID, this will return the height of the FIRST sector with
+matching ID. This is NOT compatible with sloped sectors, as the height there
+would depent on the actual point. This was made for incremented sector moves.
+'animation' is either floor or ceiling.
+
+```
+   foreach i in plSector_changes
+   {
+      iSector = First(i);
+      lMovedSector = GetListNode(plSector_moves,1,iSector);
+      if (lMovedSector <> $)
+      {
+         iAnim = Nth(lMovedSector,2);
+         // Set initial height.
+         Send(who,@SectorSendUser,#sector=iSector,#animation=iAnim,
+               #height=GetSectorHeightBSP(prmRoom,iSector,iAnim),#speed=0);
+         // Set moving.
+         Send(who,@SectorSendUser,#sector=iSector,#animation=iAnim,
+               #height=Nth(lMovedSector,3),#speed=Nth(lMovedSector,4));
+      }
+      else
+      {
+         // Not moving, infinite speed.
+         Send(who,@SectorSendUser,#sector=iSector,#animation=Nth(i,2),
+               #height=Nth(i,3),#speed=0);
+      }
+   }
+```
+
+#### SetRoomDepthOverrideBSP
+`SetRoomDepthOverrideBSP(roomdata, flags, depth1, depth2, depth3)`
+
+Used to pass room values viClientFlags, viOverrideDepth1, viOverrideDepth2,
+viOverrideDepth3 to C. These can affect the height an object is placed on
+certain sectors. These values turn the normal depth modification of sectors
+with DEPTH flags (normally reduce height by offset) into a different
+interpretation, where each DEPTH type reflects a fixed height transmitted by
+server in BP_PLAYER, not a modification/offset to the map value. This is ONLY
+used for the riija temple so far and allows to place the object far above the
+actual texture while walking on the bridge.
+
+```
+   LoadRoomData()
+   {
+      local i, lList, each_obj, lRoom_data;
+
+      if prRoom = $
+      {
+         Debug("Problems with",vrName,piRoom_num);
+      }
+
+      prmRoom = LoadRoom(prRoom);
+      lRoom_data = RoomData(prmRoom);
+      piRows = First(lRoom_data);
+      piCols = Nth(lRoom_data,2);
+      piSecurity = Nth(lRoom_data,3);
+      piRowsHighRes = Nth(lRoom_data,4);
+      piColsHighRes = Nth(lRoom_data,5);
+
+      // set depth override flags and values
+      SetRoomDepthOverrideBSP(prmRoom,viClientFlags,viOverrideDepth1,viOverrideDepth2,viOverrideDepth3);
 ```
 
 #### MoveSectorBSP
@@ -1352,19 +1431,21 @@ Called whenever an object that blocks movement leaves a room.
 Removes all blockers saved in the roomdata. Not currently in use.
 
 #### GetRandomPointBSP
-`GetRandomPointBSP(room_data, max_tries, *row, *col, *finerow, *finecol)`
+`GetRandomPointBSP(room_data, max_tries, unblocked_radius, *row, *col, *finerow, *finecol)`
 
 Used for finding a free, valid space to place a monster or any other object.
 Max_tries acts as a safety to avoid running an infinite loop, and if the call
 is successful the coordinates to use are placed into the local vars row, col,
-finerow and finecol.
+finerow and finecol. unblocked_radius is the radius around the point that must
+be clear to allow the move (including walls), in kod fineness units.
 
 ```
    // query random point from C (into local vars)
    // this point is guaranteed to have the following properties:
    // (a) inside ThingsBox  (b) inside a sector with a texture set
    // (c) not blocked by another object
-   if NOT GetRandomPointBSP(prmRoom, 15, *iRow, *iCol, *iFineRow, *iFineCol)
+   // (d) a step with specified length can be made in all directions 
+   if NOT GetRandomPointBSP(prmRoom, 24, viSpawnRadius, *iMRow, *iMCol, *iMRowFine, *iMColFine)
    {
       Debug("failed to place monster ",oMonster,Send(oMonster,@GetName),
             " in room ",self,Send(self,@GetName));
@@ -1375,7 +1456,7 @@ finerow and finecol.
 ```
 
 #### GetStepTowardsBSP
-`GetStepTowardsBSP(room_data, coords, *end_row, *end_col, *end_finerow, *end_finecol, flags, object)`
+`GetStepTowardsBSP(room_data, start_coords, start_height, *end_row, *end_col, *end_finerow, *end_finecol, speed, flags, object)`
 
 Used for calculating the next step an object can take towards the destination
 given by the first set of coordinates. If unsuccessful, this call will return
@@ -1388,10 +1469,29 @@ into the second set of coordinate variables.
    // note: these need some persistent info across
    // calls which are stored in piState (flags from old KOD code)
    iState = GetStepTowardsBSP(
-               Send(poOwner, @GetRoomData),
-               piRow, piCol, piFine_row, piFine_col,
-               *iRow, *iCol, *iFineRow, *iFineCol,
-               piState | iMoveFlags, self);
+             Send(poOwner, @GetRoomData),
+             piRow, piCol, piFine_row, piFine_col, piHeight,
+             *iRow, *iCol, *iFineRow, *iFineCol, piSpeed,
+             piState | iMoveFlags, self);
+```
+
+#### GetRandomMoveDestBSP
+`GetRandomMoveDestBSP(room_data, max_attempts, min_distance, max_distance, coords, *end_row, *end_col, *end_finerow, *end_finecol, flags, object)`
+
+Gets a random destination between min_distance and max_distance from the given
+coords (row, col, finerow, finecol) and places the end location in the local
+vars passed. Tries max_attempts times.
+
+```
+   if (NOT direction)
+      AND GetRandomMoveDestBSP(Send(poOwner,@GetRoomData), 48, 128, 1536,
+                                piRow, piCol, piFine_row, piFine_col, 
+                                *iMRow, *iMCol, *iMRowFine, *iMColFine)
+   {
+      Send(self,@MoveTowardsCoords,#iRow=iMRow,#iCol=iMCol,
+            #iFineRow=iMRowFine,#iFineCol=iMColFine,
+            #face_target=TRUE,#face_away=FALSE);
+   }
 ```
 
 ## Hash Tables

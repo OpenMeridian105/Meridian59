@@ -534,6 +534,7 @@ char * name_function(int fnum)
    case GETTIMEREMAINING : return "GetTimeRemaining";
    case ISTIMER : return "IsTimer";
 
+   case CHANGESECTORFLAGBSP : return "ChangeSectorFlagBSP";
    case MOVESECTORBSP : return "MoveSectorBSP";
    case CHANGETEXTUREBSP : return "ChangeTextureBSP";
    case CREATEROOMDATA : return "LoadRoom";

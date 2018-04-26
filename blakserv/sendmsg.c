@@ -207,6 +207,7 @@ void InitBkodInterpret(void)
    ccall_table[CANMOVEINROOMBSP] = C_CanMoveInRoomBSP;
    ccall_table[CHANGETEXTUREBSP] = C_ChangeTextureBSP;
    ccall_table[MOVESECTORBSP] = C_MoveSectorBSP;
+   ccall_table[CHANGESECTORFLAGBSP] = C_ChangeSectorFlagBSP;
    ccall_table[GETLOCATIONINFOBSP] = C_GetLocationInfoBSP;
    ccall_table[BLOCKERADDBSP] = C_BlockerAddBSP;
    ccall_table[BLOCKERMOVEBSP] = C_BlockerMoveBSP;

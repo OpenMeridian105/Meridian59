@@ -1245,7 +1245,7 @@ messages:
 
       // set depth override flags and values
       SetRoomDepthOverrideBSP(prmRoom,viClientFlags,viOverrideDepth1,viOverrideDepth2,viOverrideDepth3);
-	  
+
       foreach lList in [plActive, plPassive]
       {
          foreach i in lList
@@ -1262,6 +1262,14 @@ messages:
                }
             }
          }
+      }
+
+      // TODO: need some way to differentiate no depth change, but for
+      // now all flag changes in this list are depth changes.
+      foreach i in plSector_flag_changes
+      {
+         // Add depth changes.
+         Send(self,@ChangeSectorFlag,#id=First(i),#depth=Nth(i,2));
       }
 
       return;
@@ -2421,11 +2429,8 @@ messages:
 
    SendExtraRoomInfo()
    {
-      AddPacket(4,Send(self,@GetWadingSound));
-      AddPacket(4,viClientFlags);
-      AddPacket(4,viOverrideDepth1);
-      AddPacket(4,viOverrideDepth2);
-      AddPacket(4,viOverrideDepth3);
+      AddPacket(4,Send(self,@GetWadingSound), 4,viClientFlags,
+                4,viOverrideDepth1, 4,viOverrideDepth2, 4,viOverrideDepth3);
 
       return;
    }
@@ -3422,8 +3427,24 @@ messages:
          return;
       }
 
-      // Tell everyone in the room at the moment about the change
+      // Adjust depth server-side too.
+      switch(depth)
+      {
+      case SF_DEPTH0:
+         ChangeSectorFlagBSP(prmRoom, sector, CSF_DEPTH0);
+         break;
+      case SF_DEPTH1:
+         ChangeSectorFlagBSP(prmRoom, sector, CSF_DEPTH1);
+         break;
+      case SF_DEPTH2:
+         ChangeSectorFlagBSP(prmRoom, sector, CSF_DEPTH2);
+         break;
+      case SF_DEPTH3:
+         ChangeSectorFlagBSP(prmRoom, sector, CSF_DEPTH3);
+         break;
+      }
 
+      // Tell everyone in the room at the moment about the change
       foreach i in plActive
       {
          each_obj = First(i);
@@ -3433,6 +3454,12 @@ messages:
          {
             Post(each_obj,@ToCliPlayer);
             Post(each_obj,@ToCliRoomContents);
+         }
+
+         // Possible height (depth) change.
+         if (Send(each_obj,@GetSectorID) = sector)
+         {
+            Send(each_obj,@UpdateHeight);
          }
       }
 
@@ -3465,6 +3492,10 @@ messages:
          return;
       }
 
+      // TODO: need a way to differentiate plSector_flag_changes list entries
+      // with no depth change. Currently none in use.
+      ChangeSectorFlagBSP(prmRoom, id, CSF_DEPTH_RESET);
+
       foreach i in plSector_flag_changes
       {
          if (id <> $ AND First(i) = id)
@@ -3480,6 +3511,11 @@ messages:
          {
             Send(each_obj,@ToCliPlayer);
             Send(each_obj,@ToCliRoomContents);
+         }
+         // Possible height (depth) change.
+         if (Send(each_obj,@GetSectorID) = id)
+         {
+            Send(each_obj,@UpdateHeight);
          }
       }
 
@@ -3631,6 +3667,81 @@ messages:
 
       // not already in list, so add
       plTexture_changes = Cons([ id, new_texture, flags ], plTexture_changes);
+
+      return;
+   }
+
+   ChangeSectorFlag(id = $, depth = $, nomove = $, flags = $)
+   "depth can be SF_DEPTH0, SF_DEPTH1, SF_DEPTH2, SF_DEPTH3."
+   "nomove can be TRUE (turn nomove on) or FALSE (turn nomove off)."
+   "flags can be any valid value (see blakston.khd) but the intended usage "
+   "is to send a reset for either depth, nomove or both."
+   {
+      local i, each_obj, iCSFlag;
+
+      if (id = $
+         OR prmRoom = $)
+      {
+         Debug("ChangeSectorFlag called with $ data ",id, prmRoom);
+
+         return;
+      }
+
+      // 0 is empty.
+      iCSFlag = 0;
+
+      // Option to send flags directly
+      if (flags <> $)
+      {
+         ChangeSectorFlagBSP(prmRoom, id, flags);
+      }
+      else
+      {
+         // Construct flags.
+         switch(depth)
+         {
+         case SF_DEPTH0:
+            iCSFlag |= CSF_DEPTH0;
+            break;
+         case SF_DEPTH1:
+            iCSFlag |= CSF_DEPTH1;
+            break;
+         case SF_DEPTH2:
+            iCSFlag |= CSF_DEPTH2;
+            break;
+         case SF_DEPTH3:
+            iCSFlag |= CSF_DEPTH3;
+            break;
+         }
+         switch(nomove)
+         {
+         case TRUE:
+            iCSFlag |= CSF_NOMOVE_ON;
+            break;
+         case FALSE:
+            iCSFlag |= CSF_NOMOVE_OFF;
+            break;
+         }
+
+         if (iCSFlag > 0)
+         {
+            ChangeSectorFlagBSP(prmRoom, id, iCSFlag);
+         }
+      }
+
+      // Possible height (depth) change.
+      if (flags <> $
+         OR iCSFlag > 0)
+      {
+         foreach i in plActive
+         {
+            each_obj = First(i);
+            if (Send(each_obj,@GetSectorID) = id)
+            {
+               Send(each_obj,@UpdateHeight);
+            }
+         }
+      }
 
       return;
    }

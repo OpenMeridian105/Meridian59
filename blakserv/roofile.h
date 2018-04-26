@@ -160,6 +160,7 @@ typedef struct SectorNode
    float          FloorHeight;
    float          CeilingHeight;
    unsigned int   Flags;
+   unsigned int   FlagsOrig;
    SlopeInfo*     SlopeInfoFloor;
    SlopeInfo*     SlopeInfoCeiling;
    unsigned short FloorTextureOrig;
@@ -300,6 +301,7 @@ bool  BSPLineOfSightView(V2 *S, V2 *E, int kod_angle);
 bool  BSPLineOfSight(room_type* Room, V3* S, V3* E);
 bool  BSPLineOfSightTree(const BspNode* Node, const V3* S, const V3* E);
 void  BSPChangeTexture(room_type* Room, unsigned int ServerID, unsigned short NewTexture, unsigned int Flags);
+void  BSPChangeSectorFlag(room_type* Room, unsigned int ServerID, unsigned int ChangeFlag);
 void  BSPMoveSector(room_type* Room, unsigned int ServerID, bool Floor, float Height, float Speed);
 bool  BSPGetSectorHeightByID(room_type* Room, unsigned int ServerID, bool Floor, float* Height);
 bool  BSPGetLocationInfo(room_type* Room, V2* P, unsigned int QueryFlags, unsigned int* ReturnFlags, float* HeightF, float* HeightFWD, float* HeightC, BspLeaf** Leaf);

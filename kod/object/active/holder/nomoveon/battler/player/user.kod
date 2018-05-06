@@ -4503,23 +4503,26 @@ messages:
    {
       local iCurrentTime, iDelta, iAngle, iRow, iCol, iFineRow, 
             iFineCol, iRoomNum, iDx, iDy, iMoveLength, iMaxMoveRun, 
-         iQflags, iRflags, iHeightF, iHeightFWD, iHeightC, iServerID;
+            iQflags, iRflags, iHeightF, iHeightFWD, iHeightC, iServerID;
+
+      ////////////////////////////////////////////////////////////////////////////////////////
+      // 1 - INIT AND SILENT DISCARDS
+      ////////////////////////////////////////////////////////////////////////////////////////
 
       //
-      // 1.1 Get current position values and current tick
+      // 1.1 Get current position, angle, tick and delta
       //
-
       iRow = piRow;
       iCol = piCol;
       iFineRow = piFine_row;
       iFineCol = piFine_col;
       iAngle = Send(self,@GetAngle);
       iCurrentTime = GetTickCount();
+      iDelta = Bound(iCurrentTime - piLastMoveUpdateTime,0,2000);
 
       //
-      // 1.2 Silently discard requests directly after server-teleports.
-      //     These would be incorrect by now... 
-      //     Also take care of rollover: The last teleport must be in the past, not future
+      // 1.2 Silently discard requests directly after server-teleports (incorrect by now)
+      //  Also take care of rollover: The last teleport must be in the past, not future
       //
       if iCurrentTime > piLastServerTeleport AND iCurrentTime < piLastServerTeleport + 300
       {
@@ -4527,9 +4530,16 @@ messages:
          return;
       }
 
+      ////////////////////////////////////////////////////////////////////////////////////////
+      // 2 - VALIDATIONS CAUSING DENY/RUBBERBANDING/RETURN ON FAIL
+      // 2.1) PFLAG_NO_MOVE
+      // 2.2) CLAIMED SPEED
+      // 2.3) REAL SPEED
+      // 2.4) COLLISIONS
+      ////////////////////////////////////////////////////////////////////////////////////////
+
       //
-      // 2. Do not allow any moves if player is marked as not allowed to move or 
-      //    if server-side move validation fails.
+      // 2.1 Do not allow any moves if player is marked as not allowed to move 
       //
       if (piFlags & PFLAG_NO_MOVE)
       {
@@ -4540,16 +4550,6 @@ messages:
             Debug("ALERT! ",Send(self,@GetTrueName),self," tried to move with",
                   "PFLAG_NO_MOVE in room ",Send(poOwner,@GetName));
          }
-
-         return;
-      }
-
-     if NOT CanMoveInRoomBSP(Send(poOwner,@GetRoomData),piRow,piCol,piFine_row,
-            piFine_col,piHeight,new_row,new_col,fine_row,fine_col,piSpeed,self,FALSE,TRUE)
-      {
-         Debug("ALERT! ",Send(self,@GetTrueName),self," illegal move denied in room ",
-               Send(poOwner,@GetName), "S: ",piRow,piCol,piFine_row,piFine_col,
-               ", E: ",new_row,new_col,fine_row,fine_col);
 
          // Reset position
          Send(SYS,@UtilGoNearSquare,#what=self,#where=poOwner,
@@ -4563,72 +4563,78 @@ messages:
       }
 
       //
-      // 3.1 Get time-deltas
+      // 2.2 Validate claimed (transmitted) speed
       //
-      iDelta = iCurrentTime - piLastMoveUpdateTime;
+
+      // 2.2.1 Check the user's speed is within a valid range
+      //  TODO: Adjust upper bound using sectorflags (SF_DEPTH speed reduce)
+      if speed < 1 OR speed > USER_RUNNING_SPEED
+      {
+         // Make a log entry
+         if piCheaterLogs < MAX_LOGGED_THRESHOLD
+         {
+            ++piCheaterLogs;
+            Debug("ALERT! ",Send(self,@GetTrueName),self,
+                  " transmitted speed ",speed,
+                  " smaller 1 or greater ",USER_RUNNING_SPEED);
+         }
+
+         // Reset position
+         Send(SYS,@UtilGoNearSquare,#what=self,#where=poOwner,
+               #new_row=iRow,
+               #new_col=iCol,
+               #fine_row=iFineRow,
+               #fine_col=iFineCol,
+               #new_angle=iAngle);
+
+         return;
+      }
+
+      // 2.2.2 Prevent running with low vigor
+      if speed > USER_WALKING_SPEED AND piVigor < VIGOR_RUN_THRESHOLD
+      {
+         // Make a log entry
+         if piCheaterLogs < MAX_LOGGED_THRESHOLD
+         {
+            ++piCheaterLogs;
+            Debug("ALERT!",Send(self,@GetTrueName),self,"was running with "
+                  "no vigor.");
+         }
+
+         // Reset position
+         Send(SYS,@UtilGoNearSquare,#what=self,#where=poOwner,
+               #new_row=iRow,
+               #new_col=iCol,
+               #fine_row=iFineRow,
+               #fine_col=iFineCol,
+               #new_angle=iAngle);
+
+         return;
+      }
 
       //
-      // 3.2 Bound time-deltas
-      //   These must not be too big for the calculations below
+      // 2.3 Validate REAL Speed (Speedhack Protection). 
+      //  Needs validated claimed speed value from above!
       //
-      iDelta = Bound(iDelta,0,2000);
 
-      //
-      // 4.1 Calculate the squared movesize for running in this dt.
-      //   USER_RUNNING_SPEED is defined as # of big squares per 10000ms
-      //   The unit here is fine upscaled by another *16 (same is done below in 4.5)
-      //
-      iMaxMoveRun = (Bound(speed,0,USER_RUNNING_SPEED) * FINENESS * 16 * iDelta) / 10000;
+      // 2.3.1 Calculate the squared movesize for the claimed speed in this dt.
+      //  USER_RUNNING_SPEED is defined as # of big squares per 10000ms
+      //  The unit here is fine upscaled by another *16 (same is done below on iDy, iDx)
+      iMaxMoveRun = (speed * FINENESS * 16 * iDelta) / 10000;
       iMaxMoveRun = (iMaxMoveRun * iMaxMoveRun);
 
-      //
-      // 4.2 Fill up the movement bucket with tokens
-      //   for the squared distance one could have travelled at maximum.
-      //
+      // 2.3.2 Fill up the movement bucket with tokens for the squared distance 
+      //  one could have travelled at maximum but keep an upper bound on it.
       piMovementBucket += iMaxMoveRun;
-
-      //
-      // 4.3 Bound the maximum bucketsize
-      //
       piMovementBucket = Bound(piMovementBucket, 0, Send(SETTINGS_OBJECT,@GetMovementBucketMax));
-      //Debug("Bucket before move:",piMovementBucket);
 
-      //
-      // 4.4 Get move-deltas in FINENESS units
-      //
-      iDy = ((new_row * FINENESS) + fine_row) - ((iRow * FINENESS) + iFineRow);
-      iDx = ((new_col * FINENESS) + fine_col) - ((iCol * FINENESS) + iFineCol);
-
-      //
-      // 4.5 Scale them up a bit further for precision later
-      // We did the same with iMaxMoveRun in 4.1
-      //
-      iDy *= 16;
-      iDx *= 16;
-
-      //
-      // 4.6 Get squared move-vector length.
-      //
+      // 2.3.3 Get move-deltas in FINENESS units and scale up a bit further (*16) for precision
+      //  Same was done with iMaxMoveRun above. Calculate the squared vector length from the deltas.
+      iDy = 16 * (((new_row * FINENESS) + fine_row) - ((iRow * FINENESS) + iFineRow));
+      iDx = 16 * (((new_col * FINENESS) + fine_col) - ((iCol * FINENESS) + iFineCol));
       iMoveLength = (iDy * iDy) + (iDx * iDx);
 
-      // DEBUG output
-      //Debug(
-      //  "iDelta:",iDelta,
-      //  "iMaxMoveRun:",iMaxMoveRun,
-      //  "iMoveLength:",iMoveLength,
-      //  "iRow:",iRow,
-      //  "iCol:",iCol,
-      //  "iFineRow:",iFineRow,
-      //  "iFineCol:",iFineCol,
-      //  "new_row:",new_row,
-      //  "new_col:",new_col,
-      //  "fine_row:",fine_row,
-      //  "fine_col:",fine_col);
-
-      //
-      // 5.1 This move would consume more tokens
-      // than we have left -> deny
-      //
+      // 2.3.4 This move would consume more tokens than we have left -> deny
       if (piMovementBucket - iMoveLength < 0)
       {
          // Reset position
@@ -4650,69 +4656,30 @@ messages:
       }
 
       //
-      // 5.2 Double check the user's speed. USER_WALKING_SPEED should
-      // be 25, USER_RUNNING_SPEED should be 50. If the speed we've
-      // received is less than 25, make it 50 and log that we've
-      // changed it.
+      // 2.4 Validate against room geometry and manual move checks
+      //  This requires the already validated speed value from above
       //
 
-      if speed < USER_WALKING_SPEED
-         OR speed > USER_RUNNING_SPEED
+      // 2.4.1 Validate move against room geometry and (not recently moved) objects
+      if NOT CanMoveInRoomBSP(Send(poOwner,@GetRoomData),piRow,piCol,piFine_row,
+             piFine_col,piHeight,new_row,new_col,fine_row,fine_col,speed,self,FALSE,TRUE)
       {
-         // Make a log entry
-         if piCheaterLogs < MAX_LOGGED_THRESHOLD
-         {
-            ++piCheaterLogs;
-            Debug("ALERT! ",Send(self,@GetTrueName),self,
-                  " had transmitted speed changed from ",speed, "to ",
-                  USER_RUNNING_SPEED);
-         }
-         speed = USER_RUNNING_SPEED;
+         Debug("ALERT! ",Send(self,@GetTrueName),self," illegal move denied in room ",
+               Send(poOwner,@GetName), "S: ",piRow,piCol,piFine_row,piFine_col,
+               ", E: ",new_row,new_col,fine_row,fine_col);
+
+         // Reset position
+         Send(SYS,@UtilGoNearSquare,#what=self,#where=poOwner,
+               #new_row=iRow,
+               #new_col=iCol,
+               #fine_row=iFineRow,
+               #fine_col=iFineCol,
+               #new_angle=iAngle);
+
+         return;
       }
 
-      //
-      // 5.3 This move is bigger than walking allows.
-      //
-      if (speed > USER_WALKING_SPEED)
-      {
-         // Disallow run with low vigor
-         if piVigor < VIGOR_RUN_THRESHOLD
-         {
-            // Reset position
-            Send(SYS,@UtilGoNearSquare,#what=self,#where=poOwner,
-                  #new_row=iRow,
-                  #new_col=iCol,
-                  #fine_row=iFineRow,
-                  #fine_col=iFineCol,
-                  #new_angle=iAngle);
-
-            // Make a log entry
-            if piCheaterLogs < MAX_LOGGED_THRESHOLD
-            {
-               ++piCheaterLogs;
-               Debug("ALERT!",Send(self,@GetTrueName),self,"was running with "
-                     "no vigor.");
-            }
-
-            return;
-         }
-
-         // Break trance
-         if (piFlags & PFLAG_TRANCE)
-         {
-            Send(self,@BreakTrance,#event=EVENT_RUN);
-         }
-
-         // Stop dance
-         if (piFlags2 & PFLAG2_DANCING)
-         {
-            Send(self,@StopDancing);
-         }
-      }
-
-      //
-      // 5.4 Manual move checks in some rooms
-      //
+      // 2.4.2 Manual move checks in some rooms
       iRoomNum = Send(poOwner,@GetRoomNum);
       if iRoomNum = RID_CAVE2
          OR iRoomNum = RID_ICE_CAVE1
@@ -4738,16 +4705,43 @@ messages:
          }
       }
 
-      //
-      // 6. Drain vigor once per 1000 ms. Handled in battler now.
-      // Check CalculateVigorPerTick(). We do have to alert
-      // NewVigor() though. Save our current squared speed first.
-      //
+      ////////////////////////////////////////////////////////////////////////////////////////
+      // 3 - MOVE ACCEPTED FROM HERE ON, PROCESS IT ...
+      ////////////////////////////////////////////////////////////////////////////////////////
+
+      // 3.1 Save this move tick for next execution and subtract 
+      //  the move tokens we have consumed. Save speed squared.
+      piLastMoveUpdateTime = iCurrentTime;
+      piMovementBucket -= iMoveLength;
       piSpeed = speed * speed;
+
+      //
+      // 3.2 Break trance or stop dance if user is running
+      // 
+      if (speed > USER_WALKING_SPEED)
+      {
+         // Break trance
+         if (piFlags & PFLAG_TRANCE)
+         {
+            Send(self,@BreakTrance,#event=EVENT_RUN);
+         }
+
+         // Stop dance
+         if (piFlags2 & PFLAG2_DANCING)
+         {
+            Send(self,@StopDancing);
+         }
+      }
+
+      //
+      // 3.3 Drain vigor once per 1000 ms. Handled in battler now.
+      //  Check CalculateVigorPerTick(). We do have to alert
+      //  NewVigor() though. 
+      //
       Send(self,@NewVigor);
 
       //
-      // 7. Notify monsters about presence every second.
+      // 3.4 Notify monsters about presence every second.
       //
       if (Abs(iCurrentTime - piLastMoveNotification) > 1000)
       {
@@ -4756,15 +4750,7 @@ messages:
       }
 
       //
-      // 8. Save this move tick for next execution
-      // and subtract the move tokens we have consumed.
-      //
-      piLastMoveUpdateTime = iCurrentTime;
-      piMovementBucket -= iMoveLength;
-      //Debug("Bucket after:",piMovementBucket);
-
-      //
-      // 9. Process the move
+      // 3.5 Process the move
       //
       Send(poOwner,@SomethingMoved,#what=self,
             #new_row=new_row,#new_col=new_col,
@@ -4772,17 +4758,14 @@ messages:
             #cause=CAUSE_USER_INPUT,#speed=speed);
 
       //
-      // 10. Set the flag so that wall elements can affect us.
+      // 3.6 Set the flag so that wall elements can affect us.
       //
-
       Send(self,@SetPlayerFlag,#flag=PFLAG_MOVED_SINCE_ENTRY,#value=TRUE);
 
       //
-      // 11. Keep track of the most recent steps to facilitate monster pursuit.
+      // 3.7 Keep track of the most recent steps to facilitate monster pursuit.
       //
-
       ++piTrailSteps;
-
       if piTrailSteps >= Send(poOwner,@GetTrailSteps)
       {
          Send(self,@SetUserTrail,#iRow=new_row,#iCol=new_col,

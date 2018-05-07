@@ -4498,12 +4498,70 @@ messages:
       return;
    }
 
+   GetSpeedMax()
+   "Returns the maximum possible move speed according to the current situation of the user"
+   "and its active limitations like PFLAG_NO_MOVE, low vigor, deep water or others."
+   {
+      local iSpeed, iDepthType;
+
+      // can not move at all ...
+      if (piFlags & PFLAG_NO_MOVE)
+      {
+         return 0;
+      }
+
+      // case 1) WALKING on low vigor
+      if piVigor < VIGOR_RUN_THRESHOLD
+      {
+         iSpeed = USER_WALKING_SPEED;
+      }
+      // case 2) e.g. SPEEDBOOST
+      // case 3) ...
+      // default) RUNNING
+      else
+      {
+         iSpeed = USER_RUNNING_SPEED;
+      }
+
+      // TODO: This needs works
+      // if location flags available, possibly reduce based on depthflags
+      if (piLocationFlags <> $)
+      {
+         // get sector depth type at current location
+         iDepthType = piLocationFlags & LIR_SECTOR_DEPTHMASK;
+
+         // TODO: Does below work with riija temple hack?  
+         //  bridge has flags set but no speed reduce?
+
+         // return reduced value according to depth
+         if iDepthType = LIR_SECTOR_DEPTH0
+         {
+            return iSpeed; // 100%
+         }
+         else if iDepthType = LIR_SECTOR_DEPTH1
+         {
+            return Bound(((iSpeed * 3) / 4), 1, iSpeed); // 75%
+         }
+         else if iDepthType = LIR_SECTOR_DEPTH2
+         {
+            return Bound((iSpeed / 2), 1, iSpeed); // 50%
+         }
+         else if iDepthType = LIR_SECTOR_DEPTH3
+         {
+            return Bound((iSpeed / 4), 1, iSpeed); // 25%
+         }
+      }
+ 
+      // no flags available or unknown depth type
+      return iSpeed;
+   }
+
    UserMove(new_row = 1, new_col = 1,
             fine_row = FINENESS/2, fine_col = FINENESS/2, speed = 0)
    {
       local iCurrentTime, iDelta, iAngle, iRow, iCol, iFineRow, 
             iFineCol, iRoomNum, iDx, iDy, iMoveLength, iMaxMoveRun, 
-            iQflags, iRflags, iHeightF, iHeightFWD, iHeightC, iServerID;
+            iQflags, iRflags, iHeightF, iHeightFWD, iHeightC, iServerID, iSpeedMax;
 
       ////////////////////////////////////////////////////////////////////////////////////////
       // 1 - INIT AND SILENT DISCARDS
@@ -4532,10 +4590,6 @@ messages:
 
       ////////////////////////////////////////////////////////////////////////////////////////
       // 2 - VALIDATIONS CAUSING DENY/RUBBERBANDING/RETURN ON FAIL
-      // 2.1) PFLAG_NO_MOVE
-      // 2.2) CLAIMED SPEED
-      // 2.3) REAL SPEED
-      // 2.4) COLLISIONS
       ////////////////////////////////////////////////////////////////////////////////////////
 
       //
@@ -4563,11 +4617,9 @@ messages:
       }
 
       //
-      // 2.2 Validate claimed (transmitted) speed
+      // 2.2 Check the user's claimed speed is within valid range
+      //  Don't worry about a temporary different current max. here
       //
-
-      // 2.2.1 Check the user's speed is within a valid range
-      //  TODO: Adjust upper bound using sectorflags (SF_DEPTH speed reduce)
       if speed < 1 OR speed > USER_RUNNING_SPEED
       {
          // Make a log entry
@@ -4576,29 +4628,7 @@ messages:
             ++piCheaterLogs;
             Debug("ALERT! ",Send(self,@GetTrueName),self,
                   " transmitted speed ",speed,
-                  " smaller 1 or greater ",USER_RUNNING_SPEED);
-         }
-
-         // Reset position
-         Send(SYS,@UtilGoNearSquare,#what=self,#where=poOwner,
-               #new_row=iRow,
-               #new_col=iCol,
-               #fine_row=iFineRow,
-               #fine_col=iFineCol,
-               #new_angle=iAngle);
-
-         return;
-      }
-
-      // 2.2.2 Prevent running with low vigor
-      if speed > USER_WALKING_SPEED AND piVigor < VIGOR_RUN_THRESHOLD
-      {
-         // Make a log entry
-         if piCheaterLogs < MAX_LOGGED_THRESHOLD
-         {
-            ++piCheaterLogs;
-            Debug("ALERT!",Send(self,@GetTrueName),self,"was running with "
-                  "no vigor.");
+                  " smaller 1 or greater max ",USER_RUNNING_SPEED);
          }
 
          // Reset position
@@ -4613,28 +4643,33 @@ messages:
       }
 
       //
-      // 2.3 Validate REAL Speed (Speedhack Protection). 
-      //  Needs validated claimed speed value from above!
+      // 2.2 Validate REAL Speed (Speedhack Protection using a Token Bucket concept). 
       //
 
-      // 2.3.1 Calculate the squared movesize for the claimed speed in this dt.
-      //  USER_RUNNING_SPEED is defined as # of big squares per 10000ms
+      // 2.2.1 Get the current legal upper bound for move-speed.
+      //  This depends on condition (e.g. low vigor), but also locations (e.g. deep water/depthflags).
+      //  Important: This must be the upper bound on the tokens we add to the bucket below.
+      //  Continously exceeding the current max. will cause rubberbanding
+      iSpeedMax = Send(self, @GetSpeedMax);
+
+      // 2.2.2 Calculate the squared movesize for the claimed speed in this dt.
+      //  SPEED is defined as # of big squares per 10000ms
       //  The unit here is fine upscaled by another *16 (same is done below on iDy, iDx)
-      iMaxMoveRun = (speed * FINENESS * 16 * iDelta) / 10000;
+      iMaxMoveRun = (Bound(speed,1,iSpeedMax) * FINENESS * 16 * iDelta) / 10000;
       iMaxMoveRun = (iMaxMoveRun * iMaxMoveRun);
 
-      // 2.3.2 Fill up the movement bucket with tokens for the squared distance 
-      //  one could have travelled at maximum but keep an upper bound on it.
+      // 2.2.3 Fill up the movement bucket with tokens for the squared distance 
+      //  one could have travelled at maximum legal speed but keep an upper bound on it.
       piMovementBucket += iMaxMoveRun;
       piMovementBucket = Bound(piMovementBucket, 0, Send(SETTINGS_OBJECT,@GetMovementBucketMax));
 
-      // 2.3.3 Get move-deltas in FINENESS units and scale up a bit further (*16) for precision
+      // 2.2.4 Get move-deltas in FINENESS units and scale up a bit further (*16) for precision
       //  Same was done with iMaxMoveRun above. Calculate the squared vector length from the deltas.
       iDy = 16 * (((new_row * FINENESS) + fine_row) - ((iRow * FINENESS) + iFineRow));
       iDx = 16 * (((new_col * FINENESS) + fine_col) - ((iCol * FINENESS) + iFineCol));
       iMoveLength = (iDy * iDy) + (iDx * iDx);
 
-      // 2.3.4 This move would consume more tokens than we have left -> deny
+      // 2.2.5 This move would consume more tokens than we have left -> deny
       if (piMovementBucket - iMoveLength < 0)
       {
          // Reset position
@@ -4656,11 +4691,11 @@ messages:
       }
 
       //
-      // 2.4 Validate against room geometry and manual move checks
+      // 2.3 Validate against room geometry and manual move checks
       //  This requires the already validated speed value from above
       //
 
-      // 2.4.1 Validate move against room geometry and (not recently moved) objects
+      // 2.3.1 Validate move against room geometry and (not recently moved) objects
       if NOT CanMoveInRoomBSP(Send(poOwner,@GetRoomData),piRow,piCol,piFine_row,
              piFine_col,piHeight,new_row,new_col,fine_row,fine_col,speed,self,FALSE,TRUE)
       {
@@ -4679,7 +4714,7 @@ messages:
          return;
       }
 
-      // 2.4.2 Manual move checks in some rooms
+      // 2.3.2 Manual move checks in some rooms
       iRoomNum = Send(poOwner,@GetRoomNum);
       if iRoomNum = RID_CAVE2
          OR iRoomNum = RID_ICE_CAVE1

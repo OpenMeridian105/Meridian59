@@ -1367,6 +1367,13 @@ bool BSPGetLocationInfo(room_type* Room, V2* P, unsigned int QueryFlags, unsigne
 
       if (((*Leaf)->Sector->Flags & SF_NOMOVE) == SF_NOMOVE)
          *ReturnFlags |= LIR_SECTOR_NOMOVE;
+
+      const unsigned int depthtype = (*Leaf)->Sector->Flags & SF_MASK_DEPTH;
+
+      if (depthtype == SF_DEPTH0)       *ReturnFlags |= LIR_SECTOR_DEPTH0;
+      else if (depthtype == SF_DEPTH1)  *ReturnFlags |= LIR_SECTOR_DEPTH1;
+      else if (depthtype == SF_DEPTH2)  *ReturnFlags |= LIR_SECTOR_DEPTH2;
+      else if (depthtype == SF_DEPTH3)  *ReturnFlags |= LIR_SECTOR_DEPTH3;
    }
 
    return true;

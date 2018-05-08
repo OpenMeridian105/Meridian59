@@ -33,6 +33,7 @@ properties:
    piSectorID
    piLocationFlags
    piVerticalSpeed = 0
+   piVerticalSpeedRemainder = 0
    piTickLastCoordsChange = 0
    ptHeightUpdate = $
    
@@ -169,6 +170,7 @@ messages:
          }
 
          piVerticalSpeed = 0;
+         piVerticalSpeedRemainder = 0;
          piTickLastCoordsChange = GetTickCount();
          //Debug("Set initial height of object:", piHeight);
       }
@@ -231,6 +233,7 @@ messages:
       if iFlags & OF_HANGING
       {
          piVerticalSpeed = 0;
+         piVerticalSpeedRemainder = 0;
          piHeight = piHeightC;
       }
 
@@ -251,7 +254,10 @@ messages:
 
             // adjust vertical speed according to time and acceleration
             // note: speed has only 1/100 of the precision of acceleration
-            piVerticalSpeed += (iTimeDelta * GRAVITY_ACCELERATION) / 100;
+            // we keep the lost precision in the remainder and use it next time
+            piVerticalSpeedRemainder += iTimeDelta * GRAVITY_ACCELERATION;
+            piVerticalSpeed += piVerticalSpeedRemainder / 100;
+            piVerticalSpeedRemainder %= 100;
 
             // adjust height according to time and current vertical speed
             // note: height has only 1/1000 of the precision of speed (=kod fineness)
@@ -269,6 +275,7 @@ messages:
          else
          {
             piVerticalSpeed = 0;
+            piVerticalSpeedRemainder = 0;
             piHeight = piHeightFWD;
          }
       }
@@ -277,6 +284,7 @@ messages:
       else
       {
          piVerticalSpeed = 0;
+         piVerticalSpeedRemainder = 0;
          piHeight = piHeightFWD;
       }
 

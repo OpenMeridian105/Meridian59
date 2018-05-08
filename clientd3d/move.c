@@ -527,6 +527,30 @@ BSPnode *FindIntersection(BSPnode *node, int xOld, int yOld, int xNew, int yNew,
    }
 }
 
+inline bool IntersectInfiniteLines(int P1_X, int P1_Y, int P2_X, int P2_Y, int Q1_X, int Q1_Y, int Q2_X, int Q2_Y, int *out_x, int *out_y)
+{
+   // variant 2
+   float denom = (P1_X - P2_X) * (Q1_Y - Q2_Y) - (P1_Y - P2_Y) * (Q1_X - Q2_X);
+
+   // parallel
+   if (denom > -0.001f && denom < 0.001f)
+   {
+      *out_x = 0.0f;
+      *out_y = 0.0f;
+      return false;
+   }
+
+   float num;
+
+   num = (P1_X * P2_Y - P1_Y * P2_X) * (Q1_X - Q2_X) - (P1_X - P2_X) * (Q1_X * Q2_Y - Q1_Y * Q2_X);
+   *out_x = num / denom;
+
+   num = (P1_X * P2_Y - P1_Y * P2_X) * (Q1_Y - Q2_Y) - (P1_Y - P2_Y) * (Q1_X * Q2_Y - Q1_Y * Q2_X);
+   *out_y = num / denom;
+
+   return true;
+}
+
 WallData *IntersectNode(BSPnode *node, int old_x, int old_y, int new_x, int new_y, int z)
 {
    BSPinternal *inode;
@@ -584,22 +608,30 @@ WallData *IntersectNode(BSPnode *node, int old_x, int old_y, int new_x, int new_
          if (sidedef == NULL)
             continue;
 
-         // Check for wading on far side of wall; reduce effective height of wall if found
          below_height = 0;
-         if (other_sector != NULL)
-            below_height = sector_depths[SectorDepth(other_sector->flags)];
 
          // Can't step up too far; watch bumping your head; see if passable
-         if (other_sector != NULL &&
-            ((sidedef->below_bmap == NULL || 
-            (sidedef->below_bmap != NULL && 
-            (GetFloorHeight(new_x, new_y, other_sector) - below_height - z) <= MAX_STEP_HEIGHT))
-            &&
-            (sidedef->above_bmap == NULL || 
-            (sidedef->above_bmap != NULL && GetCeilingHeight(new_x, new_y, other_sector) - z >= player.height))
-            &&
-            (sidedef->flags & WF_PASSABLE)))
-            continue;
+         if (other_sector != NULL)
+         {
+            // Check for wading on far side of wall; reduce effective height of wall if found
+            below_height = sector_depths[SectorDepth(other_sector->flags)];
+
+            // Get intersection point with wall.
+            int intersect_x, intersect_y;
+            if (!IntersectInfiniteLines(wall->x0, wall->y0, wall->x1, wall->y1, old_x, old_y, new_x, new_y, &intersect_x, &intersect_y))
+            {
+               // No intersection.
+               continue;
+            }
+
+            if ((sidedef->below_bmap == NULL || (sidedef->below_bmap != NULL && (GetFloorHeight(intersect_x, intersect_y, other_sector) - below_height - z) <= MAX_STEP_HEIGHT))
+               && (sidedef->above_bmap == NULL || (sidedef->above_bmap != NULL && GetCeilingHeight(intersect_x, intersect_y, other_sector) - z >= player.height))
+               && (sidedef->flags & WF_PASSABLE))
+            {
+               // Passes height checks, is passable.
+               continue;
+            }
+         }
 
          // If distance to either vertex is > wall length, then destination of move is
          // past end of wall; use distance to closer vertex as distance to line

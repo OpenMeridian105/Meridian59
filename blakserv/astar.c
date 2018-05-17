@@ -242,9 +242,6 @@ __forceinline void AStarZeroMemory1024(__m128i* ptr, const size_t size)
 
 __forceinline void AStarClearMemory()
 {
-   // clear heap
-   AStar.HeapSize = 0;
-
    // clear nodesdata
    const size_t gridrowlen = MAXGRIDCOLS             * sizeof(astar_node_data);
    const size_t maprowlen  = AStar.Room->colshighres * sizeof(astar_node_data);

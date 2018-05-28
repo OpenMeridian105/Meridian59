@@ -135,6 +135,23 @@ const char * RelativeTimeStr(int time)
 	return s;
 }
 
+// Use GetTickCount64 since higher resolution not required, and return value
+// is independent of OS time changes/updates (important for not incorrectly
+// kicking users off for inactivity if OS time updates.
+// GetTickCount64 could fit in int (time since system boot) but handling time
+// in 64 bit types is future proof/handles implementation changes.
+UINT64 GetSecondCount()
+{
+#ifdef BLAK_PLATFORM_WINDOWS
+   return GetTickCount64() / 1000;
+#else
+   struct timeval tv;
+   gettimeofday(&tv, NULL);
+
+   return tv.tv_sec;
+#endif
+}
+
 UINT64 GetMilliCount()
 {
 #ifdef BLAK_PLATFORM_WINDOWS

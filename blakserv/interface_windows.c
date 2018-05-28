@@ -362,6 +362,10 @@ long WINAPI InterfaceWindowProc(HWND hwnd,UINT message,UINT wParam,LONG lParam)
          AsyncSocketSelectUDP(wParam);
          break;
 
+      // NOTE: if we need to handle Windows time update, this would be the place.
+      // case WM_TIMECHANGE:
+      //    break;
+
 		default :
 			return DefWindowProc(hwnd,message,wParam,lParam);    
    }

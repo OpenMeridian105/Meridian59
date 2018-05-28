@@ -50,7 +50,7 @@ void GameInit(session_node *s)
 
    s->game->game_state = GAME_NORMAL;
 
-   s->game->game_last_message_time = GetTime();
+   s->game->game_last_message_time = GetSecondCount();
    GameSendSystemEnter(s);
 }
 
@@ -85,9 +85,9 @@ void GameProcessSessionTimer(session_node *s)
       message in a while, even ping.  If so, they are so lagged they should
       be hung up. */
 
-      /* dprintf("%u %u %u\n",GetTime(),s->game->game_last_message_time,ConfigInt(INACTIVE_GAME)); */
+      /* dprintf("%u %u %u\n",GetSecondCount(),s->game->game_last_message_time,ConfigInt(INACTIVE_GAME)); */
 
-   if (GetTime() - s->game->game_last_message_time > ConfigInt(INACTIVE_GAME))
+   if (GetSecondCount() - s->game->game_last_message_time > ConfigInt(INACTIVE_GAME))
    {
       lprintf("GameProcessSessionTimer logging out ACCOUNT %i (%s) which hasn't been heard from.\n",
          s->account->account_id, s->account->name);
@@ -109,7 +109,7 @@ void GameProcessSessionBuffer(session_node *s)
    client_msg msg;
    unsigned short security;
 
-   s->game->game_last_message_time = GetTime();
+   s->game->game_last_message_time = GetSecondCount();
 
    if (s->game->game_state != GAME_NORMAL)
    {

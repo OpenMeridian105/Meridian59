@@ -31,7 +31,9 @@ properties:
    piHeightFWD
    piHeightC
    piSectorID
+   piLocationFlags
    piVerticalSpeed = 0
+   piVerticalSpeedFine = 0
    piTickLastCoordsChange = 0
    ptHeightUpdate = $
    
@@ -144,10 +146,11 @@ messages:
          iRflags = 0;
       }
 
-      // save floor and ceiling heights and sector id
+      // save floor and ceiling heights, sector id and location flags
       piHeightFWD = iHeightFWD;
       piHeightC   = iHeightC;
       piSectorID  = iServerID;
+      piLocationFlags = iRflags;
 
       // no previous height known (e.g. after spawn/first placement)
       // so just put on floor or ceiling
@@ -167,6 +170,7 @@ messages:
          }
 
          piVerticalSpeed = 0;
+         piVerticalSpeedFine = 0;
          piTickLastCoordsChange = GetTickCount();
          //Debug("Set initial height of object:", piHeight);
       }
@@ -229,6 +233,7 @@ messages:
       if iFlags & OF_HANGING
       {
          piVerticalSpeed = 0;
+         piVerticalSpeedFine = 0;
          piHeight = piHeightC;
       }
 
@@ -239,6 +244,7 @@ messages:
          if (piVerticalSpeed >= 0)
          {
             piVerticalSpeed = -1;
+            piVerticalSpeedFine = 0;
          }
 
          // vspeed already neg, continue falling
@@ -249,7 +255,10 @@ messages:
 
             // adjust vertical speed according to time and acceleration
             // note: speed has only 1/100 of the precision of acceleration
-            piVerticalSpeed += (iTimeDelta * GRAVITY_ACCELERATION) / 100;
+            // we keep the lost precision in the remainder and use it next time
+            piVerticalSpeedFine += iTimeDelta * GRAVITY_ACCELERATION;
+            piVerticalSpeed += piVerticalSpeedFine / 100;
+            piVerticalSpeedFine %= 100;
 
             // adjust height according to time and current vertical speed
             // note: height has only 1/1000 of the precision of speed (=kod fineness)
@@ -267,6 +276,7 @@ messages:
          else
          {
             piVerticalSpeed = 0;
+            piVerticalSpeedFine = 0;
             piHeight = piHeightFWD;
          }
       }
@@ -275,6 +285,7 @@ messages:
       else
       {
          piVerticalSpeed = 0;
+         piVerticalSpeedFine = 0;
          piHeight = piHeightFWD;
       }
 

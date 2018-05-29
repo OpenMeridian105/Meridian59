@@ -99,6 +99,7 @@ static Bool pos_valid = FALSE;          // True when server_x and server_y are v
 static int  server_x = 0, server_y = 0; // Last position we've told server we are, in FINENESS units
 static int  server_angle = 0;           // Last angle we've told server we have, in server angle units
 static int  last_move_action = 0;       // Last movement action; used to determine speed of motion
+static float speed_factor = 1.0f;       // slow down of base speed for various reasons
 
 static int  min_distance = 48;          // Minimum distance player is allowed to get to wall
 static int  min_distance2 = 48*48;  	// Minimum distance squared
@@ -204,12 +205,25 @@ void UserMovePlayer(int action)
 
    // Wading slows player movement down.
    depth = GetPointDepth(player_obj->motion.x, player_obj->motion.y);
-   if (SF_DEPTH1 == depth)
-      move_distance = move_distance * 3/4;
+   if (SF_DEPTH0 == depth)
+   {
+      speed_factor = 1.0f;
+   }
+   else if (SF_DEPTH1 == depth)
+   {
+      move_distance = move_distance * 3 / 4;
+      speed_factor = 0.75f;
+   }
    else if (SF_DEPTH2 == depth)
+   {
       move_distance = move_distance / 2;
+      speed_factor = 0.5f;
+   }
    else if (SF_DEPTH3 == depth)
+   {
       move_distance = move_distance / 4;
+      speed_factor = 0.25f;
+   }
 
    // See if we're waiting for server to move us out of current location
    if (now < next_move_time)
@@ -905,9 +919,6 @@ Bool MoveUpdatePosition(void)
    // don't send update if we didn't move
    if ((server_x - x) * (server_x - x) + (server_y - y) * (server_y - y) > MOVE_THRESHOLD)
    {
-      // debug output
-      debug(("MoveUpdatePosition: x (%d -> %d), y (%d -> %d)\n", server_x, x, server_y, y));
-   
       // the following speed values must match
       // the actual speed a player is moving
       // defined by MOVEUNITS and MOVE_DELAY
@@ -919,6 +930,12 @@ Bool MoveUpdatePosition(void)
       // run-speed (USER_RUNNING_SPEED from user.kod)
       if (IsMoveFastAction(last_move_action))
          speed = USER_RUNNING_SPEED;
+
+      // adjust according to speedfactor
+      speed = (BYTE)((float)speed * speed_factor);
+
+      // debug output
+      debug(("MoveUpdatePosition: x (%d -> %d), y (%d -> %d), speed (%d)\n", server_x, x, server_y, y, speed));
 
       // send update
       RequestMove(y, x, speed, player.room_id, ANGLE_CTOS(player.angle));

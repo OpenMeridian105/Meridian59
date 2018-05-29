@@ -143,6 +143,9 @@ __forceinline void AStarHeapMoveUp(unsigned int Index)
 
 __forceinline void AStarHeapHeapify(unsigned int Index)
 {
+   // get current heapsize
+   const unsigned int len = AStar.HeapSize;
+
    while (true)
    {
       // left and right child
@@ -153,11 +156,11 @@ __forceinline void AStarHeapHeapify(unsigned int Index)
       unsigned int min = Index;
 
       // left is smaller
-      if (lc < MAXHEAPSIZE && HEAP(lc) && HEAP(lc)->combined < HEAP(min)->combined)
+      if (lc < len && HEAP(lc)->combined < HEAP(min)->combined)
          min = lc;
 
       // right is (even) smaller
-      if (rc < MAXHEAPSIZE && HEAP(rc) && HEAP(rc)->combined < HEAP(min)->combined)
+      if (rc < len && HEAP(rc)->combined < HEAP(min)->combined)
          min = rc;
 
       // none was smaller
@@ -206,16 +209,9 @@ __forceinline void AStarHeapRemoveFirst()
       // put last at root
       AStarHeapSwap(0, lastIdx);
 
-      // zero out the previous root at swapped slot
-      HEAP(lastIdx) = NULL;
-
       // reorder tree
       AStarHeapHeapify(0);
    }
-
-   // only one, clear head
-   else
-      HEAP(0) = NULL;
 }
 #pragma endregion
 
@@ -246,9 +242,6 @@ __forceinline void AStarZeroMemory1024(__m128i* ptr, const size_t size)
 
 __forceinline void AStarClearMemory()
 {
-   // clear heap
-   AStarZeroMemory1024((__m128i*)&AStar.Heap[0], sizeof(AStar.Heap));
-
    // clear nodesdata
    const size_t gridrowlen = MAXGRIDCOLS             * sizeof(astar_node_data);
    const size_t maprowlen  = AStar.Room->colshighres * sizeof(astar_node_data);
@@ -477,7 +470,7 @@ bool AStarProcessFirst()
    }
 
    // get and remove from heap
-   else if (HEAP(0))
+   else if (AStar.HeapSize > 0)
    {
       node = HEAP(0);
       node->Data->isInClosedList = true;

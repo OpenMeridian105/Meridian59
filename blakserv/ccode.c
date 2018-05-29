@@ -514,40 +514,40 @@ int C_Debug(int object_id,local_var_type *local_vars,
    return NIL;
 }
 
-int C_GetInactiveTime(int object_id,local_var_type *local_vars,
-					  int num_normal_parms,parm_node normal_parm_array[],
-					  int num_name_parms,parm_node name_parm_array[])
+int C_GetInactiveTime(int object_id, local_var_type *local_vars,
+   int num_normal_parms, parm_node normal_parm_array[],
+   int num_name_parms, parm_node name_parm_array[])
 {
-	val_type session_val,ret_val;
-	session_node *s;
-	
-	session_val = RetrieveValue(object_id,local_vars,normal_parm_array[0].type,
-		normal_parm_array[0].value);
-	
-	if (session_val.v.tag != TAG_SESSION)
-	{
-		bprintf("C_GetInactiveTime can't use non-session %i,%i\n",
-			session_val.v.tag,session_val.v.data);
-		return NIL;
-	}
-	
-	s = GetSessionByID(session_val.v.data);
-	if (s == NULL)
-	{
-		bprintf("C_GetInactiveTime can't find session %i\n",session_val.v.data);
-		return NIL;
-	}
-	if (s->state != STATE_GAME)
-	{
-		bprintf("C_GetInactiveTime can't use session %i in state %i\n",
-			session_val.v.data,s->state);
-		return NIL;
-	}
-	
-	ret_val.v.tag = TAG_INT;
-	ret_val.v.data = GetTime() - s->game->game_last_message_time;
-	
-	return ret_val.int_val;   
+   val_type session_val, ret_val;
+   session_node *s;
+
+   session_val = RetrieveValue(object_id, local_vars, normal_parm_array[0].type,
+      normal_parm_array[0].value);
+
+   if (session_val.v.tag != TAG_SESSION)
+   {
+      bprintf("C_GetInactiveTime can't use non-session %i,%i\n",
+         session_val.v.tag, session_val.v.data);
+      return NIL;
+   }
+
+   s = GetSessionByID(session_val.v.data);
+   if (s == NULL)
+   {
+      bprintf("C_GetInactiveTime can't find session %i\n", session_val.v.data);
+      return NIL;
+   }
+   if (s->state != STATE_GAME)
+   {
+      bprintf("C_GetInactiveTime can't use session %i in state %i\n",
+         session_val.v.data, s->state);
+      return NIL;
+   }
+
+   ret_val.v.tag = TAG_INT;
+   ret_val.v.data = GetSecondCount() - s->game->game_last_message_time;
+
+   return ret_val.int_val;
 }
 
 int C_DumpStack(int object_id,local_var_type *local_vars,

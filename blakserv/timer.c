@@ -239,7 +239,7 @@ void ResetLastMessageTimes(session_node *s)
    if (s->state != STATE_GAME)
       return;
 
-   s->game->game_last_message_time = GetTime();
+   s->game->game_last_message_time = GetSecondCount();
 }
 
 int CreateTimer(int object_id,int message_id,int milliseconds)

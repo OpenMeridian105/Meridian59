@@ -8,7 +8,7 @@ TOPDIR=.
 .SILENT:
 
 # make ignores targets if they match directory names
-all: Bzlib Blibpng Bjansson Bserver Bclient Bmodules Bkod Bdeco Bupdater Bbbgun Bkeybind Bresource
+all: Bzlib Blibpng Bjansson Bserver Bclient Bmodules Bkod Bdeco Bbbgun Bkeybind Bresource
 
 Bserver: Bresource Bjansson
 	echo Making $(COMMAND) in $(BLAKSERVDIR)
@@ -21,6 +21,7 @@ Bclient: Butil Bresource
 	cd $(CLIENTDIR)
 	$(MAKE) /$(MAKEFLAGS) $(COMMAND)
 	cd ..
+	$(CP) $(BLAKBINDIR)\club.exe $(CLIENTRUNDIR)
 !if !DEFINED(NOCOPYFILES)
 # Postbuild handles its own echoes
 	$(POSTBUILD)
@@ -71,12 +72,6 @@ Bmakebgf:
 Butil: Bjansson
 	echo Making $(COMMAND) in $(UTILDIR)
 	cd $(UTILDIR)
-	$(MAKE) /$(MAKEFLAGS) $(COMMAND)
-	cd ..
-
-Bupdater: Bjansson
-	echo Making $(COMMAND) in $(CLUBDIR)
-	cd $(CLUBDIR)
 	$(MAKE) /$(MAKEFLAGS) $(COMMAND)
 	cd ..
 

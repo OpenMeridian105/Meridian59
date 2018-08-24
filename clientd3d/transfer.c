@@ -133,7 +133,7 @@ void __cdecl TransferStart(void *download_info)
 #if VANILLA_UPDATER
       sprintf(filename, "%s%s", info->path, info->files[i].filename);
 #else
-      sprintf(filename, "%s//%s", info->path, info->files[i].filename);
+      sprintf(filename, "%s/%s", info->path, info->files[i].filename);
 #endif
       hFile = HttpOpenRequest(hSession, NULL, filename, NULL, NULL,
                               mime_types, INTERNET_FLAG_NO_UI, 0);

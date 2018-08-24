@@ -59,7 +59,7 @@ has six fields:
    * Version (int, used internally by the patch cache generator to version files)
    * Download (boolean, whether the file is downloaded or not)
    * Length (int, the length in bytes of the file)
-   * MyHash (string, a 16-byte MD5 hash of the full file contents)
+   * MyHash (string, a 32-byte SHA256 hash of the full file contents)
 
 This file is generated using /bin/clientpatch.exe, which is generated from the
 Clientpatch project. To generate the file, run as follows:

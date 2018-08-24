@@ -13,18 +13,18 @@
 #define _CLIENTPATCH_H
 
 #include <jansson.h>
-#include <md5.h>
+#include <sha256.h>
 
-#define HASHABLE_BYTES 16
-#define HEX_HASH 33
+#define HASHABLE_BYTES 32
+#define HEX_HASH 65
 
-#define CLIENTPATCH_FILE_VERSION 3
+#define CLIENTPATCH_FILE_VERSION 4
 
 void ClientPatchGetValidBasepath(json_t **CacheFile, char *retpath);
 void ClientPatchGetAbsPath(json_t **CacheFile, char *retpath);
 bool CompareCacheToLocalFile(json_t **CacheFile);
 json_t * GenerateCacheFile(const char *fullpath, const char *basepath, const char *file);
-void GenerateCacheMD5(const char *fullpath, const char *file, json_t **CacheFile);
+void GenerateCacheSHA256(const char *fullpath, const char *file, json_t **CacheFile);
 
 /*
  * ClientPatchGetValidBasepath: Get the base path including the current
@@ -99,17 +99,17 @@ bool CompareCacheToLocalFile(json_t **CacheFile)
       return false;
    }
 
-   MDStringBytes(buffer, hash, size);
+   SHA256StringBytes(buffer, hash, size);
    UnmapViewOfFile(buffer);
    CloseHandle(fp);
    CloseHandle(fileHandle);
 
    // Convert to hex.
-   for (int i = 0; i < 16; ++i)
+   for (int i = 0; i < HASHABLE_BYTES; ++i)
       sprintf(myhash + i * 2, "%02X", hash[i]);
 
    // Null terminate.
-   myhash[32] = 0;
+   myhash[HEX_HASH - 1] = 0;
 
    if (strcmp(myhash, json_string_value(json_object_get(*CacheFile, "MyHash"))) != 0)
       return false;
@@ -136,16 +136,16 @@ json_t * GenerateCacheFile(const char *fullpath, const char *basepath, const cha
    else
       json_object_set(CacheFile, "Download", json_pack("b", 1));
 
-   GenerateCacheMD5(fullpath, file, &CacheFile);
+   GenerateCacheSHA256(fullpath, file, &CacheFile);
 
    return CacheFile;
 }
 
 /*
- * GenerateCacheMD5: Takes a json_t file containing Filename and Basepath.
- *                   Adds the MD5 hash and file length.
+ * GenerateCacheSHA256: Takes a json_t file containing Filename and Basepath.
+ *                   Adds the SHA256 hash and file length.
  */
-void GenerateCacheMD5(const char *fullpath, const char *file, json_t **CacheFile)
+void GenerateCacheSHA256(const char *fullpath, const char *file, json_t **CacheFile)
 {
    HANDLE fp, fileHandle;
    char *buffer;
@@ -190,17 +190,17 @@ void GenerateCacheMD5(const char *fullpath, const char *file, json_t **CacheFile
       return;
    }
 
-   MDStringBytes(buffer, hash, size);
+   SHA256StringBytes(buffer, hash, size);
    UnmapViewOfFile(buffer);
    CloseHandle(fp);
    CloseHandle(fileHandle);
 
    // Convert to hex.
-   for (int i = 0; i < 16; ++i)
+   for (int i = 0; i < HASHABLE_BYTES; ++i)
       sprintf(myhash + i * 2, "%02X", hash[i]);
 
    // Null terminate.
-   myhash[32] = 0;
+   myhash[HEX_HASH - 1] = 0;
    json_object_set(*CacheFile, "MyHash", json_string(myhash));
 }
 

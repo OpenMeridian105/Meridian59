@@ -14,7 +14,7 @@ CFLAGS = $(CFLAGS) /arch:SSE /TP
 # /SUBSYSTEM:CONSOLE",5.01" NO-UI Windows XP (5.01)
 LINKFLAGS = $(LINKFLAGS) /SUBSYSTEM:CONSOLE",5.01"
 
-OBJS3     = $(OUTDIR)\scrshot.obj $(OUTDIR)\dibutil.obj $(OUTDIR)\copy.obj $(OUTDIR)\file.obj $(OUTDIR)\md5.obj
+OBJS3     = $(OUTDIR)\scrshot.obj $(OUTDIR)\dibutil.obj $(OUTDIR)\copy.obj $(OUTDIR)\file.obj $(OUTDIR)\md5.obj $(OUTDIR)\sha256.obj
 SOURCEDIR = $(TOPDIR)\util
 NTLIBS    = user32.lib gdi32.lib
 
@@ -28,6 +28,7 @@ all: \
     $(OUTDIR)\palcomp.exe \
     $(OUTDIR)\porttest.exe \
     $(OUTDIR)\md5.obj \
+    $(OUTDIR)\sha256.obj \
     $(OUTDIR)\clientpatch.exe 
 
 $(OUTDIR)\remot.exe: $(OUTDIR)\remot.obj
@@ -86,8 +87,11 @@ $(OUTDIR)\porttest.exe: $(OUTDIR)\porttest.obj
 $(OUTDIR)\md5.obj : $(SOURCEDIR)\md5.c
     $(CC) -Fo$(OUTDIR)/ $(CFLAGS) /Fd$(OUTDIR)\ /Fpmd5pch -c $**
 
+$(OUTDIR)\sha256.obj : $(SOURCEDIR)\sha256.c
+    $(CC) -Fo$(OUTDIR)/ $(CFLAGS) /Fd$(OUTDIR)\ /Fpsha256pch -c $**
+
 $(OUTDIR)\clientpatch.exe: $(OUTDIR)\clientpatch.obj
-	$(LINK) $(LINKFLAGS) $** $(NTLIBS) $(BLAKLIBDIR)\jansson.lib $(OUTDIR)\md5.obj -out:$@
+	$(LINK) $(LINKFLAGS) $** $(NTLIBS) $(BLAKLIBDIR)\jansson.lib $(OUTDIR)\sha256.obj -out:$@
 	$(CP) $@ $(BLAKBINDIR)
 
 !include $(TOPDIR)\rules.mak

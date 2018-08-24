@@ -23,14 +23,14 @@ all: makedirs $(OUTDIR)\club.exe
 OBJS = \
     $(OUTDIR)\club.obj \
     $(OUTDIR)\util.obj \
-    $(OUTDIR)\md5.obj \
+    $(OUTDIR)\sha256.obj \
     $(OUTDIR)\transfer.obj
 
 $(OUTDIR)\club.exe : $(OBJS) $(OUTDIR)\club.res 
         $(LINK) $(LINKFLAGS) $** $(LIBS) -out:$@ 
         $(CP) $@ $(CLIENTRUNDIR)
 
-$(OUTDIR)\md5.obj : $(TOPDIR)\util\md5.c
+$(OUTDIR)\sha256.obj : $(TOPDIR)\util\sha256.c
 	$(CC) -Fo$(OUTDIR)/ $(CFLAGS) /Fd$(OUTDIR)\ /FpCpch -c $**
 
 

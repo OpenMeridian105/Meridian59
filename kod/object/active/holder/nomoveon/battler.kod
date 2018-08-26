@@ -251,6 +251,10 @@ properties:
    piLastMoveUpdateTime = 0
    piSpeed = 0
 
+   // This is what % of normal speed the battler moves at.
+   // Shouldn't go below 0 (and shouldn't go too high either).
+   piMovementSpeedPercent = 100
+
    // Second wind ability has a major effect on resource generation and is
    // querried frequently. Save it as a property instead.
    piWind = 0
@@ -648,6 +652,52 @@ messages:
    }
 
    //// Resource related stuff common to players and mobs.
+
+   // Movement speed mods
+   GetRawMovementSpeedPercent()
+   {
+      return piMovementSpeedPercent;
+   }
+
+   GetMovementSpeedPercent()
+   {
+      return Bound(piMovementSpeedPercent, MOVEMENTSPEED_MIN, MOVEMENTSPEED_MAX);
+   }
+
+   AddMovementSpeedPercent(iSpeed = 0)
+   "Adds or subtracts movement speed %."
+   {
+      piMovementSpeedPercent += iSpeed;
+
+      Send(self,@MovementSpeedChanged);
+
+      return;
+   }
+
+   ResetMovementSpeed()
+   {
+      piMovementSpeedPercent = 100;
+
+      Send(self,@MovementSpeedChanged);
+
+      return;
+   }
+
+   SetMovementSpeedPercent(iSpeed = 0)
+   "Sets movement speed percent directly."
+   {
+      piMovementSpeedPercent = iSpeed;
+
+      Send(self,@MovementSpeedChanged);
+
+      return;
+   }
+
+   MovementSpeedChanged()
+   "Override to do something specific when movespeed changes."
+   {
+      return;
+   }
 
    // This message is used to modify responsiveness of resource
    // regeneration for players. Tick duration and restored resource

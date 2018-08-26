@@ -99,7 +99,8 @@ static Bool pos_valid = FALSE;          // True when server_x and server_y are v
 static int  server_x = 0, server_y = 0; // Last position we've told server we are, in FINENESS units
 static int  server_angle = 0;           // Last angle we've told server we have, in server angle units
 static int  last_move_action = 0;       // Last movement action; used to determine speed of motion
-static float speed_factor = 1.0f;       // slow down of base speed for various reasons
+static float speed_factor = 1.0f;       // slow down of base speed for various reasons (geometry/room)
+static int movespeed_pct  = 100;      // slow down of base speed for spell/item reasons
 
 static int  min_distance = 48;          // Minimum distance player is allowed to get to wall
 static int  min_distance2 = 48*48;  	// Minimum distance squared
@@ -133,11 +134,17 @@ BOOL	gbMouselook = FALSE;
 
 extern double gravityAdjust;
 
+/************************************************************************/
 void UserTryGo()
 {
    // Record the time of the last go.
    last_go_time = timeGetTime();
    RequestGo();
+}
+/************************************************************************/
+void SetMovementSpeedPct(int speed)
+{
+   movespeed_pct = speed;
 }
 /************************************************************************/
 void UserMovePlayer(int action)
@@ -202,6 +209,9 @@ void UserMovePlayer(int action)
    }
 
    now = timeGetTime();
+
+   // Adjust movement due to item/spell modifiers (movespeed_pct
+   move_distance = move_distance * movespeed_pct / 100;
 
    // Wading slows player movement down.
    depth = GetPointDepth(player_obj->motion.x, player_obj->motion.y);
@@ -911,7 +921,7 @@ void MoveUpdateServer(void)
 Bool MoveUpdatePosition(void)
 {
    int x, y;
-   BYTE speed;
+   int speed;
 
    x = player.x;
    y = player.y;
@@ -931,6 +941,7 @@ Bool MoveUpdatePosition(void)
       if (IsMoveFastAction(last_move_action))
          speed = USER_RUNNING_SPEED;
 
+      speed = speed * movespeed_pct / 100;
       // adjust according to speedfactor
       speed = (BYTE)((float)speed * speed_factor);
 

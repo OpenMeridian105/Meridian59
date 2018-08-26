@@ -91,6 +91,7 @@ static handler_struct game_handler_table[] = {
 { BP_PLAY_MUSIC,        HandlePlayMusic },
 { BP_STOP_WAVE,         HandleStopWave },
 { BP_EFFECT,            HandleEffect },
+{ BP_MOVEMENT_SPEED,    HandleMovementSpeed },
 { BP_SHOOT,             HandleShoot },
 { BP_RADIUS_SHOOT,      HandleRadiusShoot },
 { BP_LIGHT_AMBIENT,     HandleLightAmbient },
@@ -1600,6 +1601,17 @@ Bool HandleEffect(char *ptr, long len)
    Extract(&ptr, &effect_num, 2);
    len -= 2;
    return PerformEffect(effect_num, ptr, len);
+}
+/********************************************************************/
+Bool HandleMovementSpeed(char *ptr, long len)
+{
+   WORD movespeedpct;
+
+   Extract(&ptr, &movespeedpct, 2);
+   len -= 2;
+   SetMovementSpeedPct(movespeedpct);
+
+   return True;
 }
 /********************************************************************/
 Bool HandleShoot(char *ptr, long len)

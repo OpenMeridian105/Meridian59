@@ -1,0 +1,167 @@
+// Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+// All rights reserved.
+//
+// This software is distributed under a license that is described in
+// the LICENSE file that accompanies it.
+//
+// Meridian is a registered trademark.
+
+
+////////////////////////////////////////////////////////////////////////////////
+Slow is Debuff
+
+constants:
+
+   include blakston.khd
+
+resources:
+
+   include slow.lkod
+
+   slow_name_rsc = "slow"
+   slow_icon_rsc = islow.bgf
+   slow_desc_rsc = \
+      "The power of Qor wraps the target in dark magical energy, reducing "
+      "their ability to move."
+   slow_caster = \
+      "%s%s is hindered by your magical energy and begins to move "
+      "in slow motion."
+   slow_already_enchanted = "%s%s already appears to be slowed."
+   slow_on = \
+      "Qor's dark magical energy surrounds you and slows your movement."
+   slow_off = \
+      "The magical energy surrounding you dissipates, and you feel quicker."
+   slow_sound = qsilnt.ogg
+
+classvars:
+
+   vrName = slow_name_rsc
+   vrIcon = slow_icon_rsc
+   vrDesc = slow_desc_rsc
+
+   vrAlreadyEnchanted = slow_already_enchanted
+   vrEnchantment_On = slow_on
+   vrEnchantment_Off = slow_off
+   vrSuccess = slow_caster
+
+   viSpell_num = SID_SLOW
+   viSchool = SS_QOR
+   viSpell_level = 3
+   viMana = 9
+   viSpellExertion = 2
+
+   viChance_to_increase = 20
+   viMeditate_ratio = 40
+
+   vrSucceed_wav = slow_sound
+
+properties:
+
+   piBaseDuration = 4000
+   piSpellPowerModifier = 80
+   piDeviation = 10
+
+   // Scaled 100x
+   piBaseSlow = 1000
+   piSlowSpellpowerModifier = 30
+
+messages:
+
+   ResetReagents()
+   {
+      plReagents = $;
+      plReagents = Cons([&PurpleMushroom,1],plReagents);
+
+      return;
+   }
+
+   DoSpellEffects(who=$,lTargets=$,iDuration=$,report=TRUE,iSpellPower=$)
+   "Holds target for duration milliseconds."
+   {
+      local i, oSpell, oTarget, iSpeed;
+
+      if (lTargets = $)
+      {
+         return FALSE;
+      }
+
+      oTarget = First(lTargets);
+
+      // Check for spell called with $ iDuration, apply default time if so.
+      if iDuration = $
+      {
+         iDuration = 5000;
+      }
+
+      iSpeed = -(Send(self,@GetSlowAmount,#iSpellPower=iSpellPower));
+      Send(oTarget,@AddMovementSpeedPercent,#iSpeed=iSpeed);
+
+      if (report)
+      {
+         if IsClass(oTarget,&User)
+         {
+            Send(oTarget,@MsgSendUser,#message_rsc=vrEnchantment_On);
+         }
+         
+         if (who <> $)
+         {
+            Send(who,@MsgSendUser,#message_rsc=vrSuccess,
+                  #parm1=Send(oTarget,@GetCapDef),#parm2=Send(oTarget,@GetName));
+         }
+      }
+
+      Send(oTarget,@StartEnchantment,#what=self,#time=iDuration,#report=report,
+            #state=[iSpeed]);
+
+      propagate;
+   }
+
+   GetDuration(iSpellPower=0)
+   {
+      local iDuration;
+
+      // Duration calculation now uses class properties, modifiable in game
+      // By default, base duration 4000ms, total time 4000-14000ms using 101x
+      // spellpower multiplier, with the final duration 90-100% max
+
+      iDuration = (piBaseDuration + (iSpellPower+1)*piSpellPowerModifier);
+      iDuration = Random(iDuration*(100-piDeviation)/100,iDuration);
+
+      return iDuration;
+   }
+
+   GetSlowAmount(iSpellPower = 0)
+   "Returns a positive number."
+   {
+      return (piBaseSlow + (iSpellPower + 1) * piSlowSpellpowerModifier) / 100;
+   }
+
+   EndEnchantment(who=$,report=TRUE,state=$)
+   {
+      if (report AND IsClass(who,&User))
+      {
+         Send(who,@MsgSendUser,#message_rsc=vrEnchantment_Off);
+      }
+
+      Send(who,@AddMovementSpeedPercent,#iSpeed=-First(state));
+
+      return;
+   }
+
+   RestartEnchantmentEffect(who=$,state=$)
+   {
+      if (state)
+      {
+         Send(who,@MsgSendUser,#message_rsc=vrEnchantment_On);
+      }
+
+      return;
+   }
+
+   CausesAggression(iSpellpower=0)
+   {
+      return iSpellpower / 2;
+   }
+
+end
+////////////////////////////////////////////////////////////////////////////////

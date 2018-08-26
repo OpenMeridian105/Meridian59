@@ -6,6 +6,6 @@
 
 DEPEND = ..\debuff.bof
 BOFS = blind.bof cursewp.bof dazzle.bof disease.bof dishonor.bof forget.bof \
-       hold.bof seduce.bof vertigo.bof drain.bof
+       hold.bof seduce.bof vertigo.bof drain.bof slow.bof
 
 !include $(KODDIR)\kod.mak

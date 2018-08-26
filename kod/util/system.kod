@@ -3695,6 +3695,7 @@ messages:
       Send(self,@CreateOneSpellIfNew,#num=SID_EAGLE_EYES,#class=&EagleEyes);
       Send(self,@CreateOneSpellIfNew,#num=SID_DAZZLE,#class=&Dazzle);
       Send(self,@CreateOneSpellIfNew,#num=SID_SILENCE,#class=&Silence);
+      Send(self,@CreateOneSpellIfNew,#num=SID_SLOW,#class=&Slow);
 
       Send(self,@CreateOneSpellIfNew,#num=SID_SHOCKING_FURY,#class=&ShockingFury);
       Send(self,@CreateOneSpellIfNew,#num=SID_BLAST_OF_FIRE,#class=&BlastOfFire);
@@ -7543,6 +7544,38 @@ messages:
       }
 
       return;
+   }
+
+   AdminReplaceSpellWithNew(old_sid = $, new_sid = $, includeDMs=FALSE)
+   "This should only be used if the level of the new spell is the same as or "
+   "lower than the old spell."
+   {
+      local i, iAbility, iCount;
+
+      if (old_sid = $
+         OR new_sid = $
+         OR Send(SYS,@FindSpellByNum,#num=old_sid) = $
+         OR Send(SYS,@FindSpellByNum,#num=new_sid) = $)
+      {
+         return 0;
+      }
+
+      iCount = 0;
+      foreach i in plUsers
+      {
+         if (includeDMs OR NOT IsClass(i,&DM))
+         {
+            iAbility = Send(i,@GetSpellAbility,#spell_num=old_sid);
+            if (iAbility > 0)
+            {
+               ++iCount;
+               Send(i,@RemoveSpell,#num=old_sid);
+               Send(i,@AddSpell,#num=new_sid,#iability=iAbility);
+            }
+         }
+      }
+
+      return iCount;
    }
 
    FixSpellLevelChange(num=0)

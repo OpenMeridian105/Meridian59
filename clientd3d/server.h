@@ -114,6 +114,7 @@ Bool HandleLightAmbient(char *ptr, long len);
 Bool HandleLightPlayer(char *ptr, long len);
 Bool HandleBackground(char *ptr, long len);
 Bool HandleEffect(char *ptr, long len);
+Bool HandleMovementSpeed(char *ptr, long len);
 Bool HandleTurn(char *ptr, long len);
 Bool HandleShoot(char *ptr, long len);
 Bool HandleRadiusShoot(char *ptr, long len);

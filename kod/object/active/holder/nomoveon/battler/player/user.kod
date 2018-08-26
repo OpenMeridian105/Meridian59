@@ -3681,6 +3681,7 @@ messages:
       Send(self,@SendUserAllWindowOverlays);
       // Check weather here also.
       Send(self,@WeatherChanged);
+      Send(self,@MovementSpeedSendUser);
 
       return;
    }
@@ -4523,6 +4524,9 @@ messages:
          iSpeed = USER_RUNNING_SPEED;
       }
 
+      // Any movement speed modifiers?
+      iSpeed = iSpeed * Send(self,@GetMovementSpeedPercent) / 100;
+
       // if location flags available, possibly reduce based on depthflags
       if (piLocationFlags <> $)
       {
@@ -4547,7 +4551,7 @@ messages:
             return Bound((iSpeed / 4), 1, iSpeed); // 25%
          }
       }
- 
+
       // no flags available or unknown depth type
       return iSpeed;
    }
@@ -4616,7 +4620,8 @@ messages:
       // 2.2 Check the user's claimed speed is within valid range
       //  Don't worry about a temporary different current max. here
       //
-      if speed < 1 OR speed > USER_RUNNING_SPEED
+      if speed < 1
+         OR speed > USER_RUNNING_SPEED * MOVEMENTSPEED_MAX / 100
       {
          // Make a log entry
          if piCheaterLogs < MAX_LOGGED_THRESHOLD
@@ -5075,6 +5080,25 @@ messages:
          AND pbLogged_on)
       {
          AddPacket(1,BP_PLAY_MIDI, 4,midi_rsc);
+         SendPacket(poSession);
+      }
+
+      return;
+   }
+
+   MovementSpeedChanged()
+   {
+      Send(self,@MovementSpeedSendUser);
+
+      return;
+   }
+
+   MovementSpeedSendUser()
+   "Sends movement speed % to the user."
+   {
+      if pbLogged_on
+      {
+         AddPacket(1,BP_MOVEMENT_SPEED,2,Send(self,@GetMovementSpeedPercent));
          SendPacket(poSession);
       }
 

@@ -170,7 +170,7 @@ void StatsNumResize(list_type stats)
    {
       y = StatsGetButtonBorder();
       MoveWindow(hStatsScroll, stats_area.cx - stats_scrollbar_width, 
-         y, stats_scrollbar_width, num_visible * height, FALSE);
+         y, stats_scrollbar_width, stats_area.cy - y, FALSE);
       ShowWindow(hStatsScroll, SW_HIDE);
       SetScrollRange(hStatsScroll, SB_CTL, 0, num_stats - num_visible, TRUE);
       SetScrollPos(hStatsScroll, SB_CTL, top_stat, TRUE);

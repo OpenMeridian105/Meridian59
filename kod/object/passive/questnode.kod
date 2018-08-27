@@ -1638,7 +1638,7 @@ messages:
    MonsterKilled(dead_monster = $, killing_player = $, corpse = $)
    "Returns TRUE if this was the one we were waiting for, FALSE otherwise."
    {
-      local oRoom, iRow, iCol, iType, oQuester;
+      local oRoom, iRow, iCol, iType, oQuester, cClass;
 
       if piStatus <> QN_STATUS_AWAITING_MONSTER_DEATH
       {
@@ -1651,7 +1651,12 @@ messages:
 
       if GetClass(dead_monster) <> GetClass(poMonster)
       {
-         return FALSE;
+         // Handle cases where a mob is similar enough to count.
+         // e.g. faction solder/faction mage
+         if (NOT Send(poMonster,@IsMonsterQuestEquivalent,#what=dead_monster))
+         {
+            return FALSE;
+         }
       }
 
       foreach oQuester in Send(poQuest,@GetQuesters)

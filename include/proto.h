@@ -95,7 +95,8 @@ enum {
    BP_REQ_ADMIN_QUEST       = 62,
 
    BP_EFFECT                = 70,
-   
+   BP_MOVEMENT_SPEED        = 71,
+
    BP_MAIL                  = 80,
    BP_REQ_GET_MAIL          = 81,
    BP_SEND_MAIL             = 82,

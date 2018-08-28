@@ -3681,6 +3681,7 @@ messages:
       Send(self,@SendUserAllWindowOverlays);
       // Check weather here also.
       Send(self,@WeatherChanged);
+      Send(self,@MovementSpeedSendUser);
 
       return;
    }
@@ -4523,6 +4524,9 @@ messages:
          iSpeed = USER_RUNNING_SPEED;
       }
 
+      // Any movement speed modifiers?
+      iSpeed = iSpeed * Send(self,@GetMovementSpeedPercent) / 100;
+
       // if location flags available, possibly reduce based on depthflags
       if (piLocationFlags <> $)
       {
@@ -4547,7 +4551,7 @@ messages:
             return Bound((iSpeed / 4), 1, iSpeed); // 25%
          }
       }
- 
+
       // no flags available or unknown depth type
       return iSpeed;
    }
@@ -4557,7 +4561,8 @@ messages:
    {
       local iCurrentTime, iDelta, iAngle, iRow, iCol, iFineRow, 
             iFineCol, iRoomNum, iDx, iDy, iMoveLength, iMaxMoveRun, 
-            iQflags, iRflags, iHeightF, iHeightFWD, iHeightC, iServerID, iSpeedMax;
+            iQflags, iRflags, iHeightF, iHeightFWD, iHeightC, iServerID,
+            iSpeedMax, iBucketMax;
 
       ////////////////////////////////////////////////////////////////////////////////////////
       // 1 - INIT AND SILENT DISCARDS
@@ -4616,7 +4621,8 @@ messages:
       // 2.2 Check the user's claimed speed is within valid range
       //  Don't worry about a temporary different current max. here
       //
-      if speed < 1 OR speed > USER_RUNNING_SPEED
+      if speed < 1
+         OR speed > USER_RUNNING_SPEED * MOVEMENTSPEED_MAX / 100
       {
          // Make a log entry
          if piCheaterLogs < MAX_LOGGED_THRESHOLD
@@ -4652,12 +4658,30 @@ messages:
       //  SPEED is defined as # of big squares per 10000ms
       //  The unit here is fine upscaled by another *16 (same is done below on iDy, iDx)
       iMaxMoveRun = (Bound(speed,1,iSpeedMax) * FINENESS * 16 * iDelta) / 10000;
-      iMaxMoveRun = (iMaxMoveRun * iMaxMoveRun);
+
+      // Above calculation can overflow kod int if player speed is too high
+      // and delta is at max. Bound at max if there is an overflow or if one
+      // would be caused by squaring iMaxMoveRun.
+      if (iMaxMoveRun < 0 OR iMaxMoveRun > MAX_KOD_INT_SQRT)
+      {
+         iMaxMoveRun = MAX_KOD_INT;
+      }
+      else
+      {
+         iMaxMoveRun *= iMaxMoveRun;
+      }
 
       // 2.2.3 Fill up the movement bucket with tokens for the squared distance 
       //  one could have travelled at maximum legal speed but keep an upper bound on it.
       piMovementBucket += iMaxMoveRun;
-      piMovementBucket = Bound(piMovementBucket, 0, Send(SETTINGS_OBJECT,@GetMovementBucketMax));
+
+      // Addition can overflow if iMaxMoveRun is too high and piMovementBucket
+      // is high enough.
+      iBucketMax = Send(SETTINGS_OBJECT,@GetMovementBucketMax);
+      if (piMovementBucket < 0 OR piMovementBucket > iBucketMax)
+      {
+         piMovementBucket = iBucketMax;
+      }
 
       // 2.2.4 Get move-deltas in FINENESS units and scale up a bit further (*16) for precision
       //  Same was done with iMaxMoveRun above. Calculate the squared vector length from the deltas.
@@ -5075,6 +5099,25 @@ messages:
          AND pbLogged_on)
       {
          AddPacket(1,BP_PLAY_MIDI, 4,midi_rsc);
+         SendPacket(poSession);
+      }
+
+      return;
+   }
+
+   MovementSpeedChanged()
+   {
+      Send(self,@MovementSpeedSendUser);
+
+      return;
+   }
+
+   MovementSpeedSendUser()
+   "Sends movement speed % to the user."
+   {
+      if pbLogged_on
+      {
+         AddPacket(1,BP_MOVEMENT_SPEED,2,Send(self,@GetMovementSpeedPercent));
          SendPacket(poSession);
       }
 

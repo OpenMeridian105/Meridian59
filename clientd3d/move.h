@@ -37,5 +37,6 @@ Bool MoveUpdatePosition(void);
 void UserTurnPlayer(int action);
 void UserTurnPlayerMouse(int delta);
 void UserFlipPlayer(void);
+void SetMovementSpeedPct(int speed);
 
 #endif /* #ifndef _MOVE_H */

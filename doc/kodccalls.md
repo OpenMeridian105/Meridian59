@@ -108,6 +108,7 @@ present in the current codebase.
   * [Bound](#bound)
   * [IsObject](#isobject)
   * [GetSessionIP](#getsessionip)
+  * [CalcUserMovementBucket](#calcusermovementbucket)
   * [SaveGame](#savegame)
   * [LoadGame](#loadgame)
   * [RecycleUser](#recycleuser)
@@ -2009,6 +2010,29 @@ Returns the IP of a session.
    {
       return GetSessionIP(poSession);
    }
+```
+
+#### CalcUserMovementBucket
+`CalcUserMovementBucket(current_bucket, *new_bucket, bucket_max,
+speed, packet_delta, old_row, old_col, old_finerow, old_finecol,
+new_row, new_col, new_finerow, new_finecol)`
+
+Calculates whether a player can make the requested move from old coords
+to new coords based on time since last move (packet_delta), movement
+speed and movement bucket details. Returns TRUE or FALSE based on whether
+the move is allowed, and assigns the new bucket value to the local var sent
+in *new_bucket.
+
+```
+   // 2.2.2 Move validity/token use calculated in C due to kod int overflows.
+   // Returns the new value for piMovementBucket in iNewBucket.
+   bBucketMoveAllowed = CalcUserMovementBucket(piMovementBucket, *iNewBucket,
+      Send(SETTINGS_OBJECT,@GetMovementBucketMax),Bound(speed,1,iSpeedMax),
+      iDelta, iRow, iCol, iFineRow, iFineCol, new_row, new_col, fine_row, fine_col);
+
+   // 2.2.3 Assign the new bucket value.
+   piMovementBucket = iNewBucket;
+
 ```
 
 #### SaveGame

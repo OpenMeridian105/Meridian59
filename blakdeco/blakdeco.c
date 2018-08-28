@@ -552,7 +552,7 @@ char * name_function(int fnum)
    case GETRANDOMMOVEDESTBSP: return "GetRandomMoveDestBSP";
    case GETSECTORHEIGHTBSP: return "GetSectorHeightBSP";
    case SETROOMDEPTHOVERRIDEBSP: return "SetRoomDepthOverrideBSP";
-
+   case CALCUSERMOVEMENTBUCKET: return "CalcUserMovementBucket";
    case STRINGTONUMBER : return "StringToNumber";
 
    case CANMOVEINROOMBSP: return "CanMoveInRoomBSP";

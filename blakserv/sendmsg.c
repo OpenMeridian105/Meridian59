@@ -218,6 +218,7 @@ void InitBkodInterpret(void)
    ccall_table[GETRANDOMMOVEDESTBSP] = C_GetRandomMoveDestBSP;
    ccall_table[GETSECTORHEIGHTBSP] = C_GetSectorHeightBSP;
    ccall_table[SETROOMDEPTHOVERRIDEBSP] = C_SetRoomDepthOverrideBSP;
+   ccall_table[CALCUSERMOVEMENTBUCKET] = C_CalcUserMovementBucket;
 
    ccall_table[APPENDLISTELEM] = C_AppendListElem;
    ccall_table[CONS] = C_Cons;

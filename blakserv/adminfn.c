@@ -2629,6 +2629,7 @@ void AdminShowCalls(int session_id,admin_parm_type parms[],
 		case GETLOCATIONINFOBSP: strcpy(c_name, "GetLocationInfoBSP"); break;
       case GETSECTORHEIGHTBSP: strcpy(c_name, "GetSectorHeightBSP"); break;
       case SETROOMDEPTHOVERRIDEBSP: strcpy(c_name, "SetRoomDepthOverrideBSP"); break;
+      case CALCUSERMOVEMENTBUCKET: strcpy(c_name, "CalcUserMovementBucket"); break;
 		case GETRANDOMPOINTBSP: strcpy(c_name, "GetRandomPointBSP"); break;
 		case GETSTEPTOWARDSBSP: strcpy(c_name, "GetStepTowardsBSP"); break;
       case GETRANDOMMOVEDESTBSP: strcpy(c_name, "GetRandomMoveDestBSP"); break;

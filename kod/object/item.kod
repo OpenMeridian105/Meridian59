@@ -1043,10 +1043,24 @@ messages:
 
    NewUsed()
    {
+      local i, iNum, iSpeed;
+
       Send(self,@DoPlayerArt);
-      If IsClass(poOwner,&Player)
+      if IsClass(poOwner,&Player)
       {
          Post(poOwner,@RefreshPlayerVisualGear);
+      }
+
+      foreach i in plItem_Attributes
+      {
+         iNum = Send(self,@GetNumFromCompound,#compound=First(i));
+         if (iNum = IA_MOVESPEED)
+         {
+            // TranslatePowerFromCompound from ItemAtt.
+            // Avoid looking up the itematt object here.
+            iSpeed = (First(i) / 10) % 10;
+            Send(poOwner,@AddMovementSpeedPercent,#iSpeed=iSpeed);
+         }
       }
 
       return;
@@ -1087,7 +1101,7 @@ messages:
    "Called when the player tries to unuse the item"
    {
       local i, oItemAtt, iNum;
-          
+
       // Check to be sure nothing in ItemAtts disallows this
       foreach i in plItem_Attributes
       {
@@ -1098,13 +1112,27 @@ messages:
             return FALSE;
          }
       }
-      
+
       return TRUE;
    }
 
    NewUnused()
    {
+      local i, iNum, iSpeed;
+
       Send(self,@UndoPlayerArt);
+
+      foreach i in plItem_Attributes
+      {
+         iNum = Send(self,@GetNumFromCompound,#compound=First(i));
+         if (iNum = IA_MOVESPEED)
+         {
+            // TranslatePowerFromCompound from ItemAtt.
+            // Avoid looking up the itematt object here.
+            iSpeed = (First(i) / 10) % 10;
+            Send(poOwner,@AddMovementSpeedPercent,#iSpeed=-iSpeed);
+         }
+      }
 
       return;
    }
@@ -2081,6 +2109,26 @@ messages:
       }
 
       return iXP;
+   }
+
+   GetItemMoveSpeedBonus()
+   {
+      local oItemAtt, iMoveSpeed, i, iNum, oObjectAttribute;
+
+      iMoveSpeed = 0;
+
+      foreach i in plItem_Attributes
+      {
+         iNum = Send(self,@GetNumFromCompound,#compound=First(i));
+         if (iNum = IA_MOVESPEED)
+         {
+            oItemAtt = Send(SYS,@FindItemAttByNum,#num=iNum);
+            iMoveSpeed += Send(oItemAtt,@TranslatePowerFromCompound,
+                              #iCompound=First(i));
+         }
+      }
+
+      return iMoveSpeed;
    }
 
    GetHeatDamage()

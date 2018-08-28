@@ -2623,6 +2623,168 @@ int C_SetRoomDepthOverrideBSP(int object_id, local_var_type *local_vars,
    return ret_val.int_val;
 }
 
+int C_CalcUserMovementBucket(int object_id, local_var_type *local_vars,
+   int num_normal_parms, parm_node normal_parm_array[],
+   int num_name_parms, parm_node name_parm_array[])
+{
+   val_type bucket, bucket_max, new_bucket, speed, delta;
+   val_type row_start, col_start, finerow_start, finecol_start;
+   val_type row_end, col_end, finerow_end, finecol_end;
+
+   bucket = RetrieveValue(object_id, local_vars, normal_parm_array[0].type,
+      normal_parm_array[0].value);
+   if (bucket.v.tag != TAG_INT)
+   {
+      bprintf("C_CalcUserMovementBucket bucket can't use non int %i,%i\n",
+         bucket.v.tag, bucket.v.data);
+      return KOD_FALSE;
+   }
+
+   new_bucket = RetrieveValue(object_id, local_vars, normal_parm_array[1].type,
+      normal_parm_array[1].value);
+   if (new_bucket.v.tag != TAG_INT)
+   {
+      bprintf("C_CalcUserMovementBucket new_bucket can't use non int %i,%i\n",
+         new_bucket.v.tag, new_bucket.v.data);
+      return KOD_FALSE;
+   }
+
+   bucket_max = RetrieveValue(object_id, local_vars, normal_parm_array[2].type,
+      normal_parm_array[2].value);
+   if (bucket_max.v.tag != TAG_INT)
+   {
+      bprintf("C_CalcUserMovementBucket bucket_max can't use non int %i,%i\n",
+         bucket_max.v.tag, bucket_max.v.data);
+      return KOD_FALSE;
+   }
+
+   speed = RetrieveValue(object_id, local_vars, normal_parm_array[3].type,
+      normal_parm_array[3].value);
+   if (speed.v.tag != TAG_INT)
+   {
+      bprintf("C_CalcUserMovementBucket speed can't use non int %i,%i\n",
+         speed.v.tag, speed.v.data);
+      return KOD_FALSE;
+   }
+
+   delta = RetrieveValue(object_id, local_vars, normal_parm_array[4].type,
+      normal_parm_array[4].value);
+   if (delta.v.tag != TAG_INT)
+   {
+      bprintf("C_CalcUserMovementBucket delta can't use non int %i,%i\n",
+         delta.v.tag, delta.v.data);
+      return KOD_FALSE;
+   }
+
+   row_start = RetrieveValue(object_id, local_vars, normal_parm_array[5].type,
+      normal_parm_array[5].value);
+   if (row_start.v.tag != TAG_INT)
+   {
+      bprintf("C_CalcUserMovementBucket row_start can't use non int %i,%i\n",
+         row_start.v.tag, row_start.v.data);
+      return KOD_FALSE;
+   }
+
+   col_start = RetrieveValue(object_id, local_vars, normal_parm_array[6].type,
+      normal_parm_array[6].value);
+   if (col_start.v.tag != TAG_INT)
+   {
+      bprintf("C_CalcUserMovementBucket col_start can't use non int %i,%i\n",
+         col_start.v.tag, col_start.v.data);
+      return KOD_FALSE;
+   }
+
+   finerow_start = RetrieveValue(object_id, local_vars, normal_parm_array[7].type,
+      normal_parm_array[7].value);
+   if (finerow_start.v.tag != TAG_INT)
+   {
+      bprintf("C_CalcUserMovementBucket finerow_start can't use non int %i,%i\n",
+         finerow_start.v.tag, finerow_start.v.data);
+      return KOD_FALSE;
+   }
+
+   finecol_start = RetrieveValue(object_id, local_vars, normal_parm_array[8].type,
+      normal_parm_array[8].value);
+   if (finecol_start.v.tag != TAG_INT)
+   {
+      bprintf("C_CalcUserMovementBucket finecol_start can't use non int %i,%i\n",
+         finecol_start.v.tag, finecol_start.v.data);
+      return KOD_FALSE;
+   }
+
+   row_end = RetrieveValue(object_id, local_vars, normal_parm_array[9].type,
+      normal_parm_array[9].value);
+   if (row_end.v.tag != TAG_INT)
+   {
+      bprintf("C_CalcUserMovementBucket row_end can't use non int %i,%i\n",
+         row_end.v.tag, row_end.v.data);
+      return KOD_FALSE;
+   }
+
+   col_end = RetrieveValue(object_id, local_vars, normal_parm_array[10].type,
+      normal_parm_array[10].value);
+   if (col_end.v.tag != TAG_INT)
+   {
+      bprintf("C_CalcUserMovementBucket col_end can't use non int %i,%i\n",
+         col_end.v.tag, col_end.v.data);
+      return KOD_FALSE;
+   }
+
+   finerow_end = RetrieveValue(object_id, local_vars, normal_parm_array[11].type,
+      normal_parm_array[11].value);
+   if (finerow_end.v.tag != TAG_INT)
+   {
+      bprintf("C_CalcUserMovementBucket finerow_end can't use non int %i,%i\n",
+         finerow_end.v.tag, finerow_end.v.data);
+      return KOD_FALSE;
+   }
+
+   finecol_end = RetrieveValue(object_id, local_vars, normal_parm_array[12].type,
+      normal_parm_array[12].value);
+   if (finecol_end.v.tag != TAG_INT)
+   {
+      bprintf("C_CalcUserMovementBucket finecol_end can't use non int %i,%i\n",
+         finecol_end.v.tag, finecol_end.v.data);
+      return KOD_FALSE;
+   }
+
+   // Calculate the movesize for the claimed speed in this dt.
+   // SPEED is defined as # of big squares per 10000ms
+   // The unit here is fine upscaled by another *256 (same is done below on iDy, iDx)
+   double iMaxMoveRun = (speed.v.data * KODFINENESS * 256 * delta.v.data) / 10000.0;
+
+   // Fill up the movement bucket with tokens for the squared distance
+   // one could have travelled at maximum legal speed. Not bound at this
+   // stage as a large valid move length could consume the extra tokens.
+   double iBucket = bucket.v.data + iMaxMoveRun;
+
+   // Get move-deltas in FINENESS units and scale up further (*256) for precision.
+   // Same was done with iMaxMoveRun above. Calculate the squared vector length from the deltas.
+   double iDy = 256 * (((row_end.v.data * KODFINENESS) + finerow_end.v.data) - ((row_start.v.data * KODFINENESS) + finerow_start.v.data));
+   double iDx = 256 * (((col_end.v.data * KODFINENESS) + finecol_end.v.data) - ((col_start.v.data * KODFINENESS) + finecol_start.v.data));
+   double iMoveLength = sqrt((iDy * iDy) + (iDx * iDx));
+
+   // This move would consume more tokens than we have left -> deny
+   if (iBucket - iMoveLength <= 0)
+   {
+      // Set upper bound on how many tokens we can have.
+      iBucket = MIN(iBucket, bucket_max.v.data);
+      local_vars->locals[new_bucket.v.data].v.tag = TAG_INT;
+      local_vars->locals[new_bucket.v.data].v.data = (int)iBucket;
+
+      return KOD_FALSE;
+   }
+
+   // Subtract the tokens used in this move.
+   iBucket -= iMoveLength;
+   // Set upper bound on how many tokens we can have.
+   iBucket = MIN(iBucket, bucket_max.v.data);
+   local_vars->locals[new_bucket.v.data].v.tag = TAG_INT;
+   local_vars->locals[new_bucket.v.data].v.data = (int)iBucket;
+
+   return KOD_TRUE;
+}
+
 int C_CanMoveInRoomBSP(int object_id, local_var_type *local_vars,
 	int num_normal_parms, parm_node normal_parm_array[],
 	int num_name_parms, parm_node name_parm_array[])

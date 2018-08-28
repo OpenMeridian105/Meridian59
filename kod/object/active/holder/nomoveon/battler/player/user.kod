@@ -4562,7 +4562,7 @@ messages:
       local iCurrentTime, iDelta, iAngle, iRow, iCol, iFineRow, 
             iFineCol, iRoomNum, iDx, iDy, iMoveLength, iMaxMoveRun, 
             iQflags, iRflags, iHeightF, iHeightFWD, iHeightC, iServerID,
-            iSpeedMax, iBucketMax;
+            iSpeedMax, iNewBucket, bBucketMoveAllowed;
 
       ////////////////////////////////////////////////////////////////////////////////////////
       // 1 - INIT AND SILENT DISCARDS
@@ -4654,43 +4654,19 @@ messages:
       //  Continously exceeding the current max. will cause rubberbanding
       iSpeedMax = Send(self, @GetSpeedMax);
 
-      // 2.2.2 Calculate the squared movesize for the claimed speed in this dt.
-      //  SPEED is defined as # of big squares per 10000ms
-      //  The unit here is fine upscaled by another *16 (same is done below on iDy, iDx)
-      iMaxMoveRun = (Bound(speed,1,iSpeedMax) * FINENESS * 16 * iDelta) / 10000;
+      // 2.2.2 Move validity/token use calculated in C due to kod int overflows.
+      // Returns the new value for piMovementBucket in iNewBucket.
+      bBucketMoveAllowed = CalcUserMovementBucket(piMovementBucket, *iNewBucket,
+         Send(SETTINGS_OBJECT,@GetMovementBucketMax),Bound(speed,1,iSpeedMax),
+         iDelta, iRow, iCol, iFineRow, iFineCol, new_row, new_col, fine_row, fine_col);
 
-      // Above calculation can overflow kod int if player speed is too high
-      // and delta is at max. Bound at max if there is an overflow or if one
-      // would be caused by squaring iMaxMoveRun.
-      if (iMaxMoveRun < 0 OR iMaxMoveRun > MAX_KOD_INT_SQRT)
-      {
-         iMaxMoveRun = MAX_KOD_INT;
-      }
-      else
-      {
-         iMaxMoveRun *= iMaxMoveRun;
-      }
+      // 2.2.3 Assign the new bucket value.
+      piMovementBucket = iNewBucket;
 
-      // 2.2.3 Fill up the movement bucket with tokens for the squared distance 
-      //  one could have travelled at maximum legal speed but keep an upper bound on it.
-      piMovementBucket += iMaxMoveRun;
-
-      // Addition can overflow if iMaxMoveRun is too high and piMovementBucket
-      // is high enough.
-      iBucketMax = Send(SETTINGS_OBJECT,@GetMovementBucketMax);
-      if (piMovementBucket < 0 OR piMovementBucket > iBucketMax)
-      {
-         piMovementBucket = iBucketMax;
-      }
-
-      // 2.2.4 Get move-deltas in FINENESS units and scale up a bit further (*16) for precision
-      //  Same was done with iMaxMoveRun above. Calculate the squared vector length from the deltas.
-      iDy = 16 * (((new_row * FINENESS) + fine_row) - ((iRow * FINENESS) + iFineRow));
-      iDx = 16 * (((new_col * FINENESS) + fine_col) - ((iCol * FINENESS) + iFineCol));
-      iMoveLength = (iDy * iDy) + (iDx * iDx);
-
-      // 2.2.5 This move would consume more tokens than we have left -> deny
-      if (piMovementBucket - iMoveLength < 0)
+      // 2.2.4 This move would consume more tokens than we have left -> deny
+      // Could also be denied for a data type/value error in C, but this is
+      // logged in the admin console/log files from the C side.
+      if (NOT bBucketMoveAllowed)
       {
          // Reset position
          Send(SYS,@UtilGoNearSquare,#what=self,#where=poOwner,
@@ -4764,10 +4740,8 @@ messages:
       // 3 - MOVE ACCEPTED FROM HERE ON, PROCESS IT ...
       ////////////////////////////////////////////////////////////////////////////////////////
 
-      // 3.1 Save this move tick for next execution and subtract 
-      //  the move tokens we have consumed. Save speed squared.
+      // 3.1 Save this move tick for next execution and also speed squared.
       piLastMoveUpdateTime = iCurrentTime;
-      piMovementBucket -= iMoveLength;
       piSpeed = speed * speed;
 
       //

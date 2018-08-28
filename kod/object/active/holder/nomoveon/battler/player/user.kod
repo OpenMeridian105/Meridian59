@@ -4561,7 +4561,8 @@ messages:
    {
       local iCurrentTime, iDelta, iAngle, iRow, iCol, iFineRow, 
             iFineCol, iRoomNum, iDx, iDy, iMoveLength, iMaxMoveRun, 
-            iQflags, iRflags, iHeightF, iHeightFWD, iHeightC, iServerID, iSpeedMax;
+            iQflags, iRflags, iHeightF, iHeightFWD, iHeightC, iServerID,
+            iSpeedMax, iBucketMax;
 
       ////////////////////////////////////////////////////////////////////////////////////////
       // 1 - INIT AND SILENT DISCARDS
@@ -4657,12 +4658,30 @@ messages:
       //  SPEED is defined as # of big squares per 10000ms
       //  The unit here is fine upscaled by another *16 (same is done below on iDy, iDx)
       iMaxMoveRun = (Bound(speed,1,iSpeedMax) * FINENESS * 16 * iDelta) / 10000;
-      iMaxMoveRun = (iMaxMoveRun * iMaxMoveRun);
+
+      // Above calculation can overflow kod int if player speed is too high
+      // and delta is at max. Bound at max if there is an overflow or if one
+      // would be caused by squaring iMaxMoveRun.
+      if (iMaxMoveRun < 0 OR iMaxMoveRun > MAX_KOD_INT_SQRT)
+      {
+         iMaxMoveRun = MAX_KOD_INT;
+      }
+      else
+      {
+         iMaxMoveRun *= iMaxMoveRun;
+      }
 
       // 2.2.3 Fill up the movement bucket with tokens for the squared distance 
       //  one could have travelled at maximum legal speed but keep an upper bound on it.
       piMovementBucket += iMaxMoveRun;
-      piMovementBucket = Bound(piMovementBucket, 0, Send(SETTINGS_OBJECT,@GetMovementBucketMax));
+
+      // Addition can overflow if iMaxMoveRun is too high and piMovementBucket
+      // is high enough.
+      iBucketMax = Send(SETTINGS_OBJECT,@GetMovementBucketMax);
+      if (piMovementBucket < 0 OR piMovementBucket > iBucketMax)
+      {
+         piMovementBucket = iBucketMax;
+      }
 
       // 2.2.4 Get move-deltas in FINENESS units and scale up a bit further (*16) for precision
       //  Same was done with iMaxMoveRun above. Calculate the squared vector length from the deltas.

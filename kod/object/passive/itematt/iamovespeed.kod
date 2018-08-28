@@ -1,0 +1,130 @@
+// Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+// All rights reserved.
+//
+// This software is distributed under a license that is described in
+// the LICENSE file that accompanies it.
+//
+// Meridian is a registered trademark.
+
+
+////////////////////////////////////////////////////////////////////////////////
+ItemAttMoveSpeedPercent is ItemAttribute
+
+///////////////////////////////////////////////////////////////////////
+//
+//  Increases the movement speed percent of the player
+//
+//  Form is:
+//
+//      [ItemAttMoveSpeedPercent, %]
+//
+
+///////////////////////////////////////////////////////////////////////
+
+constants:
+
+   include blakston.khd
+
+resources:
+
+   include iamovespeed.lkod
+
+   itematt_movespeed_name = "hastening %s"
+   movespeed_dm = "hastening"
+   itematt_movespeed_desc = \
+      " This %s has a distinct magical aura, and you feel energized just "
+      "looking at it."
+   movespeed_info_desc = "%i%% increased movement speed\n"
+
+classvars:
+
+   viItem_Att_Num = IA_MOVESPEED
+   vrName = itematt_movespeed_name
+   vrDesc = itematt_movespeed_desc
+   vrInfoDesc = movespeed_info_desc
+   viDifficulty = 1
+   vrDM_Trigger = movespeed_dm
+
+properties:
+
+   piValue_modifier = 150
+   piValue_power_modifier = 0
+
+messages:
+
+   // Override to add only to armor.
+   SetItemsToAttribute()
+   {
+      plItems_to_attribute = \
+             [ [ &WoodenShield, 20],
+               [ &MetalShield, 15],
+               [ &LeatherArmor, 15],
+               [ &ChainArmor, 10],
+               [ &GoldShield, 9],
+               [ &ScaleArmor, 8],
+               [ &KnightShield, 6],
+               [ &PlateArmor, 6],
+               [ &Gauntlet, 4],
+               [ &SimpleHelm, 3],
+               [ &IvyCirclet, 1],
+               [ &DaemonHelm, 1],
+               [ &PlateArmor, 1],
+               [ &Circlet, 1]
+             ];
+
+      return;
+   }
+
+   AddToTreasureTable()
+   {
+      local i;
+
+      // 5% chance at each level.
+      for (i = 1; i < 11; ++i)
+      {
+         Send(SYS,@AddToItemAttTreasureTable,#diff=i,#percent=5,
+               #iItemAtt=viItem_Att_Num);
+      }
+
+      return;
+   }
+
+   InitialPower(oItem = $, diff_seed = 1)
+   {
+      // Difficulty 0-7 gives 2%, 8 and 9 give 4%
+      return Bound(diff_seed / 4 * 2,2,4);
+   }
+
+   AppendDesc(oItem =$)
+   {
+      AddPacket(4,vrDesc, 4,Send(oItem,@GetName));
+
+      return;
+   }
+
+   AppendDescInfo(oItem = $,compound = $, bShowAll = FALSE)
+   {
+      local iMoveSpeedBonus;
+
+      if (bShowAll
+         OR Send(oItem,@GetIDStatusFromCompound,#compound=compound))
+      {
+         iMoveSpeedBonus = Send(self,@TranslatePowerFromCompound,#iCompound=compound);
+         AddPacket(4,vrInfoDesc, 4,iMoveSpeedBonus);
+      }
+      else
+      {
+         // Not identified, add nothing (blank resource).
+         AddPacket(4,system_blank_resource);
+      }
+
+      return;
+   }
+
+   IsMagicalEffect()
+   {
+      return TRUE;
+   }
+
+end
+////////////////////////////////////////////////////////////////////////////////

@@ -417,6 +417,9 @@ enum {
 #define OF_FLICKERING    0x00020000    // For players or objects if holding a flickering light.
 #define OF_FLASHING      0x00040000    // For players or objects if flashing with light.
 #define OF_PHASING       0x00080000    // For players or objects if phasing translucent/solid.
+#define OF_NPCHASQUESTS  0x00100000
+#define OF_NPCACTIVEQUEST 0x00200000
+#define OF_MOBKILLQUEST  0x00400000
 
 #define GetItemFlags(flags)   ((flags))
 
@@ -456,6 +459,8 @@ enum {
 #define MM_AGGRO_SELF    0x00004000    // Set if monster has aggro on the player.
 #define MM_AGGRO_OTHER   0x00008000    // Set if monster has aggro on another player.
 #define MM_MERCENARY     0x00010000    // Set if monster is our mercenary.
+#define MM_NPCHASQUEST   0x00020000    // Set if NPC has a quest for us
+#define MM_NPCCURRENTQUEST 0x00040000  // Set if NPC is part of an active quest
 
 /* Player name color sent as hex RGB value. Define constants
    for ease of use as needed. Requires OF_PLAYER boolean flag

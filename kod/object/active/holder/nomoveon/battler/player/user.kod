@@ -3586,7 +3586,19 @@ messages:
       {
          if Send(what,@GetBehavior) & AI_NPC
          {
-            // Draw dots for NPCs.
+            // Highlight quest-related NPCs.
+            // NPCs that are part of active quests
+            // override NPCs that have potential quests.
+            if (Send(self,@NPCQuestActive,#what=what))
+            {
+               return MM_NPC | MM_NPCCURRENTQUEST;
+            }
+            if (Send(what,@HasQuestsForUser,#who=self))
+            {
+               return MM_NPC | MM_NPCHASQUEST;
+            }
+
+            // Draw plain dots for non-quest NPCs.
             return MM_NPC;
          }
 
@@ -4218,6 +4230,28 @@ messages:
       Debug("Invalid stat group number",group,"sent by client");
 
       return;
+   }
+
+   NPCQuestActive(what = $)
+   {
+      local i, oQN;
+
+      if (what = $
+         OR plActiveQuests = $)
+      {
+         return FALSE;
+      }
+
+      foreach i in plActiveQuests
+      {
+         oQN = Nth(i,2);
+         if (Send(oQN,@GetDestNPC) = what)
+         {
+            return TRUE;
+         }
+      }
+
+      return FALSE;
    }
 
    GetCompletedQuestLength()

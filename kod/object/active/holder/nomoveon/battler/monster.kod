@@ -1051,6 +1051,27 @@ messages:
       return;
    }
 
+   HasQuestsForUser(who = $)
+   {
+      local i;
+
+      if (who = $
+         OR NOT IsClass(who,&User))
+      {
+         return FALSE;
+      }
+      return plActiveQuestNodes <> $;
+      foreach i in plActiveQuestNodes
+      {
+         if (FindListElem(Send(i,@GetQuesters),who))
+         {
+            return TRUE;
+         }
+      }
+
+      return FALSE;
+   }
+
    TryAddToLibrary()
    "Adds the NPC to the library's random NPC lists, which are used as "
    "defaults for quests and other things, e.g. signet rings. Some NPCs "
@@ -8063,6 +8084,20 @@ messages:
       if (piBehavior & AI_NPC)
       {
          iFlags &= ~OF_ATTACKABLE;
+
+         if (what <> $
+            AND IsClass(what,&User))
+         {
+            if (Send(what,@NPCQuestActive,#what=self))
+            {
+               iFlags |= OF_NPCACTIVEQUEST;
+            }
+            // NPC might have a quest for this user.
+            else if (Send(self,@HasQuestsForUser,#who=what))
+            {
+               iFlags |= OF_NPCHASQUESTS;
+            }
+         }
       }
 
       if Send(Self,@MobIsSeller)

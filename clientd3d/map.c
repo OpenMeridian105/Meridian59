@@ -470,6 +470,15 @@ void MapDrawObjects(HDC hdc, list_type objects, int x, int y, float scale)
             DrawMinimapDot(hdc, hGuildmatePen, hPlayerBrush, 1.6f * radius, new_x, new_y);
       }
 
+      if (r->obj.minimapflags & MM_NPCCURRENTQUEST)
+      {
+         DrawMinimapDot(hdc, hFriendPen, hPlayerBrush, 1.6f * radius, new_x, new_y);
+      }
+      else if (r->obj.minimapflags & MM_NPCHASQUEST)
+      {
+         DrawMinimapDot(hdc, hGuildmatePen, hPlayerBrush, 1.6f * radius, new_x, new_y);
+      }
+
       /* Draw middle of player dot in a different color. If a monster
          is a minion or NPC then color it appropriately, otherwise it
          gets the standard red dot. */

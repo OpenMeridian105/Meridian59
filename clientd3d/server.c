@@ -71,6 +71,7 @@ static handler_struct game_handler_table[] = {
 { BP_MESSAGE,           HandleStringMessage },
 { BP_SYS_MESSAGE,       HandleSysMessage },
 { BP_ECHO_PING,         HandleEchoPing },
+{ BP_ECHO_UDP_PING,     HandleEchoUDPPing },
 { BP_OFFER_CANCELED,    HandleOfferCanceled },
 { BP_OFFER,             HandleOffer },
 { BP_OFFERED,           HandleOffered },
@@ -1941,6 +1942,14 @@ Bool HandleEchoPing(char *ptr, long len)
    if (len != 0)
       return False;
    PingGotReply();
+   return True;
+}
+/********************************************************************/
+Bool HandleEchoUDPPing(char *ptr, long len)
+{
+   if (len != 0)
+      return False;
+   PingGotReplyUDP();
    return True;
 }
 /********************************************************************/

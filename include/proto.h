@@ -58,6 +58,8 @@ enum {
    BP_ROUNDTRIP1            = 4,
    BP_ROUNDTRIP2            = 5,
    BP_SYSTEM                = 6,
+   BP_UDP_PING              = 7,
+   BP_ECHO_UDP_PING         = 8,
 
    BP_LOGOFF                = 20,
    BP_WAIT                  = 21,

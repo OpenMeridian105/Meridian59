@@ -34,6 +34,7 @@ void GameTryGetUser(session_node *s);
 void GameSendEachUserChoice(user_node *u);
 void GameSendSystemEnter(session_node *s);
 void GameDMCommand(session_node *s,int type,char *str);
+void GameEchoUDPPing(session_node *s);
 
 static char* _redbookstring = NULL;
 static int _redbookid = 0;
@@ -233,9 +234,16 @@ void GameProcessSessionBufferUDP(session_node *s)
       // note: there is no C-side parsing of some BP_ like in TCP
       if (epoch == GetEpoch())
       {
-         if (debug_udp)
-            dprintf("Sending UDP message to kod with epoch %i\n", epoch);
-         ClientToBlakodUser(s, len, ptr);
+         if (len > 0 && (unsigned char)ptr[0] == BP_UDP_PING)
+         {
+            GameEchoUDPPing(s);
+         }
+         else
+         {
+            if (debug_udp)
+               dprintf("Sending UDP message to kod with epoch %i\n", epoch);
+            ClientToBlakodUser(s, len, ptr);
+         }
       }
       else if (debug_udp)
          dprintf("Not sending UDP message to kod with bad epoch %i, current epoch %i\n", epoch, GetEpoch());
@@ -362,6 +370,18 @@ void GameSyncInputChar(session_node *s, char ch)
       }
       /*      dprintf("Changed to game state %i\n",s->game->game_state); */
    }
+}
+
+void GameEchoUDPPing(session_node *s)
+{
+   if (!s || s->state != STATE_GAME ||
+      !s->game || s->game->game_state != GAME_NORMAL ||
+      s->conn.type == CONN_CONSOLE)
+   {
+      return;
+   }
+   AddByteToPacket(BP_ECHO_UDP_PING);
+   SendPacket(s->session_id);
 }
 
 void GameEchoPing(session_node *s)

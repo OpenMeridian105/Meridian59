@@ -12,11 +12,15 @@
 
 #include "client.h"
 
-#define PING_DELAY           2000       // # of milliseconds between pings
+#define PING_DELAY           1000       // # of milliseconds between pings
+
+ // # of milliseconds without UDP echo before we stop sending UDP packets.
+#define MAX_UDP_DELAY        6000
 
 DWORD latency = 0;                      // Latest estimate of server latency, in milliseconds
 
 static DWORD last_sent_time;    // Last time we sent a ping message to the server
+static DWORD last_udpping_received_time; // Last time we received a UDP echo ping
 static int timer_id;            // id of ping timer, 0 if none
 /****************************************************************************/
 /*
@@ -25,6 +29,11 @@ static int timer_id;            // id of ping timer, 0 if none
 void PingTimerStart(void)
 {
    timer_id = SetTimer(NULL, 0, (UINT) PING_DELAY, PingTimerProc);
+
+   // Have to set this on ping timer init so that we have a chance
+   // to receive some UDP ping echoes before deciding to switch UDP
+   // transfer off.
+   last_udpping_received_time = timeGetTime();
 }
 /****************************************************************************/
 /*
@@ -61,9 +70,22 @@ void PingGotReply(void)
    now = timeGetTime();
    latency = now - last_sent_time;
 
+   if (now - last_udpping_received_time > MAX_UDP_DELAY)
+      SetUDPTransfer(false);
+
    //XXX
    //REVIEW: Should send out a ModuleEvent so any module can notice a new value.
    Lagbox_Update(latency);
+}
+/****************************************************************************/
+/*
+* PingGotReply:  We got a reply to our last BP_PING message.
+*/
+void PingGotReplyUDP(void)
+{
+   last_udpping_received_time = timeGetTime();
+
+   SetUDPTransfer(true);
 }
 /****************************************************************************/
 /*

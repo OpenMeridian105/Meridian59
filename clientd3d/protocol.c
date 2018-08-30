@@ -46,6 +46,7 @@ static client_message game_msg_table[] = {
 { BP_REQ_UNUSE,            { PARAM_ID, PARAM_END }, },
 { BP_REQ_ATTACK,           { PARAM_ATTACK_INFO, PARAM_ID }, },
 { BP_PING,                 { PARAM_END }, },
+{ BP_UDP_PING,             { PARAM_END }, },
 { BP_REQ_OFFER,            { PARAM_ID, PARAM_OBJECT_LIST, PARAM_END }, },
 { BP_REQ_DEPOSIT,          { PARAM_ID, PARAM_OBJECT_LIST, PARAM_END }, },
 { BP_CANCEL_OFFER,         { PARAM_END }, },
@@ -87,8 +88,33 @@ client_message user_msg_table[] = {
 #define BUFSIZE 5000
 static unsigned char buf[BUFSIZE];  /* Buffer for storing message to be sent out */
 
+static bool use_udp = true;
+
 static void Insert(BYTE **buf, void *data, UINT numbytes);
 static WORD InsertString(BYTE **buf, char *str);
+/********************************************************************/
+/*
+ * IsUsingUDPTransfer: Whether user can send UDP packets.
+ */
+bool IsUsingUDPTransfer(void)
+{
+   return use_udp;
+}
+/********************************************************************/
+/*
+* SetUDPTransfer: Toggles sending of some protocols by UDP
+*/
+void SetUDPTransfer(bool value)
+{
+   if (use_udp != value)
+   {
+      debug(("Switching UDP transfer from %s to %s\n",
+         use_udp ? "true" : "false", value ? "true" : "false"));
+   }
+   use_udp = value;
+}
+/********************************************************************/
+
 /********************************************************************/
 /* 
  * Insert: Copy numbytes bytes from data to buf, and increment
@@ -326,10 +352,12 @@ void _cdecl ToServer(BYTE type, ClientMsgTable table, ...)
    //  2) MOST SUITED FOR REALTIME DATA:
    //     Anything which is sent at high frequency and where new data makes previous data fully obsolete.
 
-   if (table == game_msg_table && (
-       type == BP_REQ_MOVE || 
+   if (table == game_msg_table &&
+      type == BP_UDP_PING ||
+      (use_udp &&
+      (type == BP_REQ_MOVE ||
        type == BP_REQ_TURN ||
-       type == BP_REQ_ATTACK))
+       type == BP_REQ_ATTACK)))
    {
       SendServerUDP((char*)buf, ptr - buf);
    }

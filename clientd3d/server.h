@@ -133,6 +133,7 @@ Bool HandleRoundtrip(char *ptr, long len);
 Bool HandleChangeTexture(char *ptr, long len);
 Bool HandleLightShading(char *ptr, long len);
 Bool HandleEchoPing(char *ptr, long len);
+Bool HandleEchoUDPPing(char *ptr, long len);
 Bool HandleSectorLight(char *ptr, long len);
 Bool HandleSetView(char *ptr, long len);
 Bool HandleResetView(char *ptr, long len);

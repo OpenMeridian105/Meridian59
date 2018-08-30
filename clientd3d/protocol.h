@@ -101,7 +101,7 @@ ToServer(BP_REQ_MOVE, NULL, FinenessClientToKod(y) + KOD_FINENESS, \
 #define SendSayBlocked(id)           ToServer(BP_SAY_BLOCKED, NULL, id)
 #define RequestChangeDescription(id, str) ToServer(BP_CHANGE_DESCRIPTION, NULL, id, str)
 #define RequestActivate(id)          ToServer(BP_REQ_ACTIVATE, NULL, id)
-#define RequestGamePing()            ToServer(BP_PING, NULL)
+#define RequestGamePing()            ToServer(BP_PING, NULL); ToServer(BP_UDP_PING, NULL)
 #define RequestChangeURL(obj, s)     ToServer(BP_USERCOMMAND, user_msg_table, UC_CHANGE_URL, obj, s)
 #define RequestChangePassword(str1, str2) ToServer(BP_CHANGE_PASSWORD, NULL, str1, str2)
 #define RequestRescue()              ToServer(BP_USERCOMMAND, user_msg_table, UC_REQ_RESCUE)
@@ -110,5 +110,7 @@ ToServer(BP_REQ_MOVE, NULL, FinenessClientToKod(y) + KOD_FINENESS, \
 
 M59EXPORT void Logoff(void);
 M59EXPORT void _cdecl ToServer(BYTE type, ClientMsgTable table, ...);
+bool IsUsingUDPTransfer(void);
+void SetUDPTransfer(bool value);
 
 #endif /* #ifndef _PROTOCOL_H */

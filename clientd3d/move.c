@@ -551,7 +551,7 @@ BSPnode *FindIntersection(BSPnode *node, int xOld, int yOld, int xNew, int yNew,
    }
 }
 
-inline bool IntersectInfiniteLines(int P1_X, int P1_Y, int P2_X, int P2_Y, int Q1_X, int Q1_Y, int Q2_X, int Q2_Y, int *out_x, int *out_y)
+inline bool IntersectInfiniteLines(float P1_X, float P1_Y, float P2_X, float P2_Y, float Q1_X, float Q1_Y, float Q2_X, float Q2_Y, int *out_x, int *out_y)
 {
    // variant 2
    float denom = (P1_X - P2_X) * (Q1_Y - Q2_Y) - (P1_Y - P2_Y) * (Q1_X - Q2_X);
@@ -567,10 +567,10 @@ inline bool IntersectInfiniteLines(int P1_X, int P1_Y, int P2_X, int P2_Y, int Q
    float num;
 
    num = (P1_X * P2_Y - P1_Y * P2_X) * (Q1_X - Q2_X) - (P1_X - P2_X) * (Q1_X * Q2_Y - Q1_Y * Q2_X);
-   *out_x = num / denom;
+   *out_x = (int)(num / denom);
 
    num = (P1_X * P2_Y - P1_Y * P2_X) * (Q1_Y - Q2_Y) - (P1_Y - P2_Y) * (Q1_X * Q2_Y - Q1_Y * Q2_X);
-   *out_y = num / denom;
+   *out_y =(int)(num / denom);
 
    return true;
 }

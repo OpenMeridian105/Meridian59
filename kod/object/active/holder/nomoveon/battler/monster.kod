@@ -4223,28 +4223,29 @@ messages:
 
       oLibrary = Send(SYS,@GetLibrary);
 
-      // Anonymous (and morph) filter
-      // Don't handle triggers normally if player's anonymous flag is set,
-      // just say anonymous_response
-
       if IsClass(what,&User)
-         AND (Send(what,@CheckPlayerFlag,#flag=PFLAG_ANONYMOUS)
+      {
+         // Anonymous (and morph) filter
+         // Don't handle triggers normally if player's anonymous flag is set,
+         // just say anonymous_response
+         if (Send(what,@CheckPlayerFlag,#flag=PFLAG_ANONYMOUS)
               OR Send(what,@CheckPlayerFlag,#flag=PFLAG_MORPHED))
-         AND type <> SAY_DM
-      {
-         Send(what,@MsgSendUser,#message_rsc=monster_anonymous_response,
-              #parm1=Send(self,@GetName));
-
-         return;
-      }
-
-      // Quest engine hook: if there are active quest nodes, notify them   -AJM
-      foreach oQuestNode in plActiveQuestNodes
-      {
-         if Send(oQuestNode,@CheckCompletionCriteria,#who_tried=what,
-                 #message=string)
+            AND type <> SAY_DM
          {
+            Send(what,@MsgSendUser,#message_rsc=monster_anonymous_response,
+                  #parm1=Send(self,@GetName));
+
             return;
+         }
+
+         // Quest engine hook: if there are active quest nodes, notify them   -AJM
+         foreach oQuestNode in plActiveQuestNodes
+         {
+            if Send(oQuestNode,@CheckCompletionCriteria,#who_tried=what,
+                    #message=string)
+            {
+               return;
+            }
          }
       }
 

@@ -512,6 +512,10 @@ properties:
    piSave_fine_row = 0
    piSave_fine_col = 0
 
+   // Have to save this for honor PvP system, to subtract points if logged.
+   // Updated on login, so can use it for any IP checks.
+   plIPAddress = $
+
    // default to never logged on
    piLastLoginTime = 0
    // counts total time logged in
@@ -827,6 +831,7 @@ messages:
       local i, sGuild, oBRoom, oHRoom;
 
       poSession = session_id;
+      plIPAddress = GetSessionIP(poSession);
 
       // Users logging on unsafely are held for a short time.
       Send(self,@LogonDelay);
@@ -11527,59 +11532,44 @@ messages:
       return 0;
    }
 
-   GetIP()
-   "Returns the user's ip in a list which contains the 4 octets"
-   "use this message for comparisons and the string message sparingly"
+   AdminSetIP()
+   "Sets plIPAddress to current IP if logged on. Useful for initial setting."
    {
-      return GetSessionIP(poSession);
+      if (pbLogged_on)
+      {
+         plIPAddress = GetSessionIP(poSession);
+      }
+
+      return;
+   }
+
+   GetIP()
+   "Returns the user's ip in a list which contains the 16 octets (IPv6)"
+   "use this message for comparisons and the string message sparingly."
+   {
+      return plIPAddress;
    }
 
    GetIPString()
    "returns ip as a string.  Use this sparingly and only if"
    "you need the human readable string, use the list returned by"
-   "GetIP() for comparisons"
+   "GetIP() for comparisons."
    {
-      local sReturn, lIP;
+      local i, sReturn;
 
-      lIP = GetSessionIP(poSession);
-      if (lIP = $)
+      if (plIPAddress = $)
       {
          return;
       }
 
       ClearTempString();
 
-      AppendTempString(First(lIP));
-      AppendTempString(":");
-      AppendTempString(Nth(lIP,2));
-      AppendTempString(":");
-      AppendTempString(Nth(lIP,3));
-      AppendTempString(":");
-      AppendTempString(Nth(lIP,4));
-      AppendTempString(":");
-      AppendTempString(Nth(lIP,5));
-      AppendTempString(":");
-      AppendTempString(Nth(lIP,6));
-      AppendTempString(":");
-      AppendTempString(Nth(lIP,7));
-      AppendTempString(":");
-      AppendTempString(Nth(lIP,8));
-      AppendTempString(":");
-      AppendTempString(Nth(lIP,9));
-      AppendTempString(":");
-      AppendTempString(Nth(lIP,10));
-      AppendTempString(":");      
-      AppendTempString(Nth(lIP,11));
-      AppendTempString(":");
-      AppendTempString(Nth(lIP,12));
-      AppendTempString(":");
-      AppendTempString(Nth(lIP,13));
-      AppendTempString(":");
-      AppendTempString(Nth(lIP,14));
-      AppendTempString(":");
-      AppendTempString(Nth(lIP,15));
-      AppendTempString(":");
-      AppendTempString(Nth(lIP,16));
+      for (i = 1; i < 16; ++i)
+      {
+         AppendTempString(Nth(plIPAddress, i));
+         AppendTempString(":");
+      }
+      AppendTempString(Nth(plIPAddress,16));
 
       return SetString($,GetTempString());
    }

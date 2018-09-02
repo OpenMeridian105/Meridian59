@@ -231,8 +231,7 @@ messages:
    CreateMobTreasure(mob = $, who = $, level = 1, corpse = $, attributes = 0,
                      boostedlevel = 0, difficulty = 0)
    {
-      local i, iNumberItems, tokengen, iSurvivalLoot, oTreasure, iSafetyCntr,
-            lTreasureItems;
+      local i, iNumberItems, tokengen, iSurvivalLoot, oTreasure, lTreasureItems;
 
       // MOB_ONE_TREASURE guarantees one and only one item from loot table.
       // Also has a chance to drop special items, provided the trestype
@@ -262,41 +261,16 @@ messages:
       iNumberItems = (Send(SETTINGS_OBJECT,@GetItemFactor) * iNumberItems) / 100;
       iNumberItems = Bound(iNumberItems,1,$);
 
-      tokengen = TRUE;
-      i = 1;
+      // Prevent factioned mobs from dropping tokens.
+      tokengen = (Send(mob,@GetFaction) = FACTION_NEUTRAL);
 
-      while i++ <= iNumberItems
+      for (i = 1; i <= iNumberItems; ++i)
       {
          oTreasure = Send(self,@GenerateTreasure,#level=level,#who=who,
                            #mob=mob,#tokengen=tokengen,#corpse=corpse,
                            #attributes=attributes);
          if oTreasure <> $
          {
-            if IsClass(oTreasure,&SpellItem)
-            {
-               iSafetyCntr = 0;
-
-               while ((IsClass(oTreasure,&SpellItem)
-                     AND NOT Send(oTreasure,@SpellItemIsAccessible))
-                  AND iSafetyCntr++ < 5)
-               {
-                  Send(oTreasure,@Delete);
-                  oTreasure = Send(self,@GenerateTreasure,#level=level,
-                                    #who=who,#mob=mob,#tokengen=tokengen,
-                                    #corpse=corpse,#attributes=attributes);
-               }
-            }
-
-            // If we ended up with an inaccessible item anyway,
-            // delete it and move to next item.
-            if (IsClass(oTreasure,&SpellItem)
-               AND NOT Send(oTreasure,@SpellItemIsAccessible))
-            {
-               Send(oTreasure,@Delete);
-
-               continue;
-            }
-
             if IsClass(oTreasure,&Token)
             {
                tokengen = FALSE;
@@ -430,7 +404,8 @@ messages:
 
          if oObj = $
          {
-            Debug("Create treasure didn't get an object");
+            Debug("Create treasure didn't get an object in class ",GetClass(self),
+                  " could be inaccessible spellitem or error.");
 
             return $;
          }
@@ -467,6 +442,16 @@ messages:
                Send(oObj,@AddNumber,#number=iNumber);
                Send(Send(SYS,@GetStatistics),@MoneyCreated,
                      #amount=Send(oObj,@GetNumber));
+            }
+            else if (IsClass(oObj,&SpellItem)
+               AND NOT Send(oObj,@SpellItemIsAccessible))
+            {
+               // Delete inaccessible spellitem, try again for another
+               // loot item.
+               Send(oObj,@Delete);
+               oObj = $;
+
+               continue;
             }
 
             return oObj;

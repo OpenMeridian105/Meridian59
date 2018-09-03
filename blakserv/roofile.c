@@ -22,7 +22,7 @@
 ********* macro functions ****************************************************************
 *****************************************************************************************/
 // distance from a point (b) to a BspInternal (a)
-#define DISTANCETOSPLITTERSIGNED(a,b)	((a)->A * (b)->X + (a)->B * (b)->Y + (a)->C)
+#define DISTANCETOSPLITTERSIGNED(a,b) ((a)->A * (b)->X + (a)->B * (b)->Y + (a)->C)
 
 // floorheight of a point (b) in a sector (a)
 #define SECTORHEIGHTFLOOR(a, b)	\
@@ -2443,27 +2443,46 @@ bool BSPLoadRoom(char *fname, room_type *room)
 
    /*************************************************************************/
    /*                RESOLVE HEIGHTS OF LEAF POLY POINTS                    */
+   /*                AND NORMALIZE SPLITTER KOEFFICIENTS                    */
    /*************************************************************************/
 
    for (int i = 0; i < room->TreeNodesCount; i++)
    {
       BspNode* node = &room->TreeNodes[i];
 
-      if (node->Type != BspLeafType)
-         continue;
-
-      for (int j = 0; j < node->u.leaf.PointsCount; j++)
+      if (node->Type == BspLeafType)
       {
-         if (!node->u.leaf.Sector)
-            continue;
+         for (int j = 0; j < node->u.leaf.PointsCount; j++)
+         {
+            if (!node->u.leaf.Sector)
+               continue;
 
-         V2 p = { node->u.leaf.PointsFloor[j].X, node->u.leaf.PointsFloor[j].Y };
+            V2 p = { node->u.leaf.PointsFloor[j].X, node->u.leaf.PointsFloor[j].Y };
 
-         node->u.leaf.PointsFloor[j].Z = 
-            SECTORHEIGHTFLOOR(node->u.leaf.Sector, &p);
+            node->u.leaf.PointsFloor[j].Z = 
+               SECTORHEIGHTFLOOR(node->u.leaf.Sector, &p);
 
-         node->u.leaf.PointsCeiling[j].Z =
-            SECTORHEIGHTCEILING(node->u.leaf.Sector, &p);
+            node->u.leaf.PointsCeiling[j].Z =
+               SECTORHEIGHTCEILING(node->u.leaf.Sector, &p);
+         }
+      }
+      else if (node->Type == BspInternalType)
+      {
+         const float len = sqrtf(
+            node->u.internal.A * node->u.internal.A +
+            node->u.internal.B * node->u.internal.B);
+
+         // normalize
+         if (!ISZERO(len))
+         {
+            node->u.internal.A /= len;
+            node->u.internal.B /= len;
+            node->u.internal.C /= len;
+         }
+
+         // should never be reached for valid maps
+         else
+            dprintf("INVALID SPLITTER KOEFFICIENTS IN ROOM");
       }
    }
 

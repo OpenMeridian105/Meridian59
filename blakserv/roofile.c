@@ -607,14 +607,38 @@ template <bool USE3D, int MINDIST, int MINDIST2> bool BSPCanMoveInRoomTree(const
             Wall* wall = Node->u.internal.FirstWall;
             while (wall)
             {
+               int useCase;
+
                // get min. squared distance from move endpoint to line segment
-               float dist2 = MinSquaredDistanceToLineSegment(E, &wall->P1, &wall->P2);
+               const float dist2 = MinSquaredDistanceToLineSegment(E, &wall->P1, &wall->P2, &useCase);
 
                // skip if far enough away
                if (dist2 > (float)MINDIST2)
                {
                   wall = wall->NextWallInPlane;
                   continue;
+               }
+
+               // q stores closest point on line
+               V2 q;
+               if (useCase == 1)      q = wall->P1; // p1 is closest
+               else if (useCase == 2) q = wall->P2; // p2 is closest
+               else
+               {
+                  // line normal (90° vertical to line)
+                  V2 normal;
+                  normal.X = Node->u.internal.A;
+                  normal.Y = Node->u.internal.B;
+
+                  // flip normal if necessary (pick correct one of two)
+                  if (distE > 0.0f)
+                     V2SCALE(&normal, -1.0f);
+
+                  // supposed length of normal (distance from line)
+                  const float len = sqrtf(dist2);
+
+                  V2SCALE(&normal, len); // set length of normal to len
+                  V2ADD(&q, E, &normal); // q=E moved along the normal onto the line
                }
 
                // set from and to sector / side
@@ -637,8 +661,8 @@ template <bool USE3D, int MINDIST, int MINDIST2> bool BSPCanMoveInRoomTree(const
 
                // check the transition data for this wall, use E for intersectpoint
                bool ok = (USE3D) ?
-                  BSPCanMoveInRoomTree3DInternal(Room, sectorS, sectorE, sideS, sideE, E) :
-                  BSPCanMoveInRoomTreeInternal(Room, sectorS, sectorE, sideS, sideE, E);
+                  BSPCanMoveInRoomTree3DInternal(Room, sectorS, sectorE, sideS, sideE, &q) :
+                  BSPCanMoveInRoomTreeInternal(Room, sectorS, sectorE, sideS, sideE, &q);
 
                if (!ok)
                {

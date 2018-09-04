@@ -291,7 +291,8 @@ __forceinline bool IntersectLineTriangle(const V3* P1, const V3* P2, const V3* P
 
 // Returns the minimum squared distance between
 // point P and finite line segment given by Q1 and Q2
-__forceinline float MinSquaredDistanceToLineSegment(const V2* P, const V2* Q1, const V2* Q2)
+// if Case=1 then Q1 is closest, if Case=2 then Q2 is closest, if Case=3 then point on line is closest
+__forceinline float MinSquaredDistanceToLineSegment(const V2* P, const V2* Q1, const V2* Q2, int* Case)
 {
    V2 v1, v2, v3;
 
@@ -305,17 +306,24 @@ __forceinline float MinSquaredDistanceToLineSegment(const V2* P, const V2* Q1, c
    // Q1 is on Q2 (no line at all)
    // use squared distance to Q1
    if (ISZERO(len2))
+   {
+      *Case = 1;
       return V2LEN2(&v1);
-    
+   }
+
    const float t = V2DOT(&v1, &v3) / len2;
 
    // Q1 is closest
    if (t < 0.0f) 
+   {
+      *Case = 1;
       return V2LEN2(&v1);
+   }
 
    // Q2 is closest
    else if (t > 1.0f)
    {
+      *Case = 2;
       V2SUB(&v2, P, Q2);   // from q2 to p
       return V2LEN2(&v2);
    }
@@ -323,6 +331,7 @@ __forceinline float MinSquaredDistanceToLineSegment(const V2* P, const V2* Q1, c
    // point on line is closest
    else
    {
+      *Case = 3;
       V2SCALE(&v3, t);
       V2ADD(&v3, Q1, &v3);
       V2SUB(&v3, &v3, P);

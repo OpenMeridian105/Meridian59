@@ -245,6 +245,7 @@ typedef struct Intersection
    Side* SideS;
    Side* SideE;
    V2 Q;
+   float FloorHeight;
    float Distance2;
 } Intersection;
 

@@ -107,7 +107,8 @@ void BSPIntersectionsSort(Intersection* arr[], unsigned int beg, unsigned int en
       unsigned int l = beg + 1, r = end;
       while (l < r)
       {
-         if (arr[l]->Distance2 <= piv->Distance2)
+         const Intersection* itm = arr[l];
+         if (itm->Distance2 < piv->Distance2 || (itm->Distance2 == piv->Distance2 && itm->FloorHeight < piv->FloorHeight))
             l++;
          else
             BSPIntersectionsSwap(&arr[l], &arr[--r]);
@@ -211,6 +212,7 @@ __forceinline bool BSPCanMoveInRoomTree3DInternal(const room_type* Room, SectorN
       intersects.Data[size].SideE = SideE;
       intersects.Data[size].Q.X = Q->X;
       intersects.Data[size].Q.Y = Q->Y;
+      intersects.Data[size].FloorHeight = (SectorS) ? BSPGetSectorHeightFloorWithDepth(Room, SectorS, Q) : 0.0f;
       intersects.Ptrs[size] = &intersects.Data[size];
       size++;
       intersects.Size = size;

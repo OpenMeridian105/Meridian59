@@ -634,11 +634,8 @@ template <bool USE3D, int MINDIST, int MINDIST2> bool BSPCanMoveInRoomTree(const
                   if (distE > 0.0f)
                      V2SCALE(&normal, -1.0f);
 
-                  // supposed length of normal (distance from line)
-                  const float len = sqrtf(dist2);
-
-                  V2SCALE(&normal, len); // set length of normal to len
-                  V2ADD(&q, E, &normal); // q=E moved along the normal onto the line
+                  V2SCALE(&normal, fabs(distE)); // set length of normal to distance to line
+                  V2ADD(&q, E, &normal);         // q=E moved along the normal onto the line
                }
 
                // set from and to sector / side

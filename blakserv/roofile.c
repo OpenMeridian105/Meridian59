@@ -22,7 +22,7 @@
 ********* macro functions ****************************************************************
 *****************************************************************************************/
 // distance from a point (b) to a BspInternal (a)
-#define DISTANCETOSPLITTERSIGNED(a,b)	((a)->A * (b)->X + (a)->B * (b)->Y + (a)->C)
+#define DISTANCETOSPLITTERSIGNED(a,b) ((a)->A * (b)->X + (a)->B * (b)->Y + (a)->C)
 
 // floorheight of a point (b) in a sector (a)
 #define SECTORHEIGHTFLOOR(a, b)	\
@@ -107,7 +107,8 @@ void BSPIntersectionsSort(Intersection* arr[], unsigned int beg, unsigned int en
       unsigned int l = beg + 1, r = end;
       while (l < r)
       {
-         if (arr[l]->Distance2 <= piv->Distance2)
+         const Intersection* itm = arr[l];
+         if (itm->Distance2 < piv->Distance2 || (itm->Distance2 == piv->Distance2 && itm->FloorHeight < piv->FloorHeight))
             l++;
          else
             BSPIntersectionsSwap(&arr[l], &arr[--r]);
@@ -211,6 +212,7 @@ __forceinline bool BSPCanMoveInRoomTree3DInternal(const room_type* Room, SectorN
       intersects.Data[size].SideE = SideE;
       intersects.Data[size].Q.X = Q->X;
       intersects.Data[size].Q.Y = Q->Y;
+      intersects.Data[size].FloorHeight = (SectorS) ? BSPGetSectorHeightFloorWithDepth(Room, SectorS, Q) : 0.0f;
       intersects.Ptrs[size] = &intersects.Data[size];
       size++;
       intersects.Size = size;
@@ -605,14 +607,35 @@ template <bool USE3D, int MINDIST, int MINDIST2> bool BSPCanMoveInRoomTree(const
             Wall* wall = Node->u.internal.FirstWall;
             while (wall)
             {
+               int useCase;
+
                // get min. squared distance from move endpoint to line segment
-               float dist2 = MinSquaredDistanceToLineSegment(E, &wall->P1, &wall->P2);
+               const float dist2 = MinSquaredDistanceToLineSegment(E, &wall->P1, &wall->P2, &useCase);
 
                // skip if far enough away
                if (dist2 > (float)MINDIST2)
                {
                   wall = wall->NextWallInPlane;
                   continue;
+               }
+
+               // q stores closest point on line
+               V2 q;
+               if (useCase == 1)      q = wall->P1; // p1 is closest
+               else if (useCase == 2) q = wall->P2; // p2 is closest
+               else
+               {
+                  // line normal (90° vertical to line)
+                  V2 normal;
+                  normal.X = Node->u.internal.A;
+                  normal.Y = Node->u.internal.B;
+
+                  // flip normal if necessary (pick correct one of two)
+                  if (distE > 0.0f)
+                     V2SCALE(&normal, -1.0f);
+
+                  V2SCALE(&normal, fabs(distE)); // set length of normal to distance to line
+                  V2ADD(&q, E, &normal);         // q=E moved along the normal onto the line
                }
 
                // set from and to sector / side
@@ -635,8 +658,8 @@ template <bool USE3D, int MINDIST, int MINDIST2> bool BSPCanMoveInRoomTree(const
 
                // check the transition data for this wall, use E for intersectpoint
                bool ok = (USE3D) ?
-                  BSPCanMoveInRoomTree3DInternal(Room, sectorS, sectorE, sideS, sideE, E) :
-                  BSPCanMoveInRoomTreeInternal(Room, sectorS, sectorE, sideS, sideE, E);
+                  BSPCanMoveInRoomTree3DInternal(Room, sectorS, sectorE, sideS, sideE, &q) :
+                  BSPCanMoveInRoomTreeInternal(Room, sectorS, sectorE, sideS, sideE, &q);
 
                if (!ok)
                {
@@ -2443,27 +2466,46 @@ bool BSPLoadRoom(char *fname, room_type *room)
 
    /*************************************************************************/
    /*                RESOLVE HEIGHTS OF LEAF POLY POINTS                    */
+   /*                AND NORMALIZE SPLITTER KOEFFICIENTS                    */
    /*************************************************************************/
 
    for (int i = 0; i < room->TreeNodesCount; i++)
    {
       BspNode* node = &room->TreeNodes[i];
 
-      if (node->Type != BspLeafType)
-         continue;
-
-      for (int j = 0; j < node->u.leaf.PointsCount; j++)
+      if (node->Type == BspLeafType)
       {
-         if (!node->u.leaf.Sector)
-            continue;
+         for (int j = 0; j < node->u.leaf.PointsCount; j++)
+         {
+            if (!node->u.leaf.Sector)
+               continue;
 
-         V2 p = { node->u.leaf.PointsFloor[j].X, node->u.leaf.PointsFloor[j].Y };
+            V2 p = { node->u.leaf.PointsFloor[j].X, node->u.leaf.PointsFloor[j].Y };
 
-         node->u.leaf.PointsFloor[j].Z = 
-            SECTORHEIGHTFLOOR(node->u.leaf.Sector, &p);
+            node->u.leaf.PointsFloor[j].Z = 
+               SECTORHEIGHTFLOOR(node->u.leaf.Sector, &p);
 
-         node->u.leaf.PointsCeiling[j].Z =
-            SECTORHEIGHTCEILING(node->u.leaf.Sector, &p);
+            node->u.leaf.PointsCeiling[j].Z =
+               SECTORHEIGHTCEILING(node->u.leaf.Sector, &p);
+         }
+      }
+      else if (node->Type == BspInternalType)
+      {
+         const float len = sqrtf(
+            node->u.internal.A * node->u.internal.A +
+            node->u.internal.B * node->u.internal.B);
+
+         // normalize
+         if (!ISZERO(len))
+         {
+            node->u.internal.A /= len;
+            node->u.internal.B /= len;
+            node->u.internal.C /= len;
+         }
+
+         // should never be reached for valid maps
+         else
+            dprintf("INVALID SPLITTER KOEFFICIENTS IN ROOM");
       }
    }
 

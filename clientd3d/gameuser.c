@@ -26,7 +26,7 @@ static ID idTarget = INVALID_ID;		//	Target object, or INVALID_ID if no target s
 static void ApplyCallback(ID obj2);
 static void SetDescParamsByRoomObject(room_contents_node *r, HWND hwnd);
 
-extern BOOL		gbMouselook;
+BOOL		gbMouselook;
 extern RECT		gD3DRect;
 /************************************************************************/
 /*

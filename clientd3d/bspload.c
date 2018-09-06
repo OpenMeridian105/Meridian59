@@ -765,7 +765,7 @@ Bool RoomSwizzle(room_type *room, BSPTree tree,
    WallData *wall;
    float norm_size, a2, b2, a, b, c;
    float x0, y0, x1, y1;
-
+   float len = 0.0f;
    if (tree == NULL)
       return True;
 
@@ -810,6 +810,23 @@ Bool RoomSwizzle(room_type *room, BSPTree tree,
          norm_size = sqrtl((long double)a*(long double)a + (long double)b*(long double)b);
       }
 
+      len = sqrtf(
+         inode->separator.a * inode->separator.a +
+         inode->separator.b * inode->separator.b);
+
+      // normalize
+      if (!ISZERO(len))
+      {
+         inode->normalized.a = inode->separator.a / len;
+         inode->normalized.b = inode->separator.b / len;
+         inode->normalized.c = inode->separator.c / len;
+      }
+      else
+      {
+         inode->normalized.a = inode->separator.a;
+         inode->normalized.b = inode->separator.b;
+         inode->normalized.c = inode->separator.c;
+      }
       // normalize a & b (w.round to closest int)
       //a = ((a * FINENESS) + (norm_size / 2)) / norm_size;
       //b = ((b * FINENESS) + (norm_size / 2)) / norm_size;

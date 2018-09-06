@@ -47,6 +47,7 @@
 #define SF_DEPTH1         0x00000001      // Sector has shallow depth
 #define SF_DEPTH2         0x00000002      // Sector has deep depth
 #define SF_DEPTH3         0x00000003      // Sector has very deep depth
+#define SF_MASK_DEPTH     0x00000003      // Mask to get sector depth
 
 #define SF_SCROLL_FLOOR   0x00000080      // Scroll floor texture
 #define SF_SCROLL_CEILING 0x00000100      // Scroll ceiling textire
@@ -58,7 +59,8 @@
 #define SF_FLICKER        0x00000200      // Flicker light in sector
 #define SF_SLOPED_FLOOR   0x00000400      // Sector has sloped floor
 #define SF_SLOPED_CEILING 0x00000800      // Sector has sloped ceiling
-#define   SF_HAS_ANIMATED     0x00001000      // has animated once and hence is dynamic geometry, required for new client
+#define SF_HAS_ANIMATED   0x00001000      // has animated once and hence is dynamic geometry, required for new client
+#define SF_NOMOVE         0x00002000      // Sector can't be moved on by mobs or players
 
 /* Bit flags for sloped surface characteristics */
 #define SLF_DIRECTIONAL   0x0001
@@ -341,6 +343,7 @@ typedef struct WallData
 typedef struct
 {
    Plane separator;               /* plane that separates space */
+   Plane normalized;
    union {
       WallList walls_in_plane;    /* any walls that are conincident to separator plane */
       WORD wall_num;              /* number of first wall in list (used during loading) */

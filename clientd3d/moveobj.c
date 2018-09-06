@@ -310,13 +310,13 @@ Bool MoveSingle(Motion *m, int dt)
 *   dt is number of milliseconds since last time animation timer went off.
 */
 
-double gravityAdjust = 1.0;
+float gravityAdjust = 1.0f;
 
 void MoveSingleVertically(Motion *m, int dt)
 {
 	int dz = dt * m->v_z / 1000;
 	
-	m->z += FloatToInt((double)dz * gravityAdjust);
+	m->z += FloatToInt((float)dz * gravityAdjust);
 	if (dz > 0)   // Rising
 	{
 		if (m->z >= m->dest_z)
@@ -337,7 +337,7 @@ void MoveSingleVertically(Motion *m, int dt)
 		else
 		{
 			// Constant acceleration of gravity
-			m->v_z += FloatToInt(gravityAdjust * (double)(GRAVITY_ACCELERATION * dt / 1000));
+			m->v_z += FloatToInt(gravityAdjust * (float)(GRAVITY_ACCELERATION * dt / 1000));
 		}
 	}
 }

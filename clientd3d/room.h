@@ -20,6 +20,11 @@ typedef struct V2
    float Y;
 } V2;
 
+typedef struct V3
+{
+   float X, Y, Z;
+} V3;
+
 typedef struct BoundingBox2D
 {
    V2 Min;

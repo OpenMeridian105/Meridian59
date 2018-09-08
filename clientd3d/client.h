@@ -45,6 +45,8 @@
 #include <d3dx9.h>
 #include <DxErr.h>
 
+#include "geometry.h"
+
 typedef unsigned char Bool;
 enum {False = 0, True = 1};
 

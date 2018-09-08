@@ -44,6 +44,10 @@ typedef struct V2 { float X, Y; } V2;
 //                                                         SSE VECTOR OPERATIONS
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 #if defined(SSE2) || defined(SSE4)
+#define V3SET(a,_x,_y,_z) \
+   (a)->X = _x; \
+   (a)->Y = _y; \
+   (a)->Z = _z;
 #define V3ADD(a,b,c)    (a)->SSE = _mm_add_ps((b)->SSE, (c)->SSE);         // a = b + c
 #define V3SUB(a,b,c)    (a)->SSE = _mm_sub_ps((b)->SSE, (c)->SSE);         // a = b - c
 #define V3SCALE(a,b)    (a)->SSE = _mm_mul_ps((a)->SSE, _mm_set1_ps(b));   // a = a * b  (b is float)
@@ -108,6 +112,10 @@ __forceinline float V3LEN(const V3* a)
 
 ///////////////////////////////////////////////////////////////////////////
 
+#define V2SET(a,_x,_y)\
+   (a)->X = _x; \
+   (a)->Y = _y;
+
 #define V2ADD(a,b,c)  V3ADD(a,b,c)
 #define V2SUB(a,b,c)  V3SUB(a,b,c)
 #define V2SCALE(a,b)  V3SCALE(a,b)
@@ -146,6 +154,11 @@ __forceinline bool ISINBOX(const V2* a, const V2* b, const V2* c)
 //                                                        NO-SSE VECTOR OPERATIONS
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 #if !(defined(SSE2) || defined(SSE4))
+#define V3SET(a,_x,_y,_z) \
+   (a)->X = _x; \
+   (a)->Y = _y; \
+   (a)->Z = _z;
+
 #define V3ADD(a,b,c) \
    (a)->X = (b)->X + (c)->X; \
    (a)->Y = (b)->Y + (c)->Y; \
@@ -178,6 +191,10 @@ __forceinline bool ISINBOX(const V2* a, const V2* b, const V2* c)
    (a)->Z = roundf((a)->Z);
 
 ///////////////////////////////////////////////////////////////////////////
+
+#define V2SET(a,_x,_y)\
+   (a)->X = _x; \
+   (a)->Y = _y;
 
 #define V2ADD(a,b,c) \
    (a)->X = (b)->X + (c)->X; \

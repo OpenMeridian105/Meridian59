@@ -64,15 +64,9 @@ typedef struct Intersections
    unsigned int  Size;
 } Intersections;
 
-
 // distance from a point (b) to a BspInternal (a)
 #define DISTANCETOSPLITTERSIGNED(n,p) ((n).a * (p)->X + (n).b * (p)->Y + (n).c)
 // true if point (c) lies inside boundingbox defined by min/max of (a) and (b)
-#define EPSILON     0.0001f
-#define EPSILONBIG  0.1f
-#define ISINBOX(a, b, c) \
-   (min((a)->X, (b)->X) - EPSILONBIG <= (c)->X && (c)->X <= max((a)->X, (b)->X) + EPSILONBIG && \
-    min((a)->Y, (b)->Y) - EPSILONBIG <= (c)->Y && (c)->Y <= max((a)->Y, (b)->Y) + EPSILONBIG)
 #define ISINBOXINT(p0x, p0y, p1x, p1y, c) \
    (min(p0x, p1x) - EPSILONBIG <= (c)->X && (c)->X <= max(p0x, p1x) + EPSILONBIG && \
     min(p0y, p1y) - EPSILONBIG <= (c)->Y && (c)->Y <= max(p0y, p1y) + EPSILONBIG)
@@ -139,56 +133,6 @@ void UserTryGo()
    RequestGo();
 }
 /************************************************************************/
-// Returns the minimum squared distance between
-// point P and finite line segment given by Q1 and Q2
-// if Case=1 then Q1 is closest, if Case=2 then Q2 is closest, if Case=3 then point on line is closest
-__forceinline float MinSquaredDistanceToLineSegment(const V2* P, const V2* Q1, const V2* Q2, int* Case)
-{
-   V2 v1, v2, v3;
-
-   // vectors
-   V2SUB(&v1, P, Q1);   // from q1 to p
-   V2SUB(&v3, Q2, Q1);  // line vector
-
-   // squared distance between Q1 and Q2
-   const float len2 = V2LEN2(&v3);
-
-   // Q1 is on Q2 (no line at all)
-   // use squared distance to Q1
-   if (ISZERO(len2))
-   {
-      *Case = 1;
-      return V2LEN2(&v1);
-   }
-
-   const float t = V2DOT(&v1, &v3) / len2;
-
-   // Q1 is closest
-   if (t < 0.0f)
-   {
-      *Case = 1;
-      return V2LEN2(&v1);
-   }
-
-   // Q2 is closest
-   else if (t > 1.0f)
-   {
-      *Case = 2;
-      V2SUB(&v2, P, Q2);   // from q2 to p
-      return V2LEN2(&v2);
-   }
-
-   // point on line is closest
-   else
-   {
-      *Case = 3;
-      V2SCALE(&v3, t);
-      V2ADD(&v3, Q1, &v3);
-      V2SUB(&v3, &v3, P);
-      return V2LEN2(&v3);
-   }
-}
-/************************************************************************/
 __forceinline void IntersectionsSwap(Intersection **a, Intersection **b)
 {
    Intersection* t = *a; *a = *b; *b = t;
@@ -243,16 +187,6 @@ __forceinline bool IntersectLineSplitter(const BSPnode* Node, const V2* S, const
 
    // must be in boundingbox of finite SE
    return ISINBOX(S, E, P);
-}
-/************************************************************************/
-__forceinline void RotateV2(V2 *rot, float radians)
-{
-   float cs = cos(radians);
-   float sn = sin(radians);
-   float px = rot->X;
-   float py = rot->Y;
-   rot->X = px * cs - py * sn;
-   rot->Y = px * sn + py * cs;
 }
 /************************************************************************/
 void SetMovementSpeedPct(int speed)
@@ -919,7 +853,7 @@ static void VerifyMove(V3* Start, V2* End, V2* Move, float Speed)
    for (int i = 0; i < MAXATTEMPTS; i++)
    {
       V2SUB(&rot, End, &Start2D);
-      RotateV2(&rot, -ANGLESTEP * i);
+      V2ROTATE(&rot, -ANGLESTEP * i);
       V2ADD(Move, &Start2D, &rot);
 
       // no collision
@@ -930,7 +864,7 @@ static void VerifyMove(V3* Start, V2* End, V2* Move, float Speed)
       }
 
       V2SUB(&rot, End, &Start2D);
-      RotateV2(&rot, ANGLESTEP * i);
+      V2ROTATE(&rot, ANGLESTEP * i);
       V2ADD(Move, &Start2D, &rot);
 
       // no collision

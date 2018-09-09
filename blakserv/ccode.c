@@ -20,6 +20,18 @@
 
 #define iswhite(c) ((c)==' ' || (c)=='\t' || (c)=='\n' || (c)=='\r')
 
+// Simplify retrieval/error checking of values.
+// a == val_type, b == array index, c == function name, d == return value
+// Uses __func__ and #variable to print error messages - not 100% sure this is portable.
+#define RETRIEVEVALUEINT(_a, _b, _c) \
+_a = RetrieveValue(object_id, local_vars, normal_parm_array[_b].type, \
+   normal_parm_array[_b].value); \
+   if (_a.v.tag != TAG_INT) \
+   { \
+      bprintf("%s %s can't use non int %i,%i\n",__func__, #_a, _a.v.tag, _a.v.data); \
+      return _c; \
+   }
+
 // global buffers for zero-terminated string manipulation
 static char buf0[LEN_MAX_CLIENT_MSG+1];
 static char buf1[LEN_MAX_CLIENT_MSG+1];
@@ -2751,17 +2763,17 @@ int C_CalcUserMovementBucket(int object_id, local_var_type *local_vars,
    // Calculate the movesize for the claimed speed in this dt.
    // SPEED is defined as # of big squares per 10000ms
    // The unit here is fine upscaled by another *256 (same is done below on iDy, iDx)
-   double iMaxMoveRun = (speed.v.data * KODFINENESS * 256 * delta.v.data) / 10000.0;
+   double iMaxMoveRun = ((double)speed.v.data * (double)KODFINENESS * 256.0 * (double)delta.v.data) / 10000.0;
 
    // Fill up the movement bucket with tokens for the squared distance
    // one could have travelled at maximum legal speed. Not bound at this
    // stage as a large valid move length could consume the extra tokens.
-   double iBucket = bucket.v.data + iMaxMoveRun;
+   double iBucket = (double)bucket.v.data + iMaxMoveRun;
 
    // Get move-deltas in FINENESS units and scale up further (*256) for precision.
    // Same was done with iMaxMoveRun above. Calculate the squared vector length from the deltas.
-   double iDy = 256 * (((row_end.v.data * KODFINENESS) + finerow_end.v.data) - ((row_start.v.data * KODFINENESS) + finerow_start.v.data));
-   double iDx = 256 * (((col_end.v.data * KODFINENESS) + finecol_end.v.data) - ((col_start.v.data * KODFINENESS) + finecol_start.v.data));
+   double iDy = 256.0 * (double)(((row_end.v.data * KODFINENESS) + finerow_end.v.data) - ((row_start.v.data * KODFINENESS) + finerow_start.v.data));
+   double iDx = 256.0 * (double)(((col_end.v.data * KODFINENESS) + finecol_end.v.data) - ((col_start.v.data * KODFINENESS) + finecol_start.v.data));
    double iMoveLength = sqrt((iDy * iDy) + (iDx * iDx));
 
    // This move would consume more tokens than we have left -> deny
@@ -2783,6 +2795,47 @@ int C_CalcUserMovementBucket(int object_id, local_var_type *local_vars,
    local_vars->locals[new_bucket.v.data].v.data = (int)iBucket;
 
    return KOD_TRUE;
+}
+
+int C_IntersectLineCircle(int object_id, local_var_type *local_vars,
+   int num_normal_parms, parm_node normal_parm_array[],
+   int num_name_parms, parm_node name_parm_array[])
+{
+   // Center point.
+   val_type row_point, col_point, finerow_point, finecol_point;
+   // Line start point.
+   val_type row_start, col_start, finerow_start, finecol_start;
+   // Line end point.
+   val_type row_end, col_end, finerow_end, finecol_end;
+   // Radius to check within.
+   val_type radius;
+
+   RETRIEVEVALUEINT(row_point, 0, KOD_FALSE);
+   RETRIEVEVALUEINT(col_point, 1, KOD_FALSE);
+   RETRIEVEVALUEINT(finerow_point, 2, KOD_FALSE);
+   RETRIEVEVALUEINT(finecol_point, 3, KOD_FALSE);
+   RETRIEVEVALUEINT(row_start, 4, KOD_FALSE);
+   RETRIEVEVALUEINT(col_start, 5, KOD_FALSE);
+   RETRIEVEVALUEINT(finerow_start, 6, KOD_FALSE);
+   RETRIEVEVALUEINT(finecol_start, 7, KOD_FALSE);
+   RETRIEVEVALUEINT(row_end, 8, KOD_FALSE);
+   RETRIEVEVALUEINT(col_end, 9, KOD_FALSE);
+   RETRIEVEVALUEINT(finerow_end, 10, KOD_FALSE);
+   RETRIEVEVALUEINT(finecol_end, 11, KOD_FALSE);
+   RETRIEVEVALUEINT(radius, 12, KOD_FALSE);
+
+   V2 center, start, end;
+   center.X = GRIDCOORDTOROO(row_point.v.data, finerow_point.v.data);
+   center.Y = GRIDCOORDTOROO(col_point.v.data, finecol_point.v.data);
+   start.X  = GRIDCOORDTOROO(row_start.v.data, finerow_start.v.data);
+   start.Y  = GRIDCOORDTOROO(col_start.v.data, finecol_start.v.data);
+   end.X    = GRIDCOORDTOROO(row_end.v.data, finerow_end.v.data);
+   end.Y    = GRIDCOORDTOROO(col_end.v.data, finecol_end.v.data);
+
+   bool retval = IntersectLineCircle(&center, FINENESSKODTOROO(radius.v.data), &start, &end);
+   if (retval)
+      dprintf("Got true in ILC");
+   return retval ? KOD_TRUE : KOD_FALSE;
 }
 
 int C_CanMoveInRoomBSP(int object_id, local_var_type *local_vars,

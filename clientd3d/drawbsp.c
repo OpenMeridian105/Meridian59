@@ -36,6 +36,9 @@
 #define SWAP(a,b,tmp) (tmp)=(a);(a)=(b);(b)=(tmp)
 #define LERP(a,b,t)   ((a) + ((((b)-(a)) * (t)) >> LOG_FINENESS))
 
+// TODO: unify eventually with other similar macros
+#define DISTANCETOSPLITTERSIGNEDXY(p,_x,_y) ((p).a * _x + (p).b * _y + (p).c)
+
 static ID   viewer_id;          /* Id of player's object */
 static long viewer_angle;       /* Angle of viewing in pseudo degrees */
 static long viewer_x, viewer_y; /* Position of player in fine coordinates */
@@ -79,10 +82,6 @@ static long nobjects;
 DrawItem drawdata[MAX_ITEMS];
 long nitems;
 
-static float fpytex;
-static float fpyinc;
-static DWORD tex_offset;
-
 /* flag that controls whether background is done incrementally or all at once */
 static Bool incremental_background = False;
 /* Count the number of background cones.  If incremental_background is
@@ -94,8 +93,6 @@ static int background_cones = MAX_ITEMS;
 static void doDrawWall(DrawWallStruct *wall, ViewCone *c);
 static void doDrawBackground(ViewCone *c);
 static void SetMappingValues(SlopeData *slope );
-
-void MinimapUpdate(Draw3DParams *params, BSPnode *tree);
 
 /*****************************************************************************/
 /*  Additions to BSP tree made on a per-frame basis.  For now,
@@ -109,37 +106,34 @@ void MinimapUpdate(Draw3DParams *params, BSPnode *tree);
  */
 BSPleaf *BSPFindLeafByPoint(BSPnode *tree, int x, int y)
 {
-   long side;
+   float side;
    BSPnode *pos, *neg;
-   
+
    while (1)
    {
       if (tree == NULL)
-	 return NULL;
+         return NULL;
 
-      switch(tree->type)
+      switch (tree->type)
       {
       case BSPleaftype:
-	 return &tree->u.leaf;
+         return &tree->u.leaf;
 
       case BSPinternaltype:
-	 side = tree->u.internal.separator.a * x + 
-	    tree->u.internal.separator.b * y +
-	       tree->u.internal.separator.c;
-	 
-	 pos = tree->u.internal.pos_side;
-	 neg = tree->u.internal.neg_side;
-	 if (side == 0)
-	    tree = (pos != NULL) ? pos : neg;
-	 else if (side > 0)
-	    tree = pos;
-	 else
-	    tree = neg;
-	 break;
+         side = DISTANCETOSPLITTERSIGNEDXY(tree->u.internal.separator, (float)x, (float)y);
+         pos = tree->u.internal.pos_side;
+         neg = tree->u.internal.neg_side;
+         if (ISZERO(side))
+            tree = (pos != NULL) ? pos : neg;
+         else if (side > EPSILON)
+            tree = pos;
+         else
+            tree = neg;
+         break;
 
       default:
-	 debug(("BSPFindLeafByPoint got illegal node type %d\n", tree->type));
-	 return NULL;
+         debug(("BSPFindLeafByPoint got illegal node type %d\n", tree->type));
+         return NULL;
       }
    }
 }
@@ -154,74 +148,70 @@ static Bool AddObject(BSPnode *tree, ObjectData *object)
    float side0, side1;
    BSPnode *pos, *neg;
    Bool res;
-   
+
    while (1)
    {
       if (tree == NULL)
       {
-	 //debug(("add_object got NULL tree for object %d!\n", object->draw.id));
-	 object->parent = NULL;
-	 return False;
+         //debug(("add_object got NULL tree for object %d!\n", object->draw.id));
+         object->parent = NULL;
+         return False;
       }
 
-      switch(tree->type)
+      switch (tree->type)
       {
       case BSPleaftype:
-	 object->next = tree->u.leaf.objects;
-	 tree->u.leaf.objects = object;
-	 object->parent = &tree->u.leaf;
-	 object->draw.light = tree->u.leaf.sector->light;
-	 return True;
+         object->next = tree->u.leaf.objects;
+         tree->u.leaf.objects = object;
+         object->parent = &tree->u.leaf;
+         object->draw.light = tree->u.leaf.sector->light;
+         return True;
 
       case BSPinternaltype:
-	 side0 = tree->u.internal.separator.a * object->x0 + 
-	   tree->u.internal.separator.b * object->y0 +
-	   tree->u.internal.separator.c;
-	 side1 = tree->u.internal.separator.a * object->x1 + 
-	   tree->u.internal.separator.b * object->y1 +
-	   tree->u.internal.separator.c;
-	 
-	 pos = tree->u.internal.pos_side;
-	 neg = tree->u.internal.neg_side;
-	 
-    if ((side0 < 0.0001f && side0 > -0.0001f) && (side1 < 0.0001f && side1 > -0.0001f))
-	    tree = (pos != NULL) ? pos : neg;
-	 else if (side0 >= 0.0001f && side1 >= 0.0001f)
-	   tree = pos;
-	 else if (side0 <= -0.0001f && side1 <= -0.0001f)
-	   tree = neg;
-	 else
-	 {   /* object segment crosses separator! */
-	    float f = side0 / (side0 - side1);
-	    long xmid = FloatToInt(object->x0 + f * (object->x1 - object->x0));
-	    long ymid = FloatToInt(object->y0 + f * (object->y1 - object->y0));
-	    ObjectData *copy;
-	    
-	    if (nobjects >= MAXOBJECTS)
-	    {
-	       debug(("out of object memory\n"));
-	       return False;
-	    }
-	    copy = &objectdata[nobjects++];
-	    
-	    *copy = *object;      // Note: this also copies ncones_ptr in object
-	    object->x1 = xmid;
-	    object->y1 = ymid;
-	    copy->x0 = xmid;
-	    copy->y0 = ymid;
-	    
-	    res = False;
-	    if (pos)
-	       res |= AddObject(pos, side0 > 0 ? object:copy);
-	    if (neg)
-	       res |= AddObject(neg, side0 > 0 ? copy:object);
-	    return res;  /* return true if object added on either side */
-	 }
-	 break;
-	 
+         side0 = DISTANCETOSPLITTERSIGNEDXY(tree->u.internal.separator, (float)object->x0, (float)object->y0);
+         side1 = DISTANCETOSPLITTERSIGNEDXY(tree->u.internal.separator, (float)object->x1, (float)object->y1);
+
+         pos = tree->u.internal.pos_side;
+         neg = tree->u.internal.neg_side;
+
+         if ((side0 < EPSILON && side0 > -EPSILON) && (side1 < EPSILON && side1 > -EPSILON))
+            tree = (pos != NULL) ? pos : neg;
+         else if (side0 >= EPSILON && side1 >= EPSILON)
+            tree = pos;
+         else if (side0 <= -EPSILON && side1 <= -EPSILON)
+            tree = neg;
+         else
+         {   // object segment crosses midline!
+            float f = side0 / (side0 - side1);
+            long xmid = FloatToInt(object->x0 + f * (object->x1 - object->x0));
+            long ymid = FloatToInt(object->y0 + f * (object->y1 - object->y0));
+            ObjectData *copy;
+
+            if (nobjects >= MAXOBJECTS)
+            {
+               debug(("out of object memory\n"));
+               return False;
+            }
+            copy = &objectdata[nobjects++];
+
+            *copy = *object;      // Note: this also copies ncones_ptr in object
+            object->x1 = xmid;
+            object->y1 = ymid;
+            copy->x0 = xmid;
+            copy->y0 = ymid;
+
+            res = False;
+            if (pos)
+               res |= AddObject(pos, side0 > 0 ? object : copy);
+            if (neg)
+               res |= AddObject(neg, side0 > 0 ? copy : object);
+            return res;  // return true if object added on either side
+         }
+         break;
+
       default:
-	 debug(("add_object error!\n"));
-	 return False;
+         debug(("add_object error!\n"));
+         return False;
       }
    }
 }
@@ -236,10 +226,10 @@ static Bool AddObject(BSPnode *tree, ObjectData *object)
 
 inline long GetFloorHeight(long x, long y, Sector *sector) {
 
-    if (sector->sloped_floor == (SlopeData *)NULL)
-	return sector->floor_height;
-    else
-	return roundf((-sector->sloped_floor->plane.a*x - sector->sloped_floor->plane.b*y - sector->sloped_floor->plane.d)/sector->sloped_floor->plane.c);
+   if (sector->sloped_floor == (SlopeData *)NULL)
+      return sector->floor_height;
+   else
+      return roundf((-sector->sloped_floor->plane.a*x - sector->sloped_floor->plane.b*y - sector->sloped_floor->plane.d) / sector->sloped_floor->plane.c);
 }
 
 /***************************************************************************
@@ -266,114 +256,32 @@ inline long GetCeilingHeight(long x, long y, Sector *sector) {
  */
 Bool GetRoomHeight(BSPnode *tree, long *ceiling, long *floor, int *flags, long x, long y)
 {
-   long side;
-   BSPnode *pos, *neg;
-   
-   while (1)
-   {
-      if (tree == NULL)
-      {
-	 /* debug(("GetRoomHeight got NULL tree\n")); */
-	 return False;
-      }
-      
-      switch(tree->type)
-      {
-      case BSPleaftype:
-	 *floor = GetFloorHeight(x, y, tree->u.leaf.sector);
-	 *ceiling = GetCeilingHeight(x, y, tree->u.leaf.sector);
-	 *flags   = tree->u.leaf.sector->flags;
-	 return True;
-	 
-      case BSPinternaltype:
-	 side = tree->u.internal.separator.a * x + 
-	    tree->u.internal.separator.b * y +
-	       tree->u.internal.separator.c;
-	 
-	 pos = tree->u.internal.pos_side;
-	 neg = tree->u.internal.neg_side;
-	 if (side > 0)
-	    tree = pos;
-	 else
-	    tree = neg;
-	 break;
-	 
-      default:
-	 debug(("GetRoomHeight error!\n"));
-	 return False;
-      }
-   }
-}
-/*****************************************************************************/
-/*
- * GetRoomHeightRad: sets floor and ceiling to the maximum height of the
- * floor and the minimum height of the ceiling within a radius r of
- * room coordinates (x,y).  Returns True if everything went ok, and False
- * otherwise.  This routine is conservative in that sometimes points
- * outside the circle of radius r of (x,y) will be included in the min/max.
- */
-Bool GetRoomHeightRad(BSPnode *tree, long *ceiling, long *floor, int *flags, int x, int y, long r)
-{
-   long side;
-   BSPnode *pos, *neg;
-   
-   while (1)
-   {
-      if (tree == NULL)
-      {
-	 /* debug(("GetRoomHeightRad got NULL tree\n")); */
-	 return False;
-      }
-      
-      switch(tree->type)
-      {
-      case BSPleaftype:
-	 *floor   = tree->u.leaf.sector->floor_height;
-	 *ceiling = tree->u.leaf.sector->ceiling_height;
-	 *flags   = tree->u.leaf.sector->flags;
-	 return True;
-	 
-      case BSPinternaltype:
-	 side = tree->u.internal.separator.a * x + 
-	    tree->u.internal.separator.b * y +
-	       tree->u.internal.separator.c;
-	 
-	 side >>= LOG_FINENESS;
-	 
-	 pos = tree->u.internal.pos_side;
-	 neg = tree->u.internal.neg_side;
+   float side;
 
-	 if (side > r)
-	    tree = pos;
-	 else if (side < -r)
-	    tree = neg;
-	 else
-	 {
-     int cel, flr, flgs;
-     if (GetRoomHeightRad(pos, ceiling, floor, flags, x, y, r) == True)
-     {
-        if (GetRoomHeightRad(neg, (long *) &cel, (long *) &flr, &flgs, x, y, r) == True)
-       {
-         if (cel < *ceiling)
-           *ceiling = cel;
-         if (flr > *floor)
-         {
-           *floor = flr;
-           // Take "depth" flags from highest floor
-           *flags = flgs;
-         }
+   while (1)
+   {
+      if (tree == NULL)
+      {
+         // debug(("GetRoomHeight got NULL tree\n"));
+         return False;
+      }
+
+      switch (tree->type)
+      {
+      case BSPleaftype:
+         *floor = GetFloorHeight(x, y, tree->u.leaf.sector);
+         *ceiling = GetCeilingHeight(x, y, tree->u.leaf.sector);
+         *flags = tree->u.leaf.sector->flags;
          return True;
-       }
-       return True;
-     }
-     else
-       return GetRoomHeightRad(neg, ceiling, floor, flags, x, y, r);
-	 }
-	 break;
-	 
+
+      case BSPinternaltype:
+         side = DISTANCETOSPLITTERSIGNEDXY(tree->u.internal.separator, (float)x, (float)y);
+         tree = (side > 0.0f) ? tree->u.internal.pos_side : tree->u.internal.neg_side;
+         break;
+
       default:
-	 debug(("GetRoomHeightRad error!\n"));
-	 return False;
+         debug(("GetRoomHeight error!\n"));
+         return False;
       }
    }
 }
@@ -388,85 +296,85 @@ static void AddObjects(room_type *room)
    room_contents_node *r;
    int count, i;
    int width, height, sector_flags;
-   long dx,dy;
+   long dx, dy;
    long angle;
    long dist;
-   long a,b;
-   long xdif,ydif; // used to generate extra endpoints for height test
-   long top,bottom;
-   
+   long a, b;
+   long xdif, ydif; // used to generate extra endpoints for height test
+   long top, bottom;
+
    nobjects = 0;
 
    // Clear objects from previous frame
-   for (i=0; i < room->num_nodes; i++)
+   for (i = 0; i < room->num_nodes; i++)
    {
       if (room->nodes[i].type == BSPleaftype)
-	 room->nodes[i].u.leaf.objects = NULL;
+         room->nodes[i].u.leaf.objects = NULL;
    }
 
    // Add normal objects
-   for(l = room->contents; l != NULL; l=l->next)
+   for (l = room->contents; l != NULL; l = l->next)
    {
-      r = (room_contents_node*) (l->data);
+      r = (room_contents_node*)(l->data);
 
       r->visible = False;
-      
+
       /* don't add ourselves to tree */
       if (r->obj.id == viewer_id)
-	 continue;
-      
+         continue;
+
       /* compute and check distance */
       dx = r->motion.x - viewer_x;
       dy = r->motion.y - viewer_y;
-      dist = GetDistance(dx,dy);
+      dist = GetDistance(dx, dy);
       if (dist <= 0 || (dist < MIN_DISTANCE && r->obj.moveontype == MOVEON_YES))
-	continue;
-      
+         continue;
+
       /* compute angle that object is viewed at */
-      angle = (r->angle - intATan2(-dy,-dx)) & NUMDEGREES_MASK;
+      angle = (r->angle - intATan2(-dy, -dx)) & NUMDEGREES_MASK;
 
       /* compute width of bitmap from this angle */
-      if (!GetObjectSize(r->obj.icon_res, r->obj.animate->group, angle, *(r->obj.overlays), 
-			 &width, &height))
-	continue;
+      if (!GetObjectSize(r->obj.icon_res, r->obj.animate->group, angle, *(r->obj.overlays),
+         &width, &height))
+         continue;
 
       if (nobjects >= MAXOBJECTS)
       {
-	 debug(("out of object memory\n"));
-	 return;
+         debug(("out of object memory\n"));
+         return;
       }
 
       d = &objectdata[nobjects++];
-      
+
       // debug(("%d %d %d %d\n", r->obj.icon_res, angle, r->obj.animate.group, width));
-      xdif  = ((width * center_b) >> (FIX_DECIMAL-6+1));
-      ydif  = ((width * center_a) >> (FIX_DECIMAL-6+1));
-      d->x0       = r->motion.x + xdif;
-      d->y0       = r->motion.y - ydif;
-      d->x1       = r->motion.x - xdif;
-      d->y1       = r->motion.y + ydif;
-      d->draw.id       = r->obj.id;
+      xdif = ((width * center_b) >> (FIX_DECIMAL - 6 + 1));
+      ydif = ((width * center_a) >> (FIX_DECIMAL - 6 + 1));
+      d->x0 = r->motion.x + xdif;
+      d->y0 = r->motion.y - ydif;
+      d->x1 = r->motion.x - xdif;
+      d->y1 = r->motion.y + ydif;
+      d->draw.id = r->obj.id;
       d->draw.distance = dist;
-      d->draw.angle    = angle;
+      d->draw.angle = angle;
       d->draw.icon_res = r->obj.icon_res;
-      d->draw.group    = r->obj.animate->group;
+      d->draw.group = r->obj.animate->group;
       d->draw.overlays = *(r->obj.overlays);
-      d->draw.flags    = r->obj.flags;
-      d->draw.drawingtype  = r->obj.drawingtype;
-      d->draw.minimapflags  = r->obj.minimapflags;
+      d->draw.flags = r->obj.flags;
+      d->draw.drawingtype = r->obj.drawingtype;
+      d->draw.minimapflags = r->obj.minimapflags;
       d->draw.namecolor = r->obj.namecolor;
       d->draw.objecttype = r->obj.objecttype;
       d->draw.moveontype = r->obj.moveontype;
       d->draw.translation = r->obj.translation;
       d->draw.secondtranslation = r->obj.secondtranslation;
-      d->draw.obj      = r;
-      d->draw.depth    = 0;
+      d->draw.obj = r;
+      d->draw.depth = 0;
 #if 1
       /* Make sure that object is above the floor. */
       if (!GetRoomHeight(room->tree, &top, &bottom, &sector_flags, r->motion.x, r->motion.y))
       {
-	 nobjects--;
-	 continue;
+         nobjects--;
+         continue;
       }
       d->draw.height = max(bottom, r->motion.z);
 #else
@@ -478,135 +386,135 @@ static void AddObjects(room_type *room)
       d->draw.depth = sector_depths[SectorDepth(sector_flags)];
       if (ROOM_OVERRIDE_MASK & GetRoomFlags()) // if depth flags are normal (no overrides)
       {
-	 switch (SectorDepth(sector_flags)) {
-	 case SF_DEPTH1:
-	    if (ROOM_OVERRIDE_DEPTH1 & GetRoomFlags())
-	    {
-	       d->draw.height = GetOverrideRoomDepth(SF_DEPTH1);
-	       d->draw.depth = 0;
-	    }
-	    break;
-	 case SF_DEPTH2:
-	    if (ROOM_OVERRIDE_DEPTH2 & GetRoomFlags())
-	    {
-	       d->draw.height = GetOverrideRoomDepth(SF_DEPTH2);
-	       d->draw.depth = 0;
-	    }
-	    break;
-	 case SF_DEPTH3:
-	    if (ROOM_OVERRIDE_DEPTH3 & GetRoomFlags())
-	    {
-	       d->draw.height = GetOverrideRoomDepth(SF_DEPTH3);
-	       d->draw.depth = 0;
-	    }
-	    break;
-	 }
+         switch (SectorDepth(sector_flags)) {
+         case SF_DEPTH1:
+            if (ROOM_OVERRIDE_DEPTH1 & GetRoomFlags())
+            {
+               d->draw.height = GetOverrideRoomDepth(SF_DEPTH1);
+               d->draw.depth = 0;
+            }
+            break;
+         case SF_DEPTH2:
+            if (ROOM_OVERRIDE_DEPTH2 & GetRoomFlags())
+            {
+               d->draw.height = GetOverrideRoomDepth(SF_DEPTH2);
+               d->draw.depth = 0;
+            }
+            break;
+         case SF_DEPTH3:
+            if (ROOM_OVERRIDE_DEPTH3 & GetRoomFlags())
+            {
+               d->draw.height = GetOverrideRoomDepth(SF_DEPTH3);
+               d->draw.depth = 0;
+            }
+            break;
+         }
       }
 #endif      
-      d->ncones        = 0;
-      d->ncones_ptr    = &d->ncones;
+      d->ncones = 0;
+      d->ncones_ptr = &d->ncones;
 
       /* set center field */
       a = (left_a * dx + left_b * dy) >> (FIX_DECIMAL - 6);
       b = (right_a * dx + right_b * dy) >> (FIX_DECIMAL - 6);
       if (a + b <= 0)
       {
-	 debug(("a+b <= 0! (AddObjects) %ld\n",a+b));
-	 continue;
+         debug(("a+b <= 0! (AddObjects) %ld\n", a + b));
+         continue;
       }
       d->draw.center = (a * screen_width + screen_width2) / (a + b);
 
       /* Don't draw more than a few objects per square, but always draw monsters and players */
-      d->draw.draw     = True;
+      d->draw.draw = True;
       count = 0;
       if (!(r->obj.flags & OF_ATTACKABLE))
-	 for (temp_list = l->next; temp_list != NULL; temp_list = temp_list->next)
-	 {
-	    room_contents_node *other_obj = (room_contents_node *) (temp_list->data);
-	    if (FineToSquare(other_obj->motion.x) == FineToSquare(r->motion.x) && 
-		FineToSquare(other_obj->motion.y) == FineToSquare(r->motion.y))
-	       if (count++ > MAX_OBJS_PER_SQUARE)
-	       {
-		  d->draw.draw = False;
-		  break;
-	       }
-      }
+         for (temp_list = l->next; temp_list != NULL; temp_list = temp_list->next)
+         {
+            room_contents_node *other_obj = (room_contents_node *)(temp_list->data);
+            if (FineToSquare(other_obj->motion.x) == FineToSquare(r->motion.x) &&
+               FineToSquare(other_obj->motion.y) == FineToSquare(r->motion.y))
+               if (count++ > MAX_OBJS_PER_SQUARE)
+               {
+                  d->draw.draw = False;
+                  break;
+               }
+         }
 
       //      debug(("Adding object %d\n", r->obj.id));
       if (AddObject(room->tree, d) == False)
-	 nobjects--;
+         nobjects--;
    }
 
    // Add projectiles
-   for(l = room->projectiles; l != NULL; l=l->next)
+   for (l = room->projectiles; l != NULL; l = l->next)
    {
-      Projectile *proj = (Projectile *) (l->data);
-      
+      Projectile *proj = (Projectile *)(l->data);
+
       if (nobjects >= MAXOBJECTS)
       {
-	 debug(("out of object memory\n"));
-	 return;
+         debug(("out of object memory\n"));
+         return;
       }
 
       /* compute and check distance */
       dx = proj->motion.x - viewer_x;
       dy = proj->motion.y - viewer_y;
-      dist = GetDistance(dx,dy);
+      dist = GetDistance(dx, dy);
       if (dist <= 0)
-	continue;
-      
+         continue;
+
       /* compute angle that projectile is viewed at */
-      angle = (proj->angle - intATan2(-dy,-dx)) & NUMDEGREES_MASK;
+      angle = (proj->angle - intATan2(-dy, -dx)) & NUMDEGREES_MASK;
 
       /* find width of bitmap */
       if (!GetObjectSize(proj->icon_res, proj->animate.group, angle, NULL, &width, &height))
-	continue;
+         continue;
 
       if (nobjects >= MAXOBJECTS)
       {
-	 debug(("out of object memory\n"));
-	 return;
+         debug(("out of object memory\n"));
+         return;
       }
 
       d = &objectdata[nobjects++];
-      
-      d->x0       = proj->motion.x + ((width * center_b) >> (FIX_DECIMAL-6+1));
-      d->y0       = proj->motion.y - ((width * center_a) >> (FIX_DECIMAL-6+1));
-      d->x1       = proj->motion.x - ((width * center_b) >> (FIX_DECIMAL-6+1));
-      d->y1       = proj->motion.y + ((width * center_a) >> (FIX_DECIMAL-6+1));
-      d->draw.id       = INVALID_ID;
+
+      d->x0 = proj->motion.x + ((width * center_b) >> (FIX_DECIMAL - 6 + 1));
+      d->y0 = proj->motion.y - ((width * center_a) >> (FIX_DECIMAL - 6 + 1));
+      d->x1 = proj->motion.x - ((width * center_b) >> (FIX_DECIMAL - 6 + 1));
+      d->y1 = proj->motion.y + ((width * center_a) >> (FIX_DECIMAL - 6 + 1));
+      d->draw.id = INVALID_ID;
       d->draw.distance = dist;
-      d->draw.angle    = angle;
+      d->draw.angle = angle;
       d->draw.icon_res = proj->icon_res;
-      d->draw.group    = proj->animate.group;
+      d->draw.group = proj->animate.group;
       d->draw.overlays = NULL;
-      d->draw.draw     = True;
-      d->draw.flags    = 0;
-      d->draw.drawingtype  = ((proj->flags & PROJ_FLAG_TRANSPARENT50) == PROJ_FLAG_TRANSPARENT50)
-                              ? DRAWFX_TRANSLUCENT50 : DRAWFX_DRAW_PLAIN;
-      d->draw.minimapflags  = 0;
+      d->draw.draw = True;
+      d->draw.flags = 0;
+      d->draw.drawingtype = ((proj->flags & PROJ_FLAG_TRANSPARENT50) == PROJ_FLAG_TRANSPARENT50)
+         ? DRAWFX_TRANSLUCENT50 : DRAWFX_DRAW_PLAIN;
+      d->draw.minimapflags = 0;
       d->draw.namecolor = 0;
       d->draw.objecttype = OT_NONE;
       d->draw.moveontype = MOVEON_YES;
-      d->draw.height   = proj->motion.z;
+      d->draw.height = proj->motion.z;
       d->draw.translation = proj->translation;
       d->draw.secondtranslation = 0;
-      d->ncones        = 0;
-      d->ncones_ptr    = &d->ncones;
-      d->draw.obj      = NULL;
+      d->ncones = 0;
+      d->ncones_ptr = &d->ncones;
+      d->draw.obj = NULL;
 
       /* set center field */
       a = (left_a * dx + left_b * dy) >> (FIX_DECIMAL - 6);
       b = (right_a * dx + right_b * dy) >> (FIX_DECIMAL - 6);
       if (a + b <= 0)
       {
-	 debug(("a+b <= 0! (AddObjects) %ld\n",a+b));
-	 continue;
+         debug(("a+b <= 0! (AddObjects) %ld\n", a + b));
+         continue;
       }
       d->draw.center = (a * screen_width + screen_width2) / (a + b);
 
       if (AddObject(room->tree, d) == False)
-	 nobjects--;
+         nobjects--;
    }
 }
 
@@ -2012,7 +1920,7 @@ Bool Bbox_shadowed(long x0, long y0, long x1, long y1)
 /*  WalkWall
  *    project wall to screen and generate draw item for wall
  */
-static void WalkWall(WallData *wall, long side)
+static void WalkWall(WallData *wall, float side)
 {
    long col0,col1;
    float d0,d1;
@@ -2033,7 +1941,7 @@ static void WalkWall(WallData *wall, long side)
    wall->seen &= ~SR_DRAWMASK;
 
    /* Skip if nothing on this side */
-   if (side > 0)
+   if (side > EPSILON)
       sidedef = wall->pos_sidedef;
    else sidedef = wall->neg_sidedef;
 
@@ -2057,13 +1965,13 @@ static void WalkWall(WallData *wall, long side)
    if ((wall->bowtie_bits&BT_BELOW_BOWTIE) != 0) {
        // lower wall is bowtie
        if (wall->bowtie_bits&BT_BELOW_POS) {
-	   if (side >= 0)
+	   if (side >= 0.0f)
 	       z1 = z0;
 	   else
 	       zz1 = zz0;
        }
        else {
-	   if (side >= 0)
+	   if (side >= 0.0f)
 	       zz1 = zz0;
 	   else
 	       z1 = z0;
@@ -2073,13 +1981,13 @@ static void WalkWall(WallData *wall, long side)
    if ((wall->bowtie_bits&BT_ABOVE_BOWTIE) != 0) {
        // upper wall is bowtie
        if (wall->bowtie_bits&BT_ABOVE_POS) {
-	   if (side >= 0)
+	   if (side >= 0.0f)
 	       z2 = z3;
 	   else
 	       zz2 = zz3;
        }
        else {
-	   if (side >= 0)
+	   if (side >= 0.0f)
 	       zz2 = zz3;
 	   else
 	       z2 = z3;
@@ -2159,7 +2067,7 @@ static void WalkWall(WallData *wall, long side)
 	}
       item_template.type = DrawWallType;
       item_template.u.wall.wall = wall;
-      item_template.u.wall.side = SGN(side);
+      item_template.u.wall.side = SGNDOUBLE(side);
       item_template.u.wall.wall_type = WALL_BELOW;
       wall->seen |= SR_DRAWBELOW;
       if (add_dn(&item_template, a, b, d, col0, col1))
@@ -2200,7 +2108,7 @@ static void WalkWall(WallData *wall, long side)
 	}
       item_template.type = DrawWallType;
       item_template.u.wall.wall = wall;
-      item_template.u.wall.side = SGN(side);
+      item_template.u.wall.side = SGNDOUBLE(side);
       item_template.u.wall.wall_type = WALL_ABOVE;
       wall->seen |= SR_DRAWABOVE;
       if (add_up(&item_template, a, b, d, col0, col1))
@@ -2238,7 +2146,7 @@ static void WalkWall(WallData *wall, long side)
 	       item = &drawdata[nitems++];
 	       item->type = DrawWallType;
 	       item->u.wall.wall = wall;
-	       item->u.wall.side = SGN(side);
+	       item->u.wall.side = SGNDOUBLE(side);
 	       item->u.wall.wall_type = WALL_NORMAL;
 	       item->cone = c->cone;
 	       if (col0 > item->cone.leftedge)
@@ -2262,7 +2170,7 @@ static void WalkWall(WallData *wall, long side)
 	    item = &drawdata[nitems++];
 	    item->type = DrawWallType;
 	    item->u.wall.wall = wall;
-	    item->u.wall.side = SGN(side);
+	    item->u.wall.side = SGNDOUBLE(side);
 	    item->u.wall.wall_type = WALL_NORMAL;
 	    item->cone = c->cone;
 	    
@@ -2649,132 +2557,98 @@ static void WalkLeaf(BSPnode *tree)
 
 static void WalkBSPtree(BSPnode *tree)
 {
-   long side;
-   long a,b,lightscale;
-   
+   float side, a, b;
+   long lightscale;
+
    if (!tree)
       return;
 
-   /* don't open box if not in view */
-   if (Bbox_shadowed(tree->bbox.x0,tree->bbox.y0,tree->bbox.x1,tree->bbox.y1))
+   // don't open box if not in view
+   if (Bbox_shadowed(tree->bbox.x0, tree->bbox.y0, tree->bbox.x1, tree->bbox.y1))
    {
-      /*
-	 debug(("box (%ld %ld) (%ld %ld)) shadowed\n",tree->bbox.x0, tree->bbox.y0,
-	 tree->bbox.x1, tree->bbox.y1);
-	 */
+    //debug(("box (%ld %ld) (%ld %ld)) shadowed\n",tree->bbox.x0, tree->bbox.y0,
+    //   tree->bbox.x1, tree->bbox.y1);
       return;
    }
-   /* debug(("box (%ld %ld) (%ld %ld)) opened\n",tree->bbox.x0, tree->bbox.y0,
-      tree->bbox.x1, tree->bbox.y1); */
-   
-   switch(tree->type)
+   //debug(("box (%ld %ld) (%ld %ld)) opened\n",tree->bbox.x0, tree->bbox.y0,
+   //   tree->bbox.x1, tree->bbox.y1);
+
+   switch (tree->type)
    {
    case BSPleaftype:
       WalkLeaf(tree);
       return;
-      
+
    case BSPinternaltype:
-      side = (a = tree->u.internal.separator.a) * viewer_x + 
-	 (b = tree->u.internal.separator.b) * viewer_y +
-	    tree->u.internal.separator.c;
-      
-      if (shade_amount!=0) {
-	  long lo_end = FINENESS-shade_amount;
+      side = DISTANCETOSPLITTERSIGNEDXY(tree->u.internal.separator, (float)viewer_x, (float)viewer_y);
 
-	  if (side < 0) {
-	      a = -a;
-	      b = -b;
-	  }
+      if (shade_amount != 0)
+      {
+         long lo_end = FINENESS - shade_amount;
+         a = tree->u.internal.separator.a;
+         b = tree->u.internal.separator.b;
+         if (side < -EPSILON)
+         {
+            a = -a;
+            b = -b;
+         }
 
-	  lightscale = (long)(a*sun_vect.x + b*sun_vect.y)>>LOG_FINENESS;
+         lightscale = (long)(a*sun_vect.x + b * sun_vect.y) >> LOG_FINENESS;
 
 #if PERPENDICULAR_DARK
-	  lightscale = ABS(lightscale);
+         lightscale = ABS(lightscale);
 #else
-	  lightscale = (long)(lightscale + FINENESS)>>1; // map to 0 to 1 range
+         lightscale = (long)(lightscale + FINENESS) >> 1; // map to 0 to 1 range
 #endif
 
-	  lightscale = lo_end + ((lightscale * shade_amount)>>LOG_FINENESS);
-	
-	  if (lightscale > FINENESS)
-	      lightscale = FINENESS;
-	  else if ( lightscale < 0)
-	      lightscale = 0;
+         lightscale = lo_end + ((lightscale * shade_amount) >> LOG_FINENESS);
+
+         if (lightscale > FINENESS)
+            lightscale = FINENESS;
+         else if (lightscale < 0)
+            lightscale = 0;
       }
       else
-	  lightscale = FINENESS;
+         lightscale = FINENESS;
 
 
-      /* first, traverse closer side */
+      // first, traverse closer side
       if (side > 0)
-	 WalkBSPtree(tree->u.internal.pos_side);
+         WalkBSPtree(tree->u.internal.pos_side);
       else
-	 WalkBSPtree(tree->u.internal.neg_side);
-      
-      /* if entire screen is covered, we're done */
+         WalkBSPtree(tree->u.internal.neg_side);
+
+      // if entire screen is covered, we're done
       if (cone_tree_root == NULL)
-	 return;
-      
-      /* then do walls on the separator */
-      if (side != 0)
+         return;
+
+      /* then do walls on the middle */
+      if (!ISZERO(side))
       {
-	 WallList list;
-	 //long     d,c = tree->u.internal.separator.c;
-	 
-	 for(list = tree->u.internal.walls_in_plane; list; list = list->next)
-	 {
-	    WalkWall(list, side);
+         WallList list;
 
-	    list->lightscale = lightscale;
+         for (list = tree->u.internal.walls_in_plane; list; list = list->next)
+         {
+            WalkWall(list, side);
 
-	    if (cone_tree_root == NULL)
-	       return;
-	 }
+            list->lightscale = lightscale;
+
+            if (cone_tree_root == NULL)
+               return;
+         }
       }
-      
+
       /* lastly, traverse farther side */
       if (side > 0)
-	 WalkBSPtree(tree->u.internal.neg_side);
+         WalkBSPtree(tree->u.internal.neg_side);
       else
-	 WalkBSPtree(tree->u.internal.pos_side);
-      
+         WalkBSPtree(tree->u.internal.pos_side);
+
       return;
    default:
       debug(("WalkBSPtree error!\n"));
       return;
    }
-}
-
-void MinimapUpdate(Draw3DParams *params, BSPnode *tree)
-{
-/*	viewer_x = params->viewer_x;
-	viewer_y = params->viewer_y;
-	viewer_angle = params->viewer_angle;
-	viewer_height = params->viewer_height;
-	area.cx = min(params->width  / params->stretchfactor, MAXX);
-	area.cy = min(params->height / params->stretchfactor, MAXY);
-
-	// Force size to be even
-	area.cy = area.cy & ~1;  
-	area.cx = area.cx & ~1;
-	screen_width = area.cx;
-	screen_width2 = area.cx / 2;
-
-	// find equations that bound viewing frustum
-	// keep 10 = FIX_DECIMAL-6 bits of accuracy
-	center_a = COS(viewer_angle) >> 6;
-	center_b = SIN(viewer_angle) >> 6;
-
-	left_a = -center_b + ((center_a * screen_width2) >> LOG_VIEWER_DISTANCE);
-	left_b =  center_a + ((center_b * screen_width2) >> LOG_VIEWER_DISTANCE);
-
-	right_a =  center_b + ((center_a * screen_width2) >> LOG_VIEWER_DISTANCE);
-	right_b = -center_a + ((center_b * screen_width2) >> LOG_VIEWER_DISTANCE);
-
-	horizon = area.cy / 2 + PlayerGetHeightOffset();
-
-	init_cone_tree();
-	WalkBSPtree(tree);*/
 }
 
 /*****************************************************************
@@ -4213,67 +4087,65 @@ static void doDrawBackground(ViewCone *c)
 #define MIN_HEIGHT_DIFF 10
 static Bool check_viewer_height(BSPnode *tree)
 {
-   long side;
-   long floorheight,ceilingheight;
+   float side;
+   long floorheight, ceilingheight;
    BSPnode *pos, *neg;
-   
+
    while (1)
    {
       if (tree == NULL)
       {
-	 debug(("check_viewer_height got NULL tree\n"));
-	 return False;
+         debug(("check_viewer_height got NULL tree\n"));
+         return False;
       }
-      
-      switch(tree->type)
+
+      switch (tree->type)
       {
       case BSPleaftype:
-	 ceilingheight = GetCeilingHeight(viewer_x, viewer_y, tree->u.leaf.sector);
-	 
-	 if (viewer_height > ceilingheight - MIN_HEIGHT_DIFF)
-	   viewer_height = ceilingheight - MIN_HEIGHT_DIFF;
-	 
-	 floorheight = GetFloorHeight(viewer_x, viewer_y, tree->u.leaf.sector);
-	 
-	 if (viewer_height < floorheight + MIN_HEIGHT_DIFF)
-	   viewer_height = floorheight + MIN_HEIGHT_DIFF;
-	 
-	 if (viewer_height > ceilingheight - MIN_HEIGHT_DIFF)
-	   {
-	     debug(("not enough room between floor and ceiling!!!\n"));
-	     return True;
+         ceilingheight = GetCeilingHeight(viewer_x, viewer_y, tree->u.leaf.sector);
 
-	     return False;
-	   }
-	 return True;
-	 
+         if (viewer_height > ceilingheight - MIN_HEIGHT_DIFF)
+            viewer_height = ceilingheight - MIN_HEIGHT_DIFF;
+
+         floorheight = GetFloorHeight(viewer_x, viewer_y, tree->u.leaf.sector);
+
+         if (viewer_height < floorheight + MIN_HEIGHT_DIFF)
+            viewer_height = floorheight + MIN_HEIGHT_DIFF;
+
+         if (viewer_height > ceilingheight - MIN_HEIGHT_DIFF)
+         {
+            debug(("not enough room between floor and ceiling!!!\n"));
+            return True;
+
+            return False;
+         }
+         return True;
+
       case BSPinternaltype:
-	 side = tree->u.internal.separator.a * viewer_x + 
-	    tree->u.internal.separator.b * viewer_y +
-	       tree->u.internal.separator.c;
-	 
-	 pos = tree->u.internal.pos_side;
-	 neg = tree->u.internal.neg_side;
-	 if (side == 0)
-	   {
-	     /* make sure we satisfy height restriction on both sides! */
-	     /* this isn't quite right, but it's close XXX */
-	     Bool ok = True;
-	     if (pos)
-	       ok = ok && check_viewer_height(pos);
-	     if (neg)
-	       ok = ok && check_viewer_height(neg);
-	     return ok;
-	   }
-	 else if (side > 0)
-	    tree = pos;
-	 else
-	    tree = neg;
-	 break;
-	 
+         side = DISTANCETOSPLITTERSIGNEDXY(tree->u.internal.separator, (float)viewer_x, (float)viewer_y);
+
+         pos = tree->u.internal.pos_side;
+         neg = tree->u.internal.neg_side;
+         if (ISZERO(side))
+         {
+            /* make sure we satisfy height restriction on both sides! */
+            /* this isn't quite right, but it's close XXX */
+            Bool ok = True;
+            if (pos)
+               ok = ok && check_viewer_height(pos);
+            if (neg)
+               ok = ok && check_viewer_height(neg);
+            return ok;
+         }
+         else if (side > EPSILON)
+            tree = pos;
+         else
+            tree = neg;
+         break;
+
       default:
-	 debug(("check_viewer_height error!\n"));
-	 return False;
+         debug(("check_viewer_height error!\n"));
+         return False;
       }
    }
 }

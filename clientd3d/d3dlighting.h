@@ -49,13 +49,6 @@ float D3DRenderObjectLightGetNearest(room_contents_node *pRNode);
 Bool D3DObjectLightingCalc(room_type *room, room_contents_node *pRNode, custom_bgra *bgra, DWORD flags);
 
 // Testing wall-light intersection, see MinSquaredDistanceToLineSegment() in /blakserv/geometry.h
-#define EPSILON     0.0001f
-#define ISZERO(a)   (((a) > -EPSILON) & ((a) < EPSILON))
-#define V2DOT(a,b)    ((a)->X * (b)->X + (a)->Y * (b)->Y)
-#define V2LEN2(a)     V2DOT(a,a)
-#define V2SCALE(a,b) \
-   (a)->X *= (b); \
-   (a)->Y *= (b);
 __forceinline bool WallInsideRadius(d_light *light, WallData *wall)
 {
    V2 v1, v2, v3;

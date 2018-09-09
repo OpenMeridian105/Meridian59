@@ -14,12 +14,6 @@
 
 #define FINENESSKODTOROO(x) ((x) * 16.0f)      // scales a value from KOD fineness to ROO fineness
 
-typedef struct V2
-{
-   float X;
-   float Y;
-} V2;
-
 typedef struct BoundingBox2D
 {
    V2 Min;

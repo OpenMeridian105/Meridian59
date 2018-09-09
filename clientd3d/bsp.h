@@ -343,7 +343,6 @@ typedef struct WallData
 typedef struct
 {
    Plane separator;               /* plane that separates space */
-   Plane normalized;
    union {
       WallList walls_in_plane;    /* any walls that are conincident to separator plane */
       WORD wall_num;              /* number of first wall in list (used during loading) */

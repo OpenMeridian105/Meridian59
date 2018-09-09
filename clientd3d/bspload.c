@@ -763,9 +763,8 @@ Bool RoomSwizzle(room_type *room, BSPTree tree,
    BSPinternal *inode;
    BSPleaf *leaf;
    WallData *wall;
-   float norm_size, a2, b2, a, b, c;
-   float x0, y0, x1, y1;
    float len = 0.0f;
+
    if (tree == NULL)
       return True;
 
@@ -775,41 +774,6 @@ Bool RoomSwizzle(room_type *room, BSPTree tree,
       inode = &tree->u.internal;
 
       // normalize plane separator equation
-      a = inode->separator.a;
-      b = inode->separator.b;
-      c = inode->separator.c;
-
-      // get point on plane from wall data 
-      x0 = room->walls[inode->wall_num - 1].x0;
-      y0 = room->walls[inode->wall_num - 1].y0;
-      x1 = room->walls[inode->wall_num - 1].x1;
-      y1 = room->walls[inode->wall_num - 1].y1;
-
-
-      a2 = a*a; // get a bead on general scale of normal vector
-      b2 = b*b;
-
-      if ((a2 > OVERFLOWAMOUNT) || (b2 > OVERFLOWAMOUNT) || (a2+b2 > OVERFLOWAMOUNT))
-      {
-         a = inode->separator.a;
-         b = inode->separator.b;
-
-         norm_size = sqrt(a2 + b2);
-         if ((a2 < 0) || (b2 < 0) || (norm_size <= 0))
-         {
-            norm_size = 1;
-            debug(("RoomSwizzle: still getting overflow in normalization math!\n"));
-         }
-      }
-      else
-      {
-         //a <<= LOG_FINENESS;
-         //b <<= LOG_FINENESS;
-         a *= FINENESS;
-         b *= FINENESS;
-         norm_size = sqrtl((long double)a*(long double)a + (long double)b*(long double)b);
-      }
-
       len = sqrtf(
          inode->separator.a * inode->separator.a +
          inode->separator.b * inode->separator.b);
@@ -817,29 +781,10 @@ Bool RoomSwizzle(room_type *room, BSPTree tree,
       // normalize
       if (!ISZERO(len))
       {
-         inode->normalized.a = inode->separator.a / len;
-         inode->normalized.b = inode->separator.b / len;
-         inode->normalized.c = inode->separator.c / len;
+         inode->separator.a /= len;
+         inode->separator.b /= len;
+         inode->separator.c /= len;
       }
-      else
-      {
-         inode->normalized.a = inode->separator.a;
-         inode->normalized.b = inode->separator.b;
-         inode->normalized.c = inode->separator.c;
-      }
-      // normalize a & b (w.round to closest int)
-      //a = ((a * FINENESS) + (norm_size / 2)) / norm_size;
-      //b = ((b * FINENESS) + (norm_size / 2)) / norm_size;
-      a = (a * FINENESS) / norm_size;
-      b = (b * FINENESS) / norm_size;
-      inode->separator.a = a;
-      inode->separator.b = b;
-
-      // re-calc c
-      // take average over endpoints of wall (reduce error ?)
-      inode->separator.c = -((a*x1+b*y1)+(a*x0+b*y0))/2.0f;
-
-      //inode->separator.c = c;
 
       if (inode->pos_num == 0)
          inode->pos_side = NULL;

@@ -171,9 +171,9 @@ __forceinline bool IntersectLineSplitter(const BSPnode* Node, const V2* S, const
 
    // get 2d line equation coefficients of splitter
    double a2, b2, c2;
-   a2 = -Node->u.internal.normalized.a;
-   b2 = -Node->u.internal.normalized.b;
-   c2 = Node->u.internal.normalized.c;
+   a2 = -Node->u.internal.separator.a;
+   b2 = -Node->u.internal.separator.b;
+   c2 = Node->u.internal.separator.c;
 
    const double det = a1 * b2 - a2 * b1;
 
@@ -537,8 +537,8 @@ bool CanMoveInRoomTree(const room_type* Room, const BSPnode* Node, const V2* S, 
    /****************************************************************/
 
    // get signed distances from splitter to both endpoints of move
-   const float distS = DISTANCETOSPLITTERSIGNED(Node->u.internal.normalized, S);
-   const float distE = DISTANCETOSPLITTERSIGNED(Node->u.internal.normalized, E);
+   const float distS = DISTANCETOSPLITTERSIGNED(Node->u.internal.separator, S);
+   const float distE = DISTANCETOSPLITTERSIGNED(Node->u.internal.separator, E);
 
    /****************************************************************/
 
@@ -664,7 +664,7 @@ bool CanMoveInRoomTree(const room_type* Room, const BSPnode* Node, const V2* S, 
                {
                   // line normal (90° vertical to line)
                   V2 normal;
-                  V2SET(&normal, Node->u.internal.normalized.a, Node->u.internal.normalized.b);
+                  V2SET(&normal, Node->u.internal.separator.a, Node->u.internal.separator.b);
 
                   // flip normal if necessary (pick correct one of two)
                   if (distE > 0.0f)

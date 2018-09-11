@@ -2833,8 +2833,6 @@ int C_IntersectLineCircle(int object_id, local_var_type *local_vars,
    end.Y    = GRIDCOORDTOROO(col_end.v.data, finecol_end.v.data);
 
    bool retval = IntersectLineCircle(&center, FINENESSKODTOROO(radius.v.data), &start, &end);
-   if (retval)
-      dprintf("Got true in ILC");
    return retval ? KOD_TRUE : KOD_FALSE;
 }
 

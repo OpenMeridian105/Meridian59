@@ -109,9 +109,15 @@ messages:
    }
 
    SomethingMoved(what = $,new_row = $,new_col = $,fine_row = $, fine_col = $,
-      old_row = $, old_col = $, old_finerow = $, old_finecol = $)
+      old_row = $, old_col = $, old_finerow = $, old_finecol = $,
+      cause = CAUSE_UNKNOWN)
    {
-      local iRow, iCol;
+      // Only want to check players and mobs making manual movements,
+      // not teleports etc.
+      if (cause <> CAUSE_USER_INPUT AND cause <> CAUSE_MOB_MOVEMENT)
+      {
+         return;
+      }
 
       if (new_row = $ OR new_col = $ OR fine_row = $ OR fine_col = $
          OR old_row = $ OR old_col = $ OR old_finerow = $ OR old_finecol = $)
@@ -128,7 +134,7 @@ messages:
                   old_row, old_col, old_finerow, old_finecol, new_row,
                   new_col, fine_row, fine_col, 32)
       {
-         Send(self,@CheckForEffect,#what=what,#new_row=iRow,#new_col=iCol,
+         Send(self,@CheckForEffect,#what=what,#new_row=new_row,#new_col=new_col,
                #bMovement=TRUE);
       }
 

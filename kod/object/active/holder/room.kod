@@ -2744,7 +2744,8 @@ messages:
                   non_monsters_only = FALSE)
    {
       local i, temp, each_obj, packet_built, lNode, iQflags, bStealth,
-            iRflags, iHeightF, iHeightFWD, iHeightC, iServerID;
+            iRflags, iHeightF, iHeightFWD, iHeightC, iServerID,
+            old_row, old_col, old_finerow, old_finecol;
 
       if new_row = $ OR new_col = $ OR fine_row = $ OR fine_col = $
       {
@@ -2811,6 +2812,10 @@ messages:
 
       if lNode <> $
       {
+         old_row = Nth(lNode,3);
+         old_col = Nth(lNode,4);
+         old_finerow = Nth(lNode,5);
+         old_finecol = Nth(lNode,6);
          SetNth(lNode,3,new_row);
          SetNth(lNode,4,new_col);
          SetNth(lNode,5,fine_row);
@@ -2881,10 +2886,11 @@ messages:
                   ClearPacket();
                   packet_built = FALSE;
                }
-               Send(each_obj,@SomethingMoved,#what=what,
-                    #new_row=new_row,#new_col=new_col,
-                    #fine_row=fine_row,#fine_col=fine_col,
-                    #cause=cause,#speed=speed);
+               Send(each_obj,@SomethingMoved,#what=what,#new_row=new_row,
+                     #new_col=new_col,#fine_row=fine_row,#fine_col=fine_col,
+                     #cause=cause,#speed=speed,#old_row=old_row,
+                     #old_col=old_col,#old_finerow=old_finerow,
+                     #old_finecol=old_finecol);
             }
          }
 

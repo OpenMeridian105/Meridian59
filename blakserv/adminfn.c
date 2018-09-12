@@ -2627,12 +2627,13 @@ void AdminShowCalls(int session_id,admin_parm_type parms[],
 		case LINEOFSIGHTVIEW: strcpy(c_name, "LineOfSightView"); break;
 		case LINEOFSIGHTBSP: strcpy(c_name, "LineOfSightBSP"); break;
 		case GETLOCATIONINFOBSP: strcpy(c_name, "GetLocationInfoBSP"); break;
-      case GETSECTORHEIGHTBSP: strcpy(c_name, "GetSectorHeightBSP"); break;
-      case SETROOMDEPTHOVERRIDEBSP: strcpy(c_name, "SetRoomDepthOverrideBSP"); break;
-      case CALCUSERMOVEMENTBUCKET: strcpy(c_name, "CalcUserMovementBucket"); break;
+		case GETSECTORHEIGHTBSP: strcpy(c_name, "GetSectorHeightBSP"); break;
+		case SETROOMDEPTHOVERRIDEBSP: strcpy(c_name, "SetRoomDepthOverrideBSP"); break;
+		case CALCUSERMOVEMENTBUCKET: strcpy(c_name, "CalcUserMovementBucket"); break;
+		case INTERSECTLINECIRCLE: strcpy(c_name, "IntersectLineCircle"); break;
 		case GETRANDOMPOINTBSP: strcpy(c_name, "GetRandomPointBSP"); break;
 		case GETSTEPTOWARDSBSP: strcpy(c_name, "GetStepTowardsBSP"); break;
-      case GETRANDOMMOVEDESTBSP: strcpy(c_name, "GetRandomMoveDestBSP"); break;
+		case GETRANDOMMOVEDESTBSP: strcpy(c_name, "GetRandomMoveDestBSP"); break;
 		case BLOCKERADDBSP: strcpy(c_name, "BlockerAddBSP"); break;
 		case BLOCKERMOVEBSP: strcpy(c_name, "BlockerMoveBSP"); break;
 		case BLOCKERREMOVEBSP: strcpy(c_name, "BlockerRemoveBSP"); break;

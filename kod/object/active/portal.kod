@@ -14,14 +14,17 @@ constants:
 
    include blakston.khd
 
+   // Time we wait before removing a user from recently teleported list.
+   PORTAL_CD_TIME = 2500
+
 resources:
 
    include portal.lkod
 
    portal_name_rsc = "portal"
    portal_icon_rsc = portal.bgf
-   portal_desc_rsc = "The portal flickers coldly, eerily inviting you to some unknown locale."
-
+   portal_desc_rsc = \
+      "The portal flickers coldly, eerily inviting you to some unknown locale."
    portal_dead = "This archway stands cold and inanimate."
 
 classvars:
@@ -48,12 +51,13 @@ properties:
    piDest_fine_row = FINENESS_HALF
    piDest_fine_col = FINENESS_HALF
 
-   // Will contain the coordinates in which a user can be teleported, in
-   // the form [ minrow, maxrow, mincol, maxcol ]. Calculated when the
-   // portal first enters a room or is moved.
-   plTeleportArea = $
-
    ptAnimate = $
+
+   // Track teleported objects for a short period of time so we don't
+   // repeatedly teleport the same one.
+   // Examples of where this might occur are lagging users sending multiple
+   // moves on the portal, or incorrectly set portal destinations.
+   plTeleportCD = $
 
 messages:
 
@@ -89,44 +93,24 @@ messages:
          ptAnimate = $;
       }
 
-      propagate;
-   }
-
-   NewOwner(what=$)
-   {
-      if (what <> $
-         AND IsClass(what,&Room))
-      {
-         // Post this so portal is in the room when area is calculated.
-         Post(self,@CalculatePortalArea);
-      }
+      plTeleportCD = $;
 
       propagate;
    }
 
-   CalculatePortalArea()
-   "Pre-calculate the area around the portal in which a user can be teleported."
+   ReqNewOwner(what = $)
    {
-      local iRow, iCol, iRowDec, iColDec;
+      return IsClass(what,&Room);
+   }
 
-      iRow = Send(self,@GetRow);
-      iCol = Send(self,@GetCol);
-
-      if (iRow = $
-         OR iCol = $)
+   GetMoveOnType()
+   {
+      if NOT pbAnimate
       {
-         Debug("Portal ",self," in room ",Send(poOwner,@GetName),
-               " trying to calculate position with $ row/col!");
-
-         return;
+         return (viMoveOn_type | MOVEON_NO);
       }
 
-      iRowDec = iRow * 100 + Send(self,@GetFineRow) * 15625 / 10000;
-      iColDec = iCol * 100 + Send(self,@GetFineCol) * 15625 / 10000;
-
-      plTeleportArea = [iRowDec - 105, iRowDec + 105, iColDec - 105, iColDec + 105];
-
-      return;
+      propagate;
    }
 
    ShowDesc()
@@ -166,29 +150,28 @@ messages:
       return;
    }
 
-   SomethingMoved(what = $)
+   SomethingMoved(what = $,new_row = $,new_col = $,fine_row = $, fine_col = $,
+      old_row = $, old_col = $, old_finerow = $, old_finecol = $,
+      cause = CAUSE_UNKNOWN)
    {
-      if what = self
-      {
-         // If the portal moved, recalculate the teleporting area.
-         Post(self,@CalculatePortalArea);
-
-         return;
-      }
-
       if NOT pbAnimate
-         OR plTeleportArea = $
       {
          return;
       }
 
-      if (Send(poOwner,@IsUserInArea,#who=what,#lArea=plTeleportArea))
+      if (plTeleportCD <> $
+         AND Send(self,@HasTeleportCooldown,#what=what))
       {
-         // Turn the portal off for a short time during transport.
-         // Done in case a portal tries to repeatedly teleport
-         // the same player.
-         Send(self,@SetAnimation,#what=FALSE);
-         ptAnimate = CreateTimer(self,@ReanimatePortal,500);
+         return;
+      }
+
+      if (IntersectLineCircle(Send(self,@GetRow), Send(self,@GetCol),
+                  Send(self,@GetFineRow), Send(self,@GetFineCol),
+                  old_row, old_col, old_finerow, old_finecol, new_row,
+                  new_col, fine_row, fine_col, 32))
+      {
+         // Add cooldown even if we don't do the move.
+         Send(self,@AddTeleportCooldown,#what=what);
 
          // Something moved on top of us. Post this so the user's
          // new coordinates get set correctly if moving in the same room.
@@ -224,9 +207,85 @@ messages:
       return;
    }
 
-   ReqNewOwner(what = $)
+   HasTeleportCooldown(what = $)
    {
-      return IsClass(what,&Room);
+      return GetListNode(plTeleportCD,1,what) <> $;
+   }
+
+   AddTeleportCooldown(what = $)
+   "Adds a cooldown for 'what' using this portal."
+   {
+      local tCooldown, lEntry;
+
+      if (what = $)
+      {
+         Debug("Called AddTeleportCooldown with no data to add!");
+
+         return;
+      }
+
+      // Don't add same object more than once.
+      lEntry = GetListNode(plTeleportCD,1,what);
+      if (lEntry <> $)
+      {
+         Debug("AddTeleportCooldown tried to add same object ",
+            Send(what,@GetTrueName), " twice to list.");
+
+         return;
+      }
+
+      tCooldown = CreateTimer(self,@RemoveTeleportCooldown,PORTAL_CD_TIME);
+      plTeleportCD = Cons([what, tCooldown], plTeleportCD);
+
+      return;
+   }
+
+   RemoveTeleportCooldown(what = $, timer = $)
+   {
+      local lEntry;
+
+      if (timer = $)
+      {
+         if (what = $)
+         {
+            Debug("Called RemoveTeleportCooldown with no data to remove!");
+
+            return;
+         }
+
+         lEntry = GetListNode(plTeleportCD,1,what);
+         if (lEntry <> $)
+         {
+            DeleteTimer(Nth(lEntry,2));
+            plTeleportCD = DelListElem(plTeleportCD,lEntry);
+            SetNth(lEntry,2,$);
+         }
+      }
+      else
+      {
+         lEntry = GetListNode(plTeleportCD,2,timer);
+         if (lEntry <> $)
+         {
+            plTeleportCD = DelListElem(plTeleportCD,lEntry);
+            SetNth(lEntry,2,$);
+         }
+      }
+
+      return;
+   }
+
+   ClearTeleportCooldowns()
+   {
+      local i;
+
+      foreach i in plTeleportCD
+      {
+         DeleteTimer(Nth(i,2));
+         SetNth(i,2,$);
+      }
+      plTeleportCD = $;
+
+      return;
    }
 
    SendAnimation()
@@ -239,16 +298,6 @@ messages:
       AddPacket(1,ANIMATE_CYCLE, 4,viAnimationSpeed, 2,1, 2,1);
 
       return;
-   }
-
-   GetMoveOnType()
-   {
-      if NOT pbAnimate
-      {
-         return (viMoveOn_type | MOVEON_NO);
-      }
-
-      propagate;
    }
 
    SendLightingInformation()

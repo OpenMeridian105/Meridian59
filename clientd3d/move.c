@@ -93,8 +93,6 @@ extern float gravityAdjust;
 
 // Time when we last tried to move off room
 static DWORD move_off_room_time = 0;
-// Time when next move is allowed; used only for teleporter nomoveons.
-static DWORD next_move_time = 0;
 /* Offset from player's average height to give appearance of bouncing */
 static long bounce_height;
 /* Offset from player's average height to allow user to look up or down */
@@ -275,9 +273,6 @@ void UserMovePlayer(int action)
       return;
 
    now = timeGetTime();
-   // See if we're waiting for server to move us out of current location
-   if (now < next_move_time)
-      return;
    dt = now - last_move_time;
    // Watch for int wraparound in timeGetTime()
    if (dt <= 0)
@@ -367,15 +362,6 @@ void UserMovePlayer(int action)
          // TODO: could attempt at least several moves here.
          // The upside over blocking the move outright (old classic move code)
          // is that it's probably harder to 'trap' a player if we allow the move.
-         break;
-      }
-      else if (r->obj.moveontype == MOVEON_TELEPORTER)
-      {
-         if (dx > MIN_NOMOVEON || dy > MIN_NOMOVEON ||
-            (dx * dx + dy * dy) > MIN_NOMOVEON * MIN_NOMOVEON)
-            continue;
-
-         next_move_time = timeGetTime() + TELEPORT_DELAY;
          break;
       }
    }
@@ -915,9 +901,6 @@ static void SlideAlongWall(WallData *wall, V2 *Start, V2 *End)
 void ServerMovedPlayer(void)
 {
    room_contents_node *player_obj;
-
-   // Allow user to move again (used for teleporter nomoveons).
-   next_move_time = 0;
 
    // Put player on floor
    player_obj = GetRoomObjectById(player.id);

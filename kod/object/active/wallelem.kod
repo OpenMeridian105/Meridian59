@@ -108,36 +108,33 @@ messages:
       return iDuration;
    }
 
-   SomethingMoved(what = $,new_row = $,new_col = $)
+   SomethingMoved(what = $,new_row = $,new_col = $,fine_row = $, fine_col = $,
+      old_row = $, old_col = $, old_finerow = $, old_finecol = $,
+      cause = CAUSE_UNKNOWN)
    {
-      local iRow, iCol;
-
-      // Determine victim's row and column
-      if new_row = $
+      // Only want to check players and mobs making manual movements,
+      // not teleports etc.
+      if (cause <> CAUSE_USER_INPUT AND cause <> CAUSE_MOB_MOVEMENT)
       {
-         iRow = Send(what,@GetRow);
-      }
-      else
-      {
-         iRow = new_row;
+         return;
       }
 
-      if new_col = $
+      if (new_row = $ OR new_col = $ OR fine_row = $ OR fine_col = $
+         OR old_row = $ OR old_col = $ OR old_finerow = $ OR old_finecol = $)
       {
-         iCol = Send(what,@GetCol);
-      }
-      else
-      {
-         iCol = new_col;
+         Debug("Missing params in ", GetClass(self), " SomethingMoved");
       }
 
       // Check for range
       if IsClass(what,&Battler)
          AND NOT (IsClass(what,&Player)
                   AND Send(what,@IsInCannotInteractMode))
-         AND Send(self,@InRange,#what=what,#iRow=iRow,#iCol=iCol)
+         AND IntersectLineCircle(Send(self,@GetRow), Send(self,@GetCol),
+                  Send(self,@GetFineRow), Send(self,@GetFineCol),
+                  old_row, old_col, old_finerow, old_finecol, new_row,
+                  new_col, fine_row, fine_col, 32)
       {
-         Send(self,@CheckForEffect,#what=what,#new_row=iRow,#new_col=iCol,
+         Send(self,@CheckForEffect,#what=what,#new_row=new_row,#new_col=new_col,
                #bMovement=TRUE);
       }
 

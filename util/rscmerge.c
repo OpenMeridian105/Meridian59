@@ -6,8 +6,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
+#include <windows.h>
 #include "rscload.h"
+#include <vector>
+
+typedef std::vector<std::string> StringVector;
 
 typedef struct _Resource {
    int   number;
@@ -53,6 +56,63 @@ void SafeFree(void *ptr)
       return;
    }
    free(ptr);
+}
+/************************************************************************/
+/*
+ * FindMatchingFiles:  Copy from blakserv/files.c
+ */
+bool FindMatchingFiles(char *path, std::vector<std::string> *files)
+{
+#ifdef BLAK_PLATFORM_WINDOWS
+
+   HANDLE hFindFile;
+   WIN32_FIND_DATA search_data;
+
+   files->clear();
+   hFindFile = FindFirstFile(path, &search_data);
+   if (hFindFile == INVALID_HANDLE_VALUE)
+      return false;
+
+   do
+   {
+      files->push_back(search_data.cFileName);
+   } while (FindNextFile(hFindFile, &search_data));
+   FindClose(hFindFile);
+
+   return true;
+
+#elif BLAK_PLATFORM_LINUX
+   // Warning, not tested in rscmerge.c.
+   struct dirent *entry;
+   std::string spath = path;
+   std::size_t last_found = spath.find_last_of("/\\");
+   std::string sext = spath.substr(last_found + 2);
+   spath = spath.substr(0, last_found);
+
+   DIR *dir = opendir(spath.c_str());
+   if (dir == NULL)
+      return false;
+
+   while (entry = readdir(dir))
+   {
+      std::string filename = entry->d_name;
+      if (filename != "." && filename != "..")
+      {
+         if (filename.length() > sext.length() &&
+            filename.substr(filename.length() - sext.length()) == sext)
+         {
+            files->push_back(filename);
+         }
+      }
+   }
+
+   closedir(dir);
+
+   return true;
+
+#else
+#error No platform implementation of FindMatchingFiles
+#endif
 }
 /***************************************************************************/
 void Usage(void)
@@ -177,15 +237,23 @@ bool EachRscCallback(char *filename, int rsc, int lang_id, char *string)
  * LoadRscFiles:  Read resources from given rsc files into global resources variable.
  *   Return true on success.
  */
-bool LoadRscFiles(int num_files, char **filenames)
+bool LoadRscFiles(int num_files, char **foldername)
 {
-   int i;
-
-   for (i=0; i < num_files; i++)
-   if (!RscFileLoad(filenames[i], EachRscCallback))
+   char file_load_path[MAX_PATH + FILENAME_MAX];
+   sprintf(file_load_path, "%s\\*.rsc", *foldername);
+   StringVector files;
+   if (FindMatchingFiles(file_load_path, &files))
    {
-      printf("Failure reading rsc file %s!\n", filenames[i]);
-      return false;
+      for (StringVector::iterator it = files.begin(); it != files.end(); ++it)
+      {
+         sprintf(file_load_path, "%s\\%s", *foldername, it->c_str());
+
+         if (!RscFileLoad(file_load_path, EachRscCallback))
+         {
+            printf("Failure reading rsc file %s!\n", file_load_path);
+            return false;
+         }
+      }
    }
 
    return true;

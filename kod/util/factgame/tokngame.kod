@@ -223,9 +223,10 @@ messages:
 
    RecreateTokenRooms()
    {
-      plTokenRooms = [ RID_ICE_CAVE1, RID_CASTLE1, RID_NEST1, RID_BAR_SEWER,
-                       RID_F2, RID_BADLAND1, RID_H5, RID_E2, RID_G8, RID_C7,
-                       RID_I9, RID_F7, RID_VALE, RID_MAR_CRYPT1
+      plTokenRooms = [ RID_ICE_CAVE1, RID_CASTLE1, RID_NEST1, RID_H4,
+                       RID_F2, RID_BADLAND1, RID_H5, RID_E2, RID_I7, RID_C7,
+                       RID_I9, RID_F7, RID_MAR_CRYPT1, RID_FAROL_WEST,
+                       RID_RATCAVE1, RID_C3
                      ];
       return;
    }
@@ -267,6 +268,33 @@ messages:
       }
 
       return returntok;
+   }
+
+   OpenRandomToken()
+   "Returns TRUE if a token is released."
+   {
+      local lRandom, i, oToken;
+
+      foreach i in plSenate
+      {
+         if (Nth(i,6) = 0)
+         {
+            lRandom = Cons(Nth(i,4),lRandom);
+         }
+      }
+
+      if (lRandom <> $)
+      {
+         oToken = Nth(lRandom,Random(1,Length(lRandom)));
+
+         // Have to spawn it this way to remove the timer on the token.
+         Send(oToken,@TokenGenerationTimer);
+
+         return TRUE;
+      }
+
+      // Possibly all tokens out.
+      return FALSE;
    }
 
    OpenToken(mytoken=$)

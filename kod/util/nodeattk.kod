@@ -29,6 +29,8 @@ resources:
    NodeAttack_room_message_rsc = \
       "~BThe area shakes violently as several Xeochicatl pull themselves "
       "from the ground and attack the node!"
+   NodeAttack_room_entry_rsc = \
+      "~BYou notice that a mana node in the area is under attack by Xeochicatls!"
 
    NodeAttack_success_rsc = \
       "~BThe Xeochicatl retreat from %s.  The node has been saved!"
@@ -70,18 +72,29 @@ properties:
    pbAttackEnabled = FALSE
    // Base number of Meridian days to use when figuring frequency of attacks.
    piAttackFrequency = 24
-   // The number of Xeochicatl spawned during an attack.
-   piAttackIntensity = 8
    // Number of minutes the whole attack lasts.
    //  Divided into 1/3 time that node holders know, 2/3 time everyone knows.
    piAttackDuration = 60
+
+   // Number of users that must be on before a node attack goes on.
+   piNumIPsOnForAttack = 10
+   // piAttackMin is the base number of Xeochicatl spawned during an attack,
+   // with 10 IPs online. Further players online raises this number up to
+   // piAttackMax.
+   piAttackMin = 4
+   piAttackMax = 10
+   // piXeosToSpawn tracks how many xeos we need for the attack (between the
+   // above min/max) and piXeosSpawnedSoFar is our progress towards that.
+   piXeosToSpawn = 0
+   piXeosSpawnedSoFar = 0
+
+   // Keep track of users who have entered the attacked screen.
+   plUsersEntered = $
 
    // Number of Meridian days a node loss lasts.
    piLossDuration = 1
    // Base percent chance to actually be severed from the node.
    piSeveredChance = 0
-   // Number of users that must be on before a node attack goes on.
-   piNumIPsOnForAttack = 20
 
    // NOTE: See specific notes in Recreate() for more information.
    // The current node being attacked.
@@ -132,6 +145,7 @@ messages:
    {
       local iNode;
 
+      plUsersEntered = $;
       poAttackedNode = $;
       plAttackableNodes = [ NODE_H9, NODE_VICTORIA, NODE_BADLANDS,
                             NODE_ORCCAVES, NODE_A5, NODE_ICECAVE1, NODE_Q
@@ -243,11 +257,15 @@ messages:
       return;
    }
 
-   StartAttackTimer()
+   StartAttackTimer(timer = $)
    {
-      local lUsers;
-
+      if (timer = $
+         OR timer <> ptAttack)
+      {
+         DeleteTimer(ptAttack);
+      }
       ptAttack = $;
+
       if NOT Send(self,@DoNodeAttack)
       {
          // Between 1 and 2 hours
@@ -257,16 +275,20 @@ messages:
       return;
    }
 
-   DoNodeAttack(iNode=$,bOverride=FALSE)
+   DoNodeAttack(iNode=$,bOverride=FALSE,iNumIPs=0)
    {
-      local Active, iNum, iIndex, oRoom, oMonsters, lPosition, oItem, iNumber,
+      local i, iIndex, oRoom, oMonsters, lPosition, oItem, iNumber,
             iNumberXeos;
 
       // General fail conditions, not enough users, bad node, attacking an
       //  already dead node.
-      iNum = Send(SYS,@GetUniqueIPs);
+      if (iNumIPs <= 0)
+      {
+         iNumIPs = Send(SYS,@GetUniqueIPs);
+      }
+
       if poAttackedNode <> $
-         OR (iNum < piNumIPsOnForAttack AND NOT bOverride)
+         OR (iNumIPs < piNumIPsOnForAttack AND NOT bOverride)
       {
          return FALSE;
       }
@@ -320,45 +342,43 @@ messages:
       // Turn PvP off for the duration of the node attack.
       Send(oRoom,@SetRoomFlag,#flag=ROOM_NO_PK,#value=FALSE);
 
-      foreach Active in Send(oRoom,@GetHolderActive)
+      foreach i in Send(oRoom,@GetHolderActive)
       {
-         oItem = Send(oRoom,@HolderExtractObject,#data=Active);
+         oItem = First(i);
 
          if IsClass(oItem,&Monster)
             AND NOT Send(oItem,@IsOwnedByPlayer)
          {
             Send(oItem,@Killed,#what=self);
          }
-
-         if IsClass(oItem,&Player)
+         else if IsClass(oItem,&Player)
          {
            Send(oItem,@MsgSendUser,#message_rsc=NodeAttack_room_message_rsc);
          }
       }
 
+      // Set the total number of xeos we will spawn based on number online.
+      // We may want to modify this total number if a lot of players show
+      // up, but total IPs online is probably a good metric for the kind
+      // of participation that will happen (given node attacks run for 1hr).
+      // Default is spawn 4 at 10 online, 5 at 15 online, 6 at 20 online up to
+      // 10 at 40 IPs online.
+      piXeosToSpawn = Bound(piAttackMin + (iNumIPs - 10) / 5, piAttackMin, piAttackMax);
+
       // Spawn Xeos around node, then in room.
-      iNumberXeos = 0;
+      piXeosSpawnedSoFar = 0;
+
+      iNumber = piXeosToSpawn / 4;
 
       foreach oItem in Nth(plMonsterGen,iIndex)
       {
-         // For each spawn point, create 1/5 the total Xeochicatl.
-         iNumber=piAttackIntensity/5;
-         while iNumber > 0
+         // Spawn 1 or 2 at the node.
+         while iNumber-- > 0
          {
-            oMonsters = Send(self,@CreateXeo);
-            Send(oRoom,@GenerateMonster,#oMonster=oMonsters,#iRow=Nth(oItem,1),
-                 #iCol=Nth(oItem,2),#bStack=TRUE);
-            iNumberXeos = iNumberXeos + 1;
-            iNumber = iNumber - 1;
+            Send(oRoom,@GenerateMonster,#oMonster=Send(self,@CreateXeo),
+                  #iRow=First(oItem),#iCol=Nth(oItem,2),#bStack=TRUE);
+            ++piXeosSpawnedSoFar;
          }
-      }
-
-      // Other 2/5ths are spawned at the Gen Points.
-      while iNumberXeos <= piAttackIntensity
-      {
-         oMonsters = Send(self,@CreateXeo);
-         Send(oRoom,@GenerateMonster,#oMonster=oMonsters);
-         iNumberXeos = iNumberXeos + 1;
       }
 
       // Set timer for when everyone will be alerted, and send message to node
@@ -374,8 +394,7 @@ messages:
       {
          if Send(oItem,@GetNodeList) & Nth(plAttackableNodes,iIndex)
          {
-            Send(oItem,@MsgSendUser,
-                 #message_rsc=NodeAttack_initial_attack_rsc);
+            Send(oItem,@MsgSendUser,#message_rsc=NodeAttack_initial_attack_rsc);
             Send(oItem,@WaveSendUser,#wave_rsc=NodeAttack_attack_sound_rsc);
          }
       }
@@ -429,6 +448,33 @@ messages:
       return oXeo;
    }
 
+   SpawnAttackXeo(oRoom = $)
+   "Used for spawning xeos mid-attack. Returns TRUE if xeo could be spawned."
+   "Failure here should likely end the attack early if 0 xeos are left."
+   {
+      local iIndex, lCoords, lRandomCoords;
+
+      if (oRoom = $)
+      {
+         oRoom = Send(poAttackedNode,@GetOwner);
+      }
+
+      iIndex = FindListElem(plAttackableNodes,Send(poAttackedNode,@GetNodeNum));
+      lCoords = Nth(plMonsterGen, iIndex);
+      lRandomCoords = Nth(lCoords, Random(1,Length(lCoords)));
+
+      // This could stop the attack early if there are no more xeos.
+      if (NOT Send(oRoom,@GenerateMonster,#oMonster=Send(self,@CreateXeo),
+            #iRow=First(lRandomCoords),#iCol=Nth(lRandomCoords,2),#bStack=TRUE))
+      {
+         return FALSE;
+      }
+
+      ++piXeosSpawnedSoFar;
+
+      return TRUE;
+   }
+
    XeoKilled()
    "Called when a Xeochicatl that's part of an attack is killed"
    {
@@ -440,10 +486,20 @@ messages:
       }
 
       oRoom = Send(poAttackedNode,@GetOwner);
-      iNumber = Send(oRoom,@CouNtholdingHowMany,#class=&Xeochicatl);
+
+      // May need to spawn another xeo!
+      if (piXeosSpawnedSoFar < piXeosToSpawn)
+      {
+         if (Send(self,@SpawnAttackXeo,#oRoom=oRoom))
+         {
+            return;
+         }
+      }
+
+      iNumber = Send(oRoom,@CountHoldingHowMany,#class=&Xeochicatl);
       if iNumber = 0
       {
-         iNumStones = Send(oRoom,@CouNtholdingHowMany,#class=&HeartStone);
+         iNumStones = Send(oRoom,@CountHoldingHowMany,#class=&HeartStone);
          // If we have more than one stone, respawn a Xeochicatl!
          if iNumStones > 1 AND pbXeoRespawn
          {
@@ -451,7 +507,7 @@ messages:
 
             foreach Passive in Send(oRoom,@GetHolderPassive)
             {
-               oHeartStone = Send(oRoom,@HolderExtractObject,#data=Passive);
+               oHeartStone = First(Passive);
                if IsClass(oHeartStone,&HeartStone)
                {
                   // Don't respawn first in the list (this is the last one
@@ -472,6 +528,44 @@ messages:
          {
             Send(self,@EndNodeAttack,#bFailure=FALSE);
          }
+      }
+
+      return;
+   }
+
+   // Maybe not ideal, but rooms will call this every time a user enters.
+   UserEntered(who=$, where=$)
+   {
+      local iLevel;
+
+      if (poAttackedNode = $
+         OR where = $
+         OR who = $
+         OR (NOT IsClass(who,&User))
+         OR (Send(poAttackedNode,@GetOwner) <> where))
+      {
+         return;
+      }
+
+      // User entered our attack screen. Maybe spawn a xeo.
+      // Only want to consider users who could fight the xeos.
+      iLevel = Send(who,@GetLevel);
+
+      if (iLevel < 80)
+      {
+         return;
+      }
+
+      if (plUsersEntered = $)
+      {
+         plUsersEntered = Cons(who, plUsersEntered);
+         Send(who,@MsgSendUser,#message_rsc=NodeAttack_room_entry_rsc);
+      }
+      else if (NOT FindListElem(plUsersEntered, who))
+      {
+         plUsersEntered = Cons(who, plUsersEntered);
+         Send(who,@MsgSendUser,#message_rsc=NodeAttack_room_entry_rsc);
+         Send(self,@SpawnAttackXeo,#oRoom=where);
       }
 
       return;
@@ -614,6 +708,7 @@ messages:
       }
 
       poAttackedNode = $;
+      plUsersEntered = $;
 
       return;
    }

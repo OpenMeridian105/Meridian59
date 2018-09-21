@@ -1,0 +1,168 @@
+// Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+// All rights reserved.
+//
+// This software is distributed under a license that is described in
+// the LICENSE file that accompanies it.
+//
+// Meridian is a registered trademark.
+
+
+/////////////////////////////////////////////////////////////////////////////////
+RazaMummyQuest is QuestTemplate
+// Quest nodes 10, 11 (QNT_ID_RAZA_MUMMY_ONE, QNT_ID_RAZA_MUMMY_TWO)
+
+// QuestTemplate is
+// [ quest template index
+//   quest template object
+//   number of players,
+//   type of quest,
+//   eligible player restrictions,
+//   quest nodes,
+//   max number active,
+//   currently active quests,
+//   percent chance of scheduling (on timer firing)
+//   special restrictions ]
+
+constants:
+
+   include blakston.khd
+
+resources:
+
+   include razamumqt.lkod
+
+   // Quest description.
+   RazaMummyQuest_icon_rsc = mummy.bgf
+   RazaMummyQuest_name_rsc = "clear the mausoleum"
+   RazaMummyQuest_desc_rsc = \
+      "Raza's Mausoleum has been overrun with mummies, and they appear to be "
+      "almost intelligently following a powerful shadow-cloaked mummy.  "
+      "Venture to the end of the Mausoleum and use the levers to open the "
+      "gate to defeat the shadow mummy."
+
+   RazaMummyQuest_return_rsc = \
+      "Return to the elder, Rodric d'Stane, and let him know you've "
+      "defeated the shadow mummy."
+
+   RazaMummyQuest_completed = \
+      "You have defended the Raza Mausoleum and defeated the shadow mummy."
+
+
+   // Quest resources.
+   RazaMummyQuest_trigger = "quest"
+   RazaMummyQuest_assign = \
+      "Yes, yes!  I need adventurers to clear out the mausoleum on the south "
+      "side of town!  The mausoleum is crawling with mummies, and recently an "
+      "unholy abomination in the form of a shadow mummy has been sighted!  The "
+      "other mummies seem drawn to it, and perhaps killing it will cleanse that "
+      "once-holy place.  Slay the shadow mummy and I will reward you for your troubles."
+   RazaMummyQuest_success = \
+      "Ah yes, I heard tales of your battle with the shadow mummy - this is a "
+      "small town and news travels quickly.  The mummy infestation remains if "
+      "you wish to patrol the mausoleum further, though I expect you want to "
+      "see what adventures the rest of the world offers too.  Here, take this "
+      "as a token of my appreciation and good luck on your travels!"
+   RazaMummyQuest_failure = \
+      "Subject: Clearing the mausoleum\n"
+      "If you are still interested in defeating the shadow mummy, come "
+      "and see me again."
+
+classvars:
+
+   vrIcon = RazaMummyQuest_icon_rsc
+   vrName = RazaMummyQuest_name_rsc
+   vrDesc = RazaMummyQuest_desc_rsc
+
+   vrNodeTwo = RazaMummyQuest_return_rsc
+   vrCompleted = RazaMummyQuest_completed
+
+   // The QST_ID constant for this quest.
+   viQuestID = QST_ID_RAZA_MUMMY
+
+properties:
+
+   piNumPlayers = 1
+   piPlayerRestrict = Q_PLAYER_NOTSUCCEEDED | Q_PLAYER_NOTFAILED_RECENTLY
+   plSpecialRestrict = $
+   piMaxPlayers = 30
+   piSchedulePct = 100
+   piTimeLimit = 2 * 3600 // 2 hours.
+
+messages:
+
+   Constructor()
+   {
+      // Quest node list to send to QuestEngine.
+      plQuestNodes = [QNT_ID_RAZA_MUMMY_ONE, QNT_ID_RAZA_MUMMY_TWO];
+
+      propagate;
+   }
+
+   SendQuestNodeTemplates()
+   {
+      local oQE, oLib;
+
+      oQE = Send(SYS,@GetQuestEngine);
+      oLib = Send(SYS,@GetLibrary);
+
+      // QNT_ID_RAZA_MUMMY_ONE
+      if Send(oQE,@AddQuestNodeTemplate,#questnode_type=QN_TYPE_MESSAGE,
+               #cargolist=[RazaMummyQuest_trigger],
+               #quest_node_index=QNT_ID_RAZA_MUMMY_ONE)
+      {
+         Send(oQE,@SetQuestNodeNPCList,#index=QNT_ID_RAZA_MUMMY_ONE,
+               #new_NPC_list=Send(oLib,@GetOccupationList,
+                                 #cNPC_class=&RazaElder));
+      }
+      else
+      {
+         Debug("Error building QN: QNT_ID_RAZA_MUMMY_ONE");
+      }
+
+      // QNT_ID_RAZA_MUMMY_TWO
+      if Send(oQE,@AddQuestNodeTemplate,#questnode_type=QN_TYPE_MONSTER,
+               #NPC_modifier=QN_NPCMOD_SAME,#timelimit=piTimeLimit,
+               #monsterlist=[&BlackMummy],
+               #prizelist=[ [ [ QN_PRIZETYPE_ITEMCLASS, &LongSword, 1 ],
+                              [ QN_PRIZETYPE_ITEMCLASS, &GoldShield, 1 ],
+                              [ QN_PRIZETYPE_ITEMCLASS, &ScaleArmor, 1 ],
+                              [ QN_PRIZETYPE_ITEMCLASS, &SimpleHelm, 1 ],
+                              [ QN_PRIZETYPE_ITEMCLASS, &InkyCap, 1 ],
+                              [ QN_PRIZETYPE_ITEMCLASS, &IdentifyWand, 1 ],
+                              [ QN_PRIZETYPE_ITEMCLASS, &Flask, 1 ] ] ],
+               #quest_node_index=QNT_ID_RAZA_MUMMY_TWO)
+      {
+         Send(oQE,@SetQuestNodeAssignHint,#index=QNT_ID_RAZA_MUMMY_TWO,
+               #new_hint=RazaMummyQuest_assign);
+         Send(oQE,@SetQuestNodeSuccessHint,#index=QNT_ID_RAZA_MUMMY_TWO,
+               #new_hint=RazaMummyQuest_success);
+         Send(oQE,@SetQuestNodeFailureHint,#index=QNT_ID_RAZA_MUMMY_TWO,
+               #new_hint=RazaMummyQuest_failure);
+      }
+      else
+      {
+         Debug("Error building QN: QNT_ID_RAZA_MUMMY_TWO");
+      }
+
+      return;
+   }
+
+   MainDesc(who=$,index=$,oQuestNode=$)
+   {
+      local oMob;
+
+      oMob = Send(oQuestNode,@GetQuestMonster);
+      if oMob = $
+      {
+         AddPacket(4,vrNodeTwo);
+      }
+      else
+      {
+         AddPacket(4,vrDesc);
+      }
+
+      return;
+   }
+
+end
+/////////////////////////////////////////////////////////////////////////////////

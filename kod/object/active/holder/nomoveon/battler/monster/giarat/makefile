@@ -5,6 +5,6 @@
 !include $(TOPDIR)\common.mak
 
 DEPEND = ..\giarat.bof
-BOFS  = giaratk.bof giarats.bof giaratsm.bof \
+BOFS  = giaratk.bof giarats.bof giaratsm.bof sewrat.bof \
 
 !include $(KODDIR)\kod.mak

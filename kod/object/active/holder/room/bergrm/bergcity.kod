@@ -36,7 +36,7 @@ classvars:
    
    viPermanent_flags = ROOM_GUILD_PK_ONLY | ROOM_LAMPS
 
-   viTerrain_Type = TERRAIN_CITY | TERRAIN_ROAD | TERRAIN_LAKE
+   viTerrain_Type = TERRAIN_CITY | TERRAIN_ROAD | TERRAIN_BERG
    
 properties:
 
@@ -111,7 +111,21 @@ messages:
 
       propagate;
    }
-   
+
+   SomethingMoved(what = $,new_row = $, new_col = $)
+   {
+      if (new_row >= 39) AND (new_col <= 43)
+      {
+         Send(SYS,@UtilGoNearSquare,#what=what,
+             #where=Send(SYS,@FindRoomByNum,#num=RID_BERG_LEADER),
+             #new_row=3,#new_col=23, #new_angle=ANGLE_SOUTH);
+
+         return;
+      }
+
+      propagate;
+   }
+
    CreateStandardObjects()
    {
       // Lighting
@@ -127,7 +141,7 @@ messages:
          #new_row=31,#new_col=87,#fine_row=24,#fine_col=8);
 
       // Firepit
-      Send(self,@NewHold,#what=Create(&Firepit,#iSoundRadius=5),#new_row=15,#new_col=85,
+      Send(self,@NewHold,#what=Create(&Firepit,#iSoundRadius=1),#new_row=15,#new_col=85,
          #fine_row=50,#fine_col=18);
  
       // Lamps

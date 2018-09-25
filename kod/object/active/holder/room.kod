@@ -158,6 +158,10 @@ resources:
    room_forest_sound = ambcntry.ogg
    room_necro_sound = necloop2.ogg
    room_beach_sound = ocean.ogg
+   
+   room_bergwind1_sound = wind_berg1.ogg
+   room_bergwind2_sound = wind_berg2.ogg
+   room_birdchirping_sound = birdchirping.ogg
 
    room_rain_sound = rain.ogg
 
@@ -385,7 +389,7 @@ messages:
 
       // each looping sound is [wave_file, row, col, cutoff radius, maximum volume]
 
-      if (iTerrain & TERRAIN_BADLANDS) OR (iTerrain & TERRAIN_MOUNTAIN)
+      if (iTerrain & TERRAIN_BADLANDS) OR (iTerrain & TERRAIN_MOUNTAIN) OR (iTerrain & TERRAIN_BERG)
       {
          plLooping_sounds = Cons([ room_badmount_sound, 1, 1, 300, 100 ],
                                  plLooping_sounds);
@@ -688,7 +692,7 @@ messages:
          lTempSounds = [ room_forest_sound1, room_forest_sound2,
                          room_forest_sound3, room_forest_sound4,
                          room_forest_sound5, room_forest_sound6,
-                         room_forest_sound7
+                         room_forest_sound7, room_birdchirping_sound
                        ];
 
          foreach rSound in lTempSounds
@@ -702,6 +706,19 @@ messages:
          piPeriodic_sounds = piPeriodic_sounds / 2;
          lTempSounds =  [ room_sewer_sound1, room_sewer_sound2,
                           room_sewer_sound3, room_sewer_sound4
+                        ];
+
+         foreach rSound in lTempSounds
+         {
+            plPeriodic_sounds = Cons(rSound, plPeriodic_sounds);
+         }
+      }
+
+      if (iTerrain & TERRAIN_BERG)
+      {
+         piPeriodic_sounds = piPeriodic_sounds / 2;
+         lTempSounds =  [ room_bergwind1_sound, room_bergwind1_sound,
+                          room_badmount_sound5, room_birdchirping_sound
                         ];
 
          foreach rSound in lTempSounds
@@ -5178,7 +5195,7 @@ messages:
          return 10;
       }
 
-      if (iTerrain & TERRAIN_DESERT)
+      if (iTerrain & TERRAIN_BERG)
       {
          return 5;
       }
@@ -5271,7 +5288,7 @@ messages:
          iBonus = iBonus +  10;
       }
 
-      if (iTerrain & TERRAIN_DESERT)
+      if (iTerrain & TERRAIN_BERG)
       {
          iBonus = iBonus +  5;
       }

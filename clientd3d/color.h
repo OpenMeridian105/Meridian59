@@ -56,6 +56,7 @@ M59EXPORT COLORREF GetColor(WORD color);
 M59EXPORT HBRUSH GetBrush(WORD color);
 COLORREF GetPlayerNameColor(object_node* obj,char *name);
 COLORREF GetPlayerWhoNameColor(object_node* obj,char *name);
+COLORREF GetQuestInfoColor(object_node* obj);
 
 void UserSelectColor(WORD color);
 void UserSelectColors(WORD fg, WORD bg);

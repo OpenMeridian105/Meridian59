@@ -261,6 +261,8 @@ void            D3DRenderPaletteSet(UINT xlatID0, UINT xlatID1, BYTE flags);
 void            D3DRenderPaletteSetNew(UINT xlatID0, UINT xlatID1, BYTE flags);
 void            D3DRenderNamesDraw3D(d3d_render_cache_system *pCacheSystem, d3d_render_pool_new *pPool,
                   room_type *room, Draw3DParams *params, font_3d *pFont);
+void            D3DRenderQuestInfoDraw3D(d3d_render_cache_system *pCacheSystem, d3d_render_pool_new *pPool,
+                  room_type *room, Draw3DParams *params, font_3d *pFont);
 void            D3DRenderLMapsBuild(void);
 void            D3DRenderFontInit(font_3d *pFont, HFONT hFont);
 void            D3DRenderSkyboxDraw(d3d_render_pool_new *pPool);
@@ -1082,6 +1084,7 @@ void D3DRenderBegin(room_type *room, Draw3DParams *params)
          D3DRenderPoolReset(&gObjectPool, &D3DMaterialObjectPool);
          D3DCacheSystemReset(&gObjectCacheSystem);
          D3DRenderNamesDraw3D(&gObjectCacheSystem, &gObjectPool, room, params, &gFont);
+         D3DRenderQuestInfoDraw3D(&gObjectCacheSystem, &gObjectPool, room, params, &gFont);
          D3DCacheFill(&gObjectCacheSystem, &gObjectPool, 1);
          D3DCacheFlush(&gObjectCacheSystem, &gObjectPool, 1, D3DPT_TRIANGLESTRIP);
 
@@ -3092,6 +3095,285 @@ void D3DRenderNamesDraw3D(d3d_render_cache_system *pCacheSystem, d3d_render_pool
                pChunk->xLat0 = pRNode->obj.translation;
                pChunk->xLat1 = 0;
             }
+
+            x -= width;
+         }
+      }
+   }
+}
+
+void D3DRenderQuestInfoDraw3D(d3d_render_cache_system *pCacheSystem, d3d_render_pool_new *pPool,
+   room_type *room, Draw3DParams *params, font_3d *pFont)
+{
+   D3DMATRIX         mat, xForm, trans;
+   int               strLen, sector_flags, offset;
+   room_contents_node   *pRNode;
+   list_type         list;
+   long            dx, dy, angle, top, bottom;
+   PDIB            pDib;
+   custom_xyz         vector;
+   custom_st         st[4];
+   custom_bgra         bgra;
+   float            width, height, x, z, depth, distance;
+   char            *pText, *ptr;
+   TBYTE            c;
+   COLORREF         fg_color;
+   Color            color;
+   BYTE            *palette;
+
+   d3d_render_packet_new   *pPacket;
+   d3d_render_chunk_new   *pChunk;
+
+   pText = "!";
+   strLen = strlen(pText);
+   float texScale = pFont->texScale * 0.7f;
+
+   for (list = room->contents; list != NULL; list = list->next)
+   {
+      float glyph_scale = 255;
+
+      pRNode = (room_contents_node *)list->data;
+
+      if (pRNode->obj.id == player.id
+         || (pRNode->obj.drawingtype == DRAWFX_INVISIBLE)
+         || !((pRNode->obj.flags & OF_NPCACTIVEQUEST)
+            ||  (pRNode->obj.flags & OF_NPCHASQUESTS)))
+         continue;
+
+      /////////////////////////////////////////////////////////////////////////
+      // Distance, angle, get bitmap
+      /////////////////////////////////////////////////////////////////////////
+
+      vector.x = pRNode->motion.x - player.x;
+      vector.y = pRNode->motion.y - player.y;
+
+      distance = (vector.x * vector.x) + (vector.y * vector.y);
+      distance = sqrtf(distance);
+
+      if (distance <= 0)
+         distance = 1;
+      else if (distance >= MAX_NAME_DISTANCE
+         && !(pRNode->obj.id != INVALID_ID
+            && pRNode->obj.id == GetUserTargetID()
+            && (pRNode->obj.drawingtype != DRAWFX_INVISIBLE)))
+         continue;
+
+      pDib = GetObjectPdib(pRNode->obj.icon_res, 0, pRNode->obj.animate->group);
+
+      if (NULL == pDib)
+         continue;
+
+      dx = pRNode->motion.x - params->viewer_x;
+      dy = pRNode->motion.y - params->viewer_y;
+
+      angle = (pRNode->angle - intATan2(-dy, -dx)) & NUMDEGREES_MASK;
+
+      angle = pRNode->angle - (params->viewer_angle + 3072);
+
+      if (angle < -4096)
+         angle += 4096;
+
+      /////////////////////////////////////////////////////////////////////////
+      // Room height/depth
+      /////////////////////////////////////////////////////////////////////////
+
+      /* Make sure that object is above the floor. */
+      if (!GetRoomHeight(room->tree, &top, &bottom, &sector_flags, pRNode->motion.x, pRNode->motion.y))
+         continue;
+
+      // Set object depth based on "depth" sector flags
+      depth = sector_depths[SectorDepth(sector_flags)];
+
+      if (ROOM_OVERRIDE_MASK & GetRoomFlags()) // if depth flags are normal (no overrides)
+      {
+         switch (SectorDepth(sector_flags))
+         {
+         case SF_DEPTH1:
+            if (ROOM_OVERRIDE_DEPTH1 & GetRoomFlags())
+               depth = GetOverrideRoomDepth(SF_DEPTH1);
+            break;
+         case SF_DEPTH2:
+            if (ROOM_OVERRIDE_DEPTH2 & GetRoomFlags())
+               depth = GetOverrideRoomDepth(SF_DEPTH2);
+            break;
+         case SF_DEPTH3:
+            if (ROOM_OVERRIDE_DEPTH3 & GetRoomFlags())
+               depth = GetOverrideRoomDepth(SF_DEPTH3);
+            break;
+         }
+      }
+
+      /////////////////////////////////////////////////////////////////////////
+      // Set up text positioning
+      /////////////////////////////////////////////////////////////////////////
+
+      float matdy = (float)max(bottom, pRNode->motion.z) - depth +
+         (((float)pDib->height / (float)pDib->shrink * 16.0f) - (float)pDib->yoffset * 4.0f) +
+         ((float)pRNode->boundingHeightAdjust * 4.0f);
+      matdy += ((pFont->texST[pText[0] - 32][1].t - pFont->texST[pText[0] - 32][0].t)
+        * pFont->texHeight * 2.0f / texScale * (distance / FINENESS));
+
+      MatrixTranslate(&mat, (float)pRNode->motion.x, matdy, (float)pRNode->motion.y);
+      MatrixMultiply(&xForm, &mPlayerHeadingTrans, &mat);
+
+      /////////////////////////////////////////////////////////////////////////
+      // Text coloring
+      /////////////////////////////////////////////////////////////////////////
+
+      fg_color = GetQuestInfoColor(&pRNode->obj);
+
+      // Some names never grow darker, they use PALETTEINDEX().
+      if (HIBYTE(HIWORD(fg_color)) == HIBYTE(HIWORD(PALETTEINDEX(0))))
+      {
+         //XXX: normally, SetTextColor() works with PALETTEINDEX() types fine,
+         //     but not here for unknown reason
+         //     so we convert to our base_palette[] PALETTERGB() type.
+         //
+         color = base_palette[LOBYTE(LOWORD(fg_color))];
+      }
+      else
+      {
+         // Draw name with color that fades with distance, just like object
+         if (pRNode->obj.flags & (OF_FLICKERING | OF_FLASHING))
+         {
+            //palette = GetLightPalette(object->distance, object->light, FINENESS,GetFlicker(r));
+            palette = GetLightPalette(D3DRENDER_LIGHT_DISTANCE, 63, FINENESS, 0);
+         }
+         else
+         {
+            //palette = GetLightPalette(object->distance, object->light, FINENESS,0);
+            palette = GetLightPalette(D3DRENDER_LIGHT_DISTANCE, 63, FINENESS, 0);
+         }
+         color = base_palette[palette[GetClosestPaletteIndex(fg_color)]];
+         D3DObjectLightingCalc(room, pRNode, &bgra, 0);
+
+         glyph_scale = max(bgra.b, bgra.g);
+         glyph_scale = max(glyph_scale, bgra.r);
+      }
+
+      bgra.r = color.red * glyph_scale / 255;
+      bgra.g = color.green * glyph_scale / 255;
+      bgra.b = color.blue * glyph_scale / 255;
+      bgra.a = COLOR_MAX;
+
+      /////////////////////////////////////////////////////////////////////////
+      // Room height/depth
+      /////////////////////////////////////////////////////////////////////////
+      for (offset = 0; offset <= 1; offset++)
+      {
+         x = 0.0f;
+         z = 0;
+         ptr = pText;
+
+         while (c = *ptr++)
+         {
+            x += (pFont->texST[c - 32][1].s - pFont->texST[c - 32][0].s) *
+               pFont->texWidth / texScale * (distance / FINENESS);
+         }
+
+         ptr = pText;
+
+         while (c = *ptr++)
+         {
+            int   i;
+
+            // flip t values since bmps are upside down
+            st[0].s = pFont->texST[c - 32][0].s;
+            st[0].t = pFont->texST[c - 32][1].t;
+            st[1].s = pFont->texST[c - 32][0].s;
+            st[1].t = pFont->texST[c - 32][0].t;
+            st[2].s = pFont->texST[c - 32][1].s;
+            st[2].t = pFont->texST[c - 32][0].t;
+            st[3].s = pFont->texST[c - 32][1].s;
+            st[3].t = pFont->texST[c - 32][1].t;
+
+            width = (st[2].s - st[0].s) * pFont->texWidth * 2.0f / texScale *
+               (distance / FINENESS);
+            height = (st[0].t - st[2].t) * pFont->texHeight * 2.0f / texScale *
+               (distance / FINENESS);
+
+            pPacket = D3DRenderPacketFindMatch(pPool, pFont->pTexture, NULL, 0, 0, 0);
+            if (NULL == pPacket)
+               return;
+            pChunk = D3DRenderChunkNew(pPacket);
+            assert(pChunk);
+
+            pChunk->flags = pRNode->obj.flags;
+            pChunk->numIndices = 4;
+            pChunk->numVertices = 4;
+            pChunk->numPrimitives = pChunk->numVertices - 2;
+
+            // zBias is scaled way differently in Dx9
+            // try to put names as much in the front as possible
+            if (offset == 0)
+               pChunk->zBias = 255;
+            else
+               pChunk->zBias = 254;
+
+            if (offset)
+            {
+               //MatrixScale(&scale, 1.01f);
+               MatrixTranslate(&trans, -30.0f * distance / MAX_NAME_DISTANCE,
+                  -30.0f * distance / MAX_NAME_DISTANCE, 0);
+               MatrixMultiply(&pChunk->xForm, &trans, &xForm);
+            }
+            else
+               MatrixCopy(&pChunk->xForm, &xForm);
+
+            pPacket->pMaterialFctn = &D3DMaterialObjectPacket;
+            pChunk->pMaterialFctn = &D3DMaterialObjectChunk;
+
+            pChunk->xyz[0].x = x;
+            pChunk->xyz[0].y = 0;
+            pChunk->xyz[0].z = z;
+
+            pChunk->st0[0].s = st[0].s;
+            pChunk->st0[0].t = st[0].t;
+
+            pChunk->xyz[1].x = x;
+            pChunk->xyz[1].y = 0;
+            pChunk->xyz[1].z = z + height;
+
+            pChunk->st0[1].s = st[1].s;
+            pChunk->st0[1].t = st[1].t;
+
+            pChunk->xyz[2].x = x - width;
+            pChunk->xyz[2].y = 0;
+            pChunk->xyz[2].z = z + height;
+
+            pChunk->st0[2].s = st[2].s;
+            pChunk->st0[2].t = st[2].t;
+
+            pChunk->xyz[3].x = x - width;
+            pChunk->xyz[3].y = 0;
+            pChunk->xyz[3].z = z;
+
+            pChunk->st0[3].s = st[3].s;
+            pChunk->st0[3].t = st[3].t;
+
+            if (offset != 0)
+            {
+               bgra.r = 0;
+               bgra.g = 0;
+               bgra.b = 0;
+            }
+
+            for (i = 0; i < 4; i++)
+            {
+               pChunk->bgra[i].r = bgra.r;
+               pChunk->bgra[i].g = bgra.g;
+               pChunk->bgra[i].b = bgra.b;
+               pChunk->bgra[i].a = bgra.a;
+            }
+
+            pChunk->indices[0] = 1;
+            pChunk->indices[1] = 2;
+            pChunk->indices[2] = 0;
+            pChunk->indices[3] = 3;
+
+            pChunk->alphaRef = TEMP_ALPHA_REF;
+            pChunk->xLat0 = pRNode->obj.translation;
+            pChunk->xLat1 = 0;
 
             x -= width;
          }

@@ -472,3 +472,19 @@ COLORREF GetPlayerWhoNameColor(object_node* obj, char *name)
 
       return PALETTERGB(r, g, b);
 }
+/****************************************************************************/
+/*
+ * GetQuestInfoColor:  Return color for quest info text based on object flags.
+ */
+COLORREF GetQuestInfoColor(object_node* obj)
+{
+   if ((obj->flags & OF_NPCACTIVEQUEST) == OF_NPCACTIVEQUEST)
+   {
+      return PALETTERGB(0, 255, 120);
+   }
+   else if ((obj->flags & OF_NPCHASQUESTS) == OF_NPCHASQUESTS)
+   {
+      return PALETTERGB(255, 255, 0);
+   }
+   return PALETTERGB(255, 255, 0);
+}

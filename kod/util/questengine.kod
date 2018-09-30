@@ -34,6 +34,7 @@ constants:
 //   QT_ACTIVE_QUESTS     = 8
 //   QT_SCHEDULE_CHANCE   = 9
 //   QT_PLAYER_RESTRICT2  = 10
+//   QT_NUM_QUEST_GIVERS  = 11
 
 // Field names for a QuestNodeTemplate
 //   QNT_QNT_ID        = 1
@@ -48,6 +49,7 @@ constants:
 //   QNT_SUCCESS_HINT  = 10
 //   QNT_FAILURE_HINT  = 11
 //   QNT_TIME_LIMIT    = 12
+//   QNT_QT_ID         = 13
 
 resources:
 
@@ -875,7 +877,7 @@ messages:
    "indicates more than one QuestTemplate will be sending the same quest node."
    "Creates new permanent strings, if successful."
    {
-      local NPC, lQNT, lQNTemplate, iThisQNTIndex;
+      local NPC, lQNT, lQNTemplate, iThisQNTIndex, i, iQT;
 
      // Validity checks. This message now requires the quest_node_index
      // be sent.
@@ -942,7 +944,7 @@ messages:
       }
 
       // Don't add duplicate quest nodes.
-      if GetListNode(plQuestNodeTemplates, QT_QST_ID, quest_node_index)
+      if GetListNode(plQuestNodeTemplates, QNT_QNT_ID, quest_node_index)
       {
          // Some quest nodes are used by more than one quest, so allow
          // those and don't log the error in the quest template.
@@ -959,10 +961,28 @@ messages:
          }
       }
 
+      // Add a reference to the Quest Template ID.
+      // Ideally this would be sent to AddQuestNodeTemplate as a parameter.
+      // Note that this must be used very carefully due to a small number of
+      // quest nodes being reused for 2 or more quests. All instances of these
+      // so far share characteristics such as # of quest givers, but this might
+      // not hold in the future. Once the QuestX and QuestNode objects are
+      // created, it is much preferred to get the Quest Template ID from QuestX.
+      iQT = 0;
+      foreach i in plQuestTemplates
+      {
+         if (FindListElem(Nth(i,QT_QUEST_NODES),quest_node_index))
+         {
+            iQT = Nth(i,QT_QST_ID);
+
+            break;
+         }
+      }
+
       lQNTemplate = [ quest_node_index, plDefaultNPCList, NPC_modifier, \
                       questnode_type, cargolist, monsterlist, prizelist, \
                       penaltylist, CreateString(),CreateString(), \
-                      CreateString(), timelimit ];
+                      CreateString(), timelimit, iQT ];
 
       // Quest nodes no longer need to be in order.
       plQuestNodeTemplates = Cons(lQNTemplate, plQuestNodeTemplates);
@@ -1035,6 +1055,73 @@ messages:
       }
 
       return GetListNode(plQuestNodeTemplates, QNT_QNT_ID, index) <> $;
+   }
+
+   GetFreeNPCFromQuestNodeTemplate(index = 0, qtIndex = 0)
+   "Retrieves an NPC from the list in questnode template #index."
+   "Will pick one that doesn't already have this quest active."
+   "If one can't be picked, returns $."
+   {
+      local lNPCList, oNPC, lActiveQuests, oQN, lQT, iFirstQNT, i;
+
+      lNPCList = Nth(Send(self,@GetQuestNodeTemplate,#index=index),QNT_NPC_LIST);
+
+      if lNPCList = $
+      {
+         Debug("Nil NPC list, QN:",index);
+
+         return $;
+      }
+
+      // If we only have one choice, return it.
+      if (Length(lNPCList) = 1)
+      {
+         return First(lNPCList);
+      }
+
+      lQT = Send(self,@GetQuestTemplate,#index=qtIndex);
+
+      // If we don't have any active quests, any random NPC will do.
+      lActiveQuests = Nth(lQT,QT_ACTIVE_QUESTS);
+      if (lActiveQuests = $)
+      {
+         return Send(self,@GetRandomNPCFromQuestNodeTemplate,#index=index);
+      }
+
+      // More than one choice, at least one quest active. Don't put a second
+      // quest onto the same NPC.
+      // The randomness we use here is picking a random starting point in
+      // the NPC list.
+
+      lNPCList = ListCopy(lNPCList);
+      iFirstQNT = First(Nth(lQT,QT_QUEST_NODES));
+      while (lNPCList <> $)
+      {
+         oNPC = Nth(lNPCList, Random(1,Length(lNPCList)));
+         foreach i in lActiveQuests
+         {
+            oQN = Send(i,@GetActiveQuestNode);
+            if (Send(oQN,@GetQuestNodeTemplateIndex) = iFirstQNT
+               AND Send(oQN,@GetDestNPC) = oNPC)
+            {
+               lNPCList = DelListElem(lNPCList,oNPC);
+               oNPC = $;
+               break;
+            }
+         }
+
+         // If we get through the active quest list without a match,
+         // we can use this NPC.
+         if (oNPC <> $)
+         {
+            return oNPC;
+         }
+      }
+
+      Debug("GetFreeNPCFromQuestNodeTemplate failed to get a free NPC for QNT ",
+         index);
+
+      return $;
    }
 
    GetRandomNPCFromQuestNodeTemplate(index = 0, not_NPC = $)
@@ -1194,8 +1281,12 @@ messages:
    "Resets NPC_list to plDefaultNPCList if new_NPC_list is nil."
    "Returns 1 if successful, 0 otherwise."
    {
-      local oNPC;
+      local oNPC, lQNT, lQT;
 
+      if (index = 0)
+      {
+         Debug("Invalid index given to SetQuestNodeNPCList");
+      }
       if Send(self,@IsValidQuestNodeTemplate,#index=index) = FALSE
       {
          return 0;
@@ -1213,7 +1304,22 @@ messages:
          }
       }
 
-      SetNth(Send(self,@GetQuestNodeTemplate,#index=index),QNT_NPC_LIST, new_NPC_list);
+      lQNT = Send(self,@GetQuestNodeTemplate,#index=index);
+      SetNth(lQNT,QNT_NPC_LIST,new_NPC_list);
+
+      if (new_NPC_list <> $)
+      {
+         lQT = Send(self,@GetQuestTemplate,#index=Nth(lQNT, QNT_QT_ID));
+         if (lQT = 0
+            OR lQT = $)
+         {
+            Debug("got bad quest template",Nth(lQNT, QNT_QT_ID), lQT, " for quest node ",index);
+         }
+         if (index = First(Nth(lQT,QT_QUEST_NODES)))
+         {
+            SetNth(lQT,QT_NUM_QUEST_GIVERS,Length(new_NPC_list));
+         }
+      }
 
       return 1;
    }
@@ -1555,7 +1661,7 @@ messages:
 
       lQTemplate = [ quest_index, quest_object, num_players, quest_type, \
                      player_restrict, nodes, max_active, [], schedule_pct, \
-                     player_restrict2 ];
+                     player_restrict2, 0];
 
       // Quest templates no longer need to be in order.
       plQuestTemplates = Cons(lQTemplate, plQuestTemplates);
@@ -1800,7 +1906,7 @@ messages:
 
       if lQT = $
       {
-         Debug("RemoveQuestFromActiveList couldn't find quest template ",
+         Debug("AddQuestToActiveList couldn't find quest template ",
                quest_template);
 
          return $;
@@ -1989,8 +2095,6 @@ messages:
    {
       local i;
 
-      //   DeleteTimer( ptQuestTimer);      // try removing this line -- damian
-      ptQuestTimer = $;
       ptQuestTimer = CreateTimer(self,@OnQuestTimer,piQuestTimerDelay);
       if ptQuestDeadlineTimer = $
       {
@@ -2015,29 +2119,61 @@ messages:
       return;
    }
 
+   RescheduleQuest(index=0, qnIndex=0)
+   {
+      local lQT;
+
+      // Only reschedule if qnIndex is first quest node for this quest.
+      lQT = Send(self,@GetQuestTemplate,#index=index);
+      if (qnIndex <> First(Nth(lQT,QT_QUEST_NODES)))
+      {
+         return;
+      }
+      Post(self,@ScheduleQuest,#index=index);
+
+      return;
+   }
+
    ScheduleQuest(index=0, override=FALSE)
    "Schedules a Quest if the cap hasn't been reached "
    "Also does a QT_SCHEDULE_CHANCE die roll unless override=TRUE."
    {
-      local QT, lActiveQuests, QTindex, iActive, iMaxActive;
+      local lQT, lActiveQuests, QTindex, iActive, iMaxActive, iCount, iFirstQN, i;
 
-      QT = Send(self,@GetQuestTemplate,#index=index);
-      if QT = $
+      lQT = Send(self,@GetQuestTemplate,#index=index);
+      if lQT = $
       {
          return;
       }
 
-      lActiveQuests = Nth( QT, QT_ACTIVE_QUESTS);
-      iActive = Length( lActiveQuests);
-      iMaxActive = Nth( QT, QT_MAX_NUM_ACTIVE);
+      lActiveQuests = Nth(lQT, QT_ACTIVE_QUESTS);
+      iActive = Length(lActiveQuests);
+      iMaxActive = Nth(lQT, QT_MAX_NUM_ACTIVE);
    //      Debug("Active ", iActive);
    //      Debug("Max ", iMaxActive);
       if iActive < iMaxActive
       {
          // another one is allowed, so do the die roll
-         if override
-            OR Random(1,100) < Nth(QT, QT_SCHEDULE_CHANCE)
+         if (override
+            OR Random(1,100) < Nth(lQT, QT_SCHEDULE_CHANCE))
          {
+            // Check here if there's an NPC with no quest to take this one.
+            iCount = 0;
+            if (iActive >= Nth(lQT, QT_NUM_QUEST_GIVERS))
+            {
+               iFirstQN = First(Nth(lQT,QT_QUEST_NODES));
+               foreach i in Nth(lQT, QT_ACTIVE_QUESTS)
+               {
+                  if (Send(i,@GetQuestNodeTemplateIndex) = iFirstQN)
+                  {
+                     ++iCount;
+                  }
+               }
+            }
+            if (iCount >= Nth(lQT, QT_NUM_QUEST_GIVERS))
+            {
+               return;
+            }
             if piDebug
             {
                Debug("Scheduling quest of type ", index);

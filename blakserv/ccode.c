@@ -4380,7 +4380,7 @@ int C_SetNth(int object_id,local_var_type *local_vars,
 		normal_parm_array[0].value);
 	if (list_val.v.tag != TAG_LIST)
 	{
-		bprintf("C_SetFirst object %i can't set elem of non-list %i,%i\n",
+		bprintf("C_SetNth object %i can't set elem of non-list %i,%i\n",
 			object_id,list_val.v.tag,list_val.v.data);
 		return NIL;
 	}

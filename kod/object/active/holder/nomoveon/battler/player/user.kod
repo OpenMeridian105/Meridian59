@@ -4280,6 +4280,33 @@ messages:
       return FALSE;
    }
 
+   UserUpdateQuestMobs(what=$)
+   "Trigger a flag update for any mobs that match the given quest mob."
+   {
+      local i, each_obj, cClass;
+
+      if (what = $
+         OR NOT pbLogged_on)
+      {
+         return;
+      }
+
+      cClass = GetClass(what);
+
+      foreach i in Send(poOwner,@GetHolderActive)
+      {
+         each_obj = First(i);
+         if (IsClass(each_obj,&Monster)
+            AND (GetClass(each_obj) = cClass
+               OR Send(each_obj,@IsMonsterQuestEquivalent,#what=what)))
+         {
+            Send(self,@SomethingChangedFlags,#what=each_obj);
+         }
+      }
+
+      return;
+   }
+
    GetCompletedQuestLength()
    {
       local i, iCount, iQTemplate, oQObj, oQE;

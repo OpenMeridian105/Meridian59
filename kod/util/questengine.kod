@@ -642,7 +642,7 @@ messages:
    "Triggers QuestTemplates to send their quest node template data, and "
    "starts the Quest timer."
    {
-      local i, iMax, bOK, lNPCs, oNPC, lCargo, lCargo2, oLib, oQE, oQT;
+      local i, oLib, oQT;
 
       oLib = Send(SYS,@GetLibrary);
       // Use old quest engine to select a few random NPCs for default list.
@@ -697,34 +697,6 @@ messages:
       // Start timer
       ptQuestTimer = CreateTimer(self,@OnQuestTimer,2000);
       // Send(self, @OnQuestTimer);
-
-      // Schedule faction loyalty quests up to max
-      i = 0;
-      iMax = Nth(Send(self,@GetQuestTemplate,#index=QST_ID_PRINCESS_SERVICE),
-               QT_MAX_NUM_ACTIVE);
-      while i < iMax
-      {
-         i = i + 1;
-         Send(self,@ScheduleQuest,#index=QST_ID_PRINCESS_SERVICE,#override=TRUE);
-      }
-
-      i = 0;
-      iMax = Nth(Send(self,@GetQuestTemplate,#index=QST_ID_DUKE_SERVICE),
-               QT_MAX_NUM_ACTIVE);
-      while i < iMax
-      {
-         i = i + 1;
-         Send(self,@ScheduleQuest,#index=QST_ID_DUKE_SERVICE,#override=TRUE);
-      }
-
-      i = 0;
-      iMax = Nth(Send(self,@GetQuestTemplate,#index=QST_ID_REBEL_SERVICE),
-               QT_MAX_NUM_ACTIVE);
-      while i < iMax
-      {
-         i = i + 1;
-         Send(self,@ScheduleQuest,#index=QST_ID_REBEL_SERVICE,#override=TRUE);
-      }
 
       // If we have a saved quest list, reassign them.
       Send(self,@ReassignSavedQuests);

@@ -486,5 +486,9 @@ COLORREF GetQuestInfoColor(object_node* obj)
    {
       return PALETTERGB(255, 255, 0);
    }
+   else if ((obj->flags & OF_MOBKILLQUEST) == OF_MOBKILLQUEST)
+   {
+      return PALETTERGB(179, 0, 179);
+   }
    return PALETTERGB(255, 255, 0);
 }

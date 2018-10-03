@@ -1613,6 +1613,46 @@ messages:
       return;
    }
 
+   QuestNodeDisplayNPCActive(who = $, what = $)
+   "Takes a user 'who' and NPC 'what'.  Returns TRUE if the user's client "
+   "should display this NPC as being part of an active quest.  Part of active "
+   "quest means they are the destination NPC for a current quest node, and "
+   "there isn't a more immediate NPC/monster to find first (i.e. kill quest)."
+   {
+      if (what = $)
+      {
+         return FALSE;
+      }
+
+      // Not active if user has to kill mob first. Check that monster isn't
+      // the NPC in case that ever comes up in the future.
+      if (poMonster <> $)
+      {
+         return poMonster = what;
+      }
+
+      return poDestNPC = what;
+   }
+
+   QuestNodeDisplayMobActive(who = $, what = $)
+   "Takes a user 'who' and NPC 'what'.  Returns TRUE if the user's client "
+   "should display this mob as the target of a kill quest."
+   {
+      if (what = $
+         OR poMonster = $)
+      {
+         return FALSE;
+      }
+
+      if (GetClass(poMonster) = GetClass(what)
+         OR Send(what,@IsMonsterQuestEquivalent,#what=poMonster))
+      {
+         return TRUE;
+      }
+
+      return FALSE;
+   }
+
    GetQuesters()
    {
       return Send(poQuest,@GetQuesters);

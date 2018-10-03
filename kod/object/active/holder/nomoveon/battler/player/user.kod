@@ -3589,7 +3589,7 @@ messages:
             // Highlight quest-related NPCs.
             // NPCs that are part of active quests
             // override NPCs that have potential quests.
-            if (Send(self,@NPCQuestActive,#what=what))
+            if (Send(self,@UserDisplayNPCQuestActive,#what=what))
             {
                return MM_NPC | MM_NPCCURRENTQUEST;
             }
@@ -3600,6 +3600,10 @@ messages:
 
             // Draw plain dots for non-quest NPCs.
             return MM_NPC;
+         }
+         else if (Send(self,@UserDisplayMobQuestActive,#what=what))
+         {
+            iFlags |= MM_MOBKILLQUEST;
          }
 
          oTarget = Send(what,@GetTarget);
@@ -4232,7 +4236,7 @@ messages:
       return;
    }
 
-   NPCQuestActive(what = $)
+   UserDisplayNPCQuestActive(what = $)
    {
       local i, oQN;
 
@@ -4245,7 +4249,29 @@ messages:
       foreach i in plActiveQuests
       {
          oQN = Nth(i,2);
-         if (Send(oQN,@GetDestNPC) = what)
+         if (Send(oQN,@QuestNodeDisplayNPCActive,#who=self,#what=what))
+         {
+            return TRUE;
+         }
+      }
+
+      return FALSE;
+   }
+
+   UserDisplayMobQuestActive(what = $)
+   {
+      local i, oQN;
+
+      if (what = $
+         OR plActiveQuests = $)
+      {
+         return FALSE;
+      }
+
+      foreach i in plActiveQuests
+      {
+         oQN = Nth(i,2);
+         if (Send(oQN,@QuestNodeDisplayMobActive,#who=self,#what=what))
          {
             return TRUE;
          }

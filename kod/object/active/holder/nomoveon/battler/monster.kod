@@ -997,6 +997,11 @@ messages:
    {
       plActiveQuestNodes = $;
 
+      if (poOwner <> $)
+      {
+         Post(poOwner,@SomethingChanged,#what=self);
+      }
+
       return;
    }
 
@@ -1013,6 +1018,11 @@ messages:
       }
 
       plActiveQuestNodes = Cons(node, plActiveQuestNodes);
+
+      if (poOwner <> $)
+      {
+         Post(poOwner,@SomethingChanged,#what=self);
+      }
 
       return;
    }
@@ -1038,6 +1048,11 @@ messages:
          {
             plActiveQuestNodes = DelListElem(plActiveQuestNodes,oActiveNode);
          }
+      }
+
+      if (poOwner <> $)
+      {
+         Post(poOwner,@SomethingChanged,#what=self);
       }
 
       // validate that we removed it
@@ -8088,7 +8103,7 @@ messages:
          if (what <> $
             AND IsClass(what,&User))
          {
-            if (Send(what,@NPCQuestActive,#what=self))
+            if (Send(what,@UserDisplayNPCQuestActive,#what=self))
             {
                iFlags |= OF_NPCACTIVEQUEST;
             }
@@ -8099,8 +8114,14 @@ messages:
             }
          }
       }
+      else if (what <> $
+         AND IsClass(what,&User)
+         AND Send(what,@UserDisplayMobQuestActive,#what=self))
+      {
+         iFlags |= OF_MOBKILLQUEST;
+      }
 
-      if Send(Self,@MobIsSeller)
+      if Send(self,@MobIsSeller)
       {
          iFlags |= OF_BUYABLE;
       }

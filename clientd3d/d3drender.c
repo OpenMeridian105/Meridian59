@@ -3137,7 +3137,8 @@ void D3DRenderQuestInfoDraw3D(d3d_render_cache_system *pCacheSystem, d3d_render_
       if (pRNode->obj.id == player.id
          || (pRNode->obj.drawingtype == DRAWFX_INVISIBLE)
          || !((pRNode->obj.flags & OF_NPCACTIVEQUEST)
-            ||  (pRNode->obj.flags & OF_NPCHASQUESTS)))
+            || (pRNode->obj.flags & OF_NPCHASQUESTS)
+            || (pRNode->obj.flags & OF_MOBKILLQUEST)))
          continue;
 
       /////////////////////////////////////////////////////////////////////////

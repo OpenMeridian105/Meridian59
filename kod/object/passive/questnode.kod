@@ -648,6 +648,33 @@ messages:
       return TRUE;
    }
 
+   CanPlayerStartQuest(who=$)
+   "Checks if a given player would be able to start this quest if they "
+   "triggered it.  Does not actually start the quest.  Only applicable for "
+   "initial quest nodes for a quest.  Distance between player and NPC not "
+   "checked."
+   {
+      local lQT;
+
+      // Quest must be available.
+      if piStatus <> QN_STATUS_WAITING_FOR_PLAYERS
+         AND piStatus <> QN_STATUS_WAITING_FOR_PLAYERS_TIMED
+      {
+         return FALSE;
+      }
+
+      // Can only 'start' the first quest node in sequence.
+      // TODO: This could be cached in the quest node.
+      lQT = Send(Send(SYS,@GetQuestEngine),@GetQuestTemplate,
+               #index=Send(poQuest,@GetQuestTemplateIndex));
+      if (First(Nth(lQT,QT_QUEST_NODES)) <> piQuestNodeTemplateIndex)
+      {
+         return FALSE;
+      }
+
+      return Send(poQuest,@CheckPlayerCriteria,#quester_wannabe=who);
+   }
+
    CheckCompletionCriteria(who_tried = $, message = $, item_offered = $ )
    "Checks if the message, item, or showing up satisfies the quest.  "
    "Get here from dest NPC's ReqGive or OnSomethingSaid or OnSomeoneEntered.  "

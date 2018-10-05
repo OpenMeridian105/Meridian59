@@ -100,6 +100,7 @@ Bool HandlePlayers(char *ptr,long len);
 Bool HandleAddPlayer(char *ptr,long len);
 Bool HandleRemovePlayer(char *ptr,long len);
 Bool HandleSysMessage(char *ptr,long len);
+Bool HandleNPCQuestList(char *ptr, long len);
 Bool HandleBuyList(char *ptr,long len);
 Bool HandleWithdrawalList(char *ptr,long len);
 Bool HandlePlayWave(char *ptr,long len);

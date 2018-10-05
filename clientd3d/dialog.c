@@ -36,6 +36,9 @@ static ChildPlacement desc_controls[] = {
 	{ IDC_URLBUTTON,   RDI_BOTTOM },
 	{ IDC_URL,         RDI_BOTTOM },
 	{ IDC_APPLY,       RDI_BOTTOM },
+	{ IDC_BUY,         RDI_BOTTOM },
+	{ IDC_OFFER,       RDI_BOTTOM },
+	{ IDC_QUEST,       RDI_BOTTOM },
 	{ 0,               0 },   // Must end this way
 };
 
@@ -361,6 +364,12 @@ BOOL CALLBACK DescDialogProc(HWND hDlg, UINT message, UINT wParam, LONG lParam)
 			DestroyWindow(GetDlgItem(hDlg, IDC_ACTIVATE));
 		if (!(desc_flags & DESC_APPLY))
 			DestroyWindow(GetDlgItem(hDlg, IDC_APPLY));
+      if (!(desc_flags & DESC_BUY))
+         DestroyWindow(GetDlgItem(hDlg, IDC_BUY));
+      if (!(desc_flags & DESC_OFFER))
+         DestroyWindow(GetDlgItem(hDlg, IDC_OFFER));
+      if (!(desc_flags & DESC_QUEST))
+         DestroyWindow(GetDlgItem(hDlg, IDC_QUEST));
 		
 		SetLookPageButtons(hDlg, info);
 #if 0
@@ -510,6 +519,21 @@ BOOL CALLBACK DescDialogProc(HWND hDlg, UINT message, UINT wParam, LONG lParam)
 			   hURL = GetDlgItem(hDlg, IDC_URL);
 			   Edit_GetText(hURL, url, MAX_URL);
 			   WebLaunchBrowser(url);
+			   return TRUE;
+
+		   case IDC_QUEST:
+			   RequestNPCQuests(info->obj->id);
+			   EndDialog(hDlg, 0);
+			   return TRUE;
+
+		   case IDC_BUY:
+			   RequestBuy(info->obj->id);
+			   EndDialog(hDlg, 0);
+			   return TRUE;
+
+		   case IDC_OFFER:
+			   EndDialog(hDlg, 0);
+			   UserMakeOffer();
 			   return TRUE;
 			   
 		   case IDOK:
@@ -734,6 +758,7 @@ void DisplayDescription(object_node *obj, BYTE flags, char *description,
 void AbortGameDialogs(void)
 {
    AbortBuyDialog();
+   AbortQuestDialog();
    if (hDescDialog != NULL)
       SendMessage(hDescDialog, WM_COMMAND, IDCANCEL, 0);
    if (hAmountDialog != NULL)

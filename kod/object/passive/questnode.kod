@@ -675,6 +675,59 @@ messages:
       return Send(poQuest,@CheckPlayerCriteria,#quester_wannabe=who);
    }
 
+   CanPlayerEverStartQuest(who = $)
+   {
+      local lQT;
+
+      // Quest must be available.
+      if piStatus <> QN_STATUS_WAITING_FOR_PLAYERS
+         AND piStatus <> QN_STATUS_WAITING_FOR_PLAYERS_TIMED
+      {
+         return FALSE;
+      }
+
+      // Can only 'start' the first quest node in sequence.
+      // TODO: This could be cached in the quest node.
+      lQT = Send(Send(SYS,@GetQuestEngine),@GetQuestTemplate,
+               #index=Send(poQuest,@GetQuestTemplateIndex));
+      if (First(Nth(lQT,QT_QUEST_NODES)) <> piQuestNodeTemplateIndex)
+      {
+         return FALSE;
+      }
+
+      return Send(poQuest,@CanPlayerEverStartQuest,#who=who);
+   }
+
+   IsQuestOpenForPlayer(who = $)
+   {
+      local i;
+
+      foreach i in Send(poQuest,@GetQuesters)
+      {
+         if (i <> who)
+         {
+            return FALSE;
+         }
+      }
+
+      return TRUE;
+   }
+
+   IsPlayerQuester(who = $)
+   {
+      local i;
+
+      foreach i in Send(poQuest,@GetQuesters)
+      {
+         if (i = who)
+         {
+            return TRUE;
+         }
+      }
+
+      return FALSE;
+   }
+
    CheckCompletionCriteria(who_tried = $, message = $, item_offered = $ )
    "Checks if the message, item, or showing up satisfies the quest.  "
    "Get here from dest NPC's ReqGive or OnSomethingSaid or OnSomeoneEntered.  "
@@ -1899,6 +1952,23 @@ messages:
    GetQuestNodeTemplateIndex()
    {
       return piQuestNodeTemplateIndex;
+   }
+
+   GetQuestTemplateIndex()
+   {
+      return Send(poQuest,@GetQuestTemplateIndex);
+   }
+
+   GetQuestTemplateObject()
+   {
+      return Send(Send(SYS,@GetQuestEngine),@GetQuestTemplateObject,
+                  #index=Send(poQuest,@GetQuestTemplateIndex));
+   }
+
+   GetQuestName()
+   {
+      return Send(Send(Send(SYS,@GetQuestEngine),@GetQuestTemplateObject,
+                  #index=Send(poQuest,@GetQuestTemplateIndex)),@GetName);
    }
 
    Delete()

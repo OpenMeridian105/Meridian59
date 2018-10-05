@@ -62,6 +62,7 @@ static handler_struct game_handler_table[] = {
 { BP_USE_LIST,          HandleUseList },
 { BP_SAID,              HandleSaid },
 { BP_OBJECT_CONTENTS,   HandleObjectContents },
+{ BP_NPC_QUEST_LIST,    HandleNPCQuestList },
 { BP_BUY_LIST,          HandleBuyList },
 { BP_WITHDRAWAL_LIST,   HandleWithdrawalList },
 { BP_INVENTORY_ADD,     HandleInventoryAdd },
@@ -115,8 +116,8 @@ static handler_struct game_handler_table[] = {
 { BP_ROUNDTRIP1,        HandleRoundtrip },
 { BP_CHANGE_TEXTURE,    HandleChangeTexture },
 { BP_SECTOR_LIGHT,      HandleSectorLight },
-{ BP_SET_VIEW,      HandleSetView },
-{ BP_RESET_VIEW,   HandleResetView },
+{ BP_SET_VIEW,          HandleSetView },
+{ BP_RESET_VIEW,        HandleResetView },
 { 0, NULL},   // must end table this way
 };
 
@@ -1393,6 +1394,81 @@ Bool HandleAddPlayer(char *ptr,long len)
    }
    
    AddCurrentUser(obj);
+   return True;
+}
+/********************************************************************/
+Bool HandleNPCQuestList(char *ptr, long len)
+{
+   object_node npc_obj;
+   quest_ui_node *quest_ui_obj;
+   ID desc_rsc;
+   char *start;
+   WORD list_len;
+   list_type list = NULL;
+   start = ptr;
+
+   // Get NPC
+   memset(&npc_obj, 0, sizeof(npc_obj));
+
+   ExtractObject(&ptr, &npc_obj);
+   len -= (ptr - start);
+
+   Extract(&ptr, &list_len, SIZE_LIST_LEN);
+   len -= SIZE_LIST_LEN;
+
+   for (int i = 0; i < list_len; ++i)
+   {
+      quest_ui_obj = (quest_ui_node *)ZeroSafeMalloc(sizeof(quest_ui_node));
+
+      start = ptr;
+      ExtractObject(&ptr, &quest_ui_obj->obj);
+      len -= (ptr - start);
+
+      // Extract quest description
+      char message[MAXMESSAGE];
+      char *msg = message;
+
+      Extract(&ptr, &desc_rsc, SIZE_ID);
+      len -= SIZE_ID;
+
+      if (CheckMessageOrder(&ptr, &len, desc_rsc) < 0)
+         return False;
+      if (!CheckServerMessage(&msg, &ptr, &len, desc_rsc))
+         return False;
+      sprintf(quest_ui_obj->desc, msg);
+
+      char message2[MAXMESSAGE];
+      char *msg2 = message2;
+      message2[0] = 0;
+
+      // Extract quest node description (if user is on quest)
+      // or requirements description (if not on quest).
+      Extract(&ptr, &desc_rsc, SIZE_ID);
+      len -= SIZE_ID;
+
+      if (CheckMessageOrder(&ptr, &len, desc_rsc) < 0)
+         return False;
+      if (!CheckServerMessage(&msg2, &ptr, &len, desc_rsc))
+         return False;
+      sprintf(quest_ui_obj->secondary_desc, msg2);
+
+      list = list_add_item(list, quest_ui_obj);
+   }
+
+   if (len == 0)
+   {
+      QuestList(&npc_obj, list);
+   }
+
+   for (list_type l = list; l != NULL; l = l->next)
+   {
+      quest_ui_node *q = (quest_ui_node *)l->data;
+
+      ObjectDestroy(&q->obj);
+      SafeFree(q);
+   }
+   list_delete(list);
+
    return True;
 }
 /********************************************************************/

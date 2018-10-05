@@ -60,6 +60,7 @@ OBJS = \
     $(OUTDIR)\about.obj \
     $(OUTDIR)\login.obj \
     $(OUTDIR)\srvrstr.obj \
+    $(OUTDIR)\quest.obj \
     $(OUTDIR)\effect.obj \
     $(OUTDIR)\bitmap.obj \
     $(OUTDIR)\download.obj \

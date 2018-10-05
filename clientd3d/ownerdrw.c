@@ -345,9 +345,9 @@ void DrawOwnerListItem(const DRAWITEMSTRUCT *lpdis, Bool selected, Bool combo)
    SetBkMode(lpdis->hDC, OPAQUE);
    obj = (object_node*)lpdis->itemData;
 
-   hColorBg = GetBrush(GetItemListColor(lpdis->hwndItem, (selected? SEL_BGD : UNSEL_BGD), NULL));
+   hColorBg = GetBrush(GetItemListColor(lpdis->hwndItem, (selected? SEL_BGD : UNSEL_BGD), NULL, NULL));
    if ((style & OD_ONLYSEL) && (style & (OD_DRAWOBJ | OD_DRAWICON)))
-      hColorBg = GetBrush(GetItemListColor(lpdis->hwndItem, UNSEL_BGD, NULL));
+      hColorBg = GetBrush(GetItemListColor(lpdis->hwndItem, UNSEL_BGD, NULL, NULL));
 
    FillRect(lpdis->hDC, &lpdis->rcItem, hColorBg);
    SetBkMode(lpdis->hDC, TRANSPARENT);
@@ -357,15 +357,16 @@ void DrawOwnerListItem(const DRAWITEMSTRUCT *lpdis, Bool selected, Bool combo)
       obj; this statement causes NULL to be sent in that case */
    if (style & (OD_DRAWOBJ | OD_DRAWICON))
    {
-      crColorText = GetColor(GetItemListColor(lpdis->hwndItem, (selected? SEL_FGD : UNSEL_FGD), obj->flags));
+      crColorText = GetColor(GetItemListColor(lpdis->hwndItem, (selected? SEL_FGD : UNSEL_FGD),
+         obj->flags, obj->objecttype));
    }
    else
    {
-      crColorText = GetColor(GetItemListColor(lpdis->hwndItem, (selected? SEL_FGD : UNSEL_FGD), NULL));
+      crColorText = GetColor(GetItemListColor(lpdis->hwndItem, (selected? SEL_FGD : UNSEL_FGD), NULL, NULL));
    }
    
    if ((style & OD_ONLYSEL) && (style & (OD_DRAWOBJ | OD_DRAWICON)))
-   crColorText = GetColor(GetItemListColor(lpdis->hwndItem, UNSEL_FGD, obj->flags));
+   crColorText = GetColor(GetItemListColor(lpdis->hwndItem, UNSEL_FGD, obj->flags, obj->objecttype));
 
 
    if (lpdis->itemState & ODS_DISABLED)

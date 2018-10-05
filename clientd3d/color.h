@@ -41,6 +41,10 @@ enum {
    COLOR_ITEM_MAGIC_FG,   /* Color for magic weapons in lists*/
    COLOR_QUEST_HEADER,    /* Color for active/completed quest headers.*/
    COLOR_TIME_BORDER,     /* Color for the border of time display. */
+   COLOR_QUEST_ACTIVE_FG, /* Color for active quest in listbox */
+   COLOR_QUEST_VALID_FG,  /* Color for valid quest (can start) in listbox */
+   COLOR_QUEST_ACTIVE_SEL_FG,
+   COLOR_QUEST_VALID_SEL_FG,
    MAXCOLORS,
 };
 
@@ -66,6 +70,6 @@ void ColorsRestoreDefaults(void);
 M59EXPORT HBRUSH DialogCtlColor(HWND hwnd, HDC hdc, HWND hwndChild, int type);
 HBRUSH MainCtlColor(HWND hwnd, HDC hdc, HWND hwndChild, int type);
 
-WORD GetItemListColor(HWND hwnd, int type, int flags);
+WORD GetItemListColor(HWND hwnd, int type, int obj_flags, int obj_type);
 
 #endif /* #ifndef _COLOR_H */

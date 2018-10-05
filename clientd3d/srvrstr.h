@@ -36,6 +36,6 @@ M59EXPORT Bool CheckServerMessage(char** message, char **params, long *len, ID f
 M59EXPORT int CheckMessageOrder(char **param_ptr, long *len, ID fmt_id);
 M59EXPORT void DisplayServerMessage(char *message, COLORREF start_color, BYTE start_style);
 M59EXPORT void DisplayMessage(char *message, COLORREF start_color, BYTE start_style);
-
+void DisplayMessageQuestRestrictions(char *message, COLORREF start_color, BYTE start_style);
 
 #endif /* #ifndef _SRVRSTR_H */

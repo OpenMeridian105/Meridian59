@@ -2095,6 +2095,29 @@ messages:
          return;
       }
 
+      if liClient_cmd = BP_REQ_TRIGGER_QUEST
+      {
+         oWhat = Nth(client_msg,2);
+         if IsClass(oWhat,&Monster)
+         {
+            Send(self,@UserRequestTriggerQuest,#what=oWhat,
+                  #oQT=Nth(client_msg,3));
+         }
+
+         return;
+      }
+
+      if liClient_cmd = BP_REQ_NPC_QUESTS
+      {
+         oWhat = Nth(client_msg,2);
+         if IsClass(oWhat,&Monster)
+         {
+            Send(self,@UserRequestNPCQuests,#what=oWhat);
+         }
+
+         return;
+      }
+
       if liClient_cmd = BP_REQ_BUY_ITEMS
       {
          oWhat = Nth(client_msg,2);
@@ -3329,8 +3352,10 @@ messages:
       return Send(SYS,@GetSuccessRsc);
    }
 
-   ToCliFlags(what=$)
+   ToCliFlags(what=$,parm1=$)
    "Sends just the ObjectFlags (OF, DF, MM, NC, OT, MT) for 'what'."
+   "parm1 is optional parameter if more information is required to resolve "
+   "flag status."
    {
       local iFlags, iEnemyKarma, iSelfKarma, iMinimapFlags, iDrawingFlags;
 
@@ -3378,15 +3403,16 @@ messages:
 
       AddPacket(4,iFlags, 1,iDrawingFlags, 4,iMinimapFlags,
                 4,Send(what,@GetPlayerNameColor),
-                1,Send(what,@GetClientObjectType),
+                1,Send(what,@GetClientObjectType,#who=self,#parm1=parm1),
                 1,Send(what,@GetMoveOnType));
 
       return;
    }
 
-   ToCliObject(what=$,show_type=SHOW_NORMAL,bShow_all=FALSE)
+   ToCliObject(what=$,show_type=SHOW_NORMAL,bShow_all=FALSE,parm1=$)
    "show_type is used to get the look or inventory animation and overlays "
-   "instead of the normal animation and overlays."
+   "instead of the normal animation and overlays. parm1 is optional parameter "
+   "passed on to ToCliFlags."
    {
       // Send given object's id number, name, icon, and animation info
       if Send(what,@IsStackable)
@@ -3410,7 +3436,7 @@ messages:
          AddPacket(4,Send(what,@GetApparentName));
       }
 
-      Send(self,@ToCliFlags,#what=what);
+      Send(self,@ToCliFlags,#what=what,#parm1=parm1);
 
       // Send the lighting information.
       Send(what,@SendLightingInformation);
@@ -8175,11 +8201,109 @@ messages:
       return;
    }
 
+   UserRequestTriggerQuest(what = $, oQT = $)
+   "Client sends NPC and quest template object and wants to trigger that quest "
+   "for the given NPC. Need to find the appropriate quest node in that NPC's "
+   "quest list and trigger it server-side."
+   {
+      local i, oQN, iType, oItem, oCargo, iNum, sCargo;
+
+      oQN = Send(what,@GetActiveQuestForUser,#who=self,
+               #index=Send(oQT,@GetQuestID));
+      if (oQN = $)
+      {
+         Debug("User ",vrName," got $ oQN for index ",Send(oQT,@GetQuestID),
+            " from NPC ",Send(what,@GetName));
+
+         return;
+      }
+
+      // No point checking here? CheckCompletionCriteria should do this.
+      /*if (NOT Send(oQN,@CanPlayerStartQuest,#who=self))
+      {
+         // TODO: in production, give user a message.
+         Debug("User tried to start a quest they weren't qualified for!");
+
+         return;
+      }*/
+
+      iType = Send(Send(SYS,@GetQuestEngine),@GetQuestNodeType,
+                  #index=Send(oQN,@GetQuestNodeTemplateIndex));
+
+      switch(iType)
+      {
+      case QN_TYPE_MESSAGE:
+      case QN_TYPE_CHESSMOVE:
+      case QN_TYPE_USERNAME:
+      case QN_TYPE_LOGGEDONNAME:
+         // Make user say the message in cargo.
+         ClearTempString();
+         AppendTempString(Send(oQN,@GetCargo));
+         Send(self,@UserSay,#type=SAY_NORMAL,#string=GetTempString());
+         break;
+      case QN_TYPE_ITEM:
+         // Cargo is the same object the user is carrying.
+         oCargo = Send(oQN,@GetCargo);
+         if (Send(self,@IsHolding,#what=oCargo))
+         {
+            Send(what,@TryGiveQuestItem,#what=self,#item_list=[oCargo]);
+         }
+         break;
+      case QN_TYPE_ITEMCLASS:
+      case QN_TYPE_ITEMFINDCLASS:
+      case QN_TYPE_MONSTER_ITEMCLASS:
+         // Give item to NPC, favor last items in inventory.
+         // Cargo is a duplicate of the item to give.
+         oCargo = Send(oQN,@GetCargo);
+         iNum = Send(self,@CountHoldingHowMany,#class=GetClass(oCargo));
+         if (iNum > 0)
+         {
+            oItem = Send(self,@FindHoldingAP,#class=GetClass(oCargo),
+                        #sequence=iNum);
+         }
+         if (oItem <> $)
+         {
+            Send(what,@TryGiveQuestItem,#what=self,#item_list=[oItem]);
+         }
+         break;
+      case QN_TYPE_SHOWUP:
+      case QN_TYPE_MONSTER:
+      case QN_TYPE_MONSTER_BRING:
+         // Just let NPC know we're here
+         Send(oQN,@CheckCompletionCriteria,#who_tried=self);
+         break;
+      }
+
+      return;
+   }
+
+   UserRequestNPCQuests(what = $)
+   {
+      local i, lQuests;
+
+      AddPacket(1,BP_NPC_QUEST_LIST);
+
+      Send(self,@ToCliObject,#what=what);
+
+      lQuests = Send(what,@GetQuestsForUser,#who=self);
+
+      AddPacket(2,Length(lQuests));
+
+      foreach i in lQuests
+      {
+         Send(self,@ToCliObject,#what=First(i),#parm1=Nth(i,2));
+         Send(First(i),@ShowQuestUIDesc,#who=self,#oNPC=what);
+      }
+
+      SendPacket(poSession);
+
+      return;
+   }
+
    UserBuy(what = $)
    {
       local i,lSaleItems;
 
-      lSaleItems = $;
       lSaleItems = Send(what,@GetForSale,#who=self);
       if lSaleItems = $
       {
@@ -8217,7 +8341,6 @@ messages:
    {
       local i,lSaleItems;
 
-      lSaleItems = $;
       lSaleItems = Send(what,@GetForSale,#who=self);
       if lSaleItems = $
       {

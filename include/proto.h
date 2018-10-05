@@ -111,6 +111,9 @@ enum {
    BP_REQ_LOOKUP_NAMES      = 88,
 
    BP_ACTION                = 90,
+
+   BP_REQ_TRIGGER_QUEST     = 98,
+   BP_REQ_NPC_QUESTS        = 99,
    BP_REQ_MOVE              = 100,
    BP_REQ_TURN              = 101,
    BP_REQ_GO                = 102,
@@ -189,6 +192,7 @@ enum {
    BP_LOOK_SPELL            = 191,
    BP_LOOK_SKILL            = 192,
 
+   BP_NPC_QUEST_LIST        = 199,
    BP_MOVE                  = 200,
    BP_TURN                  = 201,
    BP_SHOOT                 = 202,
@@ -420,6 +424,7 @@ enum {
 #define OF_NPCHASQUESTS  0x00100000
 #define OF_NPCACTIVEQUEST 0x00200000
 #define OF_MOBKILLQUEST  0x00400000
+#define OF_NPCQUESTABLE  0x00800000
 
 #define GetItemFlags(flags)   ((flags))
 
@@ -488,6 +493,9 @@ typedef enum {
    OT_SUPER        = 5,   // Set if object is a "super DM".
    OT_MODERATOR    = 6,   // Set if object is a "moderator".
    OT_EVENTCHAR    = 7,   // Set if object is an event character.
+   OT_QUESTACTIVE  = 8,   // Quest in progress
+   OT_QUESTVALID   = 9,   // Quest can be started
+   OT_QUESTINVALID = 10   // Quest cannot be started
 } object_type;
 
 /* How objects allow or disallow motion onto their square */

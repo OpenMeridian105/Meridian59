@@ -42,7 +42,9 @@ typedef struct {
 #define DESC_INSIDE        0x00000010      // Display "inside" button
 #define DESC_ACTIVATE      0x00000020      // Display "use" (activate) button
 #define DESC_APPLY         0x00000040      // Display "use" (apply) button
-
+#define DESC_BUY           0x00000080      // Display "buy" button
+#define DESC_OFFER         0x00000100      // Display "offer" button
+#define DESC_QUEST         0x00000200      // Display "quest" button
 #define DESC_NOAGE         0x00000002      // Don't display age of player
 #define DESC_NOSPECIAL     0x00000004      // Don't display special string of player
 #define DESC_NOURL         0x00000008      // Don't display special string of player

@@ -655,17 +655,23 @@ void SetDescParamsByRoomObject(room_contents_node *r, HWND hwnd)
    if (r->distance <= CLOSE_DISTANCE)
    {
       if (r->obj.flags & OF_CONTAINER)
-	 params |= DESC_INSIDE;
-      
+         params |= DESC_INSIDE;
+
       if (r->obj.flags & OF_ACTIVATABLE && !(r->obj.flags & OF_PLAYER))
-	 params |= DESC_ACTIVATE;
+         params |= DESC_ACTIVATE;
 
       if (r->obj.flags & OF_GETTABLE)
       {
-	 params |= DESC_GET;
-	 if (!(r->obj.flags & OF_ACTIVATABLE))
-	    params |= DESC_USE;	 
+         params |= DESC_GET;
+         if (!(r->obj.flags & OF_ACTIVATABLE))
+            params |= DESC_USE;
       }
+      if (r->obj.flags & OF_BUYABLE)
+         params |= DESC_BUY;
+      if ((r->obj.flags & OF_OFFERABLE) && !(r->obj.flags & OF_PLAYER))
+         params |= DESC_OFFER;
+      if (r->obj.flags & OF_NPCQUESTABLE)
+         params |= DESC_QUEST;
    }
    SetDescParams(hwnd, params);
 }

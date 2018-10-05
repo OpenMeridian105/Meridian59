@@ -91,7 +91,8 @@ messages:
    }
 
    CheckPlayerCriteria(quester_wannabe=$)
-   "Return TRUE if player eligible, otherwise FALSE."
+   "Return TRUE if player eligible, otherwise FALSE. NOTE: if you change "
+   "something here, change it in QuestTemplate::ShowRequirements too."
    {
       local iPlayerRestrict, oCurrentNPC, oQuestEngine, oQuest, oQuester,
             iRestrict, iKarma, lHistory, iHistory, iSucceed, iFail, iRecentTime,
@@ -494,7 +495,7 @@ messages:
          {
             if bDebug
             {
-               Debug("failed Q_PLAYER_NOTSUCCEEDED_RECENTLY.");
+               Debug("failed Q_PLAYER_NOTFAILED_RECENTLY.");
             }
 
             return FALSE;
@@ -557,6 +558,21 @@ messages:
          if bDebug
          {
             Debug("failed Q_PLAYER_GUILDMASTER.");
+         }
+
+         return FALSE;
+      }
+
+      // Is player a guild officer?
+      if (iPlayerRestrict & Q_PLAYER_GUILDOFFICER)
+         AND (Send(quester_wannabe,@GetGuild) = $
+            OR (NOT Send(Send(quester_wannabe,@GetGuild),@IsOfficer,
+                        #who=quester_wannabe))
+            OR (NOT Send(Send(quester_wannabe,@GetGuild),@HasGuildColors)))
+      {
+         if bDebug
+         {
+            Debug("failed Q_PLAYER_GUILDOFFICER.");
          }
 
          return FALSE;
@@ -767,6 +783,111 @@ messages:
       if bDebug
       {
          Debug("passed restrictions!");
+      }
+
+      return TRUE;
+   }
+
+   CanPlayerEverStartQuest(who = $)
+   "Since players can see quests they are ineligible for, we must make a "
+   "distinction between factors players could change (e.g. karma) and those "
+   "they can't (e.g. quest waiting for someone from a different guild)."
+   "Returns FALSE if some factor prevents the player ever getting this quest."
+   "Note that returning TRUE does not mean the player can start this quest "
+   "at this point in time."
+   {
+      local iPlayerRestrict, oQuestEngine, oQuest, oQuester, iRestrict,
+            lHistory, iHistory, iR2, i;
+
+      oQuestEngine = Send(SYS,@GetQuestEngine);
+      iPlayerRestrict = Send(oQuestEngine,@GetQuestPlayerRestrictions,
+                              #index=piQuestTemplateIndex);
+
+      // Don't show duplicate quests.
+      foreach oQuest in Nth(Send(oQuestEngine,@GetQuestTemplate,
+                              #index=piQuestTemplateIndex),QT_ACTIVE_QUESTS)
+      {
+         foreach oQuester in Send(oQuest,@GetQuesters)
+         {
+            if who = oQuester
+            {
+               return FALSE;
+            }
+         }
+      }
+
+      // Don't show newbie quests to non-newbies.
+      if (iPlayerRestrict & Q_PLAYER_KILL_MASK)
+      {
+         iRestrict = (iPlayerRestrict & Q_PLAYER_KILL_MASK);
+         if (iRestrict & Q_PLAYER_NEWBIE)
+            AND (Send(who,@CheckPlayerFlag,
+                  #flag=PFLAG_PKILL_ENABLE) = PFLAG_PKILL_ENABLE)
+         {
+             return FALSE;
+         }
+      }
+
+      // Important ones to check here are 'never succeeded' and 'never failed'.
+      if (iPlayerRestrict & Q_PLAYER_QUEST_MASK)
+      {
+         iRestrict = (iPlayerRestrict & Q_PLAYER_QUEST_MASK);
+         lHistory = Send(who,@GetQuestHistory,
+                        #index=piQuestTemplateIndex);
+
+         if (lHistory <> $)
+         {
+            iHistory = First(lHistory) & (~QUEST_HISTORY_MASK);
+         }
+
+         if (((iRestrict & Q_PLAYER_NOTSUCCEEDED) = Q_PLAYER_NOTSUCCEEDED)
+            AND ((iHistory & QUEST_HISTORY_SUCCESS) <> 0))
+         {
+            return FALSE;
+         }
+
+         if (((iRestrict & Q_PLAYER_NOTFAILED) = Q_PLAYER_NOTFAILED )
+            AND ((iHistory & QUEST_HISTORY_FAILURE) <> 0))
+         {
+            return FALSE;
+         }
+      }
+
+      // Don't show PvP-requiring quests to opt-out players.
+      if (iPlayerRestrict & Q_PLAYER_PVP_ENABLED)
+         AND Send(who,@CheckPlayerFlag,#flag=PFLAG_PERMA_NO_PVP)
+      {
+         return FALSE;
+      }
+
+      // Don't show quests that aren't assignable, or must be assigned to
+      // a different player or player from a different guild.
+      foreach iR2 in plPlayerRestrict2
+      {
+         if First(iR2) = Q_R2_QN_ASSIGNABLE
+         {
+            if Nth(iR2, 2) = FALSE
+            {
+               return FALSE;
+            }
+         }
+
+         if First(iR2) = Q_R2_IS_GUILD_MEMBER_OF
+         {
+            if (Send(who,@GetGuild) <> Nth(iR2, 2))
+               OR (Nth(iR2, 2) = $) // If quester's guild = $, we return false.
+            {
+               return FALSE;
+            }
+         }
+
+         if First(iR2) = Q_R2_IS_PLAYER
+         {
+            if who <> Nth(iR2, 2)
+            {
+               return FALSE;
+            }
+         }
       }
 
       return TRUE;

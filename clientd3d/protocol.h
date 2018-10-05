@@ -65,6 +65,8 @@ typedef struct {
 #define SendLogoff()                 ToServer(BP_LOGOFF, NULL)
 #define RequestPlayer()              ToServer(BP_SEND_PLAYER, NULL)
 #define RequestRoom()                ToServer(BP_SEND_ROOM_CONTENTS, NULL)
+#define RequestTriggerQuest(id1, id2) ToServer(BP_REQ_TRIGGER_QUEST, NULL, id1, id2)
+#define RequestNPCQuests(id)         ToServer(BP_REQ_NPC_QUESTS, NULL, id)
 // Convert from client 0-based coordinates to server 1-based coordinates
 #define RequestMove(y, x, speed, room, angle) \
 ToServer(BP_REQ_MOVE, NULL, FinenessClientToKod(y) + KOD_FINENESS, \

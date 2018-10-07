@@ -31,13 +31,12 @@ resources:
    weapattVamper_desc = \
       "  An unholy glow seems to suck all life from the air around the weapon."
    Vamper_dm = "Vamper"
-   Vamper_fail_use = "You are not ready to use %s%s."
    Vamper_fail_use_karma = \
       "You are not unholy enough to wield this despotic thing."
    vamper_worked = "%s%s shudders as %s life is sucked away!"
    vamper_worked_target = \
       "%s%s seems enervated as the metal of %s weapon touches your flesh!"
-   vamper_info_desc = "10%% chance to gain up to 8 health on hit\n"
+   vamper_info_desc = "%i%% chance to gain %i-%i health on hit\n"
 
 classvars:
 
@@ -47,23 +46,25 @@ classvars:
 
    viDifficulty = 10
    vrDM_trigger = Vamper_dm
+   vbProcRequirement = TRUE
 
 properties:
 
-   piValue_modifier = 200   /// modify the object's price by 100//
+   // Modify the object's price by percent
+   piValue_modifier = 200
+
    piValue_power_modifier = 10
+
+   // Percent chance the effect procs
    piEffect_percent = 10
 
+   // Range of mana that is taken
    piMinHealthGain = 1
    piMaxHealthGain = 8
 
 messages:
 
-////////////////////////////////////////////////
-///
-///  Effect Functions
-///
-////////////////////////////////////////////////
+   // Effect Functions
 
    ModifyDamage(damage=0,target=$,wielder=$,lData=$)
    "Wielder has a 10% chance of stealing life from target with any hit."
@@ -91,18 +92,22 @@ messages:
       return damage;
    }
 
-   ItemReqUse(oItem=$,oPlayer=$)
+   // Add the spell name to the description.
+   AppendDescInfo(oItem = $,compound = $, bShowAll = FALSE)
    {
-      // Need 50// weapon proficiency to use this weapon attribute.
-      if Send(oItem,@GetProf,#who=oPlayer) < 50
+      if (bShowAll
+         OR Send(oItem,@GetIDStatusFromCompound,#compound=compound))
       {
-         Send(oPlayer,@MsgSendUser,#message_rsc=Vamper_fail_use,
-               #parm1=Send(oItem,@GetDef),#parm2=Send(oItem,@GetName));
-
-         return FALSE;
+         AddPacket(4,vrInfoDesc, 4,piEffect_percent,
+                   4, piMinHealthGain, 4, piMaxHealthGain);
+      }
+      else
+      {
+         // Not identified, add nothing (blank resource).
+         AddPacket(4,system_blank_resource);
       }
 
-      return TRUE;
+      return;
    }
 
    IsMagicalEffect()

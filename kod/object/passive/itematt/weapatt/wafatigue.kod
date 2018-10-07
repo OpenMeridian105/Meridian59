@@ -8,16 +8,15 @@
 
 
 ////////////////////////////////////////////////////////////////////////////////
-WeapAttBlinder is WeaponAttribute
+WeapAttFatigue is WeaponAttribute
 
 ///////////////////////////////////////////////////////////////////////
 //
-//  This weapon has a chance to blind the opponent every time it does
-//     damage.
+//   This weapon will drain a target's vigor over time.
 //
-//  Form is:
+//   Form is:
 //
-//      [ WA_BLINDER]
+//      [ WA_FATIGUE ]
 //
 ///////////////////////////////////////////////////////////////////////
 
@@ -27,23 +26,21 @@ constants:
 
 resources:
 
-   include wablindr.lkod
+   include wafatigue.lkod
 
-   weapattblinder_desc = \
-      " Q's insignia is emblazoned on the metal of the weapon."
-   blinder_worked = "%s%s stumbles away, screaming and clutching %s eyes!"
-   blinder_dm = "blinder"
-   blinder_info_desc = "%i%% chance to cast Blind on hit\n"
+   WeapAttFatigue_desc = \
+      "  This sinister-looking weapon is eerily cold to touch."
+   Fatigue_dm = "fatigue"
+   Fatigue_worked_target = \
+      "%s%s stumbles as your weapon touches %s, and looks drained of energy."
+   Fatigue_info_desc = "%i%% chance to fatigue target on hit\n"
 
 classvars:
 
-   vrDesc = weapattblinder_desc
-   vrInfoDesc = blinder_info_desc
-   viItem_Att_Num = WA_BLINDER
-
-   viDifficulty = 9
-   vrDM_trigger = blinder_dm
-   vbAllowSpecialAttributes = FALSE
+   vrDesc = WeapAttFatigue_desc
+   vrInfoDesc = Fatigue_info_desc
+   viItem_Att_Num = WA_FATIGUE
+   vrDM_trigger = Fatigue_dm
    vbProcRequirement = TRUE
 
 properties:
@@ -55,17 +52,17 @@ properties:
 
    // Percent chance the effect procs
    piEffect_percent = 15
-   
-   piSpellPower = 50
+
+   viFatigueStrength = 2000
+   viFatigueDuration = 3000
 
 messages:
 
    // Effect Functions
 
    ModifyDamage(damage=0,target=$,wielder=$,lData=$)
-   "Wielder has a 1% chance of blinding target with any hit."
    {
-      local oSpell;
+      local oEffect;
 
       if target = $
          OR wielder = $
@@ -74,18 +71,15 @@ messages:
       }
 
       if Random(1,100) < piEffect_percent
+         AND Send(target,@CanFatigue)
       {
-         oSpell = Send(SYS,@FindSpellByNum,#num=SID_blind);
+         oEffect = Send(SYS,@FindSpellByNum,#num=SID_Fatigue);
+         Send(oEffect,@StartFatigue,#who=target,#source=wielder,
+               #strength=viFatigueStrength,#duration=viFatigueDuration);
 
-         /// No duplicates
-         if NOT Send(target,@IsEnchanted,#what=oSpell)
-         {
-            Send(oSpell,@CastSpell,#who=wielder,#ltargets=[target],
-                  #iSpellPower=piSpellPower,#bItemCast=TRUE);
-            Send(wielder,@MsgSendUser,#message_rsc=blinder_worked,
-                 #parm1=Send(target,@GetCapDef),#parm2=Send(target,@GetName),
-                 #parm3=Send(target,@GetHisher));
-         }
+         Send(wielder,@MsgSendUser,#message_rsc=Fatigue_worked_target,
+               #parm1=Send(target,@GetCapDef),#parm2=Send(target,@GetName),
+               #parm3=Send(target,@GetHimHer));
       }
 
       return Damage;

@@ -33,6 +33,8 @@ constants:
 
    include blakston.khd
 
+   PROC_REQUIREMENT_PERCENT = 50
+
 resources:
 
    include weapatt.lkod
@@ -47,12 +49,16 @@ resources:
    weapatt_severe = "a severe"
    weapatt_enormous = "an enormous"
    weapatt_crushing = "a crushing"
+   weapatt_fail_use = "You are not yet ready to use %s%s."
 
 classvars:
 
    // If TRUE, add the weaponatt power to description.
    vbPowerDesc = FALSE
    viDamage_bonus = 0
+
+   // Attributes requires player to meet a certain skill requirement
+   vbProcRequirement = FALSE
 
 properties:
 
@@ -276,12 +282,21 @@ messages:
 
    ReqAddToItem(oItem=$)
    {
-      if IsClass(oItem,&Weapon)
+      return IsClass(oItem,&Weapon);
+   }
+
+   ItemReqUse(oItem=$,oPlayer=$)
+   {
+      if vbProcRequirement
+         AND Send(oItem,@GetProf,#who=oPlayer) < PROC_REQUIREMENT_PERCENT
       {
-         return TRUE;
+         Send(oPlayer,@MsgSendUser,#message_rsc=weapatt_fail_use,
+               #parm1=Send(oItem,@GetDef),#parm2=Send(oItem,@GetName));
+
+         return FALSE;
       }
 
-      return FALSE;
+      return TRUE;
    }
 
 end

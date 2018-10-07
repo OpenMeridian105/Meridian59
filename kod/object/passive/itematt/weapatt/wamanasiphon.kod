@@ -27,8 +27,6 @@ resources:
    weapattSiphon_desc = \
       "  A mystical force seems to draw energy from the air around the weapon."
    Siphon_dm = "Siphon"
-   Siphon_fail_use = "You are not ready to use %s%s."
-
    siphon_worked = "%s%s appears weary as %s mystical energy is sucked away!"
    siphon_worked_target = \
       "Strands of energy spark from %s%s as the metal of %s weapon "
@@ -44,10 +42,11 @@ classvars:
 
    viDifficulty = 9
    vrDM_trigger = Siphon_dm
+   vbProcRequirement = TRUE
 
 properties:
 
-   // Modify the object's price by 100
+   // Modify the object's price by percent
    piValue_modifier = 200
 
    piValue_power_modifier = 10
@@ -64,29 +63,7 @@ properties:
 
 messages:
 
-   AppendDescInfo(oItem = $,compound = $, bShowAll = FALSE)
-   {
-      if (bShowAll
-         OR Send(oItem,@GetIDStatusFromCompound,#compound=compound))
-      {
-         AddPacket(4,vrInfoDesc, 4,piEffect_percent,
-                   4, piMinManaStolen * piSiphonFactor / 100,
-                   4, piMaxManaStolen * piSiphonFactor / 100);
-      }
-      else
-      {
-         // Not identified, add nothing (blank resource).
-         AddPacket(4,system_blank_resource);
-      }
-
-      return;
-   }
-
-////////////////////////////////////////////////
-///
-///  Effect Functions
-///
-////////////////////////////////////////////////
+   // Effect Functions
 
    ModifyDamage(damage=0,target=$,wielder=$,lData=$)
    {
@@ -117,18 +94,23 @@ messages:
       return damage;
    }
 
-   ItemReqUse(oItem=$,oPlayer=$)
+   // Add the spell name to the description.
+   AppendDescInfo(oItem = $,compound = $, bShowAll = FALSE)
    {
-      // This person needs 50% in the weapon's proficiency to use
-      if Send(oItem,@GetProf,#who=oPlayer) < 50
+      if (bShowAll
+         OR Send(oItem,@GetIDStatusFromCompound,#compound=compound))
       {
-         Send(oPlayer,@MsgSendUser,#message_rsc=Siphon_fail_use,
-               #parm1=Send(oItem,@GetDef),#parm2=Send(oItem,@GetName));
-
-         return FALSE;
+         AddPacket(4,vrInfoDesc, 4,piEffect_percent,
+                   4, piMinManaStolen * piSiphonFactor / 100,
+                   4, piMaxManaStolen * piSiphonFactor / 100);
+      }
+      else
+      {
+         // Not identified, add nothing (blank resource).
+         AddPacket(4,system_blank_resource);
       }
 
-      return TRUE;
+      return;
    }
 
    IsMagicalEffect()

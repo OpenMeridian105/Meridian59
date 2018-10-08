@@ -3586,8 +3586,24 @@ messages:
       {
          if Send(what,@GetBehavior) & AI_NPC
          {
-            // Draw dots for NPCs.
+            // Highlight quest-related NPCs.
+            // NPCs that are part of active quests
+            // override NPCs that have potential quests.
+            if (Send(self,@UserDisplayNPCQuestActive,#what=what))
+            {
+               return MM_NPC | MM_NPCCURRENTQUEST;
+            }
+            if (Send(what,@HasQuestsForUser,#who=self))
+            {
+               return MM_NPC | MM_NPCHASQUEST;
+            }
+
+            // Draw plain dots for non-quest NPCs.
             return MM_NPC;
+         }
+         else if (Send(self,@UserDisplayMobQuestActive,#what=what))
+         {
+            iFlags |= MM_MOBKILLQUEST;
          }
 
          oTarget = Send(what,@GetTarget);
@@ -4216,6 +4232,77 @@ messages:
       }
 
       Debug("Invalid stat group number",group,"sent by client");
+
+      return;
+   }
+
+   UserDisplayNPCQuestActive(what = $)
+   {
+      local i, oQN;
+
+      if (what = $
+         OR plActiveQuests = $)
+      {
+         return FALSE;
+      }
+
+      foreach i in plActiveQuests
+      {
+         oQN = Nth(i,2);
+         if (Send(oQN,@QuestNodeDisplayNPCActive,#who=self,#what=what))
+         {
+            return TRUE;
+         }
+      }
+
+      return FALSE;
+   }
+
+   UserDisplayMobQuestActive(what = $)
+   {
+      local i, oQN;
+
+      if (what = $
+         OR plActiveQuests = $)
+      {
+         return FALSE;
+      }
+
+      foreach i in plActiveQuests
+      {
+         oQN = Nth(i,2);
+         if (Send(oQN,@QuestNodeDisplayMobActive,#who=self,#what=what))
+         {
+            return TRUE;
+         }
+      }
+
+      return FALSE;
+   }
+
+   UserUpdateQuestMobs(what=$)
+   "Trigger a flag update for any mobs that match the given quest mob."
+   {
+      local i, each_obj, cClass;
+
+      if (what = $
+         OR NOT pbLogged_on)
+      {
+         return;
+      }
+
+      cClass = GetClass(what);
+
+      foreach i in Send(poOwner,@GetHolderActive)
+      {
+         each_obj = First(i);
+         if (IsClass(each_obj,&Monster)
+            AND (GetClass(each_obj) = cClass
+               OR Send(each_obj,@IsMonsterQuestEquivalent,#what=what)))
+         {
+            Send(self,@SomethingChangedFlags,#what=each_obj);
+         }
+      }
 
       return;
    }

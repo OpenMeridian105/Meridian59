@@ -417,6 +417,9 @@ enum {
 #define OF_FLICKERING    0x00020000    // For players or objects if holding a flickering light.
 #define OF_FLASHING      0x00040000    // For players or objects if flashing with light.
 #define OF_PHASING       0x00080000    // For players or objects if phasing translucent/solid.
+#define OF_NPCHASQUESTS  0x00100000
+#define OF_NPCACTIVEQUEST 0x00200000
+#define OF_MOBKILLQUEST  0x00400000
 
 #define GetItemFlags(flags)   ((flags))
 
@@ -438,24 +441,27 @@ enum {
 };
 
 // Minimap dot color bitfield. Now separate from object flags.
-#define MM_NONE          0x00000000    // No dot (default for all objects)
-#define MM_PLAYER        0x00000001    // Standard blue player dot
-#define MM_ENEMY         0x00000002    // Enemy (halo or attackable) player
-#define MM_FRIEND        0x00000004    // Friendly (guild ally) player
-#define MM_GUILDMATE     0x00000008    // Guildmate player
-#define MM_BUILDER_GROUP 0x00000010    // Player is in same building group
-#define MM_MONSTER       0x00000020    // Default monster dot
-#define MM_NPC           0x00000040    // NPC
-#define MM_MINION_OTHER  0x00000080    // Set if monster is other's minion
-#define MM_MINION_SELF   0x00000100    // Set if a monster is our minion
-#define MM_TEMPSAFE      0x00000200    // Set if player has a temporary angel.
-#define MM_MINIBOSS      0x00000400    // Set if mob is a miniboss (survival arena).
-#define MM_BOSS          0x00000800    // Set if mob is a boss (survival arena).
-#define MM_RARE_ITEM     0x00001000    // Set if item is rare.
-#define MM_NO_PVP        0x00002000    // Set if player has no PVP flag.
-#define MM_AGGRO_SELF    0x00004000    // Set if monster has aggro on the player.
-#define MM_AGGRO_OTHER   0x00008000    // Set if monster has aggro on another player.
-#define MM_MERCENARY     0x00010000    // Set if monster is our mercenary.
+#define MM_NONE            0x00000000    // No dot (default for all objects)
+#define MM_PLAYER          0x00000001    // Standard blue player dot
+#define MM_ENEMY           0x00000002    // Enemy (halo or attackable) player
+#define MM_FRIEND          0x00000004    // Friendly (guild ally) player
+#define MM_GUILDMATE       0x00000008    // Guildmate player
+#define MM_BUILDER_GROUP   0x00000010    // Player is in same building group
+#define MM_MONSTER         0x00000020    // Default monster dot
+#define MM_NPC             0x00000040    // NPC
+#define MM_MINION_OTHER    0x00000080    // Set if monster is other's minion
+#define MM_MINION_SELF     0x00000100    // Set if a monster is our minion
+#define MM_TEMPSAFE        0x00000200    // Set if player has a temporary angel.
+#define MM_MINIBOSS        0x00000400    // Set if mob is a miniboss (survival arena).
+#define MM_BOSS            0x00000800    // Set if mob is a boss (survival arena).
+#define MM_RARE_ITEM       0x00001000    // Set if item is rare.
+#define MM_NO_PVP          0x00002000    // Set if player has no PVP flag.
+#define MM_AGGRO_SELF      0x00004000    // Set if monster has aggro on the player.
+#define MM_AGGRO_OTHER     0x00008000    // Set if monster has aggro on another player.
+#define MM_MERCENARY       0x00010000    // Set if monster is our mercenary.
+#define MM_NPCHASQUEST     0x00020000    // Set if NPC has a quest for us
+#define MM_NPCCURRENTQUEST 0x00040000    // Set if NPC is part of an active quest
+#define MM_MOBKILLQUEST    0x00080000    // Set if monster is part of a kill quest
 
 /* Player name color sent as hex RGB value. Define constants
    for ease of use as needed. Requires OF_PLAYER boolean flag

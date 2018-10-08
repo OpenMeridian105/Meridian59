@@ -926,7 +926,7 @@ messages:
       return TRUE;
    }
 
-   AssignNextNode(current_NPC = $)
+   AssignNextNode(current_NPC = $,bRecreate=FALSE)
    {
       local oSNPC, oDNPC, iNextQuestNodeTemplate, bDebug;
 
@@ -944,6 +944,13 @@ messages:
       // Remove previous node from NPC's quest node list.
       Send(current_NPC,@RemoveQuestNodeFromActiveList,#node=poQuestNode);
 
+      // QuestEngine might need to schedule another quest of this type.
+      if (NOT bRecreate)
+      {
+         Send(Send(SYS,@GetQuestEngine),@RescheduleQuest,
+               #qnIndex=Send(poQuestNode,@GetQuestNodeTemplateIndex),
+               #index=piQuestTemplateIndex);
+      }
       // If we're all done, clean up and quit.
       if (iNextQuestNodeTemplate = $)
       {

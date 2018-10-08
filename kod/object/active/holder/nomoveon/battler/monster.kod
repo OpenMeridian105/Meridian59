@@ -997,6 +997,11 @@ messages:
    {
       plActiveQuestNodes = $;
 
+      if (poOwner <> $)
+      {
+         Post(poOwner,@SomethingChanged,#what=self);
+      }
+
       return;
    }
 
@@ -1013,6 +1018,11 @@ messages:
       }
 
       plActiveQuestNodes = Cons(node, plActiveQuestNodes);
+
+      if (poOwner <> $)
+      {
+         Post(poOwner,@SomethingChanged,#what=self);
+      }
 
       return;
    }
@@ -1040,6 +1050,11 @@ messages:
          }
       }
 
+      if (poOwner <> $)
+      {
+         Post(poOwner,@SomethingChanged,#what=self);
+      }
+
       // validate that we removed it
       if iLength > Length(plActiveQuestNodes)
       {
@@ -1049,6 +1064,27 @@ messages:
       Debug( "RemoveQuestNode: couldn't find questnode." );
 
       return;
+   }
+
+   HasQuestsForUser(who = $)
+   {
+      local i;
+
+      if (who = $
+         OR NOT IsClass(who,&User))
+      {
+         return FALSE;
+      }
+
+      foreach i in plActiveQuestNodes
+      {
+         if (Send(i,@CanPlayerStartQuest,#who=who))
+         {
+            return TRUE;
+         }
+      }
+
+      return FALSE;
    }
 
    TryAddToLibrary()
@@ -8063,9 +8099,29 @@ messages:
       if (piBehavior & AI_NPC)
       {
          iFlags &= ~OF_ATTACKABLE;
+
+         if (what <> $
+            AND IsClass(what,&User))
+         {
+            if (Send(what,@UserDisplayNPCQuestActive,#what=self))
+            {
+               iFlags |= OF_NPCACTIVEQUEST;
+            }
+            // NPC might have a quest for this user.
+            else if (Send(self,@HasQuestsForUser,#who=what))
+            {
+               iFlags |= OF_NPCHASQUESTS;
+            }
+         }
+      }
+      else if (what <> $
+         AND IsClass(what,&User)
+         AND Send(what,@UserDisplayMobQuestActive,#what=self))
+      {
+         iFlags |= OF_MOBKILLQUEST;
       }
 
-      if Send(Self,@MobIsSeller)
+      if Send(self,@MobIsSeller)
       {
          iFlags |= OF_BUYABLE;
       }

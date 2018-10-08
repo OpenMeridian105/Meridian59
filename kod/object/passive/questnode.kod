@@ -26,6 +26,7 @@ constants:
 //   QT_ACTIVE_QUESTS     = 8
 //   QT_SCHEDULE_CHANCE   = 9
 //   QT_PLAYER_RESTRICT2  = 10
+//   QT_NUM_QUEST_GIVERS  = 11
 
 // Field names for a QuestNodeTemplate
 //   QNT_QNT_ID        = 1
@@ -40,6 +41,7 @@ constants:
 //   QNT_SUCCESS_HINT  = 10
 //   QNT_FAILURE_HINT  = 11
 //   QNT_TIME_LIMIT    = 12
+//   QNT_QT_ID         = 13
 
 resources:
 
@@ -147,7 +149,7 @@ messages:
 
       // Don't want to do this twice!
       if passed_NPC = $
-      {                       
+      {
          // Remember the template index
          piQuestNodeTemplateIndex = index;
 
@@ -164,7 +166,7 @@ messages:
          // Record which quest this questnode is a part of.
          poQuest = owning_quest;
       }
-   
+
       // Setup dest NPC
       iNPCMod = Send(oQuestEngine,@GetQuestNodeNPCModifier,#index=index);
 
@@ -179,9 +181,9 @@ messages:
          poDestNPC = poSourceNPC;
          break;
       case QN_NPCMOD_NONE:
-         // pick a new random NPC from the list
-         poDestNPC = Send(oQuestEngine,@GetRandomNPCFromQuestNodeTemplate,
-                           #index=index);
+         // pick a new random NPC from the list that doesn't already have this quest.
+         poDestNPC = Send(oQuestEngine,@GetFreeNPCFromQuestNodeTemplate,
+                           #index=index,#qtIndex=Send(owning_quest,@GetQuestTemplateIndex));
          break;
       case QN_NPCMOD_DIFFERENT:
          // Pick a new random NPC from the list, not the same as the source NPC
@@ -646,6 +648,33 @@ messages:
       return TRUE;
    }
 
+   CanPlayerStartQuest(who=$)
+   "Checks if a given player would be able to start this quest if they "
+   "triggered it.  Does not actually start the quest.  Only applicable for "
+   "initial quest nodes for a quest.  Distance between player and NPC not "
+   "checked."
+   {
+      local lQT;
+
+      // Quest must be available.
+      if piStatus <> QN_STATUS_WAITING_FOR_PLAYERS
+         AND piStatus <> QN_STATUS_WAITING_FOR_PLAYERS_TIMED
+      {
+         return FALSE;
+      }
+
+      // Can only 'start' the first quest node in sequence.
+      // TODO: This could be cached in the quest node.
+      lQT = Send(Send(SYS,@GetQuestEngine),@GetQuestTemplate,
+               #index=Send(poQuest,@GetQuestTemplateIndex));
+      if (First(Nth(lQT,QT_QUEST_NODES)) <> piQuestNodeTemplateIndex)
+      {
+         return FALSE;
+      }
+
+      return Send(poQuest,@CheckPlayerCriteria,#quester_wannabe=who);
+   }
+
    CheckCompletionCriteria(who_tried = $, message = $, item_offered = $ )
    "Checks if the message, item, or showing up satisfies the quest.  "
    "Get here from dest NPC's ReqGive or OnSomethingSaid or OnSomeoneEntered.  "
@@ -966,7 +995,7 @@ messages:
          Send(pCargo,@Delete);
       }
 
-      Send(poQuest,@AssignNextNode,#current_NPC=poDestNPC);
+      Send(poQuest,@AssignNextNode,#current_NPC=poDestNPC,#bRecreate=TRUE);
 
       return;
    }
@@ -1609,6 +1638,46 @@ messages:
       Debug("AwardPrizesOrPenalties got unknown prize type",iPrizeType);
 
       return;
+   }
+
+   QuestNodeDisplayNPCActive(who = $, what = $)
+   "Takes a user 'who' and NPC 'what'.  Returns TRUE if the user's client "
+   "should display this NPC as being part of an active quest.  Part of active "
+   "quest means they are the destination NPC for a current quest node, and "
+   "there isn't a more immediate NPC/monster to find first (i.e. kill quest)."
+   {
+      if (what = $)
+      {
+         return FALSE;
+      }
+
+      // Not active if user has to kill mob first. Check that monster isn't
+      // the NPC in case that ever comes up in the future.
+      if (poMonster <> $)
+      {
+         return poMonster = what;
+      }
+
+      return poDestNPC = what;
+   }
+
+   QuestNodeDisplayMobActive(who = $, what = $)
+   "Takes a user 'who' and NPC 'what'.  Returns TRUE if the user's client "
+   "should display this mob as the target of a kill quest."
+   {
+      if (what = $
+         OR poMonster = $)
+      {
+         return FALSE;
+      }
+
+      if (GetClass(poMonster) = GetClass(what)
+         OR Send(what,@IsMonsterQuestEquivalent,#what=poMonster))
+      {
+         return TRUE;
+      }
+
+      return FALSE;
    }
 
    GetQuesters()

@@ -30,11 +30,10 @@ resources:
    include wapurge.lkod
 
    weapattpurger_desc = " The sign of Psychochild is engraved on the weapon."
-   purger_fail_use = "You are not yet ready to use %s%s."
    purger_worked_user = "Your weapon tears at the magic surrounding %s%s."
    purger_worked_target = "%s%s's weapon tears at the magic surrounding you!"
    purger_dm = "purger"
-   purger_info_desc = "15%% chance to cast Purge on hit\n"
+   purger_info_desc = "%i%% chance to cast Purge on hit\n"
 
 classvars:
 
@@ -45,32 +44,23 @@ classvars:
    vrDM_trigger = purger_dm
    vbAppears_in_Happyland = FALSE
    vbAllowSpecialAttributes = FALSE
+   vbProcRequirement = TRUE
 
 properties:
 
-   piValue_modifier = 200   /// modify the object's price by 100//
+   // Modify the object's price by percent
+   piValue_modifier = 200 
+
    piValue_power_modifier = 10
+
+   // Percent chance the effect procs
    piEffect_percent = 15
 
    piSpellPower = 60
 
 messages:
 
-   ItemReqUse(oItem=$,oPlayer=$)
-   {
-      // this person needs 50// in the weapon's proficiency to use
-      if Send(oItem,@GetProf,#who=oPlayer) < 50
-      {
-         Send(oPlayer,@MsgSendUser,#message_rsc=purger_fail_use,
-              #parm1=Send(oItem,@GetDef),#parm2=Send(oItem,@GetName));
-
-         return FALSE;
-      }
-
-      return TRUE;
-   }
-
-   //// Effect Functions
+   // Effect Functions
 
    ModifyDamage(damage=0,target=$,wielder=$,lData=$)
    "Wielder has a 1% chance of purging target with any hit."
@@ -107,6 +97,23 @@ messages:
       }
 
       return damage;
+   }
+
+   // Add the spell name to the description.
+   AppendDescInfo(oItem = $,compound = $, bShowAll = FALSE)
+   {
+      if (bShowAll
+         OR Send(oItem,@GetIDStatusFromCompound,#compound=compound))
+      {
+         AddPacket(4,vrInfoDesc, 4,piEffect_percent);
+      }
+      else
+      {
+         // Not identified, add nothing (blank resource).
+         AddPacket(4,system_blank_resource);
+      }
+
+      return;
    }
 
    IsMagicalEffect()

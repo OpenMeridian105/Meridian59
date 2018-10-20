@@ -8,16 +8,15 @@
 
 
 ////////////////////////////////////////////////////////////////////////////////
-WeapAttBlinder is WeaponAttribute
+WeapAttSlow is WeaponAttribute
 
 ///////////////////////////////////////////////////////////////////////
 //
-//  This weapon has a chance to blind the opponent every time it does
-//     damage.
+//  This weapon has a chance to cast slow
 //
-//  Form is:
+//   Form is:
 //
-//      [ WA_BLINDER]
+//      [ WA_SLOW]
 //
 ///////////////////////////////////////////////////////////////////////
 
@@ -27,22 +26,22 @@ constants:
 
 resources:
 
-   include wablindr.lkod
+   include waslow.lkod
 
-   weapattblinder_desc = \
-      " Q's insignia is emblazoned on the metal of the weapon."
-   blinder_worked = "%s%s stumbles away, screaming and clutching %s eyes!"
-   blinder_dm = "blinder"
-   blinder_info_desc = "%i%% chance to cast Blind on hit\n"
+   WeapAttSlow_desc = \
+      "  The air around this weapon seems to be condensing and glowing with "
+      "magical energy."
+   slow_dm = "slow"
+   slow_info_desc = "%i%% chance to cast Slow on hit\n"
 
 classvars:
 
-   vrDesc = weapattblinder_desc
-   vrInfoDesc = blinder_info_desc
-   viItem_Att_Num = WA_BLINDER
-
-   viDifficulty = 9
-   vrDM_trigger = blinder_dm
+   vrDesc = WeapAttSlow_desc
+   vrInfoDesc = slow_info_desc
+   viItem_Att_Num = WA_SLOW
+   viDifficulty = 10
+   vrDM_trigger = slow_dm
+   vbAppears_in_Happyland = FALSE
    vbAllowSpecialAttributes = FALSE
    vbProcRequirement = TRUE
 
@@ -52,18 +51,17 @@ properties:
    piValue_modifier = 200
 
    piValue_power_modifier = 10
-
+   
    // Percent chance the effect procs
    piEffect_percent = 15
-   
-   piSpellPower = 50
+
+   piSpellPower = 60
 
 messages:
 
    // Effect Functions
 
    ModifyDamage(damage=0,target=$,wielder=$,lData=$)
-   "Wielder has a 1% chance of blinding target with any hit."
    {
       local oSpell;
 
@@ -73,22 +71,19 @@ messages:
          return damage;
       }
 
-      if Random(1,100) < piEffect_percent
+      if Random(1,100) <= piEffect_percent
       {
-         oSpell = Send(SYS,@FindSpellByNum,#num=SID_blind);
+         oSpell = Send(SYS,@FindSpellByNum,#num=SID_SLOW);
 
-         /// No duplicates
+         /// no duplicates
          if NOT Send(target,@IsEnchanted,#what=oSpell)
          {
-            Send(oSpell,@CastSpell,#who=wielder,#ltargets=[target],
+            Send(oSpell,@CastSpell,#who=wielder,#lTargets=[target],
                   #iSpellPower=piSpellPower,#bItemCast=TRUE);
-            Send(wielder,@MsgSendUser,#message_rsc=blinder_worked,
-                 #parm1=Send(target,@GetCapDef),#parm2=Send(target,@GetName),
-                 #parm3=Send(target,@GetHisher));
          }
       }
 
-      return Damage;
+      return damage;
    }
 
    // Add the spell name to the description.

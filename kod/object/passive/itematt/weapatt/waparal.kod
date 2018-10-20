@@ -32,9 +32,8 @@ resources:
    weapattParalyzer_desc = \
       " A glow that can only be described as Zjiriaesqe surrounds the weapon."
    Paralyzer_dm = "Paralyzer"
-   paralyzer_fail_use = "You are not ready to use %s%s."
    holder_worked = "%s%s seems rooted to the very ground!"
-   holder_info_desc = "15%% chance to cast Hold on hit\n"
+   holder_info_desc = "%i%% chance to cast Hold on hit\n"
 
 classvars:
 
@@ -45,17 +44,23 @@ classvars:
    viDifficulty = 9
    vrDM_trigger = Paralyzer_dm
    vbAllowSpecialAttributes = FALSE
+   vbProcRequirement = TRUE
 
 properties:
 
-   // modify the object's price by 100%
+   // Modify the object's price by percent
    piValue_modifier = 200
+
    piValue_power_modifier = 10
+   
+   // Percent chance the effect procs
    piEffect_percent = 15
+   
+   piSpellPower = 50
 
 messages:
 
-   //// Effect Functions
+   // Effect Functions
 
    ModifyDamage(damage=0,target=$,wielder=$,lData=$)
    "Wielder has a chance of paralyzing target with any hit."
@@ -76,7 +81,7 @@ messages:
          if NOT Send(target,@IsEnchanted,#what=oSpell)
          {
             Send(oSpell,@CastSpell,#who=wielder,#lTargets=[target],
-                  #iSpellPower=50,#bItemCast=TRUE);
+                  #iSpellPower=piSpellPower,#bItemCast=TRUE);
             Send(wielder,@MsgSendUser,#message_rsc=holder_worked,
                   #parm1=Send(target,@GetCapDef),#parm2=Send(target,@GetName));
          }
@@ -85,18 +90,21 @@ messages:
       return damage;
    }
 
-   ItemReqUse(oItem=$,oPlayer=$)
+   // Add the spell name to the description.
+   AppendDescInfo(oItem = $,compound = $, bShowAll = FALSE)
    {
-      // A person needs 50// in the weapon's proficiency to use
-      if Send(oItem,@GetProf,#who=oPlayer) < 50
+      if (bShowAll
+         OR Send(oItem,@GetIDStatusFromCompound,#compound=compound))
       {
-         Send(oPlayer,@MsgSendUser,#message_rsc=paralyzer_fail_use,
-            #parm1=Send(oItem,@GetDef),#parm2=Send(oItem,@GetName));
-
-         return FALSE;
+         AddPacket(4,vrInfoDesc, 4,piEffect_percent);
+      }
+      else
+      {
+         // Not identified, add nothing (blank resource).
+         AddPacket(4,system_blank_resource);
       }
 
-      return TRUE;
+      return;
    }
 
    IsMagicalEffect()

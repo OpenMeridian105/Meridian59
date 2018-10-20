@@ -33,7 +33,7 @@ resources:
    twister_dm = "twister"
    weapatt_twister_victim_effect = \
       "~gYou feel disoriented, losing your bearings."
-   twister_info_desc = "8%% chance to disorient victim on hit\n"
+   twister_info_desc = "%i%% chance to disorient victim on hit\n"
 
 classvars:
 
@@ -45,20 +45,19 @@ classvars:
 
 properties:
 
+   // Modify the object's price by percent
    piValue_modifier = 150
+
    piValue_power_modifier = 10
+
+   // Percent chance the effect procs
    piEffect_Percent = 8
 
 messages:
 
-////////////////////////////////////////////////
-///
-///  Effect Functions
-///
-////////////////////////////////////////////////
+   // Effect Functions
 
    ModifyDamage(damage=0,target=$,wielder=$,lData=$)
-   "Wielder has a 1% chance of twisting target with any hit."
    {
       local oRoom;
 
@@ -81,6 +80,23 @@ messages:
       }
 
       return damage;
+   }
+
+   // Add the spell name to the description.
+   AppendDescInfo(oItem = $,compound = $, bShowAll = FALSE)
+   {
+      if (bShowAll
+         OR Send(oItem,@GetIDStatusFromCompound,#compound=compound))
+      {
+         AddPacket(4,vrInfoDesc, 4,piEffect_percent);
+      }
+      else
+      {
+         // Not identified, add nothing (blank resource).
+         AddPacket(4,system_blank_resource);
+      }
+
+      return;
    }
 
    IsMagicalEffect()

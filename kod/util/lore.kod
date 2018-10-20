@@ -213,7 +213,7 @@ messages:
    LoreVerifyArenaLists()
    "Future proofing - check if we need to add a fight style list."
    {
-      local bFound, i, lWList, lSubList;
+      local bFound, i, lWList, lSubList, lTemp;
 
       // Check if we just need to create the whole lists.
       if (plArenaChampions = $)
@@ -221,6 +221,17 @@ messages:
          Send(self,@LoreCreateArenaLists);
 
          return;
+      }
+
+      // Check if we added a new Watcher.
+      while (Length(plArenaChampions) < WATCHER_ID_MAX)
+      {
+         lTemp = $;
+         for (i = ARENA_STYLE_MAX; i >= ARENA_STYLE_MIN; --i)
+         {
+            lTemp = Cons([i,[[$,0],[$,0],[$,0],[$,0],[$,0]]],lTemp);
+         }
+         plArenaChampions = AppendListElem(lTemp, plArenaChampions);
       }
 
       for (i = ARENA_STYLE_MIN; i <= ARENA_STYLE_MAX; ++i)

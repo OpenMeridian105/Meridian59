@@ -391,14 +391,26 @@ messages:
       return;
    }
 
-   GetObjectFlags()
+   GetObjectFlags(what = $)
    {
-      if piAnimation = ANIM_NONE
+      local iFlags;
+
+      iFlags = 0;
+
+      if (poMaster = $
+         AND what <> $
+         AND IsClass(what,&User)
+         AND Send(what,@UserDisplayMobQuestActive,#what=self))
       {
-         return OF_ATTACKABLE | OF_OFFERABLE;
+         iFlags |= OF_MOBKILLQUEST;
       }
 
-      return OF_ATTACKABLE | OF_OFFERABLE | OF_BOUNCING;
+      if piAnimation = ANIM_NONE
+      {
+         return iFlags | OF_ATTACKABLE | OF_OFFERABLE;
+      }
+
+      return iFlags | OF_ATTACKABLE | OF_OFFERABLE | OF_BOUNCING;
    }
 
    CanMorphTo()

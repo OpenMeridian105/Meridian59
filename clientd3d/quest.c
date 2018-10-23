@@ -311,6 +311,10 @@ void QuestCommand(HWND hDlg, int id, HWND hwndCtl, UINT codeNotify)
       EndDialog(hDlg, IDOK);
       break;
 
+   case ID_QUESTHELP:
+      Info(hInst, hwndQuestDialog, IDS_QUESTHELP_TITLE, IDS_QUESTHELP);
+      break;
+
    case IDCANCEL:
       EndDialog(hDlg, IDCANCEL);
       break;

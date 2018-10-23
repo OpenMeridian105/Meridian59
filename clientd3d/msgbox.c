@@ -11,7 +11,8 @@
 
 #include "client.h"
 
-#define ERROR_LENGTH 1024 /* Max length of an error string */
+#define TITLE_LENGTH 64   // Max length of title string
+#define ERROR_LENGTH 2048 /* Max length of an error string */
 
 typedef struct {
    char *text;
@@ -66,14 +67,17 @@ void _cdecl ClientError(HINSTANCE hModule, HWND hParent, int fmt_id, ...)
  *   The message box has hParent as its parent, and so appears over that window.
  *   Restores focus to window that had the focus on entry.
  */
-void _cdecl Info(HINSTANCE hModule, HWND hParent, int fmt_id, ...)
+void _cdecl Info(HINSTANCE hModule, HWND hParent, int header_id, int fmt_id, ...)
 {
    char msg[ERROR_LENGTH];
    char fmt[ERROR_LENGTH];
+   char header[TITLE_LENGTH];
+
    va_list marker;
    HWND hwndFocus = GetFocus();
 
-   if (LoadString(hModule, fmt_id, fmt, ERROR_LENGTH - 1) == 0)
+   if (LoadString(hModule, fmt_id, fmt, ERROR_LENGTH - 1) == 0
+      || LoadString(hModule, header_id, header, TITLE_LENGTH - 1) == 0)
    {
       sprintf(msg, "Can't load message string #%d", fmt_id);
       ClientMessageBox(hParent, msg, "Blakston Error", MB_APPLMODAL);
@@ -85,7 +89,7 @@ void _cdecl Info(HINSTANCE hModule, HWND hParent, int fmt_id, ...)
    vsprintf(msg, fmt, marker);
    va_end(marker);
    
-   ClientMessageBox(hParent, msg, szAppName, MB_APPLMODAL | MB_ICONINFORMATION);
+   ClientMessageBox(hParent, msg, header, MB_APPLMODAL | MB_ICONINFORMATION);
    SetFocus(hwndFocus);
 }
 /************************************************************************/

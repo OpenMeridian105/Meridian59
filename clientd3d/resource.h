@@ -237,6 +237,8 @@
 #define IDS_INSTRUCTIONS                199
 #define IDS_ACCEPT                      200
 #define IDS_CONTINUE                    201
+#define IDS_QUESTHELP                   202
+#define IDS_QUESTHELP_TITLE             203
 #define IDC_PORTNUM                     1000
 #define IDC_HOST                        1001
 #define IDC_ITEMLIST                    1002
@@ -450,6 +452,7 @@
 #define IDC_QUESTNODEDESC               1224
 #define IDC_QUESTDESCLABEL              1225
 #define IDC_QUESTREQLABEL               1226
+#define ID_QUESTHELP                    1227
 #define ID_GAME_EXIT                    3002
 #define ID_FONT_MAIL                    3014
 #define ID_FONT_LIST                    3015
@@ -514,9 +517,9 @@
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE        202
+#define _APS_NEXT_RESOURCE_VALUE        204
 #define _APS_NEXT_COMMAND_VALUE         3520
-#define _APS_NEXT_CONTROL_VALUE         1227
+#define _APS_NEXT_CONTROL_VALUE         1228
 #define _APS_NEXT_SYMED_VALUE           105
 #endif
 #endif

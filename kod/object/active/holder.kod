@@ -78,6 +78,49 @@ messages:
       return FALSE;
    }
 
+   FindHoldingAP(class = &Object, sequence = 1)
+   "Finds the 'sequence'th (default first) entry of type 'class' "
+   "in the active/passive lists. Checks passive first."
+   {
+      local i, each_obj, iFound;
+
+      iFound = sequence;
+
+      foreach i in plPassive
+      {
+         each_obj = Send(self,@HolderExtractObject,#data=i);
+         if IsClass(each_obj,class)
+         {
+            if iFound <= 1
+            {
+               return each_obj;
+            }
+            else
+            {
+               --iFound;
+            }
+         }
+      }
+
+      foreach i in plActive
+      {
+         each_obj = Send(self,@HolderExtractObject,#data=i);
+         if IsClass(each_obj,class)
+         {
+            if iFound <= 1
+            {
+               return each_obj;
+            }
+            else
+            {
+               --iFound;
+            }
+         }
+      }
+
+      return $;
+   }
+
    FindHolding(class = &Object, sequence = 1)
    "Finds the 'sequence'th (default first) entry of type 'class' "
    "in the passive list."

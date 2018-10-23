@@ -37,6 +37,12 @@ constants:
    TIME_RSC_HEADER_COMPLETE   = 1
    TIME_RSC_HEADER_INFINITE   = 2
 
+   // Used by clients to determine whether to show quest node
+   // text or requirements text, depending on whether user has
+   // already started the quest.
+   QP_NOTSTARTED = 0
+   QP_INPROGRESS = 1
+
 resources:
 
    include questtemplate.lkod
@@ -72,6 +78,48 @@ resources:
    disciple_failure = \
       "It appears you need more experience before you are ready to be my "
       "disciple.  You may try again another day."
+
+   questtemplate_karma_same = "Must have the same karma alignment as the NPC.\n"
+   questtemplate_karma_diff = "Must have different karma alignment to the NPC.\n"
+   questtemplate_karma_good = "Must have more than +10 karma.\n"
+   questtemplate_karma_neutral = "Karma must be between -10 and +10.\n"
+   questtemplate_karma_evil = "Must have less than -10 karma.\n"
+   questtemplate_fact_duke = "Must be a supporter of Duke Akardius.\n"
+   questtemplate_fact_neutral = "Must be unfactioned.\n"
+   questtemplate_fact_cess = "Must be a supporter of Princess Kateriina.\n"
+   questtemplate_fact_rebel = "Must be a supporter of Jonas D'Accor.\n"
+   questtemplate_fact_same = "Must support the same faction as the NPC.\n"
+   questtemplate_fact_diff = "Must support a different faction than the NPC.\n"
+   questtemplate_fact_in = "Must be a member of the faction in power.\n"
+   questtemplate_fact_out = "Must be a member of a faction out of power.\n"
+   questtemplate_pkill_newbie = "Must have under 50 HP.\n"
+   questtemplate_pkill_notnewbie = "Must have over 50 HP.\n"
+   questtemplate_pkill_red = "Must be a murderer (red name).\n"
+   questtemplate_pkill_notred = "Must not be a murderer.\n"
+   questtemplate_pkill_orange = "Must be an outlaw (orange name).\n"
+   questtemplate_pkill_notorange = "Must not be an outlaw (orange name).\n"
+   questtemplate_pkill_white = "Must be a lawful player (white name).\n"
+   questtemplate_qhist_notrecentattempt = "Must not have attempted this quest recently.\n"
+   questtemplate_qhist_notrecentcomplete = "Must not have completed this quest recently.\n"
+   questtemplate_qhist_notcomplete = "Must not have completed this quest previously.\n"
+   questtemplate_qhist_notrecentfail = "Must not have failed this quest recently.\n"
+   questtemplate_qhist_notfailed = "Must not have failed this quest previously.\n"
+   questtemplate_qhist_notattempted = "Must not have attempted this quest previously.\n"
+   questtemplate_guildmaster = "Must be the GuildMaster of a Guild.\n"
+   questtemplate_guildofficer = "Must be a ranking officer of a Guild.\n"
+
+   questtemplate_has_skill_pct = "Must have the \"%s\" skill higher than %i%%.\n"
+   questtemplate_has_skill = "Must know the \"%s\" skill.\n"
+   questtemplate_has_spell_pct = "Must have the \"%s\" spell higher than %i%%.\n"
+   questtemplate_has_spell = "Must know the \"%s\" spell.\n"
+   questtemplate_num_spells = "Must know at least %i spells in the school of %s.\n"
+   questtemplate_has_item = "Must be carrying %s%s.\n"
+   questtemplate_using_item = "Must be using %s%s.\n"
+   questtemplate_not_item = "Must not be carrying %s%s.\n"
+   questtemplate_has_hp = "Must have at least %i HP.\n"
+
+   questtemplate_red = "~f"
+   questtemplate_green = "~g"
 
 classvars:
 
@@ -219,19 +267,54 @@ messages:
       return FALSE;
    }
 
-   ShowDesc(who=$)
-   "Does error checking, calls the other description messages and "
-   "handles the time remaining resource."
+   ShowQuestUIDesc(who = $, oNPC = $)
+   "Includes quest description along with current quest node stuff."
+   "Should also include rewards/requirements etc."
    {
-      local iDeadline, iQNIndex, iTimeLeft, oQuestNode, lHistory,
-            iQuestHeader;
+      local oQuestNode;
 
+      AddPacket(4,vrDesc);
+
+      // If the user has started this quest, show the quest node
+      // info (i.e. what they should do). If not, show requirements.
+      oQuestNode = Send(who,@GetActiveQuestNode,#index=viQuestID);
+      if (oQuestNode <> $)
+      {
+         Send(self,@ShowDescCommon,#who=who);
+      }
+      else
+      {
+         Send(self,@ShowRequirements,#who=who,#oNPC=oNPC);
+      }
+
+      // TODO: eventually show rewards, but no easy way to do this.
+      // Likely need the server to generate this text since it has to
+      // handle simple rewards like XP/TP/items/money along with stuff
+      // like 'can learn spells'. Possibly hardcode a reward string
+      // for each quest?
+
+      return;
+   }
+
+   ShowDesc(who=$)
+   {
       if who = $
       {
          AddPacket(4,vrDesc);
 
          return;
       }
+
+      Send(self,@ShowDescCommon,#who=who);
+
+      return;
+   }
+
+   ShowDescCommon(who = $)
+   "Does error checking, calls the other description messages and handles the "
+   "time remaining resource. Only call from ShowDesc and ShowQuestUIDesc."
+   {
+      local iDeadline, iQNIndex, iTimeLeft, oQuestNode, lHistory, iQuestHeader;
 
       iTimeLeft = 0;
 
@@ -279,6 +362,649 @@ messages:
       Send(self,@SendTimeRemaining,#iTime=iTimeLeft,#parm1=iQuestHeader);
 
       return;
+   }
+
+   GetDisplayedRestrictCount()
+   "Returns the number of distinct simple requirements that will "
+   "be displayed in quest UI."
+   {
+      local i, iRes, iCount;
+
+      iCount = 0;
+
+      // Can only have 1 karma restriction.
+      if (piPlayerRestrict & Q_PLAYER_KARMA_MASK)
+      {
+         ++iCount;
+      }
+
+      // Can only have 1 faction restriction.
+      if (piPlayerRestrict & Q_PLAYER_FACTION_MASK)
+      {
+         ++iCount;
+      }
+
+      if (piPlayerRestrict & Q_PLAYER_KILL_MASK)
+      {
+         if (((piPlayerRestrict & Q_PLAYER_NEWBIE) = Q_PLAYER_NEWBIE)
+            OR ((piPlayerRestrict & Q_PLAYER_NOTNEWBIE) = Q_PLAYER_NOTNEWBIE))
+         {
+            ++iCount;
+         }
+         if (((piPlayerRestrict & Q_PLAYER_LAWFUL) = Q_PLAYER_LAWFUL)
+            OR ((piPlayerRestrict & Q_PLAYER_NOTMURDERER) = Q_PLAYER_NOTMURDERER)
+            OR ((piPlayerRestrict & Q_PLAYER_NOTOUTLAW) = Q_PLAYER_NOTOUTLAW)
+            OR ((piPlayerRestrict & Q_PLAYER_MURDERER) = Q_PLAYER_MURDERER)
+            OR ((piPlayerRestrict & Q_PLAYER_OUTLAW) = Q_PLAYER_OUTLAW))
+         {
+            ++iCount;
+         }
+      }
+
+      if (((piPlayerRestrict & Q_PLAYER_NOTTRIED) = Q_PLAYER_NOTTRIED)
+         OR ((piPlayerRestrict & Q_PLAYER_NOTTRIED_RECENTLY) = Q_PLAYER_NOTTRIED_RECENTLY)
+         OR ((piPlayerRestrict & Q_PLAYER_NOTSUCCEEDED_RECENTLY) = Q_PLAYER_NOTSUCCEEDED_RECENTLY)
+         OR ((piPlayerRestrict & Q_PLAYER_NOTFAILED_RECENTLY) = Q_PLAYER_NOTFAILED_RECENTLY))
+      {
+         ++iCount;
+      }
+      if ((piPlayerRestrict & Q_PLAYER_NOTSUCCEEDED) = Q_PLAYER_NOTSUCCEEDED)
+      {
+         ++iCount;
+      }
+      if ((piPlayerRestrict & Q_PLAYER_NOTFAILED) = Q_PLAYER_NOTFAILED)
+      {
+         ++iCount;
+      }
+      if ((piPlayerRestrict & Q_PLAYER_INTRIGUING) = Q_PLAYER_INTRIGUING)
+      {
+         ++iCount;
+      }
+      if ((piPlayerRestrict & Q_PLAYER_GUILDMASTER) = Q_PLAYER_GUILDMASTER)
+      {
+         ++iCount;
+      }
+      if ((piPlayerRestrict & Q_PLAYER_GUILDOFFICER) = Q_PLAYER_GUILDOFFICER)
+      {
+         ++iCount;
+      }
+
+      foreach i in plSpecialRestrict
+      {
+         iRes = First(i);
+         if (iRes = Q_R2_HAS_SKILL
+            OR iRes = Q_R2_HAS_SPELL
+            OR iRes = Q_R2_HAS_SPELL_SCHOOL
+            OR iRes = Q_R2_HAS_ITEM
+            OR iRes = Q_R2_USING_ITEM
+            OR iRes = Q_R2_HAS_HEALTH_LEVEL
+            OR iRes = Q_R2_DOES_NOT_HAVE_ITEM)
+         {
+            ++iCount;
+         }
+      }
+
+      return iCount;
+   }
+
+   ShowRequirements(who = $,oNPC = $)
+   {
+      local i, iCount, oObj, iTime, iRecentTime, lHistory, iSucceed, iFail,
+            iHistory;
+
+      // Can skip some requirements where the player would never be aware
+      // of the quest if they did not meet the requirements (specific guild
+      // or specific player required). Also skip necro-related ones
+      // because they are never used.
+
+      // Get counts for resource template.
+      iCount = Send(self,@GetDisplayedRestrictCount);
+
+      AddPacket(4,Send(SYS,@AddResourceTemplate,#iNum=iCount * 2));
+
+      // Karma resources.
+      if (piPlayerRestrict & Q_PLAYER_KARMA_MASK)
+      {
+         switch (piPlayerRestrict & Q_PLAYER_KARMA_MASK)
+         {
+         case Q_PLAYER_KARMA_SAME:
+            if Send(oNPC,@KarmaSame,#who=who)
+            {
+               AddPacket(4,questtemplate_green, 4,questtemplate_karma_same);
+            }
+            else
+            {
+               AddPacket(4,questtemplate_red, 4,questtemplate_karma_same);
+            }
+            break;
+         case Q_PLAYER_KARMA_DIFFERENT:
+            if NOT Send(oNPC,@KarmaSame,#who=who)
+            {
+               AddPacket(4,questtemplate_green, 4,questtemplate_karma_diff);
+            }
+            else
+            {
+               AddPacket(4,questtemplate_red, 4,questtemplate_karma_diff);
+            }
+            break;
+         case Q_PLAYER_KARMA_GOOD:
+            if Send(who,@GetKarma) >= 10
+            {
+               AddPacket(4,questtemplate_green, 4,questtemplate_karma_good);
+            }
+            else
+            {
+               AddPacket(4,questtemplate_red, 4,questtemplate_karma_good);
+            }
+            break;
+         case Q_PLAYER_KARMA_NEUTRAL:
+            if Abs(Send(who,@GetKarma)) <= 10
+            {
+               AddPacket(4,questtemplate_green, 4,questtemplate_karma_neutral);
+            }
+            else
+            {
+               AddPacket(4,questtemplate_red, 4,questtemplate_karma_neutral);
+            }
+            break;
+         case Q_PLAYER_KARMA_EVIL:
+            if Send(who,@GetKarma) <= -10
+            {
+               AddPacket(4,questtemplate_green, 4,questtemplate_karma_evil);
+            }
+            else
+            {
+               AddPacket(4,questtemplate_red, 4,questtemplate_karma_evil);
+            }
+            break;
+         }
+      }
+
+      // Faction resources.
+      if (piPlayerRestrict & Q_PLAYER_FACTION_MASK)
+      {
+         switch (piPlayerRestrict & Q_PLAYER_FACTION_MASK)
+         {
+         case Q_PLAYER_FACTION_DUKE:
+            if Send(who,@GetFaction) = FACTION_DUKE
+            {
+               AddPacket(4,questtemplate_green, 4,questtemplate_fact_duke);
+            }
+            else
+            {
+               AddPacket(4,questtemplate_red, 4,questtemplate_fact_duke);
+            }
+            break;
+         case Q_PLAYER_FACTION_NEUTRAL:
+            if Send(who,@GetFaction) = FACTION_NEUTRAL
+            {
+               AddPacket(4,questtemplate_green, 4,questtemplate_fact_neutral);
+            }
+            else
+            {
+               AddPacket(4,questtemplate_red, 4,questtemplate_fact_neutral);
+            }
+            break;
+         case Q_PLAYER_FACTION_PRINCESS:
+            if Send(who,@GetFaction) = FACTION_PRINCESS
+            {
+               AddPacket(4,questtemplate_green, 4,questtemplate_fact_cess);
+            }
+            else
+            {
+               AddPacket(4,questtemplate_red, 4,questtemplate_fact_cess);
+            }
+            break;
+         case Q_PLAYER_FACTION_REBEL:
+            if Send(who,@GetFaction) = FACTION_REBEL
+            {
+               AddPacket(4,questtemplate_green, 4,questtemplate_fact_rebel);
+            }
+            else
+            {
+               AddPacket(4,questtemplate_red, 4,questtemplate_fact_rebel);
+            }
+            break;
+         case Q_PLAYER_FACTION_SAME:
+            if Send(who,@GetFaction) = Send(oNPC,@GetFaction)
+            {
+               AddPacket(4,questtemplate_green, 4,questtemplate_fact_same);
+            }
+            else
+            {
+               AddPacket(4,questtemplate_red, 4,questtemplate_fact_same);
+            }
+            break;
+         case Q_PLAYER_FACTION_DIFFERENT:
+            if Send(who,@GetFaction) <> Send(oNPC,@GetFaction)
+            {
+               AddPacket(4,questtemplate_green, 4,questtemplate_fact_diff);
+            }
+            else
+            {
+               AddPacket(4,questtemplate_red, 4,questtemplate_fact_diff);
+            }
+            break;
+         case Q_PLAYER_FACTION_IN:
+            if Send(Send(SYS,@GetParliament),@GetPower,#faction=Send(who,@GetFaction))
+               >= FACTION_IN_POWER
+            {
+               AddPacket(4,questtemplate_green, 4,questtemplate_fact_in);
+            }
+            else
+            {
+               AddPacket(4,questtemplate_red, 4,questtemplate_fact_in);
+            }
+            break;
+         case Q_PLAYER_FACTION_OUT:
+            if Send(Send(SYS,@GetParliament),@GetPower,#faction=Send(who,@GetFaction))
+               <= FACTION_OUT_POWER
+            {
+               AddPacket(4,questtemplate_green, 4,questtemplate_fact_out);
+            }
+            else
+            {
+               AddPacket(4,questtemplate_red, 4,questtemplate_fact_out);
+            }
+            break;
+         }
+      }
+
+      // Newbie/PK status resources
+      if (piPlayerRestrict & Q_PLAYER_KILL_MASK)
+      {
+         if ((piPlayerRestrict & Q_PLAYER_NEWBIE) = Q_PLAYER_NEWBIE)
+         {
+            if Send(who,@CheckPlayerFlag,#flag=PFLAG_PKILL_ENABLE)
+            {
+               AddPacket(4,questtemplate_red, 4,questtemplate_pkill_newbie);
+            }
+            else
+            {
+               AddPacket(4,questtemplate_green, 4,questtemplate_pkill_newbie);
+            }
+         }
+         else if ((piPlayerRestrict & Q_PLAYER_NOTNEWBIE) = Q_PLAYER_NOTNEWBIE)
+         {
+            if Send(who,@CheckPlayerFlag,#flag=PFLAG_PKILL_ENABLE)
+            {
+               AddPacket(4,questtemplate_green, 4,questtemplate_pkill_notnewbie);
+            }
+            else
+            {
+               AddPacket(4,questtemplate_red, 4,questtemplate_pkill_notnewbie);
+            }
+         }
+
+         if ((piPlayerRestrict & Q_PLAYER_LAWFUL) = Q_PLAYER_LAWFUL)
+         {
+            if (NOT Send(who,@CheckPlayerFlag,#flag=PFLAG_OUTLAW)
+               AND NOT Send(who,@CheckPlayerFlag,#flag=PFLAG_MURDERER))
+            {
+               AddPacket(4,questtemplate_green, 4,questtemplate_pkill_white);
+            }
+            else
+            {
+               AddPacket(4,questtemplate_red, 4,questtemplate_pkill_white);
+            }
+         }
+         else if ((piPlayerRestrict & Q_PLAYER_NOTMURDERER) = Q_PLAYER_NOTMURDERER)
+         {
+            if Send(who,@CheckPlayerFlag,#flag=PFLAG_MURDERER)
+            {
+               AddPacket(4,questtemplate_red, 4,questtemplate_pkill_notred);
+            }
+            else
+            {
+               AddPacket(4,questtemplate_green, 4,questtemplate_pkill_notred);
+            }
+         }
+         else if ((piPlayerRestrict & Q_PLAYER_NOTOUTLAW) = Q_PLAYER_NOTOUTLAW)
+         {
+            if Send(who,@CheckPlayerFlag,#flag=PFLAG_OUTLAW)
+            {
+               AddPacket(4,questtemplate_red, 4,questtemplate_pkill_notorange);
+            }
+            else
+            {
+               AddPacket(4,questtemplate_green, 4,questtemplate_pkill_notorange);
+            }
+         }
+         else if ((piPlayerRestrict & Q_PLAYER_MURDERER) = Q_PLAYER_MURDERER)
+         {
+            if Send(who,@CheckPlayerFlag,#flag=PFLAG_MURDERER)
+            {
+               AddPacket(4,questtemplate_green, 4,questtemplate_pkill_red);
+            }
+            else
+            {
+               AddPacket(4,questtemplate_red, 4,questtemplate_pkill_red);
+            }
+         }
+         else if ((piPlayerRestrict & Q_PLAYER_OUTLAW) = Q_PLAYER_OUTLAW)
+         {
+            if Send(who,@CheckPlayerFlag,#flag=PFLAG_OUTLAW)
+            {
+               AddPacket(4,questtemplate_green, 4,questtemplate_pkill_orange);
+            }
+            else
+            {
+               AddPacket(4,questtemplate_red, 4,questtemplate_pkill_orange);
+            }
+         }
+      }
+
+      // Time/past completion requirements.
+      // Can have multiple.
+      iRecentTime = Send(self,@GetQuestHistoryRecentTime);
+      iTime = Send(who,@GetTimeLoggedIn);
+      lHistory = Send(who,@GetQuestHistory,#index=viQuestID);
+
+      if iTime < 0
+      {
+         iTime = 0;
+      }
+
+      if (lHistory = $)
+      {
+         iHistory = 0;
+         iSucceed = 0;
+         iFail = 0;
+      }
+      else
+      {
+         iHistory = First(lHistory) & (~QUEST_HISTORY_MASK);
+         iSucceed = Nth(lHistory,2);
+         iFail = Nth(lHistory,3);
+      }
+
+      if (iSucceed = 0)
+      {
+         // To handle case where TimeLoggedIn < iRecentTime.
+         iSucceed = -iRecentTime;
+      }
+
+      if (iFail = 0)
+      {
+         // To handle case where TimeLoggedIn < iRecentTime.
+         iFail = - iRecentTime;
+      }
+
+      if ((piPlayerRestrict & Q_PLAYER_NOTTRIED) = Q_PLAYER_NOTTRIED)
+      {
+         if (iHistory <> 0)
+         {
+            AddPacket(4,questtemplate_red, 4,questtemplate_qhist_notattempted);
+         }
+         else
+         {
+            AddPacket(4,questtemplate_green, 4,questtemplate_qhist_notattempted);
+         }
+      }
+      else if ((piPlayerRestrict & Q_PLAYER_NOTTRIED_RECENTLY) = Q_PLAYER_NOTTRIED_RECENTLY)
+      {
+         if (iTime - iFail < iRecentTime
+            OR iTime - iSucceed < iRecentTime)
+         {
+            AddPacket(4,questtemplate_red, 4,questtemplate_qhist_notrecentattempt);
+         }
+         else
+         {
+            AddPacket(4,questtemplate_green, 4,questtemplate_qhist_notrecentattempt);
+         }
+      }
+      else if (piPlayerRestrict & Q_PLAYER_NOTSUCCEEDED_RECENTLY)
+      {
+         if (iTime - iSucceed < iRecentTime)
+         {
+            AddPacket(4,questtemplate_red, 4,questtemplate_qhist_notrecentcomplete);
+         }
+         else
+         {
+            AddPacket(4,questtemplate_green, 4,questtemplate_qhist_notrecentcomplete);
+         }
+      }
+      else if (piPlayerRestrict & Q_PLAYER_NOTFAILED_RECENTLY)
+      {
+         if (iTime - iSucceed < iRecentTime)
+         {
+            AddPacket(4,questtemplate_red, 4,questtemplate_qhist_notrecentfail);
+         }
+         else
+         {
+            AddPacket(4,questtemplate_green, 4,questtemplate_qhist_notrecentfail);
+         }
+      }
+
+      if (piPlayerRestrict & Q_PLAYER_NOTSUCCEEDED)
+      {
+         if ((iHistory & QUEST_HISTORY_SUCCESS) <> 0)
+         {
+            AddPacket(4,questtemplate_red, 4,questtemplate_qhist_notcomplete);
+         }
+         else
+         {
+            AddPacket(4,questtemplate_green, 4,questtemplate_qhist_notcomplete);
+         }
+      }
+
+      if (piPlayerRestrict & Q_PLAYER_NOTFAILED)
+      {
+         if ((iHistory & QUEST_HISTORY_FAILURE) <> 0)
+         {
+            AddPacket(4,questtemplate_red, 4,questtemplate_qhist_notfailed);
+         }
+         else
+         {
+            AddPacket(4,questtemplate_green, 4,questtemplate_qhist_notfailed);
+         }
+      }
+
+      // Misc requirements.
+      if (piPlayerRestrict & Q_PLAYER_INTRIGUING)
+      {
+         // Same as not-newbie
+         if (NOT ((piPlayerRestrict & Q_PLAYER_NOTNEWBIE) = Q_PLAYER_NOTNEWBIE))
+         {
+            if (Send(who,@PlayerIsIntriguing))
+            {
+               AddPacket(4,questtemplate_green, 4,questtemplate_pkill_notnewbie);
+            }
+            else
+            {
+               AddPacket(4,questtemplate_red, 4,questtemplate_pkill_notnewbie);
+            }
+         }
+      }
+
+      if (piPlayerRestrict & Q_PLAYER_GUILDMASTER)
+      {
+         if (Send(who,@GetGuild) = $
+            OR (Send(Send(who,@GetGuild),@GetGuildMaster) <> who)
+            OR (NOT Send(Send(who,@GetGuild),@HasGuildColors)))
+         {
+            AddPacket(4,questtemplate_red, 4,questtemplate_guildmaster);
+         }
+         else
+         {
+            AddPacket(4,questtemplate_green, 4,questtemplate_guildmaster);
+         }
+      }
+
+      if (piPlayerRestrict & Q_PLAYER_GUILDOFFICER)
+      {
+         if (Send(who,@GetGuild) = $
+            OR (NOT Send(Send(who,@GetGuild),@IsOfficer,#who=who))
+            OR (NOT Send(Send(who,@GetGuild),@HasGuildColors)))
+         {
+            AddPacket(4,questtemplate_red, 4,questtemplate_guildofficer);
+         }
+         else
+         {
+            AddPacket(4,questtemplate_green, 4,questtemplate_guildofficer);
+         }
+      }
+
+      // Send resource for each appropriate restriction.
+      foreach i in plSpecialRestrict
+      {
+         switch(First(i))
+         {
+         case Q_R2_HAS_SKILL:
+            if NOT Send(who,@HasSkill,#num=Nth(i,2))
+               OR (Send(who,@GetSkillAbility,#Skill_num=Nth(i,2)) < Nth(i,3))
+            {
+               AddPacket(4,questtemplate_red);
+            }
+            else
+            {
+               AddPacket(4,questtemplate_green);
+            }
+            oObj = Send(SYS,@FindSkillByNum,#num=Nth(i,2));
+            if (Nth(i,3) > 1)
+            {
+               AddPacket(4,questtemplate_has_skill_pct,
+                         4,Send(oObj,@GetName),4,Nth(i,3));
+            }
+            else
+            {
+               AddPacket(4,questtemplate_has_skill, 4,Send(oObj,@GetName));
+            }
+            break;
+
+         case Q_R2_HAS_SPELL:
+            if NOT Send(who,@HasSpell,#num=Nth(i,2))
+               OR (Send(who,@GetSpellAbility,#Spell_num=Nth(i,2)) < Nth(i,3))
+            {
+               AddPacket(4,questtemplate_red);
+            }
+            else
+            {
+               AddPacket(4,questtemplate_green);
+            }
+            oObj = Send(SYS,@FindSpellByNum,#num=Nth(i,2));
+            if (Nth(i,3) > 1)
+            {
+               AddPacket(4,questtemplate_has_spell_pct,
+                         4,Send(oObj,@GetName),4,Nth(i,3));
+            }
+            else
+            {
+               AddPacket(4,questtemplate_has_spell, 4,Send(oObj,@GetName));
+            }
+         break;
+
+         case Q_R2_HAS_SPELL_SCHOOL:
+            if Send(who,@GetNumSpellsInSchool,#school=Nth(i,2)) < Nth(i,3)
+            {
+               AddPacket(4,questtemplate_red);
+            }
+            else
+            {
+               AddPacket(4,questtemplate_green);
+            }
+            // Bit hacky, but done elsewhere...
+            oObj = Send(SYS,@FindSpellByNum,#num=SID_BLINK);
+            AddPacket(4,questtemplate_num_spells, 4,Nth(i,3),
+                      4,Send(oObj,@GetSchoolStr,#iSchool=Nth(i,2)));
+            break;
+
+         case Q_R2_HAS_ITEM:
+            if NOT Send(who,@PossessesA,#class=Nth(i,2))
+               AND (Send(who,@FindHoldingActive,#class=Nth(i,2)) = $)
+            {
+               AddPacket(4,questtemplate_red);
+            }
+            else
+            {
+               AddPacket(4,questtemplate_green);
+            }
+            oObj = Create(Nth(i,2));
+            AddPacket(4,questtemplate_has_item, 4,Send(oObj,@GetIndef),
+                      4,Send(oObj,@GetName));
+            Send(oObj,@Delete);
+            break;
+
+         case Q_R2_USING_ITEM:
+            if NOT Send(who,@IsUsingA,#class=Nth(i,2))
+            {
+               AddPacket(4,questtemplate_red);
+            }
+            else
+            {
+               AddPacket(4,questtemplate_green);
+            }
+            oObj = Create(Nth(i,2));
+            AddPacket(4,questtemplate_using_item, 4,Send(oObj,@GetIndef),
+                      4,Send(oObj,@GetName));
+            Send(oObj,@Delete);
+            break;
+
+         case Q_R2_HAS_HEALTH_LEVEL:
+            if Send(who,@GetBaseMaxHealth) < Nth(i,2)
+            {
+               AddPacket(4,questtemplate_red);
+            }
+            else
+            {
+               AddPacket(4,questtemplate_green);
+            }
+            AddPacket(4,questtemplate_has_hp, 4,Nth(i,2));
+            break;
+
+         case Q_R2_DOES_NOT_HAVE_ITEM:
+            if Send(who,@PossessesA,#class=Nth(i,2))
+               OR (Send(who,@FindHoldingActive,#class=Nth(i,2)) <> $)
+            {
+               AddPacket(4,questtemplate_red);
+            }
+            else
+            {
+               AddPacket(4,questtemplate_green);
+            }
+            oObj = Create(Nth(i,2));
+            AddPacket(4,questtemplate_not_item, 4,Send(oObj,@GetIndef),
+                      4,Send(oObj,@GetName));
+            Send(oObj,@Delete);
+            break;
+         }
+      }
+
+      return;
+   }
+
+   GetClientObjectType(who=$, parm1 = $)
+   "QuestTemplate ObjectType is used to distinguish whether 'who' has this "
+   "quest in progress (active), or whether or not they are eligible to "
+   "start it. parm1 is optionally a quest node associated with this template."
+   {
+      if (who = $
+         OR NOT IsClass(who,&User))
+      {
+         return OT_NONE;
+      }
+
+      // Could send parm1 here if it isn't $, but not important.
+      if (Send(who,@GetActiveQuestNode,#index=viQuestID) <> $)
+      {
+         return OT_QUESTACTIVE;
+      }
+
+      // Need a specific quest node to check further.
+      if (parm1 = $)
+      {
+         return OT_NONE;
+      }
+
+      if Send(parm1,@CanPlayerStartQuest,#who=who)
+      {
+         return OT_QUESTVALID;
+      }
+
+      // Can't start this quest. Note that quests that can't be started for
+      // reasons outside the player's control (e.g. quest waiting for a 
+      // different specific player) should be removed before getting here.
+      return OT_QUESTINVALID;
    }
 
    MainDesc(who=$,index=$,oQuestNode=$)

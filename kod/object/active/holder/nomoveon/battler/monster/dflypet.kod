@@ -285,14 +285,26 @@ messages:
       return FALSE;
    }
 
-   GetObjectFlags()
+   GetObjectFlags(what = $)
    {
-      if piAnimation = ANIM_NONE
+      local iFlags;
+
+      iFlags = 0;
+
+      if (poMaster = $
+         AND what <> $
+         AND IsClass(what,&User)
+         AND Send(what,@UserDisplayMobQuestActive,#what=self))
       {
-         return OF_ATTACKABLE;
+         iFlags |= OF_MOBKILLQUEST;
       }
 
-      return OF_ATTACKABLE | OF_BOUNCING;
+      if piAnimation = ANIM_NONE
+      {
+         return iFlags | OF_ATTACKABLE;
+      }
+
+      return iFlags | OF_ATTACKABLE | OF_BOUNCING;
    }
 
    SetColor(iColor=PT_GRAY_TO_DGREEN)

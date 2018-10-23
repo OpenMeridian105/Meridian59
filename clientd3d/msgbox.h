@@ -12,7 +12,7 @@
 #ifndef _MSGBOX_H
 #define _MSGBOX_H
 
-void _cdecl Info(HINSTANCE hModule, HWND hParent, int fmt_id, ...);
+void _cdecl Info(HINSTANCE hModule, HWND hParent, int header_id, int fmt_id, ...);
 int ClientMessageBox(HWND hwndParent, char *text, char *title, UINT style);
 
 M59EXPORT void __cdecl ClientError(HINSTANCE hModule, HWND hParent, int fmt_id, ...);

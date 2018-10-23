@@ -109,6 +109,12 @@ typedef struct {
    int			boundingHeightAdjust;	// adjustment in height from overlays
 } room_contents_node;
 
+typedef struct {
+   object_node obj;
+   char desc[4096];
+   char secondary_desc[4096];
+} quest_ui_node;
+
 M59EXPORT Bool CompareIdObject(void *idnum, void *obj);
 Bool CompareId(void *id1, void *id2);
 Bool CompareIdRoomObject(void *idnum, void *obj);

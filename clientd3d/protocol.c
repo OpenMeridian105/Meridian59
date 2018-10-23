@@ -55,6 +55,8 @@ static client_message game_msg_table[] = {
 { BP_REQ_GO,               { PARAM_END }, },
 { BP_REQ_ACTIVATE,         { PARAM_ID, PARAM_END }, },
 { BP_REQ_BUY,              { PARAM_ID, PARAM_END }, },
+{ BP_REQ_TRIGGER_QUEST,    { PARAM_ID, PARAM_ID, PARAM_END }, },
+{ BP_REQ_NPC_QUESTS,       { PARAM_ID, PARAM_END }, },
 { BP_REQ_BUY_ITEMS,        { PARAM_ID, PARAM_OBJECT_LIST, PARAM_END }, },
 { BP_REQ_WITHDRAWAL,       { PARAM_ID, PARAM_END }, },
 { BP_REQ_WITHDRAWAL_ITEMS, { PARAM_ID, PARAM_OBJECT_LIST, PARAM_END }, },

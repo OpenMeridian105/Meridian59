@@ -17,7 +17,6 @@
 list_type UserInventoryList(HWND hwnd, char *title);
 void UserAttack(int action);
 void UserAttackClosest(int action);
-void UserLookMouseSquare(void);
 void UserPickup(void);
 void UserInventory(void);
 void UserLook(void);

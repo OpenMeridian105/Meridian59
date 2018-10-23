@@ -77,9 +77,17 @@
    OF_FLICKERING     = 0x00020000
    OF_FLASHING       = 0x00040000
    OF_PHASING        = 0x00080000
+   // Has a quest the user can start.
    OF_NPCHASQUESTS   = 0x00100000
+   // Has a quest the user is currently completing.
    OF_NPCACTIVEQUEST = 0x00200000
+   // Mob part of current kill quest for user.
    OF_MOBKILLQUEST   = 0x00400000
+   // Has at least one quest that satisfies the following:
+   // 1. Has a quest the user can start.
+   // 2. Has a quest the user is currently completing.
+   // 3. Has a quest the user isn't eligible for, but could be in the future.
+   OF_NPCQUESTABLE   = 0x00800000
 
    // Client preference flags (stored in piPreferences in Player)
    // Default preferences - all on except safety (which is reverse)
@@ -156,6 +164,10 @@
    OT_SUPER        = 5   // Set if object is a "super DM".
    OT_MODERATOR    = 6   // Set if object is a "moderator".
    OT_EVENTCHAR    = 7   // Set if object is an event character.
+   // Used for Quest Template objects.
+   OT_QUESTACTIVE  = 8   // Quest in progress
+   OT_QUESTVALID   = 9   // Quest can be started
+   OT_QUESTINVALID = 10  // Quest cannot be started
 
    // query flags for GetLocationInfoBSP
    LIQ_GET_SECTORINFO    = 0x000001
@@ -3735,6 +3747,7 @@
 
    // Does player have pvp enabled, i.e. not perma pvp off.
    Q_PLAYER_PVP_ENABLED          = 0x100000
+   Q_PLAYER_GUILDOFFICER         = 0x200000          // player is a guild officer, and guild has colors
 
    // quest player restrictions2
    //        used for restrictions which require parameter passing/setting
@@ -3757,17 +3770,18 @@
    QUEST_HISTORY_FAILURE           = 0x2000000
 
    // Quest node types
-   QN_TYPE_MESSAGE            = 0x01         // Deliver a message I give you
-   QN_TYPE_ITEM               = 0x02         // Deliver a specific item I give you
-   QN_TYPE_ITEMCLASS            = 0x03         // Deliver a newly created item of a particular class I give you
-   QN_TYPE_ITEMFINDCLASS      = 0x04         // Deliver any item of a particular class, one is not created, you must go and find one
-   QN_TYPE_SHOWUP               = 0x05         // Just show your face
-   QN_TYPE_CHESSMOVE            = 0x06         // Deliver a chess move message I give you
-   QN_TYPE_USERNAME            = 0x07         // Deliver the name of a user that I give you (NYI)
-   QN_TYPE_LOGGEDONNAME         = 0x08         // Deliver the name of an logged-on user that I give you (NYI)
-   QN_TYPE_MONSTER            = 0x09         // Kill a monster of a certain type
-   QN_TYPE_MONSTER_ITEMCLASS   = 0x10         // Kill a monster of a certain type, and deliver the newly created item you get after doing so
-   QN_TYPE_MONSTER_BRING      = 0x0A         // Bring a charmed monster of this type
+   QN_TYPE_NONE               = 0x00   // None (uninitialised)
+   QN_TYPE_MESSAGE            = 0x01   // Deliver a message I give you
+   QN_TYPE_ITEM               = 0x02   // Deliver a specific item I give you
+   QN_TYPE_ITEMCLASS          = 0x03   // Deliver a newly created item of a particular class I give you
+   QN_TYPE_ITEMFINDCLASS      = 0x04   // Deliver any item of a particular class, one is not created, you must go and find one
+   QN_TYPE_SHOWUP             = 0x05   // Just show your face
+   QN_TYPE_CHESSMOVE          = 0x06   // Deliver a chess move message I give you
+   QN_TYPE_USERNAME           = 0x07   // Deliver the name of a user that I give you (NYI)
+   QN_TYPE_LOGGEDONNAME       = 0x08   // Deliver the name of an logged-on user that I give you (NYI)
+   QN_TYPE_MONSTER            = 0x09   // Kill a monster of a certain type
+   QN_TYPE_MONSTER_ITEMCLASS  = 0x10   // Kill a monster of a certain type, and deliver the newly created dropped item
+   QN_TYPE_MONSTER_BRING      = 0x0A   // Bring a charmed monster of this type
 
    // Quest node status values
    QN_STATUS_UNINITIALIZED          = 0x0

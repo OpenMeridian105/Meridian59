@@ -58,7 +58,11 @@ static char colorinfo[][15] = {
    {"0,0,0" },        /* COLOR_INVNUMBGD */
    {"255,80,0"},      /* COLOR_ITEM_MAGIC_FG */
    {"0,196,50"},      /* COLOR_QUEST_HEADER */
-   {"150, 120, 120"}  /* COLOR_TIME_BORDER */
+   {"150, 120,120"},  /* COLOR_TIME_BORDER */
+   {"0,196,50"},      /* COLOR_QUEST_ACTIVE_FG */
+   {"255, 255, 0"},   /* COLOR_QUEST_VALID_FG */
+   {"0,100,10"},      /* COLOR_QUEST_ACTIVE_SEL_FG */
+   {"120, 120, 0"}    /* COLOR_QUEST_VALID_SEL_FG */
 };
 
 static char color_section[] = "Colors";  /* Section for colors in INI file */
@@ -416,26 +420,32 @@ HBRUSH DialogCtlColor(HWND hwnd, HDC hdc, HWND hwndChild, int type)
 *    Doesn't return color itself so that caller can use id to call GetBrush.
 *    Now colors magic items; any future item colors should be added here.
 */
-WORD GetItemListColor(HWND hwnd, int type, int flags)
+WORD GetItemListColor(HWND hwnd, int type, int obj_flags, int obj_type)
 {
-	if ((flags != NULL) && (GetItemFlags(flags) == (OF_ITEM_MAGIC | OF_GETTABLE)))
-		return COLOR_ITEM_MAGIC_FG;
-	else
-   {
-		switch(type)
-		{
-		case UNSEL_FGD:
-			return COLOR_LISTFGD;
-		case UNSEL_BGD:
-			return COLOR_LISTBGD;
-		case SEL_FGD:
-			return COLOR_LISTSELFGD;
-		case SEL_BGD:
-			return COLOR_LISTSELBGD;
-		}
-	}
+   if ((obj_flags != NULL) && (GetItemFlags(obj_flags) == (OF_ITEM_MAGIC | OF_GETTABLE)))
+      return COLOR_ITEM_MAGIC_FG;
 
-	return 0;
+   switch (type)
+   {
+   case UNSEL_FGD:
+      if (obj_type == OT_QUESTACTIVE)
+         return COLOR_QUEST_ACTIVE_FG;
+      if (obj_type == OT_QUESTVALID)
+         return COLOR_QUEST_VALID_FG;
+      return COLOR_LISTFGD;
+   case UNSEL_BGD:
+      return COLOR_LISTBGD;
+   case SEL_FGD:
+      if (obj_type == OT_QUESTACTIVE)
+         return COLOR_QUEST_ACTIVE_SEL_FG;
+      if (obj_type == OT_QUESTVALID)
+         return COLOR_QUEST_VALID_SEL_FG;
+      return COLOR_LISTSELFGD;
+   case SEL_BGD:
+      return COLOR_LISTSELBGD;
+   }
+
+   return 0;
 }
 
 /****************************************************************************/

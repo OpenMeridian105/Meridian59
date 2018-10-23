@@ -53,6 +53,8 @@ client_def_table_type client_def_table[] =
 	{ BP_REQ_GO,               { {0, DONE_PARM} } },
 	{ BP_SEND_PLAYERS,         { {0, DONE_PARM} } },
 	{ BP_REQ_BUY,              { {4, TAG_OBJECT}, {0, DONE_PARM} } },
+	{ BP_REQ_TRIGGER_QUEST,    { {4, TAG_OBJECT}, {4, TAG_OBJECT}, {0, DONE_PARM} } },
+	{ BP_REQ_NPC_QUESTS,       { {4, TAG_OBJECT}, {0, DONE_PARM} } },
 	{ BP_REQ_BUY_ITEMS,        { {4, TAG_OBJECT}, {2, LIST_OBJ_PARM}, {0, DONE_PARM} } },
 	{ BP_REQ_WITHDRAWAL,       { {4, TAG_OBJECT}, {0, DONE_PARM} } },
 	{ BP_REQ_WITHDRAWAL_ITEMS, { {4, TAG_OBJECT}, {2, LIST_OBJ_PARM}, {0, DONE_PARM} } },

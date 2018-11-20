@@ -162,6 +162,8 @@ resources:
    room_bergwind1_sound = wind_berg1.ogg
    room_bergwind2_sound = wind_berg2.ogg
    room_birdchirping_sound = birdchirping.ogg
+   
+   room_swampterrain_sound = swamp_terrain.ogg
 
    room_rain_sound = rain.ogg
 
@@ -727,10 +729,20 @@ messages:
          }
       }
 
-      piPeriodic_sounds = Bound(piPeriodic_sounds,2000,20000);
+      if (iTerrain & TERRAIN_SWAMP)
+      {
+         // We're only adding one sound, don't reduce piPeriodic_sounds.
+         lTempSounds = [ room_swampterrain_sound ];
+
+         foreach rSound in lTempSounds
+         {
+            plPeriodic_sounds = Cons(rSound, plPeriodic_sounds);
+         }
+      }
 
       return;
    }
+
 
    PeriodicSoundTimer()
    {

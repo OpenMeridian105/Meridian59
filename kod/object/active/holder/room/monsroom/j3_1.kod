@@ -14,29 +14,41 @@ constants:
 
    include blakston.khd
 
+   SEC_BARS = 1
+   SEC_PRESSURE_PLATE = 20
+
 resources:
 
    include j3_1.lkod
 
    room_OutdoorsJ3_1 = j3_1.roo
-   room_name_OutdoorsJ3_1 = "The Queen's Way"
+   room_name_OutdoorsJ3_1 = "Crown Point"
    OutdoorsJ3_1_music = forest.ogg
+   
+   j3_1_updoor_sound = doorrsup.ogg
+   j3_1_downdoor_sound = doordown.ogg
+   
+   j3_1_sign_name = "Beware of Bandits"
+   j3_1_sign_desc = \
+     "By the orders of the council, these gates are to protect the citizens of "
+     "Meridian from the lawlessness of the east."
 
 classvars:
 
    vrName = room_name_OutdoorsJ3_1
 
-   viTeleport_row = 10
-   viTeleport_col = 6
-
    viTerrain_type = TERRAIN_ROAD | TERRAIN_FOREST
-
-   viFlag_row = 15
-   viFlag_col = 14
-
    viWeatherZone = WEATHER_ZONE_BARLOQUE
+   
+   viFlag_row = 14
+   viFlag_col = 14
+   
+   piPressurePlate_WeightReq = 300
 
 properties:
+
+   viTeleport_row = 2
+   viTeleport_col = 10
 
    prMusic = OutdoorsJ3_1_music
 
@@ -58,22 +70,31 @@ properties:
 
    piMonster_count_max = 5
 
+   pbPressurePlate_Activated = FALSE
+   plPressurePlate_Objects = $
+   piPressurePlate_Weight = 0
+
 messages:
 
    Constructed()
    {
-     plMonsters = [ [&SpiderBaby, 40], [&GiantRat, 60] ];
-
-     // Use Random Spawn
-     // plGenerators = [ [3, 6], [10, 7], [18, 14], [19, 18] ];
+     plMonsters = [ [&Slime,100] ];
+     plGenerators = [ [3, 6], [18, 14], [19, 18] ];
 
      propagate;
    }
 
    CreateStandardObjects()
    {
+      local oSign;
+   
       Send(self,@NewHold,#what=Create(&PrincessGuard),
-         #new_row=12,#new_col=12,#fine_row=26,#fine_col=16);
+         #new_row=18,#new_col=10,#fine_row=1,#fine_col=32);
+      Send(self,@NewHold,#what=Create(&PrincessGuard),
+         #new_row=8,#new_col=7,#fine_row=64,#fine_col=64);
+         
+      oSign = Create(&Sign,#desc=j3_1_sign_desc,#newbie=TRUE,#name=j3_1_sign_name);
+      Send(self,@NewHold,#what=oSign,#new_row=8,#new_col=9,#fine_row=32,#fine_col=32);
 
       Send(self,@NewHold,#what=Create(&OrnamentalObject,#type=OO_MIDTREE4),
          #new_row=4,#new_col=13,#fine_row=34,#fine_col=56,#angle=ANGLE_EAST);
@@ -91,8 +112,223 @@ messages:
       plExits = Cons([ 11,12, ROOM_LOCKED_DOOR ],plExits);
 
       plEdge_exits = $;
-      plEdge_Exits = Cons([ LEAVE_EAST, RID_J3_2, 2, 33, ROTATE_NONE ], plEdge_exits);
-      plEdge_Exits = Cons([ LEAVE_NORTH, RID_CASTLE2B, 61, 47, ROTATE_NONE ], plEdge_exits);
+      plEdge_Exits = Cons([ LEAVE_EAST, RID_J3_2, 2, 33, ROTATE_45 ], plEdge_exits);
+      plEdge_Exits = Cons([ LEAVE_NORTH, RID_CASTLE2B, 61, 47, ROTATE_45 ], plEdge_exits);
+
+      propagate;
+   }
+   
+   Teleport(what = $)
+   {
+      if Send(what,@GetRow) > 13
+      {
+         viTeleport_row = 18;
+         viTeleport_col = 17;
+      }
+      else
+      {
+         viTeleport_row = 2;
+         viTeleport_col = 10;
+      }
+      propagate;
+   }
+   
+   AddObjectOnPlate(what=$,row=$,col=$,fine_row=$,fine_col=$)
+   {
+      local lEntry;
+
+      if (what = $)
+      {
+         return;
+      }
+
+      if NOT FindListElem(plPressurePlate_Objects,what)
+      {
+         plPressurePlate_Objects = Cons(what, plPressurePlate_Objects);
+         
+         if IsClass(what,&Item)
+         {
+            piPressurePlate_Weight+=Send(what,@GetWeight);
+         }
+      }
+      
+      if NOT pbPressurePlate_Activated
+      {
+         if IsClass(what,&Battler)
+         {
+             Send(self,@ActivatePressurePlate);
+         }
+         else if piPressurePlate_Weight >= piPressurePlate_WeightReq
+         {
+             Send(self,@ActivatePressurePlate);
+         }
+      }
+      return;
+   }
+   
+   RemoveObjectOnPlate(what = $)
+   {
+      local lEntry;
+
+      lEntry = FindListElem(plPressurePlate_Objects,what);
+      if (lEntry <> $)
+      {
+         plPressurePlate_Objects = DelListElem(plPressurePlate_Objects,what);
+
+         if IsClass(what,&Item)
+         {
+            piPressurePlate_Weight-=Send(what,@GetWeight);
+         }
+      }
+      
+      if pbPressurePlate_Activated
+      {
+         if plPressurePlate_Objects = $
+         {
+             Send(self,@DeactivatePressurePlate);
+         }
+         else if piPressurePlate_Weight < piPressurePlate_WeightReq
+         {
+             Send(self,@DeactivatePressurePlate);
+         }
+      }
+      return;
+   }
+
+   ActivatePressurePlate()
+   {
+      pbPressurePlate_Activated = TRUE;
+      Send(self,@SetSector,#sector=SEC_PRESSURE_PLATE,
+         #animation=ANIMATE_FLOOR_LIFT,#height=128,#speed=30);
+
+      Send(self,@LowerGates);
+      return;
+   }
+   
+   DeactivatePressurePlate()
+   {
+      pbPressurePlate_Activated = FALSE;
+      Send(self,@SetSector,#sector=SEC_PRESSURE_PLATE,
+         #animation=ANIMATE_FLOOR_LIFT,#height=130,#speed=30);
+
+      Send(self,@RaiseGates);
+      return;
+   }
+   
+   LowerGates()
+   {
+      Send(self,@SetSector,#sector=SEC_BARS,#animation=ANIMATE_FLOOR_LIFT,
+           #height=130,#speed=30);
+
+      Send(self,@SomethingWaveRoom,#wave_rsc=j3_1_downdoor_sound);
+      
+      return;
+   }
+   
+   RaiseGates()
+   {
+      Send(self,@SetSector,#sector=SEC_BARS,#animation=ANIMATE_FLOOR_LIFT,
+           #height=175,#speed=30);
+           
+      //Send(self,@SomethingWaveRoom,#wave_rsc=j3_1_updoor_sound);
+
+      return;
+   }
+   
+   SomethingMoved(what = $,new_row = $,new_col = $,fine_row = $, fine_col = $,
+      old_row = $, old_col = $, old_finerow = $, old_finecol = $,
+      cause = CAUSE_UNKNOWN)
+   {
+      local iStartID, iEndID;
+   
+      iStartID = Send(what,@GetSectorIDAtObject,#row=old_row,#col=old_col,
+                    #fine_row=old_finerow,#fine_col=old_finecol);
+      iEndID = Send(self,@GetSectorIDAtLocation,#row=new_row,#col=new_col,
+                    #fine_row=fine_row,#fine_col=fine_col);
+
+      if (iEndID = SEC_PRESSURE_PLATE)
+      {
+         if (iStartID <> SEC_PRESSURE_PLATE)
+         {
+            //An object was moved onto the pressure plate
+            Send(self,@AddObjectOnPlate,#what=what);
+         }
+      }
+      else if (iStartID = SEC_PRESSURE_PLATE)
+      {
+            //An object was moved from the pressure plate
+            Send(self,@RemoveObjectOnPlate,#what=what);
+      }
+
+      propagate;
+   }
+
+   NewHold(what=$, new_row=0, new_col=0, fine_row=0, fine_col=0)
+   {
+      local iSec;
+   
+      iSec = Send(self,@GetSectorIDAtLocation,#row=new_row,#col=new_col,
+                    #fine_row=fine_row,#fine_col=fine_col);
+                    
+      if iSec = SEC_PRESSURE_PLATE
+      {
+            Send(self,@AddObjectOnPlate,#what=what);
+      }
+
+      propagate;
+   }
+
+   LeaveHold(what = $)
+   {
+      if Send(what,@GetSectorIDAtObject) = SEC_PRESSURE_PLATE
+        AND what <> $
+      {
+            Send(self,@RemoveObjectOnPlate,#what=what);
+      }
+
+      propagate;
+   }
+
+   SomethingPhasedOut(what = $)
+   {
+      if Send(what,@GetSectorIDAtObject) = SEC_PRESSURE_PLATE
+        AND what <> $
+      {
+            Send(self,@RemoveObjectOnPlate,#what=what);
+      }
+
+      propagate;
+   }
+
+   SomethingPhasedIn(what = $)
+   {
+      if Send(what,@GetSectorIDAtObject) = SEC_PRESSURE_PLATE
+        AND what <> $
+      {
+            Send(self,@AddObjectOnPlate,#what=what);
+      }
+
+      propagate;
+   }
+   
+   SomethingSpectatedIn(what = $)
+   {
+      if Send(what,@GetSectorIDAtObject) = SEC_PRESSURE_PLATE
+        AND what <> $
+      {
+            Send(self,@AddObjectOnPlate,#what=what);
+      }
+
+      propagate;
+   }
+   
+   SomethingSpectatedOut(what = $)
+   {
+      if Send(what,@GetSectorIDAtObject) = SEC_PRESSURE_PLATE
+        AND what <> $
+      {
+            Send(self,@RemoveObjectOnPlate,#what=what);
+      }
 
       propagate;
    }

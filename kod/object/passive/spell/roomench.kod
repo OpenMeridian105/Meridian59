@@ -196,7 +196,15 @@ messages:
          oRoom = Send(oTarget,@GetOwner);
          oCasterRoom = Send(oCaster,@GetOwner);
          
-         Send(oCaster,@KilledSomething,#what=oTarget,#use_weapon=self);
+         if IsClass(oCaster,&Room)
+         {
+             Send(oCaster,@SomethingKilled,#what=oCaster,#victim=oTarget);
+             Send(oTarget,@Killed,#what=oCaster);
+         }
+         else
+         {
+             Send(oCaster,@KilledSomething,#what=oTarget,#use_weapon=self);
+         }
 
          if (oRoom <> oCasterRoom)
          {

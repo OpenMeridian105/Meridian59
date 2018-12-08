@@ -549,9 +549,14 @@ template <bool USE3D, int MINDIST, int MINDIST2> bool BSPCanMoveInRoomTree(const
             Wall* wall = Node->u.internal.FirstWall;
             while (wall)
             {
-               // infinite intersection point must also be in bbox of wall
+               // OLD: infinite intersection point must also be in bbox of wall
                // otherwise no intersect
-               if (!ISINBOX(&wall->P1, &wall->P2, &q))
+               //if (!ISINBOX(&wall->P1, &wall->P2, &q))
+               // NEW: Check if the line of the wall intersects a circle consisting
+               // of object's x, y and radius of min distance allowed to walls. Intersection
+               // includes the wall being totally inside the circle. Must use WALLMINDISTANCE
+               // else players can fit in areas smaller than player width.
+               if (!IntersectOrInsideLineCircle(&q, (float)MINDIST, &wall->P1, &wall->P2))
                {
                   wall = wall->NextWallInPlane;
                   continue;
@@ -1003,6 +1008,10 @@ template<bool ISPLAYER> bool BSPCanMoveInRoom3D(room_type* Room, V2* S, V2* E, f
       {
          Intersection* transit = intersects.Ptrs[i];
 
+         // pick max stepheight based on player/monster
+         // this gives some tolerance for users, but clients should use MAXSTEPHEIGHT
+         const float MAXSTEPH = (ISPLAYER) ? MAXSTEPHEIGHTUSER : MAXSTEPHEIGHT;
+
          // deal with null start sector/side
          if (!transit->SideS || !transit->SectorS)
          {
@@ -1034,13 +1043,13 @@ template<bool ISPLAYER> bool BSPCanMoveInRoom3D(room_type* Room, V2* S, V2* E, f
             heightModified += stepFall;
          }
 
+         // too far below sector
+         else if (heightModified < (hFloorSP - MAXSTEPH))
+            return false;
+
          // make sure we're at least at startsector's groundheight at Q when we reach Q from P
          // in case we stepped up or fell below it
          heightModified = MAX(hFloorSQ, heightModified);
-
-         // pick max stepheight based on player/monster
-         // this gives some tolerance for users, but clients should use MAXSTEPHEIGHT
-         const float MAXSTEPH = (ISPLAYER) ? MAXSTEPHEIGHTUSER : MAXSTEPHEIGHT;
          
          // check stepheight (this also requires a lower texture set)
          //if (transit->SideS->TextureLower > 0 && (hFloorE - hFloorQ > MAXSTEPHEIGHT))

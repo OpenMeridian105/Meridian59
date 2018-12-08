@@ -217,10 +217,13 @@ __forceinline bool ISINBOX(const V2* a, const V2* b, const V2* c)
    (a)->X = roundf((a)->X); \
    (a)->Y = roundf((a)->Y);
 
+// true if point (c) lies inside boundingbox defined by min/max of (a) and (b) with epsilon (e)
+#define ISINBOXE(a, b, c, e) \
+   (MIN((a)->X, (b)->X) - (e) <= (c)->X && (c)->X <= MAX((a)->X, (b)->X) + (e) && \
+    MIN((a)->Y, (b)->Y) - (e) <= (c)->Y && (c)->Y <= MAX((a)->Y, (b)->Y) + (e))
+
 // true if point (c) lies inside boundingbox defined by min/max of (a) and (b)
-#define ISINBOX(a, b, c) \
-   (MIN((a)->X, (b)->X) - EPSILONBIG <= (c)->X && (c)->X <= MAX((a)->X, (b)->X) + EPSILONBIG && \
-    MIN((a)->Y, (b)->Y) - EPSILONBIG <= (c)->Y && (c)->Y <= MAX((a)->Y, (b)->Y) + EPSILONBIG)
+#define ISINBOX(a, b, c) ISINBOXE(a, b, c, EPSILONBIG)
 
 #endif
 
@@ -416,4 +419,34 @@ __forceinline bool IntersectLineCircle(const V2* M, const float Radius, const V2
    const int     mask = _mm_movemask_epi8(cast);                 // combine some bits from all registers [SSE2]
    return (mask & 0x00FF) == 0x00FF;                             // filter for 2D
 #endif
+}
+
+// Checks for intersection of a finite line segment (S, E) and a circle (M=center)
+// http://stackoverflow.com/questions/1073336/circle-line-collision-detection
+// Returns true if there is an intersection
+// Differs from above function in that it also returns true if the line
+// is entirely inside the circle (t1 <= 0.0f && t2 >= 1.0f)
+__forceinline bool IntersectOrInsideLineCircle(const V2* M, const float Radius, const V2* S, const V2* E)
+{
+   V2 d, f;
+   V2SUB(&d, E, S);
+   V2SUB(&f, S, M);
+
+   const float a = V2DOT(&d, &d);
+   const float b = 2.0f * V2DOT(&f, &d);
+   const float c = V2DOT(&f, &f) - (Radius * Radius);
+   const float div = 2.0f * a;
+   const float discriminant = b * b - 4.0f * a * c;
+
+   if (discriminant < 0.0f || ISZERO(div))
+      return false;
+
+   const float sqrt = sqrtf(discriminant);
+   const float t1 = (-b - sqrt) / div;
+   const float t2 = (-b + sqrt) / div;
+
+   return
+      (t1 >= 0.0f && t1 <= 1.0f) ||
+      (t2 >= 0.0f && t2 <= 1.0f) ||
+      (t1 <= 0.0f && t2 >= 1.0f);
 }

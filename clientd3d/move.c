@@ -563,9 +563,16 @@ bool CanMoveInRoomTree(const room_type* Room, const BSPnode* Node, const V2* S, 
             WallData* wall = Node->u.internal.walls_in_plane;
             while (wall)
             {
-               // infinite intersection point must also be in bbox of wall
+               // OLD: infinite intersection point must also be in bbox of wall
                // otherwise no intersect
-               if (!ISINBOXINT(wall->x0, wall->y0, wall->x1, wall->y1, &q))
+               //if (!ISINBOXINT(wall->x0, wall->y0, wall->x1, wall->y1, &q))
+               // NEW: Check if the line of the wall intersects a circle consisting
+               // of player x, y and radius of min distance allowed to walls. Intersection
+               // includes the wall being totally inside the circle.
+               V2 P1, P2;
+               V2SET(&P1, wall->x0, wall->y0);
+               V2SET(&P2, wall->x1, wall->y1);
+               if (!IntersectOrInsideLineCircle(&q, (float)min_distance, &P1, &P2))
                {
                   wall = wall->next;
                   continue;
@@ -769,6 +776,13 @@ static bool CanMoveInRoom(V2 *S, V2 *E, float Height, float Speed, WallData **Bl
 
          // apply fallheight
          heightModified += stepFall;
+      }
+
+      // too far below sector
+      else if (heightModified < (hFloorSP - MAXSTEPHEIGHT))
+      {
+         *BlockWall = transit->Wall;
+         return false;
       }
 
       // make sure we're at least at startsector's groundheight at Q when we reach Q from P

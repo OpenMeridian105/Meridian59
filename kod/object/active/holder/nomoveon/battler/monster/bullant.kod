@@ -1,0 +1,151 @@
+// Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+// All rights reserved.
+//
+// This software is distributed under a license that is described in
+// the LICENSE file that accompanies it.
+//
+// Meridian is a registered trademark.
+
+
+////////////////////////////////////////////////////////////////////////////////
+BullAnt is Monster
+
+constants:
+
+   include blakston.khd
+
+resources:
+
+   //include BullAnt.lkod
+
+   BullAnt_koc_name_rsc = "yokinich"
+   BullAnt_name_rsc = "bull ant"
+   BullAnt_icon_rsc = bullant.bgf
+   BullAnt_desc_rsc = \
+      "These creatures are known to construct burrows consisting of many "
+      "tunnels. Despite their small bodies, they possess a frightening amount "
+      "of strength."
+
+   BullAnt_dead_icon_rsc = bullantX.bgf
+   BullAnt_dead_name_rsc = "dead BullAnt"
+
+   BullAnt_sound_hit = ant_atkh.ogg
+   BullAnt_sound_miss = ant_atkm.ogg
+   BullAnt_sound_death = ant_dth.ogg
+   BullAnt_sound_aware = ant_awr.ogg
+
+classvars:
+
+   vrName = BullAnt_name_rsc
+   vrIcon = BullAnt_icon_rsc
+   vrDesc = BullAnt_desc_rsc
+
+   viIndefinite = ARTICLE_AN
+   vrKocName = BullAnt_koc_name_rsc
+
+   vrDead_icon = BullAnt_dead_icon_rsc
+   vrDead_name = BullAnt_dead_name_rsc
+
+   viSpeed = SPEED_SLOW
+   viAttack_type = ATCK_WEAP_BITE
+   viLevel = 55
+   viDifficulty = 9
+   viVisionDistance = 14
+   viKarma = -40
+   viCashmin = 225
+   viCashmax = 600
+   viDefault_behavior = AI_FIGHT_AGGRESSIVE
+   viAttributes = MOB_SPASM
+
+   viTreasure_type = TID_TOUGH
+
+   vrSound_hit = BullAnt_sound_hit
+   vrSound_miss = BullAnt_sound_miss
+   vrSound_aware = BullAnt_sound_aware
+   vrSound_death = BullAnt_sound_death
+
+   vbCanBleed = FALSE
+   vbCanSiphon = FALSE
+
+   viBleedChance = 15
+   viBleedStrength = 1000
+   viBleedDuration = 8000
+
+properties:
+
+   piAnimation = ANIM_NONE
+
+messages:
+
+   Constructed()
+   {
+      plResistances = [ [-ATCK_SPELL_FIRE, 65 ],
+                        [ATCK_WEAP_BLUDGEON, 65 ],
+                        [ATCK_WEAP_NERUDITE, -10 ],
+                        [ATCK_WEAP_MAGIC, -10] ];
+
+      propagate;
+   }
+
+   DoSpasm()
+   {
+      local roll;
+
+      roll = Random(1,10);
+
+      if roll = 1
+      {
+         Send(self,@DoLegSpasm);
+
+         propagate;
+      }
+
+      if roll <= 5
+      {
+         Send(poOwner,@SomethingTurned,#what=self,
+               #new_angle=Random(0,MAX_ANGLE-1));
+      }
+
+      propagate;
+   }
+
+   DoLegSpasm()
+   {
+      piAnimation = ANIM_ATTACK;
+      Send(poOwner,@SomethingChanged,#what=self);
+      piAnimation = ANIM_NONE;
+
+      return;
+   }
+
+   SendMoveAnimation()
+   {
+      AddPacket(1,ANIMATE_CYCLE, 4,150, 2,1, 2,3);
+
+      return;
+   }
+
+   SendLookAnimation()
+   {
+      AddPacket(1,ANIMATE_CYCLE, 4,150, 2,1, 2,3);
+
+      return;
+   }
+
+   SendAnimation()
+   {
+      if piAnimation = ANIM_ATTACK
+      {
+         AddPacket(1,ANIMATE_ONCE, 4,150, 2,1, 2,6, 2,1);
+
+         return;
+      }
+
+      // if no body animation
+      AddPacket(1,ANIMATE_NONE,2,1);
+
+      return;
+   }
+
+end
+////////////////////////////////////////////////////////////////////////////////

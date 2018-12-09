@@ -1,0 +1,101 @@
+// Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+// All rights reserved.
+//
+// This software is distributed under a license that is described in
+// the LICENSE file that accompanies it.
+//
+// Meridian is a registered trademark.
+
+
+////////////////////////////////////////////////////////////////////////////////
+GiantEye is Monster
+
+constants:
+
+   include blakston.khd
+
+resources:
+
+   //include GiantEye.lkod
+
+   GiantEye_koc_name_rsc = "eyeiija"
+   GiantEye_name_rsc = "floating eyeball"
+   GiantEye_icon_rsc = gianteye.bgf
+   GiantEye_desc_rsc = \
+   "Telepathically reporting all that it sees to a dark master. "
+   "The airborne entity flutters high above the surface. "
+
+   GiantEye_dead_icon_rsc = amoebaX.bgf
+   GiantEye_dead_name_rsc = "pile of goo"
+
+   GiantEye_sound_hit = gst_atkh.ogg
+   GiantEye_sound_miss = gst_atkm.ogg
+   GiantEye_sound_death = gst_dth.ogg
+   GiantEye_sound_aware = gst_awr.ogg
+
+classvars:
+
+   vrKocName = GiantEye_koc_name_rsc
+   vrName = GiantEye_name_rsc
+   vrIcon = GiantEye_icon_rsc
+   vrDesc = GiantEye_desc_rsc
+   vrDead_icon = GiantEye_dead_icon_rsc
+   vrDead_name = GiantEye_dead_name_rsc
+   viTreasure_type = TID_ZOMBIE
+   viSpeed = SPEED_SLOW
+   viAttack_spell = ATCK_SPELL_ACID
+   viAttributes = 0
+   viLevel = 120
+   viDifficulty = 5
+   viVisionDistance = 20
+   viSocial = 1
+   viKarma = -80
+   viDefault_behavior = AI_FIGHT_AGGRESSIVE | AI_FIGHT_SINGLEMINDED
+   viCashmin = 350
+   viCashmax = 1025
+   vrSound_hit = GiantEye_sound_hit
+   vrSound_miss = GiantEye_sound_miss
+   vrSound_aware = GiantEye_sound_aware
+   vrSound_death = GiantEye_sound_death
+   viDead_drawfx = DRAWFX_TRANSLUCENT_75
+   vbIsUndead = TRUE
+   vbCanPoison = FALSE
+   vbCanBleed = FALSE
+   vbCanFatigue = FALSE
+   viNightVision = 255
+
+   // Airborne. Doesn't care if he's flying over water or land.
+   vbAquatic = TRUE
+
+properties:
+
+   piDrawfx = DRAWFX_TRANSLUCENT_75
+   piDrawEffectFlag = OF_BOUNCING
+   
+   piReputationGroup = REP_HERETIC
+
+messages:
+
+   Constructed()
+   {
+      plResistances = [ [-ATCK_SPELL_FIRE, 90],
+                        [-ATCK_SPELL_COLD, 90],
+                        [-ATCK_SPELL_UNHOLY, 90],
+                        [-ATCK_SPELL_ACID, 90],
+                        [ATCK_WEAP_NONMAGIC, 90],
+                        [ATCK_WEAP_MAGIC, -50],
+                        [-ATCK_SPELL_HOLY, -50]
+                      ];
+
+      plActions = [ [SID_UNHOLY_TOUCH] ];
+
+      propagate;
+   }
+   
+   CanBeWebbed()
+   {
+      return FALSE;
+   }
+
+end
+////////////////////////////////////////////////////////////////////////////////

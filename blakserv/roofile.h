@@ -43,7 +43,7 @@
 #define PLAYERWIDTH           (31.0f * (float)KODFINENESS * 0.25f)      // (from clientd3d/game.c)
 #define WALLMINDISTANCE       (PLAYERWIDTH / 2.0f)                      // (from clientd3d/game.c)
 #define WALLMINDISTANCE2      (WALLMINDISTANCE * WALLMINDISTANCE)       // (from clientd3d/game.c)
-#define WALLTOLERANCEUSER     208                                       // 208 ROO units = 13 KOD fine units
+#define WALLTOLERANCEUSER     128                                       // 128 ROO units = 8 KOD fine units
 #define WALLMINDISTANCEUSER   (WALLMINDISTANCE - WALLTOLERANCEUSER)     // let users get a bit closer (tolerance for check)
 #define WALLMINDISTANCEUSER2  (WALLMINDISTANCEUSER*WALLMINDISTANCEUSER) // squared WALLMINDISTANCEUSER
 #define OBJMINDISTANCE        512.0f                                    // 2 astar rows/cols, MUST BE MULTIPLE OF 256

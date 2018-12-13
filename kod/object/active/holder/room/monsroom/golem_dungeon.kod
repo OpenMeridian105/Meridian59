@@ -14,57 +14,103 @@ constants:
 
    include blakston.khd
 
+   MAINTENANCE_DELAY = 6000000  /// (1 hour)
+   BOSS_DELAY = 2000
+   
+   SEC_LAVA = 1
+   SEC_LAVA_PIT = 2
+   SEC_BARS = 3
+   SEC_BRIDGE_A = 10
+   SEC_BRIDGE_B = 11
+   SEC_BRIDGE_C = 12
+   SEC_BRIDGE_D = 13
+   SEC_ROOM_FINAL = 20
+   SEC_ROOM_CHEST = 21
+   
+   // Constants for treasure
+   // Objects as treasure, format: [ chance, TREASURE_OBJECT, class, number ]
+   TREASURE_OBJECT = 1
+   // Magic weapon as treasure, format:
+   //  [ chance, TREASURE_WEAPON, class, ItemAtt constant ]
+   TREASURE_WEAPON = 2
+
 resources:
 
    include golem_dungeon.lkod
 
    room_golem_dungeon = golem_dungeon.roo
-   room_name_golem_dungeon = "The Golem Dungeon"
+   room_name_golem_dungeon = "Caverns of Ancient Rock"
    golem_dungeon_music = song10.ogg
    golem_cant_pass = "Your efforts prove fruitless, it holds firm."
+   golem_dungeon_lever_desc = \
+      "This lever is caked with years' worth of accumulated rust and slime."
+
+   golem_dungeon_lever_sound = fquake.ogg
+   golem_dungeon_lava_spash_sound = lavasplash.ogg
+   golem_dungeon_wading_sound = frying.ogg
+
+   golem_dungeon_spawn = \ 
+      "~BFiery shapes begin to emerge from the molten rock..."
+   golem_dungeon_spawn_boss = \
+      "~kInferno whispers, \"~r~IWhat's the saying again? Light a man a fire to "
+      "keep him warm for a night, but light him ~Bon~B fire...~k\""
+      
+   golem_dungeon_lore_book = "Golem Lorebook"
+   golem_dungeon_lore_text = "*insert lore here*"
+
+   lava_damage0 = "You withstand the lava unscathed."
+   lava_damage = \ 
+     "Ouch! The lava burns you for ~B~r%i~B~v damage."
 
 classvars:
 
    vrName = room_name_golem_dungeon
+   
+   viTerrain_type = TERRAIN_LAVA
+   vrWading_Sound = golem_dungeon_wading_sound
 
-   viTeleport_row = 42
-   viTeleport_col = 31
-
-   viWeatherZone = WEATHER_ZONE_BERG
+   viTeleport_row = 31
+   viTeleport_col = 9
+   
+   viBurnStrength = 2000
+   viBurnDuration = 7000
 
 properties:
 
-   viTerrain_type = TERRAIN_NECROPOLIS | TERRAIN_CAVES
+   ptBossTimer = $
+   ptMaintenance = $
+   
+   pbCanSpawnFinal = TRUE
+   pbCanSpawnBoss = TRUE
 
-   prRoom = room_golem_dungeon
-   piRoom_num = RID_GOLEM_DUNGEON
-   prMusic = golem_dungeon_music
-
-   piBaseLight = LIGHT_VERY_DARK
-
-   piGen_percent = 70
+   poChest = $
+   poLever1 = $
+   poLever2 = $
+   poLever3 = $
+   poLever4 = $
+   
+   plFinalSpawn = $
+   plTreasuresList = $
 
    piInit_count_min = 5
    piInit_count_max = 7
-
+   piGen_percent = 70
    piMonster_count_max = 8
+
+   piLavaDamage = 8
+   piLavaBurnChance = 15
+   
+   prRoom = room_golem_dungeon
+   piRoom_num = RID_GOLEM_DUNGEON
+
+   piBaseLight = LIGHT_VERY_DARK
+   piOutside_factor = OUTDOORS_NONE
+
+   prMusic = golem_dungeon_music
 
 messages:
 
-   CreateStandardExits()
-   {
-      plEdge_Exits = $;
-
-      plEdge_Exits = Cons([ LEAVE_NORTH, RID_BERG_8, 32, 49, ROTATE_NONE ], plEdge_exits);
-
-      plExits = Cons([ 80, 23, ROOM_LOCKED_DOOR,
-                       golem_cant_pass ],plExits);
-      plExits = Cons([ 81, 24, ROOM_LOCKED_DOOR,
-                       golem_cant_pass ],plExits);
-
-      propagate;
-   }
-
+#region Create and Delete
    Constructed()
    {
       plMonsters = [ [&EarthElemental, 100] ];
@@ -72,7 +118,38 @@ messages:
       plGenerators = [ [25, 21], [49, 19], [42, 31], [39, 48], [47, 53],
                        [40, 66], [53, 46], [52, 65], [72, 65] ];
 
-       propagate;
+      plFinalSpawn = [ [76, 20], [86, 27],
+                       [83, 26], [83, 29] ];
+                       
+      Send(self,@ResetTreasureList);
+      ptMaintenance = CreateTimer(self,@MaintenanceTimer,MAINTENANCE_DELAY);
+
+      propagate;
+   }
+   
+   Delete()
+   {
+      if ptMaintenance <> $
+      {
+         DeleteTimer(ptMaintenance);
+         ptMaintenance = $;
+      }
+      
+      if ptBossTimer <> $
+      {
+         DeleteTimer(ptBossTimer);
+         ptBossTimer = $;
+      }
+      
+      plTreasuresList = $;
+
+      Send(poChest,@Delete);
+      Send(poLever1,@Delete);
+      Send(poLever2,@Delete);
+      Send(poLever3,@Delete);
+      Send(poLever4,@Delete);
+
+      propagate;
    }
 
    CreateStandardObjects()
@@ -97,16 +174,458 @@ messages:
             #fine_row=40,#fine_col=40);
       Send(self,@NewHold,#what=Create(&Brazier),#new_row=77,#new_col=68,
             #fine_row=12,#fine_col=32);
-
       Send(self,@NewHold,#what=Create(&Brazier),#new_row=81,#new_col=18,
             #fine_row=16,#fine_col=16);
       Send(self,@NewHold,#what=Create(&Brazier),#new_row=85,#new_col=18,
             #fine_row=48,#fine_col=16);
 
-      Send(self,@NewHold,#what=Create(&Chest),#new_row=83,#new_col=16,
+      poChest = Create(&Chest);
+      Send(self,@NewHold,#what=poChest,#new_row=83,#new_col=16,
             #fine_row=32,#fine_col=4);
+            
+      poLever1 = Create(&Lever,#description=golem_dungeon_lever_desc);          
+      Send(self,@NewHold,#what=poLever1,#new_row=30,#new_col=32);
+      poLever2 = Create(&Lever,#description=golem_dungeon_lever_desc);          
+      Send(self,@NewHold,#what=poLever2,#new_row=49,#new_col=62);
+      poLever3 = Create(&Lever,#description=golem_dungeon_lever_desc);          
+      Send(self,@NewHold,#what=poLever3,#new_row=28,#new_col=80);
+      poLever4 = Create(&Lever,#description=golem_dungeon_lever_desc);          
+      Send(self,@NewHold,#what=poLever4,#new_row=40,#new_col=73);
+
+      Send(self,@NewHold,#what=Create(&BookPedestal,
+         #name=golem_dungeon_lore_book,#text=golem_dungeon_lore_text),
+         #new_row=81,#new_col=45,#fine_row=64,#fine_col=50,#new_angle=ANGLE_NORTH);      
 
       propagate;
+   }
+
+   CreateStandardExits()
+   {
+      plEdge_Exits = $;
+
+      plEdge_Exits = Cons([ LEAVE_NORTH, RID_BERG_8, 32, 49, ROTATE_NONE ], plEdge_exits);
+
+      plExits = Cons([ 80, 23, ROOM_LOCKED_DOOR,
+                       golem_cant_pass ],plExits);
+      plExits = Cons([ 81, 24, ROOM_LOCKED_DOOR,
+                       golem_cant_pass ],plExits);
+
+      propagate;
+   }
+#endregion Create and Delete
+   
+#region Treasure
+   ResetTreasureList()
+   {
+      // All chances (first number) should add up to 100.
+      plTreasuresList = [ [ 1, TREASURE_OBJECT, &Rose, 1 ],
+                          [ 3, TREASURE_WEAPON, &Scimitar, WA_BLINDER ],
+                          [ 2, TREASURE_WEAPON, &Scimitar, WA_PURGER ],
+                          [ 3, TREASURE_WEAPON, &Scimitar, WA_PARALYZER ],
+                          [ 3, TREASURE_WEAPON, &LongSword, WA_PARALYZER ],
+                          [ 3, TREASURE_WEAPON, &LongSword, WA_BLINDER ],
+                          [ 5, TREASURE_WEAPON, &Hammer, WA_BLINDER ],
+                          [ 3, TREASURE_WEAPON, &Hammer, WA_PURGER ],
+                          [ 1, TREASURE_WEAPON, &MysticSword, WA_PURGER ],
+                          [ 1, TREASURE_WEAPON, &MysticSword, WA_PARALYZER ],
+                          [ 1, TREASURE_WEAPON, &NeruditeSword, WA_PURGER ],
+                          [ 3, TREASURE_WEAPON, &Axe, WA_BLINDER ],
+                          [ 3, TREASURE_WEAPON, &Axe, WA_PARALYZER ],
+                          [ 6, TREASURE_OBJECT, &PlateArmor, 1 ],
+                          [ 3, TREASURE_OBJECT, &OfferingKraanan, 1 ],
+                          [ 3, TREASURE_OBJECT, &OfferingShalille, 1 ],
+                          [ 3, TREASURE_OBJECT, &OfferingRiija, 1 ],
+                          [ 3, TREASURE_OBJECT, &OfferingQor, 1 ],
+                          [ 3, TREASURE_OBJECT, &OfferingFaren, 1 ],
+                          [ 2, TREASURE_OBJECT, &OfferingJala, 1 ],
+                          [ 1, TREASURE_OBJECT, &Prism, 1 ],
+                          [ 3, TREASURE_OBJECT, &TrueLute, 1 ],
+                          [ 5, TREASURE_OBJECT, &PurpleMushroom, 25 ],
+                          [ 7, TREASURE_OBJECT, &InkyCap, 20 ],
+                          [ 5, TREASURE_OBJECT, &BlueDragonScale, 20 ],
+                          [ 5, TREASURE_OBJECT, &DarkAngelFeather, 20 ],
+                          [ 5, TREASURE_OBJECT, &EntrootBerry, 50 ],
+                          [ 5, TREASURE_OBJECT, &Yrxlsap, 20 ],
+                          [ 6, TREASURE_OBJECT, &Ruby, 35 ],
+                          [ 3, TREASURE_OBJECT, &Money, 25000 ]
+                        ];
+
+      return;
+   }
+
+   DoEndTreasure()
+   {
+      local iNumPlayers, iChance, iCumulative, i, oObject, oItemAtt;
+
+      iNumPlayers = Send(self,@CountHeroes);
+
+      if iNumPlayers > 5
+      {
+         iNumPlayers = Random(3,5);
+      }
+      else
+      {
+         iNumPlayers = Random(1,iNumPlayers);
+      }
+
+      while iNumPlayers > 0
+      {
+         iChance = Random(1,100);
+         iCumulative = 0;
+         i = 1;
+
+         while iCumulative < 100 AND i <= Length(plTreasuresList)
+         {
+            iCumulative = iCumulative + First(Nth(plTreasuresList,i));
+            if iChance <= iCumulative
+            {
+               if Nth(Nth(plTreasuresList,i),2) = TREASURE_OBJECT
+               {
+                  // Create Object.
+                  oObject = Create(Nth(Nth(plTreasuresList,i),3),
+                                   #number=Nth(Nth(plTreasuresList,i),4));
+                  // Put in chest.
+                  Send(poChest,@NewHold,#what=oObject);
+               }
+               else
+               {
+                  if Nth(Nth(plTreasuresList,i),2) = TREASURE_WEAPON
+                  {
+                     // Create weapon.
+                     oObject = Create(Nth(Nth(plTreasuresList,i),3));
+                     // Find Itematt.
+                     oItemAtt = Send(SYS,@FindItemAttByNum,
+                                     #num=Nth(Nth(plTreasuresList,i),4));
+                     // Apply Itematt.
+                     Send(oItemAtt,@AddToItem,#oItem=oObject);
+                     // Put in chest.
+                     Send(poChest,@NewHold,#what=oObject);
+                  }
+               }
+               
+               iCumulative = 100;
+            }
+
+            i = i + 1;
+         }
+
+         iNumPlayers = iNumPlayers - 1;
+      }
+
+      return;
+   }
+#endregion Treasure
+
+   MaintenanceTimer()
+   {
+      if NOT pbuser_in_room
+      {
+         Send(self,@ResetDungeon);
+      }
+
+      ptMaintenance = CreateTimer(self,@MaintenanceTimer,MAINTENANCE_DELAY);
+
+      return;
+   }
+   
+   NewHoldObject(what = $, new_pos = $)
+   {
+      local iSectorID;
+
+      if (what = $
+         OR new_pos = $
+         OR NOT IsClass(what,&User))
+      {
+         propagate;
+      }
+
+      iSectorID = Send(self,@GetSectorIDAtLocation,#row=Nth(new_pos,2),
+                        #col=Nth(new_pos,3),#fine_row=Nth(new_pos,4),
+                        #fine_col=Nth(new_pos,5));
+      Post(self,@UserSectorCheck,#who=what,#iSectorID=iSectorID);
+
+      propagate;
+   }
+
+   SomethingMoved(what = $)
+   {
+      Send(self,@UserSectorCheck,#who=what,
+            #iSectorID=Send(what,@GetSectorIDAtObject));
+
+      // Special case if monster falls in the lava pit
+      if IsClass(what,&Monster)
+        AND Send(what,@GetSectorIDAtObject) = SEC_LAVA_PIT
+      {
+         Send(self,@SomethingWaveRoom,#wave_rsc=golem_dungeon_lava_spash_sound,
+               #what=what);
+         Post(what,@Delete);
+      }
+
+      propagate;
+   }
+
+   SomethingPhasedIn(what=$)
+   {
+      Send(self,@UserSectorCheck,#who=what,
+            #iSectorID=Send(what,@GetSectorIDAtObject));
+
+      propagate;
+   }
+
+   SomethingSpectatedIn(what=$)
+   {
+      Send(self,@UserSectorCheck,#who=what,
+            #iSectorID=Send(what,@GetSectorIDAtObject));
+
+      propagate;
+   }
+   
+   SomethingChanged(what=$)
+   {
+      local i, oObj;
+
+      if what = poLever1
+         AND Send(poLever1,@GetState) = LEVER_DOWN
+      {
+         Send(poLever1,@SetStuck,#newstuck=TRUE);
+         Send(self,@SetSector,#sector=SEC_BRIDGE_A,#animation=ANIMATE_FLOOR_LIFT,
+              #height=344,#speed=15);
+         Send(self,@SomethingWaveRoom,#wave_rsc=golem_dungeon_lever_sound,
+               #what=poLever1);
+         Send(self,@Rumble);
+      }
+      else if what = poLever2
+         AND Send(poLever2,@GetState) = LEVER_DOWN
+      {
+         Send(poLever2,@SetStuck,#newstuck=TRUE);
+         Send(self,@SetSector,#sector=SEC_BRIDGE_B,#animation=ANIMATE_FLOOR_LIFT,
+              #height=336,#speed=15);
+         Send(self,@SomethingWaveRoom,#wave_rsc=golem_dungeon_lever_sound,
+               #what=poLever2);
+         Send(self,@Rumble);
+      }
+      else if what = poLever3
+         AND Send(poLever3,@GetState) = LEVER_DOWN
+      {
+         Send(poLever3,@SetStuck,#newstuck=TRUE);
+         Send(self,@SetSector,#sector=SEC_BRIDGE_C,#animation=ANIMATE_FLOOR_LIFT,
+              #height=328,#speed=15);
+         Send(self,@SomethingWaveRoom,#wave_rsc=golem_dungeon_lever_sound,
+               #what=poLever3);
+         Send(self,@Rumble);
+      }
+      else if what = poLever4
+         AND Send(poLever4,@GetState) = LEVER_DOWN
+      {
+         Send(poLever4,@SetStuck,#newstuck=TRUE);
+         Send(self,@SetSector,#sector=SEC_BRIDGE_D,#animation=ANIMATE_FLOOR_LIFT,
+              #height=312,#speed=15);
+         Send(self,@SomethingWaveRoom,#wave_rsc=golem_dungeon_lever_sound,
+               #what=poLever4);
+         Send(self,@Rumble);
+      }
+
+      propagate;
+   }
+
+   SomethingKilled(what = $, victim = $)
+   {
+      if IsClass(victim,&FireElementalChampion)
+      {
+         Send(self,@DoEndTreasure);
+         Send(poChest,@LockChest,#bLocked=FALSE);
+      }
+      else if IsClass(victim,&FireElemental)
+         AND Send(self,@CountHoldingHowMany,#class=&FireElemental) <= 1
+      {
+         Send(self,@LowerGates);
+      }
+   
+      propagate;
+   }
+   
+   UserSectorCheck(iSectorID = 0, who = $)
+   {
+      if (who = $) OR NOT IsClass(who,&Player)
+      {
+         return;
+      }
+      else if iSectorID = SEC_LAVA
+        OR iSectorID = SEC_LAVA_PIT
+      {
+         Send(self,@CookVictim,#what=who);
+      }
+      else if (iSectorID = SEC_ROOM_FINAL)
+      {
+          Send(self,@CreateMonstersInFinal);
+      }
+      else if (iSectorID = SEC_ROOM_CHEST)
+        AND ptBossTimer = $
+      {
+          ptBossTimer = CreateTimer(self,@CreateBoss,BOSS_DELAY);
+      }
+
+      return;
+   }
+   
+   CookVictim(what=$)
+   {
+      local oEffect, rMessage, iDamage;
+      
+      if IsClass(what,&Player)
+      {
+         if Random(1,100) < piLavaBurnChance
+            AND Send(what,@CanBurn)
+         {
+            oEffect = Send(SYS,@FindSpellByNum,#num=SID_BURN);
+            Send(oEffect,@StartBurn,#who=what,#source=self,
+                        #strength=viBurnStrength,#duration=viBurnDuration);
+         }
+
+         if piLavaDamage > 0
+         {
+             iDamage = Send(what,@AssessDamage,#what=self,
+                        #damage=Random(1,piLavaDamage),
+                        #aspell=ATCK_SPELL_FIRE,#report=TRUE,
+                        #report_resistance=FALSE);
+
+             if iDamage = $
+             {
+                Send(what,@Killed,#what=what);
+                return;
+             }          
+             else if iDamage = 0
+             {
+                rMessage = lava_damage0;
+             }
+             else if iDamage >= 1
+             {
+                rMessage = lava_damage;
+             }
+
+             Send(what,@MsgSendUser,#message_rsc=rMessage,#parm1=iDamage/100);
+             Send(self,@SomethingAttacked,#what=self,#victim=what,
+                        #use_weapon=ATCK_SPELL_FIRE);
+         }
+      }
+      return;
+   }
+   
+   CreateMonstersInFinal()
+   {
+      local i;
+      
+      if pbCanSpawnFinal
+         AND NOT Send(self,@CountHoldingHowMany,#class=&FireElemental)
+      {
+          foreach i in plFinalSpawn
+          {
+             Send(self,@NewHold,#what=Create(&FireElemental),
+                #new_row=First(i),#new_col=Nth(i,2),#new_angle=ANGLE_NORTH_EAST);
+             Send(self,@SomethingWaveRoom,
+                #wave_rsc=golem_dungeon_lava_spash_sound,#what=self);
+          }
+          Send(self,@SomeoneSaid,#type=SAY_MESSAGE,
+             #string=golem_dungeon_spawn, #what=self);
+          Send(self,@Rumble);
+          Send(poChest,@LockChest,#bLocked=TRUE);
+          pbCanSpawnFinal = FALSE;
+          return TRUE;
+      }
+      return;
+   }
+   
+   CreateBoss()
+   {
+      ptBossTimer = $;
+      if pbCanSpawnBoss
+         AND NOT Send(self,@CountHoldingHowMany,#class=&FireElementalChampion)
+      {
+         Send(self,@NewHold,#what=Create(&FireElementalChampion),
+             #new_row=84,#new_col=21);
+         Send(self,@SomethingWaveRoom,
+             #wave_rsc=golem_dungeon_lava_spash_sound,#what=self);
+         Send(self,@SomeoneSaid,#type=SAY_MESSAGE,
+             #string=golem_dungeon_spawn_boss, #what=self);
+         Send(self,@Rumble);
+         
+         // Spawn another tough creature near the exit
+         // Not required to gaining access to the chest
+         Send(self,@NewHold,#what=Create(&EarthElementalChampion),
+             #new_row=21,#new_col=48);
+         pbCanSpawnBoss = FALSE;
+      }
+      return;
+   }
+   
+   RaiseGates()
+   {
+      Send(self,@SetSector,#sector=SEC_BARS,
+            #animation=ANIMATE_FLOOR_LIFT,#height=296,#speed=30);
+
+      return;
+   }
+   
+   LowerGates()
+   {
+      Send(self,@SetSector,#sector=SEC_BARS,
+            #animation=ANIMATE_FLOOR_LIFT,#height=200,#speed=30);
+
+      return;
+   }
+   
+   ResetDungeon()
+   {
+      ptMaintenance = $;
+      
+      if Send(self,@CountHoldingHowMany,#class=&FireElemental) 
+         OR Send(self,@CountHoldingHowMany,#class=&FireElementalChampion)
+      {
+          ptMaintenance = CreateTimer(self,@ResetDungeon,MAINTENANCE_DELAY);
+          return FALSE;
+      }
+      else
+      {
+          Send(self,@RaiseGates);
+          Send(poChest,@LockChest,#bLocked=TRUE);
+          pbCanSpawnFinal = TRUE;
+          pbCanSpawnBoss = TRUE;
+          
+          Send(poLever1,@SetStuck,#newstuck=FALSE);
+          Send(poLever2,@SetStuck,#newstuck=FALSE);
+          Send(poLever3,@SetStuck,#newstuck=FALSE);
+          Send(poLever4,@SetStuck,#newstuck=FALSE);
+          
+          if Send(poLever1,@GetState) = LEVER_DOWN
+          {
+             Send(poLever1,@SwitchLever);
+          }
+
+          if Send(poLever2,@GetState) = LEVER_DOWN
+          {
+             Send(poLever2,@SwitchLever);
+          }
+
+          if Send(poLever3,@GetState) = LEVER_DOWN
+          {
+             Send(poLever3,@SwitchLever);
+          }
+          
+          if Send(poLever4,@GetState) = LEVER_DOWN
+          {
+             Send(poLever4,@SwitchLever);
+          }
+          
+          Send(self,@SetSector,#sector=SEC_BRIDGE_A,#animation=ANIMATE_FLOOR_LIFT,
+              #height=368,#speed=0);
+          Send(self,@SetSector,#sector=SEC_BRIDGE_B,#animation=ANIMATE_FLOOR_LIFT,
+              #height=392,#speed=0);
+          Send(self,@SetSector,#sector=SEC_BRIDGE_C,#animation=ANIMATE_FLOOR_LIFT,
+              #height=416,#speed=0);
+          Send(self,@SetSector,#sector=SEC_BRIDGE_D,#animation=ANIMATE_FLOOR_LIFT,
+              #height=432,#speed=0);
+      }
+      return;
    }
 
    SeanceCheck()

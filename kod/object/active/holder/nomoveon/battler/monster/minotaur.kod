@@ -22,15 +22,19 @@ resources:
    minotaur_name_rsc = "minotaur"
    minotaur_icon_rsc = minotaur.bgf
    minotaur_desc_rsc = \
-      "minotaur."
-
+      "Towering at a height of over seven feet, the beast's callous hands "
+      "firmly grip the haft of its massive axe. The pinnacle of bovine "
+      "evolution, minotaurs possess both great strength and a keen intellect - "
+      "at least compared to other bovines. In most non-bovine societies, "
+      "however, minotaurs are mostly known for their indomitable "
+      "(some might say obstinate) spirit and their fearlessness in battle."
    minotaur_dead_icon_rsc = minotaurX.bgf
    minotaur_dead_name_rsc = "dead minotaur"
 
    minotaur_sound_hit = mino_atkh.ogg
    minotaur_sound_miss = mino_atkh.ogg
    minotaur_sound_death = mino_dth.ogg
-   minotaur_sound_aware = mino_awr.ogg
+   minotaur_sound_aware = mino_dth.ogg
 
 classvars:
 
@@ -41,14 +45,22 @@ classvars:
    vrDead_icon = minotaur_dead_icon_rsc
    vrDead_name = minotaur_dead_name_rsc
 
+   viTreasure_type = TID_MINO
    viSpeed = SPEED_FAST
    viAttack_type = ATCK_WEAP_SLASH
-   viDefault_behavior = AI_FIGHT_KARMA_AGGRESSIVE | AI_MOVE_FLEE_FRIGHTENERS | AI_FIGHT_SWITCHALOT
-
+   viAttributes = 0
+   viLevel = 120
    viDifficulty = 7
-   viKarma = -70
+   viVisionDistance = 12
+   viMeleeRange = 192
+   viKarma = -65
+   viDefault_behavior = \
+      AI_FIGHT_AGGRESSIVE | AI_FIGHT_SWITCHALOT | AI_MOVE_FLEE_FRIGHTENERS
    viCashmin = 100
    viCashmax = 500
+   
+   vbSpin = TRUE
+
    vrSound_hit = minotaur_sound_hit
    vrSound_miss = minotaur_sound_miss
    vrSound_aware = minotaur_sound_aware
@@ -61,9 +73,6 @@ classvars:
    vbCanSiphon = FALSE
 
 properties:
-
-   viTreasure_type = TID_MINO
-   viLevel = 120
    piAnimation = ANIM_NONE
 
 messages:
@@ -85,7 +94,7 @@ messages:
 
    SendLookAnimation()
    {
-      AddPacket(1,ANIMATE_CYCLE, 4,200,2,1,2,2);
+      AddPacket(1,ANIMATE_ONCE,4,20,2,1,2,16,2,1);
 
       return;
    }
@@ -109,6 +118,18 @@ messages:
 
       // if no body animation
       propagate;
+   }
+   
+   // Used for defense messages
+   GetParryAbility(stroke_obj=$)
+   {
+      if stroke_obj <> $
+         AND NOT Send(stroke_obj,@CanParry)
+      {
+         return 0;
+      }
+
+      return (viDifficulty*10)/2;
    }
 
    CanMorphTo()

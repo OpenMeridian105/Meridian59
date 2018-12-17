@@ -19,14 +19,13 @@ resources:
    include dvalley3.lkod
 
    room_dvalley3 = dvalley3.roo
-   room_name_dvalley3 = "Death Valley"
+   room_name_dvalley3 = "Hopeless Slopes"
    dvalley3_music = dvalley.ogg
-   dvalley3_heat_on = \
-      "Faren earth magic fills the room heating all armor to a molten state."
 
 classvars:
 
    vrName = room_name_dvalley3
+   viTerrain_type = TERRAIN_ROAD | TERRAIN_HILLS
 
    viTeleport_row = 6
    viTeleport_col = 22
@@ -35,37 +34,22 @@ classvars:
 
 properties:
 
-   viTerrain_type = TERRAIN_ROAD | TERRAIN_HILLS
-
    prRoom = room_dvalley3
    piRoom_num = RID_DVALLEY_3
    prMusic = dvalley3_music
-
    piBaseLight = LIGHT_NICE
    piOutside_factor = 8
-
    piDirectional_percent = DIRECTIONAL_PERCENT_OUTDOORS
 
-   pbSnowGroundTexture = TRUE
-
-   piGen_percent = 70
-
+   piGen_percent = 100
    piInit_count_min = 1
    piInit_count_max = 2
-
-   piMonster_count_max = 2
+   piMonster_count_max = 5
+   
+   pbSnowGroundTexture = FALSE
+   pbWeatherEffects = FALSE
 
 messages:
-
-   CreateStandardExits()
-   {
-      plEdge_Exits = $;
-
-      plEdge_Exits = Cons([ LEAVE_NORTH, RID_DVALLEY_4, 24, 17, ROTATE_NONE ], plEdge_exits);  
-      plEdge_Exits = Cons([ LEAVE_SOUTH, RID_DVALLEY_2, 2, 19, ROTATE_NONE ], plEdge_exits);
-
-      propagate;
-   }
 
    Constructed()
    {
@@ -74,44 +58,15 @@ messages:
       // Use Random Spawn
       // plGenerators = [ [5, 18], [8, 17], [10, 7] ];
 
-      Post(self,@DoHeat);
-
       propagate;
    }
-
-   DoHeat()
+   
+   CreateStandardExits()
    {
-      local oHeat;
+      plEdge_Exits = $;
 
-      if NOT Send(SYS,@IsPKAllowed)
-      {
-         return;
-      }
-
-      // Don't cast it if no users present.
-      if NOT pbUser_in_room
-      {
-         return;
-      }
-
-      oHeat = Send(SYS,@FindSpellByNum,#num=SID_HEAT);
-      
-      if Send(self,@IsEnchanted,#what=oHeat)
-      {
-         return;
-      }
-
-      // global effects of the enchantment
-      Send(self,@SomeoneSaid,#type=SAY_MESSAGE,#string=dvalley3_heat_on,#what=self);
-      Send(self,@RoomStartEnchantment,#what=oHeat,#state=[150,self]);
-
-      return;
-   }
-
-   TryCreateMonster()
-   {
-      // When we try to create a monster, then make sure Heats is up.
-      Send(self,@DoHeat);
+      plEdge_Exits = Cons([ LEAVE_NORTH, RID_DVALLEY_4, 24, 17, ROTATE_NONE ], plEdge_exits);  
+      plEdge_Exits = Cons([ LEAVE_SOUTH, RID_DVALLEY_2, 2, 19, ROTATE_NONE ], plEdge_exits);
 
       propagate;
    }
@@ -135,6 +90,47 @@ messages:
             #new_row=5,#new_col=20,#fine_row=24,#fine_col=12);
 
       propagate;
+   }
+   
+   FirstUserEntered()
+   {
+      Post(self,@DoSandstorm);
+
+      propagate;
+   }
+   
+   TryCreateMonster()
+   {
+      Send(self,@DoSandstorm);
+
+      propagate;
+   }
+
+   DoSandstorm()
+   {
+      local oSandstorm;
+
+      if NOT Send(SYS,@IsPKAllowed)
+      {
+         return;
+      }
+
+      // Don't cast it if no users present.
+      if NOT pbUser_in_room
+      {
+         return;
+      }
+
+      oSandstorm = Send(SYS,@FindSpellByNum,#num=SID_SANDSTORM);
+      
+      if Send(self,@IsEnchanted,#what=oSandstorm)
+      {
+         return;
+      }
+      Send(oSandstorm,@CastSpell,#who=self, #lTargets=[self], 
+             #iSpellPower=99, #iPowerLevel=100, #report=FALSE);
+
+      return;
    }
 
    SeanceCheck()

@@ -16,8 +16,8 @@ BOFS  = ant.bof centip.bof cow.bof ent.bof fairy.bof fungbst.bof ghost.bof \
         nrthlwrm.bof bramble.bof eviltwin.bof dethspid.bof grdworm.bof human.bof \
         xeochctl.bof dflypet.bof dangel.bof mollusk.bof specmum.bof \
         evilent.bof elephant.bof bunny.bof wolf.bof chupacabra.bof minotaur.bof \
-        oldorc.bof oldrat.bof oldcentip.bof npc.bof
-
+        oldorc.bof oldrat.bof oldcentip.bof npc.bof bigslime.bof beetle.bof \
+        ranu.bof bullant.bof giaeye.bof
 
 
 !include $(KODDIR)\kod.mak

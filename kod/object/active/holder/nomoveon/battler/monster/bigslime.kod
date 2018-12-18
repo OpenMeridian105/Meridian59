@@ -1,0 +1,165 @@
+// Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+// All rights reserved.
+//
+// This software is distributed under a license that is described in
+// the LICENSE file that accompanies it.
+//
+// Meridian is a registered trademark.
+
+
+////////////////////////////////////////////////////////////////////////////////
+BigSlime is Monster
+
+constants:
+
+   include blakston.khd
+   
+   SPLIT_THRESHOLD_PERCENT = 30
+
+resources:
+
+   //include bigslime.lkod
+
+   bigslime_koc_name_rsc = "kinachot"
+   bigslime_name_rsc = "greater slime"
+   bigslime_icon_rsc = bigslime.bgf
+   bigslime_icon_small_rsc = bigslime2.bgf
+   bigslime_desc_rsc = \
+    "These creatures pounce and break down their enemies, dissolving all the "
+    "organic materials before moving on to their next prey. "
+    "Slimes that have successfully taken the lives of several creatures alter "
+    "in form and are far stronger than their unevolved counterparts. "
+
+   bigslime_dead_icon_rsc = bigslime2X.bgf
+   bigslime_dead_name_rsc = "dead slime"
+
+   bigslime_sound_hit = slm_atkh.ogg
+   bigslime_sound_miss = slm_atkm.ogg
+   bigslime_sound_death = slm_dth.ogg
+   bigslime_sound_aware = slm_awr.ogg
+
+classvars:
+
+   vrKocName = bigslime_koc_name_rsc
+   vrName = bigslime_name_rsc
+   vrDesc = bigslime_desc_rsc
+   vrDead_icon = bigslime_dead_icon_rsc
+   vrDead_name = bigslime_dead_name_rsc
+
+   viTreasure_type = TID_MEDIUM
+   viSpeed = SPEED_SLOW
+   viAttack_spell = ATCK_SPELL_ACID
+   viAttributes = 0
+   viLevel = 55
+   viDifficulty = 6
+   viVisionDistance = 10
+   viSocial = 1
+   viKarma = 0
+   viDefault_behavior = AI_FIGHT_AGGRESSIVE | AI_FIGHT_SINGLEMINDED
+   viCashmin = 180
+   viCashmax = 300
+   vrSound_hit = bigslime_sound_hit
+   vrSound_miss = bigslime_sound_miss
+   vrSound_aware = bigslime_sound_aware
+   vrSound_death = bigslime_sound_death
+   viDead_drawfx = DRAWFX_TRANSLUCENT_75
+
+   vbCanPoison = FALSE
+   vbCanBleed = FALSE
+   vbCanFatigue = FALSE
+
+   vbAquatic = TRUE
+
+   // Not exactly a visual creature.
+   viNightVision = 255
+
+properties:
+   vrIcon = bigslime_icon_rsc
+   vrIcon2 = bigslime_icon_small_rsc
+
+   piAnimation = ANIM_NONE
+   piDrawfx = DRAWFX_TRANSLUCENT_75
+
+messages:
+
+   Constructed()
+   {
+      plResistances = [ [-ATCK_SPELL_SHOCK, 45 ],
+                        [-ATCK_SPELL_UNHOLY, 45 ],
+                        [-ATCK_SPELL_HOLY, 45 ],
+                        [-ATCK_SPELL_ACID, 45 ],
+                        [ATCK_WEAP_ALL, 45 ],
+                        [ATCK_WEAP_BLUDGEON, 10 ],
+                        [-ATCK_SPELL_COLD, -25 ] ];
+
+      plActions = [ [SID_SPLASH_OF_ACID] ];
+
+      propagate;
+   }
+
+   SendLookAnimation()
+   {
+      AddPacket(1,ANIMATE_CYCLE);
+      AddPacket(4,400,2,2,2,5);
+
+      return;
+   }
+
+   SendMoveAnimation()
+   {
+      AddPacket(1,ANIMATE_CYCLE,4,180,2,4,2,5);
+
+      return;
+   }
+
+   SendAnimation()
+   {
+      if piAnimation = ANIM_ATTACK
+      {
+         AddPacket(1,ANIMATE_ONCE,4,200,2,2,2,4,2,1);
+
+         return;
+      }
+
+      // if no body animation
+      propagate;
+   }
+   
+   AssessDamage()
+   {
+      propagate;
+   }
+   
+   HitPointThresholdDamage()
+   "Big slimes break down into smaller versions"
+   {
+
+      if (piHealth / piMax_health) <= SPLIT_THRESHOLD_PERCENT
+      {
+        Send(self,@SlimeSplit);
+      }
+
+      propagate;
+   }
+
+   SlimeSplit()
+   {
+        local oSlime;
+        
+        Send(poOwner,@SomethingWaveRoom,#what=self,#wave_rsc=vrSound_death,
+              #flags=SOUND_RANDOM_PITCH);
+
+        vrIcon = vrIcon2;
+        send(poOwner,@SomethingChanged,#what=self);
+        
+        oSlime = Create(&BigSlimeSplit);
+        Send(oSlime, @SetMaster,#what=self);
+        Send(poOwner,@NewHold,#what=oSlime,
+            #new_row=Send(self,@GetRow),
+            #new_col=Send(self,@GetCol));
+
+        return TRUE;
+   }
+   
+end
+////////////////////////////////////////////////////////////////////////////////

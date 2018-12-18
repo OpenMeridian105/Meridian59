@@ -1,0 +1,218 @@
+// Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+// All rights reserved.
+//
+// This software is distributed under a license that is described in
+// the LICENSE file that accompanies it.
+//
+// Meridian is a registered trademark.
+
+
+////////////////////////////////////////////////////////////////////////////////
+Beetle is Monster
+
+constants:
+
+   include blakston.khd
+
+resources:
+
+   include Beetle.lkod
+
+   Beetle_koc_name_rsc = "bitckinich"
+   Beetle_name_rsc = "beetle"
+   Beetle_icon_rsc = gbeetle.bgf
+   Beetle_desc_rsc = \
+     "Thought to be extinct, the beetle's large shiny exoskeleton "
+     "clicks as it opens its dripping mandibles. "
+     "Although beetles have wings, their unnatural bulk renders them "
+     "incapable of true flight."
+
+   Beetle_dead_icon_rsc = gbeetleX.bgf
+   Beetle_dead_name_rsc = "dead beetle"
+
+   Beetle_sound_hit = scp_atkh.ogg
+   Beetle_sound_miss = scp_atkm.ogg
+   Beetle_sound_death = scp_dth.ogg
+   Beetle_sound_aware = scp_awr.ogg
+
+classvars:
+
+   vrKocName = Beetle_koc_name_rsc
+   vrName = Beetle_name_rsc
+   vrIcon = Beetle_icon_rsc
+   vrDesc = Beetle_desc_rsc
+   vrDead_icon = Beetle_dead_icon_rsc
+   vrDead_name = Beetle_dead_name_rsc
+
+   viTreasure_type = TID_WIMPY_MEDIUM
+   viDefault_behavior = AI_FIGHT_KARMA_AGGRESSIVE
+   viSpeed = SPEED_SLOW
+   viAttack_type = ATCK_WEAP_BITE
+
+   viLevel = 45
+   viDifficulty = 6
+   viVisionDistance = 10
+   // Attack range of 192, or 3 row/col.
+   viMeleeRange = 192
+   viKarma = -30
+   viWimpy = 40
+   viCashmin = 100
+   viCashmax = 400
+   vrSound_hit = Beetle_sound_hit
+   vrSound_miss = Beetle_sound_miss
+   vrSound_aware = Beetle_sound_aware
+   vrSound_death = Beetle_sound_death
+
+   vbCanPoison = FALSE
+   vbCanSiphon = FALSE
+   vbCanBleed = FALSE
+   
+   // Quite used to crawling around in dark places.
+   viNightVision = 100
+
+properties:
+
+   piAnimation = ANIM_NONE
+
+messages:
+
+   Constructed()
+   {
+      Send(self,@SetBeetleType);
+      
+      propagate;
+   }
+   
+   SendLookAnimation()
+   {
+      if piColor_translation <> 0
+      {
+         AddPacket(1,ANIMATE_TRANSLATION,1,piColor_translation);
+      }
+
+      AddPacket(1,ANIMATE_CYCLE);
+      AddPacket(4,120,2,2,2,6);
+
+      return;
+   }
+   
+   SendMoveAnimation()
+   {
+      if piColor_translation <> 0
+      {
+         AddPacket(1,ANIMATE_TRANSLATION,1,piColor_translation);
+      }
+      AddPacket(1,ANIMATE_CYCLE,4,120,2,2,2,6);
+
+      return;
+   }
+   
+   SendAnimation()
+   {
+      if piColor_translation <> 0
+      {
+         AddPacket(1,ANIMATE_TRANSLATION,1,piColor_translation);
+      }
+
+      if piAnimation = ANIM_ATTACK
+      {
+         AddPacket(1,ANIMATE_CYCLE,4,120,2,2,2,6);
+         return;
+      }
+
+      // if no body animation
+
+      propagate;
+   }
+
+   
+   ChangeColor(xlat = 0)
+   {
+      if xlat <> 0
+      {
+         piColor_translation = xlat;
+      }
+      else
+      {
+         // These are the gray palette translations.
+         piColor_translation = Random(PT_GRAY_TO_ORANGE,PT_GRAY_TO_BLOND);
+      }
+
+      // This one is invalid. Use it to introduce a few more choices.
+      if piColor_translation = 0x01F
+      {
+         // These are the red/blue/green full palette translations.
+         piColor_translation = Random(PT_BLEND25RED,PT_BLEND25GREEN);
+      }
+
+      if poOwner <> $
+      {
+         Send(poOwner,@SomethingChanged,#what=self);
+      }
+
+      return;
+   }
+   
+   SetBeetleType()
+   {
+      local type, color;
+      
+      type = Random(1,6);
+      color = 0;
+      
+      if type = 1
+      {
+         color = PT_GRAY_TO_KGREEN;
+         plResistances = [ [-ATCK_SPELL_FIRE, 45 ],
+                           [ATCK_WEAP_SLASH, 25],
+                           [ATCK_WEAP_MAGIC, -20],
+                           [-ATCK_SPELL_SHOCK, -20] ];
+      }
+      else if type = 2
+      {
+         color = PT_GRAY_TO_DGREEN;
+         plResistances = [ [-ATCK_SPELL_FIRE, 45 ],
+                           [ATCK_WEAP_SLASH, 20],
+                           [ATCK_WEAP_MAGIC, -15],
+                           [-ATCK_SPELL_SHOCK, -15] ];
+      }
+      else if type = 3
+      {
+         color = PT_GRAY_TO_RED;
+         plResistances = [ [-ATCK_SPELL_FIRE, 30 ],
+                           [ATCK_WEAP_SLASH, 20],
+                           [ATCK_WEAP_MAGIC, -20],
+                           [-ATCK_SPELL_SHOCK, -20] ];
+      }
+      else if type = 4
+      {
+         color = PT_GRAY_TO_ORANGE;
+         plResistances = [ [-ATCK_SPELL_FIRE, 35 ],
+                           [ATCK_WEAP_SLASH, 20],
+                           [ATCK_WEAP_MAGIC, -15],
+                           [-ATCK_SPELL_SHOCK, -20] ];
+      }
+      else if type = 5
+      {
+         color = PT_GRAY_TO_BBLUE;
+         plResistances = [ [-ATCK_SPELL_FIRE, 40 ],
+                           [ATCK_WEAP_SLASH, 20],
+                           [ATCK_WEAP_MAGIC, -20],
+                           [-ATCK_SPELL_SHOCK, -10] ];
+      }
+      else
+      {
+         color = PT_GRAY_TO_BLACK;
+         plResistances = [ [-ATCK_SPELL_FIRE, 40 ],
+                           [ATCK_WEAP_SLASH, 30],
+                           [ATCK_WEAP_MAGIC, -20],
+                           [-ATCK_SPELL_SHOCK, -20] ];
+      }
+
+      Send(self,@ChangeColor,#xlat=color);
+
+      return;
+   }
+
+end
+////////////////////////////////////////////////////////////////////////////////

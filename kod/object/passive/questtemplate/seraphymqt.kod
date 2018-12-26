@@ -35,14 +35,15 @@ resources:
 
    // Quest description.
    seraphymquest_icon_rsc = serappol.bgf
-   seraphymquest_name_rsc = "polished seraphym quest"
+   seraphymquest_name_rsc = "Gem Trade"
    seraphymquest_desc_rsc = \
-      "You have been asked if you have any uncut seraphym to spare, "
-      "so that the NPC can hone his jewelling skills.  They will give "
-      "you one of the resulting polished gems."
+      "%s is looking to hone their jeweling skills, and would like you to "
+      "obtain some uncut seraphym for them to practice on.  For a delivery "
+      "of three uncut gems, %s will give you one of the resulting polished "
+      "gems."
 
    seraphymquest_deliver_rsc = \
-      "%s is honing %s jewelling skills, and has asked if you have any "
+      "%s is honing %s jeweling skills, and has asked if you have any "
       "uncut seraphym to spare.  In return, %s has offered to give you "
       "one of the resulting polished gems."
 
@@ -52,7 +53,7 @@ resources:
 
    // Quest resources.
    polishquest_assign = \
-      "Excuse me.  I’ve been honing my jewelling skills, and I was wondering "
+      "Excuse me.  I’ve been honing my jeweling skills, and I was wondering "
       "if you have any uncut gems of any sort.  If you do, I’d be happy to "
       "polish them and give you one of the result."
    polishquest_success = \
@@ -158,6 +159,25 @@ messages:
       {
          Debug("Error building QN: QNT_ID_POLISHED_SERAPHYM_TWO");
       }
+
+      return;
+   }
+
+   ShowQuestUIDescRsc(who = $, oNPC = $)
+   {
+      local rName;
+
+      if (oNPC = $)
+      {
+         Debug("Missing NPC while building quest UI description!");
+         rName = system_blank_resource;
+      }
+      else
+      {
+         rName = Send(oNPC,@GetName);
+      }
+
+      AddPacket(4,vrDesc, 4,rName, 4,rName);
 
       return;
    }

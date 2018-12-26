@@ -34,9 +34,10 @@ resources:
    include loveletteroneqt.lkod
 
    // Quest description.
-   loveletteronequest_name_rsc = "love letter quest"
+   loveletteronequest_name_rsc = "In the Service of Love"
    loveletteronequest_desc_rsc = \
-      "Deliver a love letter."
+      "%s has a penchant for writing romantic letters to his love interest.  "
+      "Delivering one of these letters would net you a small reward."
 
    loveletteronequest_deliver_rsc = \
       "%s%s has asked you to deliver %s%s to %s%s."
@@ -160,6 +161,25 @@ messages:
       {
          Debug("Error building QN: QNT_ID_LOVE_LETTERONE_TWO");
       }
+
+      return;
+   }
+
+   ShowQuestUIDescRsc(who = $, oNPC = $)
+   {
+      local rName;
+
+      if (oNPC = $)
+      {
+         Debug("Missing NPC while building quest UI description!");
+         rName = system_blank_resource;
+      }
+      else
+      {
+         rName = Send(oNPC,@GetName);
+      }
+
+      AddPacket(4,vrDesc, 4,rName);
 
       return;
    }

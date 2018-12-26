@@ -34,7 +34,8 @@ resources:
    // Quest description.
    chessqt_icon_rsc = chesclos.bgf
    chessqt_desc_rsc = \
-      "You have been asked to courier a chess move."
+      "%s is playing a game of remote chess with an opponent, and would like "
+      "a kind adventurer to help them by couriering a chess move."
 
    chessqt_nodetwo_rsc = \
       "%s%s is playing a game of chess with a friend, and would be grateful "
@@ -79,6 +80,25 @@ properties:
    piSchedulePct = 100
 
 messages:
+
+   ShowQuestUIDescRsc(who = $, oNPC = $)
+   {
+      local rName;
+
+      if (oNPC = $)
+      {
+         Debug("Missing NPC while building quest UI description!");
+         rName = system_blank_resource;
+      }
+      else
+      {
+         rName = Send(oNPC,@GetName);
+      }
+
+      AddPacket(4,vrDesc, 4,rName);
+
+      return;
+   }
 
    ExtraDesc(index=$,oQuestNode=$)
    {

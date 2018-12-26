@@ -35,9 +35,11 @@ resources:
 
    // Quest description.
    warletterqt_icon_rsc = scr01.bgf
-   warletterqt_name_rsc = "war letter quest"
+   warletterqt_name_rsc = "Important Correspondence"
    warletterqt_desc_rsc = \
-      "Deliver a letter for an NPC."
+      "%s has a very important letter that must be delivered by a trusted "
+      "adventurer.  If you are willing to carry out this task, you will be "
+      "rewarded upon delivery."
 
    warletterqt_nodetwo_rsc = \
       "%s%s has asked you to deliver a letter to %s%s.  You have been told "
@@ -174,18 +176,18 @@ messages:
       if Send(oQE,@AddQuestNodeTemplate,#questnode_type=QN_TYPE_ITEM,
                #NPC_modifier=QN_NPCMOD_DIFFERENT,
                #cargolist=[ [ QN_PRIZETYPE_ITEMCLASS, &WarLetter, 1 ] ],
-               #prizelist=[ [ [ QN_PRIZETYPE_ITEMCLASS, &Money, 1000 ],
-                              [ QN_PRIZETYPE_ITEMCLASS, &Money, 1000 ],
-                              [ QN_PRIZETYPE_ITEMCLASS, &Money, 1500 ],
-                              [ QN_PRIZETYPE_ITEMCLASS, &Money, 2000 ],
-                              [ QN_PRIZETYPE_ITEMCLASS, &Longsword, 1 ],
+               #prizelist=[ [ [ QN_PRIZETYPE_ITEMCLASS, &Money, 5000 ],
+                              [ QN_PRIZETYPE_ITEMCLASS, &Money, 5000 ],
+                              [ QN_PRIZETYPE_ITEMCLASS, &Money, 6000 ],
+                              [ QN_PRIZETYPE_ITEMCLASS, &Money, 7000 ],
+                              [ QN_PRIZETYPE_ITEMCLASS, &Circlet, 1 ],
                               [ QN_PRIZETYPE_ITEMCLASS, &VampireWand, 1 ],
                               [ QN_PRIZETYPE_ITEMCLASS, &InkyCap, 5 ] ],
-                            [ [ QN_PRIZETYPE_ITEMCLASS, &Money, 1000 ],
-                              [ QN_PRIZETYPE_ITEMCLASS, &Money, 1000 ],
-                              [ QN_PRIZETYPE_ITEMCLASS, &Money, 1500 ],
-                              [ QN_PRIZETYPE_ITEMCLASS, &Money, 2000 ],
-                              [ QN_PRIZETYPE_ITEMCLASS, &Longsword, 1 ],
+                            [ [ QN_PRIZETYPE_ITEMCLASS, &Money, 5000 ],
+                              [ QN_PRIZETYPE_ITEMCLASS, &Money, 5000 ],
+                              [ QN_PRIZETYPE_ITEMCLASS, &Money, 6000 ],
+                              [ QN_PRIZETYPE_ITEMCLASS, &Money, 7000 ],
+                              [ QN_PRIZETYPE_ITEMCLASS, &Circlet, 1 ],
                               [ QN_PRIZETYPE_ITEMCLASS, &Gauntlet, 1 ],
                               [ QN_PRIZETYPE_ITEMCLASS, &InkyCap, 5 ] ] ],
                #timelimit=3 * 3600,#quest_node_index=QNT_ID_WARLETTER_TWO)
@@ -256,6 +258,25 @@ messages:
       {
          Debug("Error building QN: QNT_ID_WARLETTER_TWO");
       }
+
+      return;
+   }
+
+   ShowQuestUIDescRsc(who = $, oNPC = $)
+   {
+      local rName;
+
+      if (oNPC = $)
+      {
+         Debug("Missing NPC while building quest UI description!");
+         rName = system_blank_resource;
+      }
+      else
+      {
+         rName = Send(oNPC,@GetName);
+      }
+
+      AddPacket(4,vrDesc, 4,rName);
 
       return;
    }

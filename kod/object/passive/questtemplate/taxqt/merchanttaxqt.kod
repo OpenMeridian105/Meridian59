@@ -34,9 +34,11 @@ resources:
    include merchanttaxqt.lkod
 
    // Quest description.
-   merchanttaxqt_name_rsc = "merchant tax quest"
+   merchanttaxqt_name_rsc = "Late Payments"
    merchanttaxqt_desc_rsc = \
-      "Courier some taxes for an NPC."
+      "%s is late on their merchant taxes, and is looking for a trustworthy "
+      "adventurer to rush their payment to the Duke.  If you are willing to "
+      "carry out the delivery, Duke Akardius would reward you for your service."
 
    merchanttaxqt_completed_rsc = \
       "You have completed the merchant tax quest."
@@ -189,6 +191,25 @@ messages:
       {
          Debug("Error building QN: QNT_ID_MERCHANT_TAX_TWO");
       }
+
+      return;
+   }
+
+   ShowQuestUIDescRsc(who = $, oNPC = $)
+   {
+      local rName;
+
+      if (oNPC = $)
+      {
+         Debug("Missing NPC while building quest UI description!");
+         rName = system_blank_resource;
+      }
+      else
+      {
+         rName = Send(oNPC,@GetName);
+      }
+
+      AddPacket(4,vrDesc, 4,rName);
 
       return;
    }

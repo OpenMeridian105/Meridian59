@@ -36,9 +36,11 @@ resources:
 
    // Quest description.
    aphrodisiacqt_icon_rsc = solagh.bgf
-   aphrodisiacqt_name_rsc = "aphrodisiac potion quest"
+   aphrodisiacqt_name_rsc = "The Love Potion"
    aphrodisiacqt_desc_rsc = \
-      "Obtain an aphrodisiac potion and help the NPC."
+      "%s is having some love-related issues and needs an adventurer to go on "
+      "a quest to obtain a powerful aphrodisiac for her.  She will pay well "
+      "for your troubles."
 
    aphrodisiacqt_nodetwo_rsc = \
       "%s%s is having some... personal issues and has been told that %s%s "
@@ -209,10 +211,10 @@ messages:
       if Send(oQE,@AddQuestNodeTemplate,#questnode_type=QN_TYPE_ITEM,
                #NPC_modifier=QN_NPCMOD_PREVIOUS,
                #cargolist=[ [ QN_PRIZETYPE_ITEMCLASS, &AphrodesiacPotion, 1 ] ],
-               #prizelist=[ [ [ QN_PRIZETYPE_ITEMCLASS, &Money, 1400 ],
-                              [ QN_PRIZETYPE_ITEMCLASS, &Money, 1600 ],
-                              [ QN_PRIZETYPE_ITEMCLASS, &Money, 1800 ],
-                              [ QN_PRIZETYPE_ITEMCLASS, &Money, 2000 ] ] ],
+               #prizelist=[ [ [ QN_PRIZETYPE_ITEMCLASS, &Money, 7000 ],
+                              [ QN_PRIZETYPE_ITEMCLASS, &Money, 8000 ],
+                              [ QN_PRIZETYPE_ITEMCLASS, &Money, 9000 ],
+                              [ QN_PRIZETYPE_ITEMCLASS, &Money, 10000 ] ] ],
                #timelimit=3600,#quest_node_index=QNT_ID_APHRODISIAC_FOUR)
       {
          Send(oQE,@SetQuestNodeAssignHint,#index=QNT_ID_APHRODISIAC_FOUR,
@@ -226,6 +228,25 @@ messages:
       {
          Debug("Error building QN: QNT_ID_APHRODISIAC_FOUR");
       }
+
+      return;
+   }
+
+   ShowQuestUIDescRsc(who = $, oNPC = $)
+   {
+      local rName;
+
+      if (oNPC = $)
+      {
+         Debug("Missing NPC while building quest UI description!");
+         rName = system_blank_resource;
+      }
+      else
+      {
+         rName = Send(oNPC,@GetName);
+      }
+
+      AddPacket(4,vrDesc, 4,rName);
 
       return;
    }

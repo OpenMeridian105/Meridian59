@@ -35,9 +35,10 @@ resources:
 
    // Quest description.
    barrestockqt_icon_rsc = pitcher.bgf
-   barrestockqt_name_rsc = "bar restock quest"
+   barrestockqt_name_rsc = "Running Dry"
    barrestockqt_desc_rsc = \
-      "A bartender is running low on supplies, and would like your assistance."
+      "%s is running low on bar supplies, and would like your assistance.  "
+      "You would be rewarded well for your troubles."
 
    barrestockqt_nodetwo_rsc = \
       "%s%s is running low on supplies for %s bar. %s would like your help "
@@ -170,13 +171,13 @@ messages:
                               [ QN_PRIZETYPE_ITEMCLASS, &Goblet, 50 ],
                               [ QN_PRIZETYPE_ITEMCLASS, &WineGoblet, 40 ] ],
                #prizelist=[ [ [ QN_PRIZETYPE_ITEMCLASS, &Book, 1 ],
-                              [ QN_PRIZETYPE_ITEMCLASS, &Money, 1400 ],
-                              [ QN_PRIZETYPE_ITEMCLASS, &Money, 1500 ],
-                              [ QN_PRIZETYPE_ITEMCLASS, &Money, 1600 ],
-                              [ QN_PRIZETYPE_ITEMCLASS, &Money, 1700 ],
-                              [ QN_PRIZETYPE_ITEMCLASS, &Money, 1800 ],
-                              [ QN_PRIZETYPE_ITEMCLASS, &Money, 1900 ],
-                              [ QN_PRIZETYPE_ITEMCLASS, &Money, 2000 ],
+                              [ QN_PRIZETYPE_ITEMCLASS, &Money, 10000 ],
+                              [ QN_PRIZETYPE_ITEMCLASS, &Money, 10000 ],
+                              [ QN_PRIZETYPE_ITEMCLASS, &Money, 10000 ],
+                              [ QN_PRIZETYPE_ITEMCLASS, &Money, 11000 ],
+                              [ QN_PRIZETYPE_ITEMCLASS, &Money, 11000 ],
+                              [ QN_PRIZETYPE_ITEMCLASS, &Money, 12000 ],
+                              [ QN_PRIZETYPE_ITEMCLASS, &Money, 12000 ],
                               [ QN_PRIZETYPE_ITEMCLASS, &NeruditeArrow, 25 ],
                               [ QN_PRIZETYPE_ITEMCLASS, &NeruditeArrow, 35 ],
                               [ QN_PRIZETYPE_ITEMCLASS, &SilverArrow, 25 ],
@@ -208,6 +209,25 @@ messages:
       {
          Debug("Error building QN: QNT_ID_BAR_RESTOCK_THREE");
       }
+
+      return;
+   }
+
+   ShowQuestUIDescRsc(who = $, oNPC = $)
+   {
+      local rName;
+
+      if (oNPC = $)
+      {
+         Debug("Missing NPC while building quest UI description!");
+         rName = system_blank_resource;
+      }
+      else
+      {
+         rName = Send(oNPC,@GetName);
+      }
+
+      AddPacket(4,vrDesc, 4,rName);
 
       return;
    }

@@ -267,13 +267,25 @@ messages:
       return FALSE;
    }
 
+   ShowQuestUIDescRsc(who = $, oNPC = $)
+   "Can be overridden if vrDesc requires extra parameters to display."
+   "Note that this assumes vrDesc isn't displayed anywhere else but the NPC's "
+   "quest UI, as calls to ShowDesc (i.e. from quest log) won't know which "
+   "NPC handed out the quest."
+   {
+      AddPacket(4,vrDesc);
+
+      return;
+   }
+
    ShowQuestUIDesc(who = $, oNPC = $)
    "Includes quest description along with current quest node stuff."
    "Should also include rewards/requirements etc."
    {
       local oQuestNode;
 
-      AddPacket(4,vrDesc);
+      // Add vrDesc to packet.
+      Send(self,@ShowQuestUIDescRsc,#who=who,#oNPC=oNPC);
 
       // If the user has started this quest, show the quest node
       // info (i.e. what they should do). If not, show requirements.
@@ -297,6 +309,7 @@ messages:
    }
 
    ShowDesc(who=$)
+   "Standard show desc, e.g. from quest log.  Not called for NPC quest UI."
    {
       if who = $
       {

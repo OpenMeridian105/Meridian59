@@ -8237,9 +8237,17 @@ messages:
       case QN_TYPE_USERNAME:
       case QN_TYPE_LOGGEDONNAME:
          // Make user say the message in cargo.
+         oCargo = Send(oQN,@GetCargo);
          ClearTempString();
-         AppendTempString(Send(oQN,@GetCargo));
-         Send(self,@UserSay,#type=SAY_NORMAL,#string=GetTempString());
+         AppendTempString(oCargo);
+         // Echo only to user, not to room/NPC.
+         Send(self,@SomeoneSaid,#what=self,#type=SAY_NORMAL,
+               #string=GetTempString());
+         // Use the cargo directly - this bypasses any puzzle the user needs
+         // to figure out to complete the quest, but we'd have to exclude that
+         // type of quest from being comleted via UI anyway (i.e. add a new
+         // quest type for it and not use QN_TYPE_MESSAGE).
+         Send(oQN,@CheckCompletionCriteria,#who_tried=self,#message=oCargo);
          break;
       case QN_TYPE_ITEM:
          // Cargo is the same object the user is carrying.

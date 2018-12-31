@@ -230,7 +230,7 @@ messages:
       if waiting_for_players
       {
          // Add self to dest NPC's list of active questnodes
-         Send(poDestNPC,@AddQuestNodeToActiveList,#node=self);
+         Send(poDestNPC,@AddQuestNodeToActiveList,#node=self,#type=piNodeType);
 
          piStatus = QN_STATUS_WAITING_FOR_PLAYERS;
 
@@ -603,14 +603,14 @@ messages:
             Send(oQuestEngine,@AddQNToAwaitingMonsterDeathList,#QN=self);
          }
       }
-   
+
       // Add self to dest NPC's list of active questnodes
-      Send(poDestNPC,@AddQuestNodeToActiveList,#node=self);
+      Send(poDestNPC,@AddQuestNodeToActiveList,#node=self,#type=piNodeType);
 
       // Say assign hint
       if Send(oQuestEngine,@GetQuestNodeAssignHint,
               #index=piQuestNodeTemplateIndex) <> $
-      { 
+      {
          foreach oQuester in Send(poQuest,@GetQuesters)
          {
             // Have to substitute each time, in case player //NAME is
@@ -1717,7 +1717,7 @@ messages:
             {
                Send(poDestNPC,@RemoveQuestNodeFromActiveList,#node=self);
                poDestNPC = oNewLich;
-               Send(poDestNPC,@AddQuestNodeToActiveList,#node=self);
+               Send(poDestNPC,@AddQuestNodeToActiveList,#node=self,#type=piNodeType);
             }
 
             Send(oLich,@EstablishNecromancerGuild,#master=First(recipients));

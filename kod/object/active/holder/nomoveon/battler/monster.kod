@@ -1008,8 +1008,10 @@ messages:
    // This monster is the destination NPC for a questnode
    // Add the node to his list, so he can check completion criteria
    //  when someone enters, says something, or gives him something
-   AddQuestNodeToActiveList(node = $)
+   AddQuestNodeToActiveList(node = $, type = $)
    {
+      local i, iCount;
+
       if node = $
       {
          Debug("AddQuestNode: nil questnode.");
@@ -1017,7 +1019,31 @@ messages:
          return;
       }
 
-      plActiveQuestNodes = Cons(node, plActiveQuestNodes);
+      // Sort list by adding nodes with questers to front and showup-type
+      // quests to back. Insert other quest types after quests with active
+      // questers.
+      if (plActiveQuestNodes = $
+         OR Send(node,@GetQuesters) <> $)
+      {
+         plActiveQuestNodes = Cons(node, plActiveQuestNodes);
+      }
+      else if (type <> $ AND type = QN_TYPE_SHOWUP)
+      {
+         plActiveQuestNodes = AppendListElem(node, plActiveQuestNodes);
+      }
+      else
+      {
+         iCount = 1;
+         foreach i in plActiveQuestNodes
+         {
+            if (Send(node,@GetQuesters) = $)
+            {
+               break;
+            }
+            ++iCount;
+         }
+         plActiveQuestNodes = InsertListElem(plActiveQuestNodes, iCount, node);
+      }
 
       if (poOwner <> $)
       {
@@ -4422,10 +4448,6 @@ messages:
          // Quest engine hook: if there are active quest nodes, notify them   -AJM
          foreach oQuestNode in plActiveQuestNodes
          {
-            // TODO: ideally these should be handled in the following order:
-            // 1. Quests that the player has already started
-            // 2. Quests that require a specific trigger
-            // 3. Showup-type quests (no specific trigger)
             if Send(oQuestNode,@CheckCompletionCriteria,#who_tried=what,
                     #message=string)
             {

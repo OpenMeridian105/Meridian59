@@ -35,9 +35,10 @@ resources:
 
    // Quest description.
    oreqt_icon_rsc = ore.bgf
-   oreqt_name_rsc = "blacksmith ore quest"
+   oreqt_name_rsc = "Ore Delivery"
    oreqt_desc_rsc = \
-      "A blacksmith has run out of ore; deliver some to them."
+      "%s has some ore to deliver to another blacksmith, who is running low.  "
+      "You would be rewarded for your troubles."
 
    oreqt_deliver_rsc = \
       "%s%s has run out of ore, so %s%s has asked you to deliver some to %s.  "
@@ -145,14 +146,14 @@ messages:
       if Send(oQE,@AddQuestNodeTemplate,#questnode_type=QN_TYPE_ITEM,
                #NPC_modifier=QN_NPCMOD_DIFFERENT,
                #cargolist=[ [ QN_PRIZETYPE_ITEMCLASS, &CheapOreChunk, 1 ] ],
-               #prizelist=[ [ [ QN_PRIZETYPE_ITEMCLASS, &Money, 500 ],
-                              [ QN_PRIZETYPE_ITEMCLASS, &Money, 300 ],
-                              [ QN_PRIZETYPE_ITEMCLASS, &Money, 400 ],
-                              [ QN_PRIZETYPE_ITEMCLASS, &Money, 600 ],
-                              [ QN_PRIZETYPE_ITEMCLASS, &Money, 450 ],
-                              [ QN_PRIZETYPE_ITEMCLASS, &Money, 650 ],
-                              [ QN_PRIZETYPE_ITEMCLASS, &Money, 750 ],
-                              [ QN_PRIZETYPE_ITEMCLASS, &Money, 550 ],
+               #prizelist=[ [ [ QN_PRIZETYPE_ITEMCLASS, &Money, 10000 ],
+                              [ QN_PRIZETYPE_ITEMCLASS, &Money, 10000 ],
+                              [ QN_PRIZETYPE_ITEMCLASS, &Money, 10000 ],
+                              [ QN_PRIZETYPE_ITEMCLASS, &Money, 11000 ],
+                              [ QN_PRIZETYPE_ITEMCLASS, &Money, 11000 ],
+                              [ QN_PRIZETYPE_ITEMCLASS, &Money, 11000 ],
+                              [ QN_PRIZETYPE_ITEMCLASS, &Money, 12000 ],
+                              [ QN_PRIZETYPE_ITEMCLASS, &Money, 12000 ],
                               [ QN_PRIZETYPE_ITEMCLASS, &NeruditeArrow, 25 ],
                               [ QN_PRIZETYPE_ITEMCLASS, &NeruditeArrow, 35 ],
                               [ QN_PRIZETYPE_ITEMCLASS, &SilverArrow, 25 ],
@@ -180,10 +181,11 @@ messages:
          }
          else
          {
+            // Use happyland subs anyway - no more outlaw punishment.
             Send(oQE,@SetQuestNodeAssignHint,#index=QNT_ID_BLACKSMITH_ORE_TWO,
-                  #new_hint=ore_assign_2);
+                  #new_hint=ore_assign_2_h);
             Send(oQE,@SetQuestNodeFailureHint,#index=QNT_ID_BLACKSMITH_ORE_TWO,
-                  #new_hint=ore_failure_2);
+                  #new_hint=ore_failure_2_h);
          }
          Send(oQE,@SetQuestNodeSuccessHint,#index=QNT_ID_BLACKSMITH_ORE_TWO,
                #new_hint=ore_success_2);
@@ -192,6 +194,25 @@ messages:
       {
          Debug("Error building QN: QNT_ID_BLACKSMITH_ORE_TWO");
       }
+
+      return;
+   }
+
+   ShowQuestUIDescRsc(who = $, oNPC = $)
+   {
+      local rName;
+
+      if (oNPC = $)
+      {
+         Debug("Missing NPC while building quest UI description!");
+         rName = system_blank_resource;
+      }
+      else
+      {
+         rName = Send(oNPC,@GetName);
+      }
+
+      AddPacket(4,vrDesc, 4,rName);
 
       return;
    }

@@ -35,9 +35,11 @@ resources:
 
    // Quest description.
    idpotionqt_icon_rsc = potion01.bgf
-   idpotionqt_name_rsc = "potion identification quest"
+   idpotionqt_name_rsc = "The Mysterious Potion"
    idpotionqt_desc_rsc = \
-      "Help an NPC identify a potion."
+      "%s recently received a potion they are unable to identify, and would "
+      "like your assistance in determining its nature.  Returning the "
+      "identified potion would net you a small reward."
 
    idpotionqt_nodetwo_rsc = \
       "%s%s recently received a potion %s is unable to identify, and would "
@@ -191,12 +193,12 @@ messages:
       // QNT_ID_POTION_ID_THREE
       if Send(oQE,@AddQuestNodeTemplate,#questnode_type=QN_TYPE_ITEM,
                #cargolist=[ [ QN_PRIZETYPE_ITEMCLASS, &LabeledPotion, 1 ] ],
-               #prizelist=[ [ [ QN_PRIZETYPE_ITEMCLASS, &Money, 1000 ],
-                              [ QN_PRIZETYPE_ITEMCLASS, &Money, 1500 ],
-                              [ QN_PRIZETYPE_ITEMCLASS, &MeatPie, 4 ],
-                              [ QN_PRIZETYPE_ITEMCLASS, &Cheese, 3 ],
+               #prizelist=[ [ [ QN_PRIZETYPE_ITEMCLASS, &Money, 5000 ],
+                              [ QN_PRIZETYPE_ITEMCLASS, &Money, 8000 ],
+                              [ QN_PRIZETYPE_ITEMCLASS, &InkyCap, 8 ],
+                              [ QN_PRIZETYPE_ITEMCLASS, &Cheese, 6 ],
                               [ QN_PRIZETYPE_ITEMCLASS, &ShortSword, 1 ],
-                              [ QN_PRIZETYPE_ITEMCLASS, &Hammer, 1 ] ] ],
+                              [ QN_PRIZETYPE_ITEMCLASS, &GoldShield, 1 ] ] ],
                #timelimit=3 * 3600,#quest_node_index=QNT_ID_POTION_ID_THREE)
       {
          Send(oQE,@SetQuestNodeNPCModifier,#index=QNT_ID_POTION_ID_THREE,
@@ -212,6 +214,25 @@ messages:
       {
          Debug("Error building QN: QNT_ID_POTION_ID_THREE");
       }
+
+      return;
+   }
+
+   ShowQuestUIDescRsc(who = $, oNPC = $)
+   {
+      local rName;
+
+      if (oNPC = $)
+      {
+         Debug("Missing NPC while building quest UI description!");
+         rName = system_blank_resource;
+      }
+      else
+      {
+         rName = Send(oNPC,@GetName);
+      }
+
+      AddPacket(4,vrDesc, 4,rName);
 
       return;
    }

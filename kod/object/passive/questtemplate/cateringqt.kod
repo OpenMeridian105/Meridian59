@@ -35,9 +35,10 @@ resources:
 
    // Quest description.
    cateringqt_icon_rsc = drumspla.bgf
-   cateringqt_name_rsc = "catering quest"
+   cateringqt_name_rsc = "Catering Service"
    cateringqt_desc_rsc = \
-      "An NPC is looking for help delivering food for a party."
+      "%s is looking for help delivering food for a party.  You would be "
+      "rewarded for your troubles."
 
    cateringqt_nodetwo_rsc = \
       "%s%s is having a private party and %s errand boy is ill.  %s would "
@@ -209,14 +210,14 @@ messages:
                             [ QN_PRIZETYPE_ITEMCLASS, &Goblet, 50 ],
                             [ QN_PRIZETYPE_ITEMCLASS, &Soup, 50 ],
                             [ QN_PRIZETYPE_ITEMCLASS, &Drumstick, 50 ] ],
-               #prizelist=[[[ QN_PRIZETYPE_ITEMCLASS, &Money, 1300 ],
-                              [ QN_PRIZETYPE_ITEMCLASS, &Money, 1400 ],
-                              [ QN_PRIZETYPE_ITEMCLASS, &Money, 1500 ],
-                              [ QN_PRIZETYPE_ITEMCLASS, &Money, 1600 ],
-                              [ QN_PRIZETYPE_ITEMCLASS, &Money, 1700 ],
-                              [ QN_PRIZETYPE_ITEMCLASS, &Money, 1800 ],
-                              [ QN_PRIZETYPE_ITEMCLASS, &Money, 1900 ],
-                              [ QN_PRIZETYPE_ITEMCLASS, &Money, 2000 ],
+               #prizelist=[[[ QN_PRIZETYPE_ITEMCLASS, &Money, 10000 ],
+                              [ QN_PRIZETYPE_ITEMCLASS, &Money, 10000 ],
+                              [ QN_PRIZETYPE_ITEMCLASS, &Money, 10000 ],
+                              [ QN_PRIZETYPE_ITEMCLASS, &Money, 11000 ],
+                              [ QN_PRIZETYPE_ITEMCLASS, &Money, 11000 ],
+                              [ QN_PRIZETYPE_ITEMCLASS, &Money, 11000 ],
+                              [ QN_PRIZETYPE_ITEMCLASS, &Money, 12000 ],
+                              [ QN_PRIZETYPE_ITEMCLASS, &Money, 12000 ],
                               [ QN_PRIZETYPE_ITEMCLASS, &NeruditeArrow, 25 ],
                               [ QN_PRIZETYPE_ITEMCLASS, &SilverArrow, 30 ],
                               [ QN_PRIZETYPE_ITEMCLASS, &BaitPotion, 1 ],
@@ -267,10 +268,11 @@ messages:
          }
          else
          {
+            // Use happyland subs anyway - no more outlaw punishment.
             Send(oQE,@SetQuestNodeAssignHint,#index=QNT_ID_CATERING_THREE,
-                  #new_hint=catering_assign_3);
+                  #new_hint=catering_assign_3_h);
             Send(oQE,@SetQuestNodeFailureHint,#index=QNT_ID_CATERING_THREE,
-                  #new_hint=catering_failure_3);
+                  #new_hint=catering_failure_3_h);
          }
          Send(oQE,@SetQuestNodeSuccessHint,#index=QNT_ID_CATERING_THREE,
                #new_hint=catering_success_3);
@@ -279,6 +281,25 @@ messages:
       {
          Debug("Error building QN: QNT_ID_CATERING_THREE");
       }
+
+      return;
+   }
+
+   ShowQuestUIDescRsc(who = $, oNPC = $)
+   {
+      local rName;
+
+      if (oNPC = $)
+      {
+         Debug("Missing NPC while building quest UI description!");
+         rName = system_blank_resource;
+      }
+      else
+      {
+         rName = Send(oNPC,@GetName);
+      }
+
+      AddPacket(4,vrDesc, 4,rName);
 
       return;
    }

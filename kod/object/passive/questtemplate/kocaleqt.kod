@@ -36,9 +36,11 @@ resources:
 
    // Quest description.
    kocaleqt_icon_rsc = mug.bgf
-   kocaleqt_name_rsc = "Ko'catan ale trade quest"
+   kocaleqt_name_rsc = "Booze Delivery"
    kocaleqt_desc_rsc = \
-      "Make an alcohol delivery to the Island."
+      "%s needs a guaranteed delivery of alcohol made to the Island.  If you "
+      "are willing to make the journey for them, you would be rewarded well "
+      "at the destination."
 
    kocaleqt_nodetwo_rsc = \
       "%s%s needs a guaranteed delivery made to the island.  Failure to "
@@ -187,8 +189,9 @@ messages:
          }
          else
          {
+            // Use happyland subs anyway - no more outlaw punishment.
             Send(oQE,@SetQuestNodeAssignHint,#index=QNT_ID_KOC_ALE_TRADE_TWO,
-                  #new_hint=kocale_assign_2);
+                  #new_hint=kocale_assign_2_h);
          }
          Send(oQE,@SetQuestNodeFailureHint,#index=QNT_ID_KOC_ALE_TRADE_TWO,
                #new_hint=kocale_failure_2);
@@ -204,13 +207,13 @@ messages:
                #NPC_modifier=QN_NPCMOD_NONE,
                #cargolist=[ [ QN_PRIZETYPE_ITEMCLASS, &Goblet, 50 ],
                             [ QN_PRIZETYPE_ITEMCLASS, &StoutGoblet, 50 ],
-                            [ QN_PRIZETYPE_ITEMCLASS, &wineGoblet, 40 ],
-                            [ QN_PRIZETYPE_ITEMCLASS, &mug, 50 ] ],
-               #prizelist=[ [ [ QN_PRIZETYPE_ITEMCLASS, &InkyCap, 10 ],
+                            [ QN_PRIZETYPE_ITEMCLASS, &WineGoblet, 40 ],
+                            [ QN_PRIZETYPE_ITEMCLASS, &Mug, 50 ] ],
+               #prizelist=[ [ [ QN_PRIZETYPE_ITEMCLASS, &InkyCap, 15 ],
                             [ QN_PRIZETYPE_ITEMCLASS, &LongBow, 1 ],
                             [ QN_PRIZETYPE_ITEMCLASS, &Arrow, 60 ],
-                            [ QN_PRIZETYPE_ITEMCLASS, &NeruditeArrow, 30 ],
-                            [ QN_PRIZETYPE_ITEMCLASS, &SilverArrow, 30 ],
+                            [ QN_PRIZETYPE_ITEMCLASS, &NeruditeArrow, 40 ],
+                            [ QN_PRIZETYPE_ITEMCLASS, &SilverArrow, 40 ],
                             [ QN_PRIZETYPE_ITEMCLASS, &KaraholsCursePotion, 1 ],
                             [ QN_PRIZETYPE_ITEMCLASS, &HoldWand, 1 ],
                             [ QN_PRIZETYPE_ITEMCLASS, &FireRing, 1 ],
@@ -241,10 +244,11 @@ messages:
          }
          else
          {
+            // Use happyland subs anyway - no more outlaw punishment.
             Send(oQE,@SetQuestNodeAssignHint,#index=QNT_ID_KOC_ALE_TRADE_THREE,
-                  #new_hint=kocale_assign_3);
+                  #new_hint=kocale_assign_3_h);
             Send(oQE,@SetQuestNodeFailureHint,#index=QNT_ID_KOC_ALE_TRADE_THREE,
-                  #new_hint=kocale_failure_3);
+                  #new_hint=kocale_failure_3_h);
          }
          Send(oQE,@SetQuestNodeSuccessHint,#index=QNT_ID_KOC_ALE_TRADE_THREE,
                #new_hint=kocale_success_3);
@@ -253,6 +257,25 @@ messages:
       {
          Debug("Error building QN: QNT_ID_KOC_ALE_TRADE_THREE");
       }
+
+      return;
+   }
+
+   ShowQuestUIDescRsc(who = $, oNPC = $)
+   {
+      local rName;
+
+      if (oNPC = $)
+      {
+         Debug("Missing NPC while building quest UI description!");
+         rName = system_blank_resource;
+      }
+      else
+      {
+         rName = Send(oNPC,@GetName);
+      }
+
+      AddPacket(4,vrDesc, 4,rName);
 
       return;
    }

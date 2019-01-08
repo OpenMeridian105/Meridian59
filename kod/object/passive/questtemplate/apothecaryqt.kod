@@ -35,9 +35,11 @@ resources:
 
    // Quest description.
    apothecaryqt_icon_rsc = shrubbry.bgf
-   apothecaryqt_name_rsc = "apothecary quest"
+   apothecaryqt_name_rsc = "Medical Delivery"
    apothecaryqt_desc_rsc = \
-      "An apothecary has run out of stock; deliver some to them."
+      "%s has some stock that must be delivered to a fellow apothecary who "
+      "has run out.  Helping facilitate this trade will net you a small "
+      "reward."
 
    apothecaryqt_deliver_rsc = \
       "%s%s has need of %i %s, so %s%s has asked you to deliver them to %s.  "
@@ -131,6 +133,10 @@ messages:
          {
             lNPCs = Cons(oNPC, lNPCs);
          }
+         foreach oNPC in Send(oLib,@GetOccupationList,#cNPC_class=&RazaApothecary)
+         {
+            lNPCs = Cons(oNPC, lNPCs);
+         }
          Send(oQE,@SetQuestNodeNPCList,#index=QNT_ID_APOTHECARY_ONE,
                #new_NPC_list=lNPCs);
       }
@@ -153,15 +159,15 @@ messages:
                               [ QN_PRIZETYPE_ITEMCLASS, &KriipaClaw, 5 ],
                               [ QN_PRIZETYPE_ITEMCLASS, &DragonflyEye, 5 ] ],
                #prizelist=[ [ [ QN_PRIZETYPE_ITEMCLASS, &Book, 1 ],
-                              [ QN_PRIZETYPE_ITEMCLASS, &Money, 600 ],
-                              [ QN_PRIZETYPE_ITEMCLASS, &Money, 650 ],
-                              [ QN_PRIZETYPE_ITEMCLASS, &Money, 600 ],
-                              [ QN_PRIZETYPE_ITEMCLASS, &Money, 650 ],
-                              [ QN_PRIZETYPE_ITEMCLASS, &Money, 600 ],
-                              [ QN_PRIZETYPE_ITEMCLASS, &Money, 750 ],
-                              [ QN_PRIZETYPE_ITEMCLASS, &Money, 700 ],
-                              [ QN_PRIZETYPE_ITEMCLASS, &Money, 750 ],
-                              [ QN_PRIZETYPE_ITEMCLASS, &Money, 800 ],
+                              [ QN_PRIZETYPE_ITEMCLASS, &Money, 6000 ],
+                              [ QN_PRIZETYPE_ITEMCLASS, &Money, 6500 ],
+                              [ QN_PRIZETYPE_ITEMCLASS, &Money, 6000 ],
+                              [ QN_PRIZETYPE_ITEMCLASS, &Money, 6500 ],
+                              [ QN_PRIZETYPE_ITEMCLASS, &Money, 6000 ],
+                              [ QN_PRIZETYPE_ITEMCLASS, &Money, 7500 ],
+                              [ QN_PRIZETYPE_ITEMCLASS, &Money, 7000 ],
+                              [ QN_PRIZETYPE_ITEMCLASS, &Money, 7500 ],
+                              [ QN_PRIZETYPE_ITEMCLASS, &Money, 8000 ],
                               [ QN_PRIZETYPE_ITEMCLASS, &DetectInvisibilityPotion, 1 ],
                               [ QN_PRIZETYPE_ITEMCLASS, &NightVisionPotion, 1 ],
                               [ QN_PRIZETYPE_ITEMCLASS, &VampireWand, 1 ] ] ],
@@ -181,10 +187,11 @@ messages:
          }
          else
          {
+            // Use happyland subs anyway - no more outlaw punishment.
             Send(oQE,@SetQuestNodeAssignHint,#index=QNT_ID_APOTHECARY_TWO,
-                  #new_hint=apothecary_assign_2);
+                  #new_hint=apothecary_assign_2_h);
             Send(oQE,@SetQuestNodeFailureHint,#index=QNT_ID_APOTHECARY_TWO,
-                  #new_hint=apothecary_failure_2);
+                  #new_hint=apothecary_failure_2_h);
          }
          Send(oQE,@SetQuestNodeSuccessHint,#index=QNT_ID_APOTHECARY_TWO,
                #new_hint=apothecary_success_2);
@@ -193,6 +200,25 @@ messages:
       {
          Debug("Error building QN: QNT_ID_APOTHECARY_TWO");
       }
+
+      return;
+   }
+
+   ShowQuestUIDescRsc(who = $, oNPC = $)
+   {
+      local rName;
+
+      if (oNPC = $)
+      {
+         Debug("Missing NPC while building quest UI description!");
+         rName = system_blank_resource;
+      }
+      else
+      {
+         rName = Send(oNPC,@GetName);
+      }
+
+      AddPacket(4,vrDesc, 4,rName);
 
       return;
    }

@@ -34,9 +34,11 @@ resources:
    include vaulttaxqt.lkod
 
    // Quest description.
-   vaulttaxqt_name_rsc = "vault tax quest"
+   vaulttaxqt_name_rsc = "Cash-In-Transit"
    vaulttaxqt_desc_rsc = \
-      "Courier some shillings for an NPC."
+      "%s needs a trustworthy adventurer to courier some shillings to a "
+      "business partner.  If you're willing to help them out, a reward would "
+      "await you at the destination."
 
    vaulttaxqt_completed_rsc = \
       "You have completed the vault tax quest."
@@ -180,10 +182,11 @@ messages:
          }
          else
          {
+            // Use happyland subs anyway - no more outlaw punishment.
             Send(oQE,@SetQuestNodeAssignHint,#index=QNT_ID_VAULT_TAX_TWO,
-                  #new_hint=vaulttax_assign_2);
+                  #new_hint=vaulttax_assign_2_h);
             Send(oQE,@SetQuestNodeFailureHint,#index=QNT_ID_VAULT_TAX_TWO,
-                  #new_hint=vaulttax_failure_2);
+                  #new_hint=vaulttax_failure_2_h);
          }
          Send(oQE,@SetQuestNodeSuccessHint,#index=QNT_ID_VAULT_TAX_TWO,
                #new_hint=vaulttax_success_2);
@@ -192,6 +195,25 @@ messages:
       {
          Debug("Error building QN: QNT_ID_VAULT_TAX_TWO");
       }
+
+      return;
+   }
+
+   ShowQuestUIDescRsc(who = $, oNPC = $)
+   {
+      local rName;
+
+      if (oNPC = $)
+      {
+         Debug("Missing NPC while building quest UI description!");
+         rName = system_blank_resource;
+      }
+      else
+      {
+         rName = Send(oNPC,@GetName);
+      }
+
+      AddPacket(4,vrDesc, 4,rName);
 
       return;
    }

@@ -36,6 +36,7 @@ constants:
    TIME_RSC_HEADER_INCOMPLETE = 0
    TIME_RSC_HEADER_COMPLETE   = 1
    TIME_RSC_HEADER_INFINITE   = 2
+   TIME_RSC_HEADER_FAILED     = 3
 
    // Used by clients to determine whether to show quest node
    // text or requirements text, depending on whether user has
@@ -51,12 +52,15 @@ resources:
    questtemplate_icon_rsc = kolanico.bgf
    questtemplate_name_rsc = "default quest"
    questtemplate_desc_rsc = "Initial default quest description."
+   questtemplate_failed_rsc = "You have failed this quest."
 
    // Resources for making the timer part of description.
    questtemplate_time_header = \
       "\n\nYou have %r%r%r%r%r%r%r remaining to complete this quest."
    questtemplate_time_header_complete = \
       "\n\nYou can complete this quest again in %r%r%r%r%r%r%r."
+   questtemplate_time_header_failed = \
+      "\n\nYou can attempt this quest again in %r%r%r%r%r%r%r."
    questtemplate_outoftime_rsc = "\n\nYou are almost out of time!"
    questtemplate_infinite_rsc = "\n\nThis quest has no time limit."
 
@@ -127,12 +131,16 @@ classvars:
    vrName = questtemplate_name_rsc
    vrDesc = questtemplate_desc_rsc
    vrCompleted = questtemplate_desc_rsc
+   vrFailed = questtemplate_failed_rsc
 
    // The QST_ID constant for this quest.
    viQuestID = QST_ID_NONE
 
    // FALSE if we don't display the completed quest to the user.
    vbShowCompleted = TRUE
+
+   // FALSE if we don't display this quest to the user if failed
+   vbShowFailed = TRUE
 
    // Determine which icon to display in the description,
    // and whether there is an animation. If no animation,
@@ -194,6 +202,15 @@ messages:
       return;
    }
 
+   PrintNameDesc()
+   {
+      GodLog(vrName);
+      GodLog(vrDesc);
+      GodLog("\n");
+
+      return;
+   }
+
    SendQuestNodeTemplates()
    {
       return;
@@ -229,6 +246,35 @@ messages:
    "QN_PRIZETYPE_NPC_RESPONSE prize."
    {
       return;
+   }
+
+   ShowFailedQuest(who=$,lHistory=$)
+   {
+      local iTimeLoggedIn;
+
+      if NOT vbShowFailed
+      {
+         return FALSE;
+      }
+
+      // If we don't have the history or user, don't show quest.
+      if lHistory = $
+         OR who = $
+      {
+         return FALSE;
+      }
+
+      iTimeLoggedIn = Send(who,@GetTimeLoggedIn);
+
+      // Show it if the player failed recently.
+      if (First(lHistory) & QUEST_HISTORY_FAILURE)
+         AND (Nth(lHistory,3) <= iTimeLoggedIn
+            AND Nth(lHistory,3) + piQuestHistoryRecentTime > iTimeLoggedIn)
+      {
+         return TRUE;
+      }
+
+      return FALSE;
    }
 
    ShowCompletedQuest(who=$,lHistory=$)
@@ -267,23 +313,38 @@ messages:
       return FALSE;
    }
 
+   ShowQuestUIDescRsc(who = $, oNPC = $)
+   "Can be overridden if vrDesc requires extra parameters to display."
+   "Note that this assumes vrDesc isn't displayed anywhere else but the NPC's "
+   "quest UI, as calls to ShowDesc (i.e. from quest log) won't know which "
+   "NPC handed out the quest."
+   {
+      AddPacket(4,vrDesc);
+
+      return;
+   }
+
    ShowQuestUIDesc(who = $, oNPC = $)
    "Includes quest description along with current quest node stuff."
    "Should also include rewards/requirements etc."
    {
       local oQuestNode;
 
-      AddPacket(4,vrDesc);
-
       // If the user has started this quest, show the quest node
       // info (i.e. what they should do). If not, show requirements.
       oQuestNode = Send(who,@GetActiveQuestNode,#index=viQuestID);
       if (oQuestNode <> $)
       {
+         // Use original NPC for description.
+         oNPC = Send(oQuestNode,@GetOriginalNPC);
+         // Add vrDesc to packet.
+         Send(self,@ShowQuestUIDescRsc,#who=who,#oNPC=oNPC);
          Send(self,@ShowDescCommon,#who=who);
       }
       else
       {
+         // Add vrDesc to packet.
+         Send(self,@ShowQuestUIDescRsc,#who=who,#oNPC=oNPC);
          Send(self,@ShowRequirements,#who=who,#oNPC=oNPC);
       }
 
@@ -297,6 +358,7 @@ messages:
    }
 
    ShowDesc(who=$)
+   "Standard show desc, e.g. from quest log.  Not called for NPC quest UI."
    {
       if who = $
       {
@@ -326,15 +388,26 @@ messages:
       if oQuestNode = $
       {
          // Add time remaining until quest can be redone, if applicable.
-         if (piPlayerRestrict & Q_PLAYER_NOTTRIED_RECENTLY)
-            AND NOT (piPlayerRestrict & Q_PLAYER_NOTSUCCEEDED)
+         lHistory = Send(who,@GetQuestHistory,#index=viQuestID);
+
+         if (Send(self,@ShowFailedQuest,#who=who,#lHistory=lHistory))
          {
-            lHistory = Send(who,@GetQuestHistory,#index=viQuestID);
-            iTimeLeft = Nth(lHistory,2) + piQuestHistoryRecentTime
+            iQuestHeader = TIME_RSC_HEADER_FAILED;
+            iTimeLeft = Nth(lHistory,3) + piQuestHistoryRecentTime
                            - Send(who,@GetTimeLoggedIn);
+            AddPacket(4,vrFailed);
          }
-         iQuestHeader = TIME_RSC_HEADER_COMPLETE;
-         AddPacket(4,vrCompleted);
+         else
+         {
+            iQuestHeader = TIME_RSC_HEADER_COMPLETE;
+            if (piPlayerRestrict & Q_PLAYER_NOTTRIED_RECENTLY)
+               AND NOT (piPlayerRestrict & Q_PLAYER_NOTSUCCEEDED)
+            {
+               iTimeLeft = Nth(lHistory,2) + piQuestHistoryRecentTime
+                              - Send(who,@GetTimeLoggedIn);
+            }
+            AddPacket(4,vrCompleted);
+         }
       }
       else
       {
@@ -1052,6 +1125,13 @@ messages:
          if parm1 = TIME_RSC_HEADER_COMPLETE
          {
             AddPacket(4,questtemplate_time_header_complete);
+
+            return;
+         }
+
+         if parm1 = TIME_RSC_HEADER_FAILED
+         {
+            AddPacket(4,questtemplate_time_header_failed);
 
             return;
          }

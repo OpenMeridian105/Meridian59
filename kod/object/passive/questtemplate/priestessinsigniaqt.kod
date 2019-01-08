@@ -36,10 +36,12 @@ resources:
 
    // Quest description.
    priestessinsigniaquest_icon_rsc = gsha.bgf
-   priestessinsigniaquest_name_rsc = "herald shield insignia quest"
+   priestessinsigniaquest_name_rsc = "A Significant Improvement"
    priestessinsigniaquest_desc_rsc = \
-      "The priestess will place their insignia on your shield, provided "
-      "you offer them a \"tithe\"."
+      "%s can place their insignia on your herald shield, which will imbue it "
+      "with a spellpower bonus.  This can overwrite an existing insignia, if "
+      "you aren't carrying a blank shield.  They will require you to obtain "
+      "some rare reagents for them in return."
 
    priestessinsigniaquest_nodetwo_rsc = \
       "%s%s will place %s insignia on your herald shield, provided you "
@@ -180,6 +182,25 @@ messages:
       {
          Debug("Error building QN: QNT_ID_PRIESTESS_INSIGNIA_THREE");
       }
+
+      return;
+   }
+
+   ShowQuestUIDescRsc(who = $, oNPC = $)
+   {
+      local rName;
+
+      if (oNPC = $)
+      {
+         Debug("Missing NPC while building quest UI description!");
+         rName = system_blank_resource;
+      }
+      else
+      {
+         rName = Send(oNPC,@GetName);
+      }
+
+      AddPacket(4,vrDesc, 4,rName);
 
       return;
    }

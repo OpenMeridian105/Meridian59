@@ -36,9 +36,11 @@ resources:
 
    // Quest description.
    kocweaponqt_icon_rsc = arrowqt.bgf
-   kocweaponqt_name_rsc = "Ko'catan weapon trade quest"
+   kocweaponqt_name_rsc = "Arrow Delivery"
    kocweaponqt_desc_rsc = \
-      "Make a delivery of arrows to the mainland."
+      "%s needs a guaranteed delivery of arrows made to the mainland.  If you "
+      "are willing to make the journey for them, you would be rewarded well "
+      "at the destination."
 
    kocweaponqt_nodetwo_rsc = \
       "%s%s needs a guaranteed delivery made to the mainland.  This is "
@@ -171,8 +173,9 @@ messages:
          }
          else
          {
+            // Use happyland subs anyway - no more outlaw punishment.
             Send(oQE,@SetQuestNodeAssignHint,#index=QNT_ID_KOC_WEAP_TRADE_TWO,
-                  #new_hint=kocweapon_assign_2);
+                  #new_hint=kocweapon_assign_2_h);
          }
          Send(oQE,@SetQuestNodeFailureHint,#index=QNT_ID_KOC_WEAP_TRADE_TWO,
                #new_hint=kocweapon_failure_2);
@@ -188,8 +191,8 @@ messages:
                #NPC_modifier=QN_NPCMOD_NONE,
                #cargolist=[ [ QN_PRIZETYPE_ITEMCLASS, &Arrow, 100 ],
                             [ QN_PRIZETYPE_ITEMCLASS, &NeruditeArrow, 50 ] ],
-               #prizelist=[[[ QN_PRIZETYPE_ITEMCLASS, &InkyCap, 10 ],
-                            [ QN_PRIZETYPE_ITEMCLASS, &Emerald, 6 ],
+               #prizelist=[[[ QN_PRIZETYPE_ITEMCLASS, &InkyCap, 15 ],
+                            [ QN_PRIZETYPE_ITEMCLASS, &Emerald, 30 ],
                             [ QN_PRIZETYPE_ITEMCLASS, &IdentifyWand, 1 ],
                             [ QN_PRIZETYPE_ITEMCLASS, &PurifyWand, 1 ],
                             [ QN_PRIZETYPE_ITEMCLASS, &ResistColdPotion, 1 ],
@@ -222,10 +225,11 @@ messages:
          }
          else
          {
+            // Use happyland subs anyway - no more outlaw punishment.
             Send(oQE,@SetQuestNodeAssignHint,#index=QNT_ID_KOC_WEAP_TRADE_THREE,
-                  #new_hint=kocweapon_assign_3);
+                  #new_hint=kocweapon_assign_3_h);
             Send(oQE,@SetQuestNodeFailureHint,#index=QNT_ID_KOC_WEAP_TRADE_THREE,
-                  #new_hint=kocweapon_failure_3);
+                  #new_hint=kocweapon_failure_3_h);
          }
          Send(oQE,@SetQuestNodeSuccessHint,#index=QNT_ID_KOC_WEAP_TRADE_THREE,
                #new_hint=kocweapon_success_3);
@@ -234,6 +238,25 @@ messages:
       {
          Debug("Error building QN: QNT_ID_KOC_WEAP_TRADE_THREE");
       }
+
+      return;
+   }
+
+   ShowQuestUIDescRsc(who = $, oNPC = $)
+   {
+      local rName;
+
+      if (oNPC = $)
+      {
+         Debug("Missing NPC while building quest UI description!");
+         rName = system_blank_resource;
+      }
+      else
+      {
+         rName = Send(oNPC,@GetName);
+      }
+
+      AddPacket(4,vrDesc, 4,rName);
 
       return;
    }

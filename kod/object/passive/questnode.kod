@@ -230,7 +230,7 @@ messages:
       if waiting_for_players
       {
          // Add self to dest NPC's list of active questnodes
-         Send(poDestNPC,@AddQuestNodeToActiveList,#node=self);
+         Send(poDestNPC,@AddQuestNodeToActiveList,#node=self,#type=piNodeType);
 
          piStatus = QN_STATUS_WAITING_FOR_PLAYERS;
 
@@ -603,14 +603,14 @@ messages:
             Send(oQuestEngine,@AddQNToAwaitingMonsterDeathList,#QN=self);
          }
       }
-   
+
       // Add self to dest NPC's list of active questnodes
-      Send(poDestNPC,@AddQuestNodeToActiveList,#node=self);
+      Send(poDestNPC,@AddQuestNodeToActiveList,#node=self,#type=piNodeType);
 
       // Say assign hint
       if Send(oQuestEngine,@GetQuestNodeAssignHint,
               #index=piQuestNodeTemplateIndex) <> $
-      { 
+      {
          foreach oQuester in Send(poQuest,@GetQuesters)
          {
             // Have to substitute each time, in case player //NAME is
@@ -1322,7 +1322,85 @@ messages:
          SetNth(plDefDescs,2,Send(oPrize,@GetDef));
 
          return;
-      } 
+      }
+
+      if iPrizeType = QN_PRIZETYPE_ITEM_ENUM
+      {
+         iPrizeType = Nth(prize,2);
+         switch (iPrizeType)
+         {
+         case QN_PRIZE_ITEM_KRANROBE:
+            foreach oQuester in recipients
+            {
+               oPrize = Create(&DiscipleRobe,#school=SS_KRAANAN);
+               Send(oQuester,@NewHold,#what=oPrize);
+            }
+            break;
+         case QN_PRIZE_ITEM_SHALROBE:
+            foreach oQuester in recipients
+            {
+               oPrize = Create(&DiscipleRobe,#school=SS_SHALILLE);
+               Send(oQuester,@NewHold,#what=oPrize);
+            }
+            break;
+         case QN_PRIZE_ITEM_FARENROBE:
+            foreach oQuester in recipients
+            {
+               oPrize = Create(&DiscipleRobe,#school=SS_FAREN);
+               Send(oQuester,@NewHold,#what=oPrize);
+            }
+            break;
+         case QN_PRIZE_ITEM_QORROBE:
+            foreach oQuester in recipients
+            {
+               oPrize = Create(&DiscipleRobe,#school=SS_QOR);
+               Send(oQuester,@NewHold,#what=oPrize);
+            }
+            break;
+         case QN_PRIZE_ITEM_RIIJAROBE:
+            foreach oQuester in recipients
+            {
+               oPrize = Create(&DiscipleRobe,#school=SS_RIIJA);
+               Send(oQuester,@NewHold,#what=oPrize);
+            }
+            break;
+         case QN_PRIZE_ITEM_JALAROBE:
+            foreach oQuester in recipients
+            {
+               oPrize = Create(&DiscipleRobe,#school=SS_JALA);
+               Send(oQuester,@NewHold,#what=oPrize);
+            }
+            break;
+         case QN_PRIZE_ITEM_DURABLESCIM:
+            foreach oQuester in recipients
+            {
+               oPrize = Create(&Scimitar);
+               Send(Send(SYS,@FindItemAttByNum,#num=IA_DURABLE),@AddToItem,#oItem=oPrize);
+               Send(oPrize,@RevealHiddenAttributes);
+               Send(oQuester,@NewHold,#what=oPrize);
+            }
+            break;
+         }
+
+         if Send(oPrize,@IsStackable)
+         {
+            ClearTempString();
+            AppendTempString(iAmount);
+            AppendTempString(" ");
+            AppendTempString(Send(oPrize,@GetName));
+            SetNth(plDescs,2,CreateString());
+            SetString(Nth(plDescs,2),GetTempString());
+         }
+         else
+         {
+            SetNth(plDescs,2,Send(oPrize,@GetName));
+         }
+
+         SetNth(plIndefDescs,2,Send(oPrize,@GetIndef));
+         SetNth(plDefDescs,2,Send(oPrize,@GetDef));
+
+         return;
+      }
 
       if iPrizeType = QN_PRIZETYPE_STATISTIC
       {
@@ -1639,7 +1717,7 @@ messages:
             {
                Send(poDestNPC,@RemoveQuestNodeFromActiveList,#node=self);
                poDestNPC = oNewLich;
-               Send(poDestNPC,@AddQuestNodeToActiveList,#node=self);
+               Send(poDestNPC,@AddQuestNodeToActiveList,#node=self,#type=piNodeType);
             }
 
             Send(oLich,@EstablishNecromancerGuild,#master=First(recipients));
@@ -1770,6 +1848,11 @@ messages:
    GetSourceNPC()
    {
       return poSourceNPC;
+   }
+
+   GetOriginalNPC()
+   {
+      return Send(poQuest,@GetOriginalNPC);
    }
 
    MonsterKilled(dead_monster = $, killing_player = $, corpse = $)

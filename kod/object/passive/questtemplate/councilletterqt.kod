@@ -35,10 +35,11 @@ resources:
 
    // Quest description.
    councilletterquest_icon_rsc = scr04.bgf
-   councilletterquest_name_rsc = "council letter quest"
+   councilletterquest_name_rsc = "An Urgent Message"
    councilletterquest_desc_rsc = \
-      "Deliver an official letter to a councillor.  You will be paid "
-      "on delivery of the letter."
+      "%s has a vitally important letter that must be delivered to a member "
+      "of the council.  You would be paid quite well for ensuring it was "
+      "delivered in a timely manner."
 
    councilletterquest_deliver_rsc = \
       "%s%s has asked you to deliver an official letter to Councillor "
@@ -49,8 +50,8 @@ resources:
 
    // Quest resources.
    council_letter_assign = \
-      "Why yes I do.  Take this letter to the councillor %NPC as fast as "
-      "possible.  He will pay for the service."
+      "Take this letter to the councillor %NPC as fast as "
+      "possible.  He will pay you well for the service."
    council_letter_success = \
       "I’ve been expecting this letter.  Thank you, %NAME.  Here is your fee."
    council_letter_failure = \
@@ -122,10 +123,10 @@ messages:
       // QNT_ID_COUNCIL_LETTER_TWO
       if Send(oQE,@AddQuestNodeTemplate,#questnode_type=QN_TYPE_ITEM,
                #cargolist=[ [ QN_PRIZETYPE_ITEMCLASS, &CouncilLetter, 1 ] ],
-               #prizelist=[ [ [ QN_PRIZETYPE_ITEMCLASS, &Money, 500 ],
-                              [ QN_PRIZETYPE_ITEMCLASS, &Money, 750 ],
-                              [ QN_PRIZETYPE_ITEMCLASS, &Money, 750 ],
-                              [ QN_PRIZETYPE_ITEMCLASS, &Money, 1000 ] ] ],
+               #prizelist=[ [ [ QN_PRIZETYPE_ITEMCLASS, &Money, 5000 ],
+                              [ QN_PRIZETYPE_ITEMCLASS, &Money, 7500 ],
+                              [ QN_PRIZETYPE_ITEMCLASS, &Money, 7500 ],
+                              [ QN_PRIZETYPE_ITEMCLASS, &Money, 10000 ] ] ],
                #timelimit=6 * 3600,#quest_node_index=QNT_ID_COUNCIL_LETTER_TWO)
       {
          lNPCs = $;
@@ -146,6 +147,25 @@ messages:
       {
          Debug("Error building QN: QNT_ID_COUNCIL_LETTER_TWO");
       }
+
+      return;
+   }
+
+   ShowQuestUIDescRsc(who = $, oNPC = $)
+   {
+      local rName;
+
+      if (oNPC = $)
+      {
+         Debug("Missing NPC while building quest UI description!");
+         rName = system_blank_resource;
+      }
+      else
+      {
+         rName = Send(oNPC,@GetName);
+      }
+
+      AddPacket(4,vrDesc, 4,rName);
 
       return;
    }

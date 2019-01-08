@@ -51,9 +51,11 @@ static int SetFontToFitText(QuestDialogStruct *info, HWND hwnd, int fontNum, con
    HFONT hOldFont;
    LOGFONT newFont;
    int height = 0;
+   float ratio;
    RECT rcWindow, rcText;
    BOOL fit = FALSE;
    HDC hdc;
+   bool multiLine = FALSE, firstPass = TRUE, allowMultiline = TRUE;
 
    hdc = GetDC(hwnd);
    if (info->hFontTitle && info->hFontTitle != GetFont(FONT_TITLES))
@@ -73,10 +75,27 @@ static int SetFontToFitText(QuestDialogStruct *info, HWND hwnd, int fontNum, con
       hOldFont = (HFONT)SelectObject(hdc, info->hFontTitle);
       height = DrawText(hdc, text, -1, &rcText, DT_CALCRECT | DT_SINGLELINE | DT_NOPREFIX);
       SelectObject(hdc, hOldFont);
-      if (rcText.right <= rcWindow.right)
+
+      // If the text doesn't fit inside the label but only a small amount would end up
+      // on the 2nd line, just shrink it a little bit and don't spread over two lines.
+      if (firstPass)
+      {
+         firstPass = FALSE;
+         ratio = (float)rcWindow.right / (float)rcText.right;
+         if (ratio > 0.75f)
+            allowMultiline = FALSE;
+      }
+
+      // To fit, text must be single line and inside label width,
+      // or multiline (2 lines max) and within 2*width and height/2.
+      if (((!multiLine && rcText.right <= rcWindow.right)
+         || (multiLine && rcText.right <= rcWindow.right * 2))
+        && (!multiLine || (height <= rcWindow.bottom / 2)))
          fit = TRUE;
       else
       {
+         if (allowMultiline)
+            multiLine = TRUE;
          if (newFont.lfHeight < -4)
          {
             DeleteObject(info->hFontTitle);

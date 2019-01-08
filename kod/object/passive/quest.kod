@@ -33,6 +33,9 @@ properties:
    // The current questnode object
    poQuestNode             = $
 
+   // Original NPC for this quest
+   poOriginalNPC           = $
+
    // local list of quest node indices, to allow random order
    // of traversal (NOT yet implemented)
    //  plQuestNodes            = $
@@ -86,6 +89,9 @@ messages:
                @GetDestNPC),@GetOwner),@GetRoomNum));
          Debug( "First node is",iFirstNodeTemplateIndex );
       }
+
+      // Assign original NPC (dest for first node).
+      poOriginalNPC = Send(poQuestNode,@GetDestNPC);
 
       return template_index;
    }
@@ -1035,6 +1041,11 @@ messages:
       return plQuesters;
    }
 
+   GetOriginalNPC()
+   {
+      return poOriginalNPC;
+   }
+
    QuestHasMoreNodes()
    {
       if (Length(Nth(Send(Send(SYS,@GetQuestEngine),@GetQuestTemplate,
@@ -1279,6 +1290,7 @@ messages:
       poQuestNode = $;
       plPlayerRestrict2 = $;
       plQuesters = $;
+      poOriginalNPC = $;
 
       propagate;
    }

@@ -330,18 +330,21 @@ messages:
    {
       local oQuestNode;
 
-      // Add vrDesc to packet.
-      Send(self,@ShowQuestUIDescRsc,#who=who,#oNPC=oNPC);
-
       // If the user has started this quest, show the quest node
       // info (i.e. what they should do). If not, show requirements.
       oQuestNode = Send(who,@GetActiveQuestNode,#index=viQuestID);
       if (oQuestNode <> $)
       {
+         // Use original NPC for description.
+         oNPC = Send(oQuestNode,@GetOriginalNPC);
+         // Add vrDesc to packet.
+         Send(self,@ShowQuestUIDescRsc,#who=who,#oNPC=oNPC);
          Send(self,@ShowDescCommon,#who=who);
       }
       else
       {
+         // Add vrDesc to packet.
+         Send(self,@ShowQuestUIDescRsc,#who=who,#oNPC=oNPC);
          Send(self,@ShowRequirements,#who=who,#oNPC=oNPC);
       }
 

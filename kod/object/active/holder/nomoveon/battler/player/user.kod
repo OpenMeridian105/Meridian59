@@ -378,6 +378,8 @@ resources:
    user_quest_complete_wav = questcomplete.ogg
 
    user_quest_log_updated = "~IYour quest log has been updated."
+   user_no_quest_item = \
+      "You don't have the required item to complete this quest."
 
    // Guild MOTD user say commands.
    user_say_guild_motd = "motd"
@@ -8347,7 +8349,7 @@ messages:
                #string=GetTempString());
          // Use the cargo directly - this bypasses any puzzle the user needs
          // to figure out to complete the quest, but we'd have to exclude that
-         // type of quest from being comleted via UI anyway (i.e. add a new
+         // type of quest from being completed via UI anyway (i.e. add a new
          // quest type for it and not use QN_TYPE_MESSAGE).
          Send(oQN,@CheckCompletionCriteria,#who_tried=self,#message=oCargo);
          break;
@@ -8357,6 +8359,10 @@ messages:
          if (Send(self,@IsHolding,#what=oCargo))
          {
             Send(what,@TryGiveQuestItem,#what=self,#item_list=[oCargo]);
+         }
+         else
+         {
+            Send(self,@MsgSendUser,#message_rsc=user_no_quest_item);
          }
          break;
       case QN_TYPE_ITEMCLASS:
@@ -8374,6 +8380,10 @@ messages:
          if (oItem <> $)
          {
             Send(what,@TryGiveQuestItem,#what=self,#item_list=[oItem]);
+         }
+         else
+         {
+            Send(self,@MsgSendUser,#message_rsc=user_no_quest_item);
          }
          break;
       case QN_TYPE_SHOWUP:

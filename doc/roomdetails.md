@@ -376,7 +376,6 @@ Room Name | Room File | Room ID
 The Fields | field1.roo | 3
 The Deep Dark Woods of Tos | forest4.roo | 4
 The Deep Dark Woods of Marion | forest5.roo | 6
-
 The Forests of Meridian | forest1.roo | 24
 The Forests of Meridian | forest2.roo | 26
 The Forests of Meridian | forest3.roo | 28
@@ -387,6 +386,7 @@ Deep Forest of Farol | e6.roo | 556
 The meeting place of the Gods | zndramas.roo | 901
 Meridian University | univ.roo | 902
 object gallery | univ.roo | 903
+Winter Forest | qormasland.roo | 2751
 Historic Jasper | ojas.roo | 9000
 Historic Marion | omar.roo | 9001
 Historic North Barloque | obarln.roo | 9002

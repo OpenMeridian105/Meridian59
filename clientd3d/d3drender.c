@@ -2880,26 +2880,15 @@ void D3DRenderNamesDraw3D(d3d_render_cache_system *pCacheSystem, d3d_render_pool
       if (!GetRoomHeight(room->tree, &top, &bottom, &sector_flags, pRNode->motion.x, pRNode->motion.y))
          continue;
 
-      // Set object depth based on "depth" sector flags
-      depth = sector_depths[SectorDepth(sector_flags)];
-
-      if (ROOM_OVERRIDE_MASK & GetRoomFlags()) // if depth flags are normal (no overrides)
+      // No depth for override flags.
+      if (ROOM_OVERRIDE_MASK & GetRoomFlags())
       {
-         switch (SectorDepth(sector_flags))
-         {
-         case SF_DEPTH1:
-            if (ROOM_OVERRIDE_DEPTH1 & GetRoomFlags())
-               depth = GetOverrideRoomDepth(SF_DEPTH1);
-         break;
-         case SF_DEPTH2:
-            if (ROOM_OVERRIDE_DEPTH2 & GetRoomFlags())
-               depth = GetOverrideRoomDepth(SF_DEPTH2);
-         break;
-         case SF_DEPTH3:
-            if (ROOM_OVERRIDE_DEPTH3 & GetRoomFlags())
-               depth = GetOverrideRoomDepth(SF_DEPTH3);
-         break;
-         }
+         depth = 0.0f;
+      }
+      else
+      {
+         // Set object depth based on "depth" sector flags
+         depth = sector_depths[SectorDepth(sector_flags)];
       }
 
       //         z = ((float)pDib->height / (float)pDib->shrink * 16.0f) - (float)pDib->yoffset * 4.0f;
@@ -3182,26 +3171,15 @@ void D3DRenderQuestInfoDraw3D(d3d_render_cache_system *pCacheSystem, d3d_render_
       if (!GetRoomHeight(room->tree, &top, &bottom, &sector_flags, pRNode->motion.x, pRNode->motion.y))
          continue;
 
-      // Set object depth based on "depth" sector flags
-      depth = sector_depths[SectorDepth(sector_flags)];
-
-      if (ROOM_OVERRIDE_MASK & GetRoomFlags()) // if depth flags are normal (no overrides)
+      // No depth for override flags.
+      if (ROOM_OVERRIDE_MASK & GetRoomFlags())
       {
-         switch (SectorDepth(sector_flags))
-         {
-         case SF_DEPTH1:
-            if (ROOM_OVERRIDE_DEPTH1 & GetRoomFlags())
-               depth = GetOverrideRoomDepth(SF_DEPTH1);
-            break;
-         case SF_DEPTH2:
-            if (ROOM_OVERRIDE_DEPTH2 & GetRoomFlags())
-               depth = GetOverrideRoomDepth(SF_DEPTH2);
-            break;
-         case SF_DEPTH3:
-            if (ROOM_OVERRIDE_DEPTH3 & GetRoomFlags())
-               depth = GetOverrideRoomDepth(SF_DEPTH3);
-            break;
-         }
+         depth = 0.0f;
+      }
+      else
+      {
+         // Set object depth based on "depth" sector flags
+         depth = sector_depths[SectorDepth(sector_flags)];
       }
 
       /////////////////////////////////////////////////////////////////////////
@@ -5168,26 +5146,15 @@ void D3DRenderObjectsDraw(d3d_render_pool_new *pPool, room_type *room,
          continue;
       }
 
-      // Set object depth based on "depth" sector flags
-      depth = sector_depths[SectorDepth(sector_flags)];
-
-      if (ROOM_OVERRIDE_MASK & GetRoomFlags()) // if depth flags are normal (no overrides)
+      // No depth for override flags.
+      if (ROOM_OVERRIDE_MASK & GetRoomFlags())
       {
-         switch (SectorDepth(sector_flags))
-         {
-         case SF_DEPTH1:
-            if (ROOM_OVERRIDE_DEPTH1 & GetRoomFlags())
-               depth = GetOverrideRoomDepth(SF_DEPTH1);
-            break;
-         case SF_DEPTH2:
-            if (ROOM_OVERRIDE_DEPTH2 & GetRoomFlags())
-               depth = GetOverrideRoomDepth(SF_DEPTH2);
-            break;
-         case SF_DEPTH3:
-            if (ROOM_OVERRIDE_DEPTH3 & GetRoomFlags())
-               depth = GetOverrideRoomDepth(SF_DEPTH3);
-            break;
-         }
+         depth = 0.0f;
+      }
+      else
+      {
+         // Set object depth based on "depth" sector flags
+         depth = sector_depths[SectorDepth(sector_flags)];
       }
 
       MatrixTranslate(&mat, (float)pRNode->motion.x, max(bottom, pRNode->motion.z) - depth,
@@ -5882,32 +5849,15 @@ void D3DRenderOverlaysDraw(d3d_render_pool_new *pPool, room_type *room, Draw3DPa
                   continue;
                }
 
-               // Set object depth based on "depth" sector flags
-               depthf = sector_depths[SectorDepth(sector_flags)];
-
-               if (ROOM_OVERRIDE_MASK & GetRoomFlags()) // if depth flags are normal (no overrides)
+               // No depth for override flags.
+               if (ROOM_OVERRIDE_MASK & GetRoomFlags())
                {
-                  switch (SectorDepth(sector_flags))
-                  {
-                  case SF_DEPTH1:
-                     if (ROOM_OVERRIDE_DEPTH1 & GetRoomFlags())
-                     {
-                        depthf = GetOverrideRoomDepth(SF_DEPTH1);
-                     }
-                  break;
-                  case SF_DEPTH2:
-                     if (ROOM_OVERRIDE_DEPTH2 & GetRoomFlags())
-                     {
-                        depthf = GetOverrideRoomDepth(SF_DEPTH2);
-                     }
-                  break;
-                  case SF_DEPTH3:
-                     if (ROOM_OVERRIDE_DEPTH3 & GetRoomFlags())
-                     {
-                        depthf = GetOverrideRoomDepth(SF_DEPTH3);
-                     }
-                  break;
-                  }
+                  depthf = 0.0f;
+               }
+               else
+               {
+                  // Set object depth based on "depth" sector flags
+                  depthf = sector_depths[SectorDepth(sector_flags)];
                }
 
                MatrixTranslate(&mat, (float)pRNode->motion.x, (float)max(bottom,

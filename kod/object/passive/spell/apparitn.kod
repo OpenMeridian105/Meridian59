@@ -78,7 +78,7 @@ messages:
       return 1;
    }
 
-   CanPayCosts(who=$,lTargets=$)
+   CanPayCosts(who=$,lTargets=$,bItemCast = FALSE)
    {
       local oRoom, oTarget;
 
@@ -104,6 +104,17 @@ messages:
       {
          Send(who,@MsgSendUser,#message_rsc=summonapparition_failed_inanimate,
                #parm1=Send(oTarget,@GetCapDef),#parm2=Send(oTarget,@GetName));
+
+         return FALSE;
+      }
+
+      if oTarget = who
+      {
+         if NOT bItemCast
+         {
+            Send(who,@MsgSendUser,#message_rsc=spell_no_self_target,
+                  #parm1=vrName);
+         }
 
          return FALSE;
       }

@@ -2938,6 +2938,14 @@ void doDrawWall(DrawWallStruct *wall, ViewCone *c)
       pBiXlat = FindStandardBiXlat(BIXLAT_BLEND50);
    }
 
+   // TODO: find the cause for bmap being null. Likely related to the changes
+   // to sign handling in this file.
+   if (!bmap)
+   {
+      debug(("bitmap not found in doDrawWall\n"));
+      return;
+   }
+
    d0 = GetDistance(x0,y0);
    d1 = GetDistance(x1,y1);
    

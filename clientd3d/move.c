@@ -619,8 +619,8 @@ bool CanMoveInRoomTree(const room_type* Room, const BSPnode* Node, const V2* S, 
       // This handles short moves where walls are not intersected, but the endpoint may be too close
       else
       {
-         // check only getting closer
-         if (fabs(distE) <= fabs(distS))
+         // check moving within a wall (end point inside min distance)
+         if (fabs(distE) < (float)min_distance)
          {
             // iterate finite segments (walls) in this splitter
             WallData* wall = Node->u.internal.walls_in_plane;

@@ -8,26 +8,44 @@
 
 
 //////////////////////////////////////////////////////////////////////////////
-SurWatcher is Watcher
+SurvivalWatcher is Watcher
 
 constants:
 
    include blakston.khd
+   
+   COMMENCE_DELAY_MIN = 5000
+   COMMENCE_DELAY_MAX = 10000
 
 resources:
 
    include surwatch.lkod
 
-   SurWatcher_name_rsc = "Watcher"
-   SurWatcher_icon_rsc = watchersurvival.bgf
-   SurWatcher_desc_rsc = \
-      "This is the Survial-Watcher"
+   SurvivalWatcher_name_rsc = "Osvann Vaendefdall"
+   SurvivalWatcher_icon_rsc = watchersurvival.bgf
+   SurvivalWatcher_desc_rsc = \
+      "Many hateful words can be said about Osvann Vaendefdall, "
+      "but the fact he's sadistic and impatient is just the tip of the iceberg. "
+      
+   SurvivalWatcher_join  = "join"
+   SurvivalWatcher_leave = "leave"
+   
+   SurvivalWatcher_need_participants = "Have we no warrior to join the pit?"
+
+   SurvivalWatcher_fight_in_progress = \
+      "A fight is currently in session, "
+      "players may only join after a boss wave has been completed."
+   SurvivalWatcher_invalid_fight = \
+      "The match has ended!"
 
 classvars:
 
-   vrName = SurWatcher_name_rsc
-   vrIcon = SurWatcher_icon_rsc
-   vrDesc = SurWatcher_desc_rsc
+   vrName = SurvivalWatcher_name_rsc
+   vrIcon = SurvivalWatcher_icon_rsc
+   vrDesc = SurvivalWatcher_desc_rsc
+   
+   vrFightInProgress = SurvivalWatcher_fight_in_progress
+   vrInvalidFight = SurvivalWatcher_invalid_fight
 
    viDefinite = ARTICLE_THE
    viIndefinite = ARTICLE_THE
@@ -35,11 +53,79 @@ classvars:
    viAttributes = MOB_NOMOVE | MOB_FULL_TALK | MOB_LISTEN | MOB_NOFIGHT \
                   | MOB_NOQUEST
    viOccupation = MOB_ROLE_WATCHER
-   viWatcherID = WATCHER_TOS_ARENA
+   viWatcherID = WATCHER_SURVIVAL
 
 properties:
+   piCombat_Style = STYLE_MONSTER_ARENA
+   pbCrashProtection = FALSE
 
 messages:
+
+   SomeoneSaid(what=$, type=$, string=$)
+   "This watcher has different say commands."
+   {
+      if (NOT IsClass(what,&Player))
+      {
+         propagate;
+      }
+      else if StringEqual(string,SurvivalWatcher_join)
+      {
+         Post(self,@TrigJoin,#what=what);
+         propagate;
+      }
+      else if StringEqual(string,SurvivalWatcher_leave)
+      {
+         Post(self,@TrigRenege,#what=what);
+         propagate;
+      }
+      else if IsClass(what,&DM)
+      {
+         // DM Commands
+         // TBD
+      }
+
+      return;
+   }
+   
+   TrigJoin(what=$)
+   {
+      local iDelay;
+   
+      if Send(self,@IsCombatant,#who=what)
+      {
+         // already in the match
+         Send(self,@SayToOne,#target=what,
+             #message_rsc=vrAlreadyCombatant);
+
+         return;
+      }
+      else if NOT Send(self,@CanJoinMonsterWave,#who=what)
+      {
+         Send(self,@SayToOne,#target=what,
+             #message_rsc=vrFightInProgress);
+         return;
+      }
+
+      Send(self,@Challenge,#who=what);     
+      return;
+   }
+
+   MaxCombatantCheck()
+   {
+      return 100;
+   }
+   
+   CommenceTimer()
+   {
+      Send(poOwner,@RaiseGates);
+      propagate;
+   }
+   
+   GetNeedChampionRsc()
+   "Monster arena doesn't look for a champ"
+   {
+      return SurvivalWatcher_need_participants;
+   }
 
 end
 //////////////////////////////////////////////////////////////////////////////

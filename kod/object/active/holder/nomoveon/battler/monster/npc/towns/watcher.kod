@@ -21,6 +21,13 @@ constants:
    COMMENCE_DELAY_MAX = 12000
    FIGHT_DELAY_ONE_ON_ONE = 480000
    FIGHT_DELAY_LAST_MAN_STANDING = 720000
+   FIGHT_DELAY_MONSTER_ARENA = 10800000
+
+   MONSTER_WAVE_MIN  = 20000
+   MONSTER_WAVE_MAX  = 30000
+   MONSTER_WAVE_REJOIN_TIME = 60000
+   
+   PLAYER_MAX_LIVES = 3
 
    LAST_MINUTE = 60000
 
@@ -113,6 +120,27 @@ resources:
    watcher_ready_battle_royale = \
       "Battle Royale:  Kill anyone in any guild but yours.  Combat begins on "
       "my mark."
+
+   // Monster Arena
+   watcher_monster_wave_start = "~BWave %i of the enemy force has arrived."
+   watcher_monster_wave_finish = \
+      "~BWave %i has been defeated! The next arrives in %i seconds."
+   watcher_monster_wave_reward = \
+      "It seems one of the fallen enemies has dropped one %s on the battlefield!"
+   watcher_monster_wave_kills = \
+      "There are %i kills remaining until the next wave."
+   watcher_monster_wave_kill = \
+      "There is one final kill remaining until the next wave."
+      
+   watcher_player_gain_life = \
+      "~BYou acquire enough energy to form an extra ward against death! "
+      "You now have %i lives."
+   watcher_player_lives = \
+      "You sense death can be cheated here only %i more times."
+   watcher_player_lives_one = \
+      "You sense death may only be cheated once more."
+   watcher_player_lives_none = \
+      "From this point on, death will expel you from the pit."
 
    watcher_welcome = \
       "~kThe Watcher tells you, \"Welcome to the Arena of Kraanan.  Read the "
@@ -286,6 +314,11 @@ classvars:
    vrNewGuildWin = watcher_new_champion_guild_win
    vrOldGuildWin = watcher_defended_guild_title
    vrNoCmdsDuringFight = watcher_not_during_fight
+   vrMonsterWaveStart = watcher_monster_wave_start
+   vrMonsterWaveFinish = watcher_monster_wave_finish
+   vrMonsterRewardWave = watcher_monster_wave_reward
+   vrMonsterKillsRemaining = watcher_monster_wave_kills
+   vrMonsterKillRemaining = watcher_monster_wave_kill
 
    vrCmdOneOnOne = watcher_traditional_command
    vrCmdLastManStanding = watcher_last_man_standing_command
@@ -366,9 +399,39 @@ properties:
    // Whether we end a 1 vs 1 match immediately on logoff or wait a short
    // time for the combatant to return.
    pbCrashProtection = FALSE
+   
+   // Monster Arena Stuff
+   piWaveLevel = 1
+   piWaveGoal = 0
+   ptWaveDelay = $
+   plWaveReward = $
+   
+   // [player object, number of lives]
+   plPlayerLives = $
+
    #endregion Properties
 
 messages:
+
+   Constructed()
+   {
+      plWaveReward = [
+                      [&AntMask,10],[&RatMask,10],
+                      [&MummyMask,20],[&SkullMask,20],
+                      [&TrollMask,30],[&StoneTrollMask,30],
+                      [&ShrunkenHeadMask,40],
+                      [&DaemonMask,50],
+                      [&FeyMask,60],
+                      [&XeoMask,70],[&KriipaMask,70],
+                      [&CowMask,80],
+                      [&DuskRatMask,90],
+                      [&KraananCharm,100],
+                      [&ShalilleCharm,150],[&QorCharm,150],
+                      [&FarenCharm,150],[&RiijaCharm,150]
+                     ];
+
+      propagate;
+   }
 
    NewOwner(what=$)
    {
@@ -489,7 +552,12 @@ messages:
 
    SetChampion(who=$)
    {
-      if (poChampion <> who
+      if piCombat_style = STYLE_MONSTER_ARENA
+      {
+        // No champion for this game type
+        poChampion = self;
+      }
+      else if (poChampion <> who
          AND (piCombat_style = STYLE_ONE_ON_ONE
               OR piCombat_style = STYLE_LAST_MAN_STANDING))
          OR Send(who,@GetGuild) <> poChampion_guild
@@ -536,6 +604,16 @@ messages:
       if (NOT Send(poOwner,@ArenaCanStartFight))
       {
          return FALSE;
+      }
+
+      if piCombat_Style = STYLE_MONSTER_ARENA
+         AND IsClass(poOwner, &MonsterRoom)
+      {
+         //Check for player in fight
+         if Send(self,@CountCombatantPlayers)
+         {
+            return TRUE;
+         }
       }
 
       if ((piCombat_Style = STYLE_ONE_ON_ONE
@@ -586,12 +664,16 @@ messages:
       return TRUE;
    }
 
-   NewCombatant(who=$)
+   NewCombatant(who=$,isMonster=FALSE)
    {
-      Send(self,@Teleport,#what=who,#goinplay=TRUE);
       if plCombatants = $
       {
          Send(self,@SetChampion,#who=who);
+      }
+
+      if isMonster = FALSE
+      {
+         Send(self,@Teleport,#what=who,#goinplay=TRUE);
       }
 
       plCombatants = Cons(who,plCombatants);
@@ -917,9 +999,19 @@ messages:
       {
          Send(self,@Say,#message_rsc=vrReadyBattleRoyale);
       }
-
-      iDelay = Random(COMMENCE_DELAY_MIN,COMMENCE_DELAY_MAX);
-      ptCommence = CreateTimer(self,@CommenceTimer,iDelay);
+      
+      if piCombat_style = STYLE_MONSTER_ARENA
+      {
+         piWaveLevel = 1;
+         plPlayerLives = $;
+         Send(poOwner,@SetupMonsterWave);
+         Send(self,@Commence);
+      }
+      else
+      {
+        iDelay = Random(COMMENCE_DELAY_MIN,COMMENCE_DELAY_MAX);
+        ptCommence = CreateTimer(self,@CommenceTimer,iDelay);
+      }
 
       foreach i in Send(poOwner,@GetHolderActive)
       {
@@ -949,6 +1041,11 @@ messages:
       if piCombat_style = STYLE_ONE_ON_ONE
       {
          ptFight = CreateTimer(self,@FightTimer,FIGHT_DELAY_ONE_ON_ONE);
+      }
+      else if piCombat_style = STYLE_MONSTER_ARENA
+      {
+         ptFight = CreateTimer(self,@FightTimer,FIGHT_DELAY_MONSTER_ARENA);
+         Send(self,@StartMonsterWave);
       }
       else
       {
@@ -1051,9 +1148,10 @@ messages:
 
    SomethingKilled(what=$,victim=$)
    {
+      local iKills;
+ 
       // We handle all death messages here, but not 'win fight' messages.
       // Those are handled after the renege messages.
-
       if IsClass(what,&Spell) AND Send(self,@IsCombatant,#who=victim)
       {
          Send(self,@Say,#message_rsc=vrKilledBySpell,
@@ -1078,19 +1176,75 @@ messages:
                #parm3=Send(victim,@GetDef),#parm4=Send(victim,@GetName));
       }
 
+      if piCombat_Style = STYLE_MONSTER_ARENA
+      {
+        // check if arena monster is a combatant
+        if Send(self,@IsCombatant,#who=victim)
+            AND IsClass(victim, &Monster)
+            AND NOT Send(victim, @IsMinion)
+        {
+             if IsClass(what,&Player)
+                AND (Send(poOwner,@IsMiniBoss,#what=victim)
+                OR Send(poOwner,@IsBoss,#what=victim))
+             {
+                 // Gain a life for killing a mini boss or boss
+                 Send(self,@PlayerGainLife,#who=what);
+             }
+        
+             //The combatant hasn't renged yet, remove one to the count for now
+             piWaveGoal--;
+
+             if piWaveGoal = 1
+             {
+                 Send(self,@Say,#message_rsc=vrMonsterKillRemaining);
+             }
+             else if piWaveGoal > 1
+             {
+                 Post(poOwner,@AggroMonsters,#who=what);
+                 Send(self,@Say,#message_rsc=vrMonsterKillsRemaining,
+                        #parm1=piWaveGoal);
+             }
+        }
+        else if Send(self,@IsCombatant,#who=victim)
+            AND IsClass(victim, &Player)
+            AND Send(self,@CheckPlayerLives,#who=victim) >= 1
+        {
+             Send(victim,@SetHealth,#amount=Send(victim,@GetMaxHealth));
+             Send(self,@Teleport,#what=victim,#goinplay=TRUE);
+             Post(self,@PlayerLoseLife,#who=victim);
+             return;
+        }
+      }
+      
       Send(self,@CombatantReneges,#who=victim,#died=TRUE);
 
       propagate;
    }
 
    CheckForWinner()
-   "Checks to see if there is only one combatant left.  If so, then "
-   "declare him the winner."
    {
       local oldChamp, i, j, oPlayer;
 
       if plCombatants = $
       {
+         return;
+      }
+      
+      if piCombat_Style = STYLE_MONSTER_ARENA
+      {
+         if Send(self,@CountCombatantMonsters) <= 0
+            AND ptWaveDelay = $
+            AND ptAccept = $
+         {
+             Send(self,@FinishMonsterWave);
+         }
+
+         if Send(self,@CountCombatantPlayers) <= 0
+         {
+             Send(self,@ClearCombatants);
+             Send(poOwner,@ArenaEndFight);
+         }
+
          return;
       }
 
@@ -1338,6 +1492,11 @@ messages:
          ptAccept = CreateTimer(self,@AcceptTimer,ACCEPT_DELAY);
          pbAccept = TRUE;
       }
+      else if piWaveLevel > 1
+        AND Send(self,@FightInSession)
+      {
+         Send(self,@StartMonsterWave);
+      }
       else
       {
          Send(self,@ReadyFight);
@@ -1391,6 +1550,7 @@ messages:
          ptFight = CreateTimer(self,@FightTimer,LAST_MINUTE);
       }
       else if NOT pbTournament
+        OR NOT piCombat_Style = STYLE_MONSTER_ARENA
       {
          Send(self,@FightIsDraw);
       }
@@ -1902,6 +2062,12 @@ messages:
          DeleteTimer(ptReconnect);
          ptReconnect = $;
       }
+      
+      if ptWaveDelay <> $
+      {
+         DeleteTimer(ptWaveDelay);
+         ptWaveDelay = $;
+      }
 
       propagate;
    }
@@ -1955,8 +2121,14 @@ messages:
    Teleport(what=$, goinplay=FALSE, outofplay=FALSE)
    {
       local i, bInList, iAmount;
-
-      if IsClass(what,&Player)
+      
+      // We do not teleport monsters in the arena
+      if IsClass(what,&Monster)
+         AND piCombat_Style = STYLE_MONSTER_ARENA
+      {
+         return FALSE;
+      }
+      else if IsClass(what,&Player)
       {
          if goinplay OR Send(self,@IsCombatant,#who=what)
          {
@@ -2026,6 +2198,7 @@ messages:
       Send(self,@ResetChampion);
       Send(poOwner,@ArenaEndFight,#lCombatants=plCombatants);
       pbAccept = FALSE;
+      piWaveLevel = 1;
 
       if pbTournament
          OR Send(poOwner,@CheckDefaultRoomFlag,#flag=ROOM_SAFE_DEATH)
@@ -2087,7 +2260,7 @@ messages:
 
       if Send(self,@IsCombatant,#who=what)
       {
-         if NOT IsClass(what,&Monster)
+         if IsClass(what,&Player) 
          {
             if ptFight <> $
             {
@@ -2115,6 +2288,11 @@ messages:
                      #parm1=Send(what,@GetDef),#parm2=Send(what,@GetName));
                Send(self,@CombatantReneges,#who=what,#died=FALSE);
             }
+         }
+         else if IsClass(what,&Monster)
+            AND piCombat_Style = STYLE_MONSTER_ARENA
+         {
+            Send(self,@CombatantReneges,#who=what,#died=FALSE);
          }
 
          if pbTournament AND NOT Send(self,@ValidateFight)
@@ -2438,6 +2616,260 @@ messages:
    GetWatcherID()
    {
       return viWatcherID;
+   }
+   
+   // Monster Arena Stuff
+   StartMonsterWave()
+   {
+      local iLevel_Base, iMin, iMax, iSpawn;
+
+      iLevel_Base = 15;
+      ptWaveDelay = $;
+
+      if NOT IsClass(poOwner,&SurvivalArena)
+      {
+         return FALSE;
+      }
+
+      iMin = 7;
+      iMax = 9;
+      iSpawn = Random(iMin,iMax);
+      
+      iMin = iLevel_Base+(piWaveLevel*4);
+      iMax = (iMin + 10) + (piWaveLevel/4);
+
+      if iMin > 100
+      {
+        iMax = (iMin + 20) + (piWaveLevel/8);
+      }
+
+      if iMax > 150
+      {
+        // We have reached the max, spawn all the strong monsters
+        iMin = 100;
+        iMax = 1000;
+        iSpawn = (piWaveLevel/5);
+      }
+
+      piWaveGoal = Bound(iSpawn,1,30); 
+      iMin = Bound(iMin, 25, 100);
+      iMax = Bound(iMax, 25, 1000);
+
+      Send(poOwner, @ArenaMonsterWave, 
+        #iLevel_Min=iMin,
+        #iLevel_Max=iMax,
+        #spawn_max=piWaveGoal);
+
+      Send(self,@Say,#message_rsc=vrMonsterWaveStart,
+        #parm1=piWaveLevel);
+
+      Send(poOwner,@SetMonsterGeneration,#bValue=TRUE);
+      return;
+   }
+
+   FinishMonsterWave()
+   {
+      local iDelay;
+
+      ptWaveDelay = $;
+   
+      if NOT IsClass(poOwner,&SurvivalArena)
+      {
+         return FALSE;
+      }
+
+      if (piWaveLevel % 10) = 0
+      {
+         Send(self,@RewardWave);
+         
+         iDelay = MONSTER_WAVE_REJOIN_TIME;
+         Send(self,@Say,#message_rsc=vrMonsterWaveFinish,
+                 #parm1=piWaveLevel, #parm2=iDelay / 1000);
+         Send(self,@Say,#message_rsc=vrJoinTimeRemaining,#parm1=iDelay / 1000);
+         ptAccept = CreateTimer(self,@AcceptTimer,MONSTER_WAVE_REJOIN_TIME);
+      }
+      else
+      {
+         iDelay = Random(MONSTER_WAVE_MIN,MONSTER_WAVE_MAX);
+         Send(self,@Say,#message_rsc=vrMonsterWaveFinish,
+                 #parm1=piWaveLevel, #parm2=iDelay / 1000);
+         Send(poOwner,@SetupMonsterWave);
+         ptWaveDelay = CreateTimer(self,@StartMonsterWave,iDelay);
+      }
+
+      piWaveLevel++;   
+      Send(poOwner,@SetMonsterGeneration,#bValue=FALSE);
+      return;
+   }
+   
+   RewardWave()
+   {
+      local i, lTemp, oReward;
+      
+      lTemp = $;
+
+      foreach i in plWaveReward
+      {
+         if Nth(i,2) = piWaveLevel
+         {
+             lTemp = Cons(i,lTemp);
+         }
+      }
+     
+      if lTemp <> $
+      {
+         i = Nth(lTemp,Random(1,Length(lTemp)));
+         oReward = Create(First(i));
+         Send(poOwner,@NewHold,#what=oReward,
+             #new_row=37,#new_col=57,#fine_row=0,#fine_col=32);
+         Send(self,@Say,#message_rsc=vrMonsterRewardWave,
+              #parm1=Send(oReward,@GetName));
+      }
+
+      return;
+   }
+   
+   CanJoinMonsterWave(who = $)
+   "Can join if no one is in the arena or if ptAccept timer has been called." 
+   "This is normally called when players defeat a boss wave."
+   {
+      if Send(self,@CountCombatantPlayers) <= 0
+         OR ptAccept <> $
+      {
+         return TRUE;
+      }
+      else
+      {
+         return FALSE;
+      }
+      
+      return;
+   }
+   
+   CountCombatantPlayers()
+   {
+      local i, n;
+      
+      n = 0;
+      foreach i in plCombatants
+      {
+         if IsClass(i,&Player)
+         {
+            n++;
+         }
+      }
+      return n;
+   }
+   
+   CountCombatantMonsters()
+   {
+      local i, n;
+      
+      n = 0;
+      foreach i in plCombatants
+      {
+         if IsClass(i,&Monster)
+         {
+            if NOT Send(i,@IsMinion)
+                AND NOT IsClass(i,&Brambles)
+            {
+                 n++;
+            }
+         }
+      }
+      return n;
+   }
+
+   GetMonsterWave()
+   {
+      return piWaveLevel;
+   }
+
+   GetWaveGoal()
+   {
+      return piWaveGoal;
+   }
+   
+   PlayerGainLife(who = $)
+   {
+      local i, iLives, bInList;
+
+      bInList = FALSE;
+      foreach i in plPlayerLives
+      {
+         if First(i) = who
+         {
+             bInList = TRUE;
+             iLives = Nth(i,2);
+             
+             if iLives < PLAYER_MAX_LIVES
+             {
+                 SetNth(i,2,iLives-1);
+                 Send(who,@MsgSendUser,#message_rsc=watcher_player_gain_life,
+                     #parm1=iLives+2);
+             }
+         }
+      }
+
+      if NOT bInList
+      {
+         plPlayerLives = Cons([who,1],plPlayerLives);
+         Send(who,@MsgSendUser,#message_rsc=watcher_player_gain_life,
+                #parm1=2);
+      }
+
+      return;
+   }
+   
+   PlayerLoseLife(who = $)
+   {
+      local i, iLives, bInList;
+
+      bInList = FALSE;
+      foreach i in plPlayerLives
+      {
+         if First(i) = who
+         {
+             iLives = Nth(i,2);
+             
+             if iLives > 0
+             {
+                 SetNth(i,2,iLives-1);
+             }
+             
+             iLives = iLives-1;
+             if iLives = 0
+             {
+                 Send(who,@MsgSendUser,#message_rsc=watcher_player_lives_none);
+             }
+             else if iLives = 1
+             {
+                 Send(who,@MsgSendUser,#message_rsc=watcher_player_lives_one);
+             }
+             else
+             {
+                 Send(who,@MsgSendUser,#message_rsc=watcher_player_lives,
+                     #parm1=iLives);
+             }
+         }
+      }
+
+      return;
+   }
+   
+   CheckPlayerLives(who = $)
+   {
+      local i;
+   
+      foreach i in plPlayerLives
+      {
+         if First(i) = who
+         {
+             return Nth(i,2);
+         }
+      }
+      
+      return FALSE;
    }
 
 end

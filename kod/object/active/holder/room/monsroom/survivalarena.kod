@@ -14,137 +14,162 @@ constants:
 
    include blakston.khd
 
+   SECTOR_ID_FIGHT = 2
+   SECTOR_ID_BARS = 3
+   SECTOR_ID_BEHIND_BARS = 4
+   SECTOR_ID_GREEN = 5
+   SECTOR_ID_WATER = 10
+   SECTOR_ID_BEHIND_BARS_WATER = 14
+   
+   SECTOR_ID_PILLAR_A = 20
+   SECTOR_ID_PILLAR_B = 21
+   SECTOR_ID_PILLAR_C = 22
+   SECTOR_ID_PILLAR_D = 23
+   
+   // Percent of monsters that will aggro
+   AGGRO_CHANCE = 20
+   // Max number of monsters that will aggro per call
+   AGGRO_MAX = 5
+
 resources:
 
-   include survivalarena.lkod
+   //include SurvivalArena.lkod
 
-   room_survivalarena = survival_ex.roo
-   room_name_survivalarena = "The Survival Arena"
-   survivalarena_music = pk_fm.ogg
-   survivalrules_name= "The Survival-Arena"
-   survivalrules_text = \
-      "This is how to use the Survival-Arena"
+   room_SurvivalArena = survival_ex.roo
+   name_SurvivalArena = "The Survival Arena"
+   SurvivalArena_music = pk_fm.ogg
+
+   SurvivalArena_no_offer = \
+      "Osvann Vaendefdall says, \"Spectators and combatants may not exchange goods "
+      "during matches."
+   SurvivalArena_no_attack = "You may not fight here unless you are a combatant."
+   SurvivalArena_no_spell = "Only the combatants may cast spells."
+   SurvivalArena_no_rescue = "No chickening out!"
+   SurvivalArena_no_target = "That's awfully rude of you!"
+   SurvivalArena_between_bouts = "No horseplay between bouts!"
+   SurvivalArena_cant_go = \
+      "Osvann Vaendefdall says, \"You can't leave!  You're a combatant!\""
+
+   SurvivalArena_sign_name = "The Survival-Arena"
+   SurvivalArena_sign_text = \
+      "Say 'join' or 'leave' to enter or leave the arena.\n"
+      "Combantants will need to kill all the enemies in order to progress to "
+      "the next wave of creatures. The difficulty increases as the players "
+      "advance through each level. "
+
+   SurvivalArena_Fanfare_Sound = fanfare1.ogg
+   SurvivalArena_Combat_Sound = arena1.ogg
+   SurvivalArena_Huzzah_Sound = huzzah.ogg
+   SurvivalArena_commence_wav = forest1.ogg
+   SurvivalArena_gong_sound = gong.ogg
+
 
 classvars:
 
-   vrName = room_name_survivalarena
-
+   vrName = name_SurvivalArena
    viTeleport_row = 47
    viTeleport_col = 31
 
+   viPermanent_flags = ROOM_SAFE_DEATH
    viWeatherZone = WEATHER_ZONE_BERG
+   vbScaleSpawnRateWithPlayers = FALSE
+   vbAccessibleForFollowers = FALSE
 
 properties:
-
-   viPermanent_flags = ROOM_NO_COMBAT
-   viTerrain_type = TERRAIN_ROAD
-
-   prRoom = room_survivalarena
+   prRoom = room_SurvivalArena
    piRoom_num = RID_SURVIVAL_ARENA
-   prMusic = survivalarena_music
+   prMusic = SurvivalArena_music
 
    piBaseLight = LIGHT_NICE
    piOutside_factor = 8
-
    piDirectional_percent = DIRECTIONAL_PERCENT_OUTDOORS
-
+   viTerrain_type = TERRAIN_CITY
    pbSnowGroundTexture = TRUE
-
-   piGen_percent = 70
-
+   
+   pbGenerateMonsters = FALSE
+   pbRespawnMonsters = FALSE
+   piReload_Wait_Time = 1
+   piGen_time = 1000
+   piGen_percent = 100
    piInit_count_min = 10
    piInit_count_max = 10
+   piMonster_count_max = 30
 
-   piMonster_count_max = 10
+   pbRealdeath = FALSE
+   pbNoReagents = FALSE
+
+   plBosses = $
+   plMiniBosses = $
+   poWatcher = $
 
 messages:
 
-   CreateStandardExits()
-   {
-      plEdge_Exits = $;
-
-      plEdge_Exits = Cons([ LEAVE_SOUTH, RID_BERG_8, 2, 60, ROTATE_NONE ], plEdge_exits);
-      plEdge_Exits = Cons([ LEAVE_WEST, RID_J3_2, 3, 39, ROTATE_NONE ], plEdge_exits);
-
-      propagate;
-   }
-
+#region Create and Delete
    Constructed()
    {
-      plMonsters = [ [&Spider, 15], [&Ant, 15], [&GiantRat, 10], [&Lupogg, 15],
-                     [&Centipede, 15], [&NarthylWorm, 15], [&DaemonSkeleton, 15] ];
-
       plGenerators = [ [46, 19], [46, 21], [47, 20], [48, 19], [48, 21],
                        [12, 57], [14, 57], [13, 58], [12, 59], [14, 59] ];
+
+      plMiniBosses = [
+                      &SpiderQueen,
+                      &GroundWormQueen,
+                      &MolluskMonster,
+                      &Thrasher,
+                      &Shadowbeast,
+                      &DragonFlyQueen,
+                      &AvarChieftain,
+                      &GiantRatKing,
+                      &EarthElemental,
+                      &FireElemental,
+                      &IceElemental,
+                      &NeruElemental,
+                      &Minotaur];
+                      
+      plBosses =     [&EarthElementalChampion,
+                     &FireElementalChampion,
+                     &IceElementalChampion,
+                     &NeruElementalChampion,
+                     &Yeti,
+                     &LupoggKing,
+                     &GiantDaemonSkeleton];
+
+      Send(self,@RecalcLightAndWeather);
+      Post(self,@SetRoomFlag,#flag=ROOM_NO_PK,#value=TRUE);
 
       propagate;
    }
 
    CreateStandardObjects()
    {
-      local oSign;
+      local lObjCoords1, oSign;
 
-      // Shrubs
-      Send(self,@NewHold,#what=Create(&OrnamentalObject,#type=OO_SHRUBEE1),
-         #new_row=52,#new_col=36);
-      Send(self,@NewHold,#what=Create(&OrnamentalObject,#type=OO_SHRUBEE1),
-         #new_row=52,#new_col=40);
-      Send(self,@NewHold,#what=Create(&OrnamentalObject,#type=OO_SHRUBEE1),
-         #new_row=52,#new_col=47);
-      Send(self,@NewHold,#what=Create(&OrnamentalObject,#type=OO_SHRUBEE1),
-         #new_row=52,#new_col=51);
-      Send(self,@NewHold,#what=Create(&OrnamentalObject,#type=OO_SHRUBEE1),
-         #new_row=27,#new_col=7);
-      Send(self,@NewHold,#what=Create(&OrnamentalObject,#type=OO_SHRUBEE1),
-         #new_row=32,#new_col=7);
+      if poWatcher = $
+      {
+         poWatcher = Create(&SurvivalWatcher);
+         Send(self,@NewHold,#what=poWatcher,
+                #new_row=43,#new_col=43,#fine_row=0,#fine_col=0);
 
-      // Trees Fighting Area
-      Send(self,@NewHold,#what=Create(&OrnamentalObject,#type=OO_MIDTREE2),
-         #new_row=29,#new_col=21,#new_angle=ANGLE_EAST);
-      Send(self,@NewHold,#what=Create(&OrnamentalObject,#type=OO_MIDTREE2),
-         #new_row=23,#new_col=23,#new_angle=ANGLE_EAST);
-      Send(self,@NewHold,#what=Create(&OrnamentalObject,#type=OO_MIDTREE2),
-         #new_row=21,#new_col=47,#new_angle=ANGLE_EAST);
-      Send(self,@NewHold,#what=Create(&OrnamentalObject,#type=OO_MIDTREE2),
-         #new_row=40,#new_col=31,#new_angle=ANGLE_EAST);
-      Send(self,@NewHold,#what=Create(&OrnamentalObject,#type=OO_MIDTREE2),
-         #new_row=40,#new_col=50,#new_angle=ANGLE_EAST);
-      Send(self,@NewHold,#what=Create(&OrnamentalObject,#type=OO_MIDTREE2),
-         #new_row=31,#new_col=59,#new_angle=ANGLE_EAST);
-      Send(self,@NewHold,#what=Create(&OrnamentalObject,#type=OO_MIDTREE2),
-         #new_row=27,#new_col=57,#new_angle=ANGLE_EAST);
-
-      // Trees Outer Area
-      Send(self,@NewHold,#what=Create(&OrnamentalObject,#type=OO_MIDTREE1),
-         #new_row=47,#new_col=32,#angle=ANGLE_EAST);
-      Send(self,@NewHold,#what=Create(&OrnamentalObject,#type=OO_MIDTREE1),
-         #new_row=47,#new_col=51,#angle=ANGLE_EAST);
-      Send(self,@NewHold,#what=Create(&OrnamentalObject,#type=OO_MIDTREE1),
-         #new_row=51,#new_col=61,#angle=ANGLE_EAST);
-      Send(self,@NewHold,#what=Create(&OrnamentalObject,#type=OO_MIDTREE1),
-         #new_row=42,#new_col=69,#angle=ANGLE_EAST);
-      Send(self,@NewHold,#what=Create(&OrnamentalObject,#type=OO_MIDTREE1),
-         #new_row=52,#new_col=28,#angle=ANGLE_EAST);
-
-      Send(self,@NewHold,#what=Create(&OrnamentalObject,#type=OO_MIDTREE1),
-         #new_row=46,#new_col=12,#angle=ANGLE_EAST);
-      Send(self,@NewHold,#what=Create(&OrnamentalObject,#type=OO_MIDTREE1),
-         #new_row=35,#new_col=11,#angle=ANGLE_EAST);
-      Send(self,@NewHold,#what=Create(&OrnamentalObject,#type=OO_MIDTREE1),
-         #new_row=21,#new_col=11,#angle=ANGLE_EAST);
-      Send(self,@NewHold,#what=Create(&OrnamentalObject,#type=OO_MIDTREE1),
-         #new_row=26,#new_col=70,#angle=ANGLE_EAST);
-      Send(self,@NewHold,#what=Create(&OrnamentalObject,#type=OO_MIDTREE1),
-         #new_row=11,#new_col=70,#angle=ANGLE_EAST);
-
-      Send(self,@NewHold,#what=Create(&OrnamentalObject,#type=OO_MIDTREE1),
-         #new_row=12,#new_col=13,#angle=ANGLE_EAST);
-      Send(self,@NewHold,#what=Create(&OrnamentalObject,#type=OO_MIDTREE1),
-         #new_row=13,#new_col=24,#angle=ANGLE_EAST);
-      Send(self,@NewHold,#what=Create(&OrnamentalObject,#type=OO_MIDTREE1),
-         #new_row=12,#new_col=47,#angle=ANGLE_EAST);
-      Send(self,@NewHold,#what=Create(&OrnamentalObject,#type=OO_MIDTREE1),
-         #new_row=4,#new_col=57,#angle=ANGLE_EAST);
+         Send(self,@NewHold,#what=Create(&Sign,#newbie=TRUE,
+            #desc=SurvivalArena_sign_text,#name=SurvivalArena_sign_name),
+            #new_row=44,#new_col=43,#fine_row=24,#fine_col=0);
+      }
+      
+      lObjCoords1 = [ [52,36, OO_SHRUBEE1], [52,40, OO_SHRUBEE1],
+                      [52,47, OO_SHRUBEE1], [52,51, OO_SHRUBEE1],
+                      [27, 7, OO_SHRUBEE1], [32, 7, OO_SHRUBEE1],
+                      [29,21, OO_MIDTREE2], [23,23, OO_MIDTREE2],
+                      [21,47, OO_MIDTREE2], [40,31, OO_MIDTREE2],
+                      [40,50, OO_MIDTREE2], [31,59, OO_MIDTREE2],
+                      [27,57, OO_MIDTREE2], [47,32, OO_MIDTREE1],
+                      [47,51, OO_MIDTREE1], [51,61, OO_MIDTREE1],
+                      [42,69, OO_MIDTREE1], [52,28, OO_MIDTREE1],
+                      [46,12, OO_MIDTREE1], [35,11, OO_MIDTREE1],
+                      [21,11, OO_MIDTREE1], [26,70, OO_MIDTREE1],
+                      [11,70, OO_MIDTREE1], [12,13, OO_MIDTREE1],
+                      [13,24, OO_MIDTREE1], [12,47, OO_MIDTREE1],
+                      [ 4,57, OO_MIDTREE1]
+                    ];
+      Send(self,@CreateOrnObjFromList,#lObjlist=lObjCoords1);
 
       // Lightning
       Send(self,@NewHold,#what=Create(&DynamicLight,#iColor=LIGHT_FIRE,#iIntensity=35),
@@ -169,21 +194,558 @@ messages:
       Send(self,@NewHold,#what=Create(&DynamicLight,#iColor=LIGHT_FIRE,#iIntensity=35),
          #new_row=25,#new_col=8,#fine_row=44,#fine_col=44);
 
-      // Sign
-      oSign=Create(&Sign,#desc=survivalrules_text,#newbie=TRUE,#name=survivalrules_name);
-      Send(self,@NewHold,#what=oSign,#new_row=44,#new_col=43,
-            #fine_row=24,#fine_col=0);
+      propagate;
+   }
+   
+   CreateStandardExits()
+   {
+      plEdge_Exits = $;
 
-      // NPC
-      Send(self,@NewHold,#what=Create(&SurWatcher),
-            #new_row=43,#new_col=43,#fine_row=0,#fine_col=0);
+      plEdge_Exits = Cons([ LEAVE_SOUTH, RID_BERG_8, 2, 60, ROTATE_NONE ], plEdge_exits);
+      plEdge_Exits = Cons([ LEAVE_WEST, RID_J3_2, 3, 39, ROTATE_NONE ], plEdge_exits);
 
       propagate;
    }
-
-   SeanceCheck()
+#endregion Create and Delete
+   
+   CanOffer(who = $, target = $)
    {
+      if who = $ or target = $
+      {
+         return FALSE;
+      }
+
+      if (poWatcher = $
+         OR NOT Send(poWatcher,@FightInSession)
+         OR (Send(poWatcher,@IsCombatant,#who=who)
+            = Send(poWatcher,@IsCombatant,#who=target)))
+      {
+         return TRUE;
+      }
+
+      Send(who,@MsgSendUser,#message_rsc=SurvivalArena_no_offer);
+
       return FALSE;
+   }
+
+   CheckWatcher(what=$)
+   {
+      if poWatcher = $
+      {
+         poWatcher = what;
+         Send(self,@NewHold,
+            #what=what,#new_row=43,#new_col=43,#fine_row=0,#fine_col=0);
+      }
+
+      return;
+   }
+
+   SafePlayerAttack()
+   {
+      return TRUE;
+   }
+
+   NewHoldObject(what=$)
+   {
+      local oOwner, oTarget, iRow, iCol;
+      
+      if IsClass(what,&User)
+      {
+         oOwner = Send(what,@GetOwner);
+         if (oOwner = $
+            AND NOT Send(poWatcher,@IsCombatant,#who=what))
+         {
+            Post(self,@Teleport,#what=what,#outofplay=TRUE);
+         }
+      }
+      else if IsClass(what,&Monster)
+        AND what <> poWatcher
+      {
+         if NOT Send(what,@IsMinion)
+         {
+            Post(poWatcher,@NewCombatant,#who=what,#isMonster=TRUE);
+         }
+      }
+      
+      propagate;
+   }
+
+   InPlay(what=$, bNonPlayerOkay = FALSE)
+   "Returns true if player is on playing field, false if not."
+   "Can check either by row and column or by object."
+   "Returns false if not a player, unless the nonPlayerOkay flag is marked"
+   {
+      local iSectorID;
+
+      if what = $
+      {
+         return FALSE;
+      }
+
+      if IsClass(what,&Player) OR bNonPlayerOkay
+      {
+         iSectorID = Send(what,@GetSectorIDAtObject);
+
+         return iSectorID = SECTOR_ID_FIGHT
+                OR iSectorID = SECTOR_ID_WATER
+                OR iSectorID = SECTOR_ID_GREEN;
+      }
+
+      return FALSE;
+   }
+
+   IsArena()
+   {
+      return TRUE;
+   }
+
+   IsValidTarget(who=$)
+   {
+      if NOT Send(self,@CheckRoomFlag,#flag=ROOM_SAFE_DEATH)
+      {
+         return FALSE;
+      }
+
+      if poWatcher = $
+      {
+         Debug("IsValidTarget called with no watcher in existence!");
+
+         return;
+      }
+
+      return (Send(poWatcher,@IsCombatant,#who=who)
+         AND Send(poWatcher,@FightInSession));
+   }
+
+   GetWatcher()
+   {
+      return poWatcher;
+   }
+
+   Teleport(what=$,goinplay=FALSE,outofplay=FALSE)
+   {
+      // Don't teleport players if logged off.
+      if (what = $
+         OR (IsClass(what,&User)
+            AND NOT Send(what,@IsLoggedOn)))
+      {
+         return;
+      }
+
+      // Check goinplay and outofplay first. If we don't have
+      // a parameter set, teleport combatants in and anyone else out.
+      if goinplay
+      {
+         Send(self,@TeleportIntoPlay,#who=what);
+      }
+      else if outofplay
+      {
+         Send(self,@TeleportOutOfPlay,#who=what);
+      }
+      else if Send(poWatcher,@IsCombatant,#who=what)
+      {
+         Send(self,@TeleportIntoPlay,#who=what);
+      }
+      else
+      {
+         Send(self,@TeleportOutOfPlay,#who=what);
+      }
+
+      return;
+   }
+
+   TeleportIntoPlay(who=$)
+   {
+      local i, iRow, iCol;
+
+      // Teleport to the playing field
+      iRow = Random(23,38);
+      iCol = Random(35,45);
+      Send(SYS,@UtilGoNearSquare,#what=who,#where=self,
+            #new_row=iRow,#new_col=iCol,#mob_override=TRUE);
+
+      // Teleport minions too.
+      foreach i in Send(who,@GetControlledMinions)
+      {
+         if (Send(i,@GetOwner) = self)
+         {
+            Send(self,@TeleportIntoPlay,#who=i);
+         }
+      }
+
+      return;
+   }
+
+   TeleportOutOfPlay(who=$, iNum=0)
+   {
+      local i, iRow, iCol, iAngle;
+
+      if (iNum = 0)
+      {
+         iNum = Random(1,2);
+      }
+
+      if iNum = 1
+      {
+         iRow = 30;
+         iCol = 27;
+         iAngle = ANGLE_SOUTH;
+      }
+      else
+      {
+         iRow = 30;
+         iCol = 51;
+         iAngle = ANGLE_NORTH;
+      }
+
+      Send(SYS,@UtilGoNearSquare,#what=who,#where=self,#new_row=iRow,
+            #new_col=iCol,#new_angle=iAngle,#mob_override=TRUE);
+
+      // Teleport minions too.
+      foreach i in Send(who,@GetControlledMinions)
+      {
+         if (Send(i,@GetOwner) = self)
+         {
+            Send(self,@TeleportOutOfPlay,#who=i,#iNum=iNum);
+         }
+      }
+
+      return;
+   }
+
+   SpecialGreeting()
+   {
+      Send(self,@SomethingWaveRoom,#wave_rsc=SurvivalArena_Fanfare_Sound);
+      return;
+   }
+
+   ArenaBeginFight(lCombatants=$)
+   {
+      Send(self,@SomethingWaveRoom,#wave_rsc=SurvivalArena_Combat_Sound);
+      return;
+   }
+
+   ArenaEndFight(lCombatants = $)
+   {
+      local i, j, k;
+
+      Send(self,@LowerMaze);
+      Send(self,@RaiseGates);
+
+      // Remove radius enchantments
+      foreach i in plActive
+      {
+         j = First(i);
+         if IsClass(j,&Player)
+            OR (IsClass(j,&Monster) AND NOT ((Send(j,@GetBehavior) & AI_NPC)))
+         {
+            foreach k in Send(j,@GetRadiusEnchantments)
+            {
+               Send(Nth(k,2),@RemoveEnchantment,#who=j,#state=Nth(k,3));
+            }
+         }
+      }
+      
+      Send(self,@SetMonsterGeneration,#bValue=FALSE);
+
+      // Remove room enchantments
+      Send(self,@RemoveAllEnchantments);
+      Send(self,@SomethingWaveRoom,#wave_rsc=SurvivalArena_Huzzah_Sound);
+      return;
+   }
+
+   ArenaCommenceFight()
+   {
+      Send(self,@LowerGates);
+      Send(self,@SomethingWaveRoom,#wave_rsc=SurvivalArena_gong_sound);
+      return;
+   }
+
+   ArenaRealDeath()
+   "Admins can activate real death."
+   {
+      return pbRealdeath;
+   }
+   
+   CheckBehindBars()
+   {
+      local i, iSectorID;
+
+      foreach i in Send(poWatcher,@GetCombatantList)
+      {
+         iSectorID = Send(i,@GetSectorIDAtObject);
+
+         if IsClass(i,&Player)
+            AND iSectorID = SECTOR_ID_BEHIND_BARS 
+            OR iSectorID = SECTOR_ID_BEHIND_BARS_WATER
+         {
+            Send(self,@Teleport,#what=i,#goinplay=TRUE);
+         }
+      }
+
+      return;
+   }
+   
+   RaiseGates()
+   {
+      Send(self,@SetSector,#sector=SECTOR_ID_BARS,
+            #animation=ANIMATE_FLOOR_LIFT,#height=350,#speed=30);
+
+      return;
+   }
+   
+   LowerGates()
+   {
+      Send(self,@SetSector,#sector=SECTOR_ID_BARS,
+            #animation=ANIMATE_FLOOR_LIFT,#height=252,#speed=30);
+
+      return;
+   }
+   
+   RaiseMaze(maze = 14, sector = 0, height = 192)
+   {
+      return;
+   }
+
+   LowerMaze(sector=0)
+   "If a sector is specified, just lower that sector.  Otherwise, lower 'em all."
+   {
+
+      return;
+   }
+
+   StartSnow(bOnGround=TRUE)
+   {
+      // Check if we can have weather effects here.
+      if NOT pbWeatherEffects
+      {
+         return;
+      }
+
+      // If there's a sandstorm weather effect here, clear it.
+      if Send(self,@CheckRoomFlag,#flag=ROOM_SANDSTORM)
+      {
+         Send(self,@EndSandstorm);
+      }
+
+      if bOnGround
+         AND pbSnowGroundTexture
+      {
+         //Send(self,@ChangeTexture,#id=0,#new_texture=61015,#flags=CTF_FLOOR);
+      }
+
+      Send(self,@SetRoomFlag,#flag=ROOM_SNOWING,#value=TRUE);
+      Send(self,@WeatherChanged);
+
+      return;
+   }
+
+   EndSnow(override=FALSE)
+   "Use override if rooms have manually placed textures."
+   {
+      if Send(self,@CheckRoomFlag,#flag=ROOM_SNOWING)
+      {
+         Send(self,@SetRoomFlag,#flag=ROOM_SNOWING,#value=FALSE);
+         Send(self,@WeatherChanged);
+      }
+
+      if pbSnowGroundTexture
+         OR override
+      {
+         //Send(self,@RemoveTextureChange,#id=0);
+      }
+
+      return;
+   }
+   
+   // Monster specific stuff
+   SetupMonsterWave()
+   {
+      Send(self,@CheckBehindBars);
+      Send(self,@RaiseGates);
+
+      return;
+   }
+   
+   ArenaMonsterWave(iLevel_Min = 20, iLevel_Max = 100, spawn_max = 1)
+   {
+      local i, lTemp, iMonsterLevel, lMonsters, iLevel;
+
+      lTemp = $;
+      lMonsters = $;
+
+      iLevel = Send(poWatcher,@GetMonsterWave);
+      piLevel = iLevel;
+
+      if (iLevel % 10) = 0
+      {
+        Send(self,@GenerateBoss);
+      }
+      else if (iLevel % 5) = 0
+      {
+        Send(self,@GenerateBoss,#bMiniBoss=TRUE);
+      }
+
+      foreach i in Send(SYS,@GetMonsterTemplates)
+      {
+        iMonsterLevel = Send(i,@GetLevel);
+        if Send(i,@IsArenaMonster)
+            AND iMonsterLevel >= iLevel_Min 
+            AND iMonsterLevel <= iLevel_Max
+        {
+            if NOT FindListElem(plBosses,GetClass(i))
+            {
+                lTemp = Cons(i,lTemp);
+            }
+        }
+      }
+
+      if lTemp <> $
+      {
+         foreach i in lTemp
+         {
+            lMonsters = Cons([GetClass(i),100 / Length(lTemp)],lMonsters);
+         }
+         
+         if lMonsters <> $
+         {
+            plMonsters = lMonsters;
+            piMonster_count_max = spawn_max;
+            piMonster_adjusted_max = spawn_max;
+         }
+      }
+
+      Send(self,@SomethingWaveRoom,#wave_rsc=SurvivalArena_gong_sound);
+      Send(self,@LowerGates);
+      return;
+   }
+   
+   TryCreateMonster()
+   {
+      if Send(poWatcher,@CountCombatantMonsters) >= Send(poWatcher,@GetWaveGoal)
+        OR Send(poWatcher,@GetWaveGoal) <= 1
+      {
+        Send(self,@SetMonsterGeneration,#bValue=FALSE);
+        return FALSE;
+      }
+
+      propagate;
+   }
+   
+   GenerateMonster(oMonster=$, iRow=0, iCol=0 )
+   {
+      local iPatrolRow, iPatrolCol;
+      
+      if oMonster <> $
+        OR oMonster <> poWatcher
+      {
+            // Monsters want to go to the middle of the stage
+            iPatrolRow = Random(23,38);
+            iPatrolCol = Random(35,45);
+            Send(oMonster,@GotoCoords,#iRow=iPatrolRow,#iCol=iPatrolCol);
+            Send(oMonster,@SetBehaviorFlag,#flag=AI_FIGHT_SINGLEMINDED);
+            Send(oMonster,@SetBehaviorFlag,#flag=AI_FIGHT_HYPERAGGRESSIVE);
+      }
+
+      propagate;
+   }
+   
+   GenerateBoss(bMiniBoss=FALSE)
+   {
+      local cMonster;
+   
+      if(bMiniBoss)
+      {
+         cMonster = Nth(plMiniBosses,Random(1,Length(plMiniBosses)));
+      }
+      else
+      {
+         cMonster = Nth(plBosses,Random(1,Length(plBosses)));
+      }
+      Send(self,@GenerateMonster, #oMonster=Create(cMonster), 
+                     #bStack=TRUE, #piSurvivalLevel=piLevel);
+
+      return;
+   }
+
+   IsBoss(what=$)
+   {
+      local i, cMob;
+
+      if what <> $
+      {
+         cMob = GetClass(what);
+         foreach i in plBosses
+         {
+            if cMob = i
+            {
+               return TRUE;
+            }
+         }
+      }
+
+      return FALSE;
+   }
+
+   IsMiniBoss(what=$)
+   {
+      local i, cMob;
+
+      if what <> $
+      {
+         cMob = GetClass(what);
+         foreach i in plMiniBosses
+         {
+            if cMob = i
+            {
+               return TRUE;
+            }
+         }
+      }
+
+      return FALSE;
+   }
+   
+   AggroMonsters(who=$)
+   {
+      local i, iCount;
+      
+      if IsClass(who,&Monster)
+      {
+         return FALSE;
+      }
+      else if (IsClass(who,&DM)
+            AND Send(who,@PlayerIsImmortal))
+         OR Send(who,@IsInCannotInteractMode)
+      {
+         return;
+      }
+
+      iCount = 0;
+
+      foreach i in plActive
+      {
+         if IsClass(First(i),&Monster)
+            AND (NOT Send(First(i),@IsOwnedByPlayer))
+            AND Random(1,100) <= AGGRO_CHANCE
+         {
+            Send(First(i),@TargetSwitch,#what=who,#iHatred=100);
+            Send(First(i),@EnterStateEngage,#target=who,#actnow=True);
+
+            if ++iCount >= AGGRO_MAX
+            {
+               return;
+            }
+         }
+      }
+
+      return;
+   }
+   
+   AdjustMaxMonsters()
+   {
+      piMonster_adjusted_max = piMonster_count_max;
+      return piMonster_adjusted_max;
    }
 
 end

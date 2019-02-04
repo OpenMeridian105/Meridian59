@@ -341,9 +341,6 @@ messages:
    {
       local oTarget, i;
 
-      // Use EVENT_STEER: don't print fizzle message
-      Send(who,@BreakTrance,#event=EVENT_STEER);
-
       foreach i in Send(SYS,@GetSpells)
       {
          if StringEqual(string,Send(i,@GetName))
@@ -354,16 +351,15 @@ messages:
       }
 
       if oTarget = $
-      {
-         return;
-      }
-
-      if Send(oTarget,@GetPotionClass) = $
+         OR Send(oTarget,@GetPotionClass) = $
       {
          Send(who,@MsgSendUser,#message_rsc=Distill_bad_spell);
 
          return;
       }
+
+      // Use EVENT_STEER: don't print fizzle message
+      Send(who,@BreakTrance,#event=EVENT_STEER);
 
       // Can always make the potion.
       Send(self,@PerformDistill,#caster=who,#oTarget=oTarget);

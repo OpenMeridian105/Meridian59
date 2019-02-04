@@ -2773,7 +2773,8 @@ void doDrawWall(DrawWallStruct *wall, ViewCone *c)
    return;
 #endif
    
-   if (wall->side > 0)
+   if (wall->side > 0
+      || (wall->side == 0 && BSPwall->neg_sidedef == NULL))
    {
       sidedef = BSPwall->pos_sidedef;
       x0 = BSPwall->x0 - viewer_x;

@@ -661,7 +661,9 @@ bool CanMoveInRoomTree(const room_type* Room, const BSPnode* Node, const V2* S, 
 
                   // flip normal if necessary (pick correct one of two)
                   if (distE > 0.0f)
+                  {
                      V2SCALE(&normal, -1.0f);
+                  }
 
                   V2SCALE(&normal, fabs(distE)); // set length of normal to distance to line
                   V2ADD(&q, E, &normal);         // q=E moved along the normal onto the line

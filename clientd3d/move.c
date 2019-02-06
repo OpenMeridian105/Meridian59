@@ -619,8 +619,8 @@ bool CanMoveInRoomTree(const room_type* Room, const BSPnode* Node, const V2* S, 
       // This handles short moves where walls are not intersected, but the endpoint may be too close
       else
       {
-         // check moving within a wall (end point inside min distance)
-         if (fabs(distE) < (float)min_distance)
+         // check only getting closer
+         if (fabsf(distE) <= fabsf(distS))
          {
             // iterate finite segments (walls) in this splitter
             WallData* wall = Node->u.internal.walls_in_plane;
@@ -665,7 +665,7 @@ bool CanMoveInRoomTree(const room_type* Room, const BSPnode* Node, const V2* S, 
                      V2SCALE(&normal, -1.0f);
                   }
 
-                  V2SCALE(&normal, fabs(distE)); // set length of normal to distance to line
+                  V2SCALE(&normal, fabsf(distE)); // set length of normal to distance to line
                   V2ADD(&q, E, &normal);         // q=E moved along the normal onto the line
                }
 
@@ -856,6 +856,7 @@ static void VerifyMove(V3* Start, V2* End, V2* Move, float Speed)
    {
       V2SUB(&rot, End, &Start2D);
       V2ROTATE(&rot, -ANGLESTEP * i);
+      V2ROUND(&rot);
       V2ADD(Move, &Start2D, &rot);
 
       // no collision
@@ -867,6 +868,7 @@ static void VerifyMove(V3* Start, V2* End, V2* Move, float Speed)
 
       V2SUB(&rot, End, &Start2D);
       V2ROTATE(&rot, ANGLESTEP * i);
+      V2ROUND(&rot);
       V2ADD(Move, &Start2D, &rot);
 
       // no collision
@@ -904,8 +906,9 @@ static void SlideAlongWall(WallData *wall, V2 *Start, V2 *End)
 
    if (denom > 0.0f)
    {
-      End->X = Start->X + wall_delta.X * (num / denom);
-      End->Y = Start->Y + wall_delta.Y * (num / denom);
+      V2SCALE(&wall_delta, num / denom);
+      V2ROUND(&wall_delta);
+      V2ADD(End, Start, &wall_delta);
    }
 }
 

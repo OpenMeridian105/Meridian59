@@ -15,13 +15,15 @@ constants:
    include blakston.khd
    include protocol.khd
 
-   // Once you leave a guild, you cannot rejoin another one for 4 hours
-   // You cannot rejoin the same one for 18 times this length.
-   // This is measured in minutes.
-   CANNOT_REJOIN_TIME = 4 * 60  
+   // Once you leave a guild, you cannot rejoin another one for 2 hours
+   CANNOT_REJOIN_TIME = 2 * 60
+
+   // This number is decremented each time the maintenance function is
+   // called, i.e. every 6 minutes. 40 decrements == 4 hours
+   CANNOT_REJOIN_SAME_TIME = 40
 
    // maximum number of people allowed in a guild.
-   MAX_MEMBERS = 400         
+   MAX_MEMBERS = 400
 
    // How much money do you lose if you pull out of a mutually-declared war?
    WAR_LOSS_PENALTY = 50000
@@ -31,7 +33,7 @@ constants:
    MATURITY_SECRET = 60
    MATURITY_NONSECRET = 30
 
-   THREE_PERSON_LIMIT = 240    
+   THREE_PERSON_LIMIT = 240
 
    MINIMUM_MEMBERS = 3
 
@@ -1464,12 +1466,12 @@ messages:
 
             Send(who,@EvaluatePKstatus);
 
-            // No joining a guild again for 4 hours.
+            // No joining a guild again for 2 hours.
             Send(who,@SetGuildRejoinTime,#delayMinutes=CANNOT_REJOIN_TIME);
 
-            // No rejoining the same guild for 72 hours.  This is the number of
-            //  six-minute periods to wait.
-            plFormerMembers = cons([who,CANNOT_REJOIN_TIME*3],plFormerMembers);
+            // No rejoining the same guild for 4 hours.
+            // This is the number of six-minute periods to wait.
+            plFormerMembers = Cons([who,CANNOT_REJOIN_SAME_TIME],plFormerMembers);
 
             plMembers = DelListElem(plMembers,i);
             bFound = TRUE;

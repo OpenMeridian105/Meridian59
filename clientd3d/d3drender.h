@@ -145,7 +145,7 @@ Bool IsHidden(Draw3DParams *params, long x0, long y0, long x1, long y1);
 
 inline static int DistanceGet(int x, int y)
 {
-   return (int)sqrt((double)(x * x) + (double)(y * y));;
+   return (int)sqrtf((x * x) + (y * y));
 }
 
 #endif	// __D3DRENDER_H__

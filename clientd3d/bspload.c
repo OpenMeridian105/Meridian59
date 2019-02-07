@@ -1396,7 +1396,7 @@ void PrecalcLeafData(BSPleaf *leaf)
          intersectTop.z = slope->p0.z + U * (slope->p1.z - slope->p0.z);
          intersectTop.y = slope->p0.y + U * (slope->p1.y - slope->p0.y);
 
-         ceil->st[i].t = sqrt((ceil->xyz[i].x - intersectTop.x) *
+         ceil->st[i].t = sqrtf((ceil->xyz[i].x - intersectTop.x) *
             (ceil->xyz[i].x - intersectTop.x) +
             (ceil->xyz[i].z - intersectTop.z) *
             (ceil->xyz[i].z - intersectTop.z) +
@@ -1420,7 +1420,7 @@ void PrecalcLeafData(BSPleaf *leaf)
          intersectLeft.z = slope->p0.z + U * (slope->p2.z - slope->p0.z);
          intersectLeft.y = slope->p0.y + U * (slope->p2.y - slope->p0.y);
 
-         ceil->st[i].s = sqrt((ceil->xyz[i].x - intersectLeft.x) *
+         ceil->st[i].s = sqrtf((ceil->xyz[i].x - intersectLeft.x) *
             (ceil->xyz[i].x - intersectLeft.x) +
             (ceil->xyz[i].z - intersectLeft.z) *
             (ceil->xyz[i].z - intersectLeft.z) +
@@ -1437,7 +1437,7 @@ void PrecalcLeafData(BSPleaf *leaf)
          vectorU.z = slope->p1.z - slope->p0.z;
          vectorU.y = slope->p1.y - slope->p0.y;
 
-         distance = sqrt((vectorU.x * vectorU.x) + (vectorU.y * vectorU.y));
+         distance = sqrtf((vectorU.x * vectorU.x) + (vectorU.y * vectorU.y));
 
          if (distance == 0)
             distance = 1.0f;
@@ -1450,7 +1450,7 @@ void PrecalcLeafData(BSPleaf *leaf)
          vectorV.z = slope->p2.z - slope->p0.z;
          vectorV.y = slope->p2.y - slope->p0.y;
 
-         distance = sqrt((vectorV.x * vectorV.x) + (vectorV.y * vectorV.y));
+         distance = sqrtf((vectorV.x * vectorV.x) + (vectorV.y * vectorV.y));
 
          if (distance == 0)
             distance = 1.0f;
@@ -1462,7 +1462,7 @@ void PrecalcLeafData(BSPleaf *leaf)
          vector.x = ceil->xyz[i].x - slope->p0.x;
          vector.y = ceil->xyz[i].y - slope->p0.y;
 
-         distance = sqrt((vector.x * vector.x) + (vector.y * vector.y));
+         distance = sqrtf((vector.x * vector.x) + (vector.y * vector.y));
 
          if (distance == 0)
             distance = 1.0f;
@@ -1485,8 +1485,8 @@ void PrecalcLeafData(BSPleaf *leaf)
          ceil->xyz[i].x = leaf->poly.p[i].x;
          ceil->xyz[i].y = leaf->poly.p[i].y;
          ceil->xyz[i].z = (float)leaf->sector->ceiling_height;
-         ceil->st[i].t = fabs(leaf->poly.p[i].y - top) - leaf->sector->ty;
-         ceil->st[i].s = fabs(leaf->poly.p[i].x - left) - leaf->sector->tx;
+         ceil->st[i].t = fabsf(leaf->poly.p[i].y - top) - leaf->sector->ty;
+         ceil->st[i].s = fabsf(leaf->poly.p[i].x - left) - leaf->sector->tx;
       }
 
       if (leaf->sector->sloped_floor)
@@ -1522,7 +1522,7 @@ void PrecalcLeafData(BSPleaf *leaf)
          intersectTop.z = slope->p0.z + U * (slope->p1.z - slope->p0.z);
          intersectTop.y = slope->p0.y + U * (slope->p1.y - slope->p0.y);
 
-         floor->st[i].t = sqrt((floor->xyz[i].x - intersectTop.x) *
+         floor->st[i].t = sqrtf((floor->xyz[i].x - intersectTop.x) *
             (floor->xyz[i].x - intersectTop.x) +
             (floor->xyz[i].z - intersectTop.z) *
             (floor->xyz[i].z - intersectTop.z) +
@@ -1546,7 +1546,7 @@ void PrecalcLeafData(BSPleaf *leaf)
          intersectLeft.z = slope->p0.z + U * (slope->p2.z - slope->p0.z);
          intersectLeft.y = slope->p0.y + U * (slope->p2.y - slope->p0.y);
 
-         floor->st[i].s = sqrt((floor->xyz[i].x - intersectLeft.x) *
+         floor->st[i].s = sqrtf((floor->xyz[i].x - intersectLeft.x) *
             (floor->xyz[i].x - intersectLeft.x) +
             (floor->xyz[i].z - intersectLeft.z) *
             (floor->xyz[i].z - intersectLeft.z) +
@@ -1560,7 +1560,7 @@ void PrecalcLeafData(BSPleaf *leaf)
          vectorU.z = slope->p1.z - slope->p0.z;
          vectorU.y = slope->p1.y - slope->p0.y;
 
-         distance = sqrt((vectorU.x * vectorU.x) + (vectorU.y * vectorU.y));
+         distance = sqrtf((vectorU.x * vectorU.x) + (vectorU.y * vectorU.y));
 
          if (distance == 0)
             distance = 1.0f;
@@ -1573,7 +1573,7 @@ void PrecalcLeafData(BSPleaf *leaf)
          vectorV.z = slope->p2.z - slope->p0.z;
          vectorV.y = slope->p2.y - slope->p0.y;
 
-         distance = sqrt((vectorV.x * vectorV.x) + (vectorV.y * vectorV.y));
+         distance = sqrtf((vectorV.x * vectorV.x) + (vectorV.y * vectorV.y));
 
          if (distance == 0)
             distance = 1.0f;
@@ -1585,7 +1585,7 @@ void PrecalcLeafData(BSPleaf *leaf)
          vector.x = floor->xyz[i].x - slope->p0.x;
          vector.y = floor->xyz[i].y - slope->p0.y;
 
-         distance = sqrt((vector.x * vector.x) + (vector.y * vector.y));
+         distance = sqrtf((vector.x * vector.x) + (vector.y * vector.y));
 
          if (distance == 0)
             distance = 1.0f;
@@ -1605,8 +1605,8 @@ void PrecalcLeafData(BSPleaf *leaf)
          floor->xyz[i].x = leaf->poly.p[i].x;
          floor->xyz[i].y = leaf->poly.p[i].y;
          floor->xyz[i].z = (float)leaf->sector->floor_height;
-         floor->st[i].t = fabs(leaf->poly.p[i].y - top) - leaf->sector->ty;// / pDib->shrink;
-         floor->st[i].s = fabs(leaf->poly.p[i].x - left) - leaf->sector->tx;// / pDib->shrink;
+         floor->st[i].t = fabsf(leaf->poly.p[i].y - top) - leaf->sector->ty;// / pDib->shrink;
+         floor->st[i].s = fabsf(leaf->poly.p[i].x - left) - leaf->sector->tx;// / pDib->shrink;
       }
    }
 }

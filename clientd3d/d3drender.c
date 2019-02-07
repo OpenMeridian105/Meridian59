@@ -4087,8 +4087,7 @@ void D3DRenderLMapsBuild(void)
    {
       for (width = 0; width < 32; width++)
       {
-         float   scale = (float)sqrt((double)((height - 16) * (height - 16) +
-                                 (width - 16) * (width - 16)));
+         float scale = sqrtf((height - 16) * (height - 16) + (width - 16) * (width - 16));
          scale = 16.0f - scale;
          scale = max(scale, 0);
          scale /= 16.0f;
@@ -4118,8 +4117,7 @@ void D3DRenderLMapsBuild(void)
    {
       for (width = 0; width < 32; width++)
       {
-         float   scale = (float)sqrt((double)((height - 16) * (height - 16) +
-                                 (width - 16) * (width - 16)));
+         float scale = sqrtf((height - 16) * (height - 16) + (width - 16) * (width - 16));
 
          scale = 16.0f - scale;
          scale = max(scale, 0);

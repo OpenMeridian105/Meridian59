@@ -1047,7 +1047,7 @@ Bool D3DObjectLightingCalc(room_type *room, room_contents_node *pRNode, custom_b
       vector.y = pRNode->motion.y - gDLightCache.dLights[numLights].xyz.y;
       vector.z = (pRNode->motion.z - gDLightCache.dLights[numLights].xyz.z);// * 4.0f;
 
-      distance = sqrt((vector.x * vector.x) + (vector.y * vector.y)
+      distance = sqrtf((vector.x * vector.x) + (vector.y * vector.y)
                       + (vector.z * vector.z));
       distance /= (gDLightCache.dLights[numLights].xyzScale.x / 2.0f);
 
@@ -1066,7 +1066,7 @@ Bool D3DObjectLightingCalc(room_type *room, room_contents_node *pRNode, custom_b
       vector.y = pRNode->motion.y - gDLightCacheDynamic.dLights[numLights].xyz.y;
       vector.z = (pRNode->motion.z - gDLightCacheDynamic.dLights[numLights].xyz.z);// * 4.0f;
 
-      distance = sqrt((vector.x * vector.x) + (vector.y * vector.y)
+      distance = sqrtf((vector.x * vector.x) + (vector.y * vector.y)
                       + (vector.z * vector.z));
       distance /= (gDLightCacheDynamic.dLights[numLights].xyzScale.x / 2.0f);
 

@@ -26,24 +26,23 @@ resources:
    SurvivalWatcher_desc_rsc = \
       "Many hateful words can be said about Osvann Vaendefdall, "
       "but the fact he's sadistic and impatient is just the tip of the iceberg. "
-      
+
    SurvivalWatcher_join  = "join"
    SurvivalWatcher_leave = "leave"
-   
+
    SurvivalWatcher_need_participants = "Have we no warrior to join the pit?"
 
    SurvivalWatcher_fight_in_progress = \
       "A fight is currently in session, "
       "players may only join after a boss wave has been completed."
-   SurvivalWatcher_invalid_fight = \
-      "The match has ended!"
+   SurvivalWatcher_invalid_fight = "The match has ended!"
 
 classvars:
 
    vrName = SurvivalWatcher_name_rsc
    vrIcon = SurvivalWatcher_icon_rsc
    vrDesc = SurvivalWatcher_desc_rsc
-   
+
    vrFightInProgress = SurvivalWatcher_fight_in_progress
    vrInvalidFight = SurvivalWatcher_invalid_fight
 
@@ -56,6 +55,7 @@ classvars:
    viWatcherID = WATCHER_SURVIVAL
 
 properties:
+
    piCombat_Style = STYLE_MONSTER_ARENA
    pbCrashProtection = FALSE
 
@@ -68,17 +68,22 @@ messages:
       {
          propagate;
       }
-      else if StringEqual(string,SurvivalWatcher_join)
+
+      if StringEqual(string,SurvivalWatcher_join)
       {
          Post(self,@TrigJoin,#what=what);
+
          propagate;
       }
-      else if StringEqual(string,SurvivalWatcher_leave)
+
+      if StringEqual(string,SurvivalWatcher_leave)
       {
          Post(self,@TrigRenege,#what=what);
+
          propagate;
       }
-      else if IsClass(what,&DM)
+
+      if IsClass(what,&DM)
       {
          // DM Commands
          // TBD
@@ -86,27 +91,28 @@ messages:
 
       return;
    }
-   
+
    TrigJoin(what=$)
    {
       local iDelay;
-   
+
       if Send(self,@IsCombatant,#who=what)
       {
          // already in the match
-         Send(self,@SayToOne,#target=what,
-             #message_rsc=vrAlreadyCombatant);
+         Send(self,@SayToOne,#target=what,#message_rsc=vrAlreadyCombatant);
 
          return;
       }
-      else if NOT Send(self,@CanJoinMonsterWave,#who=what)
+
+      if NOT Send(self,@CanJoinMonsterWave,#who=what)
       {
-         Send(self,@SayToOne,#target=what,
-             #message_rsc=vrFightInProgress);
+         Send(self,@SayToOne,#target=what,#message_rsc=vrFightInProgress);
+
          return;
       }
 
-      Send(self,@Challenge,#who=what);     
+      Send(self,@Challenge,#who=what);
+
       return;
    }
 
@@ -114,13 +120,14 @@ messages:
    {
       return 100;
    }
-   
+
    CommenceTimer()
    {
       Send(poOwner,@RaiseGates);
+
       propagate;
    }
-   
+
    GetNeedChampionRsc()
    "Monster arena doesn't look for a champ"
    {

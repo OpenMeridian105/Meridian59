@@ -825,7 +825,7 @@ messages:
             if Send(item_offered,@GetNumber) < Send(pCargo,@GetNumber)
             {
                iNumber = Send(pCargo,@GetNumber)-Send(item_offered,@GetNumber);
-               Send(who_tried,@MsgSenduser,
+               Send(who_tried,@MsgSendUser,
                     #message_rsc=questnode_not_enough_items,
                     #parm1=Send(poDestNPC,@GetCapDef),
                     #parm2=Send(poDestNPC, @GetName),
@@ -842,6 +842,11 @@ messages:
          }
          else
          {
+            if (NOT Send(item_offered,@CanBeUsedInQuests))
+            {
+               return FALSE;
+            }
+
             if iType = QN_TYPE_ITEM
             {
                if NOT Send(Send(SYS,@FindItemAttByNum,#num=IA_QUEST_CARGO),
@@ -856,6 +861,11 @@ messages:
             Send(item_offered,@Delete);
          }
       }
+      else if (item_offered <> $)
+      {
+         // If we have offered an item, don't check showup-type quests.
+         return FALSE;
+      }
 
       if iType = QN_TYPE_MONSTER_BRING
       {
@@ -863,7 +873,7 @@ messages:
          // First see if there are any charmed by the quester.
          foreach lMonster in Send(Send(who_tried,@GetOwner),@GetHolderActive)
          {
-            oMonster = first(lMonster);
+            oMonster = First(lMonster);
             if IsClass(oMonster,GetClass(poMonster))
                AND Send(oMonster,@GetMaster) = who_tried
             {
@@ -878,7 +888,7 @@ messages:
          {
             foreach lMonster in Send(Send(who_tried,@GetOwner),@GetHolderActive)
             {
-               oMonster = first(lMonster);
+               oMonster = First(lMonster);
                if IsClass(oMonster, GetClass(poMonster))
                   AND Send(oMonster,@GetMaster) = $
                {
@@ -911,11 +921,6 @@ messages:
          }
       }
 
-      // If we have offered an item, don't check showup-type quests.
-      if (item_offered <> $)
-      {
-         return FALSE;
-      }
 
       // Validate status and select quester(s) if needed
       if piStatus = QN_STATUS_WAITING_FOR_PLAYERS

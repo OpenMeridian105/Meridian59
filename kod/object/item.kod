@@ -1610,7 +1610,26 @@ messages:
       }
       
       return TRUE;
-   }   
+   }
+
+   CanBeUsedInQuests()
+   "Magic items with special attributes cannot be given away in a quest."
+   {
+      local i, oItemAtt, iNum;
+
+      // Check ItemAtts to be sure nothing funky is there
+      foreach i in plItem_Attributes
+      {
+         iNum = Send(self,@GetNumFromCompound,#compound=First(i));
+         oItemAtt = Send(SYS,@FindItemAttByNum,#num=iNum);
+         if (NOT Send(oItemAtt,@ItemCanBeUsedInQuests))
+         {
+            return FALSE;
+         }
+      }
+
+      return TRUE;
+   }
 
    CanBeStoredInVault()
    "Black daggers and tokens, especially, cannot be stored in vaults."

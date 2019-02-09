@@ -8311,7 +8311,7 @@ messages:
    "for the given NPC. Need to find the appropriate quest node in that NPC's "
    "quest list and trigger it server-side."
    {
-      local i, oQN, iType, oItem, oCargo, iNum, sCargo;
+      local i, oQN, iType, oItem, oCargo, sCargo;
 
       oQN = Send(what,@GetActiveQuestForUser,#who=self,
                #index=Send(oQT,@GetQuestID));
@@ -8372,12 +8372,7 @@ messages:
          // Give item to NPC, favor last items in inventory.
          // Cargo is a duplicate of the item to give.
          oCargo = Send(oQN,@GetCargo);
-         iNum = Send(self,@CountHoldingHowMany,#class=GetClass(oCargo));
-         if (iNum > 0)
-         {
-            oItem = Send(self,@FindHoldingAP,#class=GetClass(oCargo),
-                        #sequence=iNum);
-         }
+         oItem = Send(self,@FindHoldingAP,#class=GetClass(oCargo),#sequence=1);
          if (oItem <> $)
          {
             Send(what,@TryGiveQuestItem,#what=self,#item_list=[oItem]);

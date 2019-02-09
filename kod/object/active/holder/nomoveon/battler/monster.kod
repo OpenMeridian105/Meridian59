@@ -4101,8 +4101,9 @@ messages:
       // If there are active quest nodes, notify them   -AJM
       foreach i in item_list
       {
-         /// first, let's be sure the item CAN be given away.
+         // first, let's be sure the item CAN be given away.
          if NOT Send(i,@CanBeGivenToNPC)
+            OR NOT Send(i,@CanBeUsedInQuests)
          {
             Post(self,@SayToOne,#target=what,#message_rsc=LS_cant_part,
                  #parm1=Send(i,@GetIndef),#parm2=Send(i,@GetName));
@@ -5205,7 +5206,7 @@ messages:
                   #flags=SOUND_RANDOM_PITCH);
          }
 
-         if NOT Send(poOwner,@CanDropMonsterLoot)
+         if Send(poOwner,@CanDropMonsterLoot)
          {
             // Notify the quest engine, to check if a quest is affected -AJM
             Send(Send(SYS,@GetQuestEngine),@MonsterKilled,#dead_monster=self,

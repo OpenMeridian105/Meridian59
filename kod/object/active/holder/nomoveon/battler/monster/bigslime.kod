@@ -13,7 +13,7 @@ BigSlime is Monster
 constants:
 
    include blakston.khd
-   
+
    SPLIT_THRESHOLD_PERCENT = 30
 
 resources:
@@ -25,10 +25,10 @@ resources:
    bigslime_icon_rsc = bigslime.bgf
    bigslime_icon_small_rsc = bigslime2.bgf
    bigslime_desc_rsc = \
-    "These creatures pounce and break down their enemies, dissolving all the "
-    "organic materials before moving on to their next prey. "
-    "Slimes that have successfully taken the lives of several creatures alter "
-    "in form and are far stronger than their unevolved counterparts. "
+      "These creatures pounce and break down their enemies, dissolving all the "
+      "organic materials before moving on to their next prey.  "
+      "Slimes that have successfully taken the lives of several creatures alter "
+      "in form and are far stronger than their unevolved counterparts. "
 
    bigslime_dead_icon_rsc = bigslime2X.bgf
    bigslime_dead_name_rsc = "dead slime"
@@ -74,6 +74,7 @@ classvars:
    viNightVision = 255
 
 properties:
+
    vrIcon = bigslime_icon_rsc
    vrIcon2 = bigslime_icon_small_rsc
 
@@ -99,8 +100,7 @@ messages:
 
    SendLookAnimation()
    {
-      AddPacket(1,ANIMATE_CYCLE);
-      AddPacket(4,400,2,2,2,5);
+      AddPacket(1,ANIMATE_CYCLE, 4,400,2,2,2,5);
 
       return;
    }
@@ -124,19 +124,13 @@ messages:
       // if no body animation
       propagate;
    }
-   
-   AssessDamage()
-   {
-      propagate;
-   }
-   
+
    HitPointThresholdDamage()
    "Big slimes break down into smaller versions"
    {
-
       if (piHealth / piMax_health) <= SPLIT_THRESHOLD_PERCENT
       {
-        Send(self,@SlimeSplit);
+         Send(self,@SlimeSplit);
       }
 
       propagate;
@@ -144,22 +138,32 @@ messages:
 
    SlimeSplit()
    {
-        local oSlime;
-        
-        Send(poOwner,@SomethingWaveRoom,#what=self,#wave_rsc=vrSound_death,
-              #flags=SOUND_RANDOM_PITCH);
+      local oSlime;
 
-        vrIcon = vrIcon2;
-        send(poOwner,@SomethingChanged,#what=self);
-        
-        oSlime = Create(&BigSlimeSplit);
-        Send(oSlime, @SetMaster,#what=self);
-        Send(poOwner,@NewHold,#what=oSlime,
-            #new_row=Send(self,@GetRow),
-            #new_col=Send(self,@GetCol));
+      if (poOwner = $)
+      {
+         return;
+      }
 
-        return TRUE;
+      Send(poOwner,@SomethingWaveRoom,#what=self,#wave_rsc=vrSound_death,
+            #flags=SOUND_RANDOM_PITCH);
+
+      vrIcon = vrIcon2;
+      Send(poOwner,@SomethingChanged,#what=self);
+
+      oSlime = Create(&BigSlimeSplit);
+      Send(oSlime,@SetMaster,#what=self);
+      Send(SYS,@UtilGoRandomNear,#what=oSlime,#where=poOwner,
+            #new_row=piRow,#new_col=piCol,
+            #fine_row=piFine_row,#fine_col=piFine_col);
+
+      return TRUE;
    }
-   
+
+   CanMorphTo()
+   {
+      return FALSE;
+   }
+
 end
 ////////////////////////////////////////////////////////////////////////////////

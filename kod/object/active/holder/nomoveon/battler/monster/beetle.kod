@@ -16,16 +16,16 @@ constants:
 
 resources:
 
-   include Beetle.lkod
+   include beetle.lkod
 
    Beetle_koc_name_rsc = "bitckinich"
    Beetle_name_rsc = "beetle"
    Beetle_icon_rsc = gbeetle.bgf
    Beetle_desc_rsc = \
-     "Thought to be extinct, the beetle's large shiny exoskeleton "
-     "clicks as it opens its dripping mandibles. "
-     "Although beetles have wings, their unnatural bulk renders them "
-     "incapable of true flight."
+      "Thought to be extinct, the beetle's large shiny exoskeleton "
+      "clicks as it opens its dripping mandibles.  "
+      "Although beetles have wings, their unnatural bulk renders them "
+      "incapable of true flight."
 
    Beetle_dead_icon_rsc = gbeetleX.bgf
    Beetle_dead_name_rsc = "dead beetle"
@@ -66,7 +66,7 @@ classvars:
    vbCanPoison = FALSE
    vbCanSiphon = FALSE
    vbCanBleed = FALSE
-   
+
    // Quite used to crawling around in dark places.
    viNightVision = 100
 
@@ -79,10 +79,10 @@ messages:
    Constructed()
    {
       Send(self,@SetBeetleType);
-      
+
       propagate;
    }
-   
+
    SendLookAnimation()
    {
       if piColor_translation <> 0
@@ -90,12 +90,11 @@ messages:
          AddPacket(1,ANIMATE_TRANSLATION,1,piColor_translation);
       }
 
-      AddPacket(1,ANIMATE_CYCLE);
-      AddPacket(4,120,2,2,2,6);
+      AddPacket(1,ANIMATE_CYCLE, 4,120,2,2,2,6);
 
       return;
    }
-   
+
    SendMoveAnimation()
    {
       if piColor_translation <> 0
@@ -117,6 +116,7 @@ messages:
       if piAnimation = ANIM_ATTACK
       {
          AddPacket(1,ANIMATE_CYCLE,4,120,2,2,2,6);
+
          return;
       }
 
@@ -125,7 +125,6 @@ messages:
       propagate;
    }
 
-   
    ChangeColor(xlat = 0)
    {
       if xlat <> 0
@@ -152,14 +151,14 @@ messages:
 
       return;
    }
-   
+
    SetBeetleType()
    {
       local type, color;
-      
+
       type = Random(1,6);
       color = 0;
-      
+
       if type = 1
       {
          color = PT_GRAY_TO_KGREEN;
@@ -212,6 +211,11 @@ messages:
       Send(self,@ChangeColor,#xlat=color);
 
       return;
+   }
+
+   CanMorphTo()
+   {
+      return FALSE;
    }
 
 end

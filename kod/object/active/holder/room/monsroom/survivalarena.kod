@@ -20,12 +20,12 @@ constants:
    SECTOR_ID_GREEN = 5
    SECTOR_ID_WATER = 10
    SECTOR_ID_BEHIND_BARS_WATER = 14
-   
+
    SECTOR_ID_PILLAR_A = 20
    SECTOR_ID_PILLAR_B = 21
    SECTOR_ID_PILLAR_C = 22
    SECTOR_ID_PILLAR_D = 23
-   
+
    // Percent of monsters that will aggro
    AGGRO_CHANCE = 20
    // Max number of monsters that will aggro per call
@@ -33,10 +33,10 @@ constants:
 
 resources:
 
-   //include SurvivalArena.lkod
+   include survivalarena.lkod
 
    room_SurvivalArena = survival_ex.roo
-   name_SurvivalArena = "The Survival Arena"
+   room_name_SurvivalArena = "The Survival Arena"
    SurvivalArena_music = pk_fm.ogg
 
    SurvivalArena_no_offer = \
@@ -66,7 +66,7 @@ resources:
 
 classvars:
 
-   vrName = name_SurvivalArena
+   vrName = room_name_SurvivalArena
    viTeleport_row = 47
    viTeleport_col = 31
 
@@ -196,7 +196,7 @@ messages:
 
       propagate;
    }
-   
+
    CreateStandardExits()
    {
       plEdge_Exits = $;
@@ -207,7 +207,7 @@ messages:
       propagate;
    }
 #endregion Create and Delete
-   
+
    CanOffer(who = $, target = $)
    {
       if who = $ or target = $
@@ -266,7 +266,7 @@ messages:
             Post(poWatcher,@NewCombatant,#who=what,#isMonster=TRUE);
          }
       }
-      
+
       propagate;
    }
 
@@ -416,12 +416,14 @@ messages:
    SpecialGreeting()
    {
       Send(self,@SomethingWaveRoom,#wave_rsc=SurvivalArena_Fanfare_Sound);
+
       return;
    }
 
    ArenaBeginFight(lCombatants=$)
    {
       Send(self,@SomethingWaveRoom,#wave_rsc=SurvivalArena_Combat_Sound);
+
       return;
    }
 
@@ -445,12 +447,13 @@ messages:
             }
          }
       }
-      
+
       Send(self,@SetMonsterGeneration,#bValue=FALSE);
 
       // Remove room enchantments
       Send(self,@RemoveAllEnchantments);
       Send(self,@SomethingWaveRoom,#wave_rsc=SurvivalArena_Huzzah_Sound);
+
       return;
    }
 
@@ -458,6 +461,7 @@ messages:
    {
       Send(self,@LowerGates);
       Send(self,@SomethingWaveRoom,#wave_rsc=SurvivalArena_gong_sound);
+
       return;
    }
 
@@ -466,7 +470,7 @@ messages:
    {
       return pbRealdeath;
    }
-   
+
    CheckBehindBars()
    {
       local i, iSectorID;
@@ -485,7 +489,7 @@ messages:
 
       return;
    }
-   
+
    RaiseGates()
    {
       Send(self,@SetSector,#sector=SECTOR_ID_BARS,
@@ -493,7 +497,7 @@ messages:
 
       return;
    }
-   
+
    LowerGates()
    {
       Send(self,@SetSector,#sector=SECTOR_ID_BARS,
@@ -501,16 +505,17 @@ messages:
 
       return;
    }
-   
+
    RaiseMaze(maze = 14, sector = 0, height = 192)
    {
+      // TODO
       return;
    }
 
    LowerMaze(sector=0)
    "If a sector is specified, just lower that sector.  Otherwise, lower 'em all."
    {
-
+      // TODO
       return;
    }
 
@@ -557,7 +562,7 @@ messages:
 
       return;
    }
-   
+
    // Monster specific stuff
    SetupMonsterWave()
    {
@@ -566,13 +571,10 @@ messages:
 
       return;
    }
-   
+
    ArenaMonsterWave(iLevel_Min = 20, iLevel_Max = 100, spawn_max = 1)
    {
       local i, lTemp, iMonsterLevel, lMonsters, iLevel;
-
-      lTemp = $;
-      lMonsters = $;
 
       iLevel = Send(poWatcher,@GetMonsterWave);
       piLevel = iLevel;
@@ -590,7 +592,7 @@ messages:
       {
         iMonsterLevel = Send(i,@GetLevel);
         if Send(i,@IsArenaMonster)
-            AND iMonsterLevel >= iLevel_Min 
+            AND iMonsterLevel >= iLevel_Min
             AND iMonsterLevel <= iLevel_Max
         {
             if NOT FindListElem(plBosses,GetClass(i))
@@ -606,7 +608,7 @@ messages:
          {
             lMonsters = Cons([GetClass(i),100 / Length(lTemp)],lMonsters);
          }
-         
+
          if lMonsters <> $
          {
             plMonsters = lMonsters;
@@ -617,43 +619,45 @@ messages:
 
       Send(self,@SomethingWaveRoom,#wave_rsc=SurvivalArena_gong_sound);
       Send(self,@LowerGates);
+
       return;
    }
-   
+
    TryCreateMonster()
    {
       if Send(poWatcher,@CountCombatantMonsters) >= Send(poWatcher,@GetWaveGoal)
-        OR Send(poWatcher,@GetWaveGoal) <= 1
+         OR Send(poWatcher,@GetWaveGoal) <= 1
       {
-        Send(self,@SetMonsterGeneration,#bValue=FALSE);
-        return FALSE;
+         Send(self,@SetMonsterGeneration,#bValue=FALSE);
+
+         return FALSE;
       }
 
       propagate;
    }
-   
+
    GenerateMonster(oMonster=$, iRow=0, iCol=0 )
    {
       local iPatrolRow, iPatrolCol;
-      
+
       if oMonster <> $
-        OR oMonster <> poWatcher
+         OR oMonster <> poWatcher
       {
-            // Monsters want to go to the middle of the stage
-            iPatrolRow = Random(23,38);
-            iPatrolCol = Random(35,45);
-            Send(oMonster,@GotoCoords,#iRow=iPatrolRow,#iCol=iPatrolCol);
-            Send(oMonster,@SetBehaviorFlag,#flag=AI_FIGHT_SINGLEMINDED);
-            Send(oMonster,@SetBehaviorFlag,#flag=AI_FIGHT_HYPERAGGRESSIVE);
+         // Monsters want to go to the middle of the stage
+         iPatrolRow = Random(23,38);
+         iPatrolCol = Random(35,45);
+         Send(oMonster,@GotoCoords,#iRow=iPatrolRow,#iCol=iPatrolCol);
+         Send(oMonster,@SetBehaviorFlag,#flag=AI_FIGHT_SINGLEMINDED);
+         Send(oMonster,@SetBehaviorFlag,#flag=AI_FIGHT_HYPERAGGRESSIVE);
       }
 
       propagate;
    }
-   
+
    GenerateBoss(bMiniBoss=FALSE)
    {
       local cMonster;
-   
+
       if(bMiniBoss)
       {
          cMonster = Nth(plMiniBosses,Random(1,Length(plMiniBosses)));
@@ -662,26 +666,18 @@ messages:
       {
          cMonster = Nth(plBosses,Random(1,Length(plBosses)));
       }
-      Send(self,@GenerateMonster, #oMonster=Create(cMonster), 
-                     #bStack=TRUE, #piSurvivalLevel=piLevel);
+
+      Send(self,@GenerateMonster,#oMonster=Create(cMonster),
+            #bStack=TRUE,#piSurvivalLevel=piLevel);
 
       return;
    }
 
    IsBoss(what=$)
    {
-      local i, cMob;
-
       if what <> $
       {
-         cMob = GetClass(what);
-         foreach i in plBosses
-         {
-            if cMob = i
-            {
-               return TRUE;
-            }
-         }
+         return FindListElem(plBosses,GetClass(what)) > 0;
       }
 
       return FALSE;
@@ -689,32 +685,24 @@ messages:
 
    IsMiniBoss(what=$)
    {
-      local i, cMob;
-
       if what <> $
       {
-         cMob = GetClass(what);
-         foreach i in plMiniBosses
-         {
-            if cMob = i
-            {
-               return TRUE;
-            }
-         }
+         return FindListElem(plMiniBosses,GetClass(what)) > 0;
       }
 
       return FALSE;
    }
-   
+
    AggroMonsters(who=$)
    {
       local i, iCount;
-      
+
       if IsClass(who,&Monster)
       {
          return FALSE;
       }
-      else if (IsClass(who,&DM)
+
+      if (IsClass(who,&DM)
             AND Send(who,@PlayerIsImmortal))
          OR Send(who,@IsInCannotInteractMode)
       {
@@ -741,10 +729,11 @@ messages:
 
       return;
    }
-   
+
    AdjustMaxMonsters()
    {
       piMonster_adjusted_max = piMonster_count_max;
+
       return piMonster_adjusted_max;
    }
 

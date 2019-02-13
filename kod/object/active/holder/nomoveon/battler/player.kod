@@ -7269,7 +7269,7 @@ messages:
 
    ComputeMaxMana()
    {
-      local i, index, iNodeList, oNode, iMagic, oCrystalizeMana, iCrystalizeManaAbility;
+      local i, index, iNodeList, oNode, iMagic, oSpell, iAbility;
 
       iMagic = Send(self,@GetMysticism);
       piMax_mana = 150 + (2 * iMagic);
@@ -7293,7 +7293,7 @@ messages:
       {
          if Send(i,@AdjustsMaxMana)
          {
-            piMax_mana = piMax_mana + Send(i,@GetManaChange);
+            piMax_mana += Send(i,@GetManaChange);
          }
       }
 
@@ -7301,18 +7301,16 @@ messages:
       {
          if Send(Nth(i,2),@AffectsMaxMana)
          {
-            piMax_mana = piMax_mana + Send(Nth(i,2),@GetManaBonus,#state=Nth(i,3));
+            piMax_mana += Send(Nth(i,2),@GetManaBonus,#state=Nth(i,3));
          }
       }
 
-      oCrystalizeMana = Send(SYS,@FindSpellByNum,#num=SID_CRYSTALIZE_MANA);
-      iCrystalizeManaAbility = Send(self,@GetSpellAbility,
-                                    #spell_num=SID_CRYSTALIZE_MANA);
+      oSpell = Send(SYS,@FindSpellByNum,#num=SID_CRYSTALIZE_MANA);
+      iAbility = Send(self,@GetSpellAbility,#spell_num=SID_CRYSTALIZE_MANA);
 
-      if oCrystalizeMana <> $ AND iCrystalizeManaAbility <> 0
+      if oSpell <> $ AND iAbility <> 0
       {
-         piMax_mana = piMax_mana + Send(oCrystalizeMana,@GetManaBonus,
-                                       #spell_ability=iCrystalizeManaAbility);
+         piMax_mana += Send(oSpell,@GetManaBonus,#spell_ability=iAbility);
       }
 
       if Send(self,@IsCrystalizeManaSurging)

@@ -31,7 +31,7 @@ resources:
    Elusion_Success = "The world folds in on itself."
    Elusion_Location_list = \
       "The world shimmers and secret paths are revealed, leading "
-      "to %s%s%s%s%s%s%s%s%s%s%s%s%s%s."
+      "to %s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s."
    elusion_loc_list_comma = ", "
    elusion_loc_list_and = "and "
    elusion_loc_list_blank = ""
@@ -166,33 +166,14 @@ messages:
 
    SomethingSaidDuringTrance(who=$,string=$,lTargets = $)
    {
-      local lAllTargets, oGuildHall, sRoomName, bFound, oRoom, i, each_obj;
+      local sRoomName, bFound, oRoom, i, each_obj;
 
       // Check if string is a location.  If it is, and the caster has
-      // sufficient spellpower make it the target.  Get percent in the
-      // target spell.  If not there or fail check, bail and print failure.
-
-      Send(who,@BreakTrance,#event=EVENT_STEER);  // Don't print fizzle message
+      // sufficient spellpower make it the target.
 
       bFound = FALSE;
 
-      lAllTargets = lTargets;
-
-      // Special bonus!  Warp to guild hall with high enough spellpower.
-      // Spellpower has to be high enough that you were already going to 5
-      // or more places.
-      if Length(lTargets) >= 5
-      {
-         oGuildHall = Send(who,@GetGuildHall);
-
-         if oGuildHall <> $
-            AND Send(who,@CanPlayerPvP)
-         {
-            lAllTargets = Cons(oGuildHall,lAllTargets);
-         }
-      }
-
-      foreach oRoom in lAllTargets
+      foreach oRoom in lTargets
       {
          sRoomName = Send(oRoom,@GetName);
          if StringContain(string,sRoomName)
@@ -202,8 +183,9 @@ messages:
 
             foreach i in Send(Send(who,@GetOwner),@GetHolderActive)
             {
-               each_obj = Send(Send(who,@GetOwner),@HolderExtractObject,#data=i);
+               each_obj = First(i);
                if IsClass(each_obj,&User)
+                  AND each_obj <> who
                {
                   Send(each_obj,@MsgSendUser,
                         #message_rsc=Elusion_depart_to_destination,
@@ -217,6 +199,8 @@ messages:
 
       if bFound
       {
+         // Don't print fizzle message
+         Send(who,@BreakTrance,#event=EVENT_STEER);
          Send(who,@MsgSendUser,#message_rsc=Elusion_success);
       }
       else
@@ -229,7 +213,7 @@ messages:
 
    GetLocations(iSpellpower=$,target=$)
    {
-      local lLocations, lAvailable, iNumLocations, oRoom, sLocations;
+      local lLocations, lAvailable, iNumLocations, oRoom, oHall;
 
       lLocations = [Send(SYS,@FindRoomByNum,#num=RID_TOS),
                     Send(SYS,@FindRoomByNum,#num=RID_MARION),
@@ -238,10 +222,22 @@ messages:
                     Send(SYS,@FindRoomByNum,#num=RID_JASPER),
                     Send(SYS,@FindRoomByNum,#num=RID_RAZA)];
 
-      lAvailable = $;
-
       // 84 spellpower for Island (7 locations, divide by 12)
       iNumLocations = Bound(iSpellPower/12,1,7);
+
+      // Special bonus!  Warp to guild hall with high enough spellpower.
+      // Spellpower has to be high enough that you were already going to 5
+      // or more places.
+      if iNumLocations >= 5
+      {
+         oHall = Send(target,@GetGuildHall);
+
+         if oHall <> $
+            AND Send(target,@CanPlayerPvP)
+         {
+            lAvailable = Cons(oHall,lAvailable);
+         }
+      }
 
       if Send(Send(target,@GetOwner),@GetRegion) = RID_KOCATAN
          OR iNumLocations = 7
@@ -292,12 +288,12 @@ messages:
          {
             if iCounter = iNumRooms
             {
-               iNumRsc = iNumRsc + 2;
+               iNumRsc += 2;
                AddPacket(4,elusion_loc_list_and, 4,Send(i,@GetName));
             }
             else
             {
-               iNumRsc = iNumRsc + 2;
+               iNumRsc += 2;
                AddPacket(4,Send(i,@GetName), 4,elusion_loc_list_comma);
             }
          }
@@ -310,7 +306,7 @@ messages:
 
       // If we didn't add enough location resources, make up for it
       // with blank ones.
-      while iNumRsc++ < 14
+      while iNumRsc++ < 16
       {
          AddPacket(4,elusion_loc_list_blank);
       }

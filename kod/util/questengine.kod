@@ -49,7 +49,7 @@ constants:
 //   QNT_SUCCESS_HINT  = 10
 //   QNT_FAILURE_HINT  = 11
 //   QNT_TIME_LIMIT    = 12
-//   QNT_QT_ID         = 13
+//   QNT_QT_ID_LIST    = 13
 
 resources:
 
@@ -849,7 +849,7 @@ messages:
    "indicates more than one QuestTemplate will be sending the same quest node."
    "Creates new permanent strings, if successful."
    {
-      local NPC, lQNT, lQNTemplate, iThisQNTIndex, i, iQT;
+      local NPC, lQNT, lQNTemplate, iThisQNTIndex, i, lUsedInQTs;
 
      // Validity checks. This message now requires the quest_node_index
      // be sent.
@@ -915,13 +915,32 @@ messages:
          penaltylist = [];
       }
 
-      // Don't add duplicate quest nodes.
-      if GetListNode(plQuestNodeTemplates, QNT_QNT_ID, quest_node_index)
+      // Add a reference to the Quest Template ID.
+      // Ideally this would be sent to AddQuestNodeTemplate as a parameter.
+      // Note that this must be used very carefully due to a small number of
+      // quest nodes being reused for 2 or more quests. All instances of these
+      // so far share characteristics such as # of quest givers, but this might
+      // not hold in the future. Once the QuestX and QuestNode objects are
+      // created, it is much preferred to get the Quest Template ID from QuestX.
+      foreach i in plQuestTemplates
       {
-         // Some quest nodes are used by more than one quest, so allow
-         // those and don't log the error in the quest template.
+         if (FindListElem(Nth(i,QT_QUEST_NODES),quest_node_index))
+         {
+            lUsedInQTs = Cons(Nth(i,QT_QST_ID),lUsedInQTs);
+         }
+      }
+
+      // Don't add duplicate quest nodes.
+      lQNTemplate = GetListNode(plQuestNodeTemplates, QNT_QNT_ID, quest_node_index);
+      if lQNTemplate <> $
+      {
          if bDuplicate
          {
+            // Some quest nodes are used by more than one quest, so allow
+            // those and don't log the error in the quest template.
+            // Still need to update used QTs.
+            SetNth(lQNTemplate,QNT_QT_ID_LIST,lUsedInQTs);
+
             return quest_node_index;
          }
          else
@@ -933,28 +952,10 @@ messages:
          }
       }
 
-      // Add a reference to the Quest Template ID.
-      // Ideally this would be sent to AddQuestNodeTemplate as a parameter.
-      // Note that this must be used very carefully due to a small number of
-      // quest nodes being reused for 2 or more quests. All instances of these
-      // so far share characteristics such as # of quest givers, but this might
-      // not hold in the future. Once the QuestX and QuestNode objects are
-      // created, it is much preferred to get the Quest Template ID from QuestX.
-      iQT = 0;
-      foreach i in plQuestTemplates
-      {
-         if (FindListElem(Nth(i,QT_QUEST_NODES),quest_node_index))
-         {
-            iQT = Nth(i,QT_QST_ID);
-
-            break;
-         }
-      }
-
       lQNTemplate = [ quest_node_index, plDefaultNPCList, NPC_modifier, \
                       questnode_type, cargolist, monsterlist, prizelist, \
                       penaltylist, CreateString(),CreateString(), \
-                      CreateString(), timelimit, iQT ];
+                      CreateString(), timelimit, lUsedInQTs ];
 
       // Quest nodes no longer need to be in order.
       plQuestNodeTemplates = Cons(lQNTemplate, plQuestNodeTemplates);
@@ -1253,7 +1254,7 @@ messages:
    "Resets NPC_list to plDefaultNPCList if new_NPC_list is nil."
    "Returns 1 if successful, 0 otherwise."
    {
-      local oNPC, lQNT, lQT;
+      local oNPC, lQNT, lQT, i;
 
       if (index = 0)
       {
@@ -1281,15 +1282,18 @@ messages:
 
       if (new_NPC_list <> $)
       {
-         lQT = Send(self,@GetQuestTemplate,#index=Nth(lQNT, QNT_QT_ID));
-         if (lQT = 0
-            OR lQT = $)
+         foreach i in Nth(lQNT, QNT_QT_ID_LIST)
          {
-            Debug("got bad quest template",Nth(lQNT, QNT_QT_ID), lQT, " for quest node ",index);
-         }
-         if (index = First(Nth(lQT,QT_QUEST_NODES)))
-         {
-            SetNth(lQT,QT_NUM_QUEST_GIVERS,Length(new_NPC_list));
+            lQT = Send(self,@GetQuestTemplate,#index=i);
+            if (lQT = 0
+               OR lQT = $)
+            {
+               Debug("got bad quest template",i, lQT, " for quest node ",index);
+            }
+            else if (index = First(Nth(lQT,QT_QUEST_NODES)))
+            {
+               SetNth(lQT,QT_NUM_QUEST_GIVERS,Length(new_NPC_list));
+            }
          }
       }
 

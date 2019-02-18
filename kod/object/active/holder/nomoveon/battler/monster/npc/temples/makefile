@@ -5,6 +5,6 @@
 !include $(TOPDIR)\common.mak
 
 DEPEND = ..\temples.bof
-BOFS  =  shalprst.bof qorprst.bof kranprst.bof farnprst.bof kcrjmonk.bof
+BOFS  =  shalprst.bof qorprst.bof kranprst.bof farnprst.bof kcrjmonk.bof jalaprst.bof
 
 !include $(KODDIR)\kod.mak

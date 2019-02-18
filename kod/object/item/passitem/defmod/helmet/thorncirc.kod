@@ -21,11 +21,25 @@ resources:
    thornedcirclet_name_rsc = "thorned circlet"
    thornedcirclet_icon_rsc = thocircl.bgf
    thornedcirclet_desc_rsc = \
-      "Thick brown thorns and spines from an unknown plant have been fused "
-      "and tied into a wreath.  Difficult to handle, this prickly circlet "
-      "looks like it would be painful to put against your brow.  It's said the "
-      "pain of wearing one can enhance one's aptitude as a warrior.  As your "
-      "hands are already covered in blood just from holding it, you can see why."
+      "The thick and thorny vines of an alien plant have been meticulously "
+      "bent and wrought into this frightful wreath.  Impossible to safely "
+      "handle, the prickly circlet looks like the last thing you would want to "
+      "be wearing for protection.  You have, however, heard tales of warriors "
+      "of old who used to wear such head gear to dull their minds to the "
+      "sensation of pain and increase their resilience to the strain of "
+      "battle.  Considering how keenly aware you are of the pain the circlet "
+      "is causing you as you are holding it, you are very much inclined to "
+      "question the authenticity of these tales."
+   thornedcirclet_damage1_rsc = \
+      "You wince in pain as the thorny vines stubbornly refuse to be separated "
+      "from your scalp."
+   thornedcirclet_damage2_rsc = \
+      "The circlet's cruel barbs leave you clenching your teeth as they latch "
+      "onto your scalp."
+   thornedcirclet_die_rsc = \
+      "With your last conscious thought, you can't help but notice that, "
+      "somehow, you had always envisioned a martyr's death to be more "
+      "dignified..."
 
    thornedcircle_overlay_rsc = thocirclov.bgf
 
@@ -55,6 +69,10 @@ classvars:
 
    viLayer = 1
 
+   viChangeMin = 5    // Min possible adjustment.
+   viChangeMax = 10   // Max possible adjustment.
+   viChangeFactor = 7 // Max mana divided by this for change amt.
+
 properties:
 
    piMana_change = 0
@@ -62,14 +80,36 @@ properties:
 
 messages:
 
+   ReqUse(what = $)
+   {
+      if (NOT Send(self,@TryUseHurtOwner))
+      {
+         return FALSE;
+      }
+
+      propagate;
+   }
+
+   ReqUnuse(what = $)
+   {
+      if (NOT Send(self,@TryUseHurtOwner))
+      {
+         return FALSE;
+      }
+
+      propagate;
+   }
+
    NewUsed()
    {
-      local iManaMod;
+      local iManaMod, iFactor;
 
-      iManaMod = bound(Send(poOwner,@GetMaxMana)/7,5,10);
+      // Avoid div/0 if viChangeFactor ever gets set wrong.
+      iFactor = Bound(viChangeFactor,1,100);
+
+      iManaMod = Bound(Send(poOwner,@GetMaxMana)/iFactor,viChangeMin,viChangeMax);
       piMana_change = Send(poOwner,@NewMaxMana,#amount=-iManaMod);
       piHealth_change = Send(poOwner,@GainMaxHealth,#amount=-piMana_change);
-      Send(self,@HurtOwner);
 
       propagate;
    }
@@ -86,7 +126,6 @@ messages:
 
    NewUnused()
    {
-      Send(self,@HurtOwner);
       Send(poOwner,@NewMaxMana,#amount=-piMana_change);
       Send(poOwner,@GainMaxHealth,#amount=-piHealth_change);
 
@@ -96,13 +135,11 @@ messages:
       propagate;
    }
 
-   // these 3 called by player, for normal 3rd-person overlays on user.
-
    GetOverlay(animation = $)
    {
       return thornedcircle_overlay_rsc;
    }
-   
+
    AdjustsMaxMana()
    {
       return TRUE;
@@ -117,19 +154,40 @@ messages:
    {
       return 1;
    }
-   
-   HurtOwner()
+
+   TryUseHurtOwner()
+   "Returns FALSE if the owner can't use the item, i.e. they died putting it on."
    {
-      //send(poOwner,@MsgSendUser,#message_rsc = thornedcirclet_damage_rsc);
+      // Edge case - player dies putting circlet on, it'll also attempt to
+      // hurt them as it is removed.
+      if (poOwner = $
+         OR NOT IsClass(poOwner,&Battler)
+         OR Send(poOwner,@GetHealth) <= 0)
+      {
+         return FALSE;
+      }
+
+      if (Random(1,2) = 1)
+      {
+         Send(poOwner,@MsgSendUser,#message_rsc=thornedcirclet_damage1_rsc);
+      }
+      else
+      {
+         Send(poOwner,@MsgSendUser,#message_rsc=thornedcirclet_damage2_rsc);
+      }
+
       if Send(poOwner,@AssessDamage,#what=self,#damage=Random(viDamage_min, viDamage_max),
-	           #report=FALSE) = $
+               #report=FALSE) = $
       {
          // we killed someone off... heh heh heh
+         Send(poOwner,@MsgSendUser,#message_rsc=thornedcirclet_die_rsc);
          Send(Send(poOwner,@GetOwner),@SomethingKilled,#what=self,#victim=poOwner);
          Send(poOwner,@Killed,#what=self);
+
+         return FALSE;
       }
-      
-      return;
+
+      return TRUE;
    }
 
 end

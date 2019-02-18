@@ -1,0 +1,136 @@
+// Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+// All rights reserved.
+//
+// This software is distributed under a license that is described in
+// the LICENSE file that accompanies it.
+//
+// Meridian is a registered trademark.
+
+
+////////////////////////////////////////////////////////////////////////////////
+ThornedCirclet is Helmet
+
+constants:
+
+   include blakston.khd
+
+resources:
+
+   include thorncirc.lkod
+
+   thornedcirclet_name_rsc = "thorned circlet"
+   thornedcirclet_icon_rsc = thocircl.bgf
+   thornedcirclet_desc_rsc = \
+      "Thick brown thorns and spines from an unknown plant have been fused "
+      "and tied into a wreath.  Difficult to handle, this prickly circlet "
+      "looks like it would be painful to put against your brow.  It's said the "
+      "pain of wearing one can enhance one's aptitude as a warrior.  As your "
+      "hands are already covered in blood just from holding it, you can see why."
+
+   thornedcircle_overlay_rsc = thocirclov.bgf
+
+classvars:
+
+   vrName = thornedcirclet_name_rsc
+   vrIcon = thornedcirclet_icon_rsc
+   vrDesc = thornedcirclet_desc_rsc
+
+   viHits_init_min = 355
+   viHits_init_max = 400
+
+   viValue_average = 350
+   viWeight = 20
+   viBulk = 15
+
+   viDamage_min = 4
+   viDamage_max = 6
+
+   viUse_type = ITEM_USE_HEAD
+   viUse_amount = 1
+
+   viGround_group = 1
+   viInventory_group = 2
+
+   viDefense_base = 1
+
+   viLayer = 1
+
+properties:
+
+   piMana_change = 0
+   piHealth_change = 0
+
+messages:
+
+   NewUsed()
+   {
+      local iManaMod;
+
+      iManaMod = bound(Send(poOwner,@GetMaxMana)/7,5,10);
+      piMana_change = Send(poOwner,@NewMaxMana,#amount=-iManaMod);
+      piHealth_change = Send(poOwner,@GainMaxHealth,#amount=-piMana_change);
+      Send(self,@HurtOwner);
+
+      propagate;
+   }
+
+   GetHealthChange()
+   {
+      return piHealth_change;
+   }
+
+   GetManaChange()
+   {
+      return piMana_change;
+   }
+
+   NewUnused()
+   {
+      Send(self,@HurtOwner);
+      Send(poOwner,@NewMaxMana,#amount=-piMana_change);
+      Send(poOwner,@GainMaxHealth,#amount=-piHealth_change);
+
+      piMana_change = 0;
+      piHealth_change = 0;
+
+      propagate;
+   }
+
+   // these 3 called by player, for normal 3rd-person overlays on user.
+
+   GetOverlay(animation = $)
+   {
+      return thornedcircle_overlay_rsc;
+   }
+   
+   AdjustsMaxMana()
+   {
+      return TRUE;
+   }
+
+   AdjustsMaxHealth()
+   {
+      return TRUE;
+   }
+
+   GetHeatDamage()
+   {
+      return 1;
+   }
+   
+   HurtOwner()
+   {
+      //send(poOwner,@MsgSendUser,#message_rsc = thornedcirclet_damage_rsc);
+      if Send(poOwner,@AssessDamage,#what=self,#damage=Random(viDamage_min, viDamage_max),
+	           #report=FALSE) = $
+      {
+         // we killed someone off... heh heh heh
+         Send(Send(poOwner,@GetOwner),@SomethingKilled,#what=self,#victim=poOwner);
+         Send(poOwner,@Killed,#what=self);
+      }
+      
+      return;
+   }
+
+end
+////////////////////////////////////////////////////////////////////////////////

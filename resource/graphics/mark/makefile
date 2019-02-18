@@ -7,7 +7,7 @@ SOURCEDIR = .
 OUTDIR = $(CLIENTRUNDIR)\resource
 OUTDIRSUB = ..\$(OUTDIR)
 
-DIRS = elements beetleadd mutantranunculus \
+DIRS = elements beetleadd mutantranunculus thornedcirclet \
 
 all:
    @-for %i in (*.bgf) do @$(CP) %i $(OUTDIR) >nul

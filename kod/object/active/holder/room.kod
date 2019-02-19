@@ -1301,6 +1301,14 @@ messages:
          Send(self,@ChangeSectorFlag,#id=First(i),#depth=Nth(i,2));
       }
 
+      // Add in any changed sectors with speed 0.
+      // Handles stuff like Duke's feast hall door.
+      foreach i in plSector_changes
+      {
+         Send(self,@SetSector,#sector=First(i),#animation=Nth(i,2),
+               #height=Nth(i,3),#speed=0);
+      }
+
       return;
    }
 
@@ -5660,6 +5668,8 @@ messages:
             iSpawnLoc = Send(self,@FindFreeGenerator);
             if NOT iSpawnLoc
             {
+               Send(oMonster,@Delete);
+
                return FALSE;
             }
 

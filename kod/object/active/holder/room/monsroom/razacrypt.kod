@@ -326,9 +326,9 @@ messages:
 
    NewHold(what = $, new_row = $, new_col = $)
    {
-      if IsClass(what, &MummyNoTreasure)
+      if IsClass(what,&MummyNoTreasure)
       {
-         piPit_Monsters = piPit_Monsters + 1;
+         ++piPit_Monsters;
       }
 
       propagate;
@@ -336,23 +336,17 @@ messages:
 
    LeaveHold(what = $)
    {
-      if IsClass(what, &MummyNoTreasure)
+      if IsClass(what,&MummyNoTreasure)
       {
-         piPit_Monsters = piPit_Monsters - 1;
+         --piPit_Monsters;
       }
-
-      if what = poLever1
+      else if what = poLever1
       {
          poLever1 = $;
-
-         propagate;
       }
-
-      if what = poLever2
+      else if what = poLever2
       {
          poLever2 = $;
-
-         propagate;
       }
 
       propagate;
@@ -407,8 +401,7 @@ messages:
               #height=128,#speed=16);
          ptDoor = CreateTimer(self,@SlamTimer,SLAM_TIME);
       }
-
-      if iSwitched = 2
+      else if iSwitched = 2
       {
          Send(self,@SetSector,#sector=SECTOR_DOOR,#animation=ANIMATE_CEILING_LIFT,
               #height=172,#speed=16);
@@ -455,8 +448,13 @@ messages:
       return;
    }
 
-   FightTimer()
+   FightTimer(timer = $)
    {
+      if (timer = $
+         OR timer <> ptDoor)
+      {
+         DeleteTimer(ptDoor);
+      }
       ptDoor = $;
 
       if Send(self,@CountInFinal,#count=COUNT_PLAYERS) = 0
@@ -616,6 +614,12 @@ messages:
                Send(each_obj,@Delete);
             }
          }
+      }
+
+      // Don't spawn if nobody here.
+      if (NOT pbUser_in_room)
+      {
+         return;
       }
 
       oMonster = Create(&Mummy,#bEvent=TRUE);

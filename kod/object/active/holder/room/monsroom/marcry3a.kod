@@ -206,6 +206,9 @@ classvars:
 
    viTerrain_type = TERRAIN_NECROPOLIS | TERRAIN_CAVES
 
+   // Fill the room up, end-game map.
+   vbScaleSpawnRateWithPlayers = FALSE
+
 properties:
 
    prRoom = room_mar_crypt3a
@@ -257,8 +260,9 @@ messages:
 
    SetMonsterGenPoints()
    {
-      plGenerators = [ [17, 5], [17, 19], [21, 16],[24, 9],
-                       [13, 17], [24, 28],[27, 31]
+      plGenerators = [ [17, 5], [17, 19], [19, 21], [22,  7], [21, 16],
+                       [24, 9], [13, 17], [15, 25], [22, 30], [24, 28],
+                       [27, 31]
                      ];
 
       return;
@@ -607,9 +611,9 @@ messages:
 
    CountTrap(trap=$,what=$)
    {
-      local i, each_obj, lTrapList;
+      local i, each_obj, iCount;
 
-      lTrapList = $;
+      iCount = 0;
 
       foreach i in Send(self,@GetHolderActive)
       {
@@ -624,21 +628,21 @@ messages:
                {
                   if Send(self,@InTrapAreaOne,#what=each_obj)
                   {
-                     lTrapList = Cons(each_obj,lTrapList);
+                     ++iCount;
                   }
                }
                else if (trap = 2)
                {
                   if Send(self,@InTrapAreaTwo,#what=each_obj)
                   {
-                     lTrapList = Cons(each_obj,lTrapList);
+                     ++iCount;
                   }
                }
                else if (trap = 3)
                {
                   if Send(self,@InTrapAreaThree,#what=each_obj)
                   {
-                     lTrapList = Cons(each_obj,lTrapList);
+                     ++iCount;
                   }
                }
             }
@@ -653,28 +657,28 @@ messages:
                {
                   if Send(self,@InTrapAreaOne,#what=each_obj)
                   {
-                     lTrapList = Cons(each_obj,lTrapList);
+                     ++iCount;
                   }
                }
                else if (trap = 2)
                {
                   if Send(self,@InTrapAreaTwo,#what=each_obj)
                   {
-                     lTrapList = Cons(each_obj,lTrapList);
+                     ++iCount;
                   }
                }
                else if (trap = 3)
                {
                   if Send(self,@InTrapAreaThree,#what=each_obj)
                   {
-                     lTrapList = Cons(each_obj,lTrapList);
+                     ++iCount;
                   }
                }
             }
          }
       }
 
-      return Length(lTrapList);
+      return iCount;
    }
 
 

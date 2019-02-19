@@ -37,10 +37,15 @@ classvars:
    viAmmo_type = AMMO_ARROW
 
    viGround_group = 2
-   viInventory_group = 1   
+   viInventory_group = 1
 
    viMinDamage = 1
    viMaxDamage = 5
+
+   // Projectile lighting information (none normally).
+   viProjectileLightFlags = LIGHT_FLAG_NONE
+   viProjectileLightIntensity = 0
+   viProjectileLightColor = 0
 
 properties:
 
@@ -54,18 +59,14 @@ messages:
 
    ReqUseSomething(what = $)
    {
-      if IsClass(what, &Ammo)
+      if IsClass(what,&Ammo)
       {
-         if Send(poOwner,@TryUnuseItem,#what=self)
+         if NOT Send(poOwner,@TryUnuseItem,#what=self)
          {
-            propagate;
-         }
-         else
-         {
-             return FALSE;
+            return FALSE;
          }
       }
-      
+
       propagate;
    }
 
@@ -88,8 +89,17 @@ messages:
 
    GetProjectileLightFlags()
    {
-      // No lighting information.
-      return LIGHT_FLAG_NONE;
+      return viProjectileLightFlags;
+   }
+
+   GetProjectileLightIntensity()
+   {
+      return viProjectileLightIntensity;
+   }
+
+   GetProjectileLightColor()
+   {
+      return viProjectileLightColor;
    }
 
    GetDamage()
@@ -111,12 +121,12 @@ messages:
    {
       return viMaxDamage;
    }
-   
+
    GetMinSpecialDamage()
    {
       return 0;
    }
-   
+
    GetMaxSpecialDamage()
    {
       return 0;
@@ -146,7 +156,7 @@ messages:
       {
          piAttack_type = piAttack_type & ~flag;
       }
-      
+
       return;
    }
 
@@ -165,7 +175,7 @@ messages:
       {
          piAttack_spell = piAttack_spell & ~flag;
       }
-      
+
       return;
    }
 
@@ -173,7 +183,6 @@ messages:
    {
       return  (piAttack_spell & flag);
    }
-
 
 end
 ////////////////////////////////////////////////////////////////////////////////

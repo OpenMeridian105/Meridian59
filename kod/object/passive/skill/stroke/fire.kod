@@ -29,8 +29,6 @@ resources:
    fire_wrong_ammo = "You do not have the proper ammunition equipped to use with %s%s."
 
    fire_new_ammo = "You reach for your %s, and nock one back for a shot."
-   fire_new_throw_many = "You launch one of your %s with all your might."
-   fire_new_throw_one = "You launch your %s with all your might."
    fire_skill_intro = "Weaponcraft Lv. 4: Key to mastering any type of missile weapon."
    fire_no_ammo = "You have no ammunition for this weapon ready!"
 
@@ -64,22 +62,10 @@ messages:
 
    // General combat messages:
 
-   FindDamage(weapon_used = $)
-   {
-      if (weapon_used <> $
-         AND IsClass(weapon_used,&Snowball)
-         AND NOT Send(weapon_used,@CanDoDamage))
-      {
-         return 0;
-      }
-
-      propagate;
-   }
-
    // Finds ammo and uses it if not used.
    FindLikelyAmmo(who=$,report=FALSE)
    {
-      local oWeapon, oLikelyAmmo, oAmmo, cAmmoType, iAmmoValue, i;
+      local oWeapon, oLikelyAmmo, iAmmoType, iAmmoValue, i;
 
       oWeapon = Send(who,@LookupPlayerWeapon);
       if oWeapon = $
@@ -92,8 +78,7 @@ messages:
          return $;
       }
 
-      if NOT (IsClass(oWeapon,&RangedWeapon)
-         OR IsClass(oWeapon,&ThrownWeapon))
+      if (NOT IsClass(oWeapon,&RangedWeapon))
       {
          if report
          {
@@ -103,15 +88,7 @@ messages:
          return $;
       }
 
-      cAmmoType = Send(oWeapon,@GetAmmoType);
-
-      // Thrown weapons.
-      if (cAmmoType = AMMO_WEAPON)
-      {
-         // Weapon itself is the ammo.
-         // Return it here.
-         return oWeapon;
-      }
+      iAmmoType = Send(oWeapon,@GetAmmoType);
 
       foreach i in Send(who,@GetPlayerUsing)
       {
@@ -131,7 +108,7 @@ messages:
          foreach i in Send(who,@GetHolderPassive)
          {
             if (Send(i,@GetItemUseType) = ITEM_USE_QUIVER)
-               AND (Send(i,@GetAmmoType) = cAmmoType)
+               AND (Send(i,@GetAmmoType) = iAmmoType)
                AND ((Send(i,@GetValue)/Send(i,@GetNumber)) < iAmmoValue)
             {
                oLikelyAmmo = i;
@@ -155,15 +132,7 @@ messages:
 
    CanPayCosts(who=$,oTarget=$)
    {
-      local oAmmo;
-
-      oAmmo = Send(self,@FindLikelyAmmo,#who=who,#report=TRUE);
-      if oAmmo <> $
-      {
-         return TRUE;
-      }
-
-      return FALSE;
+      return Send(self,@FindLikelyAmmo,#who=who,#report=TRUE) <> $;
    }
 
    GetRequisiteStat(who=$)
@@ -180,32 +149,17 @@ messages:
       if oAmmo = $
       {
          Send(who,@MsgSendUser,#message_rsc=fire_no_ammo);
+
          return;
       }
 
-      if (IsClass(oAmmo,&ThrownWeapon))
-      {
-         if (Send(oAmmo,@GetNumber) > 1)
-         {
-            Send(who,@MsgSendUser,#message_rsc=fire_new_throw_many,
-                  #parm1=Send(oAmmo,@GetName));
-         }
-         else
-         {
-            Send(who,@MsgSendUser,#message_rsc=fire_new_throw_one,
-                  #parm1=Send(oAmmo,@GetName));
-         }
-      }
-      else
-      {
-         Send(who,@MsgSendUser,#message_rsc=fire_new_ammo,
-               #parm1=Send(oAmmo,@GetName));
-      }
+      Send(who,@MsgSendUser,#message_rsc=fire_new_ammo,
+            #parm1=Send(oAmmo,@GetName));
 
-      Send(Send(who,@GetOwner),@SomethingShot,#who=who,
-        #target=Send(who,@GetKillTarget), #projectile=oAmmo);
+      Send(oRoom,@SomethingShot,#who=who,#target=Send(who,@GetKillTarget),
+            #projectile=oAmmo,#flags=PROJ_FLAG_LIGHT_SOURCE);
 
-      if Send(oRoom,@NoReagents)=FALSE
+      if (NOT Send(oRoom,@NoReagents))
       {
          Send(oAmmo,@SubtractNumber,#number=1);
       }

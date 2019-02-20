@@ -21,15 +21,25 @@ resources:
    include berg_grave.lkod
 
    room_berg_grave = berg_grave.roo
-   room_name_berg_grave = "The Crypt of Berg"
+   room_name_berg_grave = "Clandestine Tombs"
 
    berg_grave_music = ksong.ogg
-
-   berg_grave_key_disappears = "Your key disappears into thin air!"
-   berg_grave_locked_door = "The door appears to be firmly locked."
    
    berg_grave_updoor_sound = doorrsup.ogg
    berg_grave_downdoor_sound = doordown.ogg
+   berg_grave_no_statues_sound = lich_awr.ogg
+
+   berg_grave_voice_enter = \
+      "~kAn eerie voice echoes, \"~I...the life of the dead is placed in the "
+      "memory of the living...~k\""
+   berg_grave_voice_door_locked = \
+      "~kAn eerie voice echoes, \"~I...I always felt it was unpleasant to be "
+      "locked out; but it might be worse, perhaps, to be locked in..."
+   berg_grave_voice_door_unlocked = \
+      "~kAn eerie voice echoes, \"~I...there's something about the shadows... "
+      "...what lurks in them depends a lot on who is peering into them..."
+   berg_grave_voice_no_statues = \
+      "~kAn eerie voice echoes, \"~I~...they will discard you, too..."
 
 classvars:
 
@@ -51,8 +61,10 @@ properties:
    prMusic = berg_grave_music
    
    piBaseLight = LIGHT_DARK
+   
+   piOutside_factor = OUTDOORS_NONE
 
-   piInit_count_min = 3
+   piInit_count_min = 4
    piInit_count_max = 6
 
    piMonster_count_max = 10
@@ -76,20 +88,20 @@ messages:
    
    Constructed()
    {
-      plMonsters = [ [&TuskedSkeleton, 100] ];
+      plMonsters = [ [&LostSoul, 100] ];
 
       // [row, col, finerow, finecol, angle]
-      plStatueLocations = [ [9, 15, 28, 0, ANGLE_NORTH],
-                            [9, 22, 28, 32, ANGLE_NORTH],
+      plStatueLocations = [ [ 9, 15, 28,  0, ANGLE_NORTH],
+                            [ 9, 22, 28, 32, ANGLE_NORTH],
                             [14, 10, 22, 12, ANGLE_NORTH],
                             [14, 16, 54, 12, ANGLE_NORTH],
                             [14, 18, 55, 56, ANGLE_NORTH],
                             [14, 21, 55, 28, ANGLE_NORTH],
-                            [14, 33, 0, 44, ANGLE_WEST],
-                            [8, 30, 40, 28, ANGLE_NORTH],
-                            [4, 30, 24, 28, ANGLE_SOUTH],
-                            [6, 28, 32, 36, ANGLE_EAST],
-                            [6, 32, 32, 24, ANGLE_WEST]
+                            [14, 33,  0, 44, ANGLE_WEST],
+                            [ 8, 30, 40, 28, ANGLE_NORTH],
+                            [ 4, 30, 24, 28, ANGLE_SOUTH],
+                            [ 6, 28, 32, 36, ANGLE_EAST],
+                            [ 6, 32, 32, 24, ANGLE_WEST]
                           ];
 
       propagate;
@@ -97,12 +109,12 @@ messages:
    
    SetMonsterGenPoints()
    {
-      plGenerators = [ [5, 15], [8, 16], [6, 19],
-                       [8, 21], [8, 23], [13, 16],
+      plGenerators = [ [ 5, 15], [ 8, 16], [ 6, 19],
+                       [ 8, 21], [ 8, 23], [13, 16],
                        [15, 20], [14, 22], [13, 27],
                        [15, 31], [13, 33], [10, 28],
-                       [8, 32], [5, 27], [2, 29],
-                       [3, 33], [7, 35]
+                       [ 8, 32], [ 5, 27], [ 2, 29],
+                       [ 3, 33], [ 7, 35]
                      ];
 
       return;
@@ -160,7 +172,6 @@ messages:
       Send(self,@NewHold,#what=Create(&Brazier),
             #new_row=11,#new_col=33,#fine_row=8,#fine_col=48,#new_angle=ANGLE_EAST);
 
-
       Send(self,@NewHold,#what=Create(&DynamicLight,#iColor=LIGHT_FIRE,#iIntensity=20),
          #new_row=6,#new_col=16,#fine_row=36,#fine_col=28);
       Send(self,@NewHold,#what=Create(&DynamicLight,#iColor=LIGHT_FIRE,#iIntensity=20),
@@ -195,53 +206,49 @@ messages:
       propagate;
    }
    
-   SomethingTryGo(what=$,row=$,col=$)
+   SomethingTryGo(what = $,row = $,col = $)
    {
-      local i, lPassive, each_obj;
-      
-      if isClass(what,&User) AND NOT pbDoorOpen
+      if (row = 9 AND (col=7 OR col=8))
+        AND pbDoorOpen = FALSE
       {
-         if row = 9 AND (col=7 OR col=8)
-         {
-            lPassive = send(what,@GetHolderPassive);
-            foreach i in lPassive
-            {
-               each_obj = send(what,@HolderExtractObject,#data=i);
-               if isClass(each_obj,&Key)
-               {
-                  send(each_obj,@Delete);
-                  send(what,@MsgSendUser,#message_rsc=berg_grave_key_disappears);
-                  pbDoorOpen = TRUE;
-                  send(self,@OpenDoor);
-
-                  return TRUE ;
-               }
-            }
-
-            send(what,@MsgSendUser,#message_rsc=berg_grave_locked_door);
-
-            return TRUE;
-         }
+         Send(what,@MsgSendUser,#message_rsc=berg_grave_voice_door_locked);
+         return TRUE;
       }
-   propagate;
+
+      propagate;
+   }
+   
+   SpellCast(who = $,oSpell = $,lItems = $,bItemCast = FALSE)
+   {
+      if Send(oSpell,@GetSpellNum) = SID_MELANCHOLY AND NOT pbDoorOpen
+      {
+         Send(self,@OpenDoor);
+      }
+
+      propagate;
    }
 
    OpenDoor()
    {
+      Send(self,@SomethingWaveRoom,#wave_rsc=berg_grave_updoor_sound);
+      
+      Send(self,@SomeoneSaid,#type=SAY_MESSAGE,#string=berg_grave_voice_door_unlocked,#what=self);
+   
       // Door
-      send(self,@SetSector,#sector=SECTOR_DOOR,#animation=ANIMATE_FLOOR_LIFT,
-           #height=208,#speed=150);
-      send(self,@SomethingWaveRoom,#wave_rsc=berg_grave_updoor_sound);
+      Send(self,@SetSector,#sector=SECTOR_DOOR,#animation=ANIMATE_FLOOR_LIFT,
+           #height=208,#speed=30);
 
+      pbDoorOpen = TRUE;
       return;
    }
    
    CloseDoor()
    {
       // Door
-      send(self,@SetSector,#sector=SECTOR_DOOR,#animation=ANIMATE_FLOOR_LIFT,
+      Send(self,@SetSector,#sector=SECTOR_DOOR,#animation=ANIMATE_FLOOR_LIFT,
            #height=272,#speed=150);
-      
+           
+      pbDoorOpen = FALSE;
       return;
    }
    
@@ -254,8 +261,7 @@ messages:
    FirstUserEntered(what = $)
    {
       Send(self,@PlaceStatues);
-      pbDoorOpen = FALSE;
-      send(self,@CloseDoor);
+      Send(self,@CloseDoor);
 
       propagate;
    }
@@ -265,9 +271,8 @@ messages:
       if IsClass(victim,&LivingStatue)
          AND Send(self,@FindHoldingActive,#class=&LivingStatue,#sequence=2) = $
       {
-         pbDoorOpen = FALSE;
-         send(self,@SomethingWaveRoom,#wave_rsc=berg_grave_downdoor_sound);
-         send(self,@CloseDoor);
+         Send(self,@CloseDoor);
+         Send(self,@SpawnVitkhul);
       }
 
       propagate;
@@ -288,14 +293,27 @@ messages:
          oStatue = Create(&LivingStatue);
 
          Send(self,@NewHold,#what=oStatue,
-              #new_row=Nth(lLocation,1),#new_col=Nth(lLocation,2),#fine_row=Nth(lLocation,3),#fine_col=Nth(lLocation,4));
+            #new_row=Nth(lLocation,1),#new_col=Nth(lLocation,2),
+            #fine_row=Nth(lLocation,3),#fine_col=Nth(lLocation,4));
          Send(self,@SomethingTurned,#what=oStatue,#new_angle=Nth(lLocation,5));
       }
+
+      Send(self,@SomeoneSaid,#type=SAY_MESSAGE,#string=berg_grave_voice_enter,#what=self);
+      plMonsters = [ [&LostSoul, 100] ];
 
       return;
    }
    
-   
+   SpawnVitkhul()
+   {
+      // start spawning Vitkhul
+      plMonsters = [ [&Vitkhul, 30], [&LostSoul, 70] ];
+
+      Send(self,@SomethingWaveRoom,#wave_rsc=berg_grave_no_statues_sound);
+      Send(self,@SomeoneSaid,#type=SAY_MESSAGE,#string=berg_grave_voice_no_statues,#what=self);
+      
+      return TRUE;
+   }
    
 end
 ////////////////////////////////////////////////////////////////////////////////

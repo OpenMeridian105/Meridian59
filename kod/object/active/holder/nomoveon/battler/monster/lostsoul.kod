@@ -1,0 +1,125 @@
+// Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+// All rights reserved.
+//
+// This software is distributed under a license that is described in
+// the LICENSE file that accompanies it.
+//
+// Meridian is a registered trademark.
+
+
+////////////////////////////////////////////////////////////////////////////////
+LostSoul is Monster
+
+constants:
+
+   include blakston.khd
+
+resources:
+
+   include lostsoul.lkod
+
+   lostsoul_koc_name_rsc = "ixleoezleoc"
+   lostsoul_name_rsc = "poltergeist"
+   lostsoul_icon_rsc = zombie.bgf
+   lostsoul_desc_rsc = \
+      "This angry spirit seems to be unable to leave the realm of the "
+      "living.  It may have some unfinished tasks to complete before it "
+      "crosses over, such as personally seeing to your demise.  "
+   lostsoul_dead_icon_rsc = zombieX.bgf
+   lostsoul_dead_name_rsc = "dead poltergeist"
+
+   lostsoul_sound_hit = lostsoul_atk.ogg
+   lostsoul_sound_miss = lostsoul_atk.ogg
+   lostsoul_sound_aware = lostsoul_awr.ogg
+   lostsoul_sound_death = lostsoul_dth.ogg
+
+classvars:
+
+   vrName = lostsoul_name_rsc
+   vrIcon = lostsoul_icon_rsc
+   vrDesc = lostsoul_desc_rsc
+   vrDead_icon = lostsoul_dead_icon_rsc
+   vrDead_name = lostsoul_dead_name_rsc
+
+   viSpeed = SPEED_SLIGHTLY_SLOW
+   viAttack_type = ATCK_WEAP_SLASH
+   viDefault_behavior = AI_FIGHT_KARMA_AGGRESSIVE | AI_MOVE_FLEE_FRIGHTENERS
+
+   viLevel = 110
+   viDifficulty = 5
+   viVisionDistance = 10
+   viKarma = -55
+   viTreasure_type = TID_LOSTSOUL
+   vbIsUndead = TRUE
+   
+   vrSound_hit = lostsoul_sound_hit
+   vrSound_miss = lostsoul_sound_miss
+   vrSound_aware = lostsoul_sound_aware
+   vrSound_death = lostsoul_sound_death
+   
+   viDead_drawfx = DRAWFX_BLACK
+   
+   // Very used to dark places.
+   viNightVision = 150
+
+properties:
+
+   piAnimation = ANIM_NONE
+   piDrawfx = DRAWFX_BLACK
+   
+   piReputationGroup = REP_UNDEAD
+
+messages:
+
+   Constructed()
+   {
+      plResistances = [ [-ATCK_SPELL_UNHOLY, 60 ],
+                        [-ATCK_SPELL_HOLY, -35 ] ];
+
+      plReputationEnemies = [REP_FAROL];
+
+      propagate;
+   }
+
+   SendLookAnimation()
+   {
+      AddPacket(1,ANIMATE_CYCLE, 4,200,2,2,2,3);
+
+      return;
+   }
+
+   SendMoveAnimation()
+   {
+      // Cycle through "walking" bitmaps (groups 2-5) at 50 milliseconds per frame
+      AddPacket(1,ANIMATE_CYCLE,4,200,2,2,2,3);
+
+      return;
+   }
+
+   SendAnimation()
+   {
+      if piAnimation = ANIM_ATTACK
+      {
+         AddPacket(1,ANIMATE_ONCE,4,200,2,2,2,3,2,1);
+
+         return;
+      }
+
+      // if no body animation
+
+      propagate;
+   }
+   
+
+   IsAlliedClass(what=$)
+   {
+      if Send(what,@IsUndead)
+      {
+         return TRUE;
+      }
+
+      propagate;
+   }
+
+end
+////////////////////////////////////////////////////////////////////////////////

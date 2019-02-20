@@ -1,0 +1,252 @@
+// Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+// All rights reserved.
+//
+// This software is distributed under a license that is described in
+// the LICENSE file that accompanies it.
+//
+// Meridian is a registered trademark.
+
+
+////////////////////////////////////////////////////////////////////////////////
+Vitkhul is Monster
+
+constants:
+
+   include blakston.khd
+
+   ANIM_WRATH = 2
+   ANIM_CAST = 3
+
+   FRAME_STAND = 1
+   FRAME_WALK_START = 2
+   FRAME_WALK_END = 6
+   FRAME_ATTACK_START = 7
+   FRAME_ATTACK_END = 11
+   FRAME_CASTARMS_START = 12
+   FRAME_CASTARMS_END = 16
+   FRAME_CASTSTAFF_START = 17
+   FRAME_CASTSTAFF_END = 19
+
+resources:
+
+   include vitkhul.lkod
+
+   Vitkhul_koc_name_rsc = "vitkhul"
+   Vitkhul_name_rsc = "vitkhul"
+   Vitkhul_icon_rsc = vitkhul.bgf
+   Vitkhul_desc_rsc = \
+      "It is said that the Vitkhul take great joy in the torture and gradual "
+      "destruction of their victims' minds, using dread and paranoia to drive "
+      "them to the edge of insanity, then pushing them over and drinking in their "
+      "unmitigated terror in an ecstatic rush of depraved exhilaration.  "
+      "Like two icy flames, the vitkhul's unblinking eyes are fixated on you, its "
+      "dreadful stare betraying its glacial malice and cruel thirst for suffering.  "
+      "Little by little, you feel your composure slipping away as dreadful visions "
+      "of your imminent, gruesome death begin to seep into your mind.  "
+
+   Vitkhul_dead_icon_rsc = vitkhulX.bgf
+   Vitkhul_dead_name_rsc = "dead vitkhul"
+
+   Vitkhul_sound_hit = lich_atk.ogg
+   Vitkhul_sound_miss = necro01.ogg
+   Vitkhul_sound_aware = lich_awr.ogg
+   Vitkhul_sound_death = lich_dth.ogg
+   
+   vitkhul_spit = spblast.bgf
+
+classvars:
+
+   vrKocName = Vitkhul_koc_name_rsc
+   vrName = Vitkhul_name_rsc
+   vrIcon = Vitkhul_icon_rsc
+   vrDesc = Vitkhul_desc_rsc
+   vrDead_icon = Vitkhul_dead_icon_rsc
+   vrDead_name = Vitkhul_dead_name_rsc
+
+   viTreasure_type = TID_VITKHUL
+
+   viSpeed = SPEED_VERY_FAST
+   viAttack_type = ATCK_WEAP_THRUST
+   viAttack_spell = ATCK_SPELL_UNHOLY
+   viLevel = 140
+   viDifficulty = 8
+   viVisionDistance = 100
+   viFireRange = 320
+   vbSpin = TRUE
+   viKarma = -80
+   viDefault_behavior = AI_FIGHT_HYPERAGGRESSIVE | AI_FIGHT_THROUGH_WALLS
+   vbIsUndead = TRUE
+   viMovePriority = 300
+   viPowerLevel = 200
+   viGender = GENDER_NEUTER
+
+   vrSound_hit = Vitkhul_sound_hit
+   vrSound_miss = Vitkhul_sound_miss
+   vrSound_aware = Vitkhul_sound_aware
+   vrSound_death = Vitkhul_sound_death
+   
+   viDead_drawfx = DRAWFX_TRANSLUCENT_75
+   viLight_Penalty = 40
+
+   // Very, very used to dark places.
+   viNightVision = 255
+
+properties:
+
+   piAnimation = ANIM_NONE
+   piDrawfx = DRAWFX_TRANSLUCENT_75
+   
+messages:
+
+   Constructed()
+   {
+      plResistances = [ [-ATCK_SPELL_ALL, 60],
+                        [ATCK_WEAP_ALL, 60],
+                        [ATCK_WEAP_NERUDITE, -20 ],
+                        [ATCK_WEAP_BLUDGEON, -20 ],
+                        [ATCK_WEAP_SILVER, -60 ],
+                        [-ATCK_SPELL_COLD, 90],
+                        [-ATCK_SPELL_UNHOLY, 90 ],
+                        [-ATCK_SPELL_ACID, 30 ],
+                        [-ATCK_SPELL_SHOCK, -20],
+                        [-ATCK_SPELL_FIRE, -20 ],
+                        [-ATCK_SPELL_HOLY, -40 ]
+                      ];
+
+      plActions =  [ [SID_SPIRIT_BLAST], [SID_HOLD],
+                     [SID_SLOW,500,0,MAX_KOD_INT,0,1200,99,COMBAT_ACTION_HARM],
+                     [SID_CURSE_WEAPON,200,0,16384,0,600,99,COMBAT_ACTION_HARM],
+                     [SID_DARKNESS,0,0,MAX_KOD_INT,1000,0,99,COMBAT_ACTION_NEUTRAL] ];
+
+      propagate;
+   }
+
+   DoMeleeAnimation(what = $)
+   {
+      Send(self,@DoSlash);
+
+      return;
+   }
+
+   DoSlash()
+   {
+      piAnimation = ANIM_ATTACK;
+      Send(poOwner,@SomethingChanged,#what=self);
+      piAnimation = ANIM_NONE;
+
+      return;
+   }
+
+   SendLookAnimation()
+   {
+      AddPacket(1,ANIMATE_CYCLE,4,125,2,FRAME_WALK_START,2,FRAME_WALK_END);
+
+      return;
+   }
+
+   SendMoveAnimation()
+   {
+      // Cycle through "walking" bitmaps (groups 2-6) at 125 ms per frame
+      AddPacket(1,ANIMATE_CYCLE,4,125,2,FRAME_WALK_START,2,FRAME_WALK_END);
+
+      return;
+   }
+
+   SendAnimation()
+   {
+      if piAnimation = ANIM_ATTACK
+      {
+         AddPacket(1,ANIMATE_ONCE,4,125,2,FRAME_ATTACK_START,2,
+                   FRAME_ATTACK_END,2,FRAME_STAND);
+
+         return;
+      }
+
+      if piAnimation = ANIM_WRATH
+      {
+         AddPacket(1,ANIMATE_ONCE,4,125,2,FRAME_CASTARMS_START,2,
+                   FRAME_CASTARMS_END,2,FRAME_STAND);
+
+         return;
+      }
+
+      if piAnimation = ANIM_CAST
+      {
+         AddPacket(1,ANIMATE_ONCE,4,125,2,FRAME_CASTSTAFF_START,2,
+                   FRAME_CASTSTAFF_END,2,FRAME_STAND);
+
+         return;
+      }
+
+      propagate;
+   }
+
+   MonsterCastAnimation(iSpellNum=$)
+   "If a monster has a special cast animation, call this."
+   {
+      if iSpellNum = SID_SPIRIT_BLAST
+        OR iSpellNum = SID_DARKNESS
+      {
+         piAnimation = ANIM_WRATH;
+      }
+      else
+      {
+         piAnimation = ANIM_CAST;
+      }
+
+      Send(poOwner,@SomethingChanged,#what=self);
+      piAnimation = ANIM_NONE;
+
+      return;
+   }
+
+   IsWizard()
+   {
+      return TRUE;
+   }
+   
+   GetProjectileIcon()
+   {
+      return vitkhul_spit;
+   }
+
+   GetProjectileSpeed()
+   {
+      return 8;
+   }
+
+   NewOwner(what = $)
+   {
+      // new room
+      if what <> $
+      {
+         Send(what,@AddBaseLight,#amount=-viLight_Penalty);
+      }
+
+      // old room
+      if poOwner <> $
+      {
+         Send(poOwner,@AddBaseLight,#amount=viLight_Penalty);
+      }
+
+      propagate;
+   }
+
+   Delete()
+   {
+      // old room
+      if poOwner <> $
+      {
+         Send(poOwner,@AddBaseLight,#amount=viLight_Penalty);
+      }
+
+      propagate;
+   }
+   
+   IsArenaMonster()
+   {
+      return FALSE;
+   }
+
+end
+////////////////////////////////////////////////////////////////////////////////

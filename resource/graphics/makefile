@@ -9,7 +9,7 @@ OUTDIR = $(TOPDIR)\resource\graphics
 .SUFFIXES: .bbg
 
 DIRS = daenks keen mark diggie delerium gar lod arantis morbus tyras taran \
-       drmadcow
+       drmadcow madmonkee
 
 BGFS = \
 	$(OUTDIR)\arrowfir.bgf \

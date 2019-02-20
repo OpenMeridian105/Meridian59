@@ -23,7 +23,7 @@ resources:
 
    bergleaderhall_music = area01.ogg
    wind_sound_bergleaderhall = rs_wind.ogg
-   
+
 classvars:
 
    vrName = room_name_bergleaderhall
@@ -54,8 +54,9 @@ properties:
 
    piGen_Object_Time = 1200000
 
-   ptIllusionResetTimer = $
-   piLastIllusionReplaceTime = $
+   ptTombResetTimer = $
+   piLastTombOpenTime = $
+   pbTombOpen = FALSE
 
 messages:
 
@@ -152,201 +153,219 @@ messages:
 
    Constructed()
    {
-      piLastIllusionReplaceTime = GetTime();
+      piLastTombOpenTime = GetTime();
 
       propagate;
    }
-
-   DispelIllusions(what=$)
+   
+   SpellCast(who = $,oSpell = $,lItems = $,bItemCast = FALSE)
    {
-      Send(self,@SetSector,#sector=50,#animation=ANIMATE_FLOOR_LIFT,
-            #height=312,#speed=15);
+      if Send(oSpell,@GetSpellNum) = SID_MELANCHOLY
+      {
+         Send(self,@LowerTomb);
+      }
+   
+      propagate;
+   }
 
-      Send(self,@SetSector,#sector=51,#animation=ANIMATE_FLOOR_LIFT,
-            #height=304,#speed=15);
+   LowerTomb(what=$)
+   {
+      if NOT pbTombOpen
+      {
+          pbTombOpen = FALSE;
+          Send(self,@SetSector,#sector=50,#animation=ANIMATE_FLOOR_LIFT,
+                #height=312,#speed=15);
 
-      Send(self,@SetSector,#sector=52,#animation=ANIMATE_FLOOR_LIFT,
-            #height=296,#speed=15);
-      Send(self,@SetSector,#sector=53,#animation=ANIMATE_FLOOR_LIFT,
-            #height=296,#speed=15);
-      Send(self,@SetSector,#sector=54,#animation=ANIMATE_FLOOR_LIFT,
-            #height=296,#speed=15);
+          Send(self,@SetSector,#sector=51,#animation=ANIMATE_FLOOR_LIFT,
+                #height=304,#speed=15);
 
-      Send(self,@SetSector,#sector=55,#animation=ANIMATE_FLOOR_LIFT,
-            #height=288,#speed=15);
-      Send(self,@SetSector,#sector=56,#animation=ANIMATE_FLOOR_LIFT,
-            #height=288,#speed=15);
-      Send(self,@SetSector,#sector=57,#animation=ANIMATE_FLOOR_LIFT,
-            #height=288,#speed=15);
+          Send(self,@SetSector,#sector=52,#animation=ANIMATE_FLOOR_LIFT,
+                #height=296,#speed=15);
+          Send(self,@SetSector,#sector=53,#animation=ANIMATE_FLOOR_LIFT,
+                #height=296,#speed=15);
+          Send(self,@SetSector,#sector=54,#animation=ANIMATE_FLOOR_LIFT,
+                #height=296,#speed=15);
 
-      Send(self,@SetSector,#sector=58,#animation=ANIMATE_FLOOR_LIFT,
-            #height=280,#speed=15);
-      Send(self,@SetSector,#sector=59,#animation=ANIMATE_FLOOR_LIFT,
-            #height=280,#speed=15);
-      Send(self,@SetSector,#sector=60,#animation=ANIMATE_FLOOR_LIFT,
-            #height=280,#speed=15);
-      Send(self,@SetSector,#sector=61,#animation=ANIMATE_FLOOR_LIFT,
-            #height=280,#speed=15);
+          Send(self,@SetSector,#sector=55,#animation=ANIMATE_FLOOR_LIFT,
+                #height=288,#speed=15);
+          Send(self,@SetSector,#sector=56,#animation=ANIMATE_FLOOR_LIFT,
+                #height=288,#speed=15);
+          Send(self,@SetSector,#sector=57,#animation=ANIMATE_FLOOR_LIFT,
+                #height=288,#speed=15);
 
-      Send(self,@SetSector,#sector=62,#animation=ANIMATE_FLOOR_LIFT,
-            #height=272,#speed=15);
-      Send(self,@SetSector,#sector=63,#animation=ANIMATE_FLOOR_LIFT,
-            #height=272,#speed=15);
-      Send(self,@SetSector,#sector=64,#animation=ANIMATE_FLOOR_LIFT,
-            #height=272,#speed=15);
-      Send(self,@SetSector,#sector=65,#animation=ANIMATE_FLOOR_LIFT,
-            #height=272,#speed=15);
-      Send(self,@SetSector,#sector=66,#animation=ANIMATE_FLOOR_LIFT,
-            #height=273,#speed=15);
+          Send(self,@SetSector,#sector=58,#animation=ANIMATE_FLOOR_LIFT,
+                #height=280,#speed=15);
+          Send(self,@SetSector,#sector=59,#animation=ANIMATE_FLOOR_LIFT,
+                #height=280,#speed=15);
+          Send(self,@SetSector,#sector=60,#animation=ANIMATE_FLOOR_LIFT,
+                #height=280,#speed=15);
+          Send(self,@SetSector,#sector=61,#animation=ANIMATE_FLOOR_LIFT,
+                #height=280,#speed=15);
 
-      Send(self,@SetSector,#sector=67,#animation=ANIMATE_FLOOR_LIFT,
-            #height=264,#speed=15);
-      Send(self,@SetSector,#sector=68,#animation=ANIMATE_FLOOR_LIFT,
-            #height=264,#speed=15);
-      Send(self,@SetSector,#sector=69,#animation=ANIMATE_FLOOR_LIFT,
-            #height=264,#speed=15);
-      Send(self,@SetSector,#sector=70,#animation=ANIMATE_FLOOR_LIFT,
-            #height=264,#speed=15);
-      Send(self,@SetSector,#sector=71,#animation=ANIMATE_FLOOR_LIFT,
-            #height=265,#speed=15);
+          Send(self,@SetSector,#sector=62,#animation=ANIMATE_FLOOR_LIFT,
+                #height=272,#speed=15);
+          Send(self,@SetSector,#sector=63,#animation=ANIMATE_FLOOR_LIFT,
+                #height=272,#speed=15);
+          Send(self,@SetSector,#sector=64,#animation=ANIMATE_FLOOR_LIFT,
+                #height=272,#speed=15);
+          Send(self,@SetSector,#sector=65,#animation=ANIMATE_FLOOR_LIFT,
+                #height=272,#speed=15);
+          Send(self,@SetSector,#sector=66,#animation=ANIMATE_FLOOR_LIFT,
+                #height=273,#speed=15);
 
-      Send(self,@SetSector,#sector=72,#animation=ANIMATE_FLOOR_LIFT,
-            #height=256,#speed=15);
-      Send(self,@SetSector,#sector=73,#animation=ANIMATE_FLOOR_LIFT,
-            #height=256,#speed=15);
-      Send(self,@SetSector,#sector=74,#animation=ANIMATE_FLOOR_LIFT,
-            #height=256,#speed=15);
-      Send(self,@SetSector,#sector=75,#animation=ANIMATE_FLOOR_LIFT,
-            #height=256,#speed=15);
+          Send(self,@SetSector,#sector=67,#animation=ANIMATE_FLOOR_LIFT,
+                #height=264,#speed=15);
+          Send(self,@SetSector,#sector=68,#animation=ANIMATE_FLOOR_LIFT,
+                #height=264,#speed=15);
+          Send(self,@SetSector,#sector=69,#animation=ANIMATE_FLOOR_LIFT,
+                #height=264,#speed=15);
+          Send(self,@SetSector,#sector=70,#animation=ANIMATE_FLOOR_LIFT,
+                #height=264,#speed=15);
+          Send(self,@SetSector,#sector=71,#animation=ANIMATE_FLOOR_LIFT,
+                #height=265,#speed=15);
 
-      Send(self,@SetSector,#sector=76,#animation=ANIMATE_FLOOR_LIFT,
-            #height=248,#speed=15);
-      Send(self,@SetSector,#sector=77,#animation=ANIMATE_FLOOR_LIFT,
-            #height=248,#speed=15);
-      Send(self,@SetSector,#sector=78,#animation=ANIMATE_FLOOR_LIFT,
-            #height=248,#speed=15);
-      Send(self,@SetSector,#sector=79,#animation=ANIMATE_FLOOR_LIFT,
-            #height=248,#speed=15);
+          Send(self,@SetSector,#sector=72,#animation=ANIMATE_FLOOR_LIFT,
+                #height=256,#speed=15);
+          Send(self,@SetSector,#sector=73,#animation=ANIMATE_FLOOR_LIFT,
+                #height=256,#speed=15);
+          Send(self,@SetSector,#sector=74,#animation=ANIMATE_FLOOR_LIFT,
+                #height=256,#speed=15);
+          Send(self,@SetSector,#sector=75,#animation=ANIMATE_FLOOR_LIFT,
+                #height=256,#speed=15);
 
-      Send(self,@SetSector,#sector=80,#animation=ANIMATE_FLOOR_LIFT,
-            #height=240,#speed=15);
-      Send(self,@SetSector,#sector=81,#animation=ANIMATE_FLOOR_LIFT,
-            #height=240,#speed=15);
-      Send(self,@SetSector,#sector=82,#animation=ANIMATE_FLOOR_LIFT,
-            #height=240,#speed=15);
-      Send(self,@SetSector,#sector=83,#animation=ANIMATE_FLOOR_LIFT,
-            #height=240,#speed=15);
-      Send(self,@SetSector,#sector=84,#animation=ANIMATE_FLOOR_LIFT,
-            #height=240,#speed=15);
-      Send(self,@SetSector,#sector=85,#animation=ANIMATE_FLOOR_LIFT,
-            #height=240,#speed=15);
+          Send(self,@SetSector,#sector=76,#animation=ANIMATE_FLOOR_LIFT,
+                #height=248,#speed=15);
+          Send(self,@SetSector,#sector=77,#animation=ANIMATE_FLOOR_LIFT,
+                #height=248,#speed=15);
+          Send(self,@SetSector,#sector=78,#animation=ANIMATE_FLOOR_LIFT,
+                #height=248,#speed=15);
+          Send(self,@SetSector,#sector=79,#animation=ANIMATE_FLOOR_LIFT,
+                #height=248,#speed=15);
 
-      ptIllusionResetTimer = CreateTimer(self,@ReplaceIllusions,30000);
+          Send(self,@SetSector,#sector=80,#animation=ANIMATE_FLOOR_LIFT,
+                #height=240,#speed=15);
+          Send(self,@SetSector,#sector=81,#animation=ANIMATE_FLOOR_LIFT,
+                #height=240,#speed=15);
+          Send(self,@SetSector,#sector=82,#animation=ANIMATE_FLOOR_LIFT,
+                #height=240,#speed=15);
+          Send(self,@SetSector,#sector=83,#animation=ANIMATE_FLOOR_LIFT,
+                #height=240,#speed=15);
+          Send(self,@SetSector,#sector=84,#animation=ANIMATE_FLOOR_LIFT,
+                #height=240,#speed=15);
+          Send(self,@SetSector,#sector=85,#animation=ANIMATE_FLOOR_LIFT,
+                #height=240,#speed=15);
+
+          ptTombResetTimer = CreateTimer(self,@RaiseTomb,30000);
+      }
 
       return;
    }
    
-   ReplaceIllusions()
+   RaiseTomb()
    {
-      ptIllusionResetTimer = $;
-      piLastIllusionReplaceTime = GetTime();
+      if pbTombOpen
+      {
+          ptTombResetTimer = $;
+          piLastTombOpenTime = GetTime();
+          pbTombOpen = FALSE;
 
-      Send(self,@SetSector,#sector=50,#animation=ANIMATE_FLOOR_LIFT,
-            #height=320,#speed=15);
+          Send(self,@SetSector,#sector=50,#animation=ANIMATE_FLOOR_LIFT,
+                #height=320,#speed=15);
 
-      Send(self,@SetSector,#sector=51,#animation=ANIMATE_FLOOR_LIFT,
-            #height=328,#speed=15);
+          Send(self,@SetSector,#sector=51,#animation=ANIMATE_FLOOR_LIFT,
+                #height=328,#speed=15);
 
-      Send(self,@SetSector,#sector=52,#animation=ANIMATE_FLOOR_LIFT,
-            #height=328,#speed=15);
-      Send(self,@SetSector,#sector=53,#animation=ANIMATE_FLOOR_LIFT,
-            #height=330,#speed=15);
-      Send(self,@SetSector,#sector=54,#animation=ANIMATE_FLOOR_LIFT,
-            #height=336,#speed=15);
+          Send(self,@SetSector,#sector=52,#animation=ANIMATE_FLOOR_LIFT,
+                #height=328,#speed=15);
+          Send(self,@SetSector,#sector=53,#animation=ANIMATE_FLOOR_LIFT,
+                #height=330,#speed=15);
+          Send(self,@SetSector,#sector=54,#animation=ANIMATE_FLOOR_LIFT,
+                #height=336,#speed=15);
 
-      Send(self,@SetSector,#sector=55,#animation=ANIMATE_FLOOR_LIFT,
-            #height=328,#speed=15);
-      Send(self,@SetSector,#sector=56,#animation=ANIMATE_FLOOR_LIFT,
-            #height=330,#speed=15);
-      Send(self,@SetSector,#sector=57,#animation=ANIMATE_FLOOR_LIFT,
-            #height=336,#speed=15);
+          Send(self,@SetSector,#sector=55,#animation=ANIMATE_FLOOR_LIFT,
+                #height=328,#speed=15);
+          Send(self,@SetSector,#sector=56,#animation=ANIMATE_FLOOR_LIFT,
+                #height=330,#speed=15);
+          Send(self,@SetSector,#sector=57,#animation=ANIMATE_FLOOR_LIFT,
+                #height=336,#speed=15);
 
-      Send(self,@SetSector,#sector=58,#animation=ANIMATE_FLOOR_LIFT,
-            #height=328,#speed=15);
-      Send(self,@SetSector,#sector=59,#animation=ANIMATE_FLOOR_LIFT,
-            #height=330,#speed=15);
-      Send(self,@SetSector,#sector=60,#animation=ANIMATE_FLOOR_LIFT,
-            #height=336,#speed=15);
-      Send(self,@SetSector,#sector=61,#animation=ANIMATE_FLOOR_LIFT,
-            #height=344,#speed=15);
+          Send(self,@SetSector,#sector=58,#animation=ANIMATE_FLOOR_LIFT,
+                #height=328,#speed=15);
+          Send(self,@SetSector,#sector=59,#animation=ANIMATE_FLOOR_LIFT,
+                #height=330,#speed=15);
+          Send(self,@SetSector,#sector=60,#animation=ANIMATE_FLOOR_LIFT,
+                #height=336,#speed=15);
+          Send(self,@SetSector,#sector=61,#animation=ANIMATE_FLOOR_LIFT,
+                #height=344,#speed=15);
 
-      Send(self,@SetSector,#sector=62,#animation=ANIMATE_FLOOR_LIFT,
-            #height=328,#speed=15);
-      Send(self,@SetSector,#sector=63,#animation=ANIMATE_FLOOR_LIFT,
-            #height=330,#speed=15);
-      Send(self,@SetSector,#sector=64,#animation=ANIMATE_FLOOR_LIFT,
-            #height=336,#speed=15);
-      Send(self,@SetSector,#sector=65,#animation=ANIMATE_FLOOR_LIFT,
-            #height=344,#speed=15);
-      Send(self,@SetSector,#sector=66,#animation=ANIMATE_FLOOR_LIFT,
-            #height=345,#speed=15);
+          Send(self,@SetSector,#sector=62,#animation=ANIMATE_FLOOR_LIFT,
+                #height=328,#speed=15);
+          Send(self,@SetSector,#sector=63,#animation=ANIMATE_FLOOR_LIFT,
+                #height=330,#speed=15);
+          Send(self,@SetSector,#sector=64,#animation=ANIMATE_FLOOR_LIFT,
+                #height=336,#speed=15);
+          Send(self,@SetSector,#sector=65,#animation=ANIMATE_FLOOR_LIFT,
+                #height=344,#speed=15);
+          Send(self,@SetSector,#sector=66,#animation=ANIMATE_FLOOR_LIFT,
+                #height=345,#speed=15);
 
-      Send(self,@SetSector,#sector=67,#animation=ANIMATE_FLOOR_LIFT,
-            #height=328,#speed=15);
-      Send(self,@SetSector,#sector=68,#animation=ANIMATE_FLOOR_LIFT,
-            #height=330,#speed=15);
-      Send(self,@SetSector,#sector=69,#animation=ANIMATE_FLOOR_LIFT,
-            #height=336,#speed=15);
-      Send(self,@SetSector,#sector=70,#animation=ANIMATE_FLOOR_LIFT,
-            #height=344,#speed=15);
-      Send(self,@SetSector,#sector=71,#animation=ANIMATE_FLOOR_LIFT,
-            #height=345,#speed=15);
+          Send(self,@SetSector,#sector=67,#animation=ANIMATE_FLOOR_LIFT,
+                #height=328,#speed=15);
+          Send(self,@SetSector,#sector=68,#animation=ANIMATE_FLOOR_LIFT,
+                #height=330,#speed=15);
+          Send(self,@SetSector,#sector=69,#animation=ANIMATE_FLOOR_LIFT,
+                #height=336,#speed=15);
+          Send(self,@SetSector,#sector=70,#animation=ANIMATE_FLOOR_LIFT,
+                #height=344,#speed=15);
+          Send(self,@SetSector,#sector=71,#animation=ANIMATE_FLOOR_LIFT,
+                #height=345,#speed=15);
 
-      Send(self,@SetSector,#sector=72,#animation=ANIMATE_FLOOR_LIFT,
-            #height=328,#speed=15);
-      Send(self,@SetSector,#sector=73,#animation=ANIMATE_FLOOR_LIFT,
-            #height=330,#speed=15);
-      Send(self,@SetSector,#sector=74,#animation=ANIMATE_FLOOR_LIFT,
-            #height=336,#speed=15);
-      Send(self,@SetSector,#sector=75,#animation=ANIMATE_FLOOR_LIFT,
-            #height=344,#speed=15);
+          Send(self,@SetSector,#sector=72,#animation=ANIMATE_FLOOR_LIFT,
+                #height=328,#speed=15);
+          Send(self,@SetSector,#sector=73,#animation=ANIMATE_FLOOR_LIFT,
+                #height=330,#speed=15);
+          Send(self,@SetSector,#sector=74,#animation=ANIMATE_FLOOR_LIFT,
+                #height=336,#speed=15);
+          Send(self,@SetSector,#sector=75,#animation=ANIMATE_FLOOR_LIFT,
+                #height=344,#speed=15);
 
-      Send(self,@SetSector,#sector=76,#animation=ANIMATE_FLOOR_LIFT,
-            #height=328,#speed=15);
-      Send(self,@SetSector,#sector=77,#animation=ANIMATE_FLOOR_LIFT,
-            #height=330,#speed=15);
-      Send(self,@SetSector,#sector=78,#animation=ANIMATE_FLOOR_LIFT,
-            #height=336,#speed=15);
-      Send(self,@SetSector,#sector=79,#animation=ANIMATE_FLOOR_LIFT,
-            #height=344,#speed=15);
+          Send(self,@SetSector,#sector=76,#animation=ANIMATE_FLOOR_LIFT,
+                #height=328,#speed=15);
+          Send(self,@SetSector,#sector=77,#animation=ANIMATE_FLOOR_LIFT,
+                #height=330,#speed=15);
+          Send(self,@SetSector,#sector=78,#animation=ANIMATE_FLOOR_LIFT,
+                #height=336,#speed=15);
+          Send(self,@SetSector,#sector=79,#animation=ANIMATE_FLOOR_LIFT,
+                #height=344,#speed=15);
 
-      Send(self,@SetSector,#sector=80,#animation=ANIMATE_FLOOR_LIFT,
-            #height=328,#speed=15);
-      Send(self,@SetSector,#sector=81,#animation=ANIMATE_FLOOR_LIFT,
-            #height=330,#speed=15);
-      Send(self,@SetSector,#sector=82,#animation=ANIMATE_FLOOR_LIFT,
-            #height=336,#speed=15);
-      Send(self,@SetSector,#sector=83,#animation=ANIMATE_FLOOR_LIFT,
-            #height=344,#speed=15);
-      Send(self,@SetSector,#sector=84,#animation=ANIMATE_FLOOR_LIFT,
-            #height=352,#speed=15);
-      Send(self,@SetSector,#sector=85,#animation=ANIMATE_FLOOR_LIFT,
-            #height=368,#speed=15);
+          Send(self,@SetSector,#sector=80,#animation=ANIMATE_FLOOR_LIFT,
+                #height=328,#speed=15);
+          Send(self,@SetSector,#sector=81,#animation=ANIMATE_FLOOR_LIFT,
+                #height=330,#speed=15);
+          Send(self,@SetSector,#sector=82,#animation=ANIMATE_FLOOR_LIFT,
+                #height=336,#speed=15);
+          Send(self,@SetSector,#sector=83,#animation=ANIMATE_FLOOR_LIFT,
+                #height=344,#speed=15);
+          Send(self,@SetSector,#sector=84,#animation=ANIMATE_FLOOR_LIFT,
+                #height=352,#speed=15);
+          Send(self,@SetSector,#sector=85,#animation=ANIMATE_FLOOR_LIFT,
+                #height=368,#speed=15);  
+      }
 
       return;
    }
    
    GetLastClosedTime()
    {
-      return piLastIllusionReplaceTime;
+      return piLastTombOpenTime;
    }
    
    Delete()
    {
-      if ptIllusionResetTimer <> $
+      if ptTombResetTimer <> $
       {
-         DeleteTimer(ptIllusionResetTimer);
-         ptIllusionResetTimer=$;
+         DeleteTimer(ptTombResetTimer);
+         ptTombResetTimer=$;
       }
 
       propagate;

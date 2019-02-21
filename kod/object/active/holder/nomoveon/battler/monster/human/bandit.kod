@@ -15,6 +15,9 @@ constants:
    include blakston.khd
 
    EQUIPMENT_DROP_PERCENT = 20
+   MOVE_TO_ITEM_CHANCE = 20
+   MAX_LOOT_RANGE = 50
+   CONVEYANCE_TIMER = 6000 * 4 //send items to their chest
 
 resources:
 
@@ -33,6 +36,8 @@ resources:
      "Lawless rogues that are known for their theft and burglary prey upon "
      "hapless travelers and soldiers alike. "
    Bandit_dead_name_rsc = "dead bandit"
+   
+   Bandit_loot_rsc = "~IThe bandit snatches the %s!"
 
 classvars:
 
@@ -58,9 +63,6 @@ classvars:
    viCashMax = 600
 
    viWimpy = 20
-
-   // vbCanRally = TRUE
-
    viSocial = 70
 
 properties:
@@ -80,6 +82,9 @@ properties:
    vrName = Bandit_name_rsc
    vrDesc = Bandit_desc_rsc
 
+   ptLootDelay = $
+   ptConveyanceTimer = $
+
    // Relative chance for each type of bandit to spawn
 
 
@@ -87,6 +92,24 @@ messages:
 
    Constructed()
    {
+      Send(self,@ConveyItems);
+
+      propagate;
+   }
+   
+   Delete()
+   {
+      if ptLootDelay <> $
+      {
+         DeleteTimer(ptLootDelay);
+         ptLootDelay = $;
+      }
+      
+      if ptConveyanceTimer <> $
+      {
+         DeleteTimer(ptConveyanceTimer);
+         ptConveyanceTimer = $;
+      }
 
       propagate;
    }
@@ -176,7 +199,19 @@ messages:
          oWeapon = Create(&LongBow);
 
          // Shield - snipers get ammo for their bow instead
-         oShield = Create(&NeruditeArrow);
+         iRandomNumber = Random(1, 100);
+         if iRandomNumber <= 33
+         {
+            oShield = Create(&IceArrow);
+         }
+         else if iRandomNumber <= 66
+         {
+            oShield = Create(&FireArrow);
+         }
+         else
+         {
+            oShield = Create(&Arrow);
+         }
       }
 
       else // Captain
@@ -243,6 +278,106 @@ messages:
       propagate;
    }
 
+   EnterStateMove()
+   {
+      Send(self,@SearchItemsInRange);
+
+      propagate;
+   }
+   
+   SearchItemsInRange()
+   {
+      local lPassive, lPassiveItems, oObj, iRandom,
+            iItemDistance, iClosestDistance, oClosestItem;
+      
+      if poObject <> $
+        AND poOwner <> Send(poObject,@GetOwner)
+      {
+         poObject = $;
+      }
+
+      iClosestDistance = MAX_LOOT_RANGE;
+      lPassiveItems = Send(poOwner,@GetplPassive);
+      foreach lPassive in lPassiveItems
+      {
+         oObj = Send(poOwner,@HolderExtractObject,#data=lPassive);
+
+         if IsClass(oObj,&Item)
+            AND Send(oObj,@CanBeStoredInVault)
+         {
+            // If item is near the mob, pick it up
+            if Send(self,@SquaredDistanceTo,#what=oObj) < 3
+            {
+                Send(self,@TryLootObject,#what=oObj);
+                return TRUE;
+            }
+            
+            // Find the nearest item
+            iItemDistance = Send(self,@SquaredDistanceTo,#what=oObj);
+            if iItemDistance < iClosestDistance
+            {
+                iClosestDistance = iItemDistance;
+                oClosestItem = oObj;
+            }
+         }
+      }
+
+      if oClosestItem <> $
+      {
+            iRandom = Random(1,100);
+            if iRandom <= MOVE_TO_ITEM_CHANCE 
+            {
+                poObject = oClosestItem;
+            }
+      }
+
+      return;
+   }
+   
+   TryLootObject(what = $)
+   {
+      if Send(self,@ReqNewHold,#what=what) AND ptLootDelay = $
+      {
+
+         Send(self,@NewHold,#what=what);
+         Send(poOwner,@SomeoneSaid,#what=self,#type=SAY_MESSAGE,
+            #string=Bandit_loot_rsc,#parm1=Send(what,@GetName));
+         Send(self,@DoCast);
+
+         // Delay this so bandits don't loot everything all at once
+         ptLootDelay = CreateTimer(self,@LootDelay,1000);
+      }
+
+      return;
+   }
+   
+   LootDelay()
+   {
+      ptLootDelay = $;
+      return;
+   }
+   
+   ConveyItems()
+   {
+      local i, each_obj;
+      
+      ptConveyanceTimer = $;
+   
+      foreach i in plPassive
+      {
+         each_obj = Send(self,@HolderExtractObject,#data=i);
+         
+         if NOT FindListElem(plUsing,each_obj)
+         {
+             Send(Send(SYS,@FindRoomByNum,#num=RID_BANDIT_CAVE),
+                @BanditDepositItems,#what=each_obj);
+         }
+      }
+
+      ptConveyanceTimer = CreateTimer(self,@ConveyItems,CONVEYANCE_TIMER);
+
+      return;
+   }
 
 end
 ////////////////////////////////////////////////////////////////////////////////

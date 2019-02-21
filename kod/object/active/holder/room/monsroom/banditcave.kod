@@ -31,6 +31,8 @@ classvars:
    viTeleport_col = 10
 
    viWeatherZone = WEATHER_ZONE_BERG
+   
+   viBandit_Kills_Req = 20
 
 properties:
 
@@ -51,6 +53,9 @@ properties:
    piInit_count_max = 3
 
    piMonster_count_max = 7
+   
+   poChest = $
+   piBandit_Kills = 0
 
 messages:
 
@@ -72,6 +77,14 @@ messages:
 
       propagate;
    }
+   
+   Delete()
+   {
+      Send(poChest,@Delete);
+      poChest = $;
+
+      propagate;
+   }
 
    CreateStandardObjects()
    {
@@ -87,13 +100,14 @@ messages:
            #new_row=3,#new_col=20,#fine_row=0,#fine_col=0,#new_angle=ANGLE_EAST);
 
       Send(self,@NewHold,#what=Create(&OrnamentalObject,#type=OO_FIXINS),
-           #new_row=5,#new_col=15,#fine_row=0,#fine_col=0,#angle=ANGLE_NORTH);
+           #new_row=5,#new_col=15,#fine_row=0,#fine_col=0,#new_angle=ANGLE_NORTH);
 
       Send(self,@NewHold,#what=Create(&OrnamentalObject,#type=OO_GREY_JUG),
-           #new_row=5,#new_col=19,#fine_row=48,#fine_col=0,#angle=ANGLE_NORTH);
+           #new_row=5,#new_col=19,#fine_row=48,#fine_col=0,#new_angle=ANGLE_NORTH);
 
-      Send(self,@NewHold,#what=Create(&OrnamentalObject,#type=OO_BAG_OF_BEANS),
-           #new_row=4,#new_col=23,#fine_row=0,#fine_col=0,#angle=ANGLE_NORTH);
+      poChest = Create(&WoodenBox);
+      Send(self,@NewHold,#what=poChest,#new_row=4,#new_col=23,
+           #fine_row=0,#fine_col=0,#new_angle=ANGLE_WEST);
 
       propagate;
    }
@@ -101,6 +115,43 @@ messages:
    SeanceCheck()
    {
       return FALSE;
+   }
+   
+   GetBanditChest()
+   {
+      return poChest;
+   }
+   
+   BanditDepositItems(what=$)
+   {
+      if poChest <> $
+      {
+         Send(poChest,@NewHold,#what=what);
+      }
+
+      return;
+   }
+   
+   FirstUserEntered()
+   {
+      piBandit_Kills = 0;
+      Send(poChest,@LockChest,#bLocked=TRUE);
+      propagate;
+   }
+   
+   SomethingKilled(what=$,victim=$)
+   {
+      if IsClass(victim,&Bandit)
+      {
+         piBandit_Kills++;
+      }
+      
+      if piBandit_Kills >= viBandit_Kills_Req
+      {
+         Send(poChest,@LockChest,#bLocked=FALSE);
+      }
+
+      propagate;
    }
 
 end

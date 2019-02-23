@@ -283,14 +283,32 @@ messages:
 
    AddEquipmentObject(what=$)
    {
+      local cClass, oItem;
+
       if what = $
       {
          return;
       }
 
+      // Thrown weapons can combine if the mob is already holding some.
+      // If we want the mob to use this item, they need to find it by class
+      // after potential combining.
+      if (IsClass(what,&ThrownWeapon))
+      {
+         cClass = GetClass(what);
+      }
+
       Send(self,@NewHold,#what=what);
 
-      if NOT Send(self,@TryUseItem,#what=what)
+      if (cClass <> $)
+      {
+         oItem = Send(self,@FindHolding,#class=cClass);
+         if oItem <> $
+         {
+            Send(self,@TryUseItem,#what=oItem);
+         }
+      }
+      else if NOT Send(self,@TryUseItem,#what=what)
       {
          Send(what,@Delete);
       }
@@ -980,7 +998,7 @@ messages:
       if (what <> $)
       {
          Send(poOwner,@SomethingShot,#who=self,#target=poTarget,
-               #projectile=what);
+               #projectile=what,#flags=PROJ_FLAG_LIGHT_SOURCE);
       }
 
       return;
@@ -1042,13 +1060,14 @@ messages:
             }
          }
 
-         Send(poOwner,@SomethingShot,#who=self,#target=poTarget,#projectile=oAmmo);
+         Send(poOwner,@SomethingShot,#who=self,#target=poTarget,
+               #projectile=oAmmo,#flags=PROJ_FLAG_LIGHT_SOURCE);
       }
       else if IsClass(oWeapon,&ThrownWeapon)
       {
          piAnimation = PANM_WEAPON_ATTACK;
          Send(poOwner,@SomethingShot,#who=self,#target=poTarget,
-               #projectile=oWeapon);
+               #projectile=oWeapon,#flags=PROJ_FLAG_LIGHT_SOURCE);
       }
       else
       {

@@ -144,9 +144,18 @@ messages:
          oRoom = Send(who,@GetOwner);
          oDestObj = who;
       }
-      Send(oRoom,@NewHold,#what=self,#new_row=Send(oDestObj,@GetRow),
-            #new_col=Send(oDestObj,@GetCol),#fine_row=Send(oDestObj,@GetFineRow),
-            #fine_col=Send(oDestObj,@GetFineCol));
+
+      // Attempt to place the ET near but not on top of the target/master.
+      if (NOT Send(SYS,@UtilGoRandomNear,#what=self,#where=oRoom,
+            #new_row=Send(oDestObj,@GetRow),#new_col=Send(oDestObj,@GetCol),
+            #fine_row=Send(oDestObj,@GetFineRow),#fine_col=Send(oDestObj,@GetFineCol),
+            #iMinDist=32))
+      {
+         // Random placement failed, place on top of target/master.
+         Send(oRoom,@NewHold,#what=self,#new_row=Send(oDestObj,@GetRow),
+               #new_col=Send(oDestObj,@GetCol),#fine_row=Send(oDestObj,@GetFineRow),
+               #fine_col=Send(oDestObj,@GetFineCol));
+      }
 
       // Do nothing further if original captured us.
       if (poMaster = poOriginal)

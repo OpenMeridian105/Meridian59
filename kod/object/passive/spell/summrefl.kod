@@ -100,9 +100,17 @@ messages:
       oReflection = Create(&Reflection,#iSpellpower=iSpellpower,#oMaster=who);
       Send(oReflection,@SetOriginal,#who=who);
 
-      Send(oRoom,@NewHold,#what=oReflection,#new_row=Send(who,@GetRow),
-            #new_col=Send(who,@GetCol),#fine_row=Send(who,@GetFineRow),
-            #fine_col=Send(who,@GetFineCol));
+      // Attempt to place the reflection near but not on top of the caster.
+      if (NOT Send(SYS,@UtilGoRandomNear,#what=oReflection,#where=oRoom,
+            #new_row=Send(who,@GetRow),#new_col=Send(who,@GetCol),
+            #fine_row=Send(who,@GetFineRow),#fine_col=Send(who,@GetFineCol),
+            #iMinDist=48))
+      {
+         // Random placement failed, place on top of caster.
+         Send(oRoom,@NewHold,#what=oReflection,#new_row=Send(who,@GetRow),
+               #new_col=Send(who,@GetCol),#fine_row=Send(who,@GetFineRow),
+               #fine_col=Send(who,@GetFineCol));
+      }
 
       Send(who,@MsgSendUser,#message_rsc=summonreflection_cast_rsc);
 

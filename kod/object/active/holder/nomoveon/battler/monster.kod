@@ -1306,6 +1306,7 @@ messages:
 
       plActions = $;
       poMaster = $;
+      poObject = $;
       poHolySymbolCaster = $;
 
       if ptUnturn <> $
@@ -1822,6 +1823,12 @@ messages:
             // SetLeader sets leader to nil if none is passed.
             Send(self,@SetLeader);
          }
+      }
+      
+      // Cannot find trigger our object, we are no longer are interested in it.
+      if poObject <> $ AND Send(poObject,@GetOwner) = $
+      {
+         poObject = $;
       }
 
       if poBrain <> $
@@ -10291,6 +10298,12 @@ messages:
    GetTriggerObject()
    {
       return poObject;
+   }
+   
+   SetTriggerObject(oObject=$)
+   {
+      poObject = oObject;
+      return;
    }
 
    // Called when the mercenary is injured beyond a threshold.

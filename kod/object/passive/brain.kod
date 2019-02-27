@@ -682,7 +682,7 @@ messages:
    GetMoveBehavior(behavior=0, mob = $)
    {
       local oMaster, oFrightener, oSocial, iDistance, iVision, iAttack,
-            oEnemy, iDelay;
+            oEnemy, iDelay, oObject, oObjectOwner;
 
       if mob = $
       {
@@ -766,9 +766,29 @@ messages:
       }
       
       // If we got a trigger object, move towards it.
-      if Send(mob,@GetTriggerObject) <> $
+      oObject = Send(mob,@GetTriggerObject);
+
+      if oObject <> $
       {
-         Send(mob,@MoveToTriggerObject);
+         oObjectOwner = Send(oObject,@GetOwner);
+
+         // Trigger object must be in the same room, 
+         // or in the hands of a battler that is in the same room as the mob.
+         // A battler can hold the trigger object, and exit the room
+         // and come back with the mob still interested in the object. 
+         // If the item is dropped in another location the mob is no longer interested.
+         if oObjectOwner <> $
+         {
+            if (Send(mob,@GetOwner) = oObjectOwner)
+                OR (IsClass(oObjectOwner,&Battler)
+                    AND Send(mob,@GetOwner) = Send(oObjectOwner,@GetOwner))
+            {
+                Send(mob,@MoveToTriggerObject);
+                return;
+            }
+         }
+
+         Send(mob,@SetTriggerObject,#oObject=$);
 
          return;
       }

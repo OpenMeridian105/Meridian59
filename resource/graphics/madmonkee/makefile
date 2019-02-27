@@ -8,7 +8,7 @@ SOURCEDIR = .
 OUTDIR = $(CLIENTRUNDIR)\resource
 OUTDIRSUB = ..\$(OUTDIR)
 
-DIRS = vitkhul
+DIRS = vitkhul maul
 
 all:
    @-for %i in (*.bgf) do @$(CP) %i $(OUTDIR) >nul

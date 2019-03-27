@@ -1,0 +1,125 @@
+// Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+// All rights reserved.
+//
+// This software is distributed under a license that is described in
+// the LICENSE file that accompanies it.
+//
+// Meridian is a registered trademark.
+
+
+////////////////////////////////////////////////////////////////////////////////
+TowerShield is Shield
+
+constants:
+
+   include blakston.khd
+
+resources:
+
+   include towershld.lkod
+
+   towershield_name_rsc = "tower shield"
+   towershield_icon_rsc = towershield.bgf
+   towershield_desc_rsc = \
+      "This massive shield offers an unbreakable defense but impedes the "
+      "wearer's movement.  The shield's edges are augmented with small metal "
+      "studs and have been decorated with intricate metal patterns.  Its "
+      "center is adorned with bones and small spikes.  However, due to it "
+      "being made of wood, it easily burns to a crisp if set on fire."
+   towershield_window_overlay_rsc = povshldG.bgf
+   towershield_burn = \
+      "Your tower shield begins to catch fire and you quickly put it out."
+   towershield_burn_break = "~IYour tower shield burned to a crisp!"
+
+classvars:
+
+   vrName = towershield_name_rsc
+   vrIcon = towershield_icon_rsc
+   vrDesc = towershield_desc_rsc
+
+   viHits_init_min = 350
+   viHits_init_max = 400
+
+   viValue_average = 900
+   viWeight = 225
+   viBulk = 200
+
+   vrShield_window_overlay = towershield_window_overlay_rsc
+   vrShield_overlay = towershield_icon_rsc
+
+   viGround_group = 3
+   viInventory_group = 1
+
+   viDefense_base = 25
+   viDamage_base = 3
+   
+   viSpeedModifer = 35
+
+properties:
+
+messages:
+
+   GetResistanceModifiers()
+   {
+      return [ [ATCK_WEAP_SLASH,10],
+               [ATCK_WEAP_BLUDGEON,15],
+               [ATCK_WEAP_PIERCE,10]
+             ];
+   }
+   
+   NewUsed()
+   {
+      Send(poOwner,@AddMovementSpeedPercent,#iSpeed=-viSpeedModifer);
+
+      propagate;
+   }
+   
+   NewUnused()
+   {
+      Send(poOwner,@AddMovementSpeedPercent,#iSpeed=viSpeedModifer);
+
+      propagate;
+   }
+
+   GetHeatDamage()
+   {
+      return 1;
+   }
+   
+   ModifyDefenseDamage(who = $,what = $,damage = $,atype = 0,aspell = 0)
+   "Fire attacks will do damage directly to the shield."
+   {
+      if aspell & ATCK_SPELL_FIRE
+      {
+         Post(self,@BurnShield,#damage=damage);
+      }
+   
+      propagate;
+   }
+
+   BurnShield(damage = $)
+   {
+      // Convert to low-resolution damage.
+      damage /= 100;
+
+      piHits -= Random(damage / 2, damage);
+
+      if piHits < 5
+      {
+         if IsClass(poOwner,&User)
+         {
+            Send(poOwner,@MsgSendUser,#message_rsc=towershield_burn_break);
+         }
+
+         Post(self,@Delete);
+      }
+      else
+      {
+         Send(poOwner,@MsgSendUser,#message_rsc=towershield_burn);
+      }
+
+      return;
+   }
+
+end
+////////////////////////////////////////////////////////////////////////////////

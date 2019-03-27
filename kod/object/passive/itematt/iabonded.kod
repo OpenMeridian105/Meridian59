@@ -29,7 +29,7 @@ resources:
 
    include iabonded.lkod
 
-ItemAttBonded_desc = ""
+ItemAttBonded_desc = "  It hums with an angelic oratorio."
 
 classvars:
 
@@ -39,29 +39,6 @@ classvars:
 properties:
 
 messages:
-
-////////////////////////////////////////////////
-///
-///  Effect Functions
-///
-///////////////////////////////////////////////
-
-   InitiallyIdentified(random_gen=FALSE)
-   {
-      return TRUE;
-   }
-
-   ItemCanIdentify()
-   {
-      return FALSE;
-   }
-
-////////////////////////////////////////////////////
-///
-///  Infrastructure
-///  (Adding and removing a ItemAtt from an item.)
-///
-////////////////////////////////////////////////////
 
    AddToItem(oItem=$,oPlayer=$,identified=FALSE)
    {
@@ -75,9 +52,8 @@ messages:
       lData = Cons(iValue,lData);
 
       Send(oItem,@AddAttributeSpecifics,#lItemAtt=lData);
-
-      // Add the magic flag to the item (colored name in lists).
-      Send(oItem,@AddMagicFlag);
+      Send(oItem,@AddMagicFlag); 
+      Send(oPlayer,@BondItem,#what=oItem);
 
       return;
    }
@@ -106,31 +82,6 @@ messages:
       return;
    }
 
-   RemoveEffects(oItem = $, lData = $)
-   "This simply undoes whatever AddEffects does."
-   {
-      // remove IA_APPEND_DESCRIPTION label if there are no more quest attributes?
-      // for now, leave it on.
-      return;
-   }
-
-////////////////////////////////////////////////
-///
-///  Maintenance Functions
-///
-////////////////////////////////////////////////
-
-   AppendDesc(oItem=$)
-   {
-      return;
-   }
-
-/////////////////////////////////////////////////
-///
-///	Treasure Functions
-///
-/////////////////////////////////////////////////
-
    AddToTreasureTable()
    {
       return;
@@ -141,22 +92,24 @@ messages:
       return FALSE;
    }
 
-/////////////////////////////////////////////////
-///
-///  Name Functions
-///
-/////////////////////////////////////////////////
-
-   ItemBuildDescName(oItem=$)
-   {
-      //Addpacket(4,vrName);
-      Addpacket(4,Send(oItem,@GetName));
-      return;
-   }
-
    IsMagicalEffect()
    {
       return TRUE;
+   }
+
+   ItemDropOnDeath()
+   {
+      return FALSE; 
+   }
+
+   InitiallyIdentified(random_gen=FALSE)
+   {
+      return TRUE;
+   }
+
+   ItemCanIdentify()
+   {
+      return FALSE;
    }
 
 end

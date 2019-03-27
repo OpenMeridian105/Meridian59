@@ -1,0 +1,201 @@
+// Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+// All rights reserved.
+//
+// This software is distributed under a license that is described in
+// the LICENSE file that accompanies it.
+//
+// Meridian is a registered trademark.
+
+
+////////////////////////////////////////////////////////////////////////////////
+SoulBind is ItemEnchantment
+
+constants:
+
+   include blakston.khd
+
+resources:
+
+   include soulbind.lkod
+
+   soulbind_name_rsc = "soul bind"
+   soulbind_icon_rsc = isbind.bgf
+   soulbind_desc_rsc = \
+      "Infuses an item with a heavenly oratorio, forming a spiritual "
+      "connection to an item. When the item is not in that player's possession, "
+      "the player will have an intuitive knowledge of its current location.  "
+      "Due to the strength of the bind, a player may only be bind their soul to "
+      "one item at a time. Once the casting is complete the item will follow "
+      "its owner to hell itself."
+   soulbind_cast_rsc = \
+      "You feel a magical bind form between your %s and your soul."
+   soulbind_no_can = "You may not bind with %s%s."
+   soulbind_fails = "The %s is strangely unaffected by the spell."
+   soulbind_already_done = \
+      "This item is already bonded to your soul."
+      
+   soulbind_report_room = "Somehow, you sense that your %s is in %s."
+   soulbind_report_user = "Somehow, you sense that your %s is in %q's possession."
+
+classvars:
+
+   vrName = soulbind_name_rsc
+   vrIcon = soulbind_icon_rsc
+   vrDesc = soulbind_desc_rsc
+
+   viSpell_num = SID_SOUL_BIND
+   viSchool = SS_JALA
+
+   viSpell_level = 6
+   viMana = 50
+
+   viCast_time = 15000
+   viSpellExertion = 20
+
+properties:
+
+messages:
+
+   ResetReagents()
+   {
+
+      plReagents = $;
+      plReagents = Cons([&Heartstone,4],plReagents);
+
+      return;
+   }
+
+   CanPayCosts(who=$,lTargets=$,iSpellPower=0)
+   {
+      local oItem;
+
+      if lTargets = $
+      {
+         return FALSE;
+      }
+
+      oItem = First(lTargets);
+
+      if oItem = $
+         OR NOT IsClass(oItem,&Item)
+      {
+         Send(who,@MsgSendUser,#message_rsc=soulbind_no_can,
+               #parm1=Send(oItem,@GetDef),#parm2=Send(oItem,@GetName));
+
+         return FALSE;
+      }
+
+      if Send(oItem,@HasAttribute,#ItemAtt=IA_BONDED)
+      {
+         Send(who,@MsgSendUser,#message_rsc=soulbind_already_done,
+               #parm1=Send(oItem,@GetName));
+
+         return FALSE;
+      }
+
+      propagate;
+   }
+
+   DoSpellEffects(who=$,lTargets=$,iSpellPower=0)
+   {
+      local oItem, oItemAtt;
+
+      oItem = First(lTargets);
+
+      if oItem = $
+         OR NOT IsClass(oItem,&Item)
+      {
+         Send(who,@MsgSendUser,#message_rsc=soulbind_no_can,
+               #parm1=Send(oItem,@GetDef),#parm2=Send(oItem,@GetName));
+
+         return FALSE;
+      }
+
+      if NOT Send(self,@IsTargetInRange,#who=who,#target=oItem)
+      {
+         Send(who, @MsgSendUser,#message_rsc=spell_out_of_range,
+               #parm1=Send(oItem,@GetCapDef),#parm2=Send(oItem,@GetName));
+
+         return FALSE;
+      }
+
+      Send(who,@ClearBondedItem);
+      Send(who,@BondItem,#what=oItem);
+
+      Send(who,@MsgSendUser,#message_rsc=soulbind_cast_rsc,
+            #parm1=Send(oItem,@GetName));
+
+      return TRUE;
+   }
+   
+   BondedItemReport(BondedItem=$,BondedPlayer=$,BondedItemOwner=$)
+   {
+      if BondedPlayer = $ OR BondedItem OR BondedItemOwner
+      {
+         return FALSE;
+      }
+
+      // Check if the item is in its owner's inventory.
+      if Send(BondedPlayer,@IsHolding,#what=BondedItem)
+      {
+         return;
+      }
+      
+      BondedItemOwner = Send(BondedItem,@GetOwner);
+      if BondedItemOwner = $
+      {
+         Debug(Send(BondedItem,@GetTrueName)," bonded to ",
+               Send(BondedPlayer,@GetTrueName)," has no owner!  Clearing bond.");
+         Send(BondedPlayer,@ClearBondedItem);
+
+         return;
+      }
+
+      if Send(BondedItem,@GetHits) = 0
+      {
+         Send(BondedPlayer,@ClearBondedItem);
+
+         return;
+      }
+
+      if IsClass(BondedItemOwner,&StorageBox)
+      {
+         BondedItemOwner = Send(SYS,@UtilGetRoomRecurse,#what=BondedItemOwner);
+      }
+
+      if IsClass(BondedItemOwner,&Room)
+      {
+         Send(BondedPlayer,@MsgSendUser,#message_rsc=soulbind_report_room,
+               #parm1=Send(BondedItem,@GetName),
+               #parm2=Send(BondedItemOwner,@GetName));
+
+         return;
+      }
+
+      if IsClass(BondedItemOwner,&SafetyDepositBox)
+      {
+         BondedItemOwner = Send(BondedItemOwner,@GetSafeBoxOwner);
+      }
+
+      if IsClass(BondedItemOwner,&User)
+      {
+         Send(BondedPlayer,@MsgSendUser,#message_rsc=soulbind_report_user,
+               #parm1=Send(BondedItem,@GetName),
+               #parm2=Send(BondedItemOwner,@GetName),#type2=SAY_RESOURCE);
+
+         return;
+      }
+
+      Debug(Send(BondedItem,@GetTrueName)," bonded to ",
+            Send(BondedPlayer,@GetTrueName),
+            " not in room or in player's possession!  In ",
+            Send(BondedItemOwner,@GetTrueName));
+      Send(BondedPlayer,@MsgSendUser,#message_rsc=soulbind_report_room,
+            #parm1=Send(BondedItem,@GetName),
+            #parm2=Send(BondedItemOwner,@GetName));
+
+      return;
+   }
+
+end
+////////////////////////////////////////////////////////////////////////////////

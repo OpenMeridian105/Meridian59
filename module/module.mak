@@ -3,9 +3,9 @@
 # ----------------------------------------------------------------------
 # Additional compiler flags (see common.mak)
 # /TP                   Compile as C++ code
-# /arch:SSE             Use SSE instructions (VS2013+ default to SSE2)
+# /arch:SSE2            Use SSE2 instructions (VS2013+ default to SSE2)
 # /D_USING_V110_SDK71_  VS uses this for XP compatibility
-CFLAGS = $(CFLAGS) /arch:SSE /TP /D_USING_V110_SDK71_
+CFLAGS = $(CFLAGS) /arch:SSE2 /TP /D_USING_V110_SDK71_
 
 # ----------------------------------------------------------------------
 # Additional linker flags (see common.mak)

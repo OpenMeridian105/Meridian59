@@ -12,13 +12,13 @@ OWLOUTDIR     = $(ROOMEDITDIR)\owl-6.34\$(OUTDIR)
 # ----------------------------------------------------------------------
 # Additional compiler flags (see common.mak)
 # /TP           Compile as C++ code
-# /arch:SSE     Use SSE instructions (VS2013+ default to SSE2)
+# /arch:SSE2    Use SSE2 instructions (VS2013+ default to SSE2)
 # /DOWL5_COMPAT Use OWL in compatibility mode
 # /D_OWLPCH     For OWL
 # /GR           Needs RTTI (creates warning due to common.mak)
 # /wd4244       Ignore conversion, possible loss of data
 # /wd4018       Ignore signed/unsigned mismatch
-CFLAGS = $(CFLAGS) /arch:SSE /TP /DOWL5_COMPAT /D_OWLPCH /D__WIN32__ \
+CFLAGS = $(CFLAGS) /arch:SSE2 /TP /DOWL5_COMPAT /D_OWLPCH /D__WIN32__ \
     -I$(ROOMEDITDIR)\include -I$(OWLINCLUDEDIR) -I$(RESDIR) \
     /GR /wd4244 /wd4018
 

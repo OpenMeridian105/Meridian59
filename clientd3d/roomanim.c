@@ -24,9 +24,9 @@ extern int	gD3DEnabled;
 // to flicker identically
 static int flicker_amount;
 
-static Bool AnimateSectors(room_type *room, int dt);
-static Bool AnimateSidedefs(room_type *room, int dt);
-static int  RoomAnimateSingle(RoomAnimate *ra, int dt);
+static Bool AnimateSectors(room_type *room, float dt);
+static Bool AnimateSidedefs(room_type *room, float dt);
+static int  RoomAnimateSingle(RoomAnimate *ra, float dt);
 static void SectorAdjustHeight(room_type *room, Sector *s, BYTE type, int height);
 static void SidedefDoAnimation(room_type *room, Sidedef *s, int return_code);
 static void SectorDoAnimation(room_type *room, Sector *s, int return_code);
@@ -35,7 +35,7 @@ static void SectorDoAnimation(room_type *room, Sector *s, int return_code);
  * AnimateRoom:  Animate wall and floor textures; return True iff any was animated.
  *   dt is number of milliseconds since last time animation timer went off.
  */
-Bool AnimateRoom(room_type *room, int dt)
+Bool AnimateRoom(room_type *room, float dt)
 {
    Bool retval, need_redraw = False;
 
@@ -52,7 +52,7 @@ Bool AnimateRoom(room_type *room, int dt)
  * AnimateSectors:  Animate floor textures; return True iff any was animated.
  *   dt is number of milliseconds since last time animation timer went off.
  */
-Bool AnimateSectors(room_type *room, int dt)
+Bool AnimateSectors(room_type *room, float dt)
 {
    int i, ras_retval;
    Bool need_redraw = False;
@@ -87,7 +87,7 @@ Bool AnimateSectors(room_type *room, int dt)
  * AnimateSidedefs:  Animate wall textures; return True iff any was animated.
  *   dt is number of milliseconds since last time animation timer went off.
  */
-Bool AnimateSidedefs(room_type *room, int dt)
+Bool AnimateSidedefs(room_type *room, float dt)
 {
    int i, ras_retval;
    Bool need_redraw = False;
@@ -532,8 +532,12 @@ void MoveSector(BYTE type, WORD sector_num, WORD height, BYTE speed)
 	 return;
       }
 
-      lift->increment = (((float) HeightKodToClient(speed)) / 1000.0) /
-	 abs(lift->dest_z - lift->source_z);
+      // this is: / 10000 and *16 and *16
+      // see SECTORMOVEBASECOEFF in OgreClient's GeometryConstants (and server)
+      // additional *16 here because this is 1:1024 not 1:64
+      const float SCALER = 0.0256f;
+
+      lift->increment = ((float)speed * SCALER) / abs(lift->dest_z - lift->source_z);
    }
 }
 /************************************************************************/
@@ -545,7 +549,7 @@ void MoveSector(BYTE type, WORD sector_num, WORD height, BYTE speed)
  *   RAS_ANIMATE if the bitmap group changed, and the animation is continuing.
  *   RAS_DONE    if the bitmap group changed, and the animation is done.
  */
-int RoomAnimateSingle(RoomAnimate *ra, int dt)
+int RoomAnimateSingle(RoomAnimate *ra, float dt)
 {
    RoomLift *lift;
    RoomScroll *scroll;
@@ -567,12 +571,12 @@ int RoomAnimateSingle(RoomAnimate *ra, int dt)
       lift = &ra->u.lift;
       lift->progress += (lift->increment * dt);
       if (lift->progress >= 1.0)
-	 lift->z = lift->dest_z;
+         lift->z = lift->dest_z;
       else
-	 lift->z = FloatToInt (lift->source_z + lift->progress * (lift->dest_z - lift->source_z));
+         lift->z = lift->source_z + lift->progress * (lift->dest_z - lift->source_z);
       
       if (lift->progress >= 1.0)
-	 return RAS_DONE;
+         return RAS_DONE;
       return RAS_CHANGED;
 
    case ANIMATE_SCROLL:

@@ -77,6 +77,7 @@ extern void GetGamePath( char *szGamePath );
 void StartWatch();
 double StopWatch();
 double GetMicroCountDouble();
+double GetMilliCountDouble();
 
 extern long CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam);
 extern void ClearMessageQueue(void);

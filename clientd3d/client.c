@@ -399,3 +399,19 @@ double GetMicroCountDouble()
 
    return (double)(now.QuadPart * 1000000 / (double)microFrequency.QuadPart);
 }
+
+double GetMilliCountDouble()
+{
+   static LARGE_INTEGER microFrequency;
+   LARGE_INTEGER now;
+
+   if (microFrequency.QuadPart == 0)
+      QueryPerformanceFrequency(&microFrequency);
+
+   if (microFrequency.QuadPart == 0)
+      return 0;
+
+   QueryPerformanceCounter(&now);
+
+   return (double)(now.QuadPart * 1000) / (double)microFrequency.QuadPart;
+}

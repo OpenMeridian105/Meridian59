@@ -6,11 +6,11 @@ TOPDIR=..
 # ----------------------------------------------------------------------
 # Additional compiler flags (see common.mak)
 # /TP           Compile as C++ code
-# /arch:SSE     Use SSE instructions (VS2013+ default to SSE2)
+# /arch:SSE2    Use SSE2 instructions (VS2013+ default to SSE2)
 # /DBLAKCLIENT  Specific for m59 client
 # -I$(OUTDIR)   Need to put build dir in include path, because trig and palette
 #               generated files are there.
-CFLAGS = $(CFLAGS) /arch:SSE /TP /DBLAKCLIENT /D_USING_V110_SDK71_ -I$(OUTDIR)  
+CFLAGS = $(CFLAGS) /arch:SSE2 /TP /DBLAKCLIENT /D_USING_V110_SDK71_ -I$(OUTDIR)  
 
 # ----------------------------------------------------------------------
 # Additional linker flags (see common.mak)

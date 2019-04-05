@@ -36,7 +36,7 @@ typedef struct {
 // For ANIMATE_FLOOR_LIFT and ANIMATE_CEILING_LIFT animations
 typedef struct {
    int       source_z, dest_z;    // Height where lift starts and stops (FINENESS units)
-   int       z;                   // Current height of lift (FINENESS units)
+   float     z;                   // Current height of lift (FINENESS units)
    float     progress;            // 0 = source; 1 = destination
    float     increment;           // Amount by which progress increments per millisecond
 } RoomLift;

@@ -267,6 +267,9 @@ properties:
    piMinHitPoints = 0
    piMeditate_ratio = 100
 
+   // How much threat do our non damage spells cause?
+   piSpellThreatPercentage = 100
+
 messages:      
 
    Constructed()
@@ -1802,15 +1805,19 @@ messages:
          Send(oRoom,@SpellCast,#who=who,#oSpell=self,#lItems=lTargets,
                #bItemCast=bItemCast);
 
-         // Add hatred to our targets if we cast a non-damage aggressive
-         // spell. Also inform the room that this was an attack.
+         // Check if we need to add hatred to other battlers for being annoying.
          // Only done if caster was a battler.
          if (IsClass(who,&Battler))
          {
-            iAggro = Send(self,@CausesAggression,#iSpellpower=iSpellPower);
-            iAggro *= 100;
-            if (iAggro)
+            iAggro = Send(self,@CausesAggression,#iSpellpower=iSpellPower) * 100;
+
+            iAggro = iAggro * piSpellThreatPercentage / 100;
+
+            // Harmful spell. Causes aggression on our target and counts as an attack.
+            if (iAggro > 0)
             {
+               iAggro = iAggro * Send(SETTINGS_OBJECT,@GetHarmfulSpellThreatPercentage) / 100;
+
                foreach i in lTargets
                {
                   if IsClass(i,&Battler)
@@ -1818,6 +1825,19 @@ messages:
                      Send(i,@AddHurtMeRecently,#who=who,#amount=iAggro);
                      Send(oRoom,@SomethingAttacked,#what=who,#victim=i,
                            #use_weapon=self);
+                  }
+               }
+            }
+            // Helpful spell. While the target will approve, its enemies may not.
+            else if (iAggro < 0)
+            {
+               iAggro = iAggro * Send(SETTINGS_OBJECT,@GetHelpfulSpellThreatPercentage) / 100;
+
+               foreach i in lTargets
+               {
+                  if IsClass(i,&Battler)
+                  {
+                     Send(oRoom,@SomethingHelped,#what=who,#target=i,#oSpell=self,#iAmount=-iAggro);
                   }
                }
             }
@@ -2947,10 +2967,11 @@ messages:
       return MAX_KOD_INT;
    }
 
-   // Harmful spells tend to cause aggression. Some exceptions though.
+   // Harmful spells tend to cause aggression. Spells cause more hatred
+   // when they are high level and potent.
    CausesAggression(iSpellpower=0)
    {
-      return viHarmful;
+      return viHarmful*viSpell_level*iSpellpower/20;
    }
 
    GetCombatType()

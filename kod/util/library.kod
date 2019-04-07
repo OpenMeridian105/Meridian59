@@ -2258,9 +2258,11 @@ messages:
       return;
    }
 
-   PersonalityClash(mob=$,libvec=0)
+   PersonalityClash(target=$,mob=$,libvec=0)
    "Determine if the mob has a conflicting personality to a library entry"
    {
+      local iRoomNum, iMasked;
+
       if mob = $ OR libvec=0 {return FALSE;}
 
       if ((libvec & LIBRES_FEMALE_ONLY) <> 0)
@@ -2290,6 +2292,35 @@ messages:
       if ((libvec & LIBRES_MOOD_MASK) <> 0)
       {
          if (((libvec & LIBRES_MOOD_MASK) & Send(mob,@GetMoodFlags)) = 0)
+         {
+            return TRUE;
+         }
+      }
+
+      if ((libvec & LIBRES_HT_MASK) <> 0
+         AND target <> $)
+      {
+         iRoomNum = Send(target,@GetHomeRoom);
+         iMasked = libvec & LIBRES_HT_MASK;
+
+         if (((iMasked & LIBRES_HT_MARION) = LIBRES_HT_MARION AND iRoomNum <> RID_MAR_INN)
+            OR ((iMasked & LIBRES_HT_RAZA) = LIBRES_HT_RAZA AND iRoomNum <> RID_RAZA_INN)
+            OR ((iMasked & LIBRES_HT_JASPER) = LIBRES_HT_JASPER AND iRoomNum <> RID_JAS_INN)
+            OR ((iMasked & LIBRES_HT_CORNOTH) = LIBRES_HT_CORNOTH AND iRoomNum <> RID_COR_INN)
+            OR ((iMasked & LIBRES_HT_BARLOQUE) = LIBRES_HT_BARLOQUE AND iRoomNum <> RID_BAR_INN)
+            OR ((iMasked & LIBRES_HT_TOS) = LIBRES_HT_TOS AND iRoomNum <> RID_TOS_INN)
+            OR ((iMasked & LIBRES_HT_JIXA) = LIBRES_HT_JIXA AND iRoomNum <> RID_JIXA_INN)
+            OR ((iMasked & LIBRES_HT_BERG) = LIBRES_HT_BERG AND iRoomNum <> RID_BERG_INN)
+            OR ((iMasked & LIBRES_HT_KOCATAN) = LIBRES_HT_KOCATAN AND iRoomNum <> RID_KOC_INN)
+            OR ((iMasked & LIBRES_HT_NOTMARION) = LIBRES_HT_NOTMARION AND iRoomNum = RID_MAR_INN)
+            OR ((iMasked & LIBRES_HT_NOTRAZA) = LIBRES_HT_NOTRAZA AND iRoomNum = RID_RAZA_INN)
+            OR ((iMasked & LIBRES_HT_NOTJASPER) = LIBRES_HT_NOTJASPER AND iRoomNum = RID_JAS_INN)
+            OR ((iMasked & LIBRES_HT_NOTCORNOTH) = LIBRES_HT_NOTCORNOTH AND iRoomNum = RID_COR_INN)
+            OR ((iMasked & LIBRES_HT_NOTBARLOQUE) = LIBRES_HT_NOTBARLOQUE AND iRoomNum = RID_BAR_INN)
+            OR ((iMasked & LIBRES_HT_NOTTOS) = LIBRES_HT_NOTTOS AND iRoomNum = RID_TOS_INN)
+            OR ((iMasked & LIBRES_HT_NOTJIXA) = LIBRES_HT_NOTJIXA AND iRoomNum = RID_JIXA_INN)
+            OR ((iMasked & LIBRES_HT_NOTBERG) = LIBRES_HT_NOTBERG AND iRoomNum = RID_BERG_INN)
+            OR ((iMasked & LIBRES_HT_NOTKOCATAN) = LIBRES_HT_NOTKOCATAN AND iRoomNum = RID_KOC_INN))
          {
             return TRUE;
          }
@@ -2443,7 +2474,7 @@ messages:
       return;
    }
 
-   SearchSpeechLib(mob = $, string = $)
+   SearchSpeechLib(target = $, mob = $, string = $)
    "Given the mob and the string, return an action. Any of the superclasses"
    "of the mob can provide the action, and when two or more actions apply,"
    "a random one is chosen."
@@ -2477,7 +2508,8 @@ messages:
 
          foreach j in Nth(i,2)
          {
-            if Send(self,@PersonalityClash,#mob=mob,#libvec=Nth(j,2))
+            if Send(self,@PersonalityClash,#target=target,
+                  #mob=mob,#libvec=Nth(j,2))
             {
                continue;
             }

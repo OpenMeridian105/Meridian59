@@ -155,6 +155,7 @@ void AdminSetObjInt(int session_id, admin_parm_type parms[], int num_blak_parm, 
 void AdminSetAccountName(int session_id, admin_parm_type parms[], int num_blak_parm, parm_node blak_parm[]);
 void AdminSetAccountPassword(int session_id, admin_parm_type parms[], int num_blak_parm, parm_node blak_parm[]);
 void AdminSetAccountEmail(int session_id, admin_parm_type parms[], int num_blak_parm, parm_node blak_parm[]);
+void AdminSetAccountType(int session_id, admin_parm_type parms[], int num_blak_parm, parm_node blak_parm[]);
 void AdminSetAccountObject(int session_id, admin_parm_type parms[], int num_blak_parm, parm_node blak_parm[]);
 /*void AdminSetResource(int session_id,admin_parm_type parms[]);*/
 void AdminSetConfigInt(int session_id, admin_parm_type parms[], int num_blak_parm, parm_node blak_parm[]);
@@ -309,6 +310,8 @@ admin_table_type admin_setacco_table[] =
 	"Set password by account number and password" },
    { AdminSetAccountEmail, { I, S, N }, F, A | M, NULL, 0, "email",
    "Set email by account number and email" },
+   { AdminSetAccountType, { I, I, N }, F, A | M, NULL, 0, "type",
+   "Set type of account (0 = User, 1 = Admin, 2 = DM) by acct ID and type" },
 };
 #define LEN_ADMIN_SETACCO_TABLE (sizeof(admin_setacco_table)/sizeof(admin_table_type))
 
@@ -3618,9 +3621,40 @@ void AdminSetAccountEmail(int session_id, admin_parm_type parms[],
 
    lprintf("AdminSetAccountEmail changing name of account %i from %s to %s\n",
       a->account_id, a->email, email);
-   aprintf("Changing name of account %i from '%s' to '%s'.\n",
+   aprintf("Changing email of account %i from '%s' to '%s'.\n",
       a->account_id, a->email, email);
    SetAccountEmail(a, email);
+}
+
+void AdminSetAccountType(int session_id, admin_parm_type parms[],
+   int num_blak_parm, parm_node blak_parm[])
+{
+   account_node *a;
+   int account_id, type;
+
+   account_id = (int)parms[0];
+   type = (int)parms[1];
+
+   // Type must be valid.
+   if (type < ACCOUNT_NORMAL || type > ACCOUNT_DM)
+   {
+      aprintf("Invalid account type specified.\n");
+      return;
+   }
+
+   a = GetAccountByID(account_id);
+   if (a == NULL)
+   {
+      aprintf("Cannot find account %i.\n", account_id);
+
+      return;
+   }
+
+   lprintf("AdminSetAccountType changing type of account %i from %i to %i\n",
+      a->account_id, a->type, type);
+   aprintf("Changing type of account %i from '%i' to '%i'.\n",
+      a->account_id, a->type, type);
+   SetAccountType(a, type);
 }
 
 void AdminSetAccountObject(int session_id,admin_parm_type parms[],

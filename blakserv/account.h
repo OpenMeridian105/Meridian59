@@ -43,6 +43,7 @@ void SetAccountName(account_node *a,char *name);
 void SetAccountPassword(account_node *a,char *password);
 void SetAccountPasswordAlreadyEncrypted(account_node *a,char *password);
 void SetAccountEmail(account_node *a,char *email);
+void SetAccountType(account_node *a, int type);
 void SetNextAccountID(int accountNum);
 account_node * GetAccountByID(int account_id);
 account_node * GetAccountByName(char *name);

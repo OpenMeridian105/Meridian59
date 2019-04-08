@@ -336,6 +336,11 @@ void SetAccountEmail(account_node *a,char *email)
    strcpy(a->email,email);
 }
 
+void SetAccountType(account_node *a, int type)
+{
+   a->type = type;
+}
+
 Bool SuspendAccountAbsolute(account_node *a, int suspend_time)
 {
    session_node *s;

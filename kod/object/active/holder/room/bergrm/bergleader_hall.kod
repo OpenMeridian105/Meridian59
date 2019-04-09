@@ -30,11 +30,11 @@ classvars:
 
    viTeleport_row = 14
    viTeleport_col = 17
-   
+
    viPermanent_flags = ROOM_NO_COMBAT
 
    viTerrain_Type = TERRAIN_CASTLE
-   
+
 properties:
 
    piRoom_num = RID_BERG_LEADER_HALL
@@ -56,7 +56,6 @@ properties:
 
    ptTombResetTimer = $
    piLastTombOpenTime = $
-   pbTombOpen = FALSE
 
 messages:
 
@@ -78,7 +77,7 @@ messages:
 
       propagate;
    }
-   
+
    CreateStandardObjects()
    {
 
@@ -88,7 +87,7 @@ messages:
 
       Send(self,@NewHold,#what=Create(&Throne),
            #new_row=14,#new_col=22,#fine_row=24,#fine_col=24,#new_angle=ANGLE_WEST);
- 
+
       Send(self,@NewHold,#what=Create(&DynamicLight,#iColor=LIGHT_FIRE,#iIntensity=30),
          #new_row=14,#new_col=37,#fine_row=32,#fine_col=32);
 
@@ -150,29 +149,27 @@ messages:
       propagate;
    }
 
-
    Constructed()
    {
       piLastTombOpenTime = GetTime();
 
       propagate;
    }
-   
+
    SpellCast(who = $,oSpell = $,lItems = $,bItemCast = FALSE)
    {
       if Send(oSpell,@GetSpellNum) = SID_MELANCHOLY
       {
          Send(self,@LowerTomb);
       }
-   
+
       propagate;
    }
 
    LowerTomb(what=$)
    {
-      if NOT pbTombOpen
+      if ptTombResetTimer = $
       {
-          pbTombOpen = FALSE;
           Send(self,@SetSector,#sector=50,#animation=ANIMATE_FLOOR_LIFT,
                 #height=312,#speed=15);
 
@@ -260,14 +257,21 @@ messages:
 
       return;
    }
-   
-   RaiseTomb()
+
+   RaiseTomb(timer = $)
    {
-      if pbTombOpen
+      if ptTombResetTimer <> $
       {
+         // Delete existing timer if this message was called manually,
+         // or with a different timer.
+         if (timer = $
+            OR timer <> ptTombResetTimer)
+         {
+            DeleteTimer(ptTombResetTimer);
+         }
+
           ptTombResetTimer = $;
           piLastTombOpenTime = GetTime();
-          pbTombOpen = FALSE;
 
           Send(self,@SetSector,#sector=50,#animation=ANIMATE_FLOOR_LIFT,
                 #height=320,#speed=15);
@@ -349,23 +353,23 @@ messages:
           Send(self,@SetSector,#sector=84,#animation=ANIMATE_FLOOR_LIFT,
                 #height=352,#speed=15);
           Send(self,@SetSector,#sector=85,#animation=ANIMATE_FLOOR_LIFT,
-                #height=368,#speed=15);  
+                #height=368,#speed=15);
       }
 
       return;
    }
-   
+
    GetLastClosedTime()
    {
       return piLastTombOpenTime;
    }
-   
+
    Delete()
    {
       if ptTombResetTimer <> $
       {
          DeleteTimer(ptTombResetTimer);
-         ptTombResetTimer=$;
+         ptTombResetTimer = $;
       }
 
       propagate;

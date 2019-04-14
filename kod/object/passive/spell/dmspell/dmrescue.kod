@@ -44,19 +44,14 @@ messages:
 
    DoSpellEffects(who=$,lTargets=$)
    {
-      local i, j, oRoom, oHell;
+      local i;
 
-      foreach j in lTargets
+      foreach i in lTargets
       {
-         i = j;
-
          if IsClass(i,&LogoffGhost)
          {
-            i = Send(i,@GetGhostedPlayer);
-            Send(i,@AdminGoToSafety);
-            oRoom = Send(SYS,@FindRoomByNum,#num=Send(i,@GetSaveRoom));
-            Send(SYS,@UtilGoToSquare,#what=j,#where=oRoom,
-                 #row=Send(i,@GetSaveRow),#col=Send(i,@GetSaveCol));
+            Send(Send(i,@GetGhostedPlayer),@AdminGoToSafety);
+            Send(i,@Delete);
          }
          else if IsClass(i,&Player)
          {

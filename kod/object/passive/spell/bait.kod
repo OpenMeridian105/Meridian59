@@ -70,9 +70,11 @@ messages:
 
    DoSpellEffects(who = $,iSpellPower=0)
    {
-      local i, oMonster, iMonsterFaction, iModifier, iBaseChance;
+      local i, iAggro, iDropOff, oBrain, oMonster, iMonsterFaction;
 
       Send(who,@MsgSendUser,#message_rsc=Bait_success);
+
+      iAggro = iSpellPower * iSpellPower / 2;
 
       foreach i in Send(send(who,@GetOwner),@GetHolderActive)
       {
@@ -85,30 +87,9 @@ messages:
          // Can the monster attack the caster? If not possible to attack,
          // don't bait them. Example would be minions with a master that
          // can't fight the bait caster. This also checks for AI_NPC.
-         if (NOT Send(oMonster,@AllowBattlerAttack,#victim=who,#actual=FALSE,
-                     #report=FALSE))
+         if (NOT Send(oMonster,@AllowBattlerAttack,#victim=who,#actual=FALSE,#report=FALSE))
          {
             continue;
-         }
-
-         iBaseChance = 25;
-         if Send(oMonster,@GetTarget) = $
-         {
-            // easier if monster doesn't have a target
-            iModifier = 2;
-         }
-         else
-         {
-            // harder if monster already has a target
-            iModifier = 4;
-         }
-
-         // Human mobs and minions fall for bait less often.
-         if IsClass(oMonster,&Human)
-            OR Send(oMonster,@IsMinion)
-         {
-            iBaseChance = 0;
-            iModifier += 4;
          }
 
          // Avoid faction problems, don't make it work on aligned people.
@@ -116,18 +97,39 @@ messages:
          if NOT (iMonsterFaction = FACTION_NEUTRAL)
             AND (send(who,@GetFaction) = iMonsterFaction)
          {
-            iBaseChance = -200;
+            continue;
          }
 
          // Don't allow in happyland, unless the monster has no master.
-         // Also must be in range.
-         if (Random(1,100) < (iBaseChance + (iSpellPower/iModifier))
-            AND (Send(SYS,@IsPKAllowed)
-               OR Send(oMonster,@GetMaster) = $)
-            AND Send(who,@SquaredDistanceTo,#what=oMonster)
-               < (piBaitRange * piBaitRange))
+         if NOT (Send(SYS,@IsPKAllowed) OR Send(oMonster,@GetMaster) = $)
          {
-            Send(oMonster,@TargetSwitch,#what=who,#iHatred=100);
+            continue;
+         }
+
+         // Effect fades with increased range. Scales from full effect at 0 range
+         // to zero effect at double spell range.
+         iDropOff = iAggro * (4 * piBaitRange * piBaitRange - Send(who,@SquaredDistanceTo,#what=oMonster));
+         iDropOff = iDropOff / (piBaitRange*piBaitRange);
+         iDropOff -= Random(0,2500);
+         iDropOff = bound(iDropOff,0,iAggro);
+
+         // Human mobs and minions fall for bait less often.
+         if IsClass(oMonster,&Human)
+            OR Send(oMonster,@IsMinion)
+         {
+            iDropOff /= 4;
+         }
+
+         if iDropOff = 0
+         {
+            continue;
+         }
+
+         oBrain = Send(oMonster,@GetBrain);
+         Send(oMonster,@AddHurtMeRecently,#who=who,#amount=iDropOff);
+
+         if Send(oBrain,@AttemptTargetSwitch,#mob=oMonster,#what=who,#event=8)
+         {
             Send(oMonster,@EnterStateEngage,#target=who,#actnow=TRUE);
          }
       }

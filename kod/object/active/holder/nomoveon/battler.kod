@@ -2256,7 +2256,7 @@ messages:
       if poOwner <> $
       {
          Send(poOwner,@SomethingAttacked,#what=self,#victim=what,
-              #use_weapon=oWeapon);
+              #use_weapon=oWeapon,#stroke_obj=stroke_obj);
       }
 
       return TRUE;
@@ -3445,6 +3445,19 @@ messages:
       return 0;
    }
 
+   GetHurtMeRecentlyLastAmount(who=$)
+   {
+      local lNode;
+
+      lNode = GetListNode(plHurtMeRecently,1,who);
+      if (lNode <> $)
+      {
+         return Nth(lNode,4);
+      }
+
+      return 0;
+   }
+
    AddHurtMeRecently(who=$,amount=0)
    {
       local i, iTime;
@@ -3493,13 +3506,15 @@ messages:
             SetNth(i,2,Nth(i,2)+amount);
             DeleteTimer(Nth(i,3));
             SetNth(i,3,CreateTimer(self,@RemoveHurtMeRecently,iTime));
+            SetNth(i,4,amount);
 
             return;
          }
       }
 
+      // 4th entry keeps track of the last hit.
       plHurtMeRecently = Cons([who,amount,CreateTimer(self,
-                               @RemoveHurtMeRecently,iTime)],
+                               @RemoveHurtMeRecently,iTime),amount],
                                plHurtMeRecently);
 
       return;
@@ -3516,6 +3531,44 @@ messages:
             SetFirst(i,$);
             SetNth(i,3,$);
             plHurtMeRecently = DelListElem(plHurtMeRecently,i);
+
+            return;
+         }
+      }
+
+      return;
+   }
+
+   ModifyHurtMeRecently(who=$,iAmount=$,iPercentage=$)
+   {
+      local i;
+
+      foreach i in plHurtMeRecently
+      {
+         if First(i) = who
+         {
+            if iPercentage <> $
+            {
+               iPercentage = bound(Nth(i,2)*(100 + iPercentage)/100,0,$);
+               SetNth(i,2,iPercentage);
+            }
+
+            if iAmount <> $
+            {
+               iAmount = bound(Nth(i,2) + iAmount,0,$);
+               SetNth(i,2,iAmount);
+            }
+
+            if Nth(i,2) = 0
+            {
+               if IsTimer(Nth(i,3))
+               {
+                  DeleteTimer(Nth(i,3));
+               }
+               SetFirst(i,$);
+               SetNth(i,3,$);
+               plHurtMeRecently = DelListElem(plHurtMeRecently,i);
+            }
 
             return;
          }

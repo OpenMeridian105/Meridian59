@@ -1709,6 +1709,19 @@ messages:
       propagate;
    }
 
+   SomethingHelped(what = $, target = $, oSpell = $, iAmount = 0)
+   "Something in the room has helped someone. We might want to respond"
+   "by aiding them or dispatching of them pesky healers."
+   {
+      if poBrain <> $
+      {
+         Send(poBrain,@SomethingHelped,#mob=self,#state=piState,
+               #what=what,#target=target,#oSpell=oSpell,#iAmount=iAmount);
+      }
+
+      propagate;
+   }
+
    RecordTimeAttacked(who=$)
    "This records the last time the monster attacked someone, "
    "and the player or monster it attacked."
@@ -3123,13 +3136,6 @@ messages:
 
       // Make sure we don't deal negative damage.
       iDamage = Bound(iDamage,0,$);
-      
-      // I hate my target more if he hits me.
-      if what = poTarget
-      {
-         // Should scale based on damage?
-         ++piHatred;
-      }
 
       piHealth -= iDamage;
 
@@ -3536,7 +3542,7 @@ messages:
 
    //// Movement messages
 
-   MoveTowards(oTarget = $, face_target=FALSE, face_away=FALSE,pass_walls=FALSE)
+   MoveTowards(oTarget = $, face_target=FALSE, face_away=FALSE,pass_walls=FALSE,bEngage=FALSE)
    "Tries to immediately move the monster exactly one step towards oTarget"
    "Uses MoveTowardsCoords to perform the step."
    {
@@ -3554,7 +3560,8 @@ messages:
                    #iFineCol=Send(oTarget,@GetFineCol),
                    #face_target=face_target,
                    #face_away=face_away,
-                   #pass_walls=pass_walls);
+                   #pass_walls=pass_walls,
+                   #bEngage=bEngage);
    }
 
    MoveAway(oTarget = $, face_target=FALSE, face_away=FALSE)
@@ -3741,7 +3748,7 @@ messages:
 
       return;
    }
-   
+
    ReconsiderMoveDestination()
    "Called if too many steps by heuristic"
    {
@@ -3760,12 +3767,12 @@ messages:
          return FALSE;
          //Debug("Discarded SPAWN return location!!");
       }
-	   
+
       return TRUE;
    }
-   
+
    MoveTowardsCoords(iRow=$,iCol=$,iFineRow=FINENESS_HALF,iFineCol=FINENESS_HALF,
-                     face_target=FALSE,face_away=FALSE,pass_walls=FALSE)
+                     face_target=FALSE,face_away=FALSE,pass_walls=FALSE,bEngage=FALSE)
    "Tries to immediately move the monster exactly one step towards the location specified in arguments."
    "The performed step can be straight towards the location or a step on a astar path or"
    "a step determined by the move-heuristic. Raises @ReconsiderMoveDestination if two steps in a row"
@@ -3806,17 +3813,25 @@ messages:
 
          // stores if we reconsidered our move destination
          iStillGo = TRUE;
-		 
+
          // check if this was a 'good' step (=on a path or directly towards)
          if (iState & STATE_MOVE_PATH) OR (iState & STATE_MOVE_DIRECT)
          {
             // reset badstep counter
-            piBadSteps = 0;		
+            piBadSteps = 0;
          }
          else
          {
             // increment bad step counter
             piBadSteps = piBadSteps + 1;
+
+            // Unreachable targets are lowered on the hate list.
+            if bEngage
+            {
+               Send(self,@ModifyHurtMeRecently,#who=poTarget,
+                  #iPercentage=Send(poBrain,@GetAggroPercentageLoss));
+               Send(self,@SetTarget,#what=Send(self,@GetTopHurter));
+            }
 
             // too many heuristic steps, consider going elsewhere
             if (piBadSteps % 2 = 0)
@@ -3824,8 +3839,8 @@ messages:
                iStillGo = Send(self,@ReconsiderMoveDestination);
             }
          }
-		 
-		 if iStillGo AND Send(self,@ReqMonsterMove,#new_row=iRow,#new_col=iCol,
+
+         if iStillGo AND Send(self,@ReqMonsterMove,#new_row=iRow,#new_col=iCol,
                   #new_finerow=iFineRow,#new_finecol=iFineCol)
          {
             Send(self,@MonsterOrient,#new_row=iRow,#new_col=iCol,
@@ -9062,7 +9077,7 @@ messages:
       return FALSE;
    }
 
-   GetTopHurter()
+   GetTopHurter(oExclude=$)
    {
       local oTop, oHurter, oBodyType, iHurt, iTop, i,
          oIllusion, iStealth;
@@ -9080,7 +9095,8 @@ messages:
 
          // We usually don't hold much of a grudge against ourselves,
          // inanimate objects, or the dead.
-         if (oHurter = self)
+         if (oHurter = oExclude)
+            OR (oHurter = self)
             OR (NOT IsClass(oHurter,&Battler))
             OR (Send(oHurter,@GetOwner) = $)
          {
@@ -9111,25 +9127,6 @@ messages:
          if NOT Send(self,@CanReach,#what=oHurter,#bRanged=TRUE)
          {
             iHurt /= 2;
-         }
-
-         // If the hurter was stealthy, we might not notice him.
-         iStealth = Send(oHurter,@GetStealth,#what=self);
-         iHurt = Bound((iHurt*(300-iStealth)/300)-1000,0,$);
-
-         // If the pain was negligible and the hurter wasn't
-         // noticed, remove him from our list.
-         if (iHurt = 0)
-         {
-            if IsTimer(Nth(i,3))
-            {
-               DeleteTimer(Nth(i,3));
-            }
-
-            SetFirst(i,$);
-            SetNth(i,3,$);
-
-            plHurtMeRecently = DelListElem(plHurtMeRecently,i);
          }
 
          if iHurt > iTop
@@ -9191,6 +9188,18 @@ messages:
    GetHatred()
    {
       return piHatred;
+   }
+
+   SetHatred(bForce=FALSE,iHatred=0)
+   {
+      if bForce OR piHatred < iHatred
+      {
+         piHatred = iHatred;
+
+         return TRUE;
+      }
+
+      return FALSE;
    }
 
    TargetSwitch(what=$, iHatred = 0)
@@ -10332,6 +10341,7 @@ messages:
    {
       return TRUE;
    }
+
 
 end
 ////////////////////////////////////////////////////////////////////////////////

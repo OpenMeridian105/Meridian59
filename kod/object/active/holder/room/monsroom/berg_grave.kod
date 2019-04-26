@@ -25,7 +25,7 @@ resources:
    room_name_berg_grave = "Clandestine Tombs"
 
    berg_grave_music = ksong.ogg
-   
+
    berg_grave_updoor_sound = doorrsup.ogg
    berg_grave_downdoor_sound = doordown.ogg
    berg_grave_no_statues_sound = lich_awr.ogg
@@ -41,7 +41,7 @@ resources:
       "...what lurks in them depends a lot on who is peering into them..."
    berg_grave_voice_no_statues = \
       "~kAn eerie voice echoes, \"~I~...they will discard you, too..."
-      
+
    berg_grave_projectile = lightnin.bgf
    berg_grave_prism_wav = portal.ogg
 
@@ -51,11 +51,11 @@ classvars:
 
    viTeleport_row = 9
    viTeleport_col = 5
-      
+
    viWeatherZone = WEATHER_ZONE_BERG
 
    viSeconds_til_close = 10
-   
+
    vrPrismProjectile = berg_grave_projectile
 
 properties:
@@ -65,9 +65,9 @@ properties:
    prRoom = room_berg_grave
    piRoom_num = RID_BERG_GRAVE
    prMusic = berg_grave_music
-   
+
    piBaseLight = LIGHT_DARK
-   
+
    piOutside_factor = OUTDOORS_NONE
 
    piInit_count_min = 4
@@ -76,12 +76,12 @@ properties:
    piMonster_count_max = 10
 
    pbDoorOpen = FALSE
-   
+
    // What locations do we want to spawn states at?  Each element is a
    //  [row, col, finerow, finecol, direction] triplet.
    plStatueLocations = $
    plBraziers = $
-   
+
 messages:
 
    CreateStandardExits()
@@ -113,7 +113,7 @@ messages:
 
       propagate;
    }
-   
+
    SetMonsterGenPoints()
    {
       plGenerators = [ [ 5, 15], [ 8, 16], [ 6, 19],
@@ -128,7 +128,7 @@ messages:
    }
 
    CreateStandardObjects()
-   {      
+   {
       Send(self,@PlaceBraziers);
 
       Send(self,@NewHold,#what=Create(&Brazier),
@@ -184,7 +184,14 @@ messages:
 
       propagate;
    }
-   
+
+   Delete()
+   {
+      plBraziers = $;
+
+      propagate;
+   }
+
    SomethingTryGo(what = $,row = $,col = $)
    {
       if (row = 9 AND (col=7 OR col=8))
@@ -196,37 +203,38 @@ messages:
 
       propagate;
    }
-   
+
    OpenDoor()
    {
       Send(self,@SomethingWaveRoom,#wave_rsc=berg_grave_updoor_sound);
-      
+
       Send(self,@SomeoneSaid,#type=SAY_MESSAGE,#string=berg_grave_voice_door_unlocked,#what=self);
-   
+
       // Door
       Send(self,@SetSector,#sector=SECTOR_DOOR,#animation=ANIMATE_FLOOR_LIFT,
            #height=208,#speed=30);
 
       pbDoorOpen = TRUE;
+
       return;
    }
-   
+
    CloseDoor()
    {
       // Door
       Send(self,@SetSector,#sector=SECTOR_DOOR,#animation=ANIMATE_FLOOR_LIFT,
            #height=272,#speed=150);
-           
+
       pbDoorOpen = FALSE;
       return;
    }
-   
+
    CanHavePlayerPortal()
    {
       // Don't allow portals into this room, bypassing puzzle
       return FALSE;
    }
-   
+
    FirstUserEntered(what = $)
    {
       Send(self,@ResetBraziers);
@@ -235,7 +243,7 @@ messages:
 
       propagate;
    }
-   
+
    SomethingKilled(what = $,victim = $)
    {
       if IsClass(victim,&LivingStatue)
@@ -247,7 +255,7 @@ messages:
 
       propagate;
    }
-   
+
    PlaceStatues()
    {
       local oStatue, lLocation;
@@ -278,7 +286,7 @@ messages:
    {
       local lBrazier1, lBrazier2, lBrazier3, lBrazier4, 
             lBrazier5, lBrazier6, lBrazier7;
-   
+
       lBrazier1 = Create(&BrazierSwitch);
       Send(self,@NewHold,#what=lBrazier1,
             #new_row=7,#new_col=4,#fine_row=0,#fine_col=32,#new_angle=ANGLE_EAST);
@@ -308,12 +316,7 @@ messages:
 
    ResetBraziers()
    {
-      local lBrazier;
-
-      foreach lBrazier in plBraziers
-      {
-         Send(lBrazier,@SetFlame,#has_flame=FALSE);
-      }
+      SendList(plBraziers,0,@SetFlame,#has_flame=FALSE);
 
       return;
    }
@@ -324,7 +327,7 @@ messages:
 
       propagate;
    }
-   
+
    SpawnVitkhul()
    {
       // start spawning Vitkhul
@@ -332,10 +335,10 @@ messages:
 
       Send(self,@SomethingWaveRoom,#wave_rsc=berg_grave_no_statues_sound);
       Send(self,@SomeoneSaid,#type=SAY_MESSAGE,#string=berg_grave_voice_no_statues,#what=self);
-      
+
       return TRUE;
    }
-   
+
    NewHoldObject(what = $, new_pos = $)
    {
       local iSectorID;
@@ -354,11 +357,11 @@ messages:
 
       propagate;
    }
-   
+
    PrismSectorCheck(iSectorID = 0, what = $)
    {
       local lBrazier;
-   
+
       if NOT pbDoorOpen AND
          Send(what,@GetSectorIDAtObject) = SEC_PRISM_ZONE AND
          Send(what,@GetNumSides) >= 7
@@ -370,20 +373,20 @@ messages:
                      #flags=PROJ_FLAG_LIGHT_SOURCE);
                Send(lBrazier,@SetFlame,#has_flame=TRUE);
             }
-            Send(self, @SomethingWaveRoom, #what = self,
-              #wave_rsc = berg_grave_prism_wav);
+            Send(self,@SomethingWaveRoom,#what=self,
+                  #wave_rsc=berg_grave_prism_wav);
             Send(self,@OpenDoor);
       }
 
       return;
    }
-   
+
    #region Projectile
    GetProjectileIcon()
    {
       return vrPrismProjectile;
    }
-   
+
    SendProjectileAnimation()
    {
       // 40ms between animations
@@ -391,7 +394,7 @@ messages:
 
       return;
    }
-   
+
    GetProjectileLightColor()
    {
       return LIGHT_BLUE;
@@ -402,7 +405,7 @@ messages:
       // General lighting information.
       return LIGHT_FLAG_ON | LIGHT_FLAG_DYNAMIC;
    }
-   
+
    GetProjectileLightIntensity()
    {
       // Medium light radius for projectiles.  Out of 255 levels.
@@ -414,6 +417,6 @@ messages:
       return 12;
    }
    #endregion
-   
+
 end
 ////////////////////////////////////////////////////////////////////////////////

@@ -2415,6 +2415,42 @@ messages:
       return;
    }
 
+   TestAllRoomRandomGen(num=500)
+   "Prints the percentage of failures when attempting to obtain valid random "
+   "coordinates in a room. By default reports any rooms with more than 5% "
+   "failure rate (num / 100)."
+   {
+      local i, iCount, lRooms;
+
+      // Safety check for live servers, this test takes a few seconds to run.
+      if (Length(plUsers_logged_on) > 3)
+      {
+         Debug("Can't test room random gen % with users online!");
+
+         return;
+      }
+
+      foreach i in plRooms
+      {
+         iCount = Send(i,@GetGenSuccessPercent);
+         if (iCount >= num)
+         {
+            lRooms = Send(self,@AddToSortedList,#what=i,#lList=lRooms,
+                           #number=iCount);
+
+         }
+      }
+
+      // Print descending, probably care more about the worst offenders.
+      foreach i in lRooms
+      {
+         Debug(Send(First(i),@GetName), " had a random point gen failure rate of ",
+               Nth(i,2) / 100, Nth(i,2) % 100,"%");
+      }
+
+      return;
+   }
+
    CreateOneRoomIfNew(num = $,class = $,poGuild = $,iPublic = FALSE,
                       base_room=$,iPvP=FALSE)
    {

@@ -119,6 +119,7 @@ client_def_table_type usercommand_def_table[] =
 	{1, TAG_INT}, {0, DONE_PARM} } },
 	{ UC_GUILD_SHIELDS,         { {0, DONE_PARM} } },
 	{ UC_GUILD_SHIELD,          { {0, DONE_PARM} } },
+	{ UC_GUILD_SHIELD_ERROR,    { {0, DONE_PARM} } },
 	{ UC_CLAIM_SHIELD,          { {1, TAG_INT}, {1, TAG_INT}, {1, TAG_INT}, {1, TAG_INT}, {0, DONE_PARM} } },
 	{ UC_DISBAND,               { {0, DONE_PARM} } },
 	{ UC_MAKE_ALLIANCE,         { {4, TAG_OBJECT}, {0, DONE_PARM} } },

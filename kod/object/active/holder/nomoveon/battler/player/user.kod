@@ -240,6 +240,17 @@ resources:
    user_someone_logoff = "~B~U~k[###]~n ~B~vAu revoir to %s."
    user_guildmate_logon = "~IHail your guildmate %s!"
    user_guildmate_logoff = "~IYour guildmate %s has just departed."
+   user_guild_shield_error_time = \
+      "You will be able to claim a new design for your guild's herald "
+      "shield in %i %s."
+   user_guild_shield_error_disabled = \
+      "Your guild is unable to claim a different heraldic design at this "
+      "time – you have already claimed one."
+   user_time_days = "days"
+   user_time_hours = "hours"
+   user_time_minutes = "minutes"
+   user_time_seconds = "seconds"
+   user_time_second = "second"
 
    user_safety_on = \
       "~B~U~k[###]~n ~B~vYour safety is now ~I~gON~n~B:  You can no longer "
@@ -2896,13 +2907,65 @@ messages:
          AND Nth(client_msg,5) <> FALSE
          AND Send(poGuild,@GetRank,#who=self) = RANK_MASTER
       {
-         Send(poGuild,@SetGuildColors,#color1=Nth(client_msg,2),
-               #color2=Nth(client_msg,3),#shape=Nth(client_msg,4));
+         if (NOT Send(poGuild,@SetGuildColors,#who=self,#color1=Nth(client_msg,2),
+                     #color2=Nth(client_msg,3),#shape=Nth(client_msg,4)))
+         {
+            // Don't need to update shield if this fails.
+            return;
+         }
+         // Set our guild as the owner of the shield.
+         oGuild = poGuild;
       }
 
       Send(self,@UserGuildSendShieldInfo,#oguild=oGuild,
             #color1=Nth(client_msg,2),#color2=Nth(client_msg,3),
             #shape=Nth(client_msg,4));
+
+      return;
+   }
+
+   UserGuildSendShieldError(iTime = 0)
+   {
+      local rTime;
+
+      if (iTime <= 0)
+      {
+         // Send a resource saying shields can't be changed.
+         AddPacket(1,BP_USERCOMMAND, 1,UC_GUILD_SHIELD_ERROR,
+                   4,user_guild_shield_error_disabled);
+      }
+      else
+      {
+         if (iTime > DAY * 2)
+         {
+            rTime = user_time_days;
+            iTime /= DAY;
+         }
+         else if (iTime > HOUR * 2)
+         {
+            rTime = user_time_hours;
+            iTime /= HOUR;
+         }
+         else if (iTime > MINUTE * 2)
+         {
+            rTime = user_time_minutes;
+            iTime /= MINUTE;
+         }
+         else if (iTime = 1)
+         {
+            rTime = user_time_second;
+         }
+         else
+         {
+            rTime = user_time_seconds;
+         }
+
+         // Send a resource with the time string.
+         AddPacket(1,BP_USERCOMMAND, 1,UC_GUILD_SHIELD_ERROR,
+                   4,user_guild_shield_error_time, 4,iTime, 4,rTime);
+      }
+
+      SendPacket(poSession);
 
       return;
    }

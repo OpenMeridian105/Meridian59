@@ -102,7 +102,9 @@ BOOL CALLBACK GuildShieldDialogProc(HWND hDlg, UINT message, UINT wParam, LONG l
 			{
 				RequestClaimGuildShield(iChosenColor1, iChosenColor2, iChosenPattern);
 			}
-			break;
+			// Don't need to request/draw the shield again, either we claim it and it
+			// gets resent by server, or we don't and we get sent an error message.
+			return FALSE;
 		}
 		RequestFindGuildShield(iChosenColor1, iChosenColor2, iChosenPattern);
 		GuildShieldDraw();
@@ -152,37 +154,48 @@ void GuildGotShields(list_type shields)
 	GuildShieldDraw();
 }
 
+void GuildGotShieldError(char *message)
+{
+   SetDlgItemText(hwndShieldPage, IDC_STATIC_GUILD, message);
+}
+
 void GuildGotShield(ID idGuild, char* pszGuildName, BYTE color1, BYTE color2, BYTE pattern)
 {
    if (hwndShieldPage)
    {
-      if (idMyGuild && idGuild == idMyGuild && legalShield(color1,color2,pattern))
+      if (idMyGuild && idGuild == idMyGuild && legalShield(color1, color2, pattern))
       {
-	 // if i'm getting my claimed guild shield colors, i can't claim other colors
-	 EnableWindow(GetDlgItem(hwndShieldPage, IDC_ACCEPT), FALSE);
+         // if we've already claimed this shield, don't try claim it again
+         EnableWindow(GetDlgItem(hwndShieldPage, IDC_ACCEPT), FALSE);
       }
-      if (!legalShield(color1,color2,pattern))
+      if (!legalShield(color1, color2, pattern))
       {
-	 // claimant guild gets "can't use those colors"
-	 GetDlgItemText(hwndShieldPage, IDC_RENOUNCE, szClaimBuffer, sizeof(szClaimBuffer));
-	 SetDlgItemText(hwndShieldPage, IDC_STATIC_GUILD, szClaimBuffer);
+         // claimant guild gets "can't use those colors"
+         GetDlgItemText(hwndShieldPage, IDC_RENOUNCE, szClaimBuffer, sizeof(szClaimBuffer));
+         SetDlgItemText(hwndShieldPage, IDC_STATIC_GUILD, szClaimBuffer);
+         // disable claim button
+         EnableWindow(GetDlgItem(hwndShieldPage, IDC_ACCEPT), FALSE);
       }
       else if (!idGuild)
       {
-	 // claimant guild is blank
-	 SetDlgItemText(hwndShieldPage, IDC_STATIC_GUILD, "");
+         // claimant guild is blank
+         SetDlgItemText(hwndShieldPage, IDC_STATIC_GUILD, "");
+         // available to claim
+         EnableWindow(GetDlgItem(hwndShieldPage, IDC_ACCEPT), TRUE);
       }
       else
       {
-	 // claimant guild's name appears
-	 sprintf(szClaimBuffer, szClaimFormat, pszGuildName);
-	 SetDlgItemText(hwndShieldPage, IDC_STATIC_GUILD, szClaimBuffer);
+         // claimant guild's name appears
+         sprintf(szClaimBuffer, szClaimFormat, pszGuildName);
+         SetDlgItemText(hwndShieldPage, IDC_STATIC_GUILD, szClaimBuffer);
+         // unavailable to claim
+         EnableWindow(GetDlgItem(hwndShieldPage, IDC_ACCEPT), FALSE);
       }
 #if 0
       {
-      char buffer[256];
-      wsprintf(buffer,"Color1=%d, Color2=%d, Pattern=%d",(int)color1,(int)color2,(int)pattern);
-      SetDlgItemText(hwndShieldPage, IDC_STATIC_GUILD, buffer);
+         char buffer[256];
+         wsprintf(buffer, "Color1=%d, Color2=%d, Pattern=%d", (int)color1, (int)color2, (int)pattern);
+         SetDlgItemText(hwndShieldPage, IDC_STATIC_GUILD, buffer);
       }
 #endif
    }

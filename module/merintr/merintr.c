@@ -38,6 +38,7 @@ static Bool HandleGuildList(char *ptr, long len);
 static Bool HandleGuildHalls(char *ptr, long len);
 static Bool HandleGuildShield(char *ptr, long len);
 static Bool HandleGuildShields(char *ptr, long len);
+static Bool HandleGuildShieldClaimError(char *ptr, long len);
 static Bool HandleLookPlayer(char *ptr, long len);
 static Bool HandleSendQuit(char *ptr, long len);
 static Bool HandleSpellSchools(char *ptr, long len);
@@ -79,6 +80,7 @@ static handler_struct user_handler_table[] = {
 { UC_GUILD_HALLS,          HandleGuildHalls, },
 { UC_GUILD_SHIELD,         HandleGuildShield, },
 { UC_GUILD_SHIELDS,        HandleGuildShields, },
+{ UC_GUILD_SHIELD_ERROR,   HandleGuildShieldClaimError, },
 { UC_LOOK_PLAYER,          HandleLookPlayer, },
 { UC_SEND_QUIT,            HandleSendQuit, },
 { UC_SPELL_SCHOOLS,        HandleSpellSchools, },
@@ -1501,6 +1503,26 @@ Bool HandleGuildShields(char *ptr, long len)
    }
 
    GuildGotShields(shield_list);
+
+   return True;
+}
+/********************************************************************/
+Bool HandleGuildShieldClaimError(char *ptr, long len)
+{
+   char message[MAXMESSAGE];
+   char* desc = message;
+   ID resource_id;
+   char *start = ptr;
+
+   Extract(&ptr, &resource_id, SIZE_ID);
+
+   len -= (ptr - start);
+
+   // Error message text
+   if (!CheckServerMessage(&desc, &ptr, &len, resource_id))
+      return False;
+
+   GuildGotShieldError(desc);
 
    return True;
 }

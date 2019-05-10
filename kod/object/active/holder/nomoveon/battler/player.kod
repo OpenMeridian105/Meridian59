@@ -3523,7 +3523,7 @@ messages:
    ReactivateAllEnchantments()
    "Called when a player logs on."
    {
-      local i, tTimer, iTime, state, oSpell;
+      local i, tTimer, iTime, state, oSpell, bSafe;
 
       foreach i in plEnchantments
       {
@@ -3581,9 +3581,23 @@ messages:
          Send(oSpell,@RestartEnchantmentEffect,#who=self,#state=state);
       }
 
+      // Edge case, if we are in a safe room (i.e. potentially sent by phase
+      // or log pen), don't reactivate any lethal overtime damage effects.
+      if (poOwner <> $)
+      {
+         bSafe = Send(poOwner,@CheckRoomFlag,#flag=ROOM_NO_COMBAT);
+      }
+      else
+      {
+         bSafe = Send(Send(SYS,@FindRoomByNum,#num=Send(self,@GetSaveRoomLoggedOn)),
+                     @CheckRoomFlag,#flag=ROOM_NO_COMBAT);
+      }
+
       foreach i in plOverTimeEffects
       {
          iTime = First(i);
+
+         // TODO: remove lethal overtime effects if bSafe is TRUE.
 
          // Nil means that the over time effect has infinite duration. Skip.
          if iTime <> $

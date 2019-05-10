@@ -109,7 +109,7 @@ void AnimationTimerProc(HWND hwnd, UINT timer)
    timeLastFrame = dt;
 
    /* Send event to modules */
-   ModuleEvent(EVENT_ANIMATE, dt);
+   ModuleEvent(EVENT_ANIMATE, (int)dt);
 
    /* Send event to non-module child windows */
    if (config.animate)

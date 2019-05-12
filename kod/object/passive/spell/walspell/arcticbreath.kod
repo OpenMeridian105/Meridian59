@@ -1,0 +1,114 @@
+// Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+// All rights reserved.
+//
+// This software is distributed under a license that is described in
+// the LICENSE file that accompanies it.
+//
+// Meridian is a registered trademark.
+
+
+////////////////////////////////////////////////////////////////////////////////
+ArcticBreath is WallSpell
+
+constants:
+   include blakston.khd
+
+resources:
+
+   include arcticbreath.lkod
+
+   ArcticBreath_name_rsc = "arctic breath"
+   ArcticBreath_icon_rsc = arcticbreath.bgf
+   ArcticBreath_desc_rsc = \
+      "Unleash the icy winds of Faren upon the area, chilling your "
+      "enemies to the bone."
+
+   ArcticBreath_cast_rsc = \
+      "Your icy breath covers the area in deadly frost."
+
+   ArcticBreath_sound = iarcticbreath.ogg
+
+classvars:
+
+   vrName = ArcticBreath_name_rsc
+   vrIcon = ArcticBreath_icon_rsc
+   vrDesc = ArcticBreath_desc_rsc
+
+   viSpell_num = SID_ARCTIC_BREATH
+   viSchool = SS_FAREN
+   viSpell_level = 5
+   viMana = 15
+   viSpellExertion = 3
+   viMeditate_ratio = 30
+
+   viCast_time = 1000
+   vrSucceed_wav = ArcticBreath_sound
+   vrSuccess = ArcticBreath_cast_rsc
+
+   viHarmful = TRUE
+
+   //// Seed parameters
+   // How far apart (fineunits) should the elements spawn?
+   viElementStep = FINENESS_HALF
+   viElementSpellpower = 200
+   viElementDuration = 400
+   viElementCharges = 20
+   viElementSpeed = 50
+
+properties:
+
+
+messages:
+
+   ResetReagents()
+   {
+      plReagents = $;
+      plReagents = Cons([&BlueMushroom,2],plReagents);
+
+      return;
+   }
+
+   PlaceWallElements(seed = $)
+   {
+      local lSecondarySeeda, lSecondarySeedb, lSeeda, lSeedb,
+         iXFineStep, iYFineStep, oRoom, oCaster, iSpellPower,
+         iDuration, iCharges, iSpeed, iAngle, iStep, iNoise;
+
+      oCaster = First(seed);
+      oRoom = Send(oCaster,@GetOwner);
+      iSpellPower = Nth(seed,2);
+      iDuration = Nth(seed,3);
+      iCharges = Nth(seed,4);
+      iSpeed = Nth(seed,5);
+      iAngle = Nth(seed,6);
+      iStep = Nth(seed,7);
+      iNoise = Nth(seed,8);
+
+      iXFineStep = 5*Send(oRoom,@GetXFineStep,#angle=iAngle);
+      iYFineStep = 5*Send(oRoom,@GetYFineStep,#angle=iAngle);
+
+      lSecondarySeeda = [oCaster,iSpellPower,iDuration,iCharges,
+         iSpeed,MAX_ANGLE/4,iStep,iNoise,0];
+      lSecondarySeedb = [oCaster,iSpellPower,iDuration,iCharges,
+         iSpeed,3*MAX_ANGLE/4,iStep,iNoise,0];
+
+      // This creates a single row of wall elements up to 10 elements 
+      // wide. These will then spawn the secondary wall elements
+      // specified above.
+      lSeeda = [oCaster,iSpellPower,iDuration,iCharges/4,iSpeed*3,
+         (iAngle+3*MAX_ANGLE/4) % MAX_ANGLE,iStep,iNoise,0,lSecondarySeeda];
+      lSeedb = [oCaster,iSpellPower,iDuration,iCharges/4,iSpeed*3,
+         (iAngle+MAX_ANGLE/4) % MAX_ANGLE,iStep,iNoise,0,lSecondarySeedb];
+
+      Send(self,@SpawnElement,#seed=lSeeda,#who=oCaster,
+         #xfineoffset=iXFineStep,#yfineoffset=iYFineStep,
+         #walltype=&WallOfFrost);
+      Send(self,@SpawnElement,#seed=lSeedb,#who=oCaster,
+         #xfineoffset=iXFineStep,#yfineoffset=iYFineStep,
+         #walltype=&WallOfFrost);
+
+      propagate;
+   }
+
+end
+////////////////////////////////////////////////////////////////////////////////

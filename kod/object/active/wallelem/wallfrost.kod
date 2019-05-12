@@ -1,0 +1,156 @@
+// Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+// All rights reserved.
+//
+// This software is distributed under a license that is described in
+// the LICENSE file that accompanies it.
+//
+// Meridian is a registered trademark.
+
+
+////////////////////////////////////////////////////////////////////////////////
+WallOfFrost is ActiveWallElement
+
+constants:
+
+   include blakston.khd
+
+resources:
+
+   include wallfrost.lkod
+
+   WallOfFrost_name_rsc = "cloud of frost"
+   WallOfFrost_icon_rsc = frostwall.bgf
+   WallOfFrost_desc_rsc = \
+      "Tiny fragments of ice playfully dance in a puff of arctic air.  What harm could it possibly do?"
+
+   WallOfFrost_damage0 = "You withstand the frost unscathed."
+   WallOfFrost_damage5 = "You feel a bit chilly..."
+   WallOfFrost_damage10 = "You really wish that annoying clattering would stop already...  Wait, it's you!"
+   WallOfFrost_damage15 = "You feel your tears turn into frozen drops of solid ice.  How poetic!"
+   WallOfFrost_damage20 = "You really miss that freezing sensation now that your limbs have lost all feeling..."
+
+   WallOfFrost_dissipates = "The icy cloud dissipates into thin air."
+
+classvars:
+
+   vrName = WallOfFrost_name_rsc
+   vrIcon = WallOfFrost_icon_rsc
+   vrdesc = WallOfFrost_desc_rsc
+
+   viObject_flags = OF_NOEXAMINE
+
+   vrDissipateMessage = WallOfFrost_dissipates
+   vrUnaffectedMessage = WallOfFrost_damage0
+
+   viLightBonus = 15
+
+   // How many ms should the effect last at max spellpower?
+   viEffectDuration = 8000
+
+   // How much damage (10^[-3]) should the effect do per second at max spellpower?
+   viEffectDamage = 4000
+
+properties:
+
+   piDrawEffectFlag = OF_FLICKERING
+   piDrawFx = DRAWFX_TRANSLUCENT_50
+
+messages:
+
+   DoEffect(what = $)
+   {
+      local oEffect, iSpellpower, iStrength, rMessage, bReport;
+
+      oEffect = Send(SYS,@FindSpellByNum,#num=SID_FREEZE);
+
+      iSpellpower = Nth(plSeed,2);
+
+      iStrength = iSpellpower*viEffectDamage/100;
+
+      bReport = Send(oEffect,@StartFreeze,#who=what,#source=poCaster,
+         #strength=iStrength,#duration=viEffectDuration);
+
+      if bReport
+      {
+         Send(poOwner,@SomethingAttacked,#what=poCaster,#victim=what,
+               #use_weapon=self,#stroke_obj=self);
+
+         if IsClass(poCaster,&Player)
+         {
+            Send(poCaster,@SetPlayerFlag,#flag=PFLAG_DID_DAMAGE,#value=TRUE);
+         }
+
+         if IsClass(what,&Player)
+         {
+            if iSpellpower = 0
+            {
+               rMessage = WallOfFrost_damage0;
+            }
+            else if iSpellpower < 25
+            {
+               rMessage = WallOfFrost_damage5;
+            }
+            else if iSpellpower < 50
+            {
+               rMessage = WallOfFrost_damage10;
+            }
+            else if iSpellpower < 75
+            {
+               rMessage = WallOfFrost_damage15;
+            }
+            else
+            {
+               rMessage = WallOfFrost_damage20;
+            }
+
+            Send(what,@MsgSendUser,#message_rsc=rMessage);
+         }
+      }
+
+      propagate;
+   }
+
+   SendAnimation()
+   {
+      AddPacket(1,ANIMATE_CYCLE, 4,Random(50,200), 2,1, 2,9);
+
+      return;
+   }
+
+   NewOwner(what = $)
+   {
+      // new room
+      if what <> $
+      {
+         Send(what,@AddBaseLight,#amount=viLightBonus);
+      }
+
+      // old room
+      if poOwner <> $
+      {
+         Send(poOwner,@AddBaseLight,#amount=-viLightBonus);
+      }
+
+      propagate;
+   }
+
+   Delete()
+   {
+      if poOwner <> $
+      {
+         Send(poOwner,@AddBaseLight,#amount=-viLightBonus);
+      }
+
+      propagate;
+   }
+
+   SendLightingInformation()
+   {
+      // 5 out of 255 intensity of light.
+      AddPacket(2,(LIGHT_FLAG_ON | LIGHT_FLAG_DYNAMIC),1,5, 2,LIGHT_BLUE);
+
+      return;
+   }
+
+end
+////////////////////////////////////////////////////////////////////////////////

@@ -14,32 +14,20 @@ constants:
 
    include blakston.khd
 
-   // Duration in milliseconds
-   POISON_DURATION = 180000
-
-   // Damage in health points * 10^-3 / second
-   POISON_HEALTHLOSS = 500    
-   POISON_VIGORLOSS = 100    
-   POISON_CHANCE = 30
-
 resources:
 
    include poisfogc.lkod
 
    PoisonFogCloud_name_rsc = "thick fog"
    PoisonFogCloud_icon_rsc = poisoncl.bgf
-   PoisonFogCloud_desc_rsc = \
-      "You choke just looking at the thick putrid fog."
+   PoisonFogCloud_desc_rsc = "You choke just looking at the thick putrid fog."
 
-   PoisonFogCloud_poisoned = \
-      "You suddenly feel sick as you inhale the vapors of the fog."
+   PoisonFogCloud_poisoned = "You suddenly feel sick as you inhale the vapors of the fog."
 
    PoisonFogCloud_poison_snd = psncough.ogg
 
-   PoisonFog_dissipates = \
-      "Some of the poison fog fades, then clears."
-   PoisonFog_unaffected = \
-      "You hold your breath and the noxious cloud does not affect you."
+   PoisonFog_dissipates = "Some of the poison fog fades, then clears."
+   PoisonFog_unaffected = "You hold your breath and the noxious cloud does not affect you."
 
 classvars:
 
@@ -52,30 +40,37 @@ classvars:
    vrDissipateMessage = PoisonFog_dissipates
    vrUnaffectedMessage = PoisonFog_unaffected
 
+   // How many ms should the effect last at max spellpower?
+   viEffectDuration = 30000
+
+   // How much damage (10^[-3]) should the effect do per second at max spellpower?
+   viEffectDamage = 800
+
+   // How much does each element contribute to the summoning limit?
+   viLimitCount = 1
+
+   // Time between checks for effect.
+   viEffectInterval = 2500
+
 properties:
 
    piDrawFx = DRAWFX_TRANSLUCENT_50
 
-   piOdds = 0
-
 messages:
-
-   Constructor(Odds = 0)
-   {
-      piOdds = Odds;
-
-      propagate;
-   }
 
    DoEffect(what = $)
    {
-      local oSpell;
+      local oEffect, iSpellpower, iStrength;
 
-      if Random(1,100) < piOdds
+      iSpellpower = Nth(plSeed,2);
+
+      if Random(0,SPELLPOWER_MAXIMUM) < iSpellpower
       {
-         oSpell = Send(SYS,@FindSpellByNum,#num=SID_POISON);
+         oEffect = Send(SYS,@FindSpellByNum,#num=SID_POISON);
+         iStrength = iSpellpower*viEffectDamage/SPELLPOWER_MAXIMUM;
 
-         if NOT Send(what,@HasOverTimeEffect,#what=oSpell) OR Random(1,POISON_CHANCE) = 1
+         if NOT Send(what,@HasOverTimeEffect,#what=oEffect)
+            OR (Random(1,50 + Send(what,@GetStamina)) < Send(First(plSeed),@GetAim))
          {
             if IsClass(what,&User)
             {
@@ -83,9 +78,8 @@ messages:
                Send(what,@WaveSendUser,#wave_rsc=PoisonFogCloud_poison_snd);
             }
 
-            Send(oSpell,@StartPoison,#source=poCaster,#who=what,
-                  #healthloss=POISON_HEALTHLOSS,#vigorloss=POISON_VIGORLOSS,
-                  #duration=POISON_DURATION);
+            Send(oEffect,@StartPoison,#source=poCaster,#who=what,#healthloss=iStrength,
+               #vigorloss=iStrength/4,#duration=viEffectDuration);
             Send(poOwner,@SomethingAttacked,#what=poCaster,#victim=what,
                   #use_weapon=self,#stroke_obj=self);
             if IsClass(poCaster,&Player)
@@ -108,6 +102,7 @@ messages:
 
       return;
    }
+
 
 end
 ////////////////////////////////////////////////////////////////////////////////

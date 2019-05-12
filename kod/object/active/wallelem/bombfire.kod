@@ -1,0 +1,271 @@
+// Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+// All rights reserved.
+//
+// This software is distributed under a license that is described in
+// the LICENSE file that accompanies it.
+//
+// Meridian is a registered trademark.
+
+
+////////////////////////////////////////////////////////////////////////////////
+BombFire is ActiveWallElement
+
+constants:
+
+   include blakston.khd
+
+resources:
+
+   include bombfire.lkod
+
+   BombFire_name_rsc = "meteor"
+   BombFire_icon_rsc = meteor.bgf
+   BombFire_desc_rsc = \
+      "WATCH OUT!!!  A METEOR!!!"
+
+   BombFire_miss = "You narrowly dodge the meteor!"
+   BombFire_damage0 = "Miraculously, the meteor fails to do you any harm."
+   BombFire_damage10 = "Considering you were just hit by a meteor, you don't feel too bad..."
+   BombFire_damage20 = "Ouch!  Who would have thought a giant ball of molten rock would hurt so much?"
+   BombFire_damage30 = "OUCH!  Everything they ever said about being hit by a meteor was true all along!"
+
+   BombFire_dissipates = "The meteor spontaneously disintegrates."
+
+classvars:
+
+   vrName = BombFire_name_rsc
+   vrIcon = BombFire_icon_rsc
+   vrdesc = BombFire_desc_rsc
+
+   viObject_flags = OF_NOEXAMINE
+
+   vrDissipateMessage = BombFire_dissipates
+   vrUnaffectedMessage = BombFire_miss
+
+   viLightBonus = 200
+
+   // How many ms should the effect last at max spellpower?
+   viEffectDuration = 600
+
+   // How much damage (10^[-3]) should the effect do per second at max spellpower?
+   viEffectDamage = 60000
+
+   // How much does each element contribute to the summoning limit?
+   viLimitCount = 0
+
+properties:
+
+   piRange = FINENESS
+
+messages:
+
+   LocationCheck(where = $)
+   {
+      local oSpell, iAngle, iXFineStep, iYFineStep, iRow, iFine_row, iCol, iFine_col,
+         iNewRow, iNewFine_row, iNewCol, iNewFine_col, iStep;
+
+      iAngle = Nth(plSeed,6);
+
+      iXFineStep = Send(poOwner,@GetXFineStep,#angle=iAngle);
+      iYFineStep = Send(poOwner,@GetYFineStep,#angle=iAngle);
+
+      iRow = Send(self,@GetRow);
+      iCol = Send(self,@GetCol);
+      iFine_row = Send(self,@GetFineRow);
+      iFine_col = Send(self,@GetFineCol);
+
+      iNewFine_row = iRow*FINENESS + iFine_Row;
+      iNewFine_col = iCol*FINENESS + iFine_Col;
+
+      iStep = Nth(plSeed,7);
+
+      iNewFine_row += iYFineStep * iStep / FINENESS;
+      iNewRow = iNewFine_row / FINENESS;
+      iNewFine_row = iNewFine_row % FINENESS;
+
+      iNewFine_col += iXFineStep * iStep / FINENESS;
+      iNewCol = iNewFine_col / FINENESS;
+      iNewFine_col = iNewFine_col % FINENESS;
+
+      if (IsClass(where,&GuildHall)
+            AND Send(where,@InFoyer,#who=poCaster))
+         OR (Send(where,@IsArena)
+            AND NOT Send(where,@InPlay,#what=self,#bNonPlayerOkay=TRUE))
+      {
+         if IsClass(poCaster,&Player)
+         {
+            Send(poCaster,@MsgSendUser,#message_rsc=vrDissipateMessage);
+         }
+
+         Post(self,@Delete);
+      }
+      else if NOT LineOfSightBSP(Send(poOwner,@GetRoomData),iRow,iCol,iFine_row,
+             iFine_col,Send(self,@GetHeight),iNewRow,iNewCol,iNewFine_row,iNewFine_col,Send(self,@GetHeight))
+      {
+         // We made contact! This is it! No more additional elements!
+         if ptSeed <> $
+         {
+            DeleteTimer(ptSeed);
+            ptSeed = $;
+         }
+
+         oSpell = Send(SYS,@FindSpellByNum,#num=SID_METEOR);
+         Send(oSpell,@CreateImpact,#what=self,#seed=plSeed);
+      }
+      else
+      {
+         // Trigger the first periodic effect right after spawn.
+         Send(self,@PeriodicEffect);
+      }
+
+      return;
+   }
+
+   PeriodicEffect()
+   "Special case: Only check once. Don't start a timer."
+   {
+      local i, oObject, oSpell, bImpact;
+
+      // Bombs have a wider range than traditional elements to make it a
+      // bit easier to hit. Since range is calculated based on stepsize at
+      // creation for all wall elements, we have to override here.
+      piRange = FINENESS;
+
+      // Dirty yet effective: We only check every fourth element in the chain
+      // since meteors enjoy doubled range and halved stepsize compared to regular
+      // wall elements. This allows us to hit a little more reliably while avoiding
+      // double checks.
+      if NOT Nth(plSeed,4) % 4
+      {
+         return;
+      }
+
+      bImpact = FALSE;
+
+      foreach i in Send(poOwner,@GetHolderActive)
+      {
+         oObject = Send(poOwner,@HolderExtractObject,#data=i);
+         if IsClass(oObject,&Battler)
+            AND NOT (IsClass(oObject,&Player)
+               AND Send(oObject,@IsInCannotInteractMode))
+            AND Send(self,@InRange,#what=oObject,
+                     #iRow=Send(oObject,@GetRow),
+                     #iCol=Send(oObject,@GetCol),
+                     #iFineRow=Send(oObject,@GetFineRow),
+                     #iFineCol=Send(oObject,@GetFineCol))
+         {
+            bImpact = Send(self,@CheckForEffect,#what=oObject);
+         }
+      }
+
+      if bImpact
+      {
+         // We made contact! This is it! No more additional elements!
+         if ptSeed <> $
+         {
+            DeleteTimer(ptSeed);
+            ptSeed = $;
+         }
+
+         oSpell = Send(SYS,@FindSpellByNum,#num=SID_METEOR);
+         Send(oSpell,@CreateImpact,#what=self,#seed=plSeed);
+      }
+
+      return;
+   }
+
+   Expire()
+   {
+      local oSpell;
+
+      oSpell = Send(SYS,@FindSpellByNum,#num=SID_METEOR);
+
+      if Nth(plSeed,4) = 0
+      {
+         Send(oSpell,@CreateImpact,#what=self,#seed=plSeed);
+      }
+      else
+      {
+         Send(oSpell,@CreateTrail,#what=self,#seed=plSeed);
+      }
+
+      propagate;
+   }
+
+   DoEffect(what = $)
+   {
+      local oEffect, iSpellpower, iStrength, rMessage, bReport;
+
+      // We made contact! This is it! No more additional elements!
+      if ptSeed <> $
+      {
+         DeleteTimer(ptSeed);
+         ptSeed = $;
+      }
+
+      oEffect = Send(SYS,@FindSpellByNum,#num=SID_BURN);
+
+      iSpellpower = Nth(plSeed,2);
+
+      iStrength = iSpellpower*viEffectDamage/100;
+
+      bReport= Send(oEffect,@StartBurn,#who=what,#source=poCaster,
+         #strength=iStrength,#duration=viEffectDuration);
+
+      if bReport
+      {
+         Send(poOwner,@SomethingAttacked,#what=poCaster,#victim=what,
+               #use_weapon=self,#stroke_obj=self);
+
+         if IsClass(poCaster,&Player)
+         {
+            Send(poCaster,@SetPlayerFlag,#flag=PFLAG_DID_DAMAGE,#value=TRUE);
+         }
+
+         if IsClass(what,&Player)
+         {
+            if iSpellpower = 0
+            {
+               rMessage = BombFire_damage0;
+            }
+            else if iSpellpower < 33
+            {
+               rMessage = BombFire_damage10;
+            }
+            else if iSpellpower < 66
+            {
+               rMessage = BombFire_damage20;
+            }
+            else
+            {
+               rMessage = BombFire_damage30;
+            }
+
+            Send(what,@MsgSendUser,#message_rsc=rMessage);
+         }
+      }
+
+      propagate;
+   }
+
+   SendAnimation()
+   {
+      local iRandom;
+
+      iRandom = Random(1,4);
+
+      AddPacket(1,ANIMATE_CYCLE, 4,Random(100,140), 2,iRandom, 2,iRandom);
+
+      return;
+   }
+
+   SendLightingInformation()
+   {
+      // 5 out of 255 intensity of light.
+      AddPacket(2,(LIGHT_FLAG_ON | LIGHT_FLAG_DYNAMIC),1,200, 2,LIGHT_RED);
+
+      return;
+   }
+
+end
+////////////////////////////////////////////////////////////////////////////////

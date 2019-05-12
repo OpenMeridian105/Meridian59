@@ -26,8 +26,9 @@ resources:
       "If your safety is OFF, you can become an outlaw for harming other players "
       "or a murderer for killing other players."
    WallSpell_cast_rsc = "A blazing hot wall of fire appears before you!"
-   WallSpell_failed_rsc = \
-      "There is too much summoning magic focused here to cast that spell." 
+   WallSpell_increased_cost_rsc = \
+      "You feel the strain on your mind as you attempt to create additional "
+      "summoning magic."
 
 classvars:
 
@@ -36,32 +37,98 @@ classvars:
    // Can wall elements kill?  Affects the warning message we append.
    viWallCanKill = TRUE
 
-   // How many elements do we expect to summon?
-   viNumElements = 9
    vrSuccess = WallSpell_cast_rsc
-   vrSummonLimitMsg = WallSpell_failed_rsc
+   vrSummonLimitMsg = WallSpell_increased_cost_rsc
 
-   vbCountExcludedElements = FALSE
+   //// Seed parameters
+   // What is the maximum spellpower for this spell?
+   viElementSpellpower = 99
+
+   // How many ms will an element stick around for at max spellpower?
+   viElementDuration = 120000
+
+   // How many elements should each seed spawn in total at max spellpower?
+   viElementCharges = 2
+
+   // How many ms should each element take to spawn at max spellpower?
+   viElementSpeed = 333
+
+   // How far apart (fineunits) should the elements spawn?
+   viElementStep = FINENESS
+
+   // How much positional randomness (finerows/cols) should each element have?
+   viElementNoise = FINENESS_HALF
+
+   // -.----.----: Determines the trajectory of elements spawning by adding the
+   // last 4 digits to the current angle of the element. Digits 5 to 8 modify
+   // curving with each step. Digit 9 determines whether curving increases (1)
+   // or decreases (0) by those digits. A negative sign indicates CW curving
+   // while default curving is CCW.
+   viElementCurve = 0
 
 properties:
 
 messages:
 
-   CanPayCosts(who = $)
+   GetManaCost(who=$,iSpellPower=0,bItemCast=FALSE)
+   "Overriding default for factoring in going beyond summoning limit."
    {
-      if NOT Send(self,@CheckForSummoningLimit,#who=who)
+      local iCost, iLimit, oPrincessShield;
+
+      if iSpellpower = 0
       {
-         return FALSE;
+         Debug("Bad iSpellpower passed to GetManaCost");
       }
 
-      propagate;
+      if (bItemCast)
+      {
+         iCost = viMana * Send(SETTINGS_OBJECT,@GetItemManaCostPct) / 100;
+      }
+      else
+      {
+         iCost = viMana;
+      }
+
+      // don't take anything below 1 unless it already is.
+      if iCost = 0
+      {
+         return 0;
+      }
+
+      iLimit = Send(who,@BeyondSummoningLimit);
+
+      // Special case for going beyond our summoning limit.
+      iCost += iCost*iLimit*iLimit/10000;
+
+      // -1 mana cost for spellpower over 40
+      if iSpellPower > 40
+      {
+         --iCost;
+      }
+
+      // -2 mana cost for spellpowers over 80
+      if iSpellPower > 80
+      {
+         --iCost;
+      }
+
+      // Up to -2 for being a Princess soldier
+      oPrincessShield = Send(who,@FindUsing,#class=&PrincessShield);
+      if oPrincessShield <> $
+      {
+         iCost = iCost - Send(oPrincessShield,@GetSpellManaReduction);
+      }
+
+      return Bound(iCost,1,$);
    }
 
-   DoubleCheckAfterTrance(who = $, lTargets = $, iSpellPower = 0)
+   BeginCastingTrance(who = $, lTargets = $, iSpellPower = 0)
    {
-      if NOT Send(self,@CheckForSummoningLimit,#who=who)
+      // If we are beyond our summoning limit, inform the caster
+      // that we have spent additional mana.
+      if IsClass(who,&Player) AND Send(who,@BeyondSummoningLimit)
       {
-         return FALSE;
+         Send(who,@MsgSendUser,#message_rsc=vrSummonLimitMsg);
       }
 
       propagate;
@@ -72,53 +139,77 @@ messages:
       return 0;
    }
 
-   WallSpellSuccessMessage(who=$)
+   CastSpell(who = $, lTargets = $, iSpellPower = 1)
    {
       Send(who,@MsgSendUser,#message_rsc=vrSuccess);
 
+      Send(self,@CreateWallSeed,#who=who,#iSpellPower=iSpellPower,
+         #lTargets=lTargets);
+
+      propagate;
+   }
+
+   CreateWallSeed(who = $, iSpellPower = 0, lTargets = $)
+   {
+      local iAngle, lSeed, iMax;
+
+      // Spice things up a bit with randomness.
+      iMax = Random(SPELLPOWER_MAXIMUM*4/5,SPELLPOWER_MAXIMUM);
+
+      iAngle = Send(who,@GetAngle);
+
+      // This is a generic seed, individual spells may create different ones.
+      lSeed = 
+         [who,
+          Bound(viElementSpellpower*iSpellPower/iMax,0,viElementSpellpower),
+          Bound(viElementDuration*(iMax+iSpellPower)/(2*iMax),0,viElementDuration),
+          Bound(viElementCharges*iSpellPower/iMax,0,viElementCharges),
+          Bound(viElementSpeed*((2*iMax)-iSpellPower)/iMax,viElementSpeed,$),
+          iAngle,
+          viElementStep,
+          Bound(viElementNoise*(iMax-iSpellPower)/iMax,0,viElementNoise),
+          viElementCurve];
+
+      Send(self,@PlaceWallElements,#seed=lSeed,#lTargets=lTargets);
+
       return;
    }
 
-   DoSpellEffects(who = $, lTargets = $, iSpellPower = 1, bRing = FALSE,
-                  bStun = FALSE)
+   SpawnElement(seed=$,who=$,xoffset=0,yoffset=0,xfineoffset=0,yfineoffset=0,
+      walltype=$)
    {
-      Send(self,@WallSpellSuccessMessage,#who=who,#lTargets=lTargets);
-
-      if bRing
-      {
-         Send(self,@PlaceRingOnCaster,#who=who,#iSpellPower=iSpellPower,
-               #bStun=bStun);
-      }
-      else
-      {
-         Send(self,@PlaceWallElements,#who=who,#lTargets=lTargets,
-              #iSpellPower=iSpellPower);
-      }
-
-      return TRUE;
-   }
-
-   PlaceWallElements(who = $, lTargets=$, iSpellPower = 0)
-   "Does the actual work of placing wall elements."
-   {
-      return;
-   }
-
-   CheckForSummoningLimit(who = $)
-   "Checks to see if we'll go over room's summon limit.  Returns TRUE if not."
-   {
-      local oRoom;
+      local iCol, iRow, iFineCol, iFineRow, oElement, oRoom;
 
       oRoom = Send(who,@GetOwner);
-      if ((Send(oRoom,@CountHoldingSummoned,#bAll=vbCountExcludedElements) + viNumElements)
-          > Send(SETTINGS_OBJECT, @GetPlayerSummonedObjectLimit))
-      {
-         Send(who,@MsgSendUser,#message_rsc=vrSummonLimitMsg);
 
+      // Make sure we aren't going over the hardcap.
+      if NOT Send(oRoom,@CanSummon)
+      {
          return FALSE;
       }
 
+      iCol = Send(who,@GetCol) + xoffset;
+      iRow = Send(who,@GetRow) + yoffset;
+
+      iFineCol = iCol*FINENESS + Send(who,@GetFineCol) + xfineoffset;
+      iCol = iFineCol / FINENESS;
+      iFineCol = iFineCol % FINENESS;
+
+      iFineRow = iRow*FINENESS + Send(who,@GetFineRow) + yfineoffset;
+      iRow = iFineRow / FINENESS;
+      iFineRow = iFineRow % FINENESS;
+
+      oElement = Create(walltype,#seed=seed);
+      Send(oRoom,@NewHold,#what=oElement,#new_row=iRow,#new_col=iCol,
+         #fine_row=iFineRow,#fine_col=iFineCol);
+
       return TRUE;
+   }
+
+   PlaceWallElements(who = $, lTargets=$)
+   "Does the actual work of placing wall elements."
+   {
+      return;
    }
 
    GetExtraDesc()
@@ -138,6 +229,7 @@ messages:
 
       propagate;
    }
+
 
 end
 ////////////////////////////////////////////////////////////////////////////////

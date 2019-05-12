@@ -28,8 +28,7 @@ resources:
    web_stick3 = "Is there something stuck to your boot or are you stuck to IT?"
    web_stick5 = "You find yourself helplessly stuck to the spider web!"
 
-   web_dissipates = \
-      "A piece of the web withers and disappears before your eyes."
+   web_dissipates = "A piece of the web withers and disappears before your eyes."
 
    web_stick_snd = frying.ogg
 
@@ -48,6 +47,9 @@ classvars:
 
    vbPeriodic = FALSE
 
+   // Time between checks for effect.
+   viEffectInterval = 10000
+
    // Webs are dangeous, they can affect the caster.
    vbCanAffectCaster = TRUE
 
@@ -57,27 +59,16 @@ properties:
 
 messages:
 
-   Constructor(MaxHoldTime = 0)
+   Constructor(seed=$)
    {
-      piMaxHoldTime = MaxHoldTime;
+      piMaxHoldTime = Nth(seed,2)*50;
 
       propagate;
    }
 
-   GetDuration(duration = 0)
+   SomethingMoved(what = $,new_row = $,new_col = $)
    {
-      local iDuration;
-
-      iDuration = Random(duration - 2000,duration + 2000);
-      iDuration = Bound(iDuration,20000,150000);
-
-      return iDuration;
-   }
-
-   SomethingMoved(what = $)
-   {
-      // Mobs that fly or are too big to be webbed will return FALSE.
-      if (NOT Send(what,@CanBeWebbed))
+      if NOT Send(what,@CanBeWebbed)
       {
          return;
       }
@@ -101,8 +92,8 @@ messages:
 
       if piMaxHoldTime > 0
       {
-         iHoldTime = Random(piMaxHoldTime - 2,piMaxHoldTime);
-         iHoldTime = Bound(iHoldTime,1,$);
+         iHoldTime = Random(piMaxHoldTime - 2000,piMaxHoldTime);
+         iHoldTime = bound(iHoldTime,1000,$);
 
          if IsClass(what,&Monster)
          {
@@ -112,10 +103,8 @@ messages:
 
       if iHoldTime > 0
       {
-         Send(oSpell,@DoHold,#what=poCaster,#oTarget=what,
-               #iDurationSecs=iHoldTime,#report=FALSE);
-         Send(poOwner,@SomethingAttacked,#what=poCaster,#victim=what,
-               #use_weapon=self,#stroke_obj=self);
+         Send(oSpell,@DoHold,#what=poCaster,#oTarget=what,#duration=iHoldTime,
+              #report=FALSE);
       }
 
       if isClass(what,&User)
@@ -129,15 +118,15 @@ messages:
             // Duration greater than 0
             Send(what,@WaveSendUser,#wave_rsc=web_stick_snd);
 
-            if iHoldTime < 2
+            if iHoldTime < 2000
             {
                rMessage = web_stick1;
             }
-            else if iHoldTime < 3
+            else if iHoldTime < 3000
             {
                rMessage = web_stick2;
             }
-            else if iHoldTime < 4
+            else if iHoldTime < 4000
             {
                rMessage = web_stick3;
             }

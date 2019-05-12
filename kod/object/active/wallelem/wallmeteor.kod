@@ -1,0 +1,145 @@
+// Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+// All rights reserved.
+//
+// This software is distributed under a license that is described in
+// the LICENSE file that accompanies it.
+//
+// Meridian is a registered trademark.
+
+
+////////////////////////////////////////////////////////////////////////////////
+WallMeteor is ActiveWallElement
+
+constants:
+
+   include blakston.khd
+
+resources:
+
+classvars:
+
+   vrName = WallofFire_name_rsc
+   vrIcon = WallofFire_icon_rsc
+   vrdesc = WallofFire_desc_rsc
+
+   viObject_flags = OF_NOEXAMINE
+
+   vrDissipateMessage = firewall_dissipates
+   vrUnaffectedMessage = firewall_damage0
+
+   viLightBonus = 15
+
+   // How many ms should the effect last at max spellpower?
+   viEffectDuration = 2500
+
+   // How much damage (10^[-3]) should the effect do per second at max spellpower?
+   viEffectDamage = 8000
+
+   // How much does each element contribute to the summoning limit?
+   viLimitCount = 0
+
+properties:
+
+   piRange = FINENESS
+
+   piDrawFx = DRAWFX_TRANSLUCENT_50
+
+messages:
+
+   DoEffect(what = $)
+   {
+      local oEffect, iSpellpower, iStrength, rMessage, bReport;
+
+      oEffect = Send(SYS,@FindSpellByNum,#num=SID_BURN);
+
+      iSpellpower = Nth(plSeed,2);
+
+      iStrength = iSpellpower*viEffectDamage/100;
+
+      bReport = Send(oEffect,@StartBurn,#who=what,#source=poCaster,
+         #strength=iStrength,#duration=viEffectDuration);
+
+      if bReport
+      {
+         Send(poOwner,@SomethingAttacked,#what=poCaster,#victim=what,
+               #use_weapon=self,#stroke_obj=self);
+
+         if IsClass(poCaster,&Player)
+         {
+            Send(poCaster,@SetPlayerFlag,#flag=PFLAG_DID_DAMAGE,#value=TRUE);
+         }
+
+         if IsClass(what,&Player)
+         {
+            if iSpellpower = 0
+            {
+               rMessage = firewall_damage0;
+            }
+            else if iSpellpower < 25
+            {
+               rMessage = firewall_damage5;
+            }
+            else if iSpellpower < 50
+            {
+               rMessage = firewall_damage10;
+            }
+            else if iSpellpower < 75
+            {
+               rMessage = firewall_damage15;
+            }
+            else
+            {
+               rMessage = firewall_damage20;
+            }
+
+            Send(what,@MsgSendUser,#message_rsc=rMessage);
+         }
+      }
+
+      propagate;
+   }
+
+   SendAnimation()
+   {
+      AddPacket(1,ANIMATE_CYCLE, 4,Random(100,140), 2,1, 2,5);
+
+      return;
+   }
+
+   NewOwner(what = $)
+   {
+      // new room
+      if what <> $
+      {
+         Send(what,@AddBaseLight,#amount=viLightBonus);
+      }
+
+      // old room
+      if poOwner <> $
+      {
+         Send(poOwner,@AddBaseLight,#amount=-viLightBonus);
+      }
+
+      propagate;
+   }
+
+   Delete()
+   {
+      if poOwner <> $
+      {
+         Send(poOwner,@AddBaseLight,#amount=-viLightBonus);
+      }
+
+      propagate;
+   }
+
+   SendLightingInformation()
+   {
+      // 5 out of 255 intensity of light.
+      AddPacket(2,(LIGHT_FLAG_ON | LIGHT_FLAG_DYNAMIC),1,5, 2,LIGHT_RED);
+
+      return;
+   }
+
+end
+////////////////////////////////////////////////////////////////////////////////

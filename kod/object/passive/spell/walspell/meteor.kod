@@ -1,0 +1,149 @@
+// Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+// All rights reserved.
+//
+// This software is distributed under a license that is described in
+// the LICENSE file that accompanies it.
+//
+// Meridian is a registered trademark.
+
+
+////////////////////////////////////////////////////////////////////////////////
+Meteor is WallSpell
+
+constants:
+   include blakston.khd
+
+resources:
+
+   include meteor.lkod
+
+   Meteor_name_rsc = "meteor"
+   Meteor_icon_rsc = imeteor.bgf
+   Meteor_desc_rsc = \
+      "Creates an orb of flaming death that travels in a straight line, "
+      "dealing heavy damage and creating a flaming impact crater upon making "
+      "contact with victims or environment."
+
+   Meteor_cast_rsc = "You summon forth a devastating meteor!"
+   Meteor_sound = meteor.ogg
+   Meteor_trail_sound = meteor_trail.ogg
+   Meteor_impact_sound = meteor_explosion.ogg
+
+classvars:
+
+   vrName = Meteor_name_rsc
+   vrIcon = Meteor_icon_rsc
+   vrDesc = Meteor_desc_rsc
+
+   viSpell_num = SID_METEOR
+   viSchool = SS_FAREN
+   viSpell_level = 6
+   viMana = 30
+   viSpellExertion = 10
+   viMeditate_ratio = 100
+
+   viCast_time = 4000
+   vrSucceed_wav = Meteor_sound
+   vrSuccess = Meteor_cast_rsc
+
+   viHarmful = TRUE
+
+   //// Seed parameters
+   viElementDuration = 36
+   viElementCharges = 100
+   viElementSpeed = 35
+   viElementStep = FINENESS_HALF
+   viElementNoise = 0
+
+properties:
+
+
+messages:
+
+   ResetReagents()
+   {
+      plReagents = $;
+      plReagents = Cons([&Firesand,5], plReagents);
+
+      return;
+   }
+
+   CreateWallSeed(who = $, iSpellPower = 0, lTargets = $)
+   {
+      local iAngle, lSeed, iMax;
+
+      lSeed = [who,
+               viElementSpellpower*iSpellPower/SPELLPOWER_MAXIMUM,
+               viElementDuration,
+               viElementCharges,
+               viElementSpeed,
+               Send(who,@GetAngle),
+               viElementStep,
+               viElementNoise,
+               viElementCurve];
+
+      Send(self,@PlaceWallElements,#seed=lSeed,#lTargets=lTargets);
+
+      return;
+   }
+
+   PlaceWallElements(seed = $)
+   {
+      local oRoom, oCaster, iAngle, iXFineStep, iYFineStep;
+
+      oCaster = First(seed);
+      oRoom = Send(oCaster,@GetOwner);
+
+      iAngle = Nth(seed,6);
+      iXFineStep = Send(oRoom,@GetXFineStep,#angle=iAngle);
+      iYFineStep = Send(oRoom,@GetYFineStep,#angle=iAngle);
+
+      Send(self,@SpawnElement,#seed=seed,#who=oCaster,
+         #xfineoffset=iXFineStep*5,#yfineoffset=iYFineStep*5,
+         #walltype=&BombFire);
+
+      propagate;
+   }
+
+   CreateImpact(what = $, seed = $)
+   {
+      local lSeed, iSpellPower;
+
+      iSpellPower = Nth(seed,2);
+
+      lSeed = [First(seed),iSpellPower,iSpellPower*100,
+         iSpellPower/6,5,0,FINENESS,0,641024];
+
+      Send(self,@SpawnElement,#seed=lSeed,#who=what,#yfineoffset=FINENESS_HALF,
+         #xfineoffset=FINENESS_HALF,#walltype=&WallMeteor);
+
+      Send(Send(what,@GetOwner),@SomethingWaveRoom,#what=what,
+         #wave_rsc=Meteor_impact_sound);
+
+      return;
+   }
+
+   CreateTrail(what = $, seed = $)
+   {
+      local oCaster, lSeed, iSpellPower;
+
+      oCaster = First(seed);
+
+      iSpellPower = Nth(seed,2);
+
+      lSeed = [oCaster,iSpellPower/2,iSpellPower*10,0,0,0,0,30,0];
+
+      Send(self,@SpawnElement,#seed=lSeed,#who=what,#walltype=&FogCloud,
+         #yfineoffset=Random(0,FINENESS),#xfineoffset=Random(0,FINENESS));
+
+      if Random(0,1)
+      {
+         Send(Send(what,@GetOwner),@SomethingWaveRoom,#what=what,
+            #wave_rsc=Meteor_trail_sound);
+      }
+
+      return;
+   }
+
+end
+////////////////////////////////////////////////////////////////////////////////

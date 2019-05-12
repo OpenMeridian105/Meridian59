@@ -32,6 +32,8 @@ resources:
       "closer.  With a grim smile, you ponder the irony of being the hourglass "
       "counting the seconds to your own demise."
 
+   bleed_sound = bleeding.ogg
+
 classvars:
 
    vrIcon = bleed_icon
@@ -41,6 +43,8 @@ classvars:
 
    vrEnchantment_On = bleed_on
    vrEnchantment_Off = bleed_off
+   vrDrain_wav = bleed_sound
+   vrDrain_wav_duration = 3095
 
    viSpell_num = SID_BLEED
    viSchool = SS_KRAANAN
@@ -52,11 +56,23 @@ properties:
 
 messages:
 
-   StartBleed(who=$,source=0,strength=0,duration=0)
+   StartBleed(who=$,source=0,strength=0,duration=0,bIllusionary=FALSE)
    "Healthloss is in units of 10^-3 health points per second."
    "Duration is in milliseconds."
    {
-      local iDamage, iFlash;
+      local iDamage, iFlash, iStrength, iIllusion;
+
+      iIllusion = FALSE;
+
+      if bIllusionary
+      {
+         iStrength = strength + (50 - Send(who,@GetIntellect))*40;
+         iIllusion = GetTime();
+      }
+      else
+      {
+         iStrength = strength;
+      }
 
       // If our bleed is too weak, ignore it.
       if (strength/100) * (duration/100) < BLEED_DAMAGE_CUT_OFF
@@ -66,15 +82,15 @@ messages:
 
       Send(who,@StartOverTimeEffect,#strength=-strength,#duration=duration,
             #what=self,#who=source,#state=100,#type=TYPE_HEALTH,
-            #removable=REMOVE_INTERNAL);
+            #removable=REMOVE_INTERNAL,#illusion=iIllusion);
 
       if IsClass(who,&Player)
       {
-         iDamage = (strength / 100) * (duration / 100) / 100;
+         iDamage = (iStrength / 100) * (duration / 100) / 100;
          Send(who,@MsgSendUser,#message_rsc=vrEnchantment_On,#parm1=iDamage);
 
          // Visual indication of drain effect.
-         iFlash = Bound(strength / 2,100,2000);
+         iFlash = Bound(iStrength / 2,100,2000);
          Send(who,@EffectSendUserDuration,#effect=EFFECT_PAIN,#duration=iFlash);
       }
 

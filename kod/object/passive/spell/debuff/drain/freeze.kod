@@ -1,0 +1,114 @@
+// Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+// All rights reserved.
+//
+// This software is distributed under a license that is described in
+// the LICENSE file that accompanies it.
+//
+// Meridian is a registered trademark.
+
+
+/////////////////////////////////////////////////////////////////////////////////
+Freeze is Drain
+
+constants:
+
+   include blakston.khd
+
+   // freezes below this amount of damage (precision) won't be considered.
+   FREEZE_DAMAGE_CUT_OFF = 100
+
+resources:
+
+   include freeze.lkod
+
+   freeze_on = "~k~IYou begin to shiver as an icy chill embraces you!"
+   freeze_off  = "~k~IYou stop shivering."
+   freeze_icon = ifreeze.bgf
+   freeze_name = "freezing"
+
+   freeze_desc = \
+      "Just this once, you should have listend to your mother and brought "
+      "a warmer jacket!"
+
+   freeze_sound = freezing.ogg
+   freeze_sound_end = freezing_end.ogg
+
+classvars:
+
+   vrIcon = freeze_icon
+   viShow_enchantment_icon = 0x02
+   vrName = freeze_name
+   vrDesc = freeze_desc
+
+   vrEnchantment_On = freeze_on
+   vrEnchantment_Off = freeze_off
+   vrDrain_wav = freeze_sound
+   vrDrain_end_wav = freeze_sound_end
+   vrDrain_wav_duration = 5387
+
+   viSpell_num = SID_FREEZE
+   viSchool = SS_FAREN
+
+   // Freezing, also known to be a source of death.
+   vbLethalDamageOverTime = TRUE
+
+   viAttack_spell = ATCK_SPELL_ALL + ATCK_SPELL_COLD
+
+properties:
+
+   // Infrastructure for freeze drain effect only.
+   pbCanBeLearned = FALSE
+
+messages:
+
+   StartFreeze(who=$,source=0,strength=0,duration=0,bIllusionary=FALSE)
+   "Health loss is in units of 10^-3 health points per second."
+   "Duration is in milliseconds."
+   {
+      local iFlash, iStrength, iResistance, iIllusion;
+
+      iIllusion = FALSE;
+
+      if bIllusionary
+      {
+         iStrength = strength + (50 - Send(who,@GetIntellect))*40;
+         iIllusion = GetTime();
+      }
+      else
+      {
+         // Damage may be reduced by a battler's resistance.
+         iResistance = Send(who,@ResistanceCheck,#aspell=viAttack_spell);
+         iStrength = Send(who,@GetDamageFromResistance,#what=strength,#value=iResistance);
+      }
+
+      // If our effect is too weak, ignore it.
+      if (strength/100) * (duration/100) < FREEZE_DAMAGE_CUT_OFF
+      {
+         return FALSE;
+      }
+
+      // Check if we are already suffering from this effect from this caster.
+      if Send(who,@SetOverTimeEffectDuration,#who=source,#what=self,
+         #duration=duration,#strength=-iStrength,#illusion=bIllusionary)
+      {
+         return FALSE;
+      }
+      else
+      {
+         Send(who,@StartOverTimeEffect,#strength=-iStrength,#duration=duration,
+               #what=self,#who=source,#state=100,#type=TYPE_HEALTH,
+               #removable=REMOVE_INTERNAL,#illusion=iIllusion);
+      }
+
+      if IsClass(who,&Player)
+      {
+         // Visual indication of effect.
+         iFlash = Bound(iStrength / 2,100,2000);
+         Send(who,@DamageTypeFlashEffect,#aspell=viAttack_spell,#duration=iFlash);
+      }
+
+      return TRUE;
+   }
+
+end
+////////////////////////////////////////////////////////////////////////////////

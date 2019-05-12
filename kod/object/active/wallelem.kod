@@ -17,9 +17,6 @@ constants:
 
    include blakston.khd
 
-   // 1.5 seconds
-   EFFECT_INTERVAL = 1500
-
 resources:
 
    include wallelem.lkod
@@ -50,9 +47,21 @@ classvars:
    // Does this have a Periodic timer check?
    vbPeriodic = TRUE
 
+   // Does this have a Periodic timer check?
+   viEffectInterval = 400
+
    // Does the element affect the caster?
    vbCanAffectCaster = FALSE
    vbIsAreaEffect = TRUE
+
+   // How much does each element contribute to the summoning limit?
+   viLimitCount = 2
+
+   // How many ms should the effect last at max spellpower?
+   viEffectDuration = 1000
+
+   // How much damage (10^[-3]) should the effect do per second at max spellpower?
+   viEffectDamage = 1000
 
 properties:
 
@@ -61,8 +70,8 @@ properties:
    poCaster = $
    ptExpire = $
 
-   // This is the squared range that the element will affect.
-   piRange = 0
+   // This is the fine range that the element will affect.
+   piRange = FINENESS_HALF
 
    // This is a periodic timer that triggers periodic effects and
    //  clears the affected list.
@@ -72,70 +81,289 @@ properties:
    //  this period.
    plAffected = $
 
+   // This is the list of players have been found to be bad targets.
+   plInvalidTargets = $
+
+   // The wallelement carries all relevant information in its seed.
+   // This allows the element to spawn additional elements that inherit
+   // their behavior from the parent. plSeed has the following structure:
+   // plSeed = [(1)  caster,
+   //           (2)  spellpower,
+   //           (3)  duration,
+   //           (4)  charges,
+   //           (5)  speed,
+   //           (6)  direction,
+   //           (7)  step,
+   //           (8)  noise,
+   //           (9)  curve,
+   //           (10) secondary seed]
+   plSeed = $
+
+   // A wallelement can also carry a secondary seed, allowing itself and
+   // each subsequently spawned element to create a branch of secondary
+   // elements. For instance, a flame wave consists of two regular seeds
+   // that will create elements to the left and right of the caster. Then,
+   // each of those will spawn secondary elements that will move forward.
+   // plSecondarySeed has the same structure as plSeed minus the 10th node.
+   plSecondarySeed = $
+
+   // Timer that spawns the next element upon expiration.
+   ptSeed = $
+
+   // Timer that may spawn a secondary seed upon expiration.
+   ptSecondarySeed = $
+
 messages:
 
-   Constructor(caster=$,duration=$)
+   Constructor(seed=$)
    {
-      poCaster = caster;
+      local iCharges, iTime, oCaster;
 
-      ptExpire = CreateTimer(self,@Expire,
-                        Send(self,@GetDuration,#duration=duration));
-      ptPeriodic = CreateTimer(self,@PeriodicEffect,
-                        Send(self,@GetPeriodicDuration));
+      plSeed = ListCopy(seed);
 
-      if IsClass(caster,&User)
+      // We have to bound SP for calculating time since some spells
+      // operate at increased maximum SP. This avoids randomization errors.
+      iTime = Nth(plSeed,3)*Random(Bound(901+Nth(plSeed,2),0,1000),1000)/1000;
+
+      oCaster = First(seed);
+
+      if oCaster <> $
       {
-         vbSummoned = TRUE;
+         poCaster = oCaster;
+         vbSummoned = IsClass(oCaster,&Player);
+
+         if IsClass(poCaster,&Battler) AND viLimitCount
+         {
+            // If caster was at their limit, reduce duration.
+            iTime = Bound(100 * iTime / (100 + Send(poCaster,
+               @BeyondSummoningLimit)),1500,$);
+
+            Send(poCaster,@AddActiveSummons,#i=viLimitCount);
+         }
+      }
+      else
+      {
+         poCaster = self;
+      }
+
+      if iTime
+      {
+         ptExpire = CreateTimer(self,@Expire,iTime);
+      }
+
+      // Base the affected radius of our element on step size.
+      // To allow full coverage, we need a radius > iStep*0.5*sqrt(2).
+      piRange = (Nth(plSeed,7)*71/100) + 1;  // Add one for good measure.
+
+      // If we have a charge left, create a new element after an amount of ms
+      // specified in speed.
+      iCharges = Nth(plSeed,4);
+      if iCharges > 0 
+      {
+         // Subtract a charge and set a timer to spawn the new element.
+         SetNth(plSeed,4,iCharges-1);
+         ptSeed = CreateTimer(self,@SpawnNextElement,Nth(plSeed,5));
+      }
+
+      // If we have a secondary plSeed, spawn it afer the time specified.
+      // The new element's angle is relative to its parent.
+      if Length(plSeed) > 9
+      {
+         plSecondarySeed = ListCopy(Nth(plSeed,10));
+         SetNth(plSecondarySeed,6,(Nth(plSeed,6)+Nth(plSecondarySeed,6))
+            %MAX_ANGLE);
+         ptSecondarySeed = CreateTimer(self,@SpawnSecondaryElement,
+            Nth(plSecondarySeed,5));
       }
 
       propagate;
    }
 
-   GetPeriodicDuration()
+   SpawnNextElement()
    {
-      // 90 - 110// of base interval
-      return (EFFECT_INTERVAL * Random(90,110))/100;
-   }
+      local iCurveParameters, iCurve, iCurveDelta, bContract, bCW, iAngle,
+         iRow, iCol, iFine_Row, iFine_Col, iXFineStep, iYFineStep, oElement,
+         oRoom, iStep, iNoise;
 
-   GetDuration(duration = 0)
-   "Expects duration to already be in milliseconds."
-   {
-      local iDuration;
+      ptSeed = $;
 
-      iDuration = Random(duration*4/5,duration*6/5);
-      iDuration = Bound(iDuration,1000,200000);
+      oRoom = Send(self,@GetOwner);
 
-      return iDuration;
-   }
-
-   SomethingMoved(what = $,new_row = $,new_col = $,fine_row = $, fine_col = $,
-      old_row = $, old_col = $, old_finerow = $, old_finecol = $,
-      cause = CAUSE_UNKNOWN)
-   {
-      // Only want to check players and mobs making manual movements,
-      // not teleports etc.
-      if (cause <> CAUSE_USER_INPUT AND cause <> CAUSE_MOB_MOVEMENT)
+      // Make sure we aren't going over the hardcap.
+      if NOT Send(oRoom,@CanSummon)
       {
-         return;
+         return FALSE;
       }
 
-      if (new_row = $ OR new_col = $ OR fine_row = $ OR fine_col = $
-         OR old_row = $ OR old_col = $ OR old_finerow = $ OR old_finecol = $)
+      iAngle = Nth(plSeed,6);
+
+      //// iCurve is the change in angle that a spawned element experiences
+      // compared to its predecessor. This change can be anywhere from 0 to
+      // MAX_ANGLE/4 i.e. 1024.
+      // -.----.xxxx iCurve is stored in the first 4 digits.
+      //// iCurveDelta allows for spiraling patterns, by adjusting iCurve to
+      // increase or decrease with each additional step. Again, values between
+      // 0 and MAX_ANGLE/4 are valid.
+      // -.xxxx.---- iCurveDelta is stored in digits 5 to 8.
+      //// bContract can either be 0 or 1 and determines whether the spiral is
+      // expanding or contracting. 0 stands for an expanding spiral, 1 for a
+      // contracting one.
+      // x.----.---- bContract is stored in the 9th digit.
+      //// bCW can be TRUE or FALSE. If TRUE, we rotate CW, else CCW.
+      // -x.xxxx.xxxx is stored in the sign. - results in CW, + in CCW rotation.
+
+      iCurveParameters = Nth(plSeed,9);
+      bCW = FALSE;
+
+      if iCurveParameters < 0
       {
-         Debug("Missing params in ", GetClass(self), " SomethingMoved");
+         iCurveParameters = -iCurveParameters;
+         bCW = TRUE;
       }
+
+      iCurve = iCurveParameters % 10000;
+      iCurveDelta = (iCurveParameters / 10000) % 10000;
+      bContract = iCurveParameters / 100000000;
+
+      if iCurveDelta <> 0
+      {
+         if bContract
+         {
+            iCurve += (iCurveDelta*(MAX_ANGLE/4 - iCurve)/(MAX_ANGLE/4))*
+               (MAX_ANGLE/4 - iCurve)/(MAX_ANGLE/4);
+         }
+         else
+         {
+            iCurve -= (iCurveDelta*iCurve/(MAX_ANGLE/4))*iCurve/(MAX_ANGLE/4);
+         }
+      }
+
+      iCurve = Bound(iCurve,0,MAX_ANGLE/4);
+
+      iCurveParameters = iCurve + iCurveDelta*10000 + bContract*100000000;
+
+      if bCW
+      {
+         iCurveParameters = -iCurveParameters;
+         iAngle += iCurve;
+      }
+      else
+      {
+         iAngle += MAX_ANGLE - iCurve;
+      }
+
+      iAngle = iAngle % MAX_ANGLE;
+
+      SetNth(plSeed,6,iAngle);
+      SetNth(plSeed,9,iCurveParameters);
+
+      // Time to calculate X and Y step from our angle of propagation.
+      iXFineStep = Send(oRoom,@GetXFineStep,#angle=iAngle);
+      iYFineStep = Send(oRoom,@GetYFineStep,#angle=iAngle);
+
+      // Figure out where to spawn the next element based on our current
+      // position, our direction, our stepsize and the randomization factor.
+      iFine_Row = Send(self,@GetRow)*FINENESS + Send(self,@GetFineRow);
+      iFine_Col = Send(self,@GetCol)*FINENESS + Send(self,@GetFineCol);
+
+      iStep = Nth(plSeed,7);
+      iNoise = Nth(plSeed,8);
+
+      iFine_Col += iXFineStep * iStep / FINENESS + Random(-iNoise,iNoise);
+      iCol = iFine_Col / FINENESS;
+      iFine_Col = iFine_Col % FINENESS;
+
+      iFine_Row += iYFineStep * iStep / FINENESS + Random(-iNoise,iNoise);
+      iRow = iFine_Row / FINENESS;
+      iFine_Row = iFine_Row % FINENESS;
+
+      oElement = Create(GetClass(self),#seed=plSeed);
+      Send(oRoom,@NewHold,#what=oElement,#new_row=iRow,#new_col=iCol,
+         #fine_row=iFine_Row,#fine_col=iFine_Col);
+
+      return;
+   }
+
+   SpawnSecondaryElement()
+   {
+      local iAngle, iRow, iCol, iFine_Row, iFine_Col, iXFineStep,
+         iYFineStep, oElement, oRoom, iStep, iNoise;
+
+      ptSecondarySeed = $;
+
+      oRoom = Send(self,@GetOwner);
+
+      // Make sure we aren't going over the hardcap.
+      if NOT Send(oRoom,@CanSummon)
+      {
+         return FALSE;
+      }
+
+      //Inital spawn of the secondary element means we don't curve.
+      iAngle = Nth(plSecondarySeed,6);
+
+      // Time to calculate X and Y step from our angle of propagation.
+      iXFineStep = Send(oRoom,@GetXFineStep,#angle=iAngle);
+      iYFineStep = Send(oRoom,@GetYFineStep,#angle=iAngle);
+
+      // Figure out where to spawn the next element based on our current
+      // position, our direction, our stepsize and the randomization factor.
+      iFine_Row = Send(self,@GetRow)*FINENESS + Send(self,@GetFineRow);
+      iFine_Col = Send(self,@GetCol)*FINENESS + Send(self,@GetFineCol);
+
+      iStep = Nth(plSecondarySeed,7);
+      iNoise = Nth(plSecondarySeed,8);
+
+      iFine_Col += iXFineStep * iStep / FINENESS + Random(-iNoise,iNoise);
+      iCol = iFine_Col / FINENESS;
+      iFine_Col = iFine_Col % FINENESS;
+
+      iFine_Row += iYFineStep * iStep / FINENESS + Random(-iNoise,iNoise);
+      iRow = iFine_Row / FINENESS;
+      iFine_Row = iFine_Row % FINENESS;
+
+      oElement = Create(GetClass(self),#seed=plSecondarySeed);
+      Send(oRoom,@NewHold,#what=oElement,#new_row=iRow,#new_col=iCol,
+         #fine_row=iFine_Row,#fine_col=iFine_Col);
+
+      return;
+   }
+
+   SomethingMoved(what = $,new_row = $,new_col = $)
+   {
+      local iRow, iFineRow, iCol, iFineCol;
+
+      // Determine victim's row and column
+      if new_row = $
+      {
+         iRow = Send(what,@GetRow);
+      }
+      else
+      {
+         iRow = new_row;
+      }
+
+      if new_col = $
+      {
+         iCol = Send(what,@GetCol);
+      }
+      else
+      {
+         iCol = new_col;
+      }
+
+      iFineRow = Send(what,@GetFineRow);
+
+      iFineCol = Send(what,@GetFineCol);
 
       // Check for range
       if IsClass(what,&Battler)
          AND NOT (IsClass(what,&Player)
                   AND Send(what,@IsInCannotInteractMode))
-         AND IntersectLineCircle(Send(self,@GetRow), Send(self,@GetCol),
-                  Send(self,@GetFineRow), Send(self,@GetFineCol),
-                  old_row, old_col, old_finerow, old_finecol, new_row,
-                  new_col, fine_row, fine_col, 32)
+         AND Send(self,@InRange,#what=what,#iRow=iRow,#iCol=iCol,
+               #iFineRow=iFineRow,#iFineCol=iFineCol)
       {
-         Send(self,@CheckForEffect,#what=what,#new_row=new_row,#new_col=new_col,
-               #bMovement=TRUE);
+         Send(self,@CheckForEffect,#what=what,#new_row=iRow,#new_col=iCol);
       }
 
       return;
@@ -144,10 +372,6 @@ messages:
    CheckForEffect(what = $,new_row = $,new_col = $)
    "Check for range to see if we apply the effect."
    {
-      local oRoom;
-
-      oRoom = Send(self,@GetOwner);
-
       // Might not affect caster.
       if (NOT IsClass(what,&Battler))
          OR ((NOT vbCanAffectCaster) AND what = poCaster)
@@ -158,6 +382,13 @@ messages:
       // Don't affect them again this cycle.
       if plAffected <> $
          AND FindListElem(plAffected,what) <> 0
+      {
+         return FALSE;
+      }
+
+      // Don't affect people we've already found to be invalid targets.
+      if plInvalidTargets <> $
+         AND FindListElem(plInvalidTargets,what) <> 0
       {
          return FALSE;
       }
@@ -179,8 +410,8 @@ messages:
          AND NOT Send(poCaster,@AllowBattlerAttack,#victim=what,
                         #report=FALSE,#stroke_obj=self)
       {
-         // We've been "affected" for this cycle.  This prevents super-spam.
-         plAffected = Cons(what,plAffected);
+         // We can't interact with this target. Take note.
+         plInvalidTargets = Cons(what,plInvalidTargets);
 
          if IsClass(what,&Player)
             AND NOT Send(what,@IsInCannotInteractMode)
@@ -196,6 +427,7 @@ messages:
       return TRUE;
    }
 
+
    PeriodicEffect()
    "Periodic check. Clears the affected list, does the effect "
    "if the wall is periodic."
@@ -209,21 +441,22 @@ messages:
       {
          foreach i in Send(poOwner,@GetHolderActive)
          {
-            oObject = Send(poOwner,@HolderExtractobject,#data=i);
+            oObject = Send(poOwner,@HolderExtractObject,#data=i);
             if IsClass(oObject,&Battler)
                AND NOT (IsClass(oObject,&Player)
                   AND Send(oObject,@IsInCannotInteractMode))
                AND Send(self,@InRange,#what=oObject,
                         #iRow=Send(oObject,@GetRow),
-                        #iCol=Send(oObject,@GetCol))
+                        #iCol=Send(oObject,@GetCol),
+                        #iFineRow=Send(oObject,@GetFineRow),
+                        #iFineCol=Send(oObject,@GetFineCol))
             {
                Send(self,@CheckForEffect,#what=oObject);
             }
          }
       }
 
-      ptPeriodic = CreateTimer(self,@PeriodicEffect,
-                        Send(self,@GetPeriodicDuration));
+      ptPeriodic = CreateTimer(self,@PeriodicEffect,viEffectInterval);
 
       return;
    }
@@ -250,39 +483,26 @@ messages:
       return;
    }
 
-   InRange(what = $,iRow = $,iCol = $,bMovement = FALSE)
+   InRange(what = $, iRow = $, iCol = $, iFineRow = $, iFineCol = $)
    "Checks if we can see the target and if so if they are in range."
    {
-      local iRow_diff, iCol_diff, iDistanceSquared, iLongRange;
+      local iFineRow_diff, iFineCol_diff, iDistanceSquared;
 
-      iRow_diff = Send(self,@GetRow) - iRow;
-      iCol_diff = Send(self,@GetCol) - iCol;
+      iFineRow += iRow * FINENESS;
+      iFineCol += iCol * FINENESS;
 
-      iDistanceSquared = iRow_diff * iRow_diff + iCol_diff * iCol_diff;
+      iFineRow_diff = Send(self,@GetRow) * FINENESS +
+         Send(self,@GetFineRow) - iFineRow;
+      iFineCol_diff = Send(self,@GetCol) * FINENESS +
+         Send(self,@GetFineCol) - iFineCol;
 
-      // This first check is to see if they're within a one square range if
-      // this check was caused by movement.  If so, we reset the user's move
-      // counter, since we make them spam move messages which can throw
-      // off speedhack detection.
-      if bMovement
+      iDistanceSquared = iFineRow_diff * iFineRow_diff +
+         iFineCol_diff * iFineCol_diff;
+
+      if (iDistanceSquared <= piRange * piRange)
+         AND Send(poOwner,@LineOfSight,#obj1=self,#obj2=what)
       {
-         // Make sure we're checking at least 1 square away
-         // from current position.
-         iLongRange = Bound(piRange,1,$);
-      }
-      else
-      {
-         iLongRange = piRange;
-      }
-
-      if iDistanceSquared <= (iLongRange * iLongRange)
-      {
-         if (iLongRange = piRange
-               OR iDistanceSquared <= (piRange * piRange))
-            AND Send(poOwner,@LineOfSight,#obj1=self,#obj2=what)
-         {
-            return TRUE;
-         }
+         return TRUE;
       }
 
       return FALSE;
@@ -298,13 +518,35 @@ messages:
 
    Delete()
    {
+      if IsClass(poCaster,&Battler)
+      {
+         Send(poCaster,@RemoveActiveSummons,#i=viLimitCount);
+      }
+
+      Send(poOwner,@RemoveActiveSummons);
+
       poCaster = $;
       plAffected = $;
+      plInvalidTargets = $;
+      plSeed = $;
+      plSecondarySeed = $;
 
       if ptPeriodic <> $
       {
          DeleteTimer(ptPeriodic);
          ptPeriodic = $;
+      }
+
+      if ptSeed <> $
+      {
+         DeleteTimer(ptSeed);
+         ptSeed = $;
+      }
+
+      if ptSecondarySeed <> $
+      {
+         DeleteTimer(ptSecondarySeed);
+         ptSecondarySeed = $;
       }
 
       if ptExpire <> $
@@ -323,15 +565,16 @@ messages:
 
    NewOwner(what = $)
    {
+      Send(what,@AddActiveSummons);
       Post(self,@LocationCheck,#where=what);
-
-      plAffected = $;
 
       propagate;
    }
 
    LocationCheck(where = $)
    {
+      local iTime;
+
       if ((IsClass(where,&GuildHall) AND NOT IsClass(where,&GuildHall15))
             AND Send(where,@InFoyer,#who=poCaster))
          OR (Send(where,@IsArena)
@@ -343,6 +586,29 @@ messages:
          }
 
          Post(self,@Delete);
+      }
+      // We have used up at least half of the rooms total summoning limit.
+      // Let's get rid off the wall element after no more than five seconds.
+      // If we were at the actual limit, this element wouldn't have been
+      // spawned to begin with.
+      else
+      {
+         if NOT Send(where,@CanSummon,#bHalf=TRUE)
+         {
+            if ptExpire <> $
+            {
+               iTime = GetTimeRemaining(ptExpire);
+               DeleteTimer(ptExpire);
+               ptExpire = CreateTimer(self,@Expire,Bound(iTime,0,5000));
+            }
+            else
+            {
+               ptExpire = CreateTimer(self,@Expire,5000);
+            }
+         }
+
+         // Trigger the first periodic effect right after spawn.
+         Send(self,@PeriodicEffect);
       }
 
       return;

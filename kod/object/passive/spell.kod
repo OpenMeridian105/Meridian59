@@ -244,6 +244,9 @@ classvars:
    viStartingPriority = $
    viPriorityAdjustment = $
 
+   // Damage over time effects don't usually kill players.
+   vbLethalDamageOverTime = FALSE
+
 properties:
 
    // Format of reagents:  Each element of plReagents is a list, describing a
@@ -2680,7 +2683,7 @@ messages:
       else if viSchool = SS_KRAANAN
       {
          // Kraanan favors adversity and armies.  More people in a room, the better.
-         iPrimaryBonus = Length(Send(oRoom,@GetHolderActive));
+         iPrimaryBonus = Send(oRoom,@CountMonsters,#class=&Battler);
          // Kraanan also favors the healthy warrior.  Full hps = more bonus.
          iSecondaryBonus = (Send(who,@GetHealth)*10)/Send(who,@GetMaxHealth);
 
@@ -2949,16 +2952,42 @@ messages:
       return FALSE;
    }
 
-   OverTimeEffectWearingOff(who=$,overtimeeffect=$,report=TRUE)
+   OverTimeEffectWearingOff(who=$,overtimeeffect=$,bReport=TRUE)
    "Just a dummy catching over time effects without message."
    {
       return;
    }
 
-   OverTimeEffectStarting(who=$,overtimeeffect=$,report=TRUE)
+   OverTimeEffectStarting(who=$,overtimeeffect=$,bReport=TRUE)
    "Just a dummy catching over time effects without message."
    {
       return;
+   }
+
+   IsLethal(who=$)
+   {
+      local oRoom, bSafe;
+
+      if (who = $)
+         OR NOT IsClass(who,&Player)
+      {
+         return vbLethalDamageOverTime;
+      }
+
+      oRoom = Send(who,@GetOwner);
+
+      // Don't kill players in safe rooms.
+      if (oRoom <> $)
+      {
+         bSafe = Send(oRoom,@CheckRoomFlag,#flag=ROOM_NO_COMBAT);
+      }
+      else
+      {
+         bSafe = Send(Send(SYS,@FindRoomByNum,#num=Send(who,@GetSaveRoomLoggedOn)),
+                     @CheckRoomFlag,#flag=ROOM_NO_COMBAT);
+      }
+
+      return (NOT bSafe) AND vbLethalDamageOverTime;
    }
 
    // Most spells don't have a range limitation. Return MAX_KOD_INT.
@@ -3013,6 +3042,11 @@ messages:
    GetMonsterExertion()
    {
       return viSpellExertion;
+   }
+
+   GetPeriodicSound()
+   {
+      return;
    }
 
 end

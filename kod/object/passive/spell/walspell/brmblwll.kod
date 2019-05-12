@@ -24,10 +24,8 @@ resources:
       "Creates a thicket of thorny, twisted bramble.  Such a wall would be "
       "painful to pass, though it might not harm one who remained "
       "motionless."
+
    BrambleWall_cast_rsc = "A wall of brambles appears before you!"
-   BrambleWall_failed_rsc = \
-      "There is too much summoning magic focused here to create a wall of "
-      "brambles."
 
    BrambleWall_sound = faren.ogg
 
@@ -51,11 +49,11 @@ classvars:
 
    viHarmful = TRUE
 
-   viNumElements = 5
-
-   vrSummonLimitMsg = BrambleWall_failed_rsc
+   //// Seed parameters
+   viElementStep = 40
 
 properties:
+
 
 messages:
 
@@ -68,192 +66,66 @@ messages:
       return;
    }
 
-   PlaceWallElements(who = $, iSpellPower = 0)
-   {
-      local  oRoom, iRow, iCol, iFine_Row, iFine_Col, iXStep, iYStep, iAngle,
-         iMaxDamage, iDuration, iHalfrow, iHalfCol, iHalfFine_Row,
-         iHalfFine_Col, iBrambleHits, oElement;
-
-      iAngle = Send(who,@GetAngle);
-      iMaxDamage = iSpellPower / 15;
-      iMaxDamage = bound(iMaxDamage,$,5);
-      iDuration = (iSpellPower * 3) + 45;
-      iDuration = bound(iDuration,45,270);
-      iDuration *= 1000;
-
-      iBrambleHits = bound(iSpellPower/2,10,50);
-
-      // Facing East
-      if iAngle >= ANGLE_ENE OR iAngle < ANGLE_ESE
-      {
-         iRow = Send(who,@GetRow) - 2;
-         iCol = Send(who,@GetCol) + 1;
-         iXStep = 0;
-         iyStep = 1;
-      }
-
-      // Facing SouthEast
-      if iAngle >= ANGLE_ESE AND iAngle < ANGLE_SSE
-      {
-         iRow = Send(who,@GetRow) - 1;
-         iCol = Send(who,@GetCol) + 3;
-         iXStep = -1;
-         iyStep = 1;
-      }
-
-      // Facing South
-      if iAngle >= ANGLE_SSE AND iAngle < ANGLE_SSW
-      {
-         iRow = Send(who,@GetRow) + 1;
-         iCol = Send(who,@GetCol) - 2;
-         iXStep = 1;
-         iyStep = 0;
-      }
-
-      // Facing SouthWest
-      if iAngle >= ANGLE_SSW AND iAngle < ANGLE_WSW
-      {
-         iRow = Send(who,@GetRow) + 3;
-         iCol = Send(who,@GetCol) + 1;
-         iXStep = -1;
-         iyStep = -1;
-      }
-
-      // Facing West
-      if iAngle >= ANGLE_WSW AND iAngle < ANGLE_WNW
-      {
-         iRow = Send(who,@GetRow) - 2;
-         iCol = Send(who,@GetCol) - 1;
-         iXStep = 0;
-         iYStep = 1;
-      }
-
-      // Facing NorthWest
-      if iAngle >= ANGLE_WNW AND iAngle < ANGLE_NNW
-      {
-         iRow = Send(who,@GetRow) + 1;
-         iCol = Send(who,@GetCol) - 3;
-         iXStep = 1;
-         iyStep = -1;
-      }
-
-      // Facing North
-      if iAngle >= ANGLE_NNW AND iAngle < ANGLE_NNE
-      {
-         iRow = Send(who,@GetRow) - 1;
-         iCol = Send(who,@GetCol) - 2;
-         iXStep = 1;
-         iyStep = 0;
-      }
-
-      // Facing NorthEast
-      if iAngle >= ANGLE_NNE AND iAngle < ANGLE_ENE
-      {
-         iRow = Send(who,@GetRow) - 3;
-         iCol = Send(who,@GetCol) - 1;
-         iXStep = 1;
-         iyStep = 1;
-      }
-
-      oRoom = Send(who,@GetOwner);
-
-      iFine_Row = Send(who,@GetFineRow);
-      iFine_Col = Send(who,@GetFineCol);
-
-
-      iHalfRow = 0;
-      iHalfCol = 0;
-      iHalfFine_Row = iFine_Row;
-      iHalfFine_Col = iFine_Col;
-
-      if iYStep < 0 
-      {
-         if iHalfFine_Row > 31
-         {
-            iHalfFine_Row = iHalfFine_Row - 32;
-         }
-         else
-         {
-            iHalfRow = -1;
-            iHalfFine_Row = 32 + iHalfFine_Row;
-         }
-      }
-
-      if iYStep > 0 
-      {
-         if iHalfFine_Row < 33
-         {
-            iHalfFine_Row = iHalfFine_Row + 32;
-         }
-         else
-         {
-            iHalfRow = 1;
-            iHalfFine_Row = iHalfFine_Row - 32;
-         }
-      }
-
-      if iXStep < 0 
-      {
-         if iHalfFine_Col > 31
-         {
-            iHalfFine_Col = iHalfFine_Col - 32;
-         }
-         else
-         {
-            iHalfCol = -1;
-            iHalfFine_Col = 32 + iHalfFine_Col;
-         }
-      }
-
-      if iXStep > 0 
-      {
-         if iHalfFine_Col < 33
-         {
-            iHalfFine_Col = iHalfFine_Col + 32;
-         }
-         else
-         {
-            iHalfCol = 1;
-            iHalfFine_Col = iHalfFine_Col - 32;
-         }
-      }
-
-      oElement = Create(&Brambles,#MaxDamage=iMaxDamage,#Caster=who,
-                        #Duration=iDuration,#HitPoints=iBrambleHits);
-      Send(oRoom,@NewHold,#what=oElement,#new_row=iRow,#new_col=iCol,
-           #fine_row=iFine_Row,#fine_col=iFine_Col);
-
-      oElement = Create(&Brambles,#MaxDamage=iMaxDamage,#Caster=who,
-                        #Duration=iDuration,#HitPoints=iBrambleHits);
-      Send(oRoom,@NewHold,#what=oElement,
-           #new_row=iRow+iYStep,#new_col=iCol+iXStep,
-           #fine_row=iFine_Row,#fine_col=iFine_Col);
-
-      oElement = Create(&Brambles,#MaxDamage=iMaxDamage,#Caster=who,
-                        #Duration=iDuration,#HitPoints=iBrambleHits);
-      Send(oRoom,@NewHold,#what=oElement,
-           #new_row=iRow+2*iYStep,#new_col=iCol+2*iXStep,
-           #fine_row=iFine_Row,#fine_col=iFine_Col);
-
-      oElement = Create(&Brambles,#MaxDamage=iMaxDamage,#Caster=who,
-                        #Duration=iDuration,#HitPoints=iBrambleHits);
-      Send(oRoom,@NewHold,#what=oElement,
-           #new_row=iRow+3*iYStep,#new_col=iCol+3*iXStep,
-           #fine_row=iFine_Row,#fine_col=iFine_Col);
-
-      oElement = Create(&Brambles,#MaxDamage=iMaxDamage,#Caster=who,
-                        #Duration=iDuration,#HitPoints=iBrambleHits);
-      Send(oRoom,@NewHold,#what=oElement,
-           #new_row=iRow+4*iYStep,#new_col=iCol+4*iXStep,
-           #fine_row=iFine_Row,#fine_col=iFine_Col);
-
-      propagate;
-   }
-
    OfferToNewCharacters()
    {
       // Wall spells are difficult to use.
       return FALSE;
+   }
+
+   PlaceWallElements(seed = $)
+   {
+      local lSeed, lSeeda, lSeedb, lSecondarySeeda, lSecondarySeedb,
+         oRoom, oCaster, iXFineStep, iYFineStep, iXFineStepA, iYFineStepA,
+         iXFineStepB, iYFineStepB, iSpellPower, iDuration, iCharges, iSpeed,
+         iAngle, iStep, iNoise, iCurl;
+
+      oCaster = First(seed);
+      oRoom = Send(oCaster,@GetOwner);
+      iSpellPower = Nth(seed,2);
+      iDuration = Nth(seed,3);
+      iCharges = Nth(seed,4);
+      iSpeed = Nth(seed,5);
+      iAngle = Nth(seed,6);
+      iStep = Nth(seed,7);
+      iNoise = Nth(seed,8);
+      iCurl = Nth(seed,9);
+
+      iXFineStep = Send(oRoom,@GetXFineStep,#angle=iAngle);
+      iYFineStep = Send(oRoom,@GetYFineStep,#angle=iAngle);
+
+      lSecondarySeeda = [oCaster,iSpellPower,iDuration,iCharges,
+         iSpeed,3*MAX_ANGLE/4,iStep,iNoise,-iCurl];
+      lSecondarySeedb = [oCaster,iSpellPower,iDuration,iCharges,
+         iSpeed,MAX_ANGLE/4,iStep,iNoise,iCurl];
+
+      lSeed = [oCaster,iSpellPower,iDuration,iCharges/2+1,
+         iSpeed,iAngle,iStep,iNoise,0];
+      lSeeda = [oCaster,iSpellPower,iDuration,iCharges/2+1,
+         iSpeed,iAngle,iStep,iNoise,iCurl,lSecondarySeeda];
+      lSeedb = [oCaster,iSpellPower,iDuration,iCharges/2+1,
+         iSpeed,iAngle,iStep,iNoise,-iCurl,lSecondarySeedb];
+
+      Send(self,@SpawnElement,#seed=lSeed,#who=oCaster,
+         #xfineoffset=iXFineStep,#yfineoffset=iYFineStep,
+         #walltype=&Brambles);
+
+      iXFineStepA = iXFineStep + Send(oRoom,@GetXFineStep,
+         #angle=(iAngle+3*MAX_ANGLE/4) % MAX_ANGLE)*iStep/FINENESS;
+      iYFineStepA = iYFineStep + Send(oRoom,@GetYFineStep,
+         #angle=(iAngle+3*MAX_ANGLE/4) % MAX_ANGLE)*iStep/FINENESS;
+      Send(self,@SpawnElement,#seed=lSeeda,#who=oCaster,
+         #xfineoffset=iXFineStepA,#yfineoffset=iYFineStepA,
+         #walltype=&Brambles);
+
+      iXFineStepB = iXFineStep + Send(oRoom,@GetXFineStep,
+         #angle=(iAngle+MAX_ANGLE/4) % MAX_ANGLE)*iStep/FINENESS;
+      iYFineStepB = iYFineStep + Send(oRoom,@GetYFineStep,
+         #angle=(iAngle+MAX_ANGLE/4) % MAX_ANGLE)*iStep/FINENESS;
+      Send(self,@SpawnElement,#seed=lSeedb,#who=oCaster,
+         #xfineoffset=iXFineStepB,#yfineoffset=iYFineStepB,
+         #walltype=&Brambles);
+
+      propagate;
    }
 
 end

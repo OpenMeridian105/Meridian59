@@ -259,6 +259,9 @@ properties:
    // querried frequently. Save it as a property instead.
    piWind = 0
 
+   // Keeps track of the summoning magic the player is currently maintaining.
+   piActiveSummons = 0
+
 messages:
 
    // The first lump of code here deals with resistances and immunities/etc.
@@ -957,6 +960,10 @@ messages:
          {
             iHealthPerTick -= 200;
          }
+
+         //End any regeneration effects that expire upon reaching max health.
+         Send(self,@DeleteOverTimeEffect,#removal=REMOVE_AT_MAX,#type=TYPE_HEALTH,
+            #bReport=FALSE);
       }
 
       // Stop any decay if we are already sitting at 0 health.
@@ -1030,6 +1037,15 @@ messages:
 
    ZeroHealth()
    "Uh oh! Are we in trouble?"
+   {
+      // Quite possibly.
+      Send(self,@DeathOverTime);
+
+      return;
+   }
+
+   DeathOverTime()
+   "We're feeling a little under the weather. I'm sure it's nothing."
    {
       return;
    }
@@ -1997,6 +2013,57 @@ messages:
       return plOverTimeEffects;
    }
 
+   // Returns the first specified over time effect.
+   // A caster can be specified to distinguish between effects.
+   GetOverTimeEffect(who=$,what=$)
+   {
+      local i;
+
+      if what <> $
+      {
+         foreach i in plOverTimeEffects
+         {
+            if Nth(i,5) = what
+               AND (who = $ OR who = Nth(i,6))
+            {
+               return i;
+            }
+         }
+      }
+
+      return;
+   }
+
+   SetOverTimeEffectDuration(who=$,what=$,duration=$,strength=$,illusion=FALSE)
+   {
+      local i, tTimer;
+
+      if what <> $
+         AND duration <> $
+      {
+         foreach i in plOverTimeEffects
+         {
+            if Nth(i,5) = what
+               AND (Bound(Nth(i,10),0,1) = illusion)
+            {
+               if strength*duration < Nth(i,3)*GetTimeRemaining(First(i))
+               {
+                  DeleteTimer(First(i));
+                  tTimer = CreateTimer(self,@DeleteOverTimeEffect,duration);
+                  SetFirst(i,tTimer);
+                  SetNth(i,3,strength);
+                  SetNth(i,6,who);
+                  Send(self,@UpdateRates);
+               }
+
+               return TRUE;
+            }
+         }
+      }
+
+      return FALSE;
+   }
+
    // Adds a new over time effect to the battler.
    // Notes:
    // 'duration' specifies the length of the timer that is being created. A duration
@@ -2018,10 +2085,14 @@ messages:
    // 'showicon' keeps track of whether an effect comes with an associated icon.
    // 'curse' means that the effect stops natural resource regeneration. $ means no
    // curse, 0 is a health curse, 1 a mana curse and 2 a vigor curse.
+   // 'illusion' means that the caused damage will be restored after the effect wears
+   //   off. 'illusion' stores the time stamp of the DoTs creation so we can calculate 
+   // the actual damage that was done.
    // Template: Send(who,@StartOverTimeEffect,#duration=,#type=,#strength=,
-   // #state=,#what=,#who=,#removable=,#showicon=,#curse=);
+   // #state=,#what=,#who=,#removable=,#showicon=,#curse=,#illusion=);
    StartOverTimeEffect(duration=$,type=TYPE_HEALTH,strength=0,state=100,what=0,
-                       who=0,removable=REMOVE_PLAYER,showicon=TRUE,curse=$)
+                       who=0,removable=REMOVE_PLAYER,showicon=TRUE,curse=$,
+                       bReport=TRUE,illusion=FALSE)
    {
       local tTimer, lEffect;
 
@@ -2034,7 +2105,7 @@ messages:
          tTimer = duration;
       }
 
-      lEffect = [tTimer,type,strength,state,what,who,removable,showicon,curse];
+      lEffect = [tTimer,type,strength,state,what,who,removable,showicon,curse,illusion];
 
       plOverTimeEffects = Cons(lEffect,plOverTimeEffects);
 
@@ -2045,8 +2116,10 @@ messages:
          {
             Send(self,@ShowAddEnchantment,#what=what,#type=ENCHANTMENT_PLAYER);
          }
+
          // Optional effects caused by the onset of the over time effect.
-         Send(what,@OverTimeEffectStarting,#who=self,#overtimeeffect=lEffect);
+         Send(what,@OverTimeEffectStarting,#who=self,#bReport=bReport,
+            #overtimeeffect=lEffect);
       }
 
       // If 'who' cast a damage over time, set their flags accordingly.
@@ -2068,9 +2141,9 @@ messages:
 
    // Deletes over time effects. Further explanation on conditions below.
    DeleteOverTimeEffect(what=$,who=$,timer=0,clear=FALSE,removal=REMOVE_PLAYER,
-                        curse=FALSE)
+                        curse=FALSE,bReport=TRUE,type=TYPE_HEALTH)
    {
-      local i, oSpell, oCaster, bRemoved;
+      local i, oSpell, oCaster, bRemoved, iIllusion;
 
       bRemoved = FALSE;
 
@@ -2078,6 +2151,7 @@ messages:
       {
          oSpell = Nth(i,5);
          oCaster = Nth(i,6);
+         iIllusion = Nth(i,10);
 
          // Case 1: Expires naturally due to timer running out.
          if timer = First(i)
@@ -2096,6 +2170,10 @@ messages:
             OR (what = $ AND who = oCaster AND Nth(i,7) = removal)
          // Case 6: Removed because a curse has been lifted.
             OR (curse AND Nth(i,9) <> $ AND Nth(i,7) = removal)
+         // Case 7: Removed because effect expires at max health.
+            OR (removal = REMOVE_AT_MAX AND type = Nth(i,2) AND Nth(i,7) = REMOVE_AT_MAX)
+         // Case 8: Removed because it was an illusionary effect.
+            OR (removal = iIllusion)
          {
             if oSpell <> 0
             {
@@ -2103,7 +2181,9 @@ messages:
                {
                   Send(self,@ShowRemoveEnchantment,#what=oSpell,#type=ENCHANTMENT_PLAYER);
                }
-               Send(oSpell,@OverTimeEffectWearingOff,#who=self,#overtimeeffect=i);
+
+               Send(oSpell,@OverTimeEffectWearingOff,#who=self,#bReport=bReport,
+                  #overtimeeffect=i);
             }
 
             if timer = 0
@@ -3774,6 +3854,49 @@ messages:
       plHurtMeRecently = $;
 
       return;
+   }
+
+   ResetActiveSummons()
+   {
+      if piActiveSummons = 0
+      {
+         return FALSE;
+      }
+
+      piActiveSummons = 0;
+
+      return TRUE;
+   }
+
+   GetActiveSummons()
+   {
+      return piActiveSummons;
+   }
+
+   AddActiveSummons(i=1)
+   {
+      piActiveSummons += i;
+
+      return;
+   }
+
+   RemoveActiveSummons(i=1)
+   {
+      piActiveSummons -= i;
+
+      return;
+   }
+
+   GetSummoningLimit()
+   {
+      return (Send(self,@GetMysticism)*2 + Send(self,@GetStamina))/3;
+   }
+
+   // By what percentage are we exceeding our summoning limit?
+   BeyondSummoningLimit()
+   {
+      return Bound(100 * piActiveSummons / Send(self,@GetSummoningLimit)
+         - 100,0,$);
    }
 
 end

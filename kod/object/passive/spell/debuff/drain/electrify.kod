@@ -1,0 +1,113 @@
+// Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+// All rights reserved.
+//
+// This software is distributed under a license that is described in
+// the LICENSE file that accompanies it.
+//
+// Meridian is a registered trademark.
+
+
+/////////////////////////////////////////////////////////////////////////////////
+Electrify is Drain
+
+constants:
+
+   include blakston.khd
+
+   // electrification below this amount of damage (precision) won't be considered.
+   ELECTRIFY_DAMAGE_CUT_OFF = 100
+
+resources:
+
+   include electrify.lkod
+
+   electrify_on = "~k~IYou begin to twitch uncontrollably as electricity shoots through your body!"
+   electrify_off  = "~k~IYou stop twitching."
+   electrify_icon = ielectrify.bgf
+   electrify_name = "electrified"
+
+   electrify_desc = \
+      "Fun fact: Most people are unable to read while being electrocuted."
+
+   electrify_sound = electrify.ogg
+   electrify_sound_end = electrify_end.ogg
+
+classvars:
+
+   vrIcon = electrify_icon
+   viShow_enchantment_icon = 0x02
+   vrName = electrify_name
+   vrDesc = electrify_desc
+
+   vrEnchantment_On = electrify_on
+   vrEnchantment_Off = electrify_off
+   vrDrain_wav = electrify_sound
+   vrDrain_end_wav = electrify_sound_end
+   vrDrain_wav_duration = 2386
+
+   viSpell_num = SID_ELECTRIFY
+   viSchool = SS_FAREN
+
+   // Electrocution has been known to be a source of death.
+   vbLethalDamageOverTime = TRUE
+
+   viAttack_spell = ATCK_SPELL_ALL + ATCK_SPELL_SHOCK
+
+properties:
+
+   // Infrastructure for electrify drain effect only.
+   pbCanBeLearned = FALSE
+
+messages:
+
+   StartElectrify(who=$,source=0,strength=0,duration=0,bIllusionary=FALSE)
+   "Health loss is in units of 10^-3 health points per second."
+   "Duration is in milliseconds."
+   {
+      local iFlash, iStrength, iResistance, iIllusion;
+
+      iIllusion = FALSE;
+
+      if bIllusionary
+      {
+         iStrength = strength + (50 - Send(who,@GetIntellect))*40;
+         iIllusion = GetTime();
+      }
+      else
+      {
+         // Damage may be reduced by a battler's resistance.
+         iResistance = Send(who,@ResistanceCheck,#aspell=viAttack_spell);
+         iStrength = Send(who,@GetDamageFromResistance,#what=strength,#value=iResistance);
+      }
+
+      // If our effect is too weak, ignore it.
+      if (strength/100) * (duration/100) < ELECTRIFY_DAMAGE_CUT_OFF
+      {
+         return FALSE;
+      }
+
+      // Check if we are already suffering from this effect from this caster.
+      if Send(who,@SetOverTimeEffectDuration,#who=source,#what=self,
+         #duration=duration,#strength=-iStrength,#illusion=bIllusionary)
+      {
+         return FALSE;
+      }
+      else
+      {
+         Send(who,@StartOverTimeEffect,#strength=-iStrength,#duration=duration,
+               #what=self,#who=source,#state=100,#type=TYPE_HEALTH,
+               #removable=REMOVE_INTERNAL,#illusion=iIllusion);
+      }
+
+      if IsClass(who,&Player)
+      {
+         // Visual indication of effect.
+         iFlash = Bound(iStrength / 2,100,2000);
+         Send(who,@DamageTypeFlashEffect,#aspell=viAttack_spell,#duration=iFlash);
+      }
+
+      return TRUE;
+   }
+
+end
+////////////////////////////////////////////////////////////////////////////////

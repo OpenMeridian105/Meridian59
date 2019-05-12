@@ -21,13 +21,10 @@ resources:
    RingOfFlames_name_rsc = "ring of flames"
    RingOfFlames_icon_rsc = iringfir.bgf
    RingOfFlames_desc_rsc = \
-      "Creates a ring of flames around the target, burning alive any who "
-      "dare to come close."
-   RingOfFlames_caster = "A blazing hot ring of flames appears around %s%s."
-   RingOfFlames_target = "A blazing hot ring of flames appears around you!"
-   RingOfFlames_failed_rsc = \
-      "There is too much summoning magic focused here to create a ring of "
-      "flames."
+      "Creates a devastating firestorm around the target."
+
+   RingOfFlames_cast_rsc = "A ring of twisting flames emerges!"
+
    RingOfFlames_sound = frngfir.ogg
 
 classvars:
@@ -40,19 +37,22 @@ classvars:
    viSchool = SS_FAREN
    viSpell_level = 5
    viMana = 15
-   viSpellExertion = 3
+   viSpellExertion = 2
    viMeditate_ratio = 50
-   vrSuccess = RingOfFlames_target
+
    vrSucceed_wav = RingOfFlames_sound
+   vrSuccess = RingOfFlames_cast_rsc
 
    viHarmful = TRUE
-
-   // We technically have 12 elements, but that would never let us cast this while
-   //  another wall spell is active.  A little cheat here, only count 9 elements.
-   viNumElements = 9
-   vrSummonLimitMsg = RingOfFlames_failed_rsc
-   // If TRUE, can target others with this spell.
    vbCanCastOnOthers = TRUE
+
+   //// Seed parameters
+   viElementSpellpower = 200
+   viElementDuration = 5000
+   viElementCharges = 100
+   viElementSpeed = 75
+   viElementNoise = 0
+   viElementCurve = 641024
 
 properties:
 
@@ -61,8 +61,7 @@ messages:
    ResetReagents()
    {
       plReagents = $;
-      plReagents = Cons([&RedMushroom,3],plReagents);
-      plReagents = Cons([&Firesand,3], plReagents);
+      plReagents = Cons([&Firesand,2], plReagents);
 
       return;
    }
@@ -72,135 +71,22 @@ messages:
       return vbCanCastOnOthers;
    }
 
-   WallSpellSuccessMessage(who=$,lTargets=$)
+   PlaceWallElements(seed = $, lTargets = $)
    {
-      local oTarget;
+      local oTarget, lSeed;
 
-      if (lTargets = $
-         OR NOT vbCanCastOnOthers)
-      {
-         oTarget = who;
-      }
-      else
+      oTarget = First(seed);
+
+      if lTargets <> $
       {
          oTarget = First(lTargets);
       }
 
-      if oTarget = $
-      {
-         Debug("Ring of Flames cast with nil target");
+      lSeed = ListCopy(seed);
+      SetNth(lSeed,6,0);
 
-         return;
-      }
-
-      Send(oTarget,@MsgSendUser,#message_rsc=RingOfFlames_target);
-
-      if (oTarget <> who)
-      {
-         Send(who,@MsgSendUser,#message_rsc=RingOfFlames_caster,
-               #parm1=Send(oTarget,@GetDef),#parm2=Send(oTarget,@GetName));
-      }
-
-      return;
-   }
-
-   PlaceWallElements(who=$,lTargets=$,iSpellPower=1)
-   {
-      local oRoom, iRow, iCol, iFine_Row, iFine_Col, iXStep, iYStep,
-            iAngle, iMaxDamage, iDuration, iHalfrow, iHalfCol, iHalfFine_Row,
-            iHalfFine_Col, oElement, oTarget;
-
-      if (lTargets = $
-         OR NOT vbCanCastOnOthers)
-      {
-         oTarget = who;
-      }
-      else
-      {
-         oTarget = First(lTargets);
-      }
-
-      if oTarget = $
-      {
-         Debug("Ring of Flames cast with nil target");
-
-         return;
-      }
-
-      iAngle = Send(oTarget,@GetAngle);
-      iMaxDamage = iSpellPower / 5;
-      iMaxDamage = Bound(iMaxDamage,1,20);
-      iDuration = (iSpellPower * 2) + 30;
-      iDuration = Bound(iDuration,30,180);
-      iDuration *= 1000;
-
-      oRoom = Send(oTarget,@GetOwner);
-
-      iRow = Send(oTarget,@GetRow);
-      iCol = Send(oTarget,@GetCol);
-
-      // Create fire in eight cardinal directions
-      oElement = Create(&WallofFire,#Caster=who,#MaxDamage=iMaxDamage,
-                        #Duration=iDuration);
-      Send(oRoom,@NewHold,#what=oElement,#new_row=(iRow+1),#new_col=(iCol+1),
-           #fine_row=FINENESS_HALF,#fine_col=FINENESS_HALF);
-
-      oElement = Create(&WallofFire,#MaxDamage=iMaxDamage,#Caster=who,
-                        #Duration=iDuration);
-      Send(oRoom,@NewHold,#what=oElement,#new_row=(iRow+1),#new_col=iCol,
-           #fine_row=FINENESS_HALF,#fine_col=FINENESS_HALF);
-
-      oElement = Create(&WallofFire,#MaxDamage=iMaxDamage,#Caster=who,
-                        #Duration=iDuration);
-      Send(oRoom,@NewHold,#what=oElement,#new_row=(iRow+1),#new_col=(iCol-1),
-           #fine_row=FINENESS_HALF,#fine_col=FINENESS_HALF);
-
-      oElement = Create(&WallofFire,#MaxDamage=iMaxDamage,#Caster=who,
-                        #Duration=iDuration);
-      Send(oRoom,@NewHold,#what=oElement,#new_row=iRow,#new_col=(iCol+1),
-           #fine_row=FINENESS_HALF,#fine_col=FINENESS_HALF);
-
-      oElement = Create(&WallofFire,#MaxDamage=iMaxDamage,#Caster=who,
-                        #Duration=iDuration);
-      Send(oRoom,@NewHold,#what=oElement,#new_row=iRow,#new_col=(iCol-1),
-           #fine_row=FINENESS_HALF,#fine_col=FINENESS_HALF);
-
-      oElement = Create(&WallofFire,#MaxDamage=iMaxDamage,#Caster=who,
-                        #Duration=iDuration);
-      Send(oRoom,@NewHold,#what=oElement,#new_row=(iRow-1),#new_col=(iCol+1),
-           #fine_row=FINENESS_HALF,#fine_col=FINENESS_HALF);
-
-      oElement = Create(&WallofFire,#MaxDamage=iMaxDamage,#Caster=who,
-                        #Duration=iDuration);
-      Send(oRoom,@NewHold,#what=oElement,#new_row=(iRow-1),#new_col=iCol,
-           #fine_row=FINENESS_HALF,#fine_col=FINENESS_HALF);
-
-      oElement = Create(&WallofFire,#MaxDamage=iMaxDamage,#Caster=who,
-                        #Duration=iDuration);
-      Send(oRoom,@NewHold,#what=oElement,#new_row=(iRow-1),#new_col=(iCol-1),
-           #fine_row=FINENESS_HALF,#fine_col=FINENESS_HALF);
-
-
-      // Create four "filler" elements in corners.
-      oElement = Create(&PassiveWallofFire,#Caster=who,#MaxDamage=iMaxDamage,
-                        #Duration=iDuration,#Illusionary=FALSE);
-      Send(oRoom,@NewHold,#what=oElement,#new_row=iRow,#new_col=iCol,
-           #fine_row=0,#fine_col=0);
-
-      oElement = Create(&PassiveWallofFire,#Caster=who,#MaxDamage=iMaxDamage,
-                        #Duration=iDuration,#Illusionary=FALSE);
-      Send(oRoom,@NewHold,#what=oElement,#new_row=iRow,#new_col=iCol,
-           #fine_row=0,#fine_col=FINENESS);
-
-      oElement = Create(&PassiveWallofFire,#Caster=who,#MaxDamage=iMaxDamage,
-                        #Duration=iDuration,#Illusionary=FALSE);
-      Send(oRoom,@NewHold,#what=oElement,#new_row=iRow,#new_col=iCol,
-           #fine_row=FINENESS,#fine_col=0);
-
-      oElement = Create(&PassiveWallofFire,#Caster=who,#MaxDamage=iMaxDamage,
-                        #Duration=iDuration,#Illusionary=FALSE);
-      Send(oRoom,@NewHold,#what=oElement,#new_row=iRow,#new_col=iCol,
-           #fine_row=FINENESS,#fine_col=FINENESS);
+      Send(self,@SpawnElement,#seed=lSeed,#who=oTarget,#walltype=&WallOfFire,
+         #yfineoffset=FINENESS_HALF,#xfineoffset=FINENESS_HALF);
 
       propagate;
    }

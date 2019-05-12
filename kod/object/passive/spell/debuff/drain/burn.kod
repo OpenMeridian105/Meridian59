@@ -32,7 +32,8 @@ resources:
       "the face of danger.  Most people tend to run around in circles and "
       "scream when they are on fire."
 
-   burn_sound = fireplac.ogg
+   burn_sound = burning.ogg
+   burn_sound_end = burning_end.ogg
 
 classvars:
 
@@ -43,10 +44,17 @@ classvars:
 
    vrEnchantment_On = burn_on
    vrEnchantment_Off = burn_off
-   vrSucceed_wav = burn_sound
+   vrDrain_wav = burn_sound
+   vrDrain_end_wav = burn_sound_end
+   vrDrain_wav_duration = 2974
 
    viSpell_num = SID_BURN
    viSchool = SS_FAREN
+
+   // Fire is very much able to kill players.
+   vbLethalDamageOverTime = TRUE
+
+   viAttack_spell = ATCK_SPELL_ALL + ATCK_SPELL_FIRE   
 
 properties:
 
@@ -55,30 +63,50 @@ properties:
 
 messages:
 
-   StartBurn(who=$,source=0,strength=0,duration=0)
+   StartBurn(who=$,source=0,strength=0,duration=0,bIllusionary=FALSE)
    "Health loss is in units of 10^-3 health points per second."
    "Duration is in milliseconds."
    {
-      local iFlash;
+      local iFlash, iStrength, iResistance, iIllusion;
 
-      // If our burn is too weak, ignore it.
+      iIllusion = FALSE;
+
+      if bIllusionary
+      {
+         iStrength = strength + (50 - Send(who,@GetIntellect))*40;
+         iIllusion = GetTime();
+      }
+      else
+      {
+         // Damage may be reduced by a battler's resistance.
+         iResistance = Send(who,@ResistanceCheck,#aspell=viAttack_spell);
+         iStrength = Send(who,@GetDamageFromResistance,#what=strength,#value=iResistance);
+      }
+
+      // If our effect is too weak, ignore it.
       if (strength/100) * (duration/100) < BURN_DAMAGE_CUT_OFF
       {
          return FALSE;
       }
 
-      Send(who,@StartOverTimeEffect,#strength=-strength,#duration=duration,
-            #what=self,#who=source,#state=100,#type=TYPE_HEALTH,
-            #removable=REMOVE_INTERNAL);
+      // Check if we are already suffering from this effect from this caster.
+      if Send(who,@SetOverTimeEffectDuration,#who=source,#what=self,
+         #duration=duration,#strength=-iStrength,#illusion=bIllusionary)
+      {
+         return FALSE;
+      }
+      else
+      {
+         Send(who,@StartOverTimeEffect,#strength=-iStrength,#duration=duration,
+               #what=self,#who=source,#state=100,#type=TYPE_HEALTH,
+               #removable=REMOVE_INTERNAL,#illusion=iIllusion);
+      }
 
       if IsClass(who,&Player)
       {
-         Send(who,@MsgSendUser,#message_rsc=vrEnchantment_On);
-
-         // Visual indication of drain effect.
-         iFlash = Bound(strength / 2,100,2000);
-         Send(who,@EffectSendUserDurationAndXlat,#effect=EFFECT_FLASHXLAT,
-               #duration=iFlash,#xlat=81);
+         // Visual indication of effect.
+         iFlash = Bound(iStrength / 2,100,2000);
+         Send(who,@DamageTypeFlashEffect,#aspell=viAttack_spell,#duration=iFlash);
       }
 
       return TRUE;

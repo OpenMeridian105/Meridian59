@@ -1130,6 +1130,8 @@ properties:
    piHonorTitle = 1
    piLastHonorChangeTime = 0
 
+   plPeriodicSounds = $
+
 messages:
 
    Constructor()
@@ -1249,6 +1251,8 @@ messages:
          }
          plControlledMinions = $;
       }
+
+      Send(self,@PeriodicSounds,#bSuspend=TRUE);
 
       propagate;
    }
@@ -2842,6 +2846,7 @@ messages:
       }
 
       Send(self,@UpdateRates);
+      Send(self,@PeriodicSounds,#bSuspend=TRUE);
 
       return;
    }
@@ -3403,7 +3408,7 @@ messages:
    FreezeAllEnchantments()
    "Called when a player logs off."
    {
-      local i, tTimer, iTime, oSpell;
+      local i, tTimer, iTime, oSpell, iIllusion;
 
       if (piFlags & PFLAG_PHASED)
       {
@@ -3482,6 +3487,21 @@ messages:
             {
                iTime = GetTimeRemaining(tTimer);
                DeleteTimer(tTimer);
+
+               // Special case: Suspending an illusionary effect.
+               // For balancing health upon expiration, we need to keep track
+               // of how much health has been gained or lost. To do so, we log
+               // when the effect has started and calculate the time difference
+               // upon expiration. Naturally, this doesn't work well, when the
+               // effect is suspended and the time delta keeps growing meanwhile.
+               // Instead, we convert the timestamp into a timedelta that can be
+               // subtracted from the fresh timestamp when reactivated.
+               iIllusion = Nth(i,10);
+
+               if iIllusion > 0
+               {
+                  SetNth(i,10,Bound(GetTime()-iIllusion,1,$));
+               }
             }
             else
             {
@@ -3494,6 +3514,9 @@ messages:
             SetFirst(i,iTime);
          }
       }
+
+      // Also stop trying to play periodic sounds stemming from over time effects.
+      Send(self,@PeriodicSounds,#bSuspend=TRUE);
 
       foreach i in plHurtMeRecently
       {
@@ -3523,7 +3546,7 @@ messages:
    ReactivateAllEnchantments()
    "Called when a player logs on."
    {
-      local i, tTimer, iTime, state, oSpell, bSafe;
+      local i, tTimer, iTime, state, oSpell;
 
       foreach i in plEnchantments
       {
@@ -3581,23 +3604,9 @@ messages:
          Send(oSpell,@RestartEnchantmentEffect,#who=self,#state=state);
       }
 
-      // Edge case, if we are in a safe room (i.e. potentially sent by phase
-      // or log pen), don't reactivate any lethal overtime damage effects.
-      if (poOwner <> $)
-      {
-         bSafe = Send(poOwner,@CheckRoomFlag,#flag=ROOM_NO_COMBAT);
-      }
-      else
-      {
-         bSafe = Send(Send(SYS,@FindRoomByNum,#num=Send(self,@GetSaveRoomLoggedOn)),
-                     @CheckRoomFlag,#flag=ROOM_NO_COMBAT);
-      }
-
       foreach i in plOverTimeEffects
       {
          iTime = First(i);
-
-         // TODO: remove lethal overtime effects if bSafe is TRUE.
 
          // Nil means that the over time effect has infinite duration. Skip.
          if iTime <> $
@@ -3619,9 +3628,22 @@ messages:
             else
             {
                SetFirst(i,CreateTimer(self,@DeleteOverTimeEffect,iTime));
+
+               // Special case: We reactivate an illusionary effect. To keep
+               // things tidy, we need to create a new time stamp that is extended
+               // by the amount of time the DoT has previously been active.
+               iTime = Nth(i,10);
+
+               if iTime > 0
+               {
+                  SetNth(i,10,GetTime()-iTime);
+               }
             }
          }
       }
+
+      // Restart periodic sounds stemming from overtime effects.
+      Send(self,@PeriodicSounds);
 
       Send(self,@ResetPlayerFlagList,#who=self);
 
@@ -3630,7 +3652,7 @@ messages:
 
    DispelIllusionEnchantments(report = TRUE, iChance = 100)
    {
-      local i, oSpell, each_obj;
+      local i, oSpell, each_obj, iIllusion;
 
       foreach i in plEnchantments 
       {
@@ -3639,6 +3661,16 @@ messages:
             AND Random(1,100) <= iChance
          {
             Send(self,@RemoveEnchantment,#what=Nth(i,2),#report=report);
+         }
+      }
+
+      foreach i in plOverTimeEffects 
+      {
+         iIllusion = Nth(i,10);
+         if iIllusion > 0
+            AND Random(1,100) <= iChance
+         {
+            Send(self,@DeleteOverTimeEffect,#removal=iIllusion);
          }
       }
 
@@ -12123,7 +12155,11 @@ messages:
       piMana = 100* piMax_mana;
       piVigor = 100* piMax_vigor;
 
+      // Reset our active summons.
+      piActiveSummons = 0;
+
       Send(self,@UpdateRates);
+      Send(self,@PeriodicSounds,#bSuspend=TRUE);
 
       Send(self,@RemoveAttackingEvilTwin);
 
@@ -15413,6 +15449,66 @@ messages:
       return;
    }
 
+   DeathOverTime()
+   "Player is dying to damage over time."
+   {
+      local oEffect, iStrength, use_weapon, oKiller, i, each_obj;
+
+      // The strength of the DoT. We are looking at
+      // negative values here.
+      iStrength = 0;
+
+      // The source of the dot as well as the associated spell.
+      // If no source/spell have been associated with the dot,
+      // 0 - not nil - is passed.
+      oKiller = 0;
+      use_weapon = 0;
+
+      // Let's check who pained us most.
+      foreach i in Send(self,@GetOverTimeEffects)
+      {
+         oEffect = Nth(i,5);
+
+         if (Nth(i,3) < iStrength)
+            AND Send(oEffect,@IsLethal,#who=self)   // Not all effects are lethal.
+            AND Nth(i,10) = FALSE                   // ...or real.
+         {
+            oKiller = Nth(i,6);
+            use_weapon = oEffect;
+            iStrength = Nth(i,3);
+         }
+      }
+
+      // Looks like we only had a mild case of death after all...
+      if iStrength = 0
+      {
+         return;
+      }
+
+      // Convert 0 to regular nil for further processing.
+      // To-do: Check for more elegant solution.
+      if use_weapon = 0
+      {
+         use_weapon = $;
+      }
+
+      if oKiller = 0
+      {
+         oKiller = $;
+      }
+
+      if oKiller <> $
+      {
+         Send(oKiller,@KilledSomething,#what=self,#use_weapon=use_weapon);
+      }
+      else
+      {
+         Send(self,@KilledSomething,#what=self,#use_weapon=use_weapon);
+      }
+
+      return;
+   }
+
    GetStealth(what=$)
    {
       local iStealth, iLight;
@@ -15422,8 +15518,10 @@ messages:
          return FALSE;
       }
 
-      if ((Abs(piLastMoveUpdateTime - GetTickCount()) >= Send(SETTINGS_OBJECT,@GetStealthDelay))
-         OR (Send(self,@GetTimeSinceLogin) <= (Send(SETTINGS_OBJECT,@GetStealthDelay) / 1000)))
+      if ((Abs(piLastMoveUpdateTime - GetTickCount()) >=
+            Send(SETTINGS_OBJECT,@GetStealthDelay))
+         OR (Send(self,@GetTimeSinceLogin) <=
+            (Send(SETTINGS_OBJECT,@GetStealthDelay) / 1000)))
          AND (ptAttackTimer = $)
       {
          return 300;
@@ -15777,6 +15875,82 @@ messages:
    {
       // Returns TRUE if the player hasn't gained or lost points in the past 60 days.
       return ((GetTime() - piLastHonorChangeTime) > USER_HONOR_INACTIVE_TIME);
+   }
+
+   PeriodicSounds(timer=$,bSuspend=FALSE)
+   {
+      local i, j, rSound, oEffect, lSound, tTimer;
+
+      if bSuspend
+      {
+         foreach i in plPeriodicSounds
+         {
+            if First(i) <> $
+            {
+               DeleteTimer(First(i));
+               SetFirst(i,$);
+               SetNth(i,2,$);
+               plPeriodicSounds = DelListElem(plPeriodicSounds,i);
+            }
+         }
+
+         return;
+      }
+
+      if timer <> $
+      {
+         foreach i in plPeriodicSounds
+         {
+            if First(i) = timer
+            {
+               if NOT Send(self,@HasOverTimeEffect,#what=Nth(i,2))
+               {
+                  rSound = Send(Nth(i,2),@GetPeriodicSoundEnd);
+               }
+
+               SetFirst(i,$);
+               SetNth(i,2,$);
+               plPeriodicSounds = DelListElem(plPeriodicSounds,i);
+
+               if rSound = $
+               {
+                  continue;
+               }
+
+               Send(self,@WaveSendUser,#wave_rsc=rSound);
+            }
+         }
+      }
+
+      foreach j in plOverTimeEffects
+      {
+         oEffect = Nth(j,5);
+
+         if (oEffect <> 0) AND IsClass(oEffect,&Spell)
+         {
+            rSound = Send(oEffect,@GetPeriodicSound);
+         }
+         else
+         {
+            continue;
+         }
+
+         if rSound = $
+         {
+            continue;
+         }
+
+         if (GetListNode(plPeriodicSounds, 2, oEffect) = $)
+         {
+            tTimer = CreateTimer(self,@PeriodicSounds,
+               Send(oEffect,@GetPeriodicSoundDuration));
+            lSound = [tTimer,oEffect];
+            plPeriodicSounds = Cons(lSound,plPeriodicSounds);
+            Send(self,@WaveSendUser,#wave_rsc=rSound);
+         }
+      }
+
+      return;
    }
 
 end

@@ -1,0 +1,114 @@
+// Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+// All rights reserved.
+//
+// This software is distributed under a license that is described in
+// the LICENSE file that accompanies it.
+//
+// Meridian is a registered trademark.
+
+
+////////////////////////////////////////////////////////////////////////////////
+FlameWave is WallSpell
+
+constants:
+   include blakston.khd
+
+resources:
+
+   include flamewave.lkod
+
+   FlameWave_name_rsc = "flame wave"
+   FlameWave_icon_rsc = iflamewave.bgf
+   FlameWave_desc_rsc = \
+      "Creates a flame wave that leaves a swathe of fiery "
+      "destruction in its path."
+
+   FlameWave_cast_rsc = \
+      "A blazing hot wave of flame and cinder spreads before you!"
+
+   FlameWave_sound = farenwala822m.ogg
+
+classvars:
+
+   vrName = FlameWave_name_rsc
+   vrIcon = FlameWave_icon_rsc
+   vrDesc = FlameWave_desc_rsc
+
+   viSpell_num = SID_FLAME_WAVE
+   viSchool = SS_FAREN
+   viSpell_level = 4
+   viMana = 15
+   viSpellExertion = 3
+   viMeditate_ratio = 30
+
+   viCast_time = 1000
+   vrSucceed_wav = FlameWave_sound
+   vrSuccess = FlameWave_cast_rsc
+
+   viHarmful = TRUE
+
+   //// Seed parameters
+   // How far apart (fineunits) should the elements spawn?
+   viElementStep = FINENESS_HALF
+   viElementSpellpower = 200
+   viElementDuration = 400
+   viElementCharges = 20
+   viElementSpeed = 50
+
+properties:
+
+
+messages:
+
+   ResetReagents()
+   {
+      plReagents = $;
+      plReagents = Cons([&RedMushroom,2],plReagents);
+
+      return;
+   }
+
+   PlaceWallElements(seed = $)
+   {
+      local lSecondarySeeda, lSecondarySeedb, lSeeda, lSeedb,
+         iXFineStep, iYFineStep, oRoom, oCaster, iSpellPower,
+         iDuration, iCharges, iSpeed, iAngle, iStep, iNoise;
+
+      oCaster = First(seed);
+      oRoom = Send(oCaster,@GetOwner);
+      iSpellPower = Nth(seed,2);
+      iDuration = Nth(seed,3);
+      iCharges = Nth(seed,4);
+      iSpeed = Nth(seed,5);
+      iAngle = Nth(seed,6);
+      iStep = Nth(seed,7);
+      iNoise = Nth(seed,8);
+
+      iXFineStep = Send(oRoom,@GetXFineStep,#angle=iAngle);
+      iYFineStep = Send(oRoom,@GetYFineStep,#angle=iAngle);
+
+      lSecondarySeeda = [oCaster,iSpellPower,iDuration,iCharges,
+         iSpeed,MAX_ANGLE/4,iStep,iNoise,0];
+      lSecondarySeedb = [oCaster,iSpellPower,iDuration,iCharges,
+         iSpeed,3*MAX_ANGLE/4,iStep,iNoise,0];
+
+      // This creates a single row of wall elements up to 10 elements 
+      // wide. These will then spawn the secondary wall elements
+      // specified above.
+      lSeeda = [oCaster,iSpellPower,iDuration,iCharges/4,iSpeed*3,
+         (iAngle+3*MAX_ANGLE/4) % MAX_ANGLE,iStep,iNoise,0,lSecondarySeeda];
+      lSeedb = [oCaster,iSpellPower,iDuration,iCharges/4,iSpeed*3,
+         (iAngle+MAX_ANGLE/4) % MAX_ANGLE,iStep,iNoise,0,lSecondarySeedb];
+
+      Send(self,@SpawnElement,#seed=lSeeda,#who=oCaster,
+         #xfineoffset=iXFineStep,#yfineoffset=iYFineStep,
+         #walltype=&WallOfFire);
+      Send(self,@SpawnElement,#seed=lSeedb,#who=oCaster,
+         #xfineoffset=iXFineStep,#yfineoffset=iYFineStep,
+         #walltype=&WallOfFire);
+
+      propagate;
+   }
+
+end
+////////////////////////////////////////////////////////////////////////////////

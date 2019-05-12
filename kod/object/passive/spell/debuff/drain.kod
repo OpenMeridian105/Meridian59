@@ -22,6 +22,9 @@ classvars:
    viFlash = FLASH_NONE
    viMeditate_ratio = 0
    viSpell_level = 99
+   vrDrain_wav = $
+   vrDrain_end_wav = $
+   vrDrain_wav_duration = 3000
 
 properties:
 
@@ -35,15 +38,62 @@ messages:
       return;
    }
 
-   OverTimeEffectWearingOff(who=$,overtimeeffect=$)
+   OverTimeEffectWearingOff(who=$,overtimeeffect=$,bReport=TRUE)
    {
-      if who <> $
-         AND IsClass(who,&Player)
+      local iIllusion;
+
+      if (who <> $)
       {
-         Send(who,@MsgSendUser,#message_rsc=vrEnchantment_Off);
+         if bReport
+            AND IsClass(who,&Player)
+         {
+            Send(who,@MsgSendUser,#message_rsc=vrEnchantment_Off);
+         }
+
+         iIllusion = Nth(overtimeeffect,10);
+
+         if iIllusion
+            AND (Nth(overtimeeffect,2) = TYPE_HEALTH)
+         {
+            Send(who,@StartEnchantment,#lastcall=TRUE,#addicon=FALSE,
+               #what=Send(SYS,@FindSpellByNum,#num=SID_ILLUSIONARY_WOUNDS),
+               #state=(iIllusion-GetTime())*Nth(overtimeeffect,3)/10,
+               #time=Bound(30000 - 400*Send(who,@GetIntellect),5000,$));
+         }
       }
 
       return;
+   }
+
+   OverTimeEffectStarting(who=$,overtimeeffect=$,bReport=TRUE)
+   "Just a dummy catching over time effects without message."
+   {
+      local iIllusion;
+
+      if bReport
+         AND (who <> $)
+         AND IsClass(who,&Player)
+      {
+         Send(who,@MsgSendUser,#message_rsc=vrEnchantment_On);
+         Send(who,@PeriodicSounds);
+      }
+
+      return;
+   }
+
+   GetPeriodicSound()
+   {
+      return vrDrain_wav;
+   }
+
+   GetPeriodicSoundEnd()
+   {
+      return vrDrain_end_wav;
+   }
+
+   GetPeriodicSoundDuration()
+   {
+      return vrDrain_wav_duration;
    }
 
 end

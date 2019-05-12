@@ -34,8 +34,6 @@ resources:
 
    lightningwall_dissipates = "Part of the lightning wall flickers, and disappears."
 
-   lightningwall_zap_snd = Fzap.ogg
-
 classvars:
 
    vrName = WallofLightning_name_rsc
@@ -49,84 +47,57 @@ classvars:
 
    viLightBonus = 7
 
+   // How many ms should the effect last at max spellpower?
+   viEffectDuration = 500
+
+   // How much damage (10^[-3]) should the effect do per second at max spellpower?
+   viEffectDamage = 12000
+
 properties:
 
    piDrawEffectFlag = OF_FLICKERING
    piDrawFx = DRAWFX_TRANSLUCENT_50
 
-   piMaxDamage = 0
-   ptPeriodicEffect = $
-
 messages:
 
-   Constructor(MaxDamage = 0)
+   DoEffect(what = $)
    {
-      piMaxDamage = MaxDamage;
+      local oEffect, iSpellpower, iStrength, rMessage, bReport;
 
-      propagate;
-   }
+      oEffect = Send(SYS,@FindSpellByNum,#num=SID_ELECTRIFY);
 
-   GetDuration(duration = 0)
-   {
-      local iDuration;
+      iSpellpower = Nth(plSeed,2);
 
-      iDuration = Random(duration - 2000,duration + 2000);
-      iDuration = Bound(iDuration,30000,200000);
+      iStrength = iSpellpower*viEffectDamage/100;
 
-      return iDuration;
-   }
+      bReport = Send(oEffect,@StartElectrify,#who=what,#source=poCaster,
+         #strength=iStrength,#duration=viEffectDuration);
 
-   DoEffect(what = $, periodic=FALSE)
-   {
-      local iDamage, iMaxDamage, oWatcher, rMessage;
-
-      iDamage = 0;
-      iMaxDamage = piMaxDamage;
-
-      iDamage = Send(what,@AssessDamage,#what=poCaster,#damage=Random(0,iMaxDamage),
-                     #aspell=ATCK_SPELL_ALL+ATCK_SPELL_SHOCK,#report=FALSE,
-                     #report_resistance=FALSE);
-
-      Send(poOwner,@SomethingAttacked,#what=poCaster,#victim=what,
-            #use_weapon=self,#stroke_obj=self);
-
-      if (piMaxDamage > 0
-         AND IsClass(poCaster,&Player))
+      if bReport
       {
-         Send(poCaster,@SetPlayerFlag,#flag=PFLAG_DID_DAMAGE,#value=TRUE);
-      }
+         Send(poOwner,@SomethingAttacked,#what=poCaster,#victim=what,
+               #use_weapon=self,#stroke_obj=self);
 
-      if iDamage = $
-      {
-         if (IsClass(what,&Player))
+         if IsClass(poCaster,&Player)
          {
-            Send(what,@MsgSendUser,#message_rsc=lightningwall_damage10);
+            Send(poCaster,@SetPlayerFlag,#flag=PFLAG_DID_DAMAGE,#value=TRUE);
          }
-         Send(poCaster,@KilledSomething,#what=what,#use_weapon=self);
 
-         return;
-      }
-
-      if IsClass(what,&Player)
-      {
-         if iDamage = 0
+         if IsClass(what,&Player)
          {
-            rMessage = lightningwall_damage0;
-         }
-         else
-         {
-            // Damage greater than 0
-            Send(what,@WaveSendUser,#wave_rsc=lightningwall_zap_snd);
-
-            if iDamage < 5
+            if iSpellpower = 0
+            {
+               rMessage = lightningwall_damage0;
+            }
+            else if iSpellpower < 25
             {
                rMessage = lightningwall_damage5;
             }
-            else if iDamage < 10
+            else if iSpellpower < 50
             {
                rMessage = lightningwall_damage10;
             }
-            else if iDamage < 15
+            else if iSpellpower < 75
             {
                rMessage = lightningwall_damage15;
             }
@@ -134,9 +105,9 @@ messages:
             {
                rMessage = lightningwall_damage20;
             }
-         }
 
-         Send(what,@MsgSendUser,#message_rsc=rMessage);
+            Send(what,@MsgSendUser,#message_rsc=rMessage);
+         }
       }
 
       propagate;
@@ -187,6 +158,8 @@ messages:
 
       return;
    }
+
+
 
 end
 ////////////////////////////////////////////////////////////////////////////////

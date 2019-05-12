@@ -15,10 +15,10 @@ BOFS = tree.bof spell.bof boulder.bof news.bof trestype.bof arsign01.bof \
    tallbush.bof dispensr.bof fountjet.bof gstlever.bof \
    farytree.bof itematt.bof quest.bof questnode.bof storage.bof \
    ornobj.bof yrxltree.bof statue.bof mvsector.bof dice.bof shrine.bof \
-   bookped.bof flikerer.bof pfirewll.bof viewglbe.bof trgtglbe.bof \
-   pltngwll.bof nectome.bof modlnode.bof wrmtrail.bof fogcloud.bof \
-   bell.bof dflycage.bof pillow.bof ghostitm.bof ventstem.bof shrinfog.bof \
-   psporec.bof evntsign.bof maillist.bof objectatt.bof roomflagicon.bof \
+   bookped.bof flikerer.bof viewglbe.bof trgtglbe.bof \
+   nectome.bof modlnode.bof wrmtrail.bof shrinfog.bof \
+   bell.bof dflycage.bof pillow.bof ghostitm.bof ventstem.bof \
+   evntsign.bof maillist.bof objectatt.bof roomflagicon.bof \
    questtemplate.bof honrsign.bof
 
 !include $(KODDIR)\kod.mak

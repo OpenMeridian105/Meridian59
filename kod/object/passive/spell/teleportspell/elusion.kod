@@ -121,6 +121,12 @@ messages:
       propagate;
    }
 
+   SuccessChance(who=$)
+   "Steered spell, will always work."
+   {
+      return TRUE;
+   }
+
    GetTranceTime(iSpellpower=0,who=$)
    {
       // Since this spell uses the trance, don't
@@ -130,7 +136,8 @@ messages:
 
    BeginCastingTrance(who=$,lTargets=$,iSpellpower=$)
    {
-      local oTrance, lLocations, sLocations;
+      local oTrance, oObject, oOwner, i, oTarget, lFinalTargets,
+         lLocations, sLocations;
 
       // Get rid of the regular casting trance, we
       // need a special one put on below.
@@ -156,7 +163,31 @@ messages:
       Send(oTrance,@BeginCastingTrance,#what=self,#who=who,
             #lTargets=lLocations,#time=TRANCE_TIME);
 
-      propagate;
+      oOwner = Send(who,@GetOwner);
+
+      // Give casting message to people nearby.
+      foreach i in Send(oOwner,@GetHolderActive)
+      {
+         oObject = Send(oOwner,@HolderExtractObject,#data=i);
+         if IsClass(oObject,&Player)
+            AND (Send(who,@SquaredDistanceTo,#what=oObject)
+                < FINENESS)
+            AND (who <> oObject)
+         {
+            oTarget = $;
+            if length(lTargets) > 0
+            {
+               oTarget = First(lTargets);
+            }
+         
+            Send(self,@SpellMurmurMessage,#caster=who,#target=oTarget,
+                 #hearer=oObject);
+         }
+      }
+
+      Send(who,@WaveSendUser,#wave_rsc=spell_trance_begin_sound);
+
+      return;
    }
 
    TranceBlocksSay()
@@ -166,12 +197,14 @@ messages:
 
    SomethingSaidDuringTrance(who=$,string=$,lTargets = $)
    {
-      local sRoomName, bFound, oRoom, i, each_obj;
+      local sRoomName, bFound, oRoom, i, each_obj, oDeparture;
 
       // Check if string is a location.  If it is, and the caster has
       // sufficient spellpower make it the target.
 
       bFound = FALSE;
+
+      oDeparture = Send(who,@GetOwner);
 
       foreach oRoom in lTargets
       {
@@ -202,6 +235,8 @@ messages:
          // Don't print fizzle message
          Send(who,@BreakTrance,#event=EVENT_STEER);
          Send(who,@MsgSendUser,#message_rsc=Elusion_success);
+         Send(self,@PlaySpellSound,#room_obj=oDeparture,#what=who);
+         Send(self,@ImproveAbility,#who=who);
       }
       else
       {
@@ -318,7 +353,14 @@ messages:
    {
       Send(who,@MsgSendUser,#message_rsc=Elusion_No_Location_Given);
 
-      return;
+      return FALSE;
+   }
+
+   // This spell handles trance differently. Return TRUE here to allow
+   // it to be canceled like other trance spells.
+   GetRawTranceTime()
+   {
+      return TRUE;
    }
 
 end

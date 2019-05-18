@@ -129,7 +129,16 @@ resources:
    spell_trance_begin = "You focus your whole will on casting %s."
    spell_trance_break = \
       "Your concentration is broken and the %s spell fizzles."
-   spell_trance_break_sound = spelfail.ogg
+   spell_trance_cancel = \
+      "You abandon your attempt to cast the %s spell."
+   spell_trance_complete = \
+      "You finish channeling your %s spell."
+   spell_trance_fumble = \
+      "You struggle to shape your %s spell."
+   spell_trance_begin_sound = spell_trance_begin.ogg
+   spell_trance_break_sound = spell_trance_break.ogg
+   spell_trance_cancel_sound = spell_trance_cancel.ogg
+   spell_trance_complete_sound = spell_trance_complete.ogg
 
    spell_disabled = \
       "~g~BAn unseen force rips the words of the spell from your throat "
@@ -1113,7 +1122,7 @@ messages:
          if NOT bItemCast
          {
             Send(self,@PayCosts,#who=who,#iSpellpower=iSpellpower,
-                  #lTargets=lTargets,#bFreeCast=bFreeCast);
+                  #lTargets=lTargets,#bFreeCast=bFreeCast,#bSuccess=TRUE);
             Send(who,@MsgSendUser,#message_rsc=spell_resisted,
                   #parm1=Send(i,@GetCapDef),#parm2=Send(i,@GetName));
          }
@@ -1361,25 +1370,20 @@ messages:
       return TRUE;
    }
 
-   SpellFailed(who=$,iSpellpower=0)
-   "Different spells can have different penalties for spell failure."
-   "Standard penalty - half of spell's mana cost and half of exertion cost."
+   SpellCanceled(who=$)
+   "Canceling a spell will refund half of the spells cost."
    {
-      if iSpellpower = 0
+      local lReagent;
+
+      Send(who,@GainMana,#amount=Send(self,@GetManaCost,#who=who,
+           #iSpellpower=SPELLPOWER_MAXIMUM)/2);
+      Send(who,@GainVigor,#precision=TRUE,#amount=(100*viSpellExertion)/2);
+
+      foreach lReagent in plReagents
       {
-         Debug("Bad iSpellpower passed to SpellFailed");
+         Send(who,@NewHold,#what=Create(First(lReagent),#number=Nth(lReagent,2)));
       }
-      
-      Send(who,@WaveSendUser,#wave_rsc=spell_fail_wav);
-      if NOT Send(who,@PlayerIsImmortal)
-      {
-         Send(who,@LoseMana,#amount=Send(self,@GetManaCost,#who=who,
-              #iSpellpower=iSpellPower)/2);
-         Send(who,@LoseVigor,#precision=TRUE,#amount=(100*viSpellExertion)/2);
-      }
-      
-      Send(who,@MsgSendUser,#message_rsc=spell_failed_by_chance,#Parm1=vrName);
-      
+
       return;
    }
 
@@ -1469,7 +1473,7 @@ messages:
       return TRUE;
    }
 
-   PayCosts(who=$,iSpellpower=0,lTargets=$,bFreeCast=FALSE)
+   PayCosts(who=$,iSpellpower=0,lTargets=$,bFreeCast=FALSE,bSuccess=TRUE)
    "Check for failed spell here.  A failed spell costs half the mana cost, "
    "half the exertion, and no reagents."
    {
@@ -1488,13 +1492,13 @@ messages:
          return TRUE;
       }
 
-      if NOT Send(self,@SuccessChance,#who=who,#iSpellpower=iSpellpower,
-                  #lTargets=lTargets)
+      if NOT (bSuccess OR Send(SETTINGS_OBJECT,@NoFizzles))
       {
          Send(self,@SpellFailed,#who=who,#iSpellpower=iSpellpower);
 
          return FALSE;
       }
+
 
       // Immortals don't use mana, vigor or reagents.
       if Send(who,@PlayerIsImmortal)
@@ -1569,6 +1573,28 @@ messages:
       }
 
       return TRUE;
+   }
+
+   SpellFailed(who=$,iSpellpower=0)
+   "Different spells can have different penalties for spell failure."
+   "Standard penalty - half of spell's mana cost and half of exertion cost."
+   {
+      if iSpellpower = 0
+      {
+         Debug("Bad iSpellpower passed to SpellFailed");
+      }
+      
+      Send(who,@WaveSendUser,#wave_rsc=spell_fail_wav);
+      if NOT Send(who,@PlayerIsImmortal)
+      {
+         Send(who,@LoseMana,#amount=Send(self,@GetManaCost,#who=who,
+              #iSpellpower=iSpellPower)/2);
+         Send(who,@LoseVigor,#precision=TRUE,#amount=(100*viSpellExertion)/2);
+      }
+
+      Send(who,@MsgSendUser,#message_rsc=spell_failed_by_chance,#Parm1=vrName);
+
+      return;
    }
 
    DoSpellEffects()
@@ -2273,13 +2299,23 @@ messages:
       return TRUE;
    }
 
-   BeginCastingTrance(who = $, lTargets = $, iSpellPower = 0)
+   BeginCastingTrance(who=$,lTargets=$,iSpellPower=0,bFreeCast=FALSE,bSuccess=TRUE)
    {
       local oTrance, oObject, oOwner, i, oTarget, lFinalTargets, iCastTime;
 
       oOwner = Send(who,@GetOwner);
 
       iCastTime = Send(self,@GetTranceTime,#iSpellpower=iSpellpower,#who=who);
+
+      //If we fumble, we increase cast time by viPostCast_Time
+      if NOT bSuccess
+         AND Send(SETTINGS_OBJECT,@NoFizzles)
+      {
+         iCastTime += viPostCast_Time*1000;
+
+         Send(who,@MsgSendUser,#message_rsc=spell_trance_fumble,
+            #parm1=Send(self,@GetName));
+      }
 
       // Give casting message to people nearby.
       foreach i in Send(oOwner,@GetHolderActive)
@@ -2319,7 +2355,7 @@ messages:
             Send(self,@CastSpell,#who=who,#lTargets=lFinalTargets,
                  #iSpellpower=iSpellpower);
          }
-         
+
          return;
       }
       
@@ -2332,9 +2368,18 @@ messages:
       Send(who,@MsgSendUser,#message_rsc=spell_trance_begin,
            #parm1=Send(self,@GetName));
 
+      Send(who,@WaveSendUser,#wave_rsc=spell_trance_begin_sound);
+
       Send(oTrance,@BeginCastingTrance,#what=self,#who=who,#lTargets=lTargets,
-           #time=iCastTime);
-           
+           #time=iCastTime,#bFreeCast=bFreeCast);
+
+      // If our cast time is the result of a fumble, increase post cast delay
+      // by trance time.
+      if NOT viCast_time
+      {
+         Send(who,@SetAttackTime,#time=iCastTime,#bAdd=TRUE);
+      }
+
       return;
    }
 
@@ -2806,11 +2851,44 @@ messages:
       return viSchool = SS_RIIJA;
    }
 
-   TranceBroken(oCaster=$)
+   TranceBroken(oCaster=$,state=$,event=$)
    {
+      if event <> EVENT_CAST
+      {
+         Send(oCaster,@SetAttackTime,#time=viPostCast_Time*1000,#bAdd=TRUE);
+      }
+      else
+      {
+         // Reset attack timer to allow instant switching without recast.
+         Send(oCaster,@SetAttackTime);
+      }
+
       Send(oCaster,@MsgSendUser,#message_rsc=spell_trance_break,
            #parm1=Send(self,@GetName));
       Send(oCaster,@WaveSendUser,#wave_rsc=spell_trance_break_sound);
+
+      return;
+   }
+
+   TranceCanceled(oCaster=$,state=$)
+   {
+      Send(oCaster,@MsgSendUser,#message_rsc=spell_trance_cancel,
+           #parm1=Send(self,@GetName));
+      Send(oCaster,@WaveSendUser,#wave_rsc=spell_trance_cancel_sound);
+
+      if state <> $
+         AND NOT Nth(state,5)
+      {
+         Send(self,@SpellCanceled,#who=oCaster);
+      }
+
+      return;
+   }
+
+   TranceCompleted(oCaster=$)
+   {
+      Send(oCaster,@MsgSendUser,#message_rsc=spell_trance_complete,
+           #parm1=Send(self,@GetName));
 
       return;
    }

@@ -47,6 +47,9 @@ classvars:
    // Does this have a Periodic timer check?
    vbPeriodic = TRUE
 
+   // Do other properties vary based on SP?
+   vbFixed = FALSE
+
    // Does this have a Periodic timer check?
    viEffectInterval = 400
 
@@ -123,7 +126,14 @@ messages:
 
       // We have to bound SP for calculating time since some spells
       // operate at increased maximum SP. This avoids randomization errors.
-      iTime = Nth(plSeed,3)*Random(Bound(901+Nth(plSeed,2),0,1000),1000)/1000;
+      if vbFixed
+      {
+         iTime = Nth(plSeed,3);
+      }
+      else
+      {
+         iTime = Nth(plSeed,3)*Random(Bound(901+Nth(plSeed,2),0,1000),1000)/1000;
+      }
 
       oCaster = First(seed);
 
@@ -132,7 +142,9 @@ messages:
          poCaster = oCaster;
          vbSummoned = IsClass(oCaster,&Player);
 
-         if IsClass(poCaster,&Battler) AND viLimitCount
+         if IsClass(poCaster,&Battler)
+            AND viLimitCount
+            AND NOT vbFixed
          {
             // If caster was at their limit, reduce duration.
             iTime = Bound(100 * iTime / (100 + Send(poCaster,

@@ -78,6 +78,7 @@ void GuildConfigInitInfo(GuildConfigDialogStruct *info);
 void GuildCreate(int cost1, int cost2);
 void GuildGotList(list_type guilds, IDList ally_guilds, IDList enemy_guilds, IDList other_allies,
 		  IDList other_enemies);
+void GuildGotShieldError(char *message);
 void GuildGotShield(ID idGuild, char* pszGuildName, BYTE color1, BYTE color2, BYTE pattern);
 void GuildGotShields(list_type shields);
 void GuildResetData(void);

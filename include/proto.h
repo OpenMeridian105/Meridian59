@@ -281,6 +281,8 @@ enum {
    UC_WITHDRAW = 36,
    UC_BALANCE = 37,
 
+   UC_GUILD_SHIELD_ERROR = 38,
+
    UC_APPEAL = 40,
    UC_REQ_RESCUE = 41,
 

@@ -498,12 +498,14 @@ properties:
    piColor2 = XLAT_TO_GRAY
    piShield_shape = SHIELDSHAPE_DEFAULT
 
+   piLastGuildShieldResetTime = 0
+
    piLastGuildhallRaid = 0
 
    // Information for suing for peace from a mutual guild war.
    ptSuingForPeace = $
    poGuildSuingForPeace = $
-   
+
    // Guild message of the day, seen upon logon
    psGuildMOTDstring = $
    prSetMOTDname = $
@@ -639,6 +641,8 @@ messages:
       {
          piLastGuildhallRaid = GetTime();
       }
+
+      piLastGuildShieldResetTime = 0;
 
       return;
    }
@@ -2857,9 +2861,40 @@ messages:
       return piShield_shape;
    }
 
-   SetGuildColors(color1=$,color2=$,shape=$)
+   CanClaimGuildShield(who = $)
    {
-      if Send(self,@HasGuildColors)
+      local iDelay, iNow, iResetTime;
+
+      if (Send(SETTINGS_OBJECT,@CanClaimNewShields))
+      {
+         // Convert to seconds.
+         iDelay = Send(SETTINGS_OBJECT,@NewShieldClaimDelay) * 60;
+
+         iNow = GetTime();
+         iResetTime = iDelay + piLastGuildShieldResetTime;
+         if (iResetTime > iNow)
+         {
+            if (who <> $)
+            {
+               Send(who,@UserGuildSendShieldError,#iTime=iResetTime - iNow);
+            }
+
+            return FALSE;
+         }
+      }
+      else if (Send(self,@HasGuildColors))
+      {
+         Send(who,@UserGuildSendShieldError,#iTime=0);
+
+         return FALSE;
+      }
+
+      return TRUE;
+   }
+
+   SetGuildColors(who = $, color1=$,color2=$,shape=$)
+   {
+      if NOT Send(self,@CanClaimGuildShield,#who=who)
       {
          return FALSE;
       }
@@ -2878,6 +2913,8 @@ messages:
       piColor1 = color1;
       piColor2 = color2;
       piShield_shape = shape;
+
+      piLastGuildShieldResetTime = GetTime();
 
       return TRUE;
    }

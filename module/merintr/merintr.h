@@ -15,6 +15,7 @@
 #include "merintrc.h"
 #include "mermain.h"
 #include "spells.h"
+#include "skills.h"
 #include "command.h"
 #include "groups.h"
 #include "userarea.h"
@@ -38,6 +39,8 @@
 #define A_CAST          (A_MODULE + 200)
 #define A_CASTSPELL     (A_MODULE + 201)
 #define A_LOOKINVENTORY (A_MODULE + 202)    // Examine item in inventory
+#define A_PERFORM       (A_MODULE + 203)
+#define A_PERFORMSKILL  (A_MODULE + 204)
 
 // Window messages
 #define BK_CREATED      (WM_USER + 100)

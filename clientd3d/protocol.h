@@ -98,6 +98,7 @@ ToServer(BP_REQ_MOVE, NULL, FinenessClientToKod(y) + KOD_FINENESS, \
 #define RequestApply(obj1, obj2)     ToServer(BP_REQ_APPLY, NULL, obj1, obj2)
 #define RequestGameResync()          ToServer(BP_RESYNC, NULL)
 #define RequestCast(id, objs)        ToServer(BP_REQ_CAST, NULL, id, objs)
+#define RequestPerform(id, objs)     ToServer(BP_REQ_PERFORM, NULL, id, objs)
 #define RequestTurn(obj, angle)      ToServer(BP_REQ_TURN, NULL, obj, angle)
 #define RequestAction(action)        ToServer(BP_ACTION, NULL, action)
 #define SendSayBlocked(id)           ToServer(BP_SAY_BLOCKED, NULL, id)

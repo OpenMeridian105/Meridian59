@@ -339,7 +339,37 @@ void CommandCast(char *args)
 
    PerformAction(A_CASTSPELL, sp);
 }
+/************************************************************************/
+/*
+ * CommandPerform: "perform" command; find skill name and perform it
+ */
+void CommandPerform(char *args)
+{
+   skill *sk;
+   char *skill_name;
 
+   skill_name = GetSkillName(args, NULL);
+   if (skill_name == NULL)
+   {
+      PerformAction(A_PERFORM, NULL);
+      return;
+   }
+
+   sk = FindSkillByName(skill_name);
+   if (sk == SKILL_NOMATCH)
+   {
+      GameMessage(GetString(hInst, IDS_NOSKILLNAME));
+      return;
+   }
+
+   if (sk == SKILL_AMBIGUOUS)
+   {
+      GameMessage(GetString(hInst, IDS_DUPLICATESKILLNAME));
+      return;
+   }
+
+   PerformAction(A_PERFORMSKILL, sk);
+}
 /************************************************************************/
 /*
  * TellGroup:  Send message to a group of people.

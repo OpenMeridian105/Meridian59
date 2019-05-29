@@ -2213,6 +2213,14 @@ messages:
          return;
       }
 
+      if liClient_cmd = BP_REQ_PERFORM
+      {
+         Send(self,@UserPerform,#oSkill=Nth(client_msg,2),
+               #lTargets=Nth(client_msg,3));
+
+         return;
+      }
+
       if liClient_cmd = BP_POST_ARTICLE
       {
          Send(self,@UserPost,#nid=Nth(client_msg,2),#title=Nth(client_msg,3),
@@ -4694,6 +4702,9 @@ messages:
             oSkill = Send(SYS,@FindSkillByNum,#num=Send(self,@DecodeSkillNum,
                                                         #compound=i));
             Send(self,@ToCliObject,#what=oSkill);
+            AddPacket(1,Send(oSkill,@GetNumSkillTargets),
+                      1,Send(oSkill,@GetSchool),
+                      1,Send(oSkill,@IsActiveSkill));
          }
 
          SendPacket(poSession);
@@ -4718,7 +4729,6 @@ messages:
       }
 
       return;
-
    }
 
    ToCliRemoveSpell(oSpell = $)
@@ -7472,6 +7482,13 @@ messages:
          Send(oSpell,@BeginCastingTrance,#who=self,#lTargets=lFinalTargets,
                #iSpellPower=iSpellPower);
       }
+
+      return;
+   }
+
+   UserPerform(oSkill=$,lTargets=$)
+   {
+      Debug(vrName, " tried to perform skill ",Send(oSkill,@GetName));
 
       return;
    }

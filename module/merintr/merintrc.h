@@ -115,6 +115,8 @@
 #define IDD_GUILDCREATE                 105
 #define IDD_GUILDINVITE                 106
 #define IDD_GUILDHALLS                  107
+#define IDS_NOSKILLNAME                 108
+#define IDS_DUPLICATESKILLNAME          109
 #define IDB_ULTOP                       110
 #define IDB_URTOP                       111
 #define IDB_LLLEFT                      112
@@ -142,7 +144,11 @@
 #define IDB_SBUTTON1                    134
 #define IDB_SBUTTON2                    135
 #define IDB_SBUTTON3                    136
+#define IDS_PERFORM                     137
+#define IDS_SKILLRESTING                138
+#define IDS_SKILLPARALYZED              139
 #define IDD_GROUP                       140
+#define IDS_NOTACTIVESKILL              141
 #define IDD_GUILDSHIELD                 143
 #define IDB_SAY                         149
 #define IDB_DROP                        150
@@ -264,6 +270,7 @@
 #define IDS_CHAT_TELL                   263
 #define IDS_CHAT_BROADCAST              264
 #define IDS_CHAT_HELP                   265
+#define IDS_DOPERFORM                   266
 #define IDC_ALIASF1                     1000
 #define IDC_ALIASF2                     1001
 #define IDC_DEFINE                      1001

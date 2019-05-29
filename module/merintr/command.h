@@ -34,6 +34,7 @@ void CommandGet(char *args);
 void CommandLook(char *args);
 void CommandOffer(char *args);
 void CommandCast(char *args);
+void CommandPerform(char *args);
 void CommandWave(char *args);
 void CommandPoint(char *args);
 void CommandDance(char *args);

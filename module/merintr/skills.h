@@ -12,8 +12,15 @@
 #ifndef _SKILLS_H
 #define _SKILLS_H
 
+ // Return values for FindSkillByName
+#define SKILL_NOMATCH    ((skill *) 0)
+#define SKILL_AMBIGUOUS  ((skill *) -1)
+
 typedef struct {
    object_node obj;
+   BYTE        num_targets;
+   BYTE        school;
+   BYTE        is_active;
 } skill;
 
 void SkillsInit(void);
@@ -28,8 +35,8 @@ skill *FindSkillByName(char *name);
 skill *FindSkillByID(ID id);
 char *GetSkillName(char *str, char **next);
 
-void UserCastSkill(void);
-void SkillCast(skill *sp);
+void UserPerformSkill(void);
+void SkillPerform(skill *sp);
 void MenuSkillChosen(int index);
 
 object_node* GetSkillObject( ID idFind );

@@ -386,8 +386,7 @@ void StatsListLButtonDblClk(HWND hwnd, BOOL fDoubleClick, int x, int y, UINT key
       }
       else if (StatsGetCurrentGroup() == STATS_SKILLS)
       {
-         strcpy( pszCommand, "perform " );
-         return; // not implimented yet
+         strcpy(pszCommand, GetString(hInst, IDS_DOPERFORM));
       }
       else
       {

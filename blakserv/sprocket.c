@@ -63,6 +63,7 @@ client_def_table_type client_def_table[] =
 	{ BP_SEND_SPELLS,          { {0, DONE_PARM} } },
 	{ BP_SEND_SKILLS,          { {0, DONE_PARM} } },
 	{ BP_REQ_CAST,             { {4, TAG_OBJECT}, {2, LIST_OBJ_PARM}, {0, DONE_PARM} } },
+	{ BP_REQ_PERFORM,          { {4, TAG_OBJECT}, {2, LIST_OBJ_PARM}, {0, DONE_PARM} } },
 	{ BP_REQ_ARTICLES,         { {2, TAG_INT}, {0, DONE_PARM} } },
 	{ BP_REQ_ARTICLE,          { {2, TAG_INT}, {4, TAG_INT}, {0, DONE_PARM} } },
 	{ BP_POST_ARTICLE,         { {2, TAG_INT}, {0, TAG_STRING}, {0, TAG_STRING}, {0, DONE_PARM} } },

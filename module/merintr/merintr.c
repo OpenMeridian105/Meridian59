@@ -350,6 +350,8 @@ static TypedCommand commands[] = {
 { "anbieten",           CommandOffer, },
 { "cast",               CommandCast, },
 { "zaubern",            CommandCast, },
+{ "perform",            CommandPerform, },
+{ "ausführen",          CommandPerform, },
 { "map",                CommandMap, },
 { "karte",              CommandMap, },
 { "wave",               CommandWave, },
@@ -1041,6 +1043,11 @@ skill *ExtractNewSkill(char **ptr)
    skill *s = (skill *) SafeMalloc(sizeof(skill));
    ZeroMemory(s,sizeof(skill));
    ExtractObject(ptr, &s->obj);
+   Extract(ptr, &s->num_targets, 1);
+   Extract(ptr, &s->school, 1);
+   Extract(ptr, &s->is_active, 1);
+   s->school -= 1;  // Convert to 0 based
+
    return s;
 }  
 /********************************************************************/

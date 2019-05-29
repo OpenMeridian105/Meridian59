@@ -338,6 +338,35 @@ Bool InterfaceAction(int action, void *action_data)
 
       return False;
 
+   case A_PERFORM:
+      UserPerformSkill();
+      return False;
+
+   case A_PERFORMSKILL:  // action_data is pointer to skill
+      if (GetPlayer()->viewID && (GetPlayer()->viewID != GetPlayer()->id))
+      {
+         if (!(GetPlayer()->viewFlags & REMOTE_VIEW_CAST))
+         {
+            GameMessage(GetString(hInst, IDS_SKILLPARALYZED));
+            return False;
+         }
+      }
+      if (cinfo->effects->paralyzed)
+      {
+         GameMessage(GetString(hInst, IDS_SKILLPARALYZED));
+         return False;
+      }
+
+      if (pinfo.resting)
+      {
+         GameMessage(GetString(hInst, IDS_SKILLRESTING));
+         return False;
+      }
+
+      SkillPerform((skill *)action_data);
+
+      return False;
+
    case A_GO:
       if (pinfo.resting)
 	 return False;

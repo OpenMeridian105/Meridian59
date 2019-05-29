@@ -64,6 +64,7 @@ static client_message game_msg_table[] = {
 { BP_REQ_QUIT,             { PARAM_END }, },
 { BP_REQ_SHOOT,            { PARAM_COORD, PARAM_COORD, PARAM_END }, },
 { BP_REQ_APPLY,            { PARAM_ID, PARAM_ID, PARAM_END }, },
+{ BP_REQ_PERFORM,          { PARAM_ID, PARAM_OBJECT_LIST, PARAM_END }, },
 { BP_REQ_CAST,             { PARAM_ID, PARAM_OBJECT_LIST, PARAM_END }, },
 { BP_RESYNC,               { PARAM_END }, },
 { BP_SEND_PLAYER,          { PARAM_END }, },

@@ -3093,7 +3093,9 @@ messages:
       if (amount > 0
          AND (piFlags & PFLAG_TRANCE))
       {
-         Send(self,@BreakTrance,#event=EVENT_DAMAGE);
+         // Losing 10 percent of our max health causes 100 percent disruption.
+         amount = 10*amount/piMax_health;
+         Send(self,@BreakTrance,#event=EVENT_DAMAGE,#disruption=amount);
       }
 
       propagate;
@@ -6721,6 +6723,28 @@ messages:
       }
 
       return TRUE;
+   }
+
+   SetAttackTime(time = 0, bAdd = FALSE)
+   "Override the current attack timer with specified value."
+   {
+      if ptAttackTimer <> $
+      {
+         if bAdd
+         {
+            time += GetTimeRemaining(ptAttackTimer);
+         }
+
+         DeleteTimer(ptAttackTimer);
+         ptAttackTimer = $;
+      }
+
+      if time
+      {
+         ptAttackTimer = CreateTimer(self,@AttackTimer,time);
+      }
+
+      return;
    }
 
    AttackTimer()
@@ -11885,7 +11909,7 @@ messages:
       return;
    }
 
-   BreakTrance(event = 0, what = $)
+   BreakTrance(event = 0, what = $, disruption = 0)
    {
       local i, oEnch,state, bFound, oYellNum, oYellRoom;
 
@@ -11902,7 +11926,7 @@ messages:
             }
 
             Send(oEnch,@BreakTrance,#who=self,#state=state,
-                  #event=event,#what=what);
+                  #event=event,#what=what,#disruption=disruption);
             bFound = TRUE;
          }
       }
@@ -15948,6 +15972,83 @@ messages:
             plPeriodicSounds = Cons(lSound,plPeriodicSounds);
             Send(self,@WaveSendUser,#wave_rsc=rSound);
          }
+      }
+
+      return;
+   }
+
+   // Returns the spell that is currently in the process of being cast.
+   GetTranceSpell()
+   {
+      local lState;
+
+      lState = Send(self,@GetEnchantedState,
+         #what=Send(SYS,@FindSpellByNum,#num=SID_TRANCE));
+
+      if lState <> $
+      {
+         return First(lState);
+      }
+
+      return;
+   }
+
+   SetTranceTime(time=0,bAdd=FALSE)
+   "Override the current trance timer with specified value."
+   {
+      local i, tTimer;
+
+      foreach i in plEnchantments
+      {
+         if IsClass(Nth(i,2),&Trance)
+         {
+            tTimer = First(i);
+         }
+         else
+         {
+            continue;
+         }
+
+         if bAdd
+         {
+            time += GetTimeRemaining(tTimer);
+         }
+
+         DeleteTimer(tTimer);
+
+         tTimer = $;
+
+         if time
+         {
+            tTimer = CreateTimer(self,@EnchantmentTimer,time);
+         }
+
+         SetFirst(i,tTimer);
+
+         return TRUE;
+      }
+
+      return FALSE;
+   }
+
+   SetTranceFocus(focus=0,bAdd=FALSE)
+   "Override the current trance timer with specified value."
+   {
+      local lState;
+
+      lState = Send(self,@GetEnchantedState,
+         #what=Send(SYS,@FindSpellByNum,#num=SID_TRANCE));
+
+      if lState <> $
+      {
+         if bAdd
+         {
+            focus = Bound(focus+Nth(lState,6),0,$);
+         }
+
+         SetNth(lState,6,focus);
+
+         return focus;
       }
 
       return;

@@ -20,11 +20,14 @@ resources:
 
    trance_begin = "You focus your whole will on casting %s."
    trance_break = "Your concentration is broken and the %s spell fizzles."
+   trance_disturbed = "You manage to retain your concentration."
    trance_break_sound = spelfail.ogg
 
 classvars:
 
 properties:
+
+   piMovementSpeedReduction = 50
 
 messages:
 
@@ -33,7 +36,7 @@ messages:
       return SID_TRANCE;
    }
 
-   BeginCastingTrance( what = $, who = $, lTargets = $, time = 0 )
+   BeginCastingTrance( what = $, who = $, lTargets = $, time = 0 , bFreeCast = FALSE )
    {
       local lState, iPower;
 
@@ -46,7 +49,9 @@ messages:
       }
 
       Send(who,@StartEnchantment,#what=self,#time=time,#addicon=FALSE,
-           #state=[what,who,lTargets,TRUE]);
+           #state=[what,who,lTargets,TRUE,bFreeCast,100]);
+
+      Send(who,@AddMovementSpeedPercent,#iSpeed=-piMovementSpeedReduction);
 
       return;
    }
@@ -79,6 +84,8 @@ messages:
       if Send(oSpell,@DoubleCheckAfterTrance,#who=oCaster,#lTargets=lTargets,
               #iSpellPower=iSpellPower)
       {
+         Send(oSpell,@TranceCompleted,#oCaster=oCaster,#state=state);
+
          if lTargets <> $
             AND isClass(First(lTargets),&Battler)
             AND Send(First(lTargets),@TryDeflect,#what=oSpell,#caster=oCaster)
@@ -93,12 +100,14 @@ messages:
          }
       }
 
+      Send(who,@AddMovementSpeedPercent,#iSpeed=piMovementSpeedReduction);
+
       return;
    }
 
-   BreakTrance(who = $, state = $, event = 1)
+   BreakTrance(who=$,state=$,event=1,disruption=0)
    {
-      local oSpell, oCaster;
+      local oSpell, oCaster, tTimer, iTime;
 
       if event = EVENT_OOM
       {
@@ -107,14 +116,32 @@ messages:
 
       oSpell = First(state);
       oCaster = Nth(state,2);
-      Send(oCaster,@ClearTranceFlag);
 
       if event <> EVENT_STEER
       {
-         Send(oSpell,@TranceBroken,#oCaster=oCaster,#state=state);
+         if event = EVENT_CANCEL
+         {
+            Send(oSpell,@TranceCanceled,#oCaster=oCaster,#state=state);
+         }
+         else if (event = EVENT_DAMAGE)
+            AND Send(oCaster,@SetTranceFocus,#focus=-disruption,#bAdd=TRUE)
+         {
+            iTime = Send(oSpell,@GetRawTranceTime);
+            iTime = iTime * disruption / 100;
+            Send(oCaster,@SetTranceTime,#time=iTime,#bAdd=TRUE);
+            Send(oCaster,@MsgSendUser,#message_rsc=trance_disturbed);
+
+            return;
+         }
+         else
+         {
+            Send(oSpell,@TranceBroken,#oCaster=oCaster,#state=state,#event=event);
+         }
       }
 
+      Send(who,@AddMovementSpeedPercent,#iSpeed=piMovementSpeedReduction);
       Send(oCaster,@RemoveEnchantment,#what=self);
+      Send(oCaster,@ClearTranceFlag);
 
       return;
    }

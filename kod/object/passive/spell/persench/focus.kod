@@ -54,11 +54,13 @@ classvars:
    vbCanCastOnOthers = FALSE
 
 properties:
- 
- // The effectiveness of purge on the target spell as a percentage.
+
+   // The effectiveness of purge on the target spell as a percentage.
    // 100 will cause purge to remove its entire spellpower, 0 will
    // prevent purge from removing this spell.
    viPurgeFactor = 5
+
+   piMovementSpeedReduction = 30
 
 messages:
 
@@ -89,9 +91,18 @@ messages:
       return iTime;
    }
 
-   GetStateValue(iSpellPower=0)
+   GetStateValue(iSpellpower=0,target=$)
    {
+      Send(target,@AddMovementSpeedPercent,#iSpeed=-piMovementSpeedReduction);
+
       return iSpellPower;
+   }
+
+   EndEnchantment(who=$,report=TRUE,state=0)
+   {
+      Send(who,@AddMovementSpeedPercent,#iSpeed=piMovementSpeedReduction);
+
+      propagate;
    }
 
    GetDuration(iSpellPower=0)
@@ -103,14 +114,27 @@ messages:
    {
       AddPacket(4,manafocus_enchantment_rsc, 4,Send(self,@GetName),
                 4,Send(who,@GetEnchantedState,#what=self));
-      
+
       return;
    }
 
-   BreakTrance(event=$,what=$)
+   CanPayCosts(who=$,lTargets=$,bItemCast=FALSE)
+   {
+      if Send(who,@IsEnchanted,#what=self)
+      {
+         Send(self,@BreakTrance,#who=who,#event=EVENT_CANCEL,
+            #state=Send(who,@GetEnchantedState,#what=self));
+
+         return FALSE;
+      }
+
+      propagate;
+   }
+
+   BreakTrance(event=$,what=$,state=$)
    {
       if event = EVENT_CAST
-         AND IsClass(what,&AttackSpell)
+         AND ((what = self) OR IsClass(what,&AttackSpell))
       {
          return FALSE;
       }

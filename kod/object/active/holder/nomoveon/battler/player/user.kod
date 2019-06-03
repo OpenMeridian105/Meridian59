@@ -1802,7 +1802,7 @@ messages:
    "It is dynamically allocated each time (wasting list nodes)."
    {
       local liClient_cmd, oWhat, oRoom, iRow, iCol, lUsers, iAngle, sBody,
-            iSpeed, i, sStr_said;
+            iSpeed, i, sStr_said, bCancel;
 
       // This checks to see if the user is trying to Send too many packets
       //  per second.  If they are, then we mark them as a spammer and
@@ -2095,9 +2095,26 @@ messages:
          return;
       }
 
+      // The <space> key doubles as room enter and cancel cast hotkey.
       if liClient_cmd = BP_REQ_GO
       {
-         Send(self,@UserGo);
+         bCancel = FALSE;
+
+         // This is purely for cancelling currently channeled spells.
+         // Maintained spells are unaffected.
+         if Send(self,@GetTranceSpell) <> $
+         {
+            oWhat = Send(SYS,@FindSpellByNum,#num=SID_TRANCE);
+
+            // Send this directly to &Trance, not self. We don't want
+            // any other trance effects to be affected.
+            Send(oWhat,@BreakTrance,#event=EVENT_CANCEL,#who=self,
+               #state=Send(self,@GetEnchantedState,#what=oWhat));
+
+            bCancel = TRUE;
+         }
+
+         Send(self,@UserGo,#bCancel=bCancel);
 
          return;
       }
@@ -5045,12 +5062,6 @@ messages:
       // 
       if (speed > USER_WALKING_SPEED)
       {
-         // Break trance
-         if (piFlags & PFLAG_TRANCE)
-         {
-            Send(self,@BreakTrance,#event=EVENT_RUN);
-         }
-
          // Stop dance
          if (piFlags2 & PFLAG2_DANCING)
          {
@@ -7370,7 +7381,7 @@ messages:
    UserCast(oSpell=$,lTargets=$)
    {
       local i, bFound, iSpell, iSpellNum, iSpellPower, lFinalTargets, iCost,
-            iTime;
+            iTime, bSuccess;
 
       // Check for valid spell first. This is mainly an issue during
       // system saves where a user might cast something with the wrong
@@ -7381,9 +7392,26 @@ messages:
          return;
       }
 
+      // PFLAG_TRANCE can stem from...
+      // 1) ...&Trance when a spell with cast time is being cast
+      // such as fire wall, or a steered spell like elusion.
+      // 2) ...any kind of maintained spell that can be disrupted,
+      // such as mana focus or a song.
       if piFlags & PFLAG_TRANCE
       {
-         Send(self,@BreakTrance,#event=EVENT_CAST,#what=oSpell);
+         // GetTranceSpell returns the spell that &Trance is preparing
+         // to cast. If we are already preparing to cast the same spell,
+         // don't interrupt our cast.
+         if Send(self,@GetTranceSpell) = oSpell
+         {
+            return;
+         }
+         // We are trying to cast a different spell or not casting at all.
+         // Either way, our cast may disrupt &Trance or a maintained spell.
+         else
+         {
+            Send(self,@BreakTrance,#event=EVENT_CAST,#what=oSpell);
+         }
       }
 
       if ((piFlags & PFLAG_NO_MAGIC)
@@ -7466,8 +7494,12 @@ messages:
          return;
       }
 
+      bSuccess = pbFree_cast OR Send(oSpell,@SuccessChance,#who=self,
+               #iSpellpower=iSpellpower,#lTargets=lFinalTargets);
+
       if Send(oSpell,@PayCosts,#who=self,#iSpellPower=iSpellPower,
-               #lTargets=lFinalTargets,#bFreeCast=pbFree_cast)
+               #lTargets=lFinalTargets,#bFreeCast=pbFree_cast,
+               #bSuccess=bSuccess)
       {
          // If we had a free cast, deduct points from our unbound energy.
          if pbFree_cast
@@ -7480,7 +7512,8 @@ messages:
 
          // Alright, cast that spell already.
          Send(oSpell,@BeginCastingTrance,#who=self,#lTargets=lFinalTargets,
-               #iSpellPower=iSpellPower);
+               #iSpellPower=iSpellPower,#bFreeCast=pbFree_cast,
+               #bSuccess=bSuccess);
       }
 
       return;
@@ -8353,35 +8386,32 @@ messages:
       return TRUE;
    }
 
-   UserGo()
+   UserGo(bCancel=FALSE)
    {
       local bCanGo;
 
-      if (piFlags & PFLAG_NO_MOVE)
-         OR Send(self,@IsEnchanted,#byClass=&Blind)
-      {         
-         Send(self,@MsgSendUser,#message_rsc=user_cant_go);
-         Send(self, @WaveSendUser, #what = self,
-              #wave_rsc = user_cant_go_wav_rsc);
+      if NOT ((piFlags & PFLAG_NO_MOVE)
+         OR Send(self,@IsEnchanted,#byClass=&Blind))
+      {
+         bCanGo = Send(poOwner,@SomethingTryGo,#what=self,#row=piRow,
+            #col=piCol,#fine_row=piFine_row,#fine_col=piFine_col);
+      }
+
+      if bCanGo = $
+      {
+         Debug("SomethingTryGo not properly set for room ",
+            Send(poOwner,@GetTrueName));
+      }
+      else if bCanGo
+      {
          return;
       }
 
-      bCanGo = Send(poOwner,@SomethingTryGo,#what=self,#row=piRow,#col=piCol,
-                    #fine_row=piFine_row,#fine_col=piFine_col);
-
-      if bCanGo = $ OR (NOT bCanGo)
+      if NOT bCancel
       {
-         if bCanGo = $
-         {
-            Debug("SomethingTryGo not properly set for room ",
-                  Send(poOwner,@GetTrueName));
-         }
-
          Send(self,@MsgSendUser,#message_rsc=user_cant_go);
          Send(self, @WaveSendUser, #what = self,
-              #wave_rsc = user_cant_go_wav_rsc);
-
-         return;
+            #wave_rsc = user_cant_go_wav_rsc);
       }
 
       return;

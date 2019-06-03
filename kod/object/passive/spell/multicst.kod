@@ -83,6 +83,8 @@ properties:
 
    pbAccessible = TRUE
 
+   piMovementSpeedReduction = 50
+
 messages:
 
    SpellMurmurMessage(caster=$, target=$, hearer=$)
@@ -195,6 +197,8 @@ messages:
       Send(who,@StartEnchantment,#what=self,#state=[oPrism],#time=viTickDuration,
            #iSpellPower=iSpellPower,#lastcall=FALSE);
 
+      Send(who,@AddMovementSpeedPercent,#iSpeed=-piMovementSpeedReduction);
+
       Send(oPrism,@SpellCast,#what=self,#who=who,#lTargets=lTargets);
       Send(oPrism,@ContributeSpellpower,#who=who,
            #amount=Send(self,@GetSpellPower,#who=who)/2);
@@ -212,6 +216,7 @@ messages:
    "Called when caster breaks trance or runs out of mana (ends involvement inspell)."
    {
       Send(who,@ClearTranceFlag);
+      Send(who,@AddMovementSpeedPercent,#iSpeed=piMovementSpeedReduction);
       Send(First(state),@CasterBrokeTrance,#who=who);
 
       propagate;

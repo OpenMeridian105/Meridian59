@@ -2828,7 +2828,7 @@ messages:
    "<server_validate> is set to false for user moves, which have already been "
    "checked by client (HAHA!)."
    {
-      local i, each_obj, iRow, iCol, iFineRow, iFineCol, iHeight, iSpeed, iLOS, bMoveOffBSP;
+      local i, each_obj, iRow, iCol, iFineRow, iFineCol, iHeight, iSpeed, iLOS, iFlags;
 
       if new_row > piRows OR new_row < 1 OR new_col > piCols OR new_col < 1
       {
@@ -2928,16 +2928,16 @@ messages:
 
       if server_validate
       {
-         bMoveOffBSP = FALSE;
+         iFlags = CANMOVE_NO_FLAG;
 
          if (IsClass(what,&Monster)
             AND (Send(what,@GetBehavior) & AI_MOVE_WALKTHROUGH_WALLS))
          {
-            bMoveOffBSP = TRUE;
+            iFlags |= CANMOVE_MOVE_OUTSIDE_BSP;
          }
 
          if NOT CanMoveInRoomBSP(prmRoom,iRow,iCol,iFineRow,iFineCol,iHeight,new_row,
-                     new_col,new_finerow,new_finecol,iSpeed,what,bMoveOffBSP,FALSE)
+                     new_col,new_finerow,new_finecol,iSpeed,what,iFlags)
          {
             return FALSE;
          }

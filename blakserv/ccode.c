@@ -2843,8 +2843,9 @@ int C_CanMoveInRoomBSP(int object_id, local_var_type *local_vars,
 	val_type ret_val, room_val;
 	val_type row_source, col_source, finerow_source, finecol_source, height_source;
 	val_type row_dest, col_dest, finerow_dest, finecol_dest;
-	val_type speed, objectid, move_outside_bsp, isplayer;
+	val_type speed, objectid, move_flags;
 	room_node *r;
+	bool is_player, move_outside_bsp, ignore_blockers;
 
 	ret_val.v.tag = TAG_INT;
 	ret_val.v.data = false;
@@ -2873,10 +2874,8 @@ int C_CanMoveInRoomBSP(int object_id, local_var_type *local_vars,
       normal_parm_array[10].value);
    objectid = RetrieveValue(object_id, local_vars, normal_parm_array[11].type,
       normal_parm_array[11].value);
-   move_outside_bsp = RetrieveValue(object_id, local_vars, normal_parm_array[12].type,
+   move_flags = RetrieveValue(object_id, local_vars, normal_parm_array[12].type,
       normal_parm_array[12].value);
-   isplayer = RetrieveValue(object_id, local_vars, normal_parm_array[13].type,
-      normal_parm_array[13].value);
 
 	if (room_val.v.tag != TAG_ROOM_DATA)
 	{
@@ -2962,19 +2961,16 @@ int C_CanMoveInRoomBSP(int object_id, local_var_type *local_vars,
 		return ret_val.int_val;
 	}
 
-	if (move_outside_bsp.v.tag != TAG_INT)
+	if (move_flags.v.tag != TAG_INT)
 	{
-		bprintf("C_CanMoveInRoomBSP move outside BSP bool can't use non int %i,%i\n",
-			move_outside_bsp.v.tag, move_outside_bsp.v.data);
+		bprintf("C_CanMoveInRoomBSP move_flags can't use non int %i,%i\n",
+         move_flags.v.tag, move_flags.v.data);
 		return ret_val.int_val;
 	}
 
-   if (isplayer.v.tag != TAG_INT)
-   {
-      bprintf("C_CanMoveInRoomBSP isplayer can't use non int %i,%i\n",
-         isplayer.v.tag, isplayer.v.data);
-      return ret_val.int_val;
-   }
+   is_player = (move_flags.v.data & CANMOVE_IS_PLAYER) == CANMOVE_IS_PLAYER;
+   move_outside_bsp = (move_flags.v.data & CANMOVE_MOVE_OUTSIDE_BSP) == CANMOVE_MOVE_OUTSIDE_BSP;
+   ignore_blockers = (move_flags.v.data & CANMOVE_IGNORE_BLOCKERS) == CANMOVE_IGNORE_BLOCKERS;
 
 	r = GetRoomDataByID(room_val.v.data);
 	if (r == NULL)
@@ -2997,9 +2993,9 @@ int C_CanMoveInRoomBSP(int object_id, local_var_type *local_vars,
 	Wall* blockWall;
 
    // todo: consider making "ignoreEndBlocker" a KOD param, "false" means any query using an object position as "END" will return FALSE
-   ret_val.v.data = ((bool)isplayer.v.data) ?
-      BSPCanMoveInRoom3D<true>(&r->data, &s, &e, height, fSpeed, objectid.v.data, (move_outside_bsp.v.data != 0), true, false, &blockWall) :
-      BSPCanMoveInRoom3D<false>(&r->data, &s, &e, height, fSpeed, objectid.v.data, (move_outside_bsp.v.data != 0), true, false, &blockWall);
+   ret_val.v.data = (is_player) ?
+      BSPCanMoveInRoom3D<true>(&r->data, &s, &e, height, fSpeed, objectid.v.data, move_outside_bsp, ignore_blockers, false, &blockWall) :
+      BSPCanMoveInRoom3D<false>(&r->data, &s, &e, height, fSpeed, objectid.v.data, move_outside_bsp, ignore_blockers, false, &blockWall);
 
 #if DEBUGMOVE
 	//dprintf("MOVE:%i R:%i S:(%1.2f/%1.2f) E:(%1.2f/%1.2f)", ret_val.v.data, r->data.roomdata_id, s.X, s.Y, e.X, e.Y);

@@ -854,7 +854,7 @@ bool BSPLineOfSight(room_type* Room, V3* S, V3* E)
 /*                    This is a 2D variant which assumes all wall transitions are made on    */
 /*                    ground level. For better variant see 3D. Still used in Astar           */
 /*********************************************************************************************/
-bool BSPCanMoveInRoom(room_type* Room, V2* S, V2* E, int ObjectID, bool moveOutsideBSP, bool checkObjects, bool ignoreEndBlocker, Wall** BlockWall)
+bool BSPCanMoveInRoom(room_type* Room, V2* S, V2* E, int ObjectID, bool moveOutsideBSP, bool ignoreBlockers, bool ignoreEndBlocker, Wall** BlockWall)
 {
    // sanity check: these are binary or operations because it's very unlikely
    // any condition is met. So next ones can't be skipped, so binary is faster.
@@ -878,7 +878,7 @@ bool BSPCanMoveInRoom(room_type* Room, V2* S, V2* E, int ObjectID, bool moveOuts
       return false;
 
    // don't validate objects, we're done
-   if (!checkObjects)
+   if (ignoreBlockers)
       return true;
 
    // otherwise also check against blockers
@@ -945,7 +945,7 @@ bool BSPCanMoveInRoom(room_type* Room, V2* S, V2* E, int ObjectID, bool moveOuts
 /* BSPCanMoveInRoom3D:  Works like 2D variant but supports dynamic height of objects along   */
 /*                      the move-line. Hence jumps are supported here.                       */
 /*********************************************************************************************/
-template<bool ISPLAYER> bool BSPCanMoveInRoom3D(room_type* Room, V2* S, V2* E, float Height, float Speed, int ObjectID, bool moveOutsideBSP, bool checkObjects, bool ignoreEndBlocker, Wall** BlockWall)
+template<bool ISPLAYER> bool BSPCanMoveInRoom3D(room_type* Room, V2* S, V2* E, float Height, float Speed, int ObjectID, bool moveOutsideBSP, bool ignoreBlockers, bool ignoreEndBlocker, Wall** BlockWall)
 {
    // sanity check: these are binary or operations because it's very unlikely
    // any condition is met. So next ones can't be skipped, so binary is faster.
@@ -1073,7 +1073,7 @@ template<bool ISPLAYER> bool BSPCanMoveInRoom3D(room_type* Room, V2* S, V2* E, f
    }
 
    // don't validate objects, we're done
-   if (!checkObjects)
+   if (ignoreBlockers)
       return true;
 
    // get current ms tick
@@ -1146,8 +1146,8 @@ template<bool ISPLAYER> bool BSPCanMoveInRoom3D(room_type* Room, V2* S, V2* E, f
 
    return true;
 }
-template bool BSPCanMoveInRoom3D<true>(room_type* Room, V2* S, V2* E, float Height, float Speed, int ObjectID, bool moveOutsideBSP, bool checkObjects, bool ignoreEndBlocker, Wall** BlockWall);
-template bool BSPCanMoveInRoom3D<false>(room_type* Room, V2* S, V2* E, float Height, float Speed, int ObjectID, bool moveOutsideBSP, bool checkObjects, bool ignoreEndBlocker, Wall** BlockWall);
+template bool BSPCanMoveInRoom3D<true>(room_type* Room, V2* S, V2* E, float Height, float Speed, int ObjectID, bool moveOutsideBSP, bool ignoreBlockers, bool ignoreEndBlocker, Wall** BlockWall);
+template bool BSPCanMoveInRoom3D<false>(room_type* Room, V2* S, V2* E, float Height, float Speed, int ObjectID, bool moveOutsideBSP, bool ignoreBlockers, bool ignoreEndBlocker, Wall** BlockWall);
 
 /*********************************************************************************************/
 /* BSPChangeTexture: Sets textures of sides and/or sectors to given NewTexture num based on Flags
@@ -1466,7 +1466,7 @@ bool BSPGetRandomPoint(room_type* Room, int MaxAttempts, float UnblockedRadius, 
             V2ROTATE(&v, 0.25f * (float)-M_PI);
             V2ADD(&stepend, P, &v);
             V2ROUNDROOTOKODFINENESS(&stepend);
-            if (!BSPCanMoveInRoom(Room, P, &stepend, 0, false, true, false, &wall))
+            if (!BSPCanMoveInRoom(Room, P, &stepend, 0, false, false, false, &wall))
             {
                radiuscheck = false;
                break;
@@ -1660,7 +1660,7 @@ bool BSPGetStepTowards(room_type* Room, V2* S, V2* E, V2* P, unsigned int* Flags
    Wall* blockWall = NULL;
 
    // we do not care about object blocks here, since this is no real step
-   if (BSPCanMoveInRoom3D<false>(Room, S, E, Height, Speed, ObjectID, moveOutsideBSP, true, true, &blockWall))
+   if (BSPCanMoveInRoom3D<false>(Room, S, E, Height, Speed, ObjectID, moveOutsideBSP, false, true, &blockWall))
    {
       // note: we must verify the location the object is actually going to end up in KOD,
       // this means we must round to the next closer kod-fineness value,  
@@ -1669,7 +1669,7 @@ bool BSPGetStepTowards(room_type* Room, V2* S, V2* E, V2* P, unsigned int* Flags
       // this time object blocks matter
       V2ADD(&stepend, S, &se);
       V2ROUNDROOTOKODFINENESS(&stepend);
-      if (BSPCanMoveInRoom3D<false>(Room, S, &stepend, Height, Speed, ObjectID, moveOutsideBSP, true, false, &blockWall))
+      if (BSPCanMoveInRoom3D<false>(Room, S, &stepend, Height, Speed, ObjectID, moveOutsideBSP, false, false, &blockWall))
       {
          //dprintf("Astar-SKIP-Direct Step (%s)", GetResourceByID(Room->resource_id)->resource_name);
          *P = stepend;
@@ -1709,7 +1709,7 @@ bool BSPGetStepTowards(room_type* Room, V2* S, V2* E, V2* P, unsigned int* Flags
       /****************************************************/
       V2ADD(&stepend, S, &se);
       V2ROUNDROOTOKODFINENESS(&stepend);
-      if (BSPCanMoveInRoom3D<false>(Room, S, &stepend, Height, Speed, ObjectID, moveOutsideBSP, true, false, &blockWall))
+      if (BSPCanMoveInRoom3D<false>(Room, S, &stepend, Height, Speed, ObjectID, moveOutsideBSP, false, false, &blockWall))
       {
          *P = stepend;
          *Flags &= ~ESTATE_AVOIDING;
@@ -1781,7 +1781,7 @@ bool BSPGetStepTowards(room_type* Room, V2* S, V2* E, V2* P, unsigned int* Flags
                V2ROTATE(&v, 0.5f * (float)-M_PI_4);
                V2ADD(&stepend, S, &v);
                V2ROUNDROOTOKODFINENESS(&stepend);
-               if (BSPCanMoveInRoom3D<false>(Room, S, &stepend, Height, Speed, ObjectID, moveOutsideBSP, true, false, &blockWall))
+               if (BSPCanMoveInRoom3D<false>(Room, S, &stepend, Height, Speed, ObjectID, moveOutsideBSP, false, false, &blockWall))
                {
                   *P = stepend;
                   *Flags |= ESTATE_AVOIDING;
@@ -1805,7 +1805,7 @@ bool BSPGetStepTowards(room_type* Room, V2* S, V2* E, V2* P, unsigned int* Flags
                V2ROTATE(&v, 0.5f * (float)M_PI_4);
                V2ADD(&stepend, S, &v);
                V2ROUNDROOTOKODFINENESS(&stepend);
-               if (BSPCanMoveInRoom3D<false>(Room, S, &stepend, Height, Speed, ObjectID, moveOutsideBSP, true, false, &blockWall))
+               if (BSPCanMoveInRoom3D<false>(Room, S, &stepend, Height, Speed, ObjectID, moveOutsideBSP, false, false, &blockWall))
                {
                   *P = stepend;
                   *Flags |= ESTATE_AVOIDING;

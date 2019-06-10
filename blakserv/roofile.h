@@ -125,6 +125,11 @@
 #define LIR_SECTOR_DEPTH2    0x00000200
 #define LIR_SECTOR_DEPTH3    0x00000300
 #define LIR_BLOCKED_OBJECT   0x00000400
+
+// Parameter flags for CanMoveInRoomBSP
+#define CANMOVE_IS_PLAYER        0x00000001
+#define CANMOVE_MOVE_OUTSIDE_BSP 0x00000002
+#define CANMOVE_IGNORE_BLOCKERS  0x00000004
 #pragma endregion
 
 #pragma region Structs
@@ -301,8 +306,8 @@ typedef struct room_type
 /*                                          METHODS                                                           */
 /**************************************************************************************************************/
 bool  BSPGetHeight(room_type* Room, V2* P, float* HeightF, float* HeightFWD, float* HeightC, BspLeaf** Leaf);
-bool  BSPCanMoveInRoom(room_type* Room, V2* S, V2* E, int ObjectID, bool moveOutsideBSP, bool checkObjects, bool ignoreEndBlocker, Wall** BlockWall);
-template <bool ISPLAYER> extern bool BSPCanMoveInRoom3D(room_type* Room, V2* S, V2* E, float Height, float Speed, int ObjectID, bool moveOutsideBSP, bool checkObjects, bool ignoreEndBlocker, Wall** BlockWall);
+bool  BSPCanMoveInRoom(room_type* Room, V2* S, V2* E, int ObjectID, bool moveOutsideBSP, bool ignoreBlockers, bool ignoreEndBlocker, Wall** BlockWall);
+template <bool ISPLAYER> extern bool BSPCanMoveInRoom3D(room_type* Room, V2* S, V2* E, float Height, float Speed, int ObjectID, bool moveOutsideBSP, bool ignoreBlockers, bool ignoreEndBlocker, Wall** BlockWall);
 bool  BSPLineOfSightView(V2 *S, V2 *E, int kod_angle);
 bool  BSPLineOfSight(room_type* Room, V3* S, V3* E);
 bool  BSPLineOfSightTree(const BspNode* Node, const V3* S, const V3* E);

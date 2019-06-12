@@ -30,6 +30,8 @@ static StatCache stat_cache;        // Cache stat groups we've retrieved from se
 
 /* local function prototypes */
 static Bool CompareStats(void *s1, void *s2);
+Bool CompareListStatsByObjID(void *s1, void *s2);
+Statistic *StatCacheInsertListStat(BYTE group, Statistic *s);
 /************************************************************************/
 void StatCacheCreate(void)
 {
@@ -57,6 +59,14 @@ void StatCacheDestroy(void)
 Bool CompareStats(void *s1, void *s2)
 {
    return ((Statistic *) s1)->num == ((Statistic *) s2)->num;
+}
+/************************************************************************/
+/*
+ * CompareStatsByObjID: Compare two list statistics based on object ID.
+ */
+Bool CompareListStatsByObjID(void *s1, void *s2)
+{
+   return ((Statistic *)s1)->list.id == ((Statistic *)s2)->list.id;
 }
 /************************************************************************/
 /*
@@ -118,7 +128,7 @@ void StatCacheSetSize(int size)
 /************************************************************************/
 /*
  * StatCacheUpdate:  Given stat in group has changed; update cache and return
- *   resultant Statistic structure, or NULL if stat not found.
+ *   resultant Statistic structure or NULL if stat could not found or added.
  */
 Statistic *StatCacheUpdate(BYTE group, Statistic *s)
 {
@@ -131,8 +141,19 @@ Statistic *StatCacheUpdate(BYTE group, Statistic *s)
    stats = stat_cache.entries[group-1].stats;
 
    /* Find old stat in list */
-   old_stat = (Statistic *) list_find_item(stats, s, CompareStats);
-   
+   if (group == STATS_SPELLS || group == STATS_SKILLS)
+   {
+      old_stat = (Statistic *)list_find_item(stats, s, CompareListStatsByObjID);
+      if (old_stat == NULL)
+      {
+         return StatCacheInsertListStat(group, s);
+      }
+   }
+   else
+   {
+      old_stat = (Statistic *)list_find_item(stats, s, CompareStats);
+   }
+
    if (old_stat == NULL)
    {
       debug(("Tried to change nonexistent stat #%d in group #%d", s->num, (int) group));
@@ -156,4 +177,97 @@ Statistic *StatCacheUpdate(BYTE group, Statistic *s)
       break;
    }
    return old_stat;
+}
+/************************************************************************/
+/*
+ * StatCacheInsertListStat:  Received a new stat for group; update cache
+ *   and return resultant Statistic structure.
+ */
+Statistic *StatCacheInsertListStat(BYTE group, Statistic *s)
+{
+   Statistic *new_stat = (Statistic *)SafeMalloc(sizeof(Statistic));
+   new_stat->name_res = s->name_res;
+   new_stat->type = s->type;
+   new_stat->num = s->num;
+
+   memcpy(&new_stat->list, &s->list, sizeof(new_stat->list));
+
+   list_type stats = stat_cache.entries[group - 1].stats;
+
+   // Inserting, so renumber any entries with a greater num value.
+   for (list_type l = stats; l != NULL; l = l->next)
+   {
+      Statistic *ls = (Statistic *)l->data;
+      if (ls->num >= s->num)
+         ls->num++;
+   }
+ 
+   stat_cache.entries[group - 1].stats = list_add_item(stats, new_stat);
+
+   // Gets displayed later, but we need to fully update it here to
+   // include the inserted stat. Display stat system likely needs
+   // some refactoring to better handle inserts/deletes.
+   if (group != StatsGetCurrentGroup())
+   {
+      //	ajw Changes to make Inventory act somewhat like one of the stats groups.
+      if (StatsGetCurrentGroup() == STATS_INVENTORY)
+      {
+         //	Inventory must be going away.
+         ShowInventory(False);
+      }
+   }
+   DisplayStatGroup(group, stat_cache.entries[group - 1].stats);
+
+   return new_stat;
+}
+/************************************************************************/
+/*
+ * StatCacheRemoveListStat:  Called when server tells us to remove a skill/spell stat.
+ */
+void StatCacheRemoveListStat(BYTE group, int object_id)
+{
+   int num = -1, count = 0;
+
+   list_type stats = stat_cache.entries[group - 1].stats;
+
+   for (list_type l = stats; l != NULL; l = l->next, count++)
+   {
+      Statistic *s = (Statistic*)l->data;
+      if (s->list.id == object_id)
+      {
+         num = s->num;
+         stat_cache.entries[group - 1].stats = list_delete_item(stats, s, CompareStats);
+         stats = stat_cache.entries[group - 1].stats;
+         SafeFree(s);
+         break;
+      }
+   }
+
+   if (num == -1)
+   {
+      debug(("Could not find list stat object ID %i to remove in stat group %i\n",
+         object_id, group));
+      return;
+   }
+
+   // Renumber existing num values greater than the removed one.
+   for (list_type l = stats; l != NULL; l = l->next)
+   {
+      Statistic *s = (Statistic*)l->data;
+      if (s->num > num)
+      {
+         s->num--;
+      }
+   }
+
+   if (group != StatsGetCurrentGroup())
+   {
+      //	ajw Changes to make Inventory act somewhat like one of the stats groups.
+      if (StatsGetCurrentGroup() == STATS_INVENTORY)
+      {
+         //	Inventory must be going away.
+         ShowInventory(False);
+      }
+   }
+   DisplayStatGroup(group, stats);
 }

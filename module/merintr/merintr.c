@@ -1135,9 +1135,14 @@ Bool HandleRemoveSpell(char *ptr, long len)
 
    if (len != SIZE_ID)
       return False;
-   Extract(&ptr, &spell_id, SIZE_ID);   
+
+   Extract(&ptr, &spell_id, SIZE_ID);
+
+   // Remove from Spells menu.
    RemoveSpell(spell_id);
-   
+   // And also from spells list box.
+   StatCacheRemoveListStat(STATS_SPELLS, spell_id);
+
    return True;
 }
 /********************************************************************/
@@ -1189,9 +1194,14 @@ Bool HandleRemoveSkill(char *ptr, long len)
 
    if (len != SIZE_ID)
       return False;
-   Extract(&ptr, &skill_id, SIZE_ID);   
+
+   Extract(&ptr, &skill_id, SIZE_ID);
+
+   // Remove from (not implemented) Skills menu.
    RemoveSkill(skill_id);
-   
+   // Remove from skills list box.
+   StatCacheRemoveListStat(STATS_SKILLS, skill_id);
+
    return True;
 }
 /********************************************************************/
@@ -1208,7 +1218,8 @@ Bool HandleStat(char *ptr, long len)
    len -= (ptr - start);
    if (len != 0)
       return False;
-   
+
+   // Can change an existing stat/list item, or add a new spell or skill.
    StatChange(group, &s);
    return True;
 }

@@ -8,7 +8,7 @@
 
 
 ////////////////////////////////////////////////////////////////////////////////
-ForgetPotion is PassiveItem                   // template with subdirectory
+ForgetPotion is PassiveItem
 
 constants:
 
@@ -20,23 +20,31 @@ resources:
 
    include pforget.lkod
 
-   forgetpotion_use = "You quaff the potion. Nothing happens at first, then dizziness strikes...."
-   forgetpotion_cant_use_on = "You can't serve a %s%s."
-
-   forgetpotion_cant_drop = "You drop the potion on the ground, and the bottle explodes into a thousand shards."
-
-   forgetpotion_warning = "As you lift the potion to your lips, your eyes catch sight of a warning label, which says, ~I'This potion may have very serious side effects!  Very serious!  We're not fooling around here!'"
-
-   forgetpotion_nothing_happens = "The disorientation passes.  Nothing seems to have happened."
    forgetpotion_name_rsc = "potion of forgetfulness"
    forgetpotion_icon_rsc = forgetpo.bgf
-   forgetpotion_desc_rsc = "Drinking this potion will cause you to forget all of your spells in a certain spell school.  "
-      "Be absolutely sure you want this to happen before drinking it!"
+   forgetpotion_desc_rsc = \
+      "Drinking this potion will cause you to forget all of your spells in a "
+      "certain spell school.  Be absolutely sure you want this to happen "
+      "before drinking it!"
 
+   forgetpotion_use = \
+      "You quaff the potion. Nothing happens at first, then dizziness strikes...."
+   forgetpotion_cant_use_on = "You can't serve a %s%s."
+   forgetpotion_cant_drop = \
+      "You drop the potion on the ground, and the bottle explodes into a "
+      "thousand shards."
+   forgetpotion_warning = \
+      "As you lift the potion to your lips, your eyes catch sight of a warning "
+      "label, which says, ~I'This potion may have very serious side effects!  "
+      "Very serious!  We're not fooling around here!'"
+   forgetpotion_nothing_happens = \
+      "The disorientation passes.  Nothing seems to have happened."
    forgetpotion_forget_spell = "The art of casting '%s' slips from your mind!"
-   forgetpotion_forget_wrong = "The accursed potion has stricken all memory of '%s' from you!"
+   forgetpotion_forget_wrong = \
+      "The accursed potion has stricken all memory of '%s' from you!"
    forgetpotion_lose_intellect = "You suddenly feel a little... stupider..."
-   forgetpotion_lose_links = "The horrid elixir severs all your links to the mana nodes!"
+   forgetpotion_lose_links = \
+      "The horrid elixir severs all your links to the mana nodes!"
    forgetpotion_gulp_sound = drkptn.ogg
 
 classvars:
@@ -73,36 +81,35 @@ messages:
 
    ReqNewApply(what = $,apply_on = $)
    {
-
       if IsClass(apply_on,&User)
       {
          if NOT pbWarned
          {
-            send(apply_on,@MsgSendUser,#message_rsc=forgetpotion_warning);
+            Send(apply_on,@MsgSendUser,#message_rsc=forgetpotion_warning);
             pbWarned = TRUE;
 
             return FALSE;
          }
-         
+
          return TRUE;
       }
-      
-      Send(what,@MsgSendUser,#message_rsc=forgetpotion_cant_use_on, 
-           #parm1=Send(apply_on,@GetIndef),#parm2=Send(apply_on,@GetName));
-           
+
+      Send(what,@MsgSendUser,#message_rsc=forgetpotion_cant_use_on,
+            #parm1=Send(apply_on,@GetIndef),#parm2=Send(apply_on,@GetName));
+
       return FALSE;
    }
 
    NewApplied(what = $,apply_on = $)
    {
       local sSchoolName;
-      
+
       poApply_target = apply_on;
 
-      if isClass(apply_on,&User) 
+      if IsClass(apply_on,&User)
       {
          Send(apply_on,@MsgSendUser,#message_rsc=forgetpotion_use);
-         send(apply_on,@WaveSendUser,#wave_rsc=forgetpotion_gulp_sound);
+         Send(apply_on,@WaveSendUser,#wave_rsc=forgetpotion_gulp_sound);
       }
 
       if viForget_school = SKS_WEAPONCRAFT
@@ -113,51 +120,52 @@ messages:
       else
       {
          // Need any spell, so we'll use blink
-         sSchoolName = send(send(SYS,@FindSpellByNum,#num=SID_BLINK),@GetSchoolStr,#iSchool=viForget_school);
+         sSchoolName = Send(Send(SYS,@FindSpellByNum,#num=SID_BLINK),
+                           @GetSchoolStr,#iSchool=viForget_school);
       }
 
-      debug("Forget Potion of",sSchoolName,"used by",send(apply_on,@GetTrueName),apply_on,".");
+      Debug("Forget Potion of",sSchoolName,"used by",
+            Send(apply_on,@GetTrueName),apply_on,".");
 
-      ptQuaff = createtimer(self,@QuaffTimer,MESSAGE_DELAY);
-      
+      ptQuaff = CreateTimer(self,@QuaffTimer,MESSAGE_DELAY);
+
       return;
    }
 
    QuaffTimer()
    {
-      local i, spells, oSpell, iSpellnum;
+      local i, oSpell, iSpellnum;
 
       ptQuaff = $;
-      Spells = send(poApply_target,@GetSpellList);
-      piCount = 0;
-      
-      foreach i in Spells
-      {
-         iSpellNum = send(poApply_target,@DecodeSpellNum,#compound=i);
-         oSpell = send(SYS,@FindSpellByNum,#num=iSpellNum);
 
-         if send(oSpell,@GetSchool) = viForget_School
-            AND send(oSpell,@CanForget)  /// riija potion doesn't wipe blink
+      piCount = 0;
+
+      foreach i in Send(poApply_target,@GetSpellList)
+      {
+         iSpellNum = Send(poApply_target,@DecodeSpellNum,#compound=i);
+         oSpell = Send(SYS,@FindSpellByNum,#num=iSpellNum);
+
+         if Send(oSpell,@GetSchool) = viForget_School
+            AND Send(oSpell,@CanForget)  // Don't wipe starting spells.
          {
-            send(poApply_target,@RemoveSpell,#num=iSpellNum);
-            send(poApply_target,@MsgSendUser,#message_rsc=forgetpotion_forget_spell,
-                 #parm1=send(oSpell,@GetName));
-            piCount = piCount + 1;
+            Send(poApply_target,@RemoveSpell,#num=iSpellNum);
+            Send(poApply_target,@MsgSendUser,#message_rsc=forgetpotion_forget_spell,
+                 #parm1=Send(oSpell,@GetName));
+            ++piCount;
          }
       }
-      
+
       if piCount = 0
       {
          Send(poApply_target,@MsgSendUser,#message_rsc=forgetpotion_nothing_happens);
       }
       else
       {
-         send(self,@DoSideEffects);
-         send(poApply_target,@ToCliStats,#group=3);
+         Send(self,@DoSideEffects);
       }
-      
+
       Send(self,@Delete);
-      
+
       return;
    }
 
@@ -171,10 +179,10 @@ messages:
    {
       if ptQuaff <> $
       {
-         deletetimer(ptQuaff);
+         DeleteTimer(ptQuaff);
          ptQuaff = $;
       }
-      
+
       propagate;
    }
 

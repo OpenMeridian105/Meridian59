@@ -18,5 +18,6 @@ Bool StatCacheGetEntry(int group, list_type *stats);
 void StatCacheSetEntry(int group, list_type stats);
 void StatCacheSetSize(int size);
 Statistic *StatCacheUpdate(BYTE group, Statistic *s);
+void StatCacheRemoveListStat(BYTE group, int object_id);
 
 #endif /* #ifndef _STATCACH_H */

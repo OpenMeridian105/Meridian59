@@ -38,20 +38,19 @@ messages:
 
    QuaffTimer()
    {
-      local i, skills, oSkill, iSkillnum, ihp_loss, howmuch;
+      local i, oSkill, iSkillnum, ihp_loss, howmuch;
 
       ptQuaff = $;
-      Skills = Send(poApply_target,@GetSkillList);
+
       piCount = 0;
       iHP_loss = 0;
 
-      foreach i in Skills
+      foreach i in Send(poApply_target,@GetSkillList)
       {
          iSkillNum = Send(poApply_target,@DecodeSkillNum,#compound=i);
          if iSkillNum = SKID_SLASH OR iSkillnum = SKID_DODGE
          {
-            iHP_loss = iHp_loss + Send(poApply_target,@DecodeSkillAbility,
-                                       #compound=i);
+            iHP_loss += Send(poApply_target,@DecodeSkillAbility,#compound=i);
          }
 
          oSkill = Send(SYS,@FindSkillByNum,#num=iSkillNum);
@@ -61,7 +60,7 @@ messages:
          Send(poApply_target,@MsgSendUser,
                #message_rsc=forgetpotionskills_forget_skill,
                #parm1=Send(oSkill,@GetName));
-         piCount = piCount + 1;
+         ++piCount;
       }
 
       if piCount = 0
@@ -86,7 +85,6 @@ messages:
          }
 
          Send(self,@DoSideEffects);
-         Send(poApply_target,@ToCliStats,#group=2);
       }
 
       // Check if player should regain guardian angel from HP loss.

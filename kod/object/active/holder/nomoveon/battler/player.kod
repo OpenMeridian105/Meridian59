@@ -3196,6 +3196,11 @@ messages:
                }
             }
 
+            if Send(oSpell,@IsLightSource)
+            {
+               Send(self,@RecalcFlickerFlag);
+            }
+
             // Calls SomethingChanged.
             Send(self,@ResetPlayerFlagList,#who=self);
 
@@ -3334,6 +3339,11 @@ messages:
          AND lType <> $
       {
          plPassiveImprovement = Cons(ltype,plPassiveImprovement);
+      }
+
+      if Send(what,@IsLightSource)
+      {
+         Send(self,@SetFlickerFlag);
       }
 
       Send(self,@ResetPlayerFlagList,#who=self);
@@ -3740,6 +3750,11 @@ messages:
                   #type=ENCHANTMENT_PLAYER);
 
             plEnchantments = DelListElem(plEnchantments,i);
+
+            if Send(what,@IsLightSource)
+            {
+               Send(self,@RecalcFlickerFlag);
+            }
 
             Send(self,@ResetPlayerFlagList,#who=self);
          }
@@ -11034,6 +11049,11 @@ messages:
       return Send(poIllusion_set,@IllusionGetTemplate,#who=self);
    }
 
+   GetIllusionSet()
+   {
+      return poIllusion_set;
+   }
+
    ResetPlayerIllusion()
    "Restores default lighting and DrawFX."
    {
@@ -11858,55 +11878,6 @@ messages:
    ClearTranceFlag()
    {
       piFlags &= ~PFLAG_TRANCE;
-
-      return;
-   }
-
-   SetFlickerFlag()
-   {
-      piDrawEffectFlag |= OF_FLICKERING;
-
-      return;
-   }
-
-   RecalcFlickerFlag()
-   "Called by anything that sets the flag when it wants to unset it. "
-   "Checks if we still have anything that still requires the flag."
-   {
-      local i;
-
-      // Unset flag.
-      piDrawEffectFlag &= ~OF_FLICKERING;
-
-      // Check torches and glow enchantment.
-      foreach i in plUsing
-      {
-         if IsClass(i,&Torch)
-            OR IsClass(i,&DaemonHelm)
-            OR ((IsClass(i,&Weapon) OR IsClass(i,&Lute))
-               AND Send(i,@HasAttribute,#ItemAtt=WA_GLOWING))
-         {
-            piDrawEffectFlag |= OF_FLICKERING;
-
-            return;
-         }
-      }
-
-      // Check radius enchantments.
-      foreach i in plRadiusEnchantments
-      {
-         if (Nth(Nth(i,3),RE_STATE_SOURCE) = self)
-         {
-            piDrawEffectFlag |= OF_FLICKERING;
-
-            return;
-         }
-      }
-
-      if (poOwner <> $)
-      {
-         Send(poOwner,@SomethingChangedFlags,#what=self);
-      }
 
       return;
    }
@@ -14626,81 +14597,6 @@ messages:
       piReward_timestamp = 0;
 
       return;
-   }
-
-   SendLightingInformation()
-   {
-      local i, oLightObject, iColor, iIntensity;
-
-      if poIllusion_set <> $
-      {
-         if NOT Send(poIllusion_set,@IllusionGetLightingInformation,#who=self)
-         {
-            // No lighting information
-            propagate;
-         }
-
-         return;
-      }
-
-      // Bitflag check, don't need to check anything if not set.
-      if NOT (piDrawEffectFlag & OF_FLICKERING)
-      {
-         propagate;
-      }
-
-      iIntensity = 0;
-      iColor = 0;
-      // Check each lighting effect, strongest one wins.
-      // TODO: these should be additive, and the client should produce
-      // a combined lighting effect. Also, if more lighting effects are added
-      // this should probably query everything, just in case.
-
-      // Check torches and glow enchantment only here, hardcoded color/intensity.
-      foreach i in plUsing
-      {
-         if IsClass(i,&Torch)
-            OR ((IsClass(i,&Weapon) OR IsClass(i,&Lute))
-               AND Send(i,@HasAttribute,#ItemAtt=WA_GLOWING))
-         {
-            iIntensity = 60;
-            iColor = LIGHT_FIRE;
-
-            break;
-         }
-      }
-
-      foreach i in plUsing
-      {
-         if IsClass(i,&DaemonHelm)
-         {
-            iIntensity = 100;
-            iColor = LIGHT_BLOOD;
-
-            break;
-         }
-      }
-
-      foreach i in plRadiusEnchantments
-      {
-         oLightObject = Nth(i,2);
-         if (Nth(Nth(i,3),RE_STATE_SOURCE) = self
-            AND Send(oLightObject,@GetLightIntensity) >= iIntensity)
-         {
-            iIntensity = Send(oLightObject,@GetLightIntensity);
-            iColor = Send(oLightObject,@GetLightColor);
-         }
-      }
-
-      if iIntensity > 0
-      {
-         AddPacket(2,(LIGHT_FLAG_ON | LIGHT_FLAG_DYNAMIC),
-                   1,iIntensity, 2,iColor);
-
-         return;
-      }
-
-      propagate;
    }
 
    IsInSameRoom(what = $)

@@ -490,13 +490,15 @@ messages:
    RemoveEnchantmentClass(class = &Object, report=TRUE)
    "If have a current enchantment set by anything in class, end it."
    {
-      local i, state, removedSomething;
+      local i, state, removedSomething, oEnchantment;
 
       removedSomething = FALSE;
 
       foreach i in plEnchantments
       {
-         if IsClass(Nth(i,2),class)
+         oEnchantment = Nth(i,2);
+
+         if IsClass(oEnchantment,class)
          {
             removedSomething = TRUE;
             if First(i) <> $
@@ -510,13 +512,19 @@ messages:
                state = Nth(i,3);
             }
 
-            Send(Nth(i,2),@RemoveEnchantmentEffects,#who=self,#state=state,
+            Send(oEnchantment,@RemoveEnchantmentEffects,#who=self,#state=state,
                   #report=report);
 
-            Send(self,@ShowRemoveEnchantment,#what=Nth(i,2),
+            Send(self,@ShowRemoveEnchantment,#what=oEnchantment,
                   #type=ENCHANTMENT_PLAYER);
 
             plEnchantments = DelListElem(plEnchantments,i);
+
+            if Send(oEnchantment,@IsLightSource)
+            {
+               Send(self,@RecalcFlickerFlag);
+            }
+
             Send(self,@ResetPlayerFlagList,#who=self);
          }
       }
@@ -532,6 +540,11 @@ messages:
 
    ResetPlayerFlagList()
    {
+      if poOwner <> $
+      {
+         Send(poOwner,@SomethingChanged,#what=self);
+      }
+
       return;
    }
 
@@ -2120,6 +2133,16 @@ messages:
          // Optional effects caused by the onset of the over time effect.
          Send(what,@OverTimeEffectStarting,#who=self,#bReport=bReport,
             #overtimeeffect=lEffect);
+
+         if Send(what,@IsLightSource)
+         {
+            Send(self,@SetFlickerFlag);
+
+            if poOwner <> $
+            {
+               Send(poOwner,@SomethingChanged,#what=self);
+            }
+         }
       }
 
       // If 'who' cast a damage over time, set their flags accordingly.
@@ -2143,9 +2166,10 @@ messages:
    DeleteOverTimeEffect(what=$,who=$,timer=0,clear=FALSE,removal=REMOVE_PLAYER,
                         curse=FALSE,bReport=TRUE,type=TYPE_HEALTH)
    {
-      local i, oSpell, oCaster, bRemoved, iIllusion;
+      local i, oSpell, oCaster, bRemoved, iIllusion, bRecalc;
 
       bRemoved = FALSE;
+      bRecalc = FALSE;
 
       foreach i in plOverTimeEffects
       {
@@ -2184,6 +2208,11 @@ messages:
 
                Send(oSpell,@OverTimeEffectWearingOff,#who=self,#bReport=bReport,
                   #overtimeeffect=i);
+
+               if Send(oSpell,@IsLightSource)
+               {
+                  bRecalc = TRUE;
+               }
             }
 
             if timer = 0
@@ -2203,6 +2232,16 @@ messages:
       if bRemoved
       {
          Send(self,@UpdateRates);
+      }
+
+      if bRecalc
+      {
+         Send(self,@RecalcFlickerFlag);
+
+         if poOwner <> $
+         {
+            Send(poOwner,@SomethingChanged,#what=self);
+         }
       }
 
       return;
@@ -2233,7 +2272,13 @@ messages:
 
       if bRemoved
       {
+         Send(self,@RecalcFlickerFlag);
          Send(self,@UpdateRates);
+
+         if poOwner <> $
+         {
+            Send(poOwner,@SomethingChanged,#what=self);
+         }
       }
 
       return;
@@ -3897,6 +3942,193 @@ messages:
    {
       return Bound(100 * piActiveSummons / Send(self,@GetSummoningLimit)
          - 100,0,$);
+   }
+
+   SetFlickerFlag()
+   {
+      piDrawEffectFlag |= OF_FLICKERING;
+
+      return;
+   }
+
+   RecalcFlickerFlag()
+   "Called by anything that sets the flag when it wants to unset it. "
+   "Checks if we still have anything that still requires the flag."
+   {
+      local i, oLightObject;
+
+      // Unset flag.
+      piDrawEffectFlag &= ~OF_FLICKERING;
+
+      foreach i in Send(self,@GetPlayerUsing)
+      {
+         if Send(i,@IsLightSource)
+         {
+            piDrawEffectFlag |= OF_FLICKERING;
+
+            return;
+         }
+      }
+
+      foreach i in plEnchantments
+      {
+         if Send(Nth(i,2),@IsLightSource)
+         {
+            piDrawEffectFlag |= OF_FLICKERING;
+
+            return;
+         }
+      }
+
+      foreach i in plRadiusEnchantments
+      {
+         if Nth(Nth(i,3),RE_STATE_SOURCE) = self
+         {
+            piDrawEffectFlag |= OF_FLICKERING;
+
+            return;
+         }
+      }
+
+      foreach i in plOverTimeEffects
+      {
+         oLightObject = Nth(i,5);
+
+         if (oLightObject <> 0) AND IsClass(oLightObject,&Spell)
+         {
+            if Send(oLightObject,@IsLightSource)
+            {
+               piDrawEffectFlag |= OF_FLICKERING;
+
+               return;
+            }
+         }
+      }
+
+      if poOwner <> $
+      {
+         Send(poOwner,@SomethingChangedFlags,#what=self);
+      }
+
+      return;
+   }
+
+   SendLightingInformation()
+   {
+      local i, iRed, iGreen, iBlue, oLightObject, iColor, iIntensity,
+         iTotalIntensity, iState, oIllusion;
+
+      oIllusion = Send(self,@GetIllusionSet);
+
+      if oIllusion <> $
+      {
+         if NOT Send(oIllusion,@IllusionGetLightingInformation,#who=self)
+         {
+            // No lighting information
+            propagate;
+         }
+
+         return;
+      }
+
+      // Bitflag check, don't need to check anything if not set.
+      if NOT (piDrawEffectFlag & OF_FLICKERING)
+      {
+         propagate;
+      }
+
+      iTotalIntensity = 0;
+      iRed = 0;
+      iGreen = 0;
+      iBlue = 0;
+
+      foreach i in Send(self,@GetPlayerUsing)
+      {
+         if Send(i,@IsLightSource)
+         {
+            iIntensity = Send(i,@GetLightIntensity);
+            iColor = Send(i,@GetLightColor);
+            iRed += iIntensity*((iColor/1024)%32);
+            iGreen += iIntensity*((iColor/32)%32);
+            iBlue += iIntensity*(iColor%32);
+            iTotalIntensity += iIntensity;
+         }
+      }
+
+      foreach i in plEnchantments
+      {
+         oLightObject = Nth(i,2);
+
+         if Send(oLightObject,@IsLightSource)
+         {
+            iState = Nth(i,3);
+            iIntensity = Send(oLightObject,@GetLightIntensity,#state=iState);
+            iColor = Send(oLightObject,@GetLightColor,#state=iState);
+            iRed += iIntensity*((iColor/1024)%32);
+            iGreen += iIntensity*((iColor/32)%32);
+            iBlue += iIntensity*(iColor%32);
+            iTotalIntensity += iIntensity;
+         }
+      }
+
+      foreach i in plOverTimeEffects
+      {
+         oLightObject = Nth(i,5);
+
+         if (oLightObject <> 0) AND IsClass(oLightObject,&Spell)
+         {
+            if Send(oLightObject,@IsLightSource)
+            {
+               iIntensity = Send(oLightObject,@GetLightIntensity);
+               iColor = Send(oLightObject,@GetLightColor);
+               iRed += iIntensity*((iColor/1024)%32);
+               iGreen += iIntensity*((iColor/32)%32);
+               iBlue += iIntensity*(iColor%32);
+               iTotalIntensity += iIntensity;
+            }
+         }
+      }
+
+      foreach i in plRadiusEnchantments
+      {
+         oLightObject = Nth(i,2);
+         if Nth(Nth(i,3),RE_STATE_SOURCE) = self
+         {
+            iIntensity = Send(oLightObject,@GetLightIntensity);
+            iColor = Send(oLightObject,@GetLightColor);
+            iRed += iIntensity*((iColor/1024)%32);
+            iGreen += iIntensity*((iColor/32)%32);
+            iBlue += iIntensity*(iColor%32);
+            iTotalIntensity += iIntensity;
+         }
+      }
+
+      if iTotalIntensity > 0
+      {
+         iRed /= iTotalIntensity;
+         iGreen /= iTotalIntensity;
+         iBlue /= iTotalIntensity;
+         iColor = iRed*1024 + iGreen*32 + iBlue;
+
+         iTotalIntensity = Bound(iTotalIntensity,1,255);
+
+         AddPacket(2,(LIGHT_FLAG_ON | LIGHT_FLAG_DYNAMIC),
+                   1,iTotalIntensity, 2,iColor);
+
+         return;
+      }
+
+      propagate;
+   }
+
+   GetPlayerUsing()
+   {
+      return;
+   }
+
+   GetIllusionSet()
+   {
+      return;
    }
 
 end

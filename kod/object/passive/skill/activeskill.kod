@@ -1,0 +1,111 @@
+// Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+// All rights reserved.
+//
+// This software is distributed under a license that is described in
+// the LICENSE file that accompanies it.
+//
+// Meridian is a registered trademark.
+
+
+////////////////////////////////////////////////////////////////////////////////
+ActiveSkill is Skill
+
+constants:
+   include blakston.khd
+
+resources:
+
+   include activeskill.lkod
+
+   ActiveSkill_wrong_weapon_src = "You are not wielding a suitable weapon for this attack."
+
+classvars:
+
+   viSignatureBuffSID = $
+   vbIsRangedAttack = FALSE
+   vbIsMeleeAttack = TRUE
+
+properties:
+
+messages:
+
+   IsActiveSkill()
+   "Active skills can be 'performed' by a player or monster, like a spell."
+   "Override to return TRUE for active skills."
+   {
+      return TRUE;
+   }
+
+   PerformSkill(who=$,lTargets=$)
+   {
+      // Check for advancement conditions.
+      Send(self,@ImproveAbility,#who=who);
+
+      Send(who,@SetAttackTime,#time=viPostPerform_time);
+
+      return;
+   }
+
+   PerformSecondarySkill(who=$,lTargets=$)
+   {
+      return;
+   }
+
+   CanPayCosts(who=$,lTargets=$)
+   {
+      local oSpell, oWeapon, bRanged;
+
+      // Check attack timer without setting a timer.
+      // Setting the timer is done in PerformSkill().
+      if NOT Send(who,@CheckAttackTimer)
+      {
+         return FALSE;
+      }
+
+      // Make sure we are using an appropriate weapon.
+      oWeapon = Send(who,@GetWeapon);
+
+      if oWeapon <> $
+      {
+         bRanged = IsClass(oWeapon,&RangedWeapon);
+      }
+      else
+      {
+         bRanged = FALSE;
+      }
+
+      // If we are neither a ranged, nor a melee attack, we don't care.
+      if (vbIsRangedAttack <> vbIsMeleeAttack)
+         AND (bRanged = vbIsMeleeAttack)
+      {
+         Send(who,@MsgSendUser,#message_rsc=ActiveSkill_wrong_weapon_src);
+         return FALSE;
+      }
+
+      if viSignatureBuffSID <> $
+      {
+         oSpell = Send(SYS,@FindSpellByNum,#num=viSignatureBuffSID);
+
+         // Don't perform if the associated skill proc is already active and
+         // all charges have been used up.
+         if Send(who,@IsEnchanted,#what=oSpell)
+            AND NOT (Send(who,@GetEnchantedState,#what=oSpell) / 1000)
+         {
+            return FALSE;
+         }
+      }
+
+      propagate;
+   }
+
+   SkillFailed(who=$)
+   "Active skills will delay actions by their post perform time if they fail."
+   {
+      Send(who,@SetAttackTime,#time=viPostPerform_time);
+
+      propagate;
+   }
+
+end
+
+////////////////////////////////////////////////////////////////////////////////

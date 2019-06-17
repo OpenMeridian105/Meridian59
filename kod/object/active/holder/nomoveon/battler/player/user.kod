@@ -116,6 +116,7 @@ resources:
    user_emote_str_morphed = "~n%s%s %q" 
 
    user_no_cast = "You find yourself unable to cast a spell."
+   user_no_perform = "You find yourself unable to perform this action."
    user_no_fight = "You find yourself unable to lift your weapon."
    user_cant_mail_to = "Can't mail to nonexistent user %s."
    user_mail_to = "Sending mail."
@@ -2109,7 +2110,7 @@ messages:
 
          // This is purely for cancelling currently channeled spells.
          // Maintained spells are unaffected.
-         if Send(self,@GetTranceSpell) <> $
+         if Send(self,@GetTranceAbility) <> $
          {
             oWhat = Send(SYS,@FindSpellByNum,#num=SID_TRANCE);
 
@@ -7467,10 +7468,10 @@ messages:
       // such as mana focus or a song.
       if piFlags & PFLAG_TRANCE
       {
-         // GetTranceSpell returns the spell that &Trance is preparing
+         // GetTranceAbility returns the spell that &Trance is preparing
          // to cast. If we are already preparing to cast the same spell,
          // don't interrupt our cast.
-         if Send(self,@GetTranceSpell) = oSpell
+         if Send(self,@GetTranceAbility) = oSpell
          {
             return;
          }
@@ -7589,7 +7590,78 @@ messages:
 
    UserPerform(oSkill=$,lTargets=$)
    {
-      Debug(vrName, " tried to perform skill ",Send(oSkill,@GetName));
+      local i, bFound, iSkill, iSkillNum, iSpellPower, lFinalTargets, iCost,
+            iTime, bSuccess;
+
+      // Check for valid skill first. This is mainly an issue during
+      // system saves where a user might perform something with the wrong
+      // object ID.
+      if oSkill = $
+         OR NOT IsClass(oSkill,&ActiveSkill)
+      {
+         return;
+      }
+
+      if piFlags & PFLAG_TRANCE
+      {
+         if Send(self,@GetTranceAbility) = oSkill
+         {
+            return;
+         }
+         else
+         {
+            Send(self,@BreakTrance,#event=EVENT_ATTACK,#what=oSkill);
+         }
+      }
+
+      if Send(self,@IsInCannotInteractMode)
+      {
+         Send(self,@MsgSendUser,#message_rsc=user_no_perform);
+
+         return;
+      }
+
+      iSkillNum = Send(oSkill,@GetSkillNum);
+
+      bFound = FALSE;
+      foreach i in plSkills
+      {
+         iSkill = Send(self,@DecodeSkillNum,#compound=i);
+         if iSkillNum = iSkill
+         {
+            bFound = TRUE;
+
+            break;
+         }
+      }
+
+      if NOT bFound
+      {
+         // We don't know the skill.  Bail out.
+         return;
+      }
+
+      // Do we need a specific set of targets?
+      lFinalTargets = Send(oSkill,@GetTargets,#who=self,#lTargets=lTargets);
+
+      // First make sure user has enough magic points, reagents, etc.
+      if NOT Send(oSkill,@CanPayCosts,#who=self,#lTargets=lFinalTargets)
+      {
+         // Player failed some sort of internal check
+         return;
+      }
+
+      bSuccess = Send(oSkill,@SuccessChance,#who=self,#lTargets=lFinalTargets);
+
+      if Send(oSkill,@PayCosts,#who=self,#lTargets=lFinalTargets,#bSuccess=bSuccess)
+      {
+         // Set flag so that wall elements can affect us.
+         Send(self,@SetPlayerFlag,#flag=PFLAG_MOVED_SINCE_ENTRY,#value=TRUE);
+
+         // Alright, perform that skill already.
+         Send(oSkill,@BeginPerformPreparation,#who=self,#lTargets=lFinalTargets,
+            #bSuccess=bSuccess);
+      }
 
       return;
    }

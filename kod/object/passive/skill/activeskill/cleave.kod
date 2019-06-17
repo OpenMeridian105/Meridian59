@@ -1,0 +1,176 @@
+// Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+// All rights reserved.
+//
+// This software is distributed under a license that is described in
+// the LICENSE file that accompanies it.
+//
+// Meridian is a registered trademark.
+
+
+////////////////////////////////////////////////////////////////////////////////
+Cleave is ActiveSkill
+
+constants:
+
+   include blakston.khd
+
+resources:
+
+   include cleave.lkod
+
+   Cleave_name_rsc = "cleave"
+   Cleave_icon_rsc = icleave.bgf
+   Cleave_desc_rsc = "Allows a daring warrior to cleave their way through hordes of enemies."
+   Cleave_no_targets_rsc = "There is nothing to cleave within your weapon's range."
+
+classvars:
+
+   vrName = Cleave_name_rsc
+   vrIcon = Cleave_icon_rsc
+   vrDesc = Cleave_desc_rsc
+
+   viIndefinite = ARTICLE_NONE
+   viDefinite = ARTICLE_NONE
+
+   viSkill_num = SKID_CLEAVE
+   viSchool = SKS_WEAPONCRAFT
+   viSkill_level = 5
+   viChance_to_Increase = 5
+   viMeditate_ratio = 50
+
+   viSkillExertion = 10
+   vbCheck_exertion = TRUE
+
+   vbAutomatic = FALSE
+
+   // 2 cleaves per 3 regular attacks.
+   viPostPerform_time = 1500
+
+properties:
+
+   plPrerequisites = $
+
+messages:
+
+   GetNumSkillTargets()
+   {
+      return 0;
+   }
+
+   GetTargets(who=$,lTargets=$)
+   "This returns an altered list of targets for the skill if appropriate."
+   {
+      local i,use_weapon, stroke_obj, iDist, iRange, iRow, iCol, iFineRow,
+         iFineCol, oRoom, each_obj, lFinalTargets;
+
+      oRoom = Send(who,@GetOwner);
+      use_weapon = Send(who,@GetWeapon);
+      stroke_obj = Send(who,@GetStrokeObject);
+      iRange = Send(stroke_obj,@GetRange,#weapon_used=use_weapon);
+
+      iRow = Send(who,@GetRow);
+      iCol = Send(who,@GetCol);
+      iFineRow = Send(who,@GetFineRow);
+      iFineCol = Send(who,@GetFineCol);
+
+      foreach i in Send(oRoom,@GetHolderActive)
+      {
+         each_obj = First(i);
+
+         if each_obj = who
+         {
+            continue;
+         }
+
+         if IsClass(each_obj,&Battler)
+         {
+            // Skip players who are phased/in spectator mode.
+            if IsClass(each_obj,&Player)
+               AND Send(each_obj,@IsInCannotInteractMode)
+            {
+               continue;
+            }
+
+            iDist = Send(who,@SquaredFineDistanceTo3D,#what=each_obj);
+
+            // See if target is within range, if we provided a range.
+            if (iDist > iRange * iRange)
+               OR ((iDist > 1)
+                  AND NOT LineOfSightView(Send(who,@GetAngle),
+                     iRow,iCol,iFineRow, iFineCol,Send(each_obj,@GetRow),
+                     Send(each_obj,@GetCol),Send(each_obj,@GetFineRow),
+                     Send(each_obj,@GetFineCol)))
+            {
+               continue;
+            }
+
+            lFinalTargets = Cons(each_obj,lFinalTargets);
+         }
+      }
+
+      return lFinalTargets;
+   }
+
+   GetGoodTargets(who=$, lTargets=$, report=TRUE)
+   {
+      local lGoodTargets;
+      
+      // This gets all targets within range.  Most skills just return the
+      //  list back.
+      lGoodTargets = Send(self,@GetTargets,#who=who,#lTargets=lTargets);
+
+      // This gets all valid targets, checking for bad targets, safeties, etc.
+      lGoodTargets = Send(self,@GetAttackTargets,#who=who,
+                          #lTargets=lGoodTargets,#report=report);
+
+      return lGoodTargets;
+   }
+
+   GetRequisiteStat(who=$)
+   {
+      return Send(who,@GetMight);
+   }
+
+   PerformSkill(who=$,lTargets=$)
+   {
+      local use_weapon, stroke_obj, iPower, i, bTarget;
+
+      use_weapon = Send(who,@GetWeapon);
+      stroke_obj = Send(who,@GetStrokeObject);
+
+      iPower = Send(self,@GetSkillPower,#who=who);
+
+      bTarget = FALSE;
+
+      foreach i in lTargets
+      {
+         // Pass bCheck=FALSE so that our attacks don't check the timer.
+         Send(who,@TryAttack,#what=i,#stroke_obj=stroke_obj,
+            #use_weapon=use_weapon,#factor=iPower,#bCheck=FALSE);
+
+         bTarget = TRUE;
+      }
+
+      // No attack timer and improvement check if we haven't swung at anything.
+      if NOT bTarget
+      {
+         return;
+      }
+
+      propagate;
+   }
+
+   CanPayCosts(who=$,lTargets=$)
+   {
+      if lTargets = $
+      {
+         Send(who,@MsgSendUser,#message_rsc=Cleave_no_targets_rsc);
+
+         return FALSE;
+      }
+
+      propagate;
+   }
+
+end
+////////////////////////////////////////////////////////////////////////////////

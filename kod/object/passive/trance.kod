@@ -37,7 +37,7 @@ messages:
       return SID_TRANCE;
    }
 
-   BeginCastingTrance( what = $, who = $, lTargets = $, time = 0 , bFreeCast = FALSE )
+   BeginTrance(what=$,who=$,lTargets=$,time=0,bFreeCast=FALSE,power=0)
    {
       local lState, iPower;
 
@@ -50,7 +50,7 @@ messages:
       }
 
       Send(who,@StartEnchantment,#what=self,#time=time,#addicon=FALSE,
-           #state=[what,who,lTargets,TRUE,bFreeCast,100]);
+           #state=[what,who,lTargets,TRUE,bFreeCast,100,power]);
 
       Send(who,@AddMovementSpeedPercent,#iSpeed=-piMovementSpeedReduction);
 
@@ -69,62 +69,76 @@ messages:
    " 1) Casting time expires, time to call CastSpell"
    " 2) Spell expires"
    {
-      local oSpell, lTargets, iSpellPower;
+      local oAbility, lTargets, iSpellPower;
 
-      oSpell = First(state);
+      oAbility = First(state);
       lTargets = Nth(state,3);
+
+      // Let's clear up our trance related effects before proceeding further.
+      Send(who,@AddMovementSpeedPercent,#iSpeed=piMovementSpeedReduction);
 
       // Double-check to get valid targets.  Don't report 'cause we've already 
       //  spammed them during the first check.
-      lTargets = Send(oSpell,@GetGoodTargets,#who=who,#lTargets=lTargets,
+      lTargets = Send(oAbility,@GetGoodTargets,#who=who,#lTargets=lTargets,
                       #report=FALSE);
 
-      iSpellPower = Send(oSpell,@GetSpellPower,#who=who);
-      if Send(oSpell,@DoubleCheckAfterTrance,#who=who,#lTargets=lTargets,
-              #iSpellPower=iSpellPower)
+      if IsClass(oAbility,&Spell)
       {
-         Send(oSpell,@TranceCompleted,#oCaster=who,#state=state);
+         iSpellPower = Send(oAbility,@GetSpellPower,#who=who);
 
-         if lTargets <> $
-            AND isClass(First(lTargets),&Battler)
-            AND Send(First(lTargets),@TryDeflect,#what=oSpell,#caster=who)
+         if Send(oAbility,@DoubleCheckAfterTrance,#who=who,#lTargets=lTargets,
+                 #iSpellPower=iSpellPower)
          {
-            Send(oSpell,@CastSpell,#who=who,#lTargets=[who],
-                 #iSpellPower=iSpellPower/2);
-         }
-         else
-         {
-            Send(oSpell,@CastSpell,#who=who,#lTargets=lTargets,
-                 #iSpellPower=iSpellPower);
+            Send(oAbility,@TranceCompleted,#who=who,#state=state);
+
+            if lTargets <> $
+               AND isClass(First(lTargets),&Battler)
+               AND Send(First(lTargets),@TryDeflect,#what=oAbility,#caster=who)
+            {
+               Send(oAbility,@CastSpell,#who=who,#lTargets=[who],
+                    #iSpellPower=iSpellPower/2);
+            }
+            else
+            {
+               Send(oAbility,@CastSpell,#who=who,#lTargets=lTargets,
+                    #iSpellPower=iSpellPower);
+            }
          }
       }
+      else
+      {
+         if Send(oAbility,@DoubleCheckAfterTrance,#who=who,#lTargets=lTargets)
+         {
+            Send(oAbility,@TranceCompleted,#who=who,#state=state);
 
-      Send(who,@AddMovementSpeedPercent,#iSpeed=piMovementSpeedReduction);
+            Send(oAbility,@PerformSkill,#who=who,#lTargets=lTargets);
+         }
+      }
 
       return;
    }
 
    BreakTrance(who=$,state=$,event=1,disruption=0)
    {
-      local oSpell, tTimer, iTime;
+      local oAbility, iTime;
 
       if event = EVENT_OOM
       {
          return;
       }
 
-      oSpell = First(state);
+      oAbility = First(state);
 
       if event <> EVENT_STEER
       {
          if event = EVENT_CANCEL
          {
-            Send(oSpell,@TranceCanceled,#oCaster=who,#state=state);
+            Send(oAbility,@TranceCanceled,#who=who,#state=state);
          }
          else if (event = EVENT_DAMAGE)
             AND Send(who,@SetTranceFocus,#focus=-disruption,#bAdd=TRUE)
          {
-            iTime = Send(oSpell,@GetRawTranceTime);
+            iTime = Send(oAbility,@GetRawTranceTime);
             iTime = iTime * disruption / 100;
             Send(who,@SetTranceTime,#time=iTime,#bAdd=TRUE);
             Send(who,@MsgSendUser,#message_rsc=trance_disturbed);
@@ -133,7 +147,7 @@ messages:
          }
          else
          {
-            Send(oSpell,@TranceBroken,#oCaster=who,#state=state,#event=event);
+            Send(oAbility,@TranceBroken,#who=who,#state=state,#event=event);
          }
       }
 

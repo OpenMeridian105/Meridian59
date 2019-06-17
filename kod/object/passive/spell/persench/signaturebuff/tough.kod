@@ -1,0 +1,101 @@
+// Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+// All rights reserved.
+//
+// This software is distributed under a license that is described in
+// the LICENSE file that accompanies it.
+//
+// Meridian is a registered trademark.
+
+
+////////////////////////////////////////////////////////////////////////////////
+Tough is SignatureBuff
+
+constants:
+
+   include blakston.khd
+
+resources:
+
+   include Tough.lkod
+
+   Tough_name_rsc = "tough"
+   Tough_icon_rsc = itough.bgf
+   Tough_desc_rsc = \
+      "You show astounding tenacity in battle!"
+   Tough_on_rsc = "With a grim smile, you push through."
+   Tough_off_rsc = "Your tenacity fades."
+
+classvars:
+
+   viPersonal_ench = True
+
+   vrName = Tough_name_rsc
+   vrIcon = Tough_icon_rsc
+   vrDesc = Tough_desc_rsc
+
+   vrEnchantment_On = Tough_On_rsc
+   vrEnchantment_Off = Tough_Off_rsc
+
+   viSpell_num = SID_TOUGH
+   viSchool = SS_KRAANAN
+
+   viMeditate_ratio = 0
+   viSpell_level = 99
+
+   viFlash = FLASH_GOOD_SELF
+
+properties:
+
+   // Can't be purged.
+   viPurgeFactor = 0
+
+   // Procs can't be learned.
+   pbCanBeLearned = FALSE
+
+messages:
+
+   GetStateValue(iSpellpower=$,who=$,target=$)
+   {
+      return iSpellpower+(iSpellpower/40)*1000;
+   }
+
+   EndEnchantment(who=$,report=TRUE,state=0)
+   {
+      if who = $
+      {
+         return;
+      }
+
+      if state
+      {
+         Send(who,@MsgSendUser,#message_rsc=vrEnchantment_Off);
+      }
+
+      return;
+   }
+
+   DoSpellEffects(who=$,iSpellPower=0,iDuration=$,lTargets=$,bItemCast=FALSE)
+   {
+      local lType, state;
+
+      lType = [self,viDefensive,viOffensive,viResistanceType];
+
+      if iSpellPower
+      {
+         Send(who,@MsgSendUser,#message_rsc=vrEnchantment_On);
+      }
+
+      // GetStateValue is sometimes (eg used for pre-enchantment behaviors,
+      // who is the caster, target is the target (sometimes the same as who).
+      state = Send(self,@GetStateValue,#iSpellpower=iSpellpower,#who=who,
+                  #target=who);
+
+      Send(who,@StartEnchantment,#what=self,#state=state,#time=iDuration,
+            #lastcall=TRUE,#addicon=iSpellPower,#who=who,#ltype=lType,
+            #bItemCast=bItemCast,#iSpellpower=iSpellpower);
+
+      return TRUE;
+   }
+
+end
+////////////////////////////////////////////////////////////////////////////////

@@ -28,6 +28,7 @@ classvars:
 properties:
 
    piMovementSpeedReduction = 50
+   vbIsLightSource = FALSE
 
 messages:
 
@@ -68,34 +69,32 @@ messages:
    " 1) Casting time expires, time to call CastSpell"
    " 2) Spell expires"
    {
-      local oSpell, oCaster, lTargets, iSpellPower;
+      local oSpell, lTargets, iSpellPower;
 
       oSpell = First(state);
-      oCaster = Nth(state,2);
       lTargets = Nth(state,3);
-      Send(oCaster,@ClearTranceFlag);
 
       // Double-check to get valid targets.  Don't report 'cause we've already 
       //  spammed them during the first check.
-      lTargets = Send(oSpell,@GetGoodTargets,#who=oCaster,#lTargets=lTargets,
+      lTargets = Send(oSpell,@GetGoodTargets,#who=who,#lTargets=lTargets,
                       #report=FALSE);
 
-      iSpellPower = Send(oSpell,@GetSpellPower,#who=oCaster);
-      if Send(oSpell,@DoubleCheckAfterTrance,#who=oCaster,#lTargets=lTargets,
+      iSpellPower = Send(oSpell,@GetSpellPower,#who=who);
+      if Send(oSpell,@DoubleCheckAfterTrance,#who=who,#lTargets=lTargets,
               #iSpellPower=iSpellPower)
       {
-         Send(oSpell,@TranceCompleted,#oCaster=oCaster,#state=state);
+         Send(oSpell,@TranceCompleted,#oCaster=who,#state=state);
 
          if lTargets <> $
             AND isClass(First(lTargets),&Battler)
-            AND Send(First(lTargets),@TryDeflect,#what=oSpell,#caster=oCaster)
+            AND Send(First(lTargets),@TryDeflect,#what=oSpell,#caster=who)
          {
-            Send(oSpell,@CastSpell,#who=oCaster,#lTargets=[oCaster],
+            Send(oSpell,@CastSpell,#who=who,#lTargets=[who],
                  #iSpellPower=iSpellPower/2);
          }
          else
          {
-            Send(oSpell,@CastSpell,#who=oCaster,#lTargets=lTargets,
+            Send(oSpell,@CastSpell,#who=who,#lTargets=lTargets,
                  #iSpellPower=iSpellPower);
          }
       }
@@ -107,7 +106,7 @@ messages:
 
    BreakTrance(who=$,state=$,event=1,disruption=0)
    {
-      local oSpell, oCaster, tTimer, iTime;
+      local oSpell, tTimer, iTime;
 
       if event = EVENT_OOM
       {
@@ -115,33 +114,31 @@ messages:
       }
 
       oSpell = First(state);
-      oCaster = Nth(state,2);
 
       if event <> EVENT_STEER
       {
          if event = EVENT_CANCEL
          {
-            Send(oSpell,@TranceCanceled,#oCaster=oCaster,#state=state);
+            Send(oSpell,@TranceCanceled,#oCaster=who,#state=state);
          }
          else if (event = EVENT_DAMAGE)
-            AND Send(oCaster,@SetTranceFocus,#focus=-disruption,#bAdd=TRUE)
+            AND Send(who,@SetTranceFocus,#focus=-disruption,#bAdd=TRUE)
          {
             iTime = Send(oSpell,@GetRawTranceTime);
             iTime = iTime * disruption / 100;
-            Send(oCaster,@SetTranceTime,#time=iTime,#bAdd=TRUE);
-            Send(oCaster,@MsgSendUser,#message_rsc=trance_disturbed);
+            Send(who,@SetTranceTime,#time=iTime,#bAdd=TRUE);
+            Send(who,@MsgSendUser,#message_rsc=trance_disturbed);
 
             return;
          }
          else
          {
-            Send(oSpell,@TranceBroken,#oCaster=oCaster,#state=state,#event=event);
+            Send(oSpell,@TranceBroken,#oCaster=who,#state=state,#event=event);
          }
       }
 
       Send(who,@AddMovementSpeedPercent,#iSpeed=piMovementSpeedReduction);
-      Send(oCaster,@RemoveEnchantment,#what=self);
-      Send(oCaster,@ClearTranceFlag);
+      Send(who,@RemoveEnchantment,#what=self);
 
       return;
    }
@@ -171,6 +168,21 @@ messages:
    ModifyResistance(resistance_list=$)
    {
       return resistance_list;
+   }
+
+   IsLightSource()
+   {
+      return vbIsLightSource;
+   }
+
+   GetLightColor(state=$)
+   {
+      return Send(First(state),@GetLightColor);
+   }
+
+   GetLightIntensity(state=$)
+   {
+      return 100;
    }
 
 end

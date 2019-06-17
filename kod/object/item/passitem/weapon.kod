@@ -1142,5 +1142,37 @@ messages:
       return;
    }
 
+   GetLightColor()
+   {
+      if Send(self,@HasAttribute,#ItemAtt=WA_GLOWING)
+      {
+         return LIGHT_BWHITE;
+      }
+
+      return viLightColor;
+   }
+
+   GetLightIntensity()
+   {
+      local iState;
+
+      if Send(self,@HasAttribute,#ItemAtt=WA_GLOWING)
+      {
+         iState = Send(self,@GetAttributeData,#ItemAtt=WA_GLOWING);
+         if (iState <> $)
+         {
+            return Nth(iState,3)*2;
+         }
+      }
+
+      return viBaseLightIntensity;
+   }
+
+   IsLightSource()
+   {
+      return Send(self,@HasAttribute,#ItemAtt=WA_GLOWING)
+         OR (viBaseLightIntensity > 0);
+   }
+
 end
 ////////////////////////////////////////////////////////////////////////////////

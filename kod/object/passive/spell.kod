@@ -256,6 +256,12 @@ classvars:
    // Damage over time effects don't usually kill players.
    vbLethalDamageOverTime = FALSE
 
+   // What kind of light sould the spell emit while channeled?
+   // If no color is provided, uses standard class colors.
+   viLightColor = $
+   viBaseLightIntensity = 10
+   vbIsLightSource = FALSE
+
 properties:
 
    // Format of reagents:  Each element of plReagents is a list, describing a
@@ -267,7 +273,7 @@ properties:
    piCast_successes = 0
 
    // For successful casts
-   piAverage_spellpower = 0         
+   piAverage_spellpower = 0
    piCast_attempts_at_players = 0
 
    pbCanBeLearned = TRUE
@@ -3125,6 +3131,54 @@ messages:
    GetPeriodicSound()
    {
       return;
+   }
+
+   GetLightColor(state=$)
+   {
+      if viLightColor = $
+      {
+         if viSchool = SS_JALA
+         {
+            return LIGHT_JALA;
+         }
+
+         if viSchool = SS_SHALILLE
+         {
+            return LIGHT_SHALILLE;
+         }
+
+         if viSchool = SS_QOR
+         {
+            return LIGHT_QOR;
+         }
+
+         if viSchool = SS_KRAANAN
+         {
+            return LIGHT_KRAANAN;
+         }
+
+         if viSchool = SS_FAREN
+         {
+            return LIGHT_FAREN;
+         }
+
+         if viSchool = SS_RIIJA
+         {
+            return LIGHT_RIIJA;
+         }
+      }
+
+      return viLightColor;
+   }
+
+   GetLightIntensity(state=$)
+   {
+      return viBaseLightIntensity*viSpell_level;
+   }
+
+   IsLightSource()
+   {
+      return vbIsLightSource;
    }
 
 end

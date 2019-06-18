@@ -132,13 +132,12 @@ resources:
    spell_trance_cancel = \
       "You abandon your attempt to cast the %s spell."
    spell_trance_complete = \
-      "You finish channeling your %s spell."
+      "You finish channeling your %s spell!"
    spell_trance_fumble = \
-      "You struggle to shape your %s spell."
+      "You struggle to shape your %s spell!"
    spell_trance_begin_sound = spell_trance_begin.ogg
    spell_trance_break_sound = spell_trance_break.ogg
    spell_trance_cancel_sound = spell_trance_cancel.ogg
-   spell_trance_complete_sound = spell_trance_complete.ogg
 
    spell_disabled = \
       "~g~BAn unseen force rips the words of the spell from your throat "
@@ -175,7 +174,7 @@ classvars:
    viDefinite = ARTICLE_NONE
 
    // Some spells and skills do not check your exertion.
-   vbCheck_Exertion = TRUE    
+   vbCheck_Exertion = TRUE
    viSpellExertion = 1
 
    viSpell_Num = $
@@ -1516,7 +1515,9 @@ messages:
       Send(who,@LoseMana,#amount=Send(self,@GetManaCost,#who=who,
            #iSpellPower=iSpellpower));
 
-      // Spell casting requires exertion (which is in 10^-4 units)
+      // Spell casting requires exertion.
+      // Unlike skill exertion exertion, which represents 0.1 points of vigor,
+      // 1 point of spell exertion translates to one whole point of vigor.
       Send(who,@LoseVigor,#precision=TRUE,#amount=100*viSpellExertion);
 
       // Escaped Convict loses mana and vigor, but reagents are not required
@@ -1589,7 +1590,7 @@ messages:
       {
          Debug("Bad iSpellpower passed to SpellFailed");
       }
-      
+
       Send(who,@WaveSendUser,#wave_rsc=spell_fail_wav);
       if NOT Send(who,@PlayerIsImmortal)
       {
@@ -2376,8 +2377,8 @@ messages:
 
       Send(who,@WaveSendUser,#wave_rsc=spell_trance_begin_sound);
 
-      Send(oTrance,@BeginCastingTrance,#what=self,#who=who,#lTargets=lTargets,
-           #time=iCastTime,#bFreeCast=bFreeCast);
+      Send(oTrance,@BeginTrance,#what=self,#who=who,#lTargets=lTargets,
+           #time=iCastTime,#bFreeCast=bFreeCast,#power=iSpellpower);
 
       // If our cast time is the result of a fumble, increase post cast delay
       // by trance time.
@@ -2857,43 +2858,45 @@ messages:
       return viSchool = SS_RIIJA;
    }
 
-   TranceBroken(oCaster=$,state=$,event=$)
+
+   TranceBroken(who=$,state=$,event=$)
    {
-      if event <> EVENT_CAST
+      if (event = EVENT_CAST) OR (event = EVENT_ATTACK)
       {
-         Send(oCaster,@SetAttackTime,#time=viPostCast_Time*1000,#bAdd=TRUE);
+      // Reset attack timer to allow instant switching without recast.
+         Send(who,@SetAttackTime);
       }
       else
       {
-         // Reset attack timer to allow instant switching without recast.
-         Send(oCaster,@SetAttackTime);
+         Send(who,@SetAttackTime,#time=viPostCast_Time*1000,#bAdd=TRUE);
       }
 
-      Send(oCaster,@MsgSendUser,#message_rsc=spell_trance_break,
+      Send(who,@MsgSendUser,#message_rsc=spell_trance_break,
            #parm1=Send(self,@GetName));
-      Send(oCaster,@WaveSendUser,#wave_rsc=spell_trance_break_sound);
+      Send(who,@WaveSendUser,#wave_rsc=spell_trance_break_sound);
 
       return;
    }
 
-   TranceCanceled(oCaster=$,state=$)
+
+   TranceCanceled(who=$,state=$)
    {
-      Send(oCaster,@MsgSendUser,#message_rsc=spell_trance_cancel,
+      Send(who,@MsgSendUser,#message_rsc=spell_trance_cancel,
            #parm1=Send(self,@GetName));
-      Send(oCaster,@WaveSendUser,#wave_rsc=spell_trance_cancel_sound);
+      Send(who,@WaveSendUser,#wave_rsc=spell_trance_cancel_sound);
 
       if state <> $
          AND NOT Nth(state,5)
       {
-         Send(self,@SpellCanceled,#who=oCaster);
+         Send(self,@SpellCanceled,#who=who);
       }
 
       return;
    }
 
-   TranceCompleted(oCaster=$)
+   TranceCompleted(who=$)
    {
-      Send(oCaster,@MsgSendUser,#message_rsc=spell_trance_complete,
+      Send(who,@MsgSendUser,#message_rsc=spell_trance_complete,
            #parm1=Send(self,@GetName));
 
       return;

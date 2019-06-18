@@ -1057,6 +1057,8 @@ properties:
 
    ptAttackTimer = $
 
+   piLastTimeAttacked = 0
+
    plHonor = $
 
    piMonsterChasers = 0
@@ -3558,7 +3560,7 @@ messages:
    ReactivateAllEnchantments()
    "Called when a player logs on."
    {
-      local i, tTimer, iTime, state, oSpell;
+      local i, iTime, state, oSpell;
 
       foreach i in plEnchantments
       {
@@ -5087,7 +5089,7 @@ messages:
          AND piTimeAttackedPlayer + ATTACKED_PLAYER_WAIT < iTime;
    }
 
-   TryAttack(what = $,use_weapon = $,stroke_obj=$)
+   TryAttack(what = $, use_weapon = $, stroke_obj = $, bCheck = TRUE)
    {
       local i, iRange, oSpell, state;
 
@@ -5100,7 +5102,7 @@ messages:
       }
 
       // Check attack time.
-      if NOT Send(self,@IsOkayAttackTime)
+      if bCheck AND NOT Send(self,@IsOkayAttackTime)
       {
          return FALSE;
       }
@@ -5119,7 +5121,7 @@ messages:
 
       // Can pay costs?  Only check for skills, spells have already been cast.
       if IsClass(stroke_obj,&Skill)
-         AND NOT Send(stroke_obj,@CanPayCosts,#who=self,#oTarget=what)
+         AND NOT Send(stroke_obj,@CanPayCosts,#who=self,#lTargets=[what])
       {
          return FALSE;
       }
@@ -5270,6 +5272,11 @@ messages:
       }
 
       propagate;
+   }
+
+   GetTimeAttacked()
+   {
+      return piLastTimeAttacked;
    }
 
    // Determines if target is within attacking range, and within sight.
@@ -5999,6 +6006,21 @@ messages:
       }
 
       return oWeapon;
+   }
+
+   // Returns stroke that handles attacks based on weapon used.
+   GetStrokeObject()
+   {
+      local oWeapon;
+
+      oWeapon = Send(self,@GetWeapon);
+
+      if oWeapon <> $
+      {
+         return Send(SYS,@FindSkillByNum,#num=Send(oWeapon,@GetDefaultStrokeNumber));
+      }
+
+      return Send(SYS,@FindSkillByNum,#num=SKID_PUNCH);
    }
 
    // The next three functions deal with weapon improvement.
@@ -6735,6 +6757,7 @@ messages:
       if i > 0
       {
          ptAttackTimer = CreateTimer(self,@AttackTimer,i);
+         piLastTimeAttacked = GetTickCount();
       }
 
       return TRUE;
@@ -15876,7 +15899,7 @@ messages:
    }
 
    // Returns the spell that is currently in the process of being cast.
-   GetTranceSpell()
+   GetTranceAbility()
    {
       local lState;
 

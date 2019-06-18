@@ -613,6 +613,25 @@ messages:
       return $;
    }
 
+   SetEnchantedState(what=$,state=$)
+   "Sets state of <what> to specified value."
+   {
+      local i;
+
+      foreach i in plEnchantments
+      {
+         if Nth(i,2) = what
+            AND Length(i) > ENCHANTMENT_LIST_NO_STATE
+         {
+            SetNth(i,3,state);
+
+            return state;
+         }
+      }
+
+      return $;
+   }
+
    GetEnchantmentsByClass(enchClass=&Spell)
    "Returns a subset of plEnchantments whose elements are of the given class."
    {
@@ -2305,7 +2324,7 @@ messages:
    // run into this cap as piBaseRating is increased though.
    //
    // NOTE: For a monster, the stroke_obj is the monster itself for now.
-   TryAttack(what=$,stroke_obj=$,ambush=FALSE,factor=100)
+   TryAttack(what=$,stroke_obj=$,ambush=FALSE,factor=100,bGuaranteed=FALSE)
    {
       local iOffense, iDefense, iChanceToHit, iDamage, iScalefactor, oWeapon;
 
@@ -2328,7 +2347,7 @@ messages:
          iChanceToHit = iChanceToHit / 2;
       }
 
-      if iChanceToHit >= Random(1,1000) OR Send(what,@IsResting)
+      if iChanceToHit >= Random(1,1000) OR bGuaranteed OR Send(what,@IsResting)
       {
          // We hit!
          iDamage = Send(self,@GetDamage,#what=what,#stroke_obj=stroke_obj)*factor/100;

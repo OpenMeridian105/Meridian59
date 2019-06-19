@@ -80,6 +80,7 @@ classvars:
    vrSkill_intro = skill_intro_rsc
 
    vrFailed = skill_failed_by_chance
+   vrSucceed_wav = $
 
    viIndefinite = ARTICLE_NONE
    viDefinite = ARTICLE_NONE
@@ -118,8 +119,10 @@ classvars:
    viIcon_animation_start = 2
    viIcon_animation_end = 2
 
-   // Maybe one day we'll have cleave or a 2-handed weapon that does area dmg.
    vbIsAreaEffect = FALSE
+
+   vbReportTrance = TRUE
+   vbCanBreakTrance = TRUE
 
 properties:
 
@@ -765,7 +768,7 @@ messages:
       if NOT bSuccess
          AND Send(SETTINGS_OBJECT,@NoFizzles)
       {
-         iPreperationTime += viPostPerform_time*1000;
+         iPreperationTime += viPostPerform_time;
 
          Send(who,@MsgSendUser,#message_rsc=skill_trance_fumble,
             #parm1=Send(self,@GetName));
@@ -785,7 +788,7 @@ messages:
             {
                oTarget = First(lTargets);
             }
-         
+
             Send(self,@SkillPreparationMessage,#who=who,#target=oTarget,
                  #hearer=oObject);
          }
@@ -807,9 +810,13 @@ messages:
       Send(self,@DoPreTranceEffects,#who=who,#lTargets=lTargets);
 
       oTrance = Send(SYS,@FindSpellByNum,#num=SID_TRANCE);
-      Send(who,@MsgSendUser,#message_rsc=skill_trance_begin,
-           #parm1=Send(self,@GetName));
-      Send(who,@WaveSendUser,#wave_rsc=skill_trance_begin_sound);
+
+      if vbReportTrance
+      {
+         Send(who,@MsgSendUser,#message_rsc=skill_trance_begin,
+              #parm1=Send(self,@GetName));
+         Send(who,@WaveSendUser,#wave_rsc=skill_trance_begin_sound);
+      }
 
       Send(oTrance,@BeginTrance,#what=self,#who=who,#lTargets=lTargets,
            #time=iPreperationTime,#power=iSkillPower);
@@ -943,7 +950,7 @@ messages:
       }
       else
       {
-         Send(who,@SetAttackTime,#time=viPostPerform_time*1000,#bAdd=TRUE);
+         Send(who,@SetAttackTime,#time=viPostPerform_time,#bAdd=TRUE);
       }
 
       Send(who,@MsgSendUser,#message_rsc=skill_trance_break,
@@ -970,12 +977,16 @@ messages:
 
    TranceCompleted(who=$)
    {
-      Send(who,@MsgSendUser,#message_rsc=skill_trance_complete,
-           #parm1=Send(self,@GetName));
+      if vbReportTrance
+      {
+         Send(who,@MsgSendUser,#message_rsc=skill_trance_complete,
+            #parm1=Send(self,@GetName));
+      }
 
       return;
    }
 
+   // Determines when a maintained ability (mana focus etc.) can be disrupted.
    BreakTrance(who=$,state=$,event=$)
    {
       if event = EVENT_OOM
@@ -986,6 +997,12 @@ messages:
       Send(self,@TranceEnding,#who=who,#state=state);
 
       return TRUE;
+   }
+
+   // Determines if the preparation trance (&Trance) can be disrupted.
+   CanBreakTrance(who=$,state=$,event=1,disruption=0)
+   {
+      return vbCanBreakTrance;
    }
 
    TranceEnding()
@@ -1075,6 +1092,28 @@ messages:
                           #lTargets=lGoodTargets,#report=report);
 
       return lGoodTargets;
+   }
+
+   PlaySkillSound(room_obj = $,what = $)
+   {
+      local wave_rsc;
+
+      if room_obj <> $
+      {
+         wave_rsc = Send(self,@GetSkillSound);
+
+         if wave_rsc <> $
+         {
+            Send(room_obj,@SomethingWaveRoom,#what=what,#wave_rsc=wave_rsc);
+         }
+      }
+
+      return;
+   }
+
+   GetSkillSound()
+   {
+      return vrSucceed_wav;
    }
 
 end

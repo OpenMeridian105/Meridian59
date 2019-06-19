@@ -95,12 +95,12 @@ messages:
                AND isClass(First(lTargets),&Battler)
                AND Send(First(lTargets),@TryDeflect,#what=oAbility,#caster=who)
             {
-               Send(oAbility,@CastSpell,#who=who,#lTargets=[who],
+               Post(oAbility,@CastSpell,#who=who,#lTargets=[who],
                     #iSpellPower=iSpellPower/2);
             }
             else
             {
-               Send(oAbility,@CastSpell,#who=who,#lTargets=lTargets,
+               Post(oAbility,@CastSpell,#who=who,#lTargets=lTargets,
                     #iSpellPower=iSpellPower);
             }
          }
@@ -111,7 +111,7 @@ messages:
          {
             Send(oAbility,@TranceCompleted,#who=who,#state=state);
 
-            Send(oAbility,@PerformSkill,#who=who,#lTargets=lTargets);
+            Post(oAbility,@PerformSkill,#who=who,#lTargets=lTargets);
          }
       }
 
@@ -128,6 +128,12 @@ messages:
       }
 
       oAbility = First(state);
+
+      if NOT Send(oAbility,@CanBreakTrance,#who=who,#state=state,#event=event,
+         #disruption=disruption)
+      {
+         return;
+      }
 
       if event <> EVENT_STEER
       {

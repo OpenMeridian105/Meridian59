@@ -17,13 +17,16 @@ resources:
 
    include activeskill.lkod
 
-   ActiveSkill_wrong_weapon_src = "You are not wielding a suitable weapon for this attack."
+   ActiveSkill_wrong_weapon_rsc = "You are not wielding a suitable weapon for this attack."
+   ActiveSkill_no_weapon_rsc = "You can't use this skill with your bare hands!"
+   ActiveSkill_no_targets_rsc = "There is nothing to attack within your weapon's range."
 
 classvars:
 
    viSignatureBuffSID = $
    vbIsRangedAttack = FALSE
-   vbIsMeleeAttack = TRUE
+   vbIsMeleeAttack = FALSE
+   vbIsUnarmedAttack = FALSE
 
 properties:
 
@@ -42,6 +45,8 @@ messages:
       Send(self,@ImproveAbility,#who=who);
 
       Send(who,@SetAttackTime,#time=viPostPerform_time);
+
+      Send(self,@PlaySkillSound,#room_obj=Send(who,@GetOwner),#what=who);
 
       return;
    }
@@ -65,21 +70,42 @@ messages:
       // Make sure we are using an appropriate weapon.
       oWeapon = Send(who,@GetWeapon);
 
-      if oWeapon <> $
+      if oWeapon = $
       {
-         bRanged = IsClass(oWeapon,&RangedWeapon);
+         if NOT vbIsUnarmedAttack
+         {
+            Send(who,@MsgSendUser,#message_rsc=ActiveSkill_no_weapon_rsc);
+
+            return FALSE;
+         }
       }
-      else
+      else if NOT IsClass(oWeapon,&Weapon)
       {
-         bRanged = FALSE;
+         Send(who,@MsgSendUser,#message_rsc=ActiveSkill_wrong_weapon_rsc);
+
+         return FALSE;
+      }
+      else if IsClass(oWeapon,&RangedWeapon)
+      {
+         if NOT vbIsRangedAttack
+         {
+            Send(who,@MsgSendUser,#message_rsc=ActiveSkill_wrong_weapon_rsc);
+
+            return FALSE;
+         }
+      }
+      else if NOT vbIsMeleeAttack
+      {
+         Send(who,@MsgSendUser,#message_rsc=ActiveSkill_wrong_weapon_rsc);
+
+         return FALSE;
       }
 
-      // If we are neither a ranged, nor a melee attack, we don't care.
-      if (vbIsRangedAttack <> vbIsMeleeAttack)
-         AND (bRanged = vbIsMeleeAttack)
+      // If the skill is an attack, it needs some targets.
+      if (vbIsMeleeAttack OR vbIsRangedAttack OR vbIsUnarmedAttack)
+         AND (lTargets = $)
       {
-         Send(who,@MsgSendUser,#message_rsc=ActiveSkill_wrong_weapon_src);
-         return FALSE;
+         Send(who,@MsgSendUser,#message_rsc=ActiveSkill_no_targets_rsc);
       }
 
       if viSignatureBuffSID <> $

@@ -21,7 +21,7 @@ resources:
    Cleave_name_rsc = "cleave"
    Cleave_icon_rsc = icleave.bgf
    Cleave_desc_rsc = "Allows a daring warrior to cleave their way through hordes of enemies."
-   Cleave_no_targets_rsc = "There is nothing to cleave within your weapon's range."
+   Cleave_sound_rsc = thunderclap.ogg
 
 classvars:
 
@@ -44,7 +44,15 @@ classvars:
    vbAutomatic = FALSE
 
    // 2 cleaves per 3 regular attacks.
-   viPostPerform_time = 1500
+   viPostPerform_time = 1350
+   viPreperation_time = 150
+
+   vbIsMeleeAttack = TRUE
+   vrSucceed_wav = Cleave_sound_rsc
+
+   vbReportTrance = FALSE
+   vbCanBreakTrance = FALSE
+   vbIsAreaEffect = TRUE
 
 properties:
 
@@ -157,19 +165,14 @@ messages:
          return;
       }
 
+      Send(who,@EffectSendUserDuration,#effect=EFFECT_CLEAVE,#duration=900);
+
       propagate;
    }
 
-   CanPayCosts(who=$,lTargets=$)
+   GetTranceTime()
    {
-      if lTargets = $
-      {
-         Send(who,@MsgSendUser,#message_rsc=Cleave_no_targets_rsc);
-
-         return FALSE;
-      }
-
-      propagate;
+      return viPreperation_time;
    }
 
 end

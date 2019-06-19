@@ -261,6 +261,8 @@ classvars:
    viBaseLightIntensity = 10
    vbIsLightSource = FALSE
 
+   vbCanBreakTrance = TRUE
+
 properties:
 
    // Format of reagents:  Each element of plReagents is a list, describing a
@@ -2466,9 +2468,7 @@ messages:
    }
 
    BreakTrance(who=$,state=$,event=$)
-   "Handles any conditions that would prevent the trance from being broken.  "
-   "Most spells are not trances and don't do anything as a result of this, and "
-   "just return TRUE."
+   "Determines when a maintained ability (mana focus etc.) can be disrupted."
    {
       if event = EVENT_OOM AND viManaDrain = 0
       {
@@ -2478,6 +2478,12 @@ messages:
       Send(self,@TranceEnding,#who=who,#state=state);
 
       return TRUE;
+   }
+
+   CanBreakTrance(who=$,state=$,event=1,disruption=0)
+   "Determines if the casting trance (&Trance) can be disrupted."
+   {
+      return vbCanBreakTrance;
    }
 
    TranceEnding()

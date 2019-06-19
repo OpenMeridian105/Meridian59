@@ -72,7 +72,13 @@ Bool PerformEffect(WORD effect, char *ptr, int len)
    case EFFECT_SHAKE:
       Extract(&ptr, &duration, 4);
       if (config.animate)
-	 effects.shake = duration;
+      effects.shake = duration;
+      break;
+
+   case EFFECT_CLEAVE:
+      Extract(&ptr, &duration, 4);
+      if (config.animate)
+      effects.cleave = duration;
       break;
 
    case EFFECT_PARALYZE:
@@ -198,6 +204,7 @@ void EffectFlash(int duration)
 
    effects.invert = duration;
 }
+
 /****************************************************************************/
 /*
  * EffectShake:  Jiggle player's view around a little.
@@ -218,6 +225,45 @@ void EffectShake(void)
       effects.view_dx = (rand() % amplitude) - (amplitude / 2);
       effects.view_dy = (rand() % amplitude) - (amplitude / 2);
       effects.view_dz = (rand() % amplitude) - (amplitude / 2);
+      RedrawAll();
+   }
+}
+
+/****************************************************************************/
+/*
+ * EffectCleave:  Perform the cleave animation effect.
+ */
+void EffectCleave(void)
+{
+   if (effects.cleave <= 0)
+   {
+      if (effects.view_dx || effects.view_dy || effects.view_dz)
+         RedrawAll();
+      effects.view_dx = 0;
+      effects.view_dy = 0;
+      effects.view_dz = 0;
+   }
+   else
+   {
+      int ct = 900-effects.cleave;
+
+      if (effects.cleave > 300)
+      {
+         effects.view_dz = ((ct - 300)*(ct - 300)*(ct - 300)/27000 - 10*ct/3 + 1000)/2;
+      }
+      else
+      {
+         effects.view_dz = 0;
+      }
+
+      if (effects.cleave < 500)
+      {
+         int amplitude = min(SHAKE_AMPLITUDE, effects.cleave/3) + 1;
+         effects.view_dx = (rand() % amplitude) - (amplitude / 2);
+         effects.view_dy = (rand() % amplitude) - (amplitude / 2);
+         effects.view_dz = effects.view_dz + (rand() % amplitude) - (amplitude / 2);
+      }
+
       RedrawAll();
    }
 }
@@ -265,6 +311,13 @@ Bool AnimateEffects(int dt)
    {
       effects.shake = max(0, effects.shake - dt);
       EffectShake();
+      bRedraw = True;
+   }
+
+   if (effects.cleave > 0)
+   {
+      effects.cleave = max(0, effects.cleave - dt);
+      EffectCleave();
       bRedraw = True;
    }
 

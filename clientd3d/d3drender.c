@@ -3057,11 +3057,13 @@ void D3DRenderNamesDraw3D(d3d_render_cache_system *pCacheSystem, d3d_render_pool
 
             if (pRNode->obj.drawingtype == DRAWFX_SECONDTRANS)
             {
+               pChunk->alphaRef = TEMP_ALPHA_REF;
                pChunk->xLat0 = 0;
                pChunk->xLat1 = pRNode->obj.secondtranslation;
             }
             else if (pRNode->obj.drawingtype == DRAWFX_DOUBLETRANS)
             {
+               pChunk->alphaRef = TEMP_ALPHA_REF;
                pChunk->xLat0 = pRNode->obj.translation;
                pChunk->xLat1 = pRNode->obj.secondtranslation;
             }

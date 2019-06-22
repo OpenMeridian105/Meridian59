@@ -15700,7 +15700,8 @@ messages:
       else if Send(who,@GetLogoffPenaltyCount) > Send(SETTINGS_OBJECT,@GetHonorMaxPenalty)
       {
          iHonor = 0;
-         //Debug("Victim took too many penalties recently.");
+         Debug("Honor system: Victim ",Send(who,@GetTrueName),
+               " took too many penalties recently, no points awarded.");
       }
       // They have some, but not the full amount. Grab the rest.
       else if piHonorPoints < honor
@@ -15717,6 +15718,10 @@ messages:
       //Debug("Points transferred: ",iHonor," out of original ",honor);
       if iHonor <> 0
       {
+         // Keep track so we notice any suspicious activity.
+         // If we had SQL setup, that would be a better place to log this.
+         Debug("Transferred ",iHonor," from ",Send(who,@GetTrueName),
+               " to ", Send(what,@GetTrueName));
          Send(who,@AddHonorPoints,#who=who,#honor=-iHonor);
          Send(what,@AddHonorPoints,#who=what,#honor=iHonor);
       }
@@ -15771,7 +15776,8 @@ messages:
          return FALSE;
       }
 
-      if Send(self,@GetMaxHealth) < Send(SETTINGS_OBJECT,@GetHonorMinHP)
+      // Use level (base max HP).
+      if Send(self,@GetBaseMaxHealth) < Send(SETTINGS_OBJECT,@GetHonorMinHP)
       {
          return FALSE;
       }

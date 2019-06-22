@@ -78,13 +78,16 @@ messages:
 
    SomethingTryGo(What=$,Row=$,Col=$)
    {
-      if (Row = 5 AND (Col = 61 OR Col = 62 OR Col = 63))
-         OR (Row = 6 and (Col = 61 or Col = 62 or Col = 63))
-         OR (Row = 7 and (Col = 61 or Col = 62 or Col = 63))
+      // Don't try open unless closed or closing.
+      if (ptDoor = $
+         AND ((Row = 5 AND (Col = 61 OR Col = 62 OR Col = 63))
+         OR (Row = 6 AND (Col = 61 or Col = 62 or Col = 63))
+         OR (Row = 7 AND (Col = 61 or Col = 62 or Col = 63))))
       {
          Send(self,@SetSector,#sector=DOORSECTOR,#animation=ANIMATE_CEILING_LIFT,
                #height=DOOROPEN,#speed=50);
          Send(self,@SomethingWaveRoom,#wave_rsc=OrcCave6_door_up);
+
          ptDoor = CreateTimer(self,@CloseDoor,10000);
 
          return TRUE;

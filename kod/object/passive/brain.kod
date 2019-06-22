@@ -404,7 +404,9 @@ messages:
 
       // We saw the target being helped. Now are we able to locate the helper?
       // We are looking quite hard, so let's increase our standard radius.
-      iAggroRange = Send(mob,@GetAggroRange,#what=what)*4*piHelpRangePercentage/100;
+      // old overflow calc
+      // iAggroRange = Send(mob,@GetAggroRange,#what=what)*4*piHelpRangePercentage/100;
+      iAggroRange = Send(mob,@GetAggroRange,#what=what) / 25 * piHelpRangePercentage;
       iDistance = Send(mob,@SquaredFineDistanceTo3D,#what=what);
 
       if iDistance > iAggroRange
@@ -473,9 +475,11 @@ messages:
       // If some dummy nuked themselves, we don't care. It's a free realm.
       // Same if we were the killer. We're stone cold like that.
       // If no third party was involved, it seems like it was an accident. Tragical.
-      if (what = victim)
-         OR (what = mob)
-         OR (NOT IsClass(what,&Battler))
+      // Also can't care if we were the victim.
+      if (what = victim
+         OR mob = victim
+         OR what = mob
+         OR NOT IsClass(what,&Battler))
       {
          return;
       }
@@ -500,7 +504,9 @@ messages:
       // We saw the victim drop to the ground.
       // Now are we able to locate the murderer?
       // We are looking really hard, so let's increase our standard radius.
-      iAggroRange = Send(mob,@GetAggroRange,#what=what)*25*piKillRangePercentage/100;
+      // old overflow calc
+      // iAggroRange = Send(mob,@GetAggroRange,#what=what)*25*piKillRangePercentage/100;
+      iAggroRange = Send(mob,@GetAggroRange,#what=what) / 4 * piKillRangePercentage;
       iDistance = Send(mob,@SquaredFineDistanceTo3D,#what=what);
 
       if iDistance > iAggroRange

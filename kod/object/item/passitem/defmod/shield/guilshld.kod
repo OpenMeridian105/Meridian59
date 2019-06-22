@@ -143,8 +143,8 @@ messages:
 
    HasInsignia()
    {
-      if piInsigniaType >= INSIG_RIIJA
-         AND piInsigniaType <= INSIG_REBEL
+      if piInsigniaType >= INSIG_MINIMUM
+         AND piInsigniaType <= INSIG_MAXIMUM
       {
          return TRUE;
       }
@@ -307,6 +307,7 @@ messages:
       else if piInsigniaType = INSIG_DUKE { AddPacket(4,guildshield_insig_duke); }
       else if piInsigniaType = INSIG_SHALILLE { AddPacket(4,guildshield_insig_shalille); }
       else if piInsigniaType = INSIG_REBEL { AddPacket(4, guildshield_insig_rebel); }
+      else if piInsigniaType = INSIG_KALIOR { AddPacket(4, guildshield_insig_old_duke); }
       else { AddPacket(4,guildshield_insig_none); }
 
       return;
@@ -334,7 +335,7 @@ messages:
       }
 
       shape = Random(SHIELDSHAPE_SLASH, SHIELDSHAPE_CHECKER);
-      insignia = Random(INSIG_RIIJA, INSIG_NONE);
+      insignia = Random(INSIG_NONE, INSIG_REBEL);
 
       Send(self,@ChangeGuildShieldColor,#color1=color1,#color2=color2,
             #shape=shape,#override=TRUE);
@@ -348,58 +349,56 @@ messages:
       prShield_emblem_held = $;
       prShield_emblem_drop = $;
 
+
       if insignia = INSIG_RIIJA
       {
          prShield_emblem_held = guildshield_riija_over;
          prShield_emblem_drop = guildshield_riija;
       }
-
-      if insignia = INSIG_QOR
+      else if insignia = INSIG_QOR
       {
          prShield_emblem_held = guildshield_qor_over;
          prShield_emblem_drop = guildshield_qor;
       }
-
-      if insignia = INSIG_KRAANAN
+      else if insignia = INSIG_KRAANAN
       {
          prShield_emblem_held = guildshield_kraanan_over;
          prShield_emblem_drop = guildshield_kraanan;
       }
-
-      if insignia = INSIG_FAREN
+      else if insignia = INSIG_FAREN
       {
          prShield_emblem_held = guildshield_faren_over;
          prShield_emblem_drop = guildshield_faren;
       }
-
-      if insignia = INSIG_JALA
+      else if insignia = INSIG_JALA
       {
          prShield_emblem_held = guildshield_jala_over;
          prShield_emblem_drop = guildshield_jala;
       }
-
-      if insignia = INSIG_PRINCESS
+      else if insignia = INSIG_PRINCESS
       {
          prShield_emblem_held = guildshield_princess_over;
          prShield_emblem_drop = guildshield_princess;
       }
-
-      if insignia = INSIG_DUKE
+      else if insignia = INSIG_DUKE
       {
          prShield_emblem_held = guildshield_duke_over;
          prShield_emblem_drop = guildshield_duke;
       }
-
-      if insignia = INSIG_SHALILLE
+      else if insignia = INSIG_SHALILLE
       {
          prShield_emblem_held = guildshield_shalille_over;
          prShield_emblem_drop = guildshield_shalille;
       }
-
-      if insignia = INSIG_REBEL
+      else if insignia = INSIG_REBEL
       {
          prShield_emblem_held = guildshield_rebel_over;
          prShield_emblem_drop = guildshield_rebel;
+      }
+      else if insignia = INSIG_KALIOR
+      {
+         prShield_emblem_held = guildshield_old_duke_over;
+         prShield_emblem_drop = guildshield_old_duke;
       }
 
       piInsigniaType = insignia;
@@ -504,7 +503,7 @@ messages:
    {
       return vrShield_overlay;
    }
-   
+
    GetOverlayHotspot()
    {
       return HS_LEFT_WEAPON;
@@ -512,15 +511,13 @@ messages:
 
    SendOverlayInformation(iAnimation=$)
    {
-      AddPacket(4,vrShield_Overlay);
-      AddPacket(1,HS_LEFT_WEAPON);
+      AddPacket(4,vrShield_Overlay, 1,HS_LEFT_WEAPON);
       Send(self,@SendHeldAnimation,#iAnimation=iAnimation);
 
       if prShield_emblem_held <> $
       {
-         AddPacket(4,prShield_emblem_held);
-         AddPacket(1,HS_LEFT_WEAPON);
-         AddPacket(1,ANIMATE_NONE,2,1);
+         AddPacket(4,prShield_emblem_held, 1,HS_LEFT_WEAPON,
+                   1,ANIMATE_NONE, 2,1);
       }
 
       return;
@@ -531,8 +528,7 @@ messages:
       local XLAT;
 
       XLAT = Send(self,@GetPaletteTranslation);
-      AddPacket(1,ANIMATE_TRANSLATION,1,XLAT);
-      AddPacket(1,ANIMATE_NONE,2,2);
+      AddPacket(1,ANIMATE_TRANSLATION, 1,XLAT, 1,ANIMATE_NONE, 2,2);
 
       return;
    }
@@ -580,14 +576,13 @@ messages:
       if prShield_emblem_held <> $
          AND prShield_emblem_drop <> $
       {
-         AddPacket(1,1);
-         AddPacket(4,prShield_emblem_drop,1,1,1,ANIMATE_NONE,2,2);
+         AddPacket(1,1, 4,prShield_emblem_drop, 1,1, 1,ANIMATE_NONE, 2,2);
       }
       else
       {
          AddPacket(1,0);
       }
-      
+
       return;
    }
 
@@ -615,14 +610,13 @@ messages:
       if prShield_emblem_held <> $
          AND prShield_emblem_drop <> $
       {
-         AddPacket(1,1);
-         AddPacket(4,prShield_emblem_drop,1,1,1,ANIMATE_NONE,2,1);
+         AddPacket(1,1, 4,prShield_emblem_drop, 1,1, 1,ANIMATE_NONE, 2,1);
       }
       else
       {
          AddPacket(1,0);
       }
-      
+
       return;
    }
 
@@ -660,7 +654,7 @@ messages:
       }
 
       iSchool = Send(oSpell,@GetSchool);
-      
+
       // Give a bonus to certain spells if the shield has the proper insignia
       if (piInsigniaType = INSIG_FAREN AND iSchool = SS_FAREN)
          OR (piInsigniaType = INSIG_KRAANAN AND iSchool = SS_KRAANAN)
@@ -676,11 +670,25 @@ messages:
       if piInsigniaType = INSIG_DUKE
          OR piInsigniaType = INSIG_PRINCESS
          OR piInsigniaType = INSIG_REBEL
+         OR piInsigniaType = INSIG_KALIOR
       {
-         return random(3,7);
+         return Random(3,7);
       }
 
       return 0;
+   }
+
+   UpdateFixInsignia()
+   "Update 2.9, INSIG_NONE changes from 10 to 0. Why they didn't just use 0 "
+   "to mean none is beyond me. Change necessary if we actually want to add "
+   "more insignias easily."
+   {
+      if (piInsigniaType = 10)
+      {
+         piInsigniaType = 0;
+      }
+
+      return;
    }
 
 end

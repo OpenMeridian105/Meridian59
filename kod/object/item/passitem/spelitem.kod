@@ -372,6 +372,21 @@ messages:
       return vrLabelName;
    }
 
+   SendBrokenMessage()
+   "Last charge consumed, send message about the item's fate."
+   {
+      // Post this so it prints AFTER the spell message.
+      if (poOwner <> $
+         AND IsClass(poOwner,&User))
+      {
+         Post(poOwner,@MsgSendUser,#message_rsc=vrBroken,
+               #parm1=Send(self,@GetCapDef),
+               #parm2=Send(self,@GetName));
+      }
+
+      return;
+   }
+
    SetHits(number = $)
    {
       if (number = $)
@@ -383,14 +398,7 @@ messages:
 
       if (piHits <= 0)
       {
-         // Post this so it prints AFTER the spell message.
-         if (poOwner <> $
-            AND IsClass(poOwner,&User))
-         {
-            Post(poOwner,@MsgSendUser,#message_rsc=vrBroken,
-                  #parm1=Send(self,@GetCapDef),
-                  #parm2=Send(self,@GetName));
-         }
+         Send(self,@SendBrokenMessage);
 
          // Due to a lack of art resources we are now deleting all used up
          // spellitems. I'm leaving vbNoBrokenView in so that if/when we ever

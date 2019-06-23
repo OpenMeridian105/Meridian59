@@ -19,6 +19,7 @@ int codegen_initialised = False;
 int codegen_ok;
 extern int debug_bof;  /* Should we put debugging info into .bof? */
 extern int directory_mode;
+extern int print_unref_locals;
 
 typedef struct {
    int lineno;   // Kod line number
@@ -1146,6 +1147,21 @@ void codegen_message(message_handler_type m)
    int numlocals, maxtemp, maxlocals, numparams;
    list_type s, p = m->header->params;
    long localpos;
+
+   // Complain about unreferenced local vars.
+   // Ideally silently remove them, but renumbering ID nums is tricky.
+   if (print_unref_locals && list_length(m->locals) > 0)
+   {
+      for (list_type l = m->locals; l != NULL; l = l->next)
+      {
+         id_type id = (id_type)l->data;
+         if (id->reference_num == 0)
+         {
+            codegen_warning(m->header->lineno, "Unreferenced local %s in message %s",
+               id->name, m->header->message_id->name);
+         }
+      }
+   }
 
    /* Leave space for # of local variables */
    localpos = FileCurPos(outfile);

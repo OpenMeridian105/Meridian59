@@ -24,6 +24,7 @@ extern list_type file_list;
 extern int codegen_ok;
 extern char bof_output_dir[_MAX_PATH];
 extern char rsc_output_dir[_MAX_PATH];
+extern int print_unref_rscs;     /* Whether we print out rscs with no references */
 
 typedef struct {
    char *dir_name; // Name of this directory.
@@ -140,6 +141,45 @@ void compile_directory_mode()
    // Partially failed build is still a broken build.
    if (codegen_ok)
       save_kodbase();
+
+   if (print_unref_rscs)
+   {
+      list_type rsc_list = table_get_all(st.globalvars);
+      for (list_type l = rsc_list; l != NULL; l = l->next)
+      {
+         id_type ID = (id_type)l->data;
+         if (ID->type == I_RESOURCE
+            && ID->is_string_rsc
+            && ID->reference_num == 0)
+         {
+            printf("Found rsc %s with no references\n", ID->name);
+         }
+      }
+   }
+
+   // Note - this gives a rough overview of unused properties
+   // but isn't totally accurate depending on class build order
+   // and where props are used. Conversely, a global table ignores
+   // cases where a class has an unused prop with the same name
+   // as a used prop in an unrelated class hierarchy.
+   /*for (list_type l = st.classes; l != NULL; l = l->next)
+   {
+      class_type cl = (class_type)l->data;
+      for (list_type p = cl->properties; p != NULL; p = p->next)
+      {
+         property_type prop = (property_type)p->data;
+         if (stricmp(prop->id->name,"piTimeLimit") == 0)
+         {
+            printf("Found prop %i:%s with %i references in class %s\n",
+               prop->id->idnum, prop->id->name, prop->id->reference_num, cl->class_id->name);
+         }
+         if (prop->id->reference_num == 0)
+         {
+            printf("Found prop %s with no references in class %s\n",
+               prop->id->name, cl->class_id->name);
+         }
+      }
+   }*/
 
    // Codegen cleanup.
    codegen_exit();

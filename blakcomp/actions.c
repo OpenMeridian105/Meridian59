@@ -419,14 +419,17 @@ id_type duplicate_id(id_type id)
    temp->type = id->type;
    temp->ownernum = id->ownernum;
    temp->idnum = id->idnum;
+   temp->reference_num = id->reference_num;
+   temp->is_string_rsc = id->is_string_rsc;
    return temp;
 }
 /************************************************************************/
 /* 
  * lookup_id: Translate from an identifier name to an ID number.
  *   Returns id that matches the given id, or NULL if none is in table.
+ *   refcount is true if we should increment the ref number for this var.
  */
-id_type lookup_id(id_type id)
+id_type lookup_id(id_type id, bool refcount = true)
 {
    id_type record;
 
@@ -444,6 +447,9 @@ id_type lookup_id(id_type id)
       id->idnum = record->idnum;
       id->ownernum = record->ownernum;
       id->source = record->source;
+      if (refcount)
+         record->reference_num++;
+      id->reference_num = record->reference_num;
       return record;
    }
 
@@ -455,6 +461,9 @@ id_type lookup_id(id_type id)
       id->idnum = record->idnum;
       id->ownernum = record->ownernum;
       id->source = record->source;
+      if (refcount)
+         record->reference_num++;
+      id->reference_num = record->reference_num;
       return record;
    }
 
@@ -466,6 +475,10 @@ id_type lookup_id(id_type id)
       id->idnum = record->idnum;
       id->ownernum = record->ownernum;
       id->source = record->source;
+      id->is_string_rsc = record->is_string_rsc;
+      if (refcount)
+         record->reference_num++;
+      id->reference_num = record->reference_num;
       return record;
    }
 
@@ -477,6 +490,10 @@ id_type lookup_id(id_type id)
       id->idnum = record->idnum;
       id->ownernum = record->ownernum;
       id->source = record->source;
+      id->is_string_rsc = record->is_string_rsc;
+      if (refcount)
+         record->reference_num++;
+      id->reference_num = record->reference_num;
       return record;
    }
 
@@ -488,6 +505,9 @@ id_type lookup_id(id_type id)
       id->idnum = record->idnum;
       id->ownernum = record->ownernum;
       id->source = record->source;
+      if (refcount)
+         record->reference_num++;
+      id->reference_num = record->reference_num;
       return record;
    }
 
@@ -504,6 +524,9 @@ id_type lookup_id(id_type id)
             id->idnum = record->idnum;
             id->ownernum = record->ownernum;
             id->source = record->source;
+            if (refcount)
+               record->reference_num++;
+            id->reference_num = record->reference_num;
             return record;
          }
       }
@@ -559,8 +582,8 @@ int add_identifier(id_type id, int type)
       break;
 
    case I_PROPERTY:
-      if (table_insert(st.classvars, (void *) id, id_hash, id_compare) == 0)
-	 id->idnum = ++st.maxproperties;
+      if (table_insert(st.classvars, (void *)id, id_hash, id_compare) == 0)
+         id->idnum = ++st.maxproperties;
       else return 1;
       break;
 
@@ -677,6 +700,8 @@ id_type make_identifier(char *name)
 {
    id_type id = (id_type) SafeMalloc(sizeof(id_struct));
 
+   id->reference_num = 0;
+   id->is_string_rsc = false;
    id->type = I_UNDEFINED;   /* Type is undefined until it's looked up */
    id->name = name;
    id->source = COMPILE;     /* Id came from a newly compiled file */
@@ -1059,7 +1084,7 @@ param_type make_parameter(id_type id, expr_type e)
       return p;
    }
 
-   lookup_id(id);
+   lookup_id(id, false);
 
    /* Left-hand side must not have appeared before, except perhaps as a parameter */
    switch (id->type) {
@@ -1105,7 +1130,7 @@ param_type make_parameter(id_type id, expr_type e)
 id_type make_var(id_type id)
 {
    /* Add to list of local variables, if it hasn't been defined */
-   lookup_id(id);
+   lookup_id(id, false);
 
    switch(id->type)
    {
@@ -1133,7 +1158,7 @@ classvar_type make_classvar(id_type id, expr_type e)
       return cv;
    }
 
-   lookup_id(id);
+   lookup_id(id, false);
    switch(id->type) 
    {
    case I_CONSTANT:
@@ -1177,7 +1202,7 @@ property_type make_property(id_type id, expr_type e)
 
    /* Left-hand side must not have appeared as a property before, except possibly as a
     * property of one of our superclasses.  Properties shadow other global names. */
-   lookup_id(id);
+   lookup_id(id, false);
    switch(id->type) {
 
    case I_CONSTANT:
@@ -1285,8 +1310,9 @@ resource_type make_resource(id_type id, const_type c, int la_id)
 
    id->ownernum = st.curclass;
 
-   /* Left-hand side must not have appeared before, except maybe in dbase */
-   old_id = lookup_id(id);
+   /* Left-hand side must not have appeared before, except maybe in dbase
+      This is an initial assignment so don't increment ref count. */
+   old_id = lookup_id(id, false);
 
    /* Check if this resource is already present in another class.
     * old_id will be NULL if it isn't, and if it is defined in the
@@ -1297,6 +1323,10 @@ resource_type make_resource(id_type id, const_type c, int la_id)
    switch(id->type) {
    case I_UNDEFINED:
       id->source = COMPILE;
+      // Keep track of whether this rsc ID is for a string, in case
+      // we are tracking string rsc references (hacky, but useful).
+      if (c->type == C_STRING)
+         id->is_string_rsc = true;
       add_identifier(id, I_RESOURCE);
       break;
 
@@ -1973,7 +2003,7 @@ class_type make_class_signature(id_type class_id, id_type superclass_id)
    c->class_id = class_id;
 
    /* Class name must not have appeared before */
-   old_id = lookup_id(class_id);
+   old_id = lookup_id(class_id, false);
 
    switch(class_id->type)
    {

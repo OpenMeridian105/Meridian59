@@ -139,10 +139,16 @@ typedef struct {
    const char *name;
    int type;
    int idnum;
-   int ownernum; /* Id # of thing that contains this identifier in its scope.  e.g. if
-		    this id is of type message, then this is the class # */
-   int source;   /* Whether this id came from the database file (source = DBASE)
-		    or from a source code file (source = COMPILE) */
+   // Id # of thing that contains this identifier in its scope.  e.g. if
+   // this id is of type message, then this is the class #
+   int ownernum;
+   // Whether this id came from the database file (source = DBASE)
+   // or from a source code file (source = COMPILE)
+   int source;
+   // Number of times this ID has been referenced, not including init.
+   // Only used for resources at present.
+   int reference_num;
+   bool is_string_rsc;
 } *id_type, id_struct;
 
 typedef struct {

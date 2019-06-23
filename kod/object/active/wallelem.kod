@@ -341,41 +341,33 @@ messages:
       return;
    }
 
-   SomethingMoved(what = $,new_row = $,new_col = $)
+   SomethingMoved(what = $,new_row = $,new_col = $ ,fine_row = $, fine_col = $,
+                  old_row = $, old_col = $, old_finerow = $, old_finecol = $,
+                  cause = CAUSE_UNKNOWN)
    {
-      local iRow, iFineRow, iCol, iFineCol;
-
-      // Determine victim's row and column
-      if new_row = $
+      // Only want to check players and mobs making manual movements,
+      // not teleports etc.
+      if (cause <> CAUSE_USER_INPUT AND cause <> CAUSE_MOB_MOVEMENT)
       {
-         iRow = Send(what,@GetRow);
-      }
-      else
-      {
-         iRow = new_row;
+         return;
       }
 
-      if new_col = $
+      if (new_row = $ OR new_col = $ OR fine_row = $ OR fine_col = $
+         OR old_row = $ OR old_col = $ OR old_finerow = $ OR old_finecol = $)
       {
-         iCol = Send(what,@GetCol);
+         Debug("Missing params in ", GetClass(self), " SomethingMoved");
       }
-      else
-      {
-         iCol = new_col;
-      }
-
-      iFineRow = Send(what,@GetFineRow);
-
-      iFineCol = Send(what,@GetFineCol);
 
       // Check for range
       if IsClass(what,&Battler)
          AND NOT (IsClass(what,&Player)
                   AND Send(what,@IsInCannotInteractMode))
-         AND Send(self,@InRange,#what=what,#iRow=iRow,#iCol=iCol,
-               #iFineRow=iFineRow,#iFineCol=iFineCol)
+         AND IntersectLineCircle(Send(self,@GetRow), Send(self,@GetCol),
+                     Send(self,@GetFineRow), Send(self,@GetFineCol),
+                     old_row, old_col, old_finerow, old_finecol, new_row,
+                     new_col, fine_row, fine_col, piRange)
       {
-         Send(self,@CheckForEffect,#what=what,#new_row=iRow,#new_col=iCol);
+         Send(self,@CheckForEffect,#what=what,#new_row=new_row,#new_col=new_col);
       }
 
       return;
@@ -438,7 +430,6 @@ messages:
 
       return TRUE;
    }
-
 
    PeriodicEffect()
    "Periodic check. Clears the affected list, does the effect "

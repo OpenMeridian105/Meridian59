@@ -25,10 +25,14 @@ resources:
 
    BombFire_miss = "You narrowly dodge the meteor!"
    BombFire_damage0 = "Miraculously, the meteor fails to do you any harm."
-   BombFire_damage10 = "Considering you were just hit by a meteor, you don't feel too bad..."
-   BombFire_damage20 = "Ouch!  Who would have thought a giant ball of molten rock would hurt so much?"
-   BombFire_damage30 = "OUCH!  Everything they ever said about being hit by a meteor was true all along!"
-
+   BombFire_damage10 = \
+      "Considering you were just hit by a meteor, you don't feel too bad..."
+   BombFire_damage20 = \
+      "Ouch!  Who would have thought a giant ball of molten rock "
+      "would hurt so much?"
+   BombFire_damage30 = \
+      "OUCH!  Everything they ever said about being hit by a meteor was "
+      "true all along!"
    BombFire_dissipates = "The meteor spontaneously disintegrates."
 
 classvars:
@@ -101,8 +105,17 @@ messages:
 
          Post(self,@Delete);
       }
-      else if NOT LineOfSightBSP(Send(poOwner,@GetRoomData),iRow,iCol,iFine_row,
-             iFine_col,Send(self,@GetHeight),iNewRow,iNewCol,iNewFine_row,iNewFine_col,Send(self,@GetHeight))
+      // LineOfSightBSP causes issues if we can see a place but not actually
+      // move onto it (e.g. medium height difference). CanMoveInRoomBSP causes
+      // issues with places we can see but are blocked from moving to (e.g. 
+      // outside bow hut rocky cliff drops that can't be moved on). Trade off
+      // as to which scenario should be blocked.
+      //else if NOT LineOfSightBSP(Send(poOwner,@GetRoomData),iRow,iCol,iFine_row,
+      //       iFine_col,Send(self,@GetHeight),iNewRow,iNewCol,iNewFine_row,
+      //       iNewFine_col,Send(self,@GetHeight))
+      else if NOT CanMoveInRoomBSP(Send(poOwner,@GetRoomData),iRow,iCol,iFine_row,
+            iFine_col,Send(self,@GetHeight),iNewRow,iNewCol,iNewFine_row,
+            iNewFine_col,50,self,CANMOVE_NO_FLAG)
       {
          // We made contact! This is it! No more additional elements!
          if ptSeed <> $

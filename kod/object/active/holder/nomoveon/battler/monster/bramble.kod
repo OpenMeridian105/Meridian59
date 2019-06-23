@@ -24,8 +24,9 @@ resources:
 
    brambles_name_rsc = "patch of bramble"
    brambles_icon_rsc = wothorns.bgf
-   brambles_desc_rsc = "The patch of bramble looms dangerously, "
-                       "hoping to tear into your skin if you walk by."
+   brambles_desc_rsc = \
+      "The patch of bramble looms dangerously, "
+      "hoping to tear into your skin if you walk by."
 
    Brambles_damage0 = "You walk through the patch of bramble without incident."
    Brambles_damage2 = \
@@ -40,7 +41,6 @@ resources:
    brambles_icon_dead = wolightn.bgf
 
    brambles_dead_name_rsc = "the ruins of some bramble"
-
    brambles_monster_healing = \
       "The patch of brambles rustles as it grows back a little."
    bramble_dissipates = "A patch of the bramble chokes and dies."
@@ -315,46 +315,38 @@ messages:
       return;
    }
 
-   SomethingMoved(what = $,new_row = $,new_col = $)
+   SomethingMoved(what = $,new_row = $,new_col = $ ,fine_row = $, fine_col = $,
+                  old_row = $, old_col = $, old_finerow = $, old_finecol = $,
+                  cause = CAUSE_UNKNOWN)
    {
-      local iRow, iFineRow, iCol, iFineCol;
-
+      // Only want to check players and mobs making manual movements,
+      // not teleports etc.
+      if (cause <> CAUSE_USER_INPUT AND cause <> CAUSE_MOB_MOVEMENT)
+      {
+         return;
+      }
+      
       if NOT (Send(what,@CanBleed) AND Send(what,@CanBeTangled))
       {
          return;
       }
 
-      // Determine victim's row and column
-      if new_row = $
+      if (new_row = $ OR new_col = $ OR fine_row = $ OR fine_col = $
+         OR old_row = $ OR old_col = $ OR old_finerow = $ OR old_finecol = $)
       {
-         iRow = Send(what,@GetRow);
+         Debug("Missing params in ", GetClass(self), " SomethingMoved");
       }
-      else
-      {
-         iRow = new_row;
-      }
-
-      if new_col = $
-      {
-         iCol = Send(what,@GetCol);
-      }
-      else
-      {
-         iCol = new_col;
-      }
-
-      iFineRow = Send(what,@GetFineRow);
-
-      iFineCol = Send(what,@GetFineCol);
 
       // Check for range
       if IsClass(what,&Battler)
          AND NOT (IsClass(what,&Player)
                   AND Send(what,@IsInCannotInteractMode))
-         AND Send(self,@InRange,#what=what,#iRow=iRow,#iCol=iCol,
-               #iFineRow=iFineRow,#iFineCol=iFineCol)
+         AND IntersectLineCircle(Send(self,@GetRow), Send(self,@GetCol),
+                     Send(self,@GetFineRow), Send(self,@GetFineCol),
+                     old_row, old_col, old_finerow, old_finecol, new_row,
+                     new_col, fine_row, fine_col, piRange)
       {
-         Send(self,@CheckForEffect,#what=what,#new_row=iRow,#new_col=iCol);
+         Send(self,@CheckForEffect,#what=what,#new_row=new_row,#new_col=new_col);
       }
 
       return;

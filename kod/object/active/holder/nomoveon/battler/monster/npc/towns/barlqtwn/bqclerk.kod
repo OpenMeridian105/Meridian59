@@ -75,8 +75,6 @@ resources:
       "neither new citizens nor outlaws can vote or hold office."
       "\n\n"
       "--Caramo"
-   bq_clerk_tally_day = \
-      "The next Justicar will be sworn into office %d Meridian days henceforth."
    bq_clerk_tally_no_leader = \
       "Thus far, there are no votes tallied for the next Justicar election."
    bq_clerk_tally_leader = \
@@ -101,7 +99,6 @@ resources:
    bq_clerk_murderers = "murderers"
    bq_clerk_alawful = "a lawful citizen"
    bq_clerk_lawfuls = "lawful citizens"
-   bq_clerk_aperson = "a person"
    bq_clerk_person = "person"
    bq_clerk_people = "people"
    bq_clerk_pardons_served1 = "In this term, Justicar %q hath served %i %s."
@@ -1135,16 +1132,14 @@ messages:
 
    JusticarRequestsRecord(who=$)
    {
-      local iTotal, iJust, iUnjust, bMurderer, bOutlaw;
+      local iTotal, iJust, iUnjust;
 
       if who = $
       {
          return;
       }
 
-      bMurderer = Send(who,@CheckPlayerFlag,#flag=PFLAG_MURDERER);
-
-      if bMurderer
+      if Send(who,@CheckPlayerFlag,#flag=PFLAG_MURDERER)
       {
          iJust = Send(who,@GetJustifiedKills);
          iUnjust = Send(who,@GetUnjustifiedKills);
@@ -1169,9 +1164,7 @@ messages:
          return;
       }
 
-      bOutlaw = Send(who,@CheckPlayerFlag,#flag=PFLAG_OUTLAW);
-
-      if bOutlaw
+      if Send(who,@CheckPlayerFlag,#flag=PFLAG_OUTLAW)
       {
          Send(self,@SayToOne,#target=poJusticar,
               #message_rsc=bq_clerk_jc_summary_outlaw,
@@ -1318,8 +1311,7 @@ messages:
 
       if lTallied = $
       {
-         Send(self,@SayToOne,#target=who,#message_rsc=bq_clerk_tally_tied,
-               #type1=STRING_RESOURCE);
+         Send(self,@SayToOne,#target=who,#message_rsc=bq_clerk_tally_no_leader);
 
          return;
       }
@@ -1344,8 +1336,7 @@ messages:
 
       if bTie
       {
-         Send(self,@SayToOne,#target=who,#message_rsc=bq_clerk_tally_tied,
-               #type1=STRING_RESOURCE);
+         Send(self,@SayToOne,#target=who,#message_rsc=bq_clerk_tally_tied);
 
          return;
       }

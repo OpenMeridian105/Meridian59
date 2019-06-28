@@ -21,12 +21,14 @@
 typedef struct {
    int  invert;    // # of milliseconds remaining in invert effect (0 if off)
    int  shake;     // # of milliseconds remaining in shake effect (0 if off)
+   int  cleave;    // # of milliseconds remaining in cleave effect (0 if off)
    int  pain;      // # of milliseconds remaining in pain effect (0 if off)
    int  blur;      // # of milliseconds remaining in blur effect (0 if off)
    int  waver;     // # of milliseconds remaining in wavering effect (0 if off)
    int  whiteout;     // # of milliseconds remaining in whiteout effect (0 if off)
-      
+
    int  view_dx, view_dy, view_dz;  // Draw player offset by this amount (to shake screen)
+
    Bool paralyzed; // True when user shouldn't be allowed to move
    Bool blind;     // True when user can't see anything
 

@@ -5971,7 +5971,15 @@ messages:
 
       if oWeapon <> $
       {
-         return Send(SYS,@FindSkillByNum,#num=Send(oWeapon,@GetDefaultStrokeNumber));
+         if IsClass(oWeapon,&Weapon)
+         {
+            return Send(SYS,@FindSkillByNum,#num=Send(oWeapon,@GetDefaultStrokeNumber));
+         }
+         else
+         {
+            // Our weapon is a touch attack and doubles as a stroke object.
+            return oWeapon;
+         }
       }
 
       return Send(SYS,@FindSkillByNum,#num=SKID_PUNCH);

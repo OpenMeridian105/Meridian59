@@ -38,65 +38,63 @@ classvars:
 
 properties:
 
-   piBottom = TREE_OAK
    ptSap = $
 
 messages:
-   
-   constructor(bottom = TREE_OAK,top = $)
+
+   Constructor()
    {
-   ptSap = CreateTimer(self,@DropSap,Random(SAP_TIME_MIN,SAP_TIME_MAX));
-   propagate;
+      ptSap = CreateTimer(self,@DropSap,Random(SAP_TIME_MIN,SAP_TIME_MAX));
+
+      propagate;
    }
 
    CheckUserNear()
    {
-   local oRoom, each_obj, i;
+      local each_obj, i;
 
-   oRoom = send(self,@getowner);
-   foreach i in Send(oRoom,@GetHolderActive)
+      foreach i in Send(poOwner,@GetHolderActive)
       {
-      each_obj = Send(oRoom,@HolderExtractObject,#data=i);
-      if isclass(each_obj,&player)
+         each_obj = First(i);
+         if (IsClass(each_obj,&Player)
+            AND Send(each_obj,@SquareddistanceTo,#what=self) < 100)
          {
-         if (send(each_obj,@SquareddistanceTo,#what=self) < 100)
-            { return TRUE; }
+            return TRUE;
          }
       }
-   return FALSE;
-   } 
 
+      return FALSE;
+   }
 
    DropSap()
    {
-   local oRoom;
-   oRoom = Send(self,@getowner);
-   if not send(self,@CheckUserNear) and
-      not send(oRoom,@PossessesA,#class=&yrxlsap)
+      if NOT Send(self,@CheckUserNear)
+         AND NOT Send(poOwner,@PossessesA,#class=&Yrxlsap)
       {
-      Send(oRoom,@NewHold,#what=Create(&yrxlsap,#Gathered=FALSE),
-         #new_row=send(self,@getrow) + 1,
-         #new_col=send(self,@getcol) + 1);
+         Send(poOwner,@NewHold,#what=Create(&Yrxlsap,#Gathered=FALSE),
+               #new_row=Send(self,@GetRow) + 1,
+               #new_col=Send(self,@GetCol) + 1);
       }
-   ptSap = CreateTimer(self,@DropSap,Random(SAP_TIME_MIN,SAP_TIME_MAX));
-   return;
+      ptSap = CreateTimer(self,@DropSap,Random(SAP_TIME_MIN,SAP_TIME_MAX));
+
+      return;
    }
 
    Delete()
    {
-   if ptSap <> $
+      if ptSap <> $
       {
-      deletetimer(ptsap);
-      ptSap = $;
+         DeleteTimer(ptSap);
+         ptSap = $;
       }
-   propagate;
+
+      propagate;
    }
 
    GetObjectFlags()
    {
       return OF_NOEXAMINE;
    }
-
 
 end
 ////////////////////////////////////////////////////////////////////////////////

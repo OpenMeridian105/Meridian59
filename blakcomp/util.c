@@ -303,7 +303,7 @@ list_type list_destroy(list_type l)
 */
 list_type list_get_nth(list_type l, int count)
 {
-   list_type next = NULL;
+   list_type temp = NULL;
 
    if (l == NULL)
       return NULL;
@@ -319,18 +319,19 @@ list_type list_get_nth(list_type l, int count)
       return l;
 
    --count;
+   temp = l;
 
    do
    {
-      next = l->next;
-   } while (next != NULL && count-- > 0);
+      temp = temp->next;
+   } while (temp != NULL && --count > 0);
 
-   if (next == NULL)
+   if (temp == NULL)
    {
       simple_warning("list_get_nth tried to read past end of list, %i reads remaining.\n", count);
    }
 
-   return next;
+   return temp;
 }
 /************************************************************************/
 /*

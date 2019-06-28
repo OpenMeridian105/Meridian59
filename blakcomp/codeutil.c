@@ -30,7 +30,7 @@ void codegen_warning(int linenumber, const char *fmt, ...)
 {
    va_list marker;
 
-   fprintf(stderr, "%s(%d): warning: ", current_fname, linenumber);
+   printf("%s(%d): warning: ", current_fname, linenumber);
 
    va_start(marker, fmt);
    vprintf(fmt, marker);

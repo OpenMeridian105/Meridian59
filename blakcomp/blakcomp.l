@@ -32,6 +32,10 @@ char *current_fname;
 char current_path[_MAX_PATH];
 char *bof_fname;           /* Object code filename */
 int debug_bof;             /* Should we put debugging info in .bof file? */
+int print_dup_eng_ger;     /* Whether we print duplicate Eng-Ger rscs */
+int print_missing_ger;     /* Whether we print missing German rscs */
+int print_unref_rscs;      /* Whether we print out rscs with no references */
+int print_unref_locals;    /* Whether we print out local vars with no references */
 int add_eol = 0;           /* Hack to deal with EOL being significant in INITIAL */
 int comment_depth = 0;     /* Allow nested comments */
 
@@ -656,6 +660,14 @@ void usage_directory(void)
 #endif
 }
 /************************************************************************/
+void usage_debug(void)
+{
+   fprintf(stderr, "     -A            Print duplicate English-German resources\n");
+   fprintf(stderr, "     -B            Print missing German resources\n");
+   fprintf(stderr, "     -C            Print resources with no references beyond declaration\n");
+   fprintf(stderr, "     -L            Print local vars with no references beyond declaration\n");
+}
+/************************************************************************/
 int main(int argc, char **argv)
 {
    int i;
@@ -665,12 +677,17 @@ int main(int argc, char **argv)
    {
       usage();
       usage_directory();
+      usage_debug();
       exit(1);
    }
 
    file_list = NULL;
    directory_list = NULL;
    debug_bof = False;
+   print_dup_eng_ger = False;
+   print_missing_ger = False;
+   print_unref_rscs = False;
+   print_unref_locals = False;
    directory_mode = False;
    bof_output_dir[0] = 0;
    rsc_output_dir[0] = 0;
@@ -686,19 +703,20 @@ int main(int argc, char **argv)
          /* Switch on command-line options */
          switch(toupper(*(arg + 1)))
          {
-         case 'D':               /* Debugging on */
-            debug_bof = True;
+         case 'A': /* Print out duplicate Eng-Ger resources */
+            print_dup_eng_ger = True;
             break;
 
-         case 'K' :              /* Specify kodbase filename */
-            if (i == argc - 1)
-               printf("Switch -%c needs a filename (ignoring)\n",*(arg+1));
-            else
-            {
-               i++;
-               arg = argv[i];
-               set_kodbase_filename(arg);
-            }
+         case 'B': /* Print out missing German resources */
+            print_missing_ger = True;
+            break;
+
+         case 'C': /* Print out resources that don't have any references */
+            print_unref_rscs = True;
+            break;
+
+         case 'D':               /* Debugging on */
+            debug_bof = True;
             break;
 
          case 'I':               /* Specify include file directory */
@@ -717,9 +735,22 @@ int main(int argc, char **argv)
                }
             }
             break;
-         case 'R': /* Compiling using a directory instead of a filename */
-            directory_mode = True;
+
+         case 'K' :              /* Specify kodbase filename */
+            if (i == argc - 1)
+               printf("Switch -%c needs a filename (ignoring)\n",*(arg+1));
+            else
+            {
+               i++;
+               arg = argv[i];
+               set_kodbase_filename(arg);
+            }
             break;
+
+         case 'L':               /* Print out local vars that don't have any references */
+            print_unref_locals = True;
+            break;
+            
          case 'O': /* Output directory */
             if (i == argc - 1)
                printf("Switch -%c needs a directory (ignoring)\n",*(arg+1));
@@ -731,6 +762,11 @@ int main(int argc, char **argv)
                check_output_directory(arg);
             }
             break;
+
+         case 'R': /* Compiling using a directory instead of a filename */
+            directory_mode = True;
+            break;
+
          default:
             printf("Ignoring unknown switch -%c.\n", *(arg + 1));
          }

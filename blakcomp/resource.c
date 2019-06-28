@@ -9,12 +9,15 @@
  * resource.c:  Write out resource file from symbol table information.
  */
 #include "blakcomp.h"
+#include <regex>
 
  // See codegen.c for explanation.
 extern char *codegen_buffer;
 extern int codegen_buffer_position;
 extern int codegen_buffer_size;
 extern int codegen_buffer_warning_size;
+extern int print_dup_eng_ger;     /* Whether we print duplicate Eng-Ger rscs */
+extern int print_missing_ger;     /* Whether we print missing German rscs */
 
 static const int RSC_VERSION = 5;
 static char rsc_magic[] = {0x52, 0x53, 0x43, 0x01};
@@ -237,6 +240,15 @@ void ResourceStringModVerify(resource_type r, char *fname)
             continue;
          }
 
+         // Duplicate resource checker for Eng-Ger duplicates.
+         if (print_dup_eng_ger
+            && i == 1
+            && strcmp(str, GetStringFromResource(r, 0)) == 0)
+         {
+            simple_warning("%s: Duplicate German string %s.",
+               fname, r->lhs->name);
+         }
+
          while (*str)
          {
             if (*str == '%')
@@ -286,6 +298,16 @@ void ResourceStringModVerify(resource_type r, char *fname)
                return;
             }
          }
+      }
+      else if (i == 1)
+      {
+         // German string, check if we should report.
+         // Okay for only English string present if it's something like "%r%r" or "100".
+         // Don't search for i, q, r, s as they are used in string formatters.
+         if (print_missing_ger
+            && std::regex_match(GetStringFromResource(r, 0), std::regex(".*[a-hj-pt-zA-Z].*")))
+            simple_warning("%s: No German string for resource %s.", fname, r->lhs->name);
+
       }
    }
 }

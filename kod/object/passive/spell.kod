@@ -1377,8 +1377,11 @@ messages:
    {
       local lReagent;
 
-      Send(who,@GainMana,#amount=Send(self,@GetManaCost,#who=who,
-           #iSpellpower=SPELLPOWER_MAXIMUM)/2);
+      // Ignore any mana restrictions, else it'll wipe out any mana over max.
+      // Important for users w/ cryst mana active e.g. breaking a trance that
+      // triggers cryst mana leaving user with >10x their new max mana.
+      Send(who,@GainMana,#bCapped=FALSE,#bNoRestrict=TRUE,
+            #amount=Send(self,@GetManaCost,#who=who,#iSpellpower=SPELLPOWER_MAXIMUM)/2);
       Send(who,@GainVigor,#precision=TRUE,#amount=(100*viSpellExertion)/2);
 
       foreach lReagent in plReagents

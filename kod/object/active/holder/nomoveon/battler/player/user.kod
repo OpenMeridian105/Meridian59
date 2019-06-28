@@ -521,7 +521,6 @@ properties:
 
    poOffer_who = $
    plOffer_items = $
-   pbOffer_OtherAccepted = FALSE
 
    piSave_room = $
    piSave_row = 0
@@ -7442,7 +7441,7 @@ messages:
    UserCast(oSpell=$,lTargets=$)
    {
       local i, bFound, iSpell, iSpellNum, iSpellPower, lFinalTargets, iCost,
-            iTime, bSuccess;
+            iTime, bSuccess, bFreeCast;
 
       // Check for valid spell first. This is mainly an issue during
       // system saves where a user might cast something with the wrong
@@ -7533,37 +7532,40 @@ messages:
 
       iCost = Send(oSpell,@GetMeditateRatio);
 
-      // Check if it's a free cast.
-      pbFree_cast = (iCost <= Send(self,@GetUnboundEnergy)
-                     AND iCost > 0
-                     AND send(oSpell,@IsFreeCastable));
-
       // Get the spell power
       iSpellPower = Send(oSpell,@GetSpellPower,#who=self);
 
-      // Free casts get a bonus.
-      if pbFree_cast
+      // Check if it's a free cast.
+      if (iCost <= Send(self,@GetUnboundEnergy)
+         AND iCost > 0
+         AND Send(oSpell,@IsFreeCastable))
       {
+         bFreeCast = TRUE;
+         // Free casts get a spellpower bonus.
          iSpellPower = Bound(iSpellPower + 20,SPELLPOWER_MINIMUM,SPELLPOWER_MAXIMUM);
+      }
+      else
+      {
+         bFreeCast = FALSE;
       }
 
       // First make sure user has enough magic points, reagents, etc.
       if NOT Send(oSpell,@CanPayCosts,#who=self,#lTargets=lFinalTargets,
-                  #iSpellpower=iSpellpower,#bFreeCast=pbFree_cast)
+                  #iSpellpower=iSpellpower,#bFreeCast=bFreeCast)
       {
          // Player failed some sort of internal check
          return;
       }
 
-      bSuccess = pbFree_cast OR Send(oSpell,@SuccessChance,#who=self,
+      bSuccess = bFreeCast OR Send(oSpell,@SuccessChance,#who=self,
                #iSpellpower=iSpellpower,#lTargets=lFinalTargets);
 
       if Send(oSpell,@PayCosts,#who=self,#iSpellPower=iSpellPower,
-               #lTargets=lFinalTargets,#bFreeCast=pbFree_cast,
+               #lTargets=lFinalTargets,#bFreeCast=bFreeCast,
                #bSuccess=bSuccess)
       {
          // If we had a free cast, deduct points from our unbound energy.
-         if pbFree_cast
+         if bFreeCast
          {
             Send(self,@AddUnboundEnergy,#iAmount=-iCost);
          }
@@ -7573,7 +7575,7 @@ messages:
 
          // Alright, cast that spell already.
          Send(oSpell,@BeginCastingTrance,#who=self,#lTargets=lFinalTargets,
-               #iSpellPower=iSpellPower,#bFreeCast=pbFree_cast,
+               #iSpellPower=iSpellPower,#bFreeCast=bFreeCast,
                #bSuccess=bSuccess);
       }
 
@@ -8244,7 +8246,7 @@ messages:
 
       SendPacket(poSession);
 
-      pbOffer_OtherAccepted = TRUE;
+      piFlags2 |= PFLAG2_OFFER_OTHER_ACPT;
 
       return TRUE;
    }
@@ -8381,7 +8383,7 @@ messages:
          return;
       }
 
-      if NOT pbOffer_OtherAccepted
+      if NOT (piFlags2 & PFLAG2_OFFER_OTHER_ACPT)
       {
          Debug("ALERT!  Player ",Send(self,@GetTrueName),self," tried "
                "complete an offer without the other person accepting.");
@@ -8391,7 +8393,7 @@ messages:
       }
       else
       {
-         pbOffer_OtherAccepted = FALSE;
+         piFlags2 &= ~PFLAG2_OFFER_OTHER_ACPT;
       }
 
       if NOT Send(self,@CheckOfferStuff)
@@ -12121,6 +12123,17 @@ messages:
       if (pbLogged_on)
       {
          plIPAddress = GetSessionIP(poSession);
+      }
+
+      return;
+   }
+
+   AdminClearIP()
+   "Clears plIPAddress for non-logged in users."
+   {
+      if (NOT pbLogged_on)
+      {
+         plIPAddress = $;
       }
 
       return;

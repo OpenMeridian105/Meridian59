@@ -820,11 +820,9 @@ properties:
    // This keeps track of training points that players accumulate when 
    // killing mobs.
    piTraining_points = 0
-   piInform = TRUE
 
    // This keeps track of unbound energy, which isused for free spell casts.
    piUnbound_energy = 0
-   pbFree_cast = FALSE
 
    // This keeps track of when we've last received our daily training points.
    piReward_timestamp = 0
@@ -1022,8 +1020,6 @@ properties:
 
    piMonsterChasers = 0
 
-   piView = $
-
    poBondedItem = $
    ptBondedItemReport = $
 
@@ -1065,9 +1061,8 @@ properties:
    // This list keeps track of selfcast buffs for passive improvement.
    plPassiveImprovement = $
 
-   // Crystalize Mana Surge data
+   // Crystalize Mana Surge timer
    ptCrystalizeManaSurgeTimer = $
-   piCrystalizeManaSurging = FALSE
 
    // Players will naturally fall out of groups if they aren't getting kills
    ptLeaveBuilderGroupTimer = $
@@ -1141,7 +1136,7 @@ messages:
          ptCrystalizeManaSurgeTimer = $;
          Send(self,@ShowRemoveEnchantment,#what=Send(SYS,@FindSpellByNum,
                #num=SID_CRYSTALIZE_MANA),#type=ENCHANTMENT_PLAYER);
-         piCrystalizeManaSurging = FALSE;
+         piFlags2 &= ~PFLAG2_CRYST_MANA_SURGE;
       }
 
       if ptReward_timer <> $
@@ -9149,16 +9144,16 @@ messages:
          // either reached the max, or a multiple of 100.
          if piTraining_points > 999
          {
-            if piInform
+            if NOT (piFlags2 & PFLAG2_NO_INFORM_TP)
             {
                Send(self,@MsgSendUser,#message_rsc=player_reached_maxtraining,
                   #parm1=piTraining_points);
-               piInform = FALSE;
+               piFlags2 |= PFLAG2_NO_INFORM_TP;
             }
          }
          else if piTraining_points % 100 = 0
                AND piTraining_points <> 0
-               AND piInform
+               AND NOT (piFlags2 & PFLAG2_NO_INFORM_TP)
          {
             Send(self,@MsgSendUser,#message_rsc=player_training_inform,
                   #parm1=piTraining_points);
@@ -9415,12 +9410,6 @@ messages:
       return piUnbound_energy;
    }
 
-   // Returns true if the last spell cast was a free cast.
-   GetFreeCast()
-   {
-      return pbFree_cast;
-   }
-
    AddTrainingPoints(points=0,report=TRUE,bCap=TRUE)
    {
       if points = 0
@@ -9460,13 +9449,13 @@ messages:
       if piTraining_points < 1000
          OR NOT bCap
       {
-         piInform = TRUE;
+         piFlags2 &= ~PFLAG2_NO_INFORM_TP;
       }
       else
       {
          Send(self,@MsgSendUser,#message_rsc=player_reached_maxtraining,
                #parm1=piTraining_points);
-         piInform = FALSE;
+         piFlags2 |= PFLAG2_NO_INFORM_TP;
       }
 
       Post(self,@DrawTraining);
@@ -14841,7 +14830,7 @@ messages:
 
    IsCrystalizeManaSurging()
    {
-      return piCrystalizeManaSurging;
+      return piFlags2 & PFLAG2_CRYST_MANA_SURGE;
    }
 
    StartCrystalizeManaSurge(surge_time=1000)
@@ -14850,7 +14839,7 @@ messages:
       {
          ptCrystalizeManaSurgeTimer =
                CreateTimer(self,@EndCrystalizeManaSurgeTimer,surge_time);
-         piCrystalizeManaSurging = TRUE;
+         piFlags2 |= PFLAG2_CRYST_MANA_SURGE;
          Send(self,@ComputeMaxMana);
       }
 
@@ -14879,7 +14868,7 @@ messages:
 
       Send(self,@ShowRemoveEnchantment,#what=Send(SYS,@FindSpellByNum,
             #num=SID_CRYSTALIZE_MANA),#type=ENCHANTMENT_PLAYER);
-      piCrystalizeManaSurging = FALSE;
+      piFlags2 &= ~PFLAG2_CRYST_MANA_SURGE;
       Send(self,@ComputeMaxMana);
 
       return;

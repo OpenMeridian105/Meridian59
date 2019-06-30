@@ -9063,13 +9063,18 @@ messages:
    NewOwner(what = $)
    "A user has a new owner when they enter a new room."
    {
-      local i, oOldRoom;
+      local i, oOldRoom, iNewRoomNum;
 
       Send(self,@CancelIfOffer);
 
+      if (what <> $)
+      {
+         iNewRoomNum = Send(what,@GetRoomNum);
+      }
+
       // Count right now as the last time we moved.
       piLastMoveUpdateTime = GetTickCount();
-      
+
       // This is here because it has to be done before poOwner is changed.
 
       // If newbie is entering a kill zone, warn him.  If he is leaving
@@ -9097,7 +9102,7 @@ messages:
       // This is stuff that would be executed on propagation, but we gotta
       // execute this stuff before Sending new info to client
 
-      if Send(what,@GetRoomNum) = RID_UNDERWORLD
+      if iNewRoomNum = RID_UNDERWORLD
          AND (piflags & PFLAG_DEATH_RIFTING)
       {
          // Deliverance people who somehow got to the Underworld
@@ -9127,7 +9132,7 @@ messages:
          {
             if Send(poOwner,@CheckRoomFlag,#flag=ROOM_SAFELOGOFF)
             {
-               piLastSafeRoom = Send(poOwner,@GetRoomNum);
+               piLastSafeRoom = iNewRoomNum;
 
                // Recharge user's rods.
                if (Send(SETTINGS_OBJECT,@CanInnsRechargeRods))
@@ -9163,12 +9168,26 @@ messages:
       }
 
       // This removes Death Rift's protection when the user enters any
-      // non-Underworld room
-      if Send(poOwner,@GetRoomNum) <> RID_UNDERWORLD
-         AND (piflags & PFLAG_DEATH_RIFTING)
+      // non-Underworld room. Does the same for death arena killed flag.
+      if iNewRoomNum <> RID_UNDERWORLD
       {
-         Send(self,@SetDeathRiftProtection,#value=FALSE);
-         piLastSafeRoom = Send(self,@GetHomeRoom);
+         if (piflags & PFLAG_DEATH_RIFTING)
+         {
+            Send(self,@SetDeathRiftProtection,#value=FALSE);
+            if (NOT Send(poOwner,@CheckRoomFlag,#flag=ROOM_SAFELOGOFF))
+            {
+               piLastSafeRoom = Send(self,@GetHomeRoom);
+            }
+         }
+         else if (piFlags2 & PFLAG2_DARENA_DEATH)
+         {
+            piFlags2 &= ~PFLAG2_DARENA_DEATH;
+            // Closest safe room to Arena.
+            if (NOT Send(poOwner,@CheckRoomFlag,#flag=ROOM_SAFELOGOFF))
+            {
+               piLastSafeRoom = RID_TOS_HALL;
+            }
+         }
       }
 
       // Draw defense to handle buffs that change

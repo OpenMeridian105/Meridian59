@@ -1157,7 +1157,7 @@ messages:
       return amount / 100;
    }
 
-   GainMana(amount=0, precision = FALSE, bCapped=TRUE)
+   GainMana(amount=0, precision = FALSE, bCapped=TRUE, bNoRestrict=FALSE)
    "If uncapped, still respects the hardcap."
    {
       if Send(self,@IsInCannotInteractMode)
@@ -1176,6 +1176,10 @@ messages:
       {
          amount = 100 * piMax_mana - piMana;
          piMana = 100 * piMax_mana;
+      }
+      else if bNoRestrict
+      {
+         piMana += amount;
       }
       else if piMana + amount > 200 * piMax_mana
       {

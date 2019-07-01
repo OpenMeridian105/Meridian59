@@ -119,9 +119,6 @@ void				D3DRenderBegin(room_type *room, Draw3DParams *params);
 void				D3DRenderResizeDisplay(int left, int top, int right, int bottom);
 void				D3DRenderEnableToggle(void);
 int					D3DRenderIsEnabled(void);
-LPDIRECT3DTEXTURE9	D3DRenderTextureCreateFromBGF(PDIB pDib, BYTE xLat0, BYTE xLat1,
-												  BYTE effect);
-void				D3DRenderPaletteSet(UINT xlatID0, UINT xlatID1, BYTE flags);
 void				D3DRenderBackgroundSet2(ID background);
 d3d_render_packet_new *D3DRenderPacketFindMatch(d3d_render_pool_new *pPool, LPDIRECT3DTEXTURE9 pTexture,
 												PDIB pDib, BYTE xLat0, BYTE xLat1, BYTE effect);

@@ -9,7 +9,6 @@
 #define __D3DCACHE_H__
 
 #define TEMP_CACHE_MAX			(50000)
-#define TEX_CACHE_MAX			(3000)
 #define TEMP_NUM_STAGES			(2)
 #define POOL_SIZE				(64)
 #define PACKET_SIZE				(32)
@@ -26,7 +25,6 @@ do	\
 	(_pCache)->indexBuffer.curIndex = 0;	\
 	(_pCache)->curPacket = 0;	\
 	(_pCache)->numPackets = 0;	\
-	(_pCache)->textureCache.curIndex = 0;	\
 } while (0)
 
 #define CACHE_XYZ_ADD(_pCache, _x, _y, _z)	\
@@ -128,25 +126,6 @@ _pChunk->bgra[_index].b = _b;	\
 #define CACHE_BGRA_UNLOCK(_pCache)	\
 	IDirect3DVertexBuffer9_Unlock((_pCache)->bgraBuffer.pVBuffer);
 
-typedef struct d3d_texture_cache_entry
-{
-	LPDIRECT3DTEXTURE9	pTexture;
-	unsigned int		pDibID;
-	int					size;
-	int					effects;
-	BYTE				xLat0;
-	BYTE				xLat1;
-	char				frame;
-} d3d_texture_cache_entry;
-
-typedef struct d3d_texture_cache
-{
-	int					curIndex;
-	int					size;
-	int					max;
-	list_type			textureList;
-} d3d_texture_cache;
-
 typedef struct d3d_render_cache
 {
 	// packet list
@@ -171,9 +150,6 @@ typedef struct d3d_render_cache_system
 	list_type			curCache;
 //	d3d_render_cache	renderCaches[5];
 	d3d_render_cache	*pCurCache;
-
-	// dedicated texture cache
-	d3d_texture_cache	textureCache;
 } d3d_render_cache_system;
 
 // raw chunk of geometry data, has it's own transform
@@ -246,10 +222,6 @@ void				D3DCacheFill(d3d_render_cache_system *pCacheSystem, d3d_render_pool_new 
 								 int numStages);
 void				D3DCacheFlush(d3d_render_cache_system *pCacheSystem, d3d_render_pool_new *pPool,
 								  int numStages, int type);
-LPDIRECT3DTEXTURE9	D3DCacheTextureLookupSwizzled(d3d_texture_cache *pTextureCache, d3d_render_packet_new *pPacket,
-												 int effect);
-LPDIRECT3DTEXTURE9	D3DCacheTextureLookup(d3d_texture_cache *pTextureCache, d3d_render_packet_new *pPacket,
-												 int effect);
 void				D3DCacheReset(d3d_render_cache *pRenderCache);
 void				D3DCacheXYZAdd(d3d_render_cache *pRenderCache, float x, float y, float z);
 void				D3DCacheSTAdd(d3d_render_cache *pRenderCache, int stage, float s, float t);
@@ -259,7 +231,7 @@ void				D3DCacheBGRASet(d3d_render_cache *pRenderCache, int index, int b, int g,
 									int r, int a);
 
 // cache system stuff
-void				D3DCacheSystemInit(d3d_render_cache_system *pCacheSystem, int texCacheSize);
+void				D3DCacheSystemInit(d3d_render_cache_system *pCacheSystem);
 d3d_render_cache	*D3DCacheSystemSwap(d3d_render_cache_system *pCacheSystem);
 void				D3DCacheSystemShutdown(d3d_render_cache_system *pCacheSystem);
 void				D3DCacheSystemReset(d3d_render_cache_system *pCacheSystem);

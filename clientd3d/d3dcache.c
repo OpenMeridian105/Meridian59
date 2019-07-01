@@ -7,16 +7,10 @@
 // Meridian is a registered trademark.
 #include "client.h"
 
-int	gNumCalls;
-extern int						gNumDPCalls;
-extern d3d_render_cache			gTempCache;
+extern int gNumDPCalls;
+extern d3d_driver_profile gD3DDriverProfile;
 
-extern LPDIRECT3DTEXTURE9		gpDLightAmbient;
-extern LPDIRECT3DTEXTURE9		gpDLightWhite;
-extern LPDIRECT3DTEXTURE9		gpDLightOrange;
-extern d3d_driver_profile		gD3DDriverProfile;
-
-void	D3DCacheLock(d3d_render_cache *pCache);
+void D3DCacheLock(d3d_render_cache *pCache);
 
 void D3DCacheInit(d3d_render_cache *pCache, int size, int numStages, DWORD flags)
 {
@@ -70,154 +64,6 @@ void D3DCacheShutdown(d3d_render_cache *pCache)
 	pCache->indexBuffer.curIndex = 0;
 }
 
-LPDIRECT3DTEXTURE9 D3DCacheTextureLookupSwizzled(d3d_texture_cache *pTextureCache, d3d_render_packet_new *pPacket,
-												 int effect)
-{
-	LPDIRECT3DTEXTURE9		pTexture = NULL;
-	D3DSURFACE_DESC			surfDesc;
-	d3d_texture_cache_entry	*pTexEntry;
-	list_type				list;
-	int	curTex = 0;
-
-	for (list = pTextureCache->textureList; list != NULL; list = list->next)
-	{
-		pTexEntry = (d3d_texture_cache_entry *)list->data;
-
-		if ((pPacket->pDib->uniqueID == pTexEntry->pDibID) &&
-			(pPacket->pDib->frame == pTexEntry->frame))
-		{
-			if ((pPacket->xLat0 == pTexEntry->xLat0) &&
-				(pPacket->xLat1 == pTexEntry->xLat1) &&
-				(effect == pTexEntry->effects))
-			{
-				return pTexEntry->pTexture;
-			}
-		}
-	}
-
-	while (pTextureCache->size > pTextureCache->max)
-	{
-		pTexEntry = (d3d_texture_cache_entry *)list_first_item(pTextureCache->textureList);
-
-		if (pTexEntry)
-		{
-			if (pTexEntry->pTexture)
-				IDirect3DDevice9_Release(pTexEntry->pTexture);
-
-			pTexEntry->pTexture = NULL;
-			pTextureCache->size -= pTexEntry->size;
-			free(pTextureCache->textureList->data);
-			pTextureCache->textureList = list_delete_first(pTextureCache->textureList);
-		}
-	}
-
-	pTexture = D3DRenderTextureCreateFromBGF(pPacket->pDib, pPacket->xLat0,
-			pPacket->xLat1, effect);
-
-	if (NULL == pTexture)
-		return NULL;
-
-	pTexEntry = (d3d_texture_cache_entry *)D3DRenderMalloc(sizeof(d3d_texture_cache_entry));
-	assert(pTexEntry);
-
-	IDirect3DTexture9_GetLevelDesc(pTexture, 0, &surfDesc);
-
-	pTexEntry->effects = effect;
-	pTexEntry->pDibID = pPacket->pDib->uniqueID;
-	pTexEntry->frame = pPacket->pDib->frame;
-	pTexEntry->pTexture = pTexture;
-	pTexEntry->xLat0 = pPacket->xLat0;
-	pTexEntry->xLat1 = pPacket->xLat1;
-	pTexEntry->size = surfDesc.Width * surfDesc.Height;
-	
-	switch(surfDesc.Format)
-	{
-	case D3DFMT_A8R8G8B8:
-		pTexEntry->size *= 4;
-	case D3DFMT_A4R4G4B4:
-		pTexEntry->size *= 2;
-	}
-
-	pTextureCache->textureList = list_add_item(pTextureCache->textureList, pTexEntry);
-	pTextureCache->size += pTexEntry->size;
-
-	return pTexEntry->pTexture;
-}
-
-LPDIRECT3DTEXTURE9 D3DCacheTextureLookup(d3d_texture_cache *pTextureCache, d3d_render_packet_new *pPacket,
-										 int effect)
-{
-	LPDIRECT3DTEXTURE9		pTexture = NULL;
-	D3DSURFACE_DESC			surfDesc;
-	d3d_texture_cache_entry	*pTexEntry;
-	list_type				list;
-	int	curTex = 0;
-
-	for (list = pTextureCache->textureList; list != NULL; list = list->next)
-	{
-		pTexEntry = (d3d_texture_cache_entry *)list->data;
-
-		if ((pPacket->pDib->uniqueID == pTexEntry->pDibID) &&
-			(pPacket->pDib->frame == pTexEntry->frame))
-		{
-			if ((pPacket->xLat0 == pTexEntry->xLat0) &&
-				(pPacket->xLat1 == pTexEntry->xLat1) &&
-				(effect == pTexEntry->effects))
-			{
-				return pTexEntry->pTexture;
-			}
-		}
-	}
-
-	while (pTextureCache->size > pTextureCache->max)
-	{
-		pTexEntry = (d3d_texture_cache_entry *)list_first_item(pTextureCache->textureList);
-
-		if (pTexEntry)
-		{
-			if (pTexEntry->pTexture)
-				IDirect3DDevice9_Release(pTexEntry->pTexture);
-
-			pTexEntry->pTexture = NULL;
-			pTextureCache->size -= pTexEntry->size;
-			free(pTextureCache->textureList->data);
-			pTextureCache->textureList = list_delete_first(pTextureCache->textureList);
-		}
-	}
-
-	pTexture = D3DRenderTextureCreateFromBGF(pPacket->pDib, pPacket->xLat0,
-                                            pPacket->xLat1, effect);
-
-	if (NULL == pTexture)
-		return NULL;
-
-	pTexEntry = (d3d_texture_cache_entry *)D3DRenderMalloc(sizeof(d3d_texture_cache_entry));
-	assert(pTexEntry);
-
-	IDirect3DTexture9_GetLevelDesc(pTexture, 0, &surfDesc);
-
-	pTexEntry->effects = effect;
-	pTexEntry->pDibID = pPacket->pDib->uniqueID;
-	pTexEntry->frame = pPacket->pDib->frame;
-	pTexEntry->pTexture = pTexture;
-	pTexEntry->xLat0 = pPacket->xLat0;
-	pTexEntry->xLat1 = pPacket->xLat1;
-	pTexEntry->size = surfDesc.Width * surfDesc.Height;
-
-	switch(surfDesc.Format)
-	{
-	case D3DFMT_A8R8G8B8:
-		pTexEntry->size *= 4;
-	case D3DFMT_A4R4G4B4:
-		pTexEntry->size *= 2;
-	}
-
-	pTextureCache->textureList = list_add_item(pTextureCache->textureList, pTexEntry);
-	pTextureCache->size += pTexEntry->size;
-
-	return pTexEntry->pTexture;
-}
-
 void D3DCacheReset(d3d_render_cache *pRenderCache)
 {
 	int	i;
@@ -233,7 +79,7 @@ void D3DCacheReset(d3d_render_cache *pRenderCache)
 	pRenderCache->numPackets = 0;
 }
 
-void D3DCacheSystemInit(d3d_render_cache_system *pCacheSystem, int texCacheSize)
+void D3DCacheSystemInit(d3d_render_cache_system *pCacheSystem)
 {
 	d3d_render_cache *pRenderCache = NULL;
 
@@ -247,9 +93,6 @@ void D3DCacheSystemInit(d3d_render_cache_system *pCacheSystem, int texCacheSize)
 		pCacheSystem->numCaches = 1;
 		pCacheSystem->pCurCache = pRenderCache;
 		pCacheSystem->curCache = pCacheSystem->renderCacheList;
-		//pCacheSystem->textureCache.curIndex = 0;
-		pCacheSystem->textureCache.textureList = NULL;
-		pCacheSystem->textureCache.max = texCacheSize;
 		D3DCacheInit((d3d_render_cache *)pRenderCache, TEMP_CACHE_MAX,
 			TEMP_NUM_STAGES, D3DUSAGE_DYNAMIC | D3DUSAGE_WRITEONLY |
 			gD3DDriverProfile.vertexProcessFlag);
@@ -258,22 +101,10 @@ void D3DCacheSystemInit(d3d_render_cache_system *pCacheSystem, int texCacheSize)
 
 void D3DCacheSystemShutdown(d3d_render_cache_system *pCacheSystem)
 {
-	d3d_texture_cache_entry	*pTexEntry;
 	list_type	list;
 	d3d_render_cache *pRenderCache = NULL;
 
-	// first free all textures
-	for (list = pCacheSystem->textureCache.textureList; list != NULL; list = list->next)
-	{
-		pTexEntry = (d3d_texture_cache_entry *)list->data;
-
-		if (pTexEntry->pTexture)
-			IDirect3DDevice9_Release(pTexEntry->pTexture);
-	}
-
-	list_destroy(pCacheSystem->textureCache.textureList);
-
-	// now destroy the vertex buffers
+	// destroy the vertex buffers
 	for (list = pCacheSystem->renderCacheList; list != NULL; list = list->next)
 	{
 		pRenderCache = (d3d_render_cache *)list->data;
@@ -491,7 +322,6 @@ void D3DCacheFlush(d3d_render_cache_system *pCacheSystem, d3d_render_pool_new *p
    int numStages, int type)
 {
    u_int curPacket, curChunk, numPackets;
-   LPDIRECT3DTEXTURE9 pTexture = NULL;
    d3d_render_cache *pRenderCache = NULL;
    d3d_render_packet_new *pPacket;
    d3d_render_chunk_new *pChunk;
@@ -528,11 +358,9 @@ void D3DCacheFlush(d3d_render_cache_system *pCacheSystem, d3d_render_pool_new *p
                pRenderCache = pChunk->pRenderCache;
                D3DRENDER_SET_STREAMS(gpD3DDevice, pRenderCache, numStages);
             }
-
             IDirect3DDevice9_DrawIndexedPrimitive(gpD3DDevice,
                (D3DPRIMITIVETYPE)type, 0, pChunk->startIndex,
                pChunk->numIndices, pChunk->startIndex, pChunk->numPrimitives);
-
             gNumVertices += pChunk->numIndices;
             gNumDPCalls++;
          }

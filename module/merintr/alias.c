@@ -154,7 +154,7 @@ void CmdAliasInit(void)
     char* pCommand;
     int nAllocated = 1024;
     char* pSection = (char *) SafeMalloc(nAllocated);
-    
+
     while (pSection)
     {
        int nReturned;
@@ -177,21 +177,32 @@ void CmdAliasInit(void)
        {
           nAllocated = nAllocated * 4 / 3;
           pSection = (char *) SafeMalloc(nAllocated);
+          memset(pSection, 0, nAllocated);
        }
     }
     
     pVerb = pSection;
     if (!pSection || !pSection[0])
        pVerb = GetString(hInst, IDS_VERB_ALIAS);
-    
+
     while (*pVerb)
     {
        pCommand = strtok(pVerb, "=");
        pCommand = strtok(NULL, "");
+       // Don't call AddVerbAlias with bad data.
+       if (pVerb && strlen(pVerb) > MAX_VERBLEN)
+       {
+          debug(("Bad verb in CmdAliasInit, breaking out of loop\n"));
+          break;
+       }
        AddVerbAlias(pVerb, pCommand);
-       pVerb = pCommand+strlen(pCommand)+1;
+       // TODO: this code seems to be able to alter pCommand on some systems.
+       // Can read in junk data from string buffer in GetString and crash the
+       // client on the next AddVerbAlias call. Blocked above by checking that
+       // pVerb <= MAX_VERBLEN. Also now clear data in GetString to try avoid
+       // the situation in the first place.
+       pVerb = pCommand + strlen(pCommand) + 1;
     }
-    
     if (pSection)
        SafeFree(pSection);
 }

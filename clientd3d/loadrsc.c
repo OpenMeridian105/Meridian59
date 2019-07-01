@@ -60,7 +60,9 @@ char *GetString(HINSTANCE hModule, ID idnum)
 	
 	index = (index + 1) % 5;
 	
-	szLoadedString[index][0] = 0; 
+	// Clear any data already in this string buffer.
+	memset(szLoadedString[index], 0, MAXSTRINGLEN);
+
 	LoadString (hModule, idnum, szLoadedString[index], MAXSTRINGLEN);
 	return (LPSTR)szLoadedString[index];
 }

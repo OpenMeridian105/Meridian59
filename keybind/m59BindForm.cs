@@ -112,11 +112,6 @@ namespace m59bind
             else
                 checkBoxAttackOnTarget.Checked = false;
 
-            if (m59BindProgram.GetIni(configFile, "config", "dynamiclighting", "true") == "true")
-                checkBoxDynamicLighting.Checked = true;
-            else
-                checkBoxDynamicLighting.Checked = false;
-
             if (m59BindProgram.GetIni(configFile, "config", "softwarerenderer", "false") == "true")
                 checkBoxSoftwareRenderer.Checked = true;
             else
@@ -193,7 +188,6 @@ namespace m59bind
             m59BindProgram.GetIni(configFile, "config", "quickchat", "false");
             m59BindProgram.GetIni(configFile, "config", "alwaysrun", "true");
             m59BindProgram.GetIni(configFile, "config", "attackontarget", "false");
-            m59BindProgram.GetIni(configFile, "config", "dynamiclighting", "true");
             m59BindProgram.GetIni(configFile, "config", "softwarerenderer", "false");
 
             configChanged = true;
@@ -300,15 +294,6 @@ namespace m59bind
             else
             {
                 m59BindProgram.WriteIni(configFile, "config", "attackontarget", "false");
-            }
-
-            if (checkBoxDynamicLighting.Checked)
-            {
-                m59BindProgram.WriteIni(configFile, "config", "dynamiclighting", "true");
-            }
-            else
-            {
-                m59BindProgram.WriteIni(configFile, "config", "dynamiclighting", "false");
             }
 
             if (checkBoxSoftwareRenderer.Checked)
@@ -1799,11 +1784,6 @@ namespace m59bind
         }
 
         private void checkBoxAttackOnTarget_CheckedChanged(object sender, EventArgs e)
-        {
-            configChanged = true;
-        }
-
-        private void checkBoxDynamicLighting_CheckedChanged(object sender, EventArgs e)
         {
             configChanged = true;
         }

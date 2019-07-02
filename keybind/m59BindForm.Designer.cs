@@ -160,7 +160,6 @@
             this.checkBoxInvertMouse = new System.Windows.Forms.CheckBox();
             this.groupBox1 = new System.Windows.Forms.GroupBox();
             this.checkBoxSoftwareRenderer = new System.Windows.Forms.CheckBox();
-            this.checkBoxDynamicLighting = new System.Windows.Forms.CheckBox();
             this.checkBoxAttackOnTarget = new System.Windows.Forms.CheckBox();
             this.checkBoxAlwaysRun = new System.Windows.Forms.CheckBox();
             this.checkBoxQuickChat = new System.Windows.Forms.CheckBox();
@@ -184,19 +183,18 @@
             // 
             // tabControl1
             // 
-            resources.ApplyResources(this.tabControl1, "tabControl1");
             this.tabControl1.Controls.Add(this.tabPage1);
             this.tabControl1.Controls.Add(this.tabPage2);
             this.tabControl1.Controls.Add(this.tabPage3);
             this.tabControl1.Controls.Add(this.tabPage4);
             this.tabControl1.Controls.Add(this.tabPage5);
             this.tabControl1.Controls.Add(this.tabPage6);
+            resources.ApplyResources(this.tabControl1, "tabControl1");
             this.tabControl1.Name = "tabControl1";
             this.tabControl1.SelectedIndex = 0;
             // 
             // tabPage1
             // 
-            resources.ApplyResources(this.tabPage1, "tabPage1");
             this.tabPage1.Controls.Add(this.buttonMouselookToggleMod);
             this.tabPage1.Controls.Add(this.label12);
             this.tabPage1.Controls.Add(this.buttonMouselookToggle);
@@ -233,6 +231,7 @@
             this.tabPage1.Controls.Add(this.buttonForwardMod);
             this.tabPage1.Controls.Add(this.label1);
             this.tabPage1.Controls.Add(this.buttonForward);
+            resources.ApplyResources(this.tabPage1, "tabPage1");
             this.tabPage1.Name = "tabPage1";
             this.tabPage1.UseVisualStyleBackColor = true;
             // 
@@ -490,7 +489,6 @@
             // 
             // tabPage2
             // 
-            resources.ApplyResources(this.tabPage2, "tabPage2");
             this.tabPage2.Controls.Add(this.buttonEmoteMod);
             this.tabPage2.Controls.Add(this.buttonEmote);
             this.tabPage2.Controls.Add(this.label19);
@@ -512,6 +510,7 @@
             this.tabPage2.Controls.Add(this.buttonSayMod);
             this.tabPage2.Controls.Add(this.buttonSay);
             this.tabPage2.Controls.Add(this.label13);
+            resources.ApplyResources(this.tabPage2, "tabPage2");
             this.tabPage2.Name = "tabPage2";
             this.tabPage2.UseVisualStyleBackColor = true;
             // 
@@ -664,7 +663,6 @@
             // 
             // tabPage3
             // 
-            resources.ApplyResources(this.tabPage3, "tabPage3");
             this.tabPage3.Controls.Add(this.buttonAttackMod);
             this.tabPage3.Controls.Add(this.buttonAttack);
             this.tabPage3.Controls.Add(this.label28);
@@ -692,6 +690,7 @@
             this.tabPage3.Controls.Add(this.buttonOpenMod);
             this.tabPage3.Controls.Add(this.buttonOpen);
             this.tabPage3.Controls.Add(this.label20);
+            resources.ApplyResources(this.tabPage3, "tabPage3");
             this.tabPage3.Name = "tabPage3";
             this.tabPage3.UseVisualStyleBackColor = true;
             // 
@@ -886,7 +885,6 @@
             // 
             // tabPage4
             // 
-            resources.ApplyResources(this.tabPage4, "tabPage4");
             this.tabPage4.Controls.Add(this.buttonSelectTargetMod);
             this.tabPage4.Controls.Add(this.buttonSelectTarget);
             this.tabPage4.Controls.Add(this.label35);
@@ -908,6 +906,7 @@
             this.tabPage4.Controls.Add(this.buttonTargetNextMod);
             this.tabPage4.Controls.Add(this.buttonTargetNext);
             this.tabPage4.Controls.Add(this.label29);
+            resources.ApplyResources(this.tabPage4, "tabPage4");
             this.tabPage4.Name = "tabPage4";
             this.tabPage4.UseVisualStyleBackColor = true;
             // 
@@ -1060,7 +1059,6 @@
             // 
             // tabPage5
             // 
-            resources.ApplyResources(this.tabPage5, "tabPage5");
             this.tabPage5.Controls.Add(this.buttonMapZoomOutMod);
             this.tabPage5.Controls.Add(this.buttonMapZoomOut);
             this.tabPage5.Controls.Add(this.label38);
@@ -1070,6 +1068,7 @@
             this.tabPage5.Controls.Add(this.buttonMapMod);
             this.tabPage5.Controls.Add(this.buttonMap);
             this.tabPage5.Controls.Add(this.label36);
+            resources.ApplyResources(this.tabPage5, "tabPage5");
             this.tabPage5.Name = "tabPage5";
             this.tabPage5.UseVisualStyleBackColor = true;
             // 
@@ -1138,21 +1137,21 @@
             // 
             // tabPage6
             // 
-            resources.ApplyResources(this.tabPage6, "tabPage6");
             this.tabPage6.Controls.Add(this.groupBox2);
             this.tabPage6.Controls.Add(this.checkBoxInvertMouse);
+            resources.ApplyResources(this.tabPage6, "tabPage6");
             this.tabPage6.Name = "tabPage6";
             this.tabPage6.UseVisualStyleBackColor = true;
             // 
             // groupBox2
             // 
-            resources.ApplyResources(this.groupBox2, "groupBox2");
             this.groupBox2.Controls.Add(this.labelMouselookYScaleValue);
             this.groupBox2.Controls.Add(this.labelMouselookXScaleValue);
             this.groupBox2.Controls.Add(this.label40);
             this.groupBox2.Controls.Add(this.label39);
             this.groupBox2.Controls.Add(this.trackBarMouseYScale);
             this.groupBox2.Controls.Add(this.trackBarMouseXScale);
+            resources.ApplyResources(this.groupBox2, "groupBox2");
             this.groupBox2.Name = "groupBox2";
             this.groupBox2.TabStop = false;
             // 
@@ -1205,13 +1204,12 @@
             // 
             // groupBox1
             // 
-            resources.ApplyResources(this.groupBox1, "groupBox1");
             this.groupBox1.Controls.Add(this.checkBoxSoftwareRenderer);
-            this.groupBox1.Controls.Add(this.checkBoxDynamicLighting);
             this.groupBox1.Controls.Add(this.checkBoxAttackOnTarget);
             this.groupBox1.Controls.Add(this.checkBoxAlwaysRun);
             this.groupBox1.Controls.Add(this.checkBoxQuickChat);
             this.groupBox1.Controls.Add(this.checkBoxClassicKeyBind);
+            resources.ApplyResources(this.groupBox1, "groupBox1");
             this.groupBox1.Name = "groupBox1";
             this.groupBox1.TabStop = false;
             // 
@@ -1221,13 +1219,6 @@
             this.checkBoxSoftwareRenderer.Name = "checkBoxSoftwareRenderer";
             this.checkBoxSoftwareRenderer.UseVisualStyleBackColor = true;
             this.checkBoxSoftwareRenderer.CheckedChanged += new System.EventHandler(this.checkBoxSoftwareRenderer_CheckedChanged);
-            // 
-            // checkBoxDynamicLighting
-            // 
-            resources.ApplyResources(this.checkBoxDynamicLighting, "checkBoxDynamicLighting");
-            this.checkBoxDynamicLighting.Name = "checkBoxDynamicLighting";
-            this.checkBoxDynamicLighting.UseVisualStyleBackColor = true;
-            this.checkBoxDynamicLighting.CheckedChanged += new System.EventHandler(this.checkBoxDynamicLighting_CheckedChanged);
             // 
             // checkBoxAttackOnTarget
             // 
@@ -1451,7 +1442,6 @@
         private System.Windows.Forms.TrackBar trackBarMouseXScale;
         private System.Windows.Forms.CheckBox checkBoxInvertMouse;
         private System.Windows.Forms.CheckBox checkBoxSoftwareRenderer;
-        private System.Windows.Forms.CheckBox checkBoxDynamicLighting;
         private System.Windows.Forms.CheckBox checkBoxAttackOnTarget;
         private System.Windows.Forms.CheckBox checkBoxAlwaysRun;
         private System.Windows.Forms.CheckBox checkBoxQuickChat;

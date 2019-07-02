@@ -712,6 +712,10 @@ void LogUserData(session_node *s)
          strcat(buf, "particles ON, ");
       else
          strcat(buf, "particles OFF, ");
+      if (s->flags & (LF_WIREFRAME | LF_HARDWARE_RENDERER))
+         strcat(buf, "wireframe ON, ");
+      else
+         strcat(buf, "wireframe OFF, ");
    }
 
    switch (s->os_type)

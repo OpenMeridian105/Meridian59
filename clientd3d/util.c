@@ -504,10 +504,12 @@ void GetSystemStats(SystemInfo *s)
       s->flags |= LF_LARGE_GRAPHICS;
    if (config.play_music)
       s->flags |= LF_MUSIC_ON;
-   if (config.bDynamicLighting)
+   if (config.dynamicLights)
       s->flags |= LF_DYNAMIC_LIGHTING;
    if (config.weather)
       s->flags |= LF_WEATHER_EFFECTS;
+   if (config.drawWireframe)
+      s->flags |= LF_WIREFRAME;
 
    ReleaseDC(GetDesktopWindow(),dc);
 }

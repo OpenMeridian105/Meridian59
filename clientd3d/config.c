@@ -54,6 +54,8 @@ static char INIGridCacheMin[] = "GridCacheMin";
 static char INIMusicVolume[]  = "MusicVolume";
 static char INISoundVolume[]  = "SoundVolume";
 static char INIMipMaps[]      = "MipMaps";
+static char INIDynamicLights[]= "DynamicLights";
+static char INIDrawWireframe[]= "DrawWireframe";
 static char INIAntiAliasing[] = "AntiAliasing";
 
 static char interface_section[]= "Interface";
@@ -264,6 +266,8 @@ void ConfigLoad(void)
    config.ObjectCacheMin = GetConfigInt(misc_section, INIObjectCacheMin, 6000000, ini_file);
    config.GridCacheMin = GetConfigInt(misc_section, INIGridCacheMin,   4000000, ini_file);
    config.mipMaps = GetConfigInt(misc_section, INIMipMaps, true, ini_file);
+   config.drawWireframe = GetConfigInt(misc_section, INIDrawWireframe, true, ini_file);
+   config.dynamicLights = GetConfigInt(misc_section, INIDynamicLights, true, ini_file);
    config.aaMode = GetConfigInt(misc_section, INIAntiAliasing, 8, ini_file);
 
    if( config.CacheBalance < 10 ) config.CacheBalance = 10 ;
@@ -321,6 +325,8 @@ void ConfigSave(void)
    WriteConfigInt(misc_section, INIObjectCacheMin, config.ObjectCacheMin, ini_file);
    WriteConfigInt(misc_section, INIGridCacheMin, config.GridCacheMin, ini_file);
    WriteConfigInt(misc_section, INIMipMaps, config.mipMaps, ini_file);
+   WriteConfigInt(misc_section, INIDrawWireframe, config.drawWireframe, ini_file);
+   WriteConfigInt(misc_section, INIDynamicLights, config.dynamicLights, ini_file);
    WriteConfigInt(misc_section, INIAntiAliasing, config.aaMode, ini_file);
 
    WriteConfigInt(users_section, INIDrawPlayerNames, config.draw_player_names, ini_file);

@@ -518,13 +518,10 @@ void D3DRenderShutDown(void)
 
    if (!gD3DDriverProfile.bSoftwareRenderer)
    {
-      if (config.bDynamicLighting)
-      {
-         D3DCacheSystemShutdown(&gLMapCacheSystem);
-         D3DCacheSystemShutdown(&gLMapCacheSystemStatic);      
-         D3DRenderPoolShutdown(&gLMapPool);
-         D3DRenderPoolShutdown(&gLMapPoolStatic);
-      }
+      D3DCacheSystemShutdown(&gLMapCacheSystem);
+      D3DCacheSystemShutdown(&gLMapCacheSystemStatic);
+      D3DRenderPoolShutdown(&gLMapPool);
+      D3DRenderPoolShutdown(&gLMapPoolStatic);
 
       D3DParticleSystemShutdown();
       D3DTexCacheShutdown();
@@ -936,7 +933,7 @@ void D3DRenderBegin(room_type *room, Draw3DParams *params)
       // this pass is a gigantic hack used to cover up the cracks
       // caused by all the t-junctions in the old geometry.  the entire world is drawn
       // in wireframe, with zwrite disabled.  welcome to my hell
-      if (1)
+      if (config.drawWireframe)
       {
          gWireframe = TRUE;
          IDirect3DDevice9_SetRenderState(gpD3DDevice, D3DRS_ZWRITEENABLE, FALSE);
@@ -999,7 +996,7 @@ void D3DRenderBegin(room_type *room, Draw3DParams *params)
    /*                          POST LIGHTMAPS                                 */
    /***************************************************************************/
    
-   if (draw_world && config.bDynamicLighting)
+   if (draw_world && config.dynamicLights)
    {
       timeLMaps = timeGetTime();
       IDirect3DDevice9_SetSamplerState(gpD3DDevice, 1, D3DSAMP_MAGFILTER, gD3DDriverProfile.magFilter);
@@ -1564,7 +1561,7 @@ void D3DGeometryBuildNew(room_type *room, d3d_render_pool_new *pPool, Draw3DPara
       }
    }
 
-   if (config.bDynamicLighting)
+   if (config.dynamicLights)
    {
       D3DCacheSystemReset(&gLMapCacheSystemStatic);
       D3DRenderPoolReset(&gLMapPoolStatic, &D3DMaterialLMapDynamicPool);

@@ -320,6 +320,7 @@ enum {
 #define LF_MUSIC_ON          0x0004
 #define LF_DYNAMIC_LIGHTING  0x0008
 #define LF_WEATHER_EFFECTS   0x0010
+#define LF_WIREFRAME         0x0020
 
 // Login error action constants
 #define LA_NOTHING   0

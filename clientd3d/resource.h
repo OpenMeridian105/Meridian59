@@ -446,6 +446,8 @@
 #define IDC_SPELLPOWER                  1215
 #define IDC_PARTICLENUM                 1216
 #define IDC_MIPMAPS                     1217
+#define IDC_WIREFRAME                   1218
+#define IDC_DYNLIGHTS                   1219
 #define IDC_AA_TEXT                     1221
 #define IDC_QUESTLIST                   1222
 #define IDC_QUESTNAME                   1223
@@ -517,7 +519,7 @@
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE        204
+#define _APS_NEXT_RESOURCE_VALUE        205
 #define _APS_NEXT_COMMAND_VALUE         3520
 #define _APS_NEXT_CONTROL_VALUE         1228
 #define _APS_NEXT_SYMED_VALUE           105

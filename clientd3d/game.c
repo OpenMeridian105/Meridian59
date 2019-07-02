@@ -38,7 +38,10 @@ void SetFrameDrawn(BOOL flag)
 {
    if (!frameDrawn && flag) // this is first visible flag and we need to send MOVE to server
    {
-      InvalidateRect(hMain, NULL, FALSE);
+      // Not sure why this needs to be called, removing it makes room changes
+      // smoother and prevents a flashing effect in the whole client during
+      // the room change.
+      //InvalidateRect(hMain, NULL, FALSE);
       MoveUpdateServer();
       CacheReport();
    }
@@ -312,7 +315,8 @@ void EnterNewRoom(void)
 {
    SetFrameDrawn(FALSE);
 
-   DrawGridBorder();   
+   // Should be drawn later.
+   //DrawGridBorder();
 
    SoundStopAll(SF_LOOP);  // Turn off looping sounds
 

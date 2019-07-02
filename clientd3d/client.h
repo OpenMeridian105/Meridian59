@@ -206,6 +206,7 @@ M59EXPORT void _cdecl dprintf(char *fmt,...);
 #include "pngstruct.h"
 #include "d3dtypes.h"
 #include "d3dcache.h"
+#include "d3dtexcache.h"
 #include "d3drender.h"
 #include "d3dlighting.h"
 #include "d3dparticle.h"

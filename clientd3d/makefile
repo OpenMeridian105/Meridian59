@@ -126,6 +126,7 @@ OBJS = \
     $(OUTDIR)\fpsbox.obj \
     $(OUTDIR)\regexpr.obj \
     $(OUTDIR)\fixed.obj \
+    $(OUTDIR)\d3dtexcache.obj \
     $(OUTDIR)\d3dcache.obj \
     $(OUTDIR)\d3ddriver.obj \
     $(OUTDIR)\d3dlighting.obj \

@@ -391,11 +391,12 @@ Bool D3DDriverProfileInit(void)
 //	gD3DDriverProfile.texMemTotal = (32 * 1024 * 1024);
 	gD3DDriverProfile.texMemTotal /= 4;
 
+   /* Single cache used now.
 	gD3DDriverProfile.texMemWorldStatic = gD3DDriverProfile.texMemTotal * 0.40f;
 	gD3DDriverProfile.texMemWorldDynamic = gD3DDriverProfile.texMemTotal * 0.13f;
 	gD3DDriverProfile.texMemLMapStatic = gD3DDriverProfile.texMemTotal * 0.20f;
 	gD3DDriverProfile.texMemLMapDynamic = gD3DDriverProfile.texMemTotal * 0.10f;
 	gD3DDriverProfile.texMemObjects = gD3DDriverProfile.texMemTotal * 0.17f;
-
+   */
 	return TRUE;
 }

@@ -122,7 +122,7 @@ Bool D3DMaterialWorldPacket(d3d_render_packet_new *pPacket, d3d_render_cache_sys
     if (pPacket->pTexture)
       pTexture = pPacket->pTexture;
     else if (pPacket->pDib)
-      pTexture = D3DCacheTextureLookupSwizzled(&pCacheSystem->textureCache, pPacket, 0);
+      pTexture = D3DTexCacheGetTexture(pPacket, 0);
   }
   else 
     pTexture = gFont.pTexture;
@@ -284,7 +284,7 @@ Bool D3DMaterialLMapDynamicPacket(d3d_render_packet_new *pPacket, d3d_render_cac
    if (pPacket->pTexture)
       pTexture = pPacket->pTexture;
    else if (pPacket->pDib)
-      pTexture = D3DCacheTextureLookupSwizzled(&pCacheSystem->textureCache, pPacket, 0);
+      pTexture = D3DTexCacheGetTexture(pPacket, 0);
 
    if (pTexture)
       IDirect3DDevice9_SetTexture(gpD3DDevice, 1, (IDirect3DBaseTexture9 *) pTexture);
@@ -358,7 +358,7 @@ Bool D3DMaterialObjectPacket(d3d_render_packet_new *pPacket, d3d_render_cache_sy
    if (pPacket->pTexture)
       pTexture = pPacket->pTexture;
    else if (pPacket->pDib)
-      pTexture = D3DCacheTextureLookup(&pCacheSystem->textureCache, pPacket, pPacket->effect);
+      pTexture = D3DTexCacheGetTexture(pPacket, pPacket->effect);
 
    if (pTexture)
       IDirect3DDevice9_SetTexture(gpD3DDevice, 0, (IDirect3DBaseTexture9 *) pTexture);
@@ -467,7 +467,7 @@ Bool D3DMaterialObjectInvisiblePacket(d3d_render_packet_new *pPacket, d3d_render
    if (pPacket->pTexture)
       pTexture = pPacket->pTexture;
    else if (pPacket->pDib)
-      pTexture = D3DCacheTextureLookup(&pCacheSystem->textureCache, pPacket, pPacket->effect);
+      pTexture = D3DTexCacheGetTexture(pPacket, pPacket->effect);
 
    if (pTexture)
       IDirect3DDevice9_SetTexture(gpD3DDevice, 0, (IDirect3DBaseTexture9 *) pTexture);

@@ -443,6 +443,8 @@ BOOL CALLBACK GraphicsDialogProc(HWND hDlg, UINT message, UINT wParam, LONG lPar
       if (!D3DRenderIsEnabled())
       {
          EnableWindow(GetDlgItem(hDlg, IDC_MIPMAPS), FALSE);
+         EnableWindow(GetDlgItem(hDlg, IDC_DYNLIGHTS), FALSE);
+         EnableWindow(GetDlgItem(hDlg, IDC_WIREFRAME), FALSE);
          EnableWindow(GetDlgItem(hDlg, IDC_AA_TEXT), FALSE);
          EnableWindow(GetDlgItem(hDlg, IDC_ANTI_ALIAS), FALSE);
 
@@ -451,6 +453,8 @@ BOOL CALLBACK GraphicsDialogProc(HWND hDlg, UINT message, UINT wParam, LONG lPar
 
       hGraphicsDialog = hDlg;
       CheckDlgButton(hDlg, IDC_MIPMAPS, config.mipMaps);
+      CheckDlgButton(hDlg, IDC_WIREFRAME, config.drawWireframe);
+      CheckDlgButton(hDlg, IDC_DYNLIGHTS, config.dynamicLights);
       hWndComboBox = GetDlgItem(hDlg, IDC_ANTI_ALIAS);
       SendMessage(hWndComboBox, CB_ADDSTRING, NULL, (LPARAM)"No AA");
       if (config.aaMode == D3DMULTISAMPLE_NONE)
@@ -504,6 +508,19 @@ BOOL CALLBACK GraphicsDialogProc(HWND hDlg, UINT message, UINT wParam, LONG lPar
             config.mipMaps = temp;
             changed = true;
          }
+
+         temp = IsDlgButtonChecked(hDlg, IDC_WIREFRAME);
+         if (temp != config.drawWireframe)
+         {
+            config.drawWireframe = temp;
+         }
+
+         temp = IsDlgButtonChecked(hDlg, IDC_DYNLIGHTS);
+         if (temp != config.dynamicLights)
+         {
+            config.dynamicLights = temp;
+         }
+
          hWndComboBox = GetDlgItem(hDlg, IDC_ANTI_ALIAS);
          index = SendMessage(hWndComboBox, CB_GETCURSEL, 0, 0);
          if (index != CB_ERR)

@@ -38,7 +38,10 @@ void SetFrameDrawn(BOOL flag)
 {
    if (!frameDrawn && flag) // this is first visible flag and we need to send MOVE to server
    {
-      InvalidateRect(hMain, NULL, FALSE);
+      // Not sure why this needs to be called, removing it makes room changes
+      // smoother and prevents a flashing effect in the whole client during
+      // the room change.
+      //InvalidateRect(hMain, NULL, FALSE);
       MoveUpdateServer();
       CacheReport();
    }
@@ -312,7 +315,8 @@ void EnterNewRoom(void)
 {
    SetFrameDrawn(FALSE);
 
-   DrawGridBorder();   
+   // Should be drawn later.
+   //DrawGridBorder();
 
    SoundStopAll(SF_LOOP);  // Turn off looping sounds
 
@@ -434,7 +438,15 @@ void CreateObject(room_contents_node *r)
    current_room.contents = list_add_first(current_room.contents, r);
 
    RoomObjectSetHeight(r);
-   
+
+   // Must redraw static lights for light changes.
+   if ((r->obj.dLighting.flags & LIGHT_FLAG_ON) == LIGHT_FLAG_ON
+      && !((r->obj.dLighting.flags & LIGHT_FLAG_DYNAMIC) == LIGHT_FLAG_DYNAMIC))
+   {
+      if (gD3DRedrawAll == FALSE)
+         gD3DRedrawAll |= D3DRENDER_REDRAW_STATIC_LIGHTS;
+   }
+
    RedrawAll();
 }
 /************************************************************************/
@@ -448,6 +460,14 @@ void RemoveObject(ID obj_id)
    {
       debug(("Couldn't find object #%d to delete\n", obj_id));
       return;
+   }
+
+   // Must redraw static lights for light changes.
+   if ((r->obj.dLighting.flags & LIGHT_FLAG_ON) == LIGHT_FLAG_ON
+      && !((r->obj.dLighting.flags & LIGHT_FLAG_DYNAMIC) == LIGHT_FLAG_DYNAMIC))
+   {
+      if (gD3DRedrawAll == FALSE)
+         gD3DRedrawAll |= D3DRENDER_REDRAW_STATIC_LIGHTS;
    }
 
 	//	If deleted object was user's selected target, clear target.

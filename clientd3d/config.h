@@ -114,15 +114,16 @@ typedef struct {
    int ObjectCacheMin;			 /* minimum size of the object cache */
    int GridCacheMin;			 /* minimum size of the grid cache */
 
-   Bool mipMaps; // Load multiple levels of textures.
-   int aaMode; // Level of antialiasing.
+   Bool mipMaps;       // Load multiple levels of textures.
+   Bool dynamicLights; // Lights active/inactive.
+   Bool drawWireframe; // Wireframe drawing in d3d renderer.
+   int aaMode;         // Level of antialiasing.
 
    // stuff for new client
    BOOL	bAlwaysRun;
    BOOL bAttackOnTarget;
    BOOL	bQuickChat;
    BOOL bInvertMouse;
-   BOOL bDynamicLighting;
    int	mouselookXScale;
    int	mouselookYScale;
 

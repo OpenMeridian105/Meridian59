@@ -769,7 +769,6 @@ void CustomConfigInit(void)
 		fprintf(pFile, "mouselookxscale/mouselookyscale:  Sets the mouse sensitivity.  Accepts any value from 1 to 30\n");
 		fprintf(pFile, "quickchat:  Set to true to have all alphabetic keys go instantly to chat (any later key binding using an alphabetic key will be ignored)\n");
 		fprintf(pFile, "alwaysrun:  Set to true to avoid having to hold the run key (default: shift) to run\n");
-		fprintf(pFile, "dynamiclighting:  Set to true to enable dynamic lighting.  Setting this to false may increase performance on some systems\n\n");
 		fprintf(pFile, "softwarerenderer:  Set to true to force the client to run in software graphics mode\n\n");
 		fprintf(pFile, "rendererfailedonce:  NOT USER EDITABLE.  The client will set this to true when it determines that your hardware/driver cannot run Meridian in Direct3D.  This will prevent any further error messages until you either delete this file or change video cards/drivers\n\n");
 
@@ -793,7 +792,6 @@ void CustomConfigInit(void)
 		WritePrivateProfileString("config", "quickchat", "false", "./config.ini");
 		WritePrivateProfileString("config", "alwaysrun", "true", "./config.ini");
 		WritePrivateProfileString("config", "attackontarget", "false", "./config.ini");
-		WritePrivateProfileString("config", "dynamiclighting", "true", "./config.ini");
 		WritePrivateProfileString("config", "softwarerenderer", "false", "./config.ini");
 
 		WritePrivateProfileString("keys", "forward", "w", "./config.ini");
@@ -888,16 +886,6 @@ void CustomConfigInit(void)
 		cinfo->config->bInvertMouse = FALSE;
 		cinfo->config->mouselookYScale = -cinfo->config->mouselookYScale;
 	}
-
-	// dynamic lighting
-	GetPrivateProfileString(config, "dynamiclighting", "error\n", string0,
-		255, file);
-
-	strupr(string0);
-	if (0 == strcmp(string0, "TRUE"))
-		cinfo->config->bDynamicLighting = TRUE;
-	else
-		cinfo->config->bDynamicLighting = FALSE;
 
 	// now key bindings
 	// first check to see if they want classic controls

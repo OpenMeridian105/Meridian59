@@ -266,7 +266,7 @@ void            D3DGetBackgroundOverlayPosition(BackgroundOverlay *pOverlay, Dra
 Bool            D3DComputePlayerOverlayArea(PDIB pdib, char hotspot, AREA *obj_area);
 
 // new render stuff
-void               GeometryUpdate(d3d_render_pool_new *pPool, d3d_render_cache_system *pCacheSystem);
+void               GeometryUpdate(d3d_render_pool_new *pPool);
 void               D3DRenderPoolInit(d3d_render_pool_new *pPool, int size, int packetSize);
 void               D3DRenderPoolShutdown(d3d_render_pool_new *pPool);
 void               D3DRenderPoolReset(d3d_render_pool_new *pPool, void *pMaterialFunc);
@@ -295,18 +295,18 @@ void               D3DRenderFloorMaskAdd(BSPnode *pNode, d3d_render_pool_new *pP
 void               D3DRenderCeilingMaskAdd(BSPnode *pNode, d3d_render_pool_new *pPool,
                                     Bool bDynamic);
 
-void               D3DGeometryBuildNew(room_type *room, d3d_render_pool_new *pPool, Draw3DParams *params);
-
+void               D3DGeometryBuildNew(room_type *room);
+void               D3DGeometryBuildNewStaticLMaps(room_type *room);
 void               D3DPostOverlayEffects(d3d_render_pool_new *pPool);
-LPDIRECT3DTEXTURE9      D3DRenderFramebufferTextureCreate(LPDIRECT3DTEXTURE9   pTex0,
+LPDIRECT3DTEXTURE9 D3DRenderFramebufferTextureCreate(LPDIRECT3DTEXTURE9   pTex0,
                                         LPDIRECT3DTEXTURE9   pTex1,
                                         float width, float height);
 void               *D3DRenderMalloc(unsigned int bytes);
 
 // externed stuff
 extern int         FindHotspotPdib(PDIB pdib, char hotspot, POINT *point);
-extern Bool         ComputePlayerOverlayArea(PDIB pdib, char hotspot, AREA *obj_area);
-extern void         UpdateRoom3D(room_type *room, Draw3DParams *params);
+extern Bool        ComputePlayerOverlayArea(PDIB pdib, char hotspot, AREA *obj_area);
+extern void        UpdateRoom3D(room_type *room, Draw3DParams *params);
 
 inline void *D3DRenderMalloc(unsigned int bytes)
 {
@@ -518,13 +518,10 @@ void D3DRenderShutDown(void)
 
    if (!gD3DDriverProfile.bSoftwareRenderer)
    {
-      if (config.bDynamicLighting)
-      {
-         D3DCacheSystemShutdown(&gLMapCacheSystem);
-         D3DCacheSystemShutdown(&gLMapCacheSystemStatic);      
-         D3DRenderPoolShutdown(&gLMapPool);
-         D3DRenderPoolShutdown(&gLMapPoolStatic);
-      }
+      D3DCacheSystemShutdown(&gLMapCacheSystem);
+      D3DCacheSystemShutdown(&gLMapCacheSystemStatic);
+      D3DRenderPoolShutdown(&gLMapPool);
+      D3DRenderPoolShutdown(&gLMapPoolStatic);
 
       D3DParticleSystemShutdown();
       D3DTexCacheShutdown();
@@ -722,17 +719,22 @@ void D3DRenderBegin(room_type *room, Draw3DParams *params)
 
    if (gD3DRedrawAll & D3DRENDER_REDRAW_ALL)
    {
-      D3DGeometryBuildNew(room, &gWorldPoolStatic, params);
+      D3DGeometryBuildNew(room);
       gD3DRedrawAll = FALSE;
    }
    else if (gD3DRedrawAll & D3DRENDER_REDRAW_UPDATE)
    {
-      GeometryUpdate(&gWorldPoolStatic, &gWorldCacheSystemStatic);
+      GeometryUpdate(&gWorldPoolStatic);
+      gD3DRedrawAll = FALSE;
+   }
+   else if (gD3DRedrawAll & D3DRENDER_REDRAW_STATIC_LIGHTS)
+   {
+      D3DGeometryBuildNewStaticLMaps(room);
       gD3DRedrawAll = FALSE;
    }
    else if (gD3DDriverProfile.bFogEnable == FALSE)
    {
-      GeometryUpdate(&gWorldPoolStatic, &gWorldCacheSystemStatic);
+      GeometryUpdate(&gWorldPoolStatic);
    }
 
    /***************************************************************************/
@@ -789,7 +791,7 @@ void D3DRenderBegin(room_type *room, Draw3DParams *params)
    D3DCacheSystemReset(&gObjectCacheSystem);
    D3DCacheSystemReset(&gLMapCacheSystem);
    D3DCacheSystemReset(&gWorldCacheSystem);
-   
+
    UpdateRoom3D(room, params);
 
    // Go through all node and mark them as unseen. Used to determine
@@ -936,7 +938,7 @@ void D3DRenderBegin(room_type *room, Draw3DParams *params)
       // this pass is a gigantic hack used to cover up the cracks
       // caused by all the t-junctions in the old geometry.  the entire world is drawn
       // in wireframe, with zwrite disabled.  welcome to my hell
-      if (1)
+      if (config.drawWireframe)
       {
          gWireframe = TRUE;
          IDirect3DDevice9_SetRenderState(gpD3DDevice, D3DRS_ZWRITEENABLE, FALSE);
@@ -999,7 +1001,7 @@ void D3DRenderBegin(room_type *room, Draw3DParams *params)
    /*                          POST LIGHTMAPS                                 */
    /***************************************************************************/
    
-   if (draw_world && config.bDynamicLighting)
+   if (draw_world && config.dynamicLights)
    {
       timeLMaps = timeGetTime();
       IDirect3DDevice9_SetSamplerState(gpD3DDevice, 1, D3DSAMP_MAGFILTER, gD3DDriverProfile.magFilter);
@@ -1493,11 +1495,80 @@ void D3DRenderWorldDraw(room_type *room, Draw3DParams *params)
    }
 }
 
-void D3DGeometryBuildNew(room_type *room, d3d_render_pool_new *pPool, Draw3DParams *params)
+void D3DGeometryBuildNewStaticLMaps(room_type *room)
 {
-   int         count;
-   BSPnode      *pNode = NULL;
-   WallData   *pWall;
+   BSPnode *pNode = NULL;
+   WallData *pWall;
+
+   debug(("D3DGeometryBuildNewStaticLMaps: number of nodes is %i\n", room->num_nodes));
+
+   if (config.dynamicLights)
+   {
+      D3DCacheSystemReset(&gLMapCacheSystemStatic);
+      D3DRenderPoolReset(&gLMapPoolStatic, &D3DMaterialLMapDynamicPool);
+      for (int count = 0; count < room->num_nodes; count++)
+      {
+         for (int numLights = 0; numLights < gDLightCache.numLights; numLights++)
+         {
+            d_light *light = &gDLightCache.dLights[numLights];
+
+            // If the light doesn't reach this bounding box, skip to the next one.
+            pNode = &room->nodes[count];
+            if (pNode->bbox.x0 >= light->maxX
+               || pNode->bbox.x1 <= light->minX
+               || pNode->bbox.y0 >= light->maxY
+               || pNode->bbox.y1 <= light->minY)
+               continue;
+            switch (pNode->type)
+            {
+            case BSPinternaltype:
+               for (pWall = pNode->u.internal.walls_in_plane; pWall != NULL; pWall = pWall->next)
+               {
+                  if (!(pWall->pos_sidedef || pWall->neg_sidedef))
+                     continue;
+
+                  // Skip if no draw flag or not inside light radius.
+                  if ((!(pWall->seen & WF_CANDRAWMASK)) || !WallInsideRadius(light, pWall))
+                     continue;
+
+                  if (pWall->seen & WF_CANDRAWNORMAL)
+                  {
+                     D3DRenderLMapPostWallAdd(pWall, &gLMapPoolStatic, D3DRENDER_WALL_NORMAL, 1, light, FALSE);
+                     D3DRenderLMapPostWallAdd(pWall, &gLMapPoolStatic, D3DRENDER_WALL_NORMAL, -1, light, FALSE);
+                  }
+
+                  if (pWall->seen & WF_CANDRAWBELOW)
+                  {
+                     D3DRenderLMapPostWallAdd(pWall, &gLMapPoolStatic, D3DRENDER_WALL_BELOW, 1, light, FALSE);
+                     D3DRenderLMapPostWallAdd(pWall, &gLMapPoolStatic, D3DRENDER_WALL_BELOW, -1, light, FALSE);
+                  }
+
+                  if (pWall->seen & WF_CANDRAWABOVE)
+                  {
+                     D3DRenderLMapPostWallAdd(pWall, &gLMapPoolStatic, D3DRENDER_WALL_ABOVE, 1, light, FALSE);
+                     D3DRenderLMapPostWallAdd(pWall, &gLMapPoolStatic, D3DRENDER_WALL_ABOVE, -1, light, FALSE);
+                  }
+               }
+
+               break;
+
+            case BSPleaftype:
+               D3DRenderLMapPostFloorAdd(pNode, &gLMapPoolStatic, light, FALSE);
+               D3DRenderLMapPostCeilingAdd(pNode, &gLMapPoolStatic, light, FALSE);
+               break;
+
+            default:
+               break;
+            }
+         }
+      }
+      D3DCacheFill(&gLMapCacheSystemStatic, &gLMapPoolStatic, 2);
+   }
+}
+void D3DGeometryBuildNew(room_type *room)
+{
+   BSPnode *pNode = NULL;
+   WallData *pWall;
 
    D3DCacheSystemReset(&gWorldCacheSystemStatic);
    D3DCacheSystemReset(&gWallMaskCacheSystem);
@@ -1505,9 +1576,9 @@ void D3DGeometryBuildNew(room_type *room, d3d_render_pool_new *pPool, Draw3DPara
    D3DRenderPoolReset(&gWorldPoolStatic, &D3DMaterialWorldPool);
    D3DRenderPoolReset(&gWallMaskPool, &D3DMaterialWallMaskPool);
 
-   debug(("number of nodes is %i\n", room->num_nodes));
+   debug(("D3DGeometryBuildNew: number of nodes is %i\n", room->num_nodes));
 
-   for (count = 0; count < room->num_nodes; count++)
+   for (int count = 0; count < room->num_nodes; count++)
    {
       pNode = &room->nodes[count];
 
@@ -1564,74 +1635,14 @@ void D3DGeometryBuildNew(room_type *room, d3d_render_pool_new *pPool, Draw3DPara
       }
    }
 
-   if (config.bDynamicLighting)
-   {
-      D3DCacheSystemReset(&gLMapCacheSystemStatic);
-      D3DRenderPoolReset(&gLMapPoolStatic, &D3DMaterialLMapDynamicPool);
-      for (count = 0; count < room->num_nodes; count++)
-      {
-         for (int numLights = 0; numLights < gDLightCache.numLights; numLights++)
-         {
-            d_light *light = &gDLightCache.dLights[numLights];
-            
-            // If the light doesn't reach this bounding box, skip to the next one.
-            pNode = &room->nodes[count];
-            if (pNode->bbox.x0 >= light->maxX
-               || pNode->bbox.x1 <= light->minX
-               || pNode->bbox.y0 >= light->maxY
-               || pNode->bbox.y1 <= light->minY)
-             continue;
-            switch (pNode->type)
-            {
-            case BSPinternaltype:
-               for (pWall = pNode->u.internal.walls_in_plane; pWall != NULL; pWall = pWall->next)
-               {
-                  if (!(pWall->pos_sidedef || pWall->neg_sidedef))
-                     continue;
-
-                  // Skip if no draw flag or not inside light radius.
-                  if ((!(pWall->seen & WF_CANDRAWMASK)) || !WallInsideRadius(light, pWall))
-                     continue;
-
-                  if (pWall->seen & WF_CANDRAWNORMAL)
-                  {
-                       D3DRenderLMapPostWallAdd(pWall, &gLMapPoolStatic, D3DRENDER_WALL_NORMAL, 1, light, FALSE);
-                       D3DRenderLMapPostWallAdd(pWall, &gLMapPoolStatic, D3DRENDER_WALL_NORMAL, -1, light, FALSE);
-                  }
-
-                  if (pWall->seen & WF_CANDRAWBELOW)
-                  {
-                       D3DRenderLMapPostWallAdd(pWall, &gLMapPoolStatic, D3DRENDER_WALL_BELOW, 1, light, FALSE);
-                       D3DRenderLMapPostWallAdd(pWall, &gLMapPoolStatic, D3DRENDER_WALL_BELOW, -1, light, FALSE);
-                  }
-
-                  if (pWall->seen & WF_CANDRAWABOVE)
-                  {
-                       D3DRenderLMapPostWallAdd(pWall, &gLMapPoolStatic, D3DRENDER_WALL_ABOVE, 1, light, FALSE);
-                       D3DRenderLMapPostWallAdd(pWall, &gLMapPoolStatic, D3DRENDER_WALL_ABOVE, -1, light, FALSE);
-                  }
-               }
-
-               break;
-
-            case BSPleaftype:
-               D3DRenderLMapPostFloorAdd(pNode, &gLMapPoolStatic, light, FALSE);
-               D3DRenderLMapPostCeilingAdd(pNode, &gLMapPoolStatic, light, FALSE);
-               break;
-
-            default:
-               break;
-            }
-         }
-      }
-      D3DCacheFill(&gLMapCacheSystemStatic, &gLMapPoolStatic, 2);
-   }
-
    D3DCacheFill(&gWorldCacheSystemStatic, &gWorldPoolStatic, 1);
    D3DCacheFill(&gWallMaskCacheSystem, &gWallMaskPool, 1);
+
+   // Static light maps
+   D3DGeometryBuildNewStaticLMaps(room);
 }
 
-void GeometryUpdate(d3d_render_pool_new *pPool, d3d_render_cache_system *pCacheSystem)
+void GeometryUpdate(d3d_render_pool_new *pPool)
 {
    u_int            curPacket, curChunk;
    u_int            i, numPackets;

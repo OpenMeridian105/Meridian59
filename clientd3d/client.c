@@ -316,26 +316,28 @@ int PASCAL WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance,
 	while (!bQuit)
 	{
 		MainIdle();
+      if (MsgWaitForMultipleObjects(0, NULL, 0, (DWORD)1, QS_ALLINPUT) == WAIT_OBJECT_0)
+      {
+         while (PeekMessage(&msg, NULL, 0, 0, PM_NOREMOVE))
+         {
+            if (!GetMessage(&msg, NULL, 0, 0))
+            {
+               bQuit = TRUE;
+               break;
+            }
 
-		while (PeekMessage(&msg, NULL, 0, 0, PM_NOREMOVE))
-		{
-			if (!GetMessage(&msg, NULL, 0, 0))
-			{
-				bQuit = TRUE;
-				break;
-			}
+            // Forward appropriate messages for tooltips
+            if (state == STATE_GAME)
+               TooltipForwardMessage(&msg);
 
-			// Forward appropriate messages for tooltips
-			if (state == STATE_GAME)
-				TooltipForwardMessage(&msg);
-
-			/* Handle modeless dialog messages separately */
-			if ((hCurrentDlg == NULL || !IsDialogMessage(hCurrentDlg, &msg)))
-			{
-				TranslateMessage(&msg);
-				DispatchMessage(&msg);
-			}
-		}
+            /* Handle modeless dialog messages separately */
+            if ((hCurrentDlg == NULL || !IsDialogMessage(hCurrentDlg, &msg)))
+            {
+               TranslateMessage(&msg);
+               DispatchMessage(&msg);
+            }
+         }
+      }
 	}
 
 	/* Unregister our custom classes--not good to leave them around */

@@ -371,11 +371,15 @@ Bool AnimateSingle(Animate *a, int num_groups, int dt)
       break;
    }
 
-   if (a->group < 0 || (num_groups > 0 && a->group >= num_groups))
+   // group can be MAXWORD to signal end of animation for player overlays.
+   if (a->group != MAXWORD
+      && num_groups > 0
+      && a->group >= num_groups)
    {
       debug(("Animation produced out of bounds bitmap group %d\n", a->group));
-      // Don't fix it up; player overlays rely on group going negative to signal end
-      //      a->group = 0;
+
+      // End animation if groups are invalid.
+      a->group = MAXWORD;
    }
 
    return need_redraw;

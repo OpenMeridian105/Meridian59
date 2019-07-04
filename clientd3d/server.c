@@ -847,10 +847,7 @@ Bool HandleCreate(char *ptr,long len)
 
    CreateObject(room_item);
 
-   // something changed, so we probably need to rebuild static lists
-   gD3DRedrawAll |= D3DRENDER_REDRAW_ALL;
-
-   return True;   
+   return True;
 }
 /********************************************************************/
 Bool HandleRemove(char *ptr,long len)
@@ -864,10 +861,7 @@ Bool HandleRemove(char *ptr,long len)
 
    RemoveObject(obj_id);
 
-   // something changed, so we probably need to rebuild static lists
-   gD3DRedrawAll |= D3DRENDER_REDRAW_ALL;
-
-   return True;   
+   return True;
 }
 /********************************************************************/
 Bool HandleChange(char *ptr, long len)
@@ -892,9 +886,6 @@ Bool HandleChange(char *ptr, long len)
 
    ChangeObject(&object, translation, effect, &a, overlays);
 
-   // something changed, so we probably need to rebuild static lists
-//   gD3DRedrawAll |= D3DRENDER_REDRAW_UPDATE;
-   
    return True;
 }
 /********************************************************************/

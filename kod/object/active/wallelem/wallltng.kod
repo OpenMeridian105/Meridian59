@@ -45,8 +45,6 @@ classvars:
    vrDissipateMessage = lightningwall_dissipates
    vrUnaffectedMessage = lightningwall_damage0
 
-   viLightBonus = 7
-
    // How many ms should the effect last at max spellpower?
    viEffectDuration = 500
 
@@ -118,36 +116,6 @@ messages:
       AddPacket(1,ANIMATE_CYCLE, 4,Random(100,140), 2,1, 2,5);
 
       return;
-   }
-
-   NewOwner(what = $)
-   {
-      // Add a bit of light.  Lightning walls shed some light.
-
-      // new room
-      if what <> $
-      {
-         Send(what,@AddBaseLight,#amount=viLightBonus);
-      }
-
-      // old room
-      if poOwner <> $
-      {
-         Send(poOwner,@AddBaseLight,#amount=-viLightBonus);
-      }
-
-      propagate;
-   }
-
-   Delete()
-   {
-      // Take away the light we added.
-      if poOwner <> $
-      {
-         Send(poOwner,@AddBaseLight,#amount=-viLightBonus);
-      }
-
-      propagate;
    }
 
    SendLightingInformation()

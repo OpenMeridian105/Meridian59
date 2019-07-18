@@ -46,6 +46,9 @@ resources:
    include system.lkod
 
    system_user_killed = "~B~U~k[###]~n ~B~v%q was just killed by %s%q."
+   system_user_killed_angel = \
+      "~B~U~k[###]~n ~B~vShal'ille has come to the aid of %q, who has met "
+      "defeat while battling %s%q."
    system_user_killed_by_pker = "~B~U~k[###]~n ~B~v%q has been murdered in cold blood."
    system_user_killed_pker = \
       "~B~U~k[###]~n ~B~vThe notorious murderer, %q, has been killed by %s%q."
@@ -63,7 +66,9 @@ resources:
    system_user_killed_shield = "~B~U~k[###]~n ~B~v%q was bested by faction rival %s%q."
    system_user_killed_guild = \
       "~B~U~k[###]~n ~B~v%q of %s%q has been slaughtered by %s%q of %s%q in guild combat."
-      
+   system_user_lost_honor = \
+      "~B~U~k[###]~n ~B~v%q has lost honor by fleeing the battlefield."
+
    guildwar_kill_title1 = " has slaughtered "
    guildwar_kill_body1 = "Let it be known that "
    guildwar_kill_body2 = " of the "
@@ -1952,6 +1957,10 @@ messages:
       {
          rMessage = system_user_killed_arena;
       }
+      else if (Send(what,@DoesPlayerTakeNewbieDeath))
+      {
+         rMessage = system_user_killed_angel;
+      }
       else
       {
          // Outlaw or murderer was killed?
@@ -2062,6 +2071,25 @@ messages:
                #parm2=param2,#parm3=param3,#parm4=param4,#parm5=param5,
                #parm6=param6,#parm7=param7,#type3=STRING_RESOURCE,
                #type5=type5,#type7=type7);
+         Send(i,@WaveSendUser,#wave_rsc=system_message_sound,#what=self);
+      }
+
+      return;
+   }
+
+   UserLostHonorPoints(who = $)
+   {
+      local i;
+
+      if (who = $)
+      {
+         return;
+      }
+
+      foreach i in plUsers_logged_on
+      {
+         Send(i,@MsgSendUser,#message_rsc=system_user_lost_honor,
+            #parm1=Send(who,@GetTrueName),#type1=STRING_RESOURCE);
          Send(i,@WaveSendUser,#wave_rsc=system_message_sound,#what=self);
       }
 

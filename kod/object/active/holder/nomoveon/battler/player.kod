@@ -1685,6 +1685,15 @@ messages:
       return age;
    }
 
+   DoesPlayerTakeNewbieDeath()
+   {
+      // Always newbie death if honor string, but after it disappears
+      // this is dependent on not having PFLAG_PKILL_ENABLE.
+      return Send(self,@HasHonorString,#string=player_newbie_honor_string)
+         OR (NOT (piFlags & PFLAG_PKILL_ENABLE)
+            AND NOT Send(SETTINGS_OBJECT,@NewbiesDropLoot));
+   }
+
    GetHonorStringList()
    {
       return plHonor;

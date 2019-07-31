@@ -404,7 +404,7 @@ messages:
       return $;
    }
 
-   ResistanceCheck(atype = 0, aspell = 0)
+   ResistanceCheck(atype = 0, stype= 0)
    "Given bitvectors of attack type and spell, find the resistance modifier "
    "which applies. Largest resistance plus worst weakness gives the modifier."
    {
@@ -443,8 +443,8 @@ messages:
             // It's a resistance to spell type
             iResType = -iResType;
 
-            if (aspell & iResType) <> 0
-               OR (aspell <> 0 AND iResType = ATCK_SPELL_ALL)
+            if (stype& iResType) <> 0
+               OR (stype<> 0 AND iResType = ATCK_SPELL_ALL)
             {
                iResistance = Nth(j,2);
                
@@ -2380,7 +2380,7 @@ messages:
          }
 
          iDamage = Send(what,@AssessDamage,#what=self,#damage=iDamage,
-            #atype=Send(self,@GetDamageType),#aspell=Send(self,@GetSpellType),
+            #atype=Send(self,@GetAttackType),#stype=Send(self,@GetSpellType),
             #scalefactor=iScalefactor,#precision=TRUE);
 
          Send(self,@AssessHit,#what=what,#stroke_obj=stroke_obj,#damage=iDamage);
@@ -2433,7 +2433,7 @@ messages:
       return 0;
    }
 
-   GetDamageType(what = $)
+   GetAttackType(what = $)
    "Returns the weapon type of damage done."
    {
       // Default type for the stub function.
@@ -2447,7 +2447,7 @@ messages:
       return 0;
    }
 
-   AssessDamage(what = $,damage = $,atype = $, aspell = $)
+   AssessDamage(what = $,damage = $,atype = $, stype= $)
    "This applies damage to the battler, calculating appropriate resistances.  "
    "Return $ if we were killed."
    {
@@ -2997,7 +2997,7 @@ messages:
       //  or Hunter sword damage.  Otherwise, use the physical damage type.
       if (iType & (~ATCK_SPELL_HUNTERSWORD | ~ATCK_SPELL_ALL)) = 0
       {
-         iType = Send(self,@GetDamageType,#use_weapon=use_weapon);
+         iType = Send(self,@GetAttackType,#use_weapon=use_weapon);
       }
       else
       {

@@ -5598,7 +5598,7 @@ messages:
    }
 
    // This is the type of damage done.
-   GetDamageType(what = $, use_weapon = $)
+   GetAttackType(what = $, use_weapon = $)
    {
       local oWeapon, oMonster;
 
@@ -5607,7 +5607,7 @@ messages:
       if (oMonster <> $)
          AND (piFlags & PFLAG_MORPHED)
       {
-         return Send(oMonster,@GetDamageType,#what=what);
+         return Send(oMonster,@GetAttackType,#what=what);
       }
 
       if use_weapon = $
@@ -5655,7 +5655,7 @@ messages:
          return 0;
       }
 
-      return Send(oWeapon,@GetAttackSpell);
+      return Send(oWeapon,@GetSpellType);
    }
 
    AssessHit(what = $, stroke_obj = $, damage = $, use_weapon = $)
@@ -5697,7 +5697,7 @@ messages:
    // calculations. Most notably, damage from attackspells and melee is now 
    // handled with high precision. Eventually, all damage calculations should 
    // be handled in high precision mode.
-   AssessDamage(what=$,damage=$,atype=0,aspell=0,stroke_obj=$,bonus=0,
+   AssessDamage(what=$,damage=$,atype=0,stype=0,stroke_obj=$,bonus=0,
       scalefactor=1000,report=TRUE,report_resistance=TRUE,absolute=FALSE,
       precision=FALSE)
    {
@@ -5725,18 +5725,18 @@ messages:
          {
             damage = Send(oGort,@PriorityModifyDefenseDamage,#who=self,
                            #what=what,#damage=damage,
-                           #atype=atype,#aspell=aspell);
+                           #atype=atype,#stype=stype);
          }
          
          foreach i in plDefense_modifiers
          {
             damage = Send(i,@ModifyDefenseDamage,#who=self,#what=what,
-                           #damage=damage,#atype=atype,#aspell=aspell,
+                           #damage=damage,#atype=atype,#stype=stype,
                            #report_resistance=report_resistance);
             Send(i,@DefendingHit,#who=self,#what=what);
          }
 
-         iResistance = Send(self,@ResistanceCheck,#atype=atype,#aspell=aspell);
+         iResistance = Send(self,@ResistanceCheck,#atype=atype,#stype=stype);
 
          damage = Send(self,@GetDamageFromResistance,#what=damage,
                         #value=iResistance);
@@ -5744,7 +5744,7 @@ messages:
          // Allow protective spells a chance to improve when they take effect!
          foreach i in plPassiveImprovement
          {
-            if (aspell & -Nth(i,4)) AND Random(1,10) = 10
+            if (stype & -Nth(i,4)) AND Random(1,10) = 10
             {
                Send(First(i),@ImproveAbility,#who=self,#target=what);
             }
@@ -5773,10 +5773,10 @@ messages:
       // If it's just physical damage, do pain instead. Notably: spell
       // damage type flashes cannot be turned off by unchecking the
       // Show Pain option in client config.
-      if aspell <> 0
+      if stype <> 0
       {
          iDuration /= 2;
-         Send(self,@DamageTypeFlashEffect,#aspell=aspell,#duration=iDuration);
+         Send(self,@DamageTypeFlashEffect,#stype=stype,#duration=iDuration);
       }
       else
       {
@@ -5829,7 +5829,7 @@ messages:
       if IsClass(what,&Monster)
       {
          RecordStat(STAT_ASSESS_DAM,Send(self,@GetTrueName),
-            Send(what,@GetTrueName),aspell,atype,damage/100,origdamage,
+            Send(what,@GetTrueName),stype,atype,damage/100,origdamage,
             player_monster_attack_string);
       }
 
@@ -5839,13 +5839,13 @@ messages:
          if oWeapon <> $
          {
             RecordStat(STAT_ASSESS_DAM,Send(self,@GetTrueName),
-               Send(what,@GetTrueName),aspell,atype,damage/100,origdamage,
+               Send(what,@GetTrueName),stype,atype,damage/100,origdamage,
                Send(Send(what,@GetWeapon),@GetTrueName));
          }
          else
          {
             RecordStat(STAT_ASSESS_DAM,Send(self,@GetTrueName),
-               Send(what,@GetTrueName),aspell,atype,damage/100,origdamage,
+               Send(what,@GetTrueName),stype,atype,damage/100,origdamage,
                player_no_weapon_string);
          }
       }
@@ -5861,7 +5861,7 @@ messages:
             if report
             {
                Send(self,@MsgSendUser,#message_rsc=Send(self,@PlayerWasHit,
-                     #atype=atype,#aspell=aspell),#parm1=color_rsc,
+                     #atype=atype,#stype=stype),#parm1=color_rsc,
                      #parm2=Send(what,@GetCapDef),#parm3=Send(what,@GetName));
             }
          }
@@ -8355,7 +8355,7 @@ messages:
 
    ActivateSpellAtrophy()
    {
-      local i, j, iability, lSchoolsUsed, aSpell, bSpell,
+      local i, j, iability, lSchoolsUsed, oSpellA, oSpellB,
             bFound, highmark, iAmount;
 
       // Must get below highmark for atrophy to activate
@@ -8368,22 +8368,22 @@ messages:
             iAbility = Send(self,@DecodeSpellAbility,#compound=i);
             if iAbility > 2
             {
-               aSpell = Send(SYS,@FindSpellByNum,
+               oSpellA = Send(SYS,@FindSpellByNum,
                      #num=Send(self,@DecodeSpellNum,#compound=i));
                bFound = FALSE;
 
                foreach j in plSpells
                {
-                  bSpell = Send(SYS,@FindSpellByNum,
+                  oSpellB = Send(SYS,@FindSpellByNum,
                         #num=Send(self,@DecodeSpellNum,#compound=j));
-                  if j > 0 AND Send(aSpell,@GetSchool) = Send(bSpell,@GetSchool)
+                  if j > 0 AND Send(oSpellA,@GetSchool) = Send(oSpellB,@GetSchool)
                   {
                      iAmount = -1;
 
                      break;
                   }
                }
-               Send(self,@ChangeSpellAbility,#spell_num=Send(aSpell,@GetSpellNum),
+               Send(self,@ChangeSpellAbility,#spell_num=Send(oSpellA,@GetSpellNum),
                     #amount=iamount);
             }
          }
@@ -11604,17 +11604,17 @@ messages:
       return;
    }
 
-   PlayerWasHit(atype = 0, aspell = 0)
+   PlayerWasHit(atype = 0, stype = 0)
    "Select a message to Send the player when they are hit."
    {
-      if aspell > 0 // do spell attacks first, so flaming swords use the special
+      if stype > 0 // do spell attacks first, so flaming swords use the special
       {
-         if (aspell & ATCK_SPELL_FIRE) > 0 { return player_was_burned;}
-         if (aspell & ATCK_SPELL_SHOCK) > 0 { return player_was_shocked;}
-         if (aspell & ATCK_SPELL_COLD) > 0 { return player_was_frozen;}
-         if (aspell & ATCK_SPELL_HOLY) > 0 { return player_was_holyhit;}
-         if (aspell & ATCK_SPELL_UNHOLY) > 0 { return player_was_unholyhit;}
-         if (aspell & ATCK_SPELL_QUAKE) > 0 { return player_was_quaked;}
+         if (stype & ATCK_SPELL_FIRE) > 0 { return player_was_burned;}
+         if (stype & ATCK_SPELL_SHOCK) > 0 { return player_was_shocked;}
+         if (stype & ATCK_SPELL_COLD) > 0 { return player_was_frozen;}
+         if (stype & ATCK_SPELL_HOLY) > 0 { return player_was_holyhit;}
+         if (stype & ATCK_SPELL_UNHOLY) > 0 { return player_was_unholyhit;}
+         if (stype & ATCK_SPELL_QUAKE) > 0 { return player_was_quaked;}
       }
 
       if atype > 0   // do weapon attacks (odd ones first).

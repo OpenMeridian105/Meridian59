@@ -404,7 +404,7 @@ messages:
       return $;
    }
 
-   ResistanceCheck(atype = 0, aspell = 0)
+   ResistanceCheck(atype = 0, stype= 0)
    "Given bitvectors of attack type and spell, find the resistance modifier "
    "which applies. Largest resistance plus worst weakness gives the modifier."
    {
@@ -423,7 +423,7 @@ messages:
             // It's a resistance to weapon type
 
             if (atype & iResType) <> 0
-               OR (atype <> 0 AND iResType = ATCK_WEAP_ALL)
+               OR (atype <> 0 AND iResType = ATK_TYPE_ALL)
             {
                iResistance = Nth(j,2);
                
@@ -443,8 +443,8 @@ messages:
             // It's a resistance to spell type
             iResType = -iResType;
 
-            if (aspell & iResType) <> 0
-               OR (aspell <> 0 AND iResType = ATCK_SPELL_ALL)
+            if (stype& iResType) <> 0
+               OR (stype<> 0 AND iResType = SPL_TYPE_ALL)
             {
                iResistance = Nth(j,2);
                
@@ -2380,7 +2380,7 @@ messages:
          }
 
          iDamage = Send(what,@AssessDamage,#what=self,#damage=iDamage,
-            #atype=Send(self,@GetDamageType),#aspell=Send(self,@GetSpellType),
+            #atype=Send(self,@GetAttackType),#stype=Send(self,@GetSpellType),
             #scalefactor=iScalefactor,#precision=TRUE);
 
          Send(self,@AssessHit,#what=what,#stroke_obj=stroke_obj,#damage=iDamage);
@@ -2433,11 +2433,11 @@ messages:
       return 0;
    }
 
-   GetDamageType(what = $)
+   GetAttackType(what = $)
    "Returns the weapon type of damage done."
    {
       // Default type for the stub function.
-      return ATCK_WEAP_HIT;
+      return ATK_TYPE_HIT;
    }
 
    GetSpellType(what = $)
@@ -2447,7 +2447,7 @@ messages:
       return 0;
    }
 
-   AssessDamage(what = $,damage = $,atype = $, aspell = $)
+   AssessDamage(what = $,damage = $,atype = $, stype= $)
    "This applies damage to the battler, calculating appropriate resistances.  "
    "Return $ if we were killed."
    {
@@ -2461,7 +2461,7 @@ messages:
       if type < 0
       {
          type = -type;
-         if (type & ATCK_SPELL_FIRE)
+         if (type & SPL_TYPE_FIRE)
          {
             if damage = $
             {
@@ -2486,7 +2486,7 @@ messages:
             return battler_fire_fail;
          }
 
-         if (type & ATCK_SPELL_SHOCK)
+         if (type & SPL_TYPE_SHOCK)
          {
             if damage = $
             {
@@ -2511,7 +2511,7 @@ messages:
             return battler_shock_fail;
          }
 
-         if (type & ATCK_SPELL_COLD)
+         if (type & SPL_TYPE_COLD)
          {
             if damage = $
             {
@@ -2536,7 +2536,7 @@ messages:
             return battler_cold_fail;
          }
 
-         if (type & ATCK_SPELL_ACID)
+         if (type & SPL_TYPE_ACID)
          {
             if damage = $
             {
@@ -2561,7 +2561,7 @@ messages:
             return battler_acid_fail;
          }
 
-         if (type & ATCK_SPELL_HOLY)
+         if (type & SPL_TYPE_HOLY)
          {
             if damage = $
             {
@@ -2586,7 +2586,7 @@ messages:
             return battler_holy_fail;
          }
 
-         if (type & ATCK_SPELL_UNHOLY)
+         if (type & SPL_TYPE_UNHOLY)
          {
             if damage = $
             {
@@ -2611,7 +2611,7 @@ messages:
             return battler_unholy_fail;
          }
 
-         if (type & ATCK_SPELL_QUAKE)
+         if (type & SPL_TYPE_QUAKE)
          {
             if damage = $
             {
@@ -2638,7 +2638,7 @@ messages:
       }
       else
       {
-         if (type & ATCK_WEAP_BITE)
+         if (type & ATK_TYPE_BITE)
          {
             if damage = $
             {
@@ -2663,7 +2663,7 @@ messages:
                return battler_bite_fail;
          }
 
-         if (type & ATCK_WEAP_CLAW)
+         if (type & ATK_TYPE_CLAW)
          {
             if damage = $
             {
@@ -2688,7 +2688,7 @@ messages:
             return battler_claw_fail;
          }
 
-         if (type & ATCK_WEAP_STING)
+         if (type & ATK_TYPE_STING)
          {
             if damage = $
             {
@@ -2714,7 +2714,7 @@ messages:
          }
 
          // Repeat the acid spell words here
-         if (type & ATCK_WEAP_ACID)
+         if (type & ATK_TYPE_ACID)
          {
             if damage = $
             {
@@ -2740,7 +2740,7 @@ messages:
          }
 
          // Repeat the cold spell words here
-         if (type & ATCK_WEAP_COLD)
+         if (type & ATK_TYPE_COLD)
          {
             if damage = $
             {
@@ -2765,7 +2765,7 @@ messages:
             return battler_cold_fail;
          }
 
-         if (type & ATCK_WEAP_PUNCH)
+         if (type & ATK_TYPE_PUNCH)
          {
             if damage = $
             {
@@ -2790,7 +2790,7 @@ messages:
             return battler_punch_fail;
          }
 
-         if (type & ATCK_WEAP_SLASH)
+         if (type & ATK_TYPE_SLASH)
          {
             if damage = $
             {
@@ -2815,7 +2815,7 @@ messages:
             return battler_slash_fail;
          }
 
-         if (type & ATCK_WEAP_BLUDGEON)
+         if (type & ATK_TYPE_BLUDGEON)
          {
             if damage = $
             {
@@ -2840,7 +2840,7 @@ messages:
             return battler_bludgeon_fail;
          }
 
-         if (type & ATCK_WEAP_THRUST)
+         if (type & ATK_TYPE_THRUST)
          {
             if damage = $
             {
@@ -2865,7 +2865,7 @@ messages:
             return battler_thrust_fail;
          }
 
-         if (type & ATCK_WEAP_PIERCE)
+         if (type & ATK_TYPE_PIERCE)
          {
             if damage = $
             {
@@ -2995,9 +2995,9 @@ messages:
 
       // We only want to use a unique word if the spell damage is NOT generic
       //  or Hunter sword damage.  Otherwise, use the physical damage type.
-      if (iType & (~ATCK_SPELL_HUNTERSWORD | ~ATCK_SPELL_ALL)) = 0
+      if (iType & (~SPL_TYPE_HUNTERSWORD | ~SPL_TYPE_ALL)) = 0
       {
-         iType = Send(self,@GetDamageType,#use_weapon=use_weapon);
+         iType = Send(self,@GetAttackType,#use_weapon=use_weapon);
       }
       else
       {

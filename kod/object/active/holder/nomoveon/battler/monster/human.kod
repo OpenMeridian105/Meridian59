@@ -132,7 +132,7 @@ classvars:
    viTreasure_type = TID_NONE
 
    viSpeed = SPEED_FASTER
-   viAttack_type = ATCK_WEAP_SLASH
+   viAttack_type = ATK_TYPE_SLASH
    viAttributes = 0
    viDefault_behavior = AI_FIGHT_NEWBIESAFE
 
@@ -905,7 +905,7 @@ messages:
       return GetListElemByClass(plUsing,class);
    }
 
-   GetDamageType(what = $, use_weapon = $)
+   GetAttackType(what = $, use_weapon = $)
    {
       local oWeapon;
 
@@ -921,7 +921,7 @@ messages:
       if oWeapon = $
       {
          // No weapon means we are punching
-         return ATCK_WEAP_UNARMED + ATCK_WEAP_PUNCH;
+         return ATK_TYPE_UNARMED + ATK_TYPE_PUNCH;
       }
 
       return Send(oWeapon,@GetAttackType);
@@ -946,7 +946,7 @@ messages:
          return 0;
       }
 
-      return Send(oWeapon,@GetAttackSpell);
+      return Send(oWeapon,@GetSpellType);
    }
 
    DoMeleeAnimation(what = $)
@@ -2267,20 +2267,20 @@ messages:
    }
 
    // Allows humans to enjoy armor from items.
-   ArmorCheck(what=$,damage=0,atype=0,aspell=0,bonus=0)
+   ArmorCheck(what=$,damage=0,atype=0,stype=0,bonus=0)
    {
       local i, iArmor, oAttribute;
 
       foreach oAttribute in plObject_attributes
       {
          damage = Send(oAttribute,@ModifyDefenseDamage,#who=self,#what=what,
-            #damage=damage,#atype=atype,#aspell=aspell);
+            #damage=damage,#atype=atype,#stype=stype);
       }
 
       foreach i in plDefense_modifiers
       {
          damage = Send(i,@ModifyDefenseDamage,#who=self,#what=what,
-            #damage=damage,#atype=atype,#aspell=aspell);
+            #damage=damage,#atype=atype,#stype=stype);
       }
 
       // piArmor may be adjusted situationally (e.g. survival room)
@@ -2290,7 +2290,7 @@ messages:
       iArmor = Bound(Random(iArmor*33,iArmor*100),0,damage);
 
       // Armor is only fully effective against physical attacks.
-      if aspell <> 0
+      if stype<> 0
       {
          // Reduce damage if part of the damage is spell
          if atype <> 0

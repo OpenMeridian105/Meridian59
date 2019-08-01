@@ -35,7 +35,7 @@ classvars:
    vrHit = attack_spell_hit_rsc
 
    viAttack_type = 0
-   viAttack_spell = ATCK_SPELL_ALL
+   viSpell_type = SPL_TYPE_ALL
 
    // In seconds, since it works off GetTime(),
    viPostCast_time = 2
@@ -253,7 +253,7 @@ messages:
                continue;
             }
             iDamage = Send(i,@AssessDamage,#what=who,#damage=iDamage,
-                           #atype=viAttack_type,#aspell=Send(self,@GetAttackSpell),
+                           #atype=viAttack_type,#stype=Send(self,@GetSpellType),
                            #absolute=pbAbsolute,#precision=TRUE);
             if iDamage = $
             {
@@ -279,7 +279,7 @@ messages:
          else
          {
             iDamage = Send(i,@AssessDamage,#what=who,#damage=iDamage,
-                        #atype=viAttack_type,#aspell=Send(self,@GetAttackSpell),
+                        #atype=viAttack_type,#stype=Send(self,@GetSpellType),
                         #absolute=pbAbsolute,#precision=TRUE);
          }
 
@@ -322,9 +322,9 @@ messages:
       return iDamage;
    }
 
-   GetAttackSpell()
+   GetSpellType()
    {
-      return viAttack_spell;
+      return viSpell_type;
    }
 
    GetAttackType()
@@ -354,7 +354,7 @@ messages:
       {
          // Apply the spell damage to the caster. Kill them if necessary.
          iFinalDamage = Send(who,@AssessDamage,#what=who,#damage=iDamage,#atype=0,
-                           #aspell=viAttack_spell,#report=TRUE,#precision=TRUE);
+                           #stype=viSpell_type,#report=TRUE,#precision=TRUE);
 
          if iFinalDamage = $
          {

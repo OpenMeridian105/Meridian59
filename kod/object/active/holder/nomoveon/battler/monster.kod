@@ -283,8 +283,8 @@ classvars:
    vrDead_icon = $
    vrDead_name = $
 
-   viAttack_type = ATCK_WEAP_HIT
-   viAttack_spell = 0
+   viAttack_type = ATK_TYPE_HIT
+   viSpell_type = 0
    viMerchant_markup = MERCHANT_NORMAL
    viCancel_offer_time = 30000
    // Default to teleport if there's no move anim, also used for movement timer
@@ -3071,7 +3071,7 @@ messages:
    }
 
    // This is the type of damage done.
-   GetDamageType(what = $)
+   GetAttackType(what = $)
    {
       return viAttack_type;
    }
@@ -3079,7 +3079,7 @@ messages:
    // This is the magical type of damage done.
    GetSpellType(what = $)
    {
-      return viAttack_spell;
+      return viSpell_type;
    }
 
    IsRangedAttack()
@@ -3097,7 +3097,7 @@ messages:
    // calculations. Most notably, damage from attackspells and melee is now 
    // handled with high precision. Eventually, all damage calculations should 
    // be handled in high precision mode.
-   AssessDamage(what=$,damage=$,atype=0,aspell=0,bonus=0,scalefactor=1000,
+   AssessDamage(what=$,damage=$,atype=0,stype=0,bonus=0,scalefactor=1000,
       absolute=FALSE,precision=FALSE)
    {
       local iDamage, iResist, iPercentClass, i, each_obj;
@@ -3118,8 +3118,8 @@ messages:
       if NOT absolute
       {
          iDamage = Send(self,@ArmorCheck,#what=what,#bonus=bonus,#atype=atype,
-            #aspell=aspell,#damage=damage);
-         iResist = Send(self,@ResistanceCheck,#atype=atype,#aspell=aspell);
+            #stype=stype,#damage=damage);
+         iResist = Send(self,@ResistanceCheck,#atype=atype,#stype=stype);
          iDamage = Send(self,@GetDamageFromResistance,#what=iDamage,#value=iResist);
          iDamage += bonus;
          iDamage = iDamage * scalefactor / 1000;
@@ -3246,14 +3246,14 @@ messages:
 
    // Allows monsters to have armor not related to specific equipped items. 
    // Based on piArmor and viBonusArmor.
-   ArmorCheck(what=$,damage=0,atype=0,aspell=0,bonus=0)
+   ArmorCheck(what=$,damage=0,atype=0,stype=0,bonus=0)
    {
       local iArmor, oAttribute;
 
       foreach oAttribute in plObject_attributes
       {
          damage = Send(oAttribute,@ModifyDefenseDamage,#who=self,#what=what,
-            #damage=damage,#atype=atype,#aspell=aspell);
+            #damage=damage,#atype=atype,#stype=stype);
       }
 
       // piArmor may be adjusted situationally (e.g. survival room)
@@ -3263,7 +3263,7 @@ messages:
       iArmor = Bound(Random(iArmor*33,iArmor*100),0,damage);
 
       // Armor is only fully effective against physical attacks.
-      if aspell <> 0
+      if stype<> 0
       {
          // Reduce damage if part of the damage is spell
          if atype <> 0

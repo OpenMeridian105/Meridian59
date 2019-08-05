@@ -1,0 +1,117 @@
+// Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+// All rights reserved.
+//
+// This software is distributed under a license that is described in
+// the LICENSE file that accompanies it.
+//
+// Meridian is a registered trademark.
+
+
+////////////////////////////////////////////////////////////////////////////////
+DyeBottle is PassiveItem
+
+constants:
+
+   include blakston.khd
+resources:
+
+   include DyeBottle.lkod
+   
+   DyeBottle_name_rsc = "bottle of dye"
+   DyeBottle_desc_rsc = \
+      "Dye your item to the color contained in this bottle.  "
+      "The dye can only be applied once, and will override any previous dyes."
+
+   DyeBottle_icon_rsc = dyebottle.bgf
+   
+   DyeBottle_unable_rsc = \
+      "The material of %s%s resists your dye."
+   
+   DyeBottle_use_rsc = \
+      "You apply the dye to %s%s."
+   DyeBottle_use_snd = drips.ogg
+
+classvars:
+   vrName = DyeBottle_name_rsc
+   vrDesc = DyeBottle_desc_rsc
+   vrIcon = DyeBottle_icon_rsc
+
+   viUse_type = ITEM_SINGLE_USE
+
+properties:
+
+   viObject_flags = OF_APPLYABLE | OF_GETTABLE
+
+messages:
+
+   Constructor(iColor=0)
+   {
+      Post(self,@SetColor,#xlat=iColor);
+
+      propagate;
+   }
+   
+   SetColor(xlat=0)
+   {
+      local iColor;
+   
+      if xlat <> 0
+      {
+         iColor = xlat;
+      }
+      else
+      {
+         // These are the gray palette translations.
+         iColor = Random(PT_GRAY_TO_ORANGE,PT_GRAY_TO_BLOND);
+         
+         if (iColor = 0x1F)
+         {
+            iColor = PT_GRAY_TO_RED;
+         }
+      }
+
+      if poOwner <> $
+      {
+         piItem_flags = (piItem_flags & ~ITEM_PALETTE_MASK) | iColor;
+         Send(poOwner,@SomethingChanged,#what=self);
+      }
+      
+
+      return;
+   }
+   
+   ReqNewApply(what = $,apply_on = $)
+   {
+      if Send(apply_on,@CanDyeItem)
+      {
+         return TRUE;
+      }
+
+      Send(what,@MsgSendUser,#message_rsc=DyeBottle_unable_rsc,
+            #parm1=Send(apply_on,@GetDef),#parm2=Send(apply_on,@GetName));
+
+      return FALSE;
+   }
+
+   NewApplied(what = $,apply_on = $)
+   {
+      local oItemAtt;
+   
+      oItemAtt = Send(SYS,@FindItemAttByNum,#num=IA_DYED);
+      if Send(oItemAtt,@ReqAddToItem,#oItem=apply_on)
+      {
+         Send(oItemAtt,@AddToItem,#oItem=apply_on,#state1=piItem_flags);
+      }
+   
+      Send(what,@WaveSendUser,#what=self,#wave_rsc=DyeBottle_use_snd);
+      
+      Send(what,@MsgSendUser,#message_rsc=DyeBottle_use_rsc,
+          #parm1=Send(apply_on,@GetDef),#parm2=Send(apply_on,@GetName));
+
+      Send(self,@Delete);
+
+      return;
+   }
+
+end
+////////////////////////////////////////////////////////////////////////////////

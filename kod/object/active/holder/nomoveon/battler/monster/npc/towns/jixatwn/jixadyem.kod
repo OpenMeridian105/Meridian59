@@ -18,33 +18,74 @@ resources:
 
    include jixadyem.lkod
 
-   jixadye_name_rsc = "Jixa Dye"
+   jixadye_name_rsc = "Rosaline Marinus"
    jixadye_icon_rsc = jixadyem.bgf
    jixadye_desc_rsc = \
-      "In this Shop you can dry your items.. isnt it cool?"
+      "Rosaline spent her early days in her father's smithy, helping him out "
+      "where she could and, being a quick learner, picking up the craft along "
+      "the way.  Possessing a curious mind, Rosaline dedicated most of her spare "
+      "time to the study of the living creatures around her and, in doing so, "
+      "developed a particular fascination with beetles and their multi-colored shells.  "
+      "Using her observations as an inspiration, she soon began investigating new "
+      "methods to create uniquely colored alloys that her father could use in his "
+      "work."
+      "When he fell victim to a mysterious illness and died several years later, "
+      "the responsibility of carrying on with the family's business fell on her "
+      "shoulders.  Never one to complain, she picked up where her father had left "
+      "off and has since made a name for herself and her extraordinary abilities."
 
    JixaDye_entry_welcome = "Welcome to the most colorful place in the land of Meridian!"
+   
+   JixaDye_gotwanted_red = \ 
+      "Would you have a look at this beautiful shade of crimson!  Love, rage, blood, murder...  "
+      "No other color carries such passion!"
+   JixaDye_gotwanted_blue = \ 
+      "Ahhh!  A blue as deep as the ocean!  It is beyond me why some associate this color "
+      "with sadness.  When I gaze at the ocean, all my sorrows are but washed away... "
+   JixaDye_gotwanted_green = \ 
+      "Green is my favorite color! It carries the spirit of our world and of Jala herself."
+   JixaDye_gotwanted_black = \ 
+      "Pitch black... As the saying goes: Those who wear black live colorful lives."
+   JixaDye_gotwanted_white = \ 
+      "A white heartstones will allow us to access the entire color spectrum. "
+      "You never know what you'll get with this one."
+   JixaDye_gotwanted_purple = \ 
+      "Purple!  ...such a fascinating color!  Only a step away from beyond our sight."
+   JixaDye_gotwanted_dgreen = \ 
+      "What a lovely deep shade of green... I'm sure Jala would be ecstatic!"
+   JixaDye_gotwanted_sky = \ 
+      "Amazing! A sky heartstone! I never grow tired of the color of the endless skies."
+   JixaDye_gotwanted_brown = \ 
+      "Brown...  Modest. Solid.  Steady.  Dependable as the ground itself.  What a shame "
+      "that color doesn't get the credit it deserves."
 
 classvars:
 
    vrName = jixadye_name_rsc
    vrIcon = jixadye_icon_rsc
    vrDesc = jixadye_desc_rsc
+   viMerchant_markup = MERCHANT_NORMAL
    viAttributes = \
-      MOB_NOFIGHT | MOB_SELLER | MOB_BUYER | MOB_NOMOVE | MOB_NOQUEST \
-      | MOB_RANDOM | MOB_LISTEN | MOB_COND_SELLER
+      MOB_NOFIGHT | MOB_SELLER | MOB_RANDOM | MOB_LISTEN | MOB_NOMOVE \
+      | MOB_RECEIVE | MOB_NOQUEST 
    viOccupation = MOB_ROLE_MERCHANT
-   viMerchant_markup = MERCHANT_RIPOFF
 
 properties:
 
 messages:
 
+   Constructed()
+   {
+      plWantedItems = [ &Heartstone ];
+
+      propagate;
+   }
+
    SetForSale()
    {
       plFor_sale = [
          [  
-            Create(&Herbs,#number=1)
+            Create(&WoodenShield,#number=1)
          ],
          $,$,$];
 
@@ -60,6 +101,71 @@ messages:
 
       Post(who,@SomeoneSaid,#what=self,#string=JixaDye_entry_welcome,
             #type=SAY_RESOURCE);
+
+      propagate;
+   }
+   
+   CheckWhyWanted(obj=$,who=$)
+   {
+      local iColor, iObjColor, rWanted;
+
+      if IsClass(obj,&Heartstone)
+      {
+         iObjColor = Send(obj,@GetHeartstoneColor);
+
+         if (iObjColor = PT_REDTODKBLACK1)
+         {
+            iColor = PT_GRAY_TO_BLACK;
+            rWanted = JixaDye_gotwanted_black;
+         }
+         else if (iObjColor = XLAT_TO_BLUE)
+         {
+            iColor = PT_GRAY_TO_KBBLUE;
+            rWanted = JixaDye_gotwanted_blue;
+         }
+         else if (iObjColor = XLAT_TO_SKIN4)
+         {
+            iColor = PT_GRAY_TO_GOLD;
+            rWanted = JixaDye_gotwanted_brown;
+         }
+         else if (iObjColor = PT_REDTODGREEN3)
+         {
+            iColor = PT_GRAY_TO_KBGREEN;
+            rWanted = JixaDye_gotwanted_dgreen;
+         }
+         else if (iObjColor = XLAT_TO_GREEN)
+         {
+            iColor = PT_GRAY_TO_LBGREEN;
+            rWanted = JixaDye_gotwanted_green;
+         }
+         else if (iObjColor = XLAT_TO_PURPLE)
+         {
+            iColor = PT_GRAY_TO_KPURPLE;
+            rWanted = JixaDye_gotwanted_purple;
+         }
+         else if (iObjColor = XLAT_TO_RED)
+         {
+            iColor = PT_GRAY_TO_LRED;
+            rWanted = JixaDye_gotwanted_red;
+         }
+         else if (iObjColor = XLAT_TO_SKY)
+         {
+            iColor = PT_GRAY_TO_BBLUE;
+            rWanted = JixaDye_gotwanted_sky;
+         }
+         else
+         {
+            //Heartstone must be white, use colour 0 to assign a random dye
+            iColor = 0;
+            rWanted = JixaDye_gotwanted_white;
+         }
+
+         Send(who,@NewHold,#what=Create(&DyeBottle,#iColor=iColor));
+         Send(self,@SayToOne,#target=who,#message_rsc=rWanted);
+
+         // We don't destroy the item, so return FALSE.
+         return FALSE;
+      }
 
       propagate;
    }

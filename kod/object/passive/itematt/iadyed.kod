@@ -1,0 +1,113 @@
+// Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+// All rights reserved.
+//
+// This software is distributed under a license that is described in
+// the LICENSE file that accompanies it.
+//
+// Meridian is a registered trademark.
+
+
+////////////////////////////////////////////////////////////////////////////////
+ItemAttDyed is ItemAttribute
+
+///////////////////////////////////////////////////////////////////////
+//
+//   This item has been coloured using a bottle of dye
+//
+//   Form is:
+//
+//      [IA_DYED, iColor]
+//
+//   iColor::the color of the item
+//
+///////////////////////////////////////////////////////////////////////
+
+constants:
+
+   include blakston.khd
+
+resources:
+
+   //include iaengrav.lkod
+
+    ItemAtt_dyed_desc = "  This %s has been dyed with a vibrant color. "
+
+classvars:
+
+   viItem_Att_Num = IA_DYED
+   vrDesc = ItemAtt_dyed_desc
+
+properties:
+
+
+messages:
+
+   AppendDesc(oItem=$,who=$,lData=$)
+   {
+      AddPacket(4,vrDesc,4,Send(oItem,@GetName));
+
+      return;
+   }
+
+   SetPrimaryState(state1=$)
+   {
+
+      if state1 = $
+      {
+         Debug("SetPrimaryState called with nil state!");
+
+         return FALSE;
+      }
+
+      return state1;
+   }
+   
+   ReqAddToItem(oItem=$)
+   {
+      propagate;
+   }
+   
+   AddToItem(oItem = $, state1 = $)
+   {
+      Send(oItem,@SetPaletteTranslation,#translation=state1);
+      Send(Send(oItem,@GetOwner),@SomethingChanged,#what=oItem);
+
+      propagate;
+   }
+
+   RemoveFromItem(oItem=$, state1 = $)
+   {
+      Send(oItem,@SetPaletteTranslation,#translation=-(state1));
+      Send(Send(oItem,@GetOwner),@SomethingChanged,#what=oItem);
+
+      propagate;
+   }
+
+   CanBeSpoofed()
+   {
+      return FALSE;
+   }
+
+   GetNamePriority()
+   {
+      return -1;
+   }
+
+   InitiallyIdentified(random_gen=FALSE)
+   {
+      return TRUE;
+   }
+
+   AddToTreasureTable()
+   {
+      return FALSE;
+   }
+
+   SetItemsToAttribute()
+   {
+      plItems_to_Attribute = $;
+      return;
+   }
+
+end
+////////////////////////////////////////////////////////////////////////////////

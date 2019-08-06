@@ -28,9 +28,9 @@ constants:
 
 resources:
 
-   //include iaengrav.lkod
+   include iadyed.lkod
 
-    ItemAtt_dyed_desc = "  This %s has been dyed with a vibrant color. "
+    ItemAtt_dyed_desc = "  This %s has been dyed with a vibrant color."
 
 classvars:
 
@@ -38,7 +38,6 @@ classvars:
    vrDesc = ItemAtt_dyed_desc
 
 properties:
-
 
 messages:
 
@@ -51,7 +50,6 @@ messages:
 
    SetPrimaryState(state1=$)
    {
-
       if state1 = $
       {
          Debug("SetPrimaryState called with nil state!");
@@ -61,24 +59,46 @@ messages:
 
       return state1;
    }
-   
+
    ReqAddToItem(oItem=$)
    {
       propagate;
    }
-   
+
    AddToItem(oItem = $, state1 = $)
    {
+      local oOwner;
+
+      oOwner = Send(oItem,@GetOwner);
+
       Send(oItem,@SetPaletteTranslation,#translation=state1);
-      Send(Send(oItem,@GetOwner),@SomethingChanged,#what=oItem);
+      if (oOwner <> $)
+      {
+         Send(oOwner,@SomethingChanged,#what=oItem);
+         // Checks for item in overlays. SomethingChanged should probably
+         // handle this, but other classes use ChangeWindowOverlay for
+         // animations already.
+         Send(oOwner,@ChangeWindowOverlay,#what=oItem);
+      }
 
       propagate;
    }
 
    RemoveFromItem(oItem=$, state1 = $)
    {
+      local oOwner;
+
+      oOwner = Send(oItem,@GetOwner);
+
       Send(oItem,@SetPaletteTranslation,#translation=-(state1));
-      Send(Send(oItem,@GetOwner),@SomethingChanged,#what=oItem);
+      if (oOwner <> $)
+      {
+         Send(oOwner,@SomethingChanged,#what=oItem);
+         // Checks for item in overlays. SomethingChanged should probably
+         // handle this, but other classes use ChangeWindowOverlay for
+         // animations already.
+         Send(oOwner,@ChangeWindowOverlay,#what=oItem);
+      }
 
       propagate;
    }
@@ -106,6 +126,7 @@ messages:
    SetItemsToAttribute()
    {
       plItems_to_Attribute = $;
+
       return;
    }
 

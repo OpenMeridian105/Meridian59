@@ -13,22 +13,24 @@ DyeBottle is PassiveItem
 constants:
 
    include blakston.khd
+
 resources:
 
-   include DyeBottle.lkod
-   
+   include dyebottle.lkod
+
    DyeBottle_name_rsc = "bottle of dye"
    DyeBottle_desc_rsc = \
       "Dye your item to the color contained in this bottle.  "
       "The dye can only be applied once, and will override any previous dyes."
 
    DyeBottle_icon_rsc = dyebottle.bgf
-   
-   DyeBottle_unable_rsc = \
-      "The material of %s%s resists your dye."
-   
-   DyeBottle_use_rsc = \
-      "You apply the dye to %s%s."
+
+   DyeBottle_same_rsc = \
+      "This looks to be a perfect opportunity to finally tackle that "
+      "obsessive-compulsive disorder and resist the urge to use the same dye "
+      "on this item twice."
+   DyeBottle_unable_rsc = "The material of %s%s resists your dye."
+   DyeBottle_use_rsc = "You apply the dye to %s%s."
    DyeBottle_use_snd = drips.ogg
 
 classvars:
@@ -50,11 +52,11 @@ messages:
 
       propagate;
    }
-   
+
    SetColor(xlat=0)
    {
       local iColor;
-   
+
       if xlat <> 0
       {
          iColor = xlat;
@@ -75,22 +77,29 @@ messages:
          piItem_flags = (piItem_flags & ~ITEM_PALETTE_MASK) | iColor;
          Send(poOwner,@SomethingChanged,#what=self);
       }
-      
 
       return;
    }
-   
+
    ReqNewApply(what = $,apply_on = $)
    {
-      if Send(apply_on,@CanDyeItem)
+      if NOT Send(apply_on,@CanDyeItem)
       {
-         return TRUE;
+         Send(what,@MsgSendUser,#message_rsc=DyeBottle_unable_rsc,
+               #parm1=Send(apply_on,@GetDef),#parm2=Send(apply_on,@GetName));
+
+         return FALSE;
       }
 
-      Send(what,@MsgSendUser,#message_rsc=DyeBottle_unable_rsc,
-            #parm1=Send(apply_on,@GetDef),#parm2=Send(apply_on,@GetName));
+      if (Send(apply_on,@HasAttribute,#ItemAtt=IA_DYED)
+         AND Nth(Send(apply_on,@GetAttributeData,#ItemAtt=IA_DYED),3) = piItem_flags)
+      {
+         Send(what,@MsgSendUser,#message_rsc=DyeBottle_same_rsc);
 
-      return FALSE;
+         return FALSE;
+      }
+
+      return TRUE;
    }
 
    NewApplied(what = $,apply_on = $)
@@ -102,9 +111,9 @@ messages:
       {
          Send(oItemAtt,@AddToItem,#oItem=apply_on,#state1=piItem_flags);
       }
-   
+
       Send(what,@WaveSendUser,#what=self,#wave_rsc=DyeBottle_use_snd);
-      
+
       Send(what,@MsgSendUser,#message_rsc=DyeBottle_use_rsc,
           #parm1=Send(apply_on,@GetDef),#parm2=Send(apply_on,@GetName));
 

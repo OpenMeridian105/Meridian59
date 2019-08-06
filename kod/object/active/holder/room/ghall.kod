@@ -906,9 +906,26 @@ messages:
    ReqSomethingAttack(what = $,victim = $,use_weapon = $,stroke_obj = $)
    "No one may attack through the door if it's closed."
    {
-      if (what = $) or (victim = $)
+      if (what = $) OR (victim = $)
       {
          propagate;
+      }
+
+      // InFoyer will return FALSE if the user isn't in the room, but trying
+      // to attack (room enchantment, minions). This leads to a match for
+      // InFoyer for attacker and victim, so attacks must require both
+      // combatants to be in the guild hall.
+      if (Send(what,@GetOwner) <> Send(victim,@GetOwner))
+      {
+         if (Send(self,@InFoyer,#who=victim))
+         {
+            // Fine if victim is in the foyer (and therefore attacker is
+            // outside hall). This way hall foyers can't be used as an escape
+            // from ET damage.
+            propagate;
+         }
+
+         return FALSE;
       }
 
       if Send(self,@InFoyer,#who=what) <> Send(self,@InFoyer,#who=victim)

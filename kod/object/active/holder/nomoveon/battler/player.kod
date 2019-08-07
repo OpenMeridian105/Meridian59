@@ -2413,11 +2413,9 @@ messages:
    "of values selected.  See system.kod, SendCharInfo(), for what these "
    "values mean."
    {
-      local i, lFaceparts, lStats, lSpells, lSkills, iPoints, iLevel, oSpell,
-            iHair_translation, iSkin_translation, bQor, bShalille, oSkill;
-
-      bQor = FALSE;
-      bShalille = FALSE;
+      local i, j, lFaceparts, lStats, lSpells, lSkills, iPoints, iLevel, oSpell,
+            iHair_translation, iSkin_translation, bQor, bShalille, oSkill,
+            oSchool, iCount, bAdded;
 
       psPlayerDescription = desc;
 
@@ -2609,7 +2607,11 @@ messages:
          }
       }
 
-      if iPoints > 45
+      // We start out as neutral, let's see if our spells change that.
+      bQor = FALSE;
+      bShalille = FALSE;
+
+      if iPoints > 125
       {
          // they hacked their char.dll
       }
@@ -2618,32 +2620,98 @@ messages:
          foreach i in lSpells
          {
             oSpell = Send(SYS, @FindSpellByNum, #num=i);
-            // Not offered to new characters -> cheating, skip spell
-            if (oSpell <> $ AND Send(oSpell,@OfferToNewCharacters))
+
+            // Gotta have a valid spell.
+            if oSpell = $
             {
-               iLevel = Send(oSpell,@GetLevel);
-               if (iLevel <= 2)
+               continue;
+            }
+
+            // Spell must be available to new players.
+            if NOT Send(oSpell,@OfferToNewCharacters)
+            {
+               continue;
+            }
+
+            // Let's check what school we are dealing with here.
+            oSchool = Send(oSpell,@GetSchool);
+
+            // Spell must not conflict with our alignment.
+            if ((oSchool = SS_QOR) AND bShalille)
+               OR ((oSchool = SS_SHALILLE) AND bQor)
+            {
+               continue;
+            }
+
+            // Level 2 spells require at least 2 level 1 spells of that school.
+            iLevel = Send(oSpell,@GetLevel);
+            iCount = 0;
+            bAdded = FALSE;
+
+            if (iLevel = 1)
+            {
+               Send(self,@AddSpell,#num=i,#initial=TRUE);
+               bAdded = TRUE;
+            }
+            else if (iLevel = 2)
+            {
+               foreach j in lSpells
+               {
+                  oSpell = Send(SYS,@FindSpellByNum,#num=j);
+
+                  if (oSchool = Send(oSpell,@GetSchool))
+                     AND (Send(oSpell,@GetLevel) = 1)
+                  {
+                     ++iCount;
+                  }
+               }
+
+               if iCount >= 2
                {
                   Send(self,@AddSpell,#num=i,#initial=TRUE);
+                  bAdded = TRUE;
                }
-               if (Send(oSpell,@GetSchool) = SS_QOR)
-               {
-                  bQor = TRUE;
-               }
-               if (Send(oSpell,@GetSchool) = SS_SHALILLE)
-               {
-                  bShalille = TRUE;
-               }
+            }
+
+            // This sets our alignment in stone, grants karma and blocks
+            // spells of opposite alignment from making it into our list.
+            if bAdded AND (oSchool = SS_QOR)
+            {
+               bQor = TRUE;
+            }
+
+            if bAdded AND (oSchool = SS_SHALILLE)
+            {
+               bShalille = TRUE;
             }
          }
 
          foreach i in lSkills
          {
             oSkill = Send(SYS,@FindSkillByNum,#num=i);
-            if (oSkill <> $)
+            oSchool = Send(oSkill,@GetSchool);
+            iLevel = Send(oSkill,@GetLevel);
+
+            iCount = 0;
+
+            if (iLevel = 1)
             {
-               iLevel = Send(oSkill,@GetLevel);
-               if (iLevel <= 2)
+               Send(self,@AddSkill,#num=i,#initial=TRUE);
+            }
+            else if (iLevel = 2)
+            {
+               foreach j in lSkills
+               {
+                  oSkill = Send(SYS,@FindSkillByNum,#num=j);
+
+                  if (oSchool = Send(oSkill,@GetSchool))
+                     AND (Send(oSkill,@GetLevel) = 1)
+                  {
+                     ++iCount;
+                  }
+               }
+
+               if iCount >= 2
                {
                   Send(self,@AddSkill,#num=i,#initial=TRUE);
                }

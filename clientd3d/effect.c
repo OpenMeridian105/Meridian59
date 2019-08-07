@@ -16,6 +16,7 @@
 Effects effects;
 
 extern Bool gD3DRedrawAll;
+extern player_info player;
 
 static void EffectFlash(int duration);
 /****************************************************************************/
@@ -54,7 +55,7 @@ Bool IsBlind()
  */
 Bool PerformEffect(WORD effect, char *ptr, int len)
 {
-   int duration, xlat;
+   int duration, xlat, direction, distance;
    char *start = ptr;
 
    switch (effect)
@@ -79,6 +80,18 @@ Bool PerformEffect(WORD effect, char *ptr, int len)
       Extract(&ptr, &duration, 4);
       if (config.animate)
       effects.cleave = duration;
+      break;
+
+   case EFFECT_DODGE:
+      Extract(&ptr, &duration, 4);
+      Extract(&ptr, &direction, 4);
+      Extract(&ptr, &distance, 4);
+      if (config.animate)
+      {
+         effects.dodge = duration;
+         effects.dodgedir = direction;
+         effects.dodgedis = distance;
+      }
       break;
 
    case EFFECT_PARALYZE:
@@ -268,6 +281,36 @@ void EffectCleave(void)
    }
 }
 
+/****************************************************************************/
+/*
+ * EffectDodge:  Create a dodge effect when passive skill kicks in.
+ */
+void EffectDodge(void)
+{
+   int dx, dy;
+
+   FindOffsets(FINENESS, (player.angle + effects.dodgedir) % NUMDEGREES, &dx, &dy);
+
+   if (effects.dodge <= 0)
+   {
+      if (effects.view_dx || effects.view_dy || effects.view_dz)
+         RedrawAll();
+      effects.view_dx = 0;
+      effects.view_dy = 0;
+      effects.view_dz = 0;
+   }
+   else
+   {
+      int ct = (400-effects.dodge)*3/4;
+
+      effects.view_dx = effects.dodgedis*(dx*((ct)*(ct)*(ct)/27000 - 10*(ct+300)/3 + 1000)/2)/(64*FINENESS);
+      effects.view_dy = effects.dodgedis*(dy*((ct)*(ct)*(ct)/27000 - 10*(ct+300)/3 + 1000)/2)/(64*FINENESS);
+      effects.view_dz = effects.dodgedis*(((ct)*(ct)*(ct)/27000 - 10*(ct+300)/3 + 1000)/2)/128;
+
+      RedrawAll();
+   }
+}
+
 /************************************************************************/
 /*
  * AnimateEffects: Animate special effects
@@ -318,6 +361,13 @@ Bool AnimateEffects(int dt)
    {
       effects.cleave = max(0, effects.cleave - dt);
       EffectCleave();
+      bRedraw = True;
+   }
+
+   if (effects.dodge > 0)
+   {
+      effects.dodge = max(0, effects.dodge - dt);
+      EffectDodge();
       bRedraw = True;
    }
 

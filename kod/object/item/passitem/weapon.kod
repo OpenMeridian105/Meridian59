@@ -17,6 +17,7 @@ constants:
    USED = 1
    UNUSED = 2
    ATTACKING = 3
+   PARRYING = 4
 
    WEAPON_TAKE_DAMAGE_PCT = 75  //chance to be damaged
 
@@ -121,6 +122,9 @@ classvars:
    vrWeapon_window_attack_start = 1
    vrWeapon_window_attack_end = 4
    vrWeapon_window_hold = 5
+
+   vrWeapon_window_parry_start = 3
+   vrWeapon_window_parry_end = 3
 
    vrWeapon_overlay = $
 
@@ -598,6 +602,20 @@ messages:
       return Send(who,@GetSkillAbility,#skill_num=SKID_PARRY);
    }
 
+   DoParry()
+   {
+      piUsed = PARRYING;
+      
+      if vrWeapon_window_overlay <> $
+      {
+         Send(poOwner,@ChangeWindowOverlay,#what=self);
+      }
+
+      piUsed = USED;
+
+      return;
+   }
+
    // What is the weapon's name for use in the attack messages?
    GetAttackName()
    {
@@ -853,6 +871,11 @@ messages:
       {
          AddPacket(1,ANIMATE_ONCE, 4,150, 2,vrWeapon_window_attack_start,
                    2,vrWeapon_window_attack_end, 2,vrWeapon_window_hold);
+      }
+      else if piUsed = PARRYING
+      {
+         AddPacket(1,ANIMATE_ONCE, 4,500, 2,vrWeapon_window_parry_start,
+                   2,vrWeapon_window_parry_end, 2,vrWeapon_window_hold);
       }
       else
       {

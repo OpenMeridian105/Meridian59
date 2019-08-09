@@ -24,6 +24,49 @@ resources:
    sign_desc_rsc = "This is an informational sign."
    sign_insc_rsc = " "
 
+   sign_raza_crypt_one_info = \
+   "Check this out!  Another sign!  It seems to have all kinds of useful information "
+   "written on it...\n"
+   "We should keep our eyes open for other such signs and read them carefully.  Did you "
+   "know that not reading signs is the leading cause of death among adventurers between "
+   "the age of 12 and 140?  Good thing you have me and my photographic memory.  You can "
+   "always ask me to ~Irefresh~I your memory and have me read those signs back to you later.\n"
+   "~I~B[Seriously, read your signs!  You can do so right now by executing a right click.]~I~B"
+
+   sign_raza_crypt_three_info = \
+   "Careful!  That's quite a gap to cross here, but we can make that jump easily.  "
+   "Just run at full speed and don't stop running and you should be able to "
+   "cross without a problem.  I do have a feeling that we're getting closer to the "
+   "end of this maze..."
+
+   sign_raza_museum_zero_info = \
+   "Look!  Portals!  Do you believe those are real?  I wonder what it would be like to "
+   "travel through one.  How would that even work?  And what happens to your soul when "
+   "you travel through?  How would you even know if it's still you?  Maybe it's not but "
+   "you just don't notice?  So creepy...  The elder once told me that there used to be "
+   "a ~Ireal~I portal ~Iright in this museum~I!  Can you believe it?!  I wonder where it was "
+   "leading to..."
+
+   sign_raza_museum_two_info = \
+      "I've always been wanting to go there!  Can you imagine how thrilling it must be "
+      "to watch a Grand Tournament?  Or take part in one??  I hear you can win fantastic "
+      "prizes if you emerge victorious in those..."
+
+   sign_raza_museum_three_info = \
+      "Everyone keeps talking about how amazing this city is.  If it's half as great "
+      "as everyone says, it should be our first destination once we get out of this "
+      "town, heh..."
+
+   sign_raza_museum_four_info = \
+      "'The fabled Vale of Sorrows, where the Feys are locked in eternal battle...'  "
+      "I'm fairly sure that place doesn't actually exist.  Sounds more like some "
+      "sort of cautionary tale about getting along or something if you ask me."
+
+   sign_raza_museum_five_info = \
+      "Ko'catan.  Ko...  catan...  I even love the name of that city.  So mysterious...  "
+      "Man, I really want to see that place.  You hear so many stories...  bird people, "
+      "nerudite, the legendary temple of Riija, the Trickster God..."
+
 classvars:
 
    viObject_flags = OF_SIGN | OF_DISPLAY_NAME
@@ -98,6 +141,44 @@ messages:
       AddPacket(2,LIGHT_BWHITE);
 
       return;
+   }
+
+   GetFollowerInfo(who=$)
+   {
+      local iRoomID;
+
+      iRoomID = Send(Send(self,@GetOwner),@GetRoomNum);
+
+      if iRoomID = RID_RAZA_MAUSOLEUM
+      {
+         if vrName = razacrypt_signname
+         {
+            return sign_raza_crypt_one_info;
+         }
+         if vrName = razacrypt_signname3
+         {
+            return sign_raza_crypt_three_info;
+         }
+         switch(vrName)
+         {
+            case razacrypt_signname: return sign_raza_crypt_one_info;
+            case razacrypt_signname3: return sign_raza_crypt_three_info;
+         }
+      }
+
+      if iRoomID = RID_RAZA_MUSEUM
+      {
+         switch(vrName)
+         {
+            case razamuseum_signname_0: return sign_raza_museum_zero_info;
+            case razamuseum_signname_2: return sign_raza_museum_two_info;
+            case razamuseum_signname_3: return sign_raza_museum_three_info;
+            case razamuseum_signname_4: return sign_raza_museum_four_info;
+            case razamuseum_signname_5: return sign_raza_museum_five_info;
+         }
+      }
+
+      return vrInfo;
    }
 
 end

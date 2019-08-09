@@ -612,6 +612,7 @@ static FormatCode code_table[] = {
 { '9', CODE_COLOR, PALETTERGB(240, 240, 240) }, // Gray Scale 10
 { 'G', CODE_COLOR, PALETTERGB(  0, 150,  15) }, // Quest Green
 { 'R', CODE_COLOR, PALETTERGB(180,  20,   0) }, // Quest Red
+{ 'M', CODE_COLOR, PALETTERGB(255, 209, 176) }, // Mercenary Color
 { 'B', CODE_STYLE, STYLE_BOLD },
 { 'I', CODE_STYLE, STYLE_ITALIC },
 { 'U', CODE_STYLE, STYLE_UNDERLINE },

@@ -80,8 +80,8 @@ resources:
       "iteration, until the pictures breath with the soul of the Ko'catani way of life.  "
       "Historians estimate that the murals pictured here are more than two feet thick."
 
-   razamuseum_signname = "Portals"
-   razamuseum_sign = \
+   razamuseum_signname_0 = "Portals"
+   razamuseum_sign_0 = \
       "Arcane portals are found in a select few places in the world.  "
       "Walking through one of these portals will teleport you instantly to "
       "another location.  The most common portals encountered are those in "
@@ -90,6 +90,14 @@ resources:
       "an Inn in one of the six mainland cities of Meridian.  If you "
       "perish on the island of Ko'catan, you may return to the Ko'catan Inn "
       "by quickly using the portal on the Underworld floor."
+
+   razamuseum_info = \
+      "Ohhh...  this is the famous museum of Raza!  I've been here a thousand "
+      "times, but I'm always excited to come back here.  This world is full of "
+      "wonders that I've been waiting to see all my life and whenever I walk "
+      "through these corridors, I'm reminded not to give up on my dream – to "
+      "go out there one day and to see the world in all of its glory!  "
+      "Maybe, with you by my side, I'll finally get to do that!"
 
 classvars:
 
@@ -101,6 +109,8 @@ classvars:
    viPermanent_flags = ROOM_NO_COMBAT
    viTerrain_types = TERRAIN_CITY | TERRAIN_SHOP
 
+   vrInfo = razamuseum_info
+
 properties:
 
    prRoom = room_razamuseum
@@ -110,6 +120,12 @@ properties:
    piOutside_factor = OUTDOORS_SOME
 
    prMusic = razamuseum_music
+
+   poSign1 = $
+   poSign2 = $
+   poSign3 = $
+   poSign4 = $
+   poSign5 = $
 
 messages:
 
@@ -129,20 +145,23 @@ messages:
       local oSign;
       // if we put a new npc in here, put it at [row=13,00,col=11,32].
 
+      poSign1 = Create(&Sign,#name=razamuseum_signname_0,#desc=razamuseum_sign_0,#newbie=TRUE);
+      Send(self,@NewHold,#what=poSign1,#new_row=14,#new_col=10,#fine_row=8,#fine_col=52,
+           #new_angle=ANGLE_SOUTH);
       oSign = Create(&Sign,#name=razamuseum_signname_1,#desc=razamuseum_sign_1,#newbie=TRUE);
       Send(self,@NewHold,#what=oSign,#new_row=9,#new_col=11,#fine_row=0,#fine_col=32,
            #new_angle=ANGLE_SOUTH);
-      oSign = Create(&Sign,#name=razamuseum_signname_2,#desc=razamuseum_sign_2,#newbie=TRUE);
-      Send(self,@NewHold,#what=oSign,#new_row=9,#new_col=20,#fine_row=4,#fine_col=30,
+      poSign2 = Create(&Sign,#name=razamuseum_signname_2,#desc=razamuseum_sign_2,#newbie=TRUE);
+      Send(self,@NewHold,#what=poSign2,#new_row=9,#new_col=20,#fine_row=4,#fine_col=30,
            #new_angle=ANGLE_SOUTH);
-      oSign = Create(&Sign,#name=razamuseum_signname_3,#desc=razamuseum_sign_3,#newbie=TRUE);
-      Send(self,@NewHold,#what=oSign,#new_row=3,#new_col=20,#fine_row=0,#fine_col=16,
+      poSign3 = Create(&Sign,#name=razamuseum_signname_3,#desc=razamuseum_sign_3,#newbie=TRUE);
+      Send(self,@NewHold,#what=poSign3,#new_row=3,#new_col=20,#fine_row=0,#fine_col=16,
            #new_angle=ANGLE_SOUTH);
-      oSign = Create(&Sign,#name=razamuseum_signname_4,#desc=razamuseum_sign_4,#newbie=TRUE);
-      Send(self,@NewHold,#what=oSign,#new_row=9,#new_col=17,#fine_row=16,#fine_col=8,
+      poSign4 = Create(&Sign,#name=razamuseum_signname_4,#desc=razamuseum_sign_4,#newbie=TRUE);
+      Send(self,@NewHold,#what=poSign4,#new_row=9,#new_col=17,#fine_row=16,#fine_col=8,
            #new_angle=ANGLE_SOUTH);
-      oSign = Create(&Sign,#name=razamuseum_signname_5,#desc=razamuseum_sign_5,#newbie=TRUE);
-      Send(self,@NewHold,#what=oSign,#new_row=6,#new_col=5,#fine_row=16,#fine_col=52,
+      poSign5 = Create(&Sign,#name=razamuseum_signname_5,#desc=razamuseum_sign_5,#newbie=TRUE);
+      Send(self,@NewHold,#what=poSign5,#new_row=6,#new_col=5,#fine_row=16,#fine_col=52,
            #new_angle=ANGLE_SOUTH);
       oSign = Create(&Sign,#name=razamuseum_signname_6,#desc=razamuseum_sign_6,#newbie=TRUE);
       Send(self,@NewHold,#what=oSign,#new_row=9,#new_col=2,#fine_row=16,#fine_col=36,
@@ -239,10 +258,46 @@ messages:
       Send(self,@NewHold,#what=Create(&OrnamentalObject,#type=OO_MUSEUM_TELEPORT),
             #new_row=14,#new_col=11,#fine_row=56,#fine_col=12,#new_angle=ANGLE_SOUTH);
 
-      oSign = Create(&Sign,#name=razamuseum_signname,
-                     #desc=razamuseum_sign,#newbie=TRUE);
-      Send(self,@NewHold,#what=oSign,#new_row=14,#new_col=10,#fine_row=8,
-            #fine_col=52,#new_angle=ANGLE_SOUTH);
+      propagate;
+   }
+
+   GetMercenaryInfoObject(who=$)
+   {
+      if (who = $)
+         OR (Send(who,@GetOwner) <> self)
+      {
+         return;
+      }
+
+      if (Send(who,@SquaredDistanceTo,#what=poSign1) < 10)
+         AND Send(self,@LineOfSight,#obj1=who,#obj2=poSign1)
+      {
+         return poSign1;
+      }
+
+      if (Send(who,@SquaredDistanceTo,#what=poSign2) < 10)
+         AND Send(self,@LineOfSight,#obj1=who,#obj2=poSign2)
+      {
+         return poSign2;
+      }
+
+      if (Send(who,@SquaredDistanceTo,#what=poSign3) < 10)
+         AND Send(self,@LineOfSight,#obj1=who,#obj2=poSign3)
+      {
+         return poSign3;
+      }
+
+      if (Send(who,@SquaredDistanceTo,#what=poSign4) < 10)
+         AND Send(self,@LineOfSight,#obj1=who,#obj2=poSign4)
+      {
+         return poSign4;
+      }
+
+      if (Send(who,@SquaredDistanceTo,#what=poSign5) < 10)
+         AND Send(self,@LineOfSight,#obj1=who,#obj2=poSign5)
+      {
+         return poSign5;
+      }
 
       propagate;
    }

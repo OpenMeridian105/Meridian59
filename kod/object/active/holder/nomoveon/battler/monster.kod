@@ -203,6 +203,7 @@ resources:
    vaultman_not_enough = "You don't have that many %s stored in your name!"
 
    monster_say_to_one = "~k%s%s tells you, \"%s~n~k\""
+   monster_mercenary_say_to_one = "~M%s%s tells you, \"%s~n~M\""
 
    monster_iteach = "I teach %s%s%s%s%s%s%s%s%s%s%s%s at that level."
    monster_teachnothing = "I teach no abilities at that level."
@@ -462,6 +463,25 @@ classvars:
    vrMercenaryJoin = Lm_mercenary_join
    vrMercenaryJoinContracted = Lm_mercenary_join_contracted
    vrMercenaryLeave = Lm_mercenary_leave
+
+   // Special info a follower can provide about the mob.
+   vrInfo = $
+   vrInfo_quest = $
+   vrInfo_killed = $
+   vrInfo_quest_killed = $
+   vrInfo_engaged = $
+   vrInfo_quest_engaged = $
+   vrInfo_retreating = $
+   vrInfo_quest_retreating = $
+
+   // Time between repeated commentary.
+   viInfo_time_quest = 0
+   viInfo_time_killed = 0
+   viInfo_time_quest_killed = 1
+   viInfo_time_engaged = 0
+   viInfo_time_quest_engaged = 0
+   viInfo_time_retreating = 0
+   viInfo_time_quest_retreating = 0
 
    // Obsolete, but still included here for safety's sake.
    vrSound_hit = $
@@ -5255,7 +5275,7 @@ messages:
    Killed(what=$)
    "The mob was just killed."
    {
-      local i,val,oBody,hReputation;
+      local i,val,oBody,hReputation, oQuester;
 
       // If the monster was just killed, assume it did itself in.
       if what = $
@@ -5297,12 +5317,24 @@ messages:
 
          if Send(poOwner,@CanDropMonsterLoot)
          {
-            // Notify the quest engine, to check if a quest is affected -AJM
-            Send(Send(SYS,@GetQuestEngine),@MonsterKilled,#dead_monster=self,
-                  #killing_player=what,#corpse=oBody);
+            if IsClass(what,&Player)
+            {
+               oQuester = what;
+            }
+            else
+            {
+               oQuester = Send(what,@GetLeader);
+            }
 
-            Send(EVENTENGINE_OBJECT,@MonsterKilled,#dead_monster=self,
-                  #killing_player=what,#corpse=oBody);
+            if oQuester <> $
+            {
+               // Notify the quest engine, to check if a quest is affected -AJM
+               Send(Send(SYS,@GetQuestEngine),@MonsterKilled,#dead_monster=self,
+                     #killing_player=oQuester,#corpse=oBody);
+
+               Send(EVENTENGINE_OBJECT,@MonsterKilled,#dead_monster=self,
+                     #killing_player=oQuester,#corpse=oBody);
+            }
 
             if (piReputationGroup <> REP_NEUTRAL
                AND Send(SETTINGS_OBJECT,@GetMonsterFactionEnabled))
@@ -7386,8 +7418,23 @@ messages:
 
    GetSpeed()
    {
-      // Set our current speed based on classvar and agility.
-      piSpeed = Bound(viSpeed + (piAgility/10) - 2,0,USER_RUNNING_SPEED);
+      if poLeader = $
+      {
+         // Set our current speed based on classvar and agility.
+         piSpeed = Bound(viSpeed + (piAgility/10) - 2,0,USER_RUNNING_SPEED);
+      }
+      else
+      {
+         if IsClass(self,&Human)
+         {
+            piSpeed = USER_RUNNING_SPEED;
+         }
+         else
+         {
+            // Double regular speed.
+            piSpeed = Bound(2*(viSpeed + (piAgility/10) - 2),0,USER_RUNNING_SPEED);
+         }
+      }
 
       // Movement speed mods (e.g. slow spell)
       piSpeed = piSpeed * Send(self,@GetMovementSpeedPercent) / 100;
@@ -7398,11 +7445,6 @@ messages:
          AND (poLeader = $)
       {
          piSpeed = Bound(piSpeed * viStrollSpeed / 100,$,piSpeed);
-      }
-
-      if poLeader <> $
-      {
-         piSpeed *= 2;
       }
 
       // If our monster is able to move in general, then other
@@ -8459,7 +8501,33 @@ messages:
 
       return;
    }
-   
+
+   MercenarySayToOne(target=$, message_rsc=$,
+            parm1=$, parm2=$, parm3=$, parm4=$, parm5=$,
+            type1=STANDARD_RESOURCE, type2=STANDARD_RESOURCE,
+            type3=STANDARD_RESOURCE, type4=STANDARD_RESOURCE,
+            type5=STANDARD_RESOURCE)
+   {
+      if target = $
+      {
+         Debug("MercenarySayToOne reached with null target.");
+         return;
+      }
+      if message_rsc = $
+      {
+         Debug("MercenarySayToOne reached with null message.");
+         return;
+      }
+
+      Send(target,@MsgSendUser,#message_rsc=monster_mercenary_say_to_one,
+           #parm1=Send(self,@GetCapDef),#parm2=Send(self,@GetName),
+           #parm3=message_rsc,#parm4=parm1,#type4=type1,
+           #parm5=parm2,#type5=type2,#parm6=parm3,#type6=type3,
+           #parm7=parm4,#type7=type4,#parm8=parm5,#type8=type5);
+
+      return;
+   }
+
    CanMorphTo()
    {
       return TRUE;
@@ -8734,11 +8802,11 @@ messages:
    {
       if bContracted
       {
-         Post(self,@SayToOne,#target=what,#message_rsc=vrMercenaryJoinContracted);
+         Post(self,@MercenarySayToOne,#target=what,#message_rsc=vrMercenaryJoinContracted);
       }
       else if IsClass(self,&Follower) OR NOT Random(0,7)
       {
-         Post(self,@SayToOne,#target=what,#message_rsc=vrMercenaryJoin);
+         Post(self,@MercenarySayToOne,#target=what,#message_rsc=vrMercenaryJoin);
       }
 
       return;
@@ -10439,6 +10507,100 @@ messages:
    IsExpansionMonster()
    {
       return FALSE;
+   }
+
+   GetFollowerInfo(iInfo=FALSE)
+   {
+      local rInfo;
+
+      if iInfo&MONSTER_INFO_QUEST
+      {
+         if iInfo&MONSTER_INFO_KILLED
+         {
+            rInfo = vrInfo_quest_killed;
+         }
+         else if iInfo&MONSTER_INFO_ENGAGED
+         {
+            rInfo = vrInfo_quest_engaged;
+         }
+         else if iInfo&MONSTER_INFO_RETREATING
+         {
+            rInfo = vrInfo_quest_retreating;
+         }
+         else
+         {
+            rInfo = vrInfo_quest;
+         }
+      }
+
+      if rInfo = $
+      {
+         if iInfo&MONSTER_INFO_KILLED
+         {
+            rInfo = vrInfo_killed;
+         }
+         else if iInfo&MONSTER_INFO_ENGAGED
+         {
+            rInfo = vrInfo_engaged;
+         }
+         else if iInfo&MONSTER_INFO_RETREATING
+         {
+            rInfo = vrInfo_retreating;
+         }
+         else
+         {
+            rInfo = vrInfo;
+         }
+      }
+
+      return rInfo;
+   }
+
+   GetFollowerInfoTime(who=$,iInfo=FALSE)
+   {
+      local iTime;
+
+      if iInfo&MONSTER_INFO_QUEST
+      {
+         if iInfo&MONSTER_INFO_KILLED
+         {
+            iTime = viInfo_time_quest_killed;
+         }
+         else if iInfo&MONSTER_INFO_ENGAGED
+         {
+            iTime = viInfo_time_quest_engaged;
+         }
+         else if iInfo&MONSTER_INFO_RETREATING
+         {
+            iTime = viInfo_time_quest_retreating;
+         }
+         else
+         {
+            iTime = viInfo_time_quest;
+         }
+      }
+
+      if iTime = $
+      {
+         if iInfo&MONSTER_INFO_KILLED
+         {
+            iTime = viInfo_time_killed;
+         }
+         else if iInfo&MONSTER_INFO_ENGAGED
+         {
+            iTime = viInfo_time_engaged;
+         }
+         else if iInfo&MONSTER_INFO_RETREATING
+         {
+            iTime = viInfo_time_retreating;
+         }
+         else
+         {
+            iTime = viInfo_time;
+         }
+      }
+
+      return iTime;
    }
 
 end

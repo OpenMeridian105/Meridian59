@@ -6132,6 +6132,16 @@ messages:
       local bReflection, i, oSoldierShield, monstkarma, iChance, oEnemyGuild,
             oVictimRoom, oObject;
 
+      // Let our follower know if we have one. It'll make their day!
+      // Also gotta do this first, to avoid complications... (They're crazy jealous!)
+      if (poMercenary <> $)
+         AND NOT IsTimer(poMercenary)
+         AND IsClass(poMercenary,&Follower)
+         AND (Send(poMercenary,@GetOwner) = poOwner)
+      {
+         Send(poMercenary,@LeaderKilledSomething,#what=what,#use_weapon=use_weapon);
+      }
+
       // Killed something with a weapon, damage weapon.
       if (use_weapon <> $)
          AND IsClass(use_weapon,&Weapon)
@@ -6328,15 +6338,6 @@ messages:
       if oObject <> $
       {
          Send(oObject,@OpponentKilled,#what=what,#stroke_obj=stroke_obj);
-      }
-
-      // Let our follower know if we have one. It'll make his day!
-      if (poMercenary <> $)
-         AND NOT IsTimer(poMercenary)
-         AND IsClass(poMercenary,&Follower)
-         AND (Send(poMercenary,@GetOwner) = poOwner)
-      {
-         Send(poMercenary,@LeaderKilledSomething,#what=what,#use_weapon=use_weapon);
       }
 
       return;

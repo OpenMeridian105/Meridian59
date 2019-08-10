@@ -17,7 +17,8 @@ static HWND hList1, hList2;       // Handles of available and chosen skill list 
 
 extern list_type skills;
 
-void CharSkillsInit(HWND hDlg);
+static void MaybeEnableAddButton(HWND hDlg);
+static void CharSkillsInit(HWND hDlg);
 void CharSkillsCommand(HWND hwnd, int id, HWND hwndCtl, UINT codeNoify);
 /********************************************************************/
 BOOL CALLBACK CharSkillsDialogProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
@@ -72,7 +73,7 @@ void CharSkillsInit(HWND hDlg)
  */
 void CharSkillsCommand(HWND hwnd, int id, HWND hwndCtl, UINT codeNotify)
 {
-   int index1, index2;
+   int index1, index2, i, iCount;
    Skill *s;
    char temp[MAXAMOUNT + 1];
 
@@ -119,6 +120,45 @@ void CharSkillsCommand(HWND hwnd, int id, HWND hwndCtl, UINT codeNotify)
 
       ListBox_SetCurSel(hList2, min(index2, ListBox_GetCount(hList2) - 1));
       FORWARD_WM_COMMAND(hwnd, IDC_SKILLIST2, hList2, LBN_SELCHANGE, CharSkillsDialogProc);
+
+      // Removal of this skill may result in the removal of dependent skills.
+      if (s->cost == 10)
+      {
+         // Let's see how many rank 1 spells of this school are left.
+         iCount = 0;
+
+         for (i = 0; i < ListBox_GetCount(hList2); ++i)
+         {
+            s = (Skill *) ListBox_GetItemData(hList2, i);
+
+            if (s->cost == 10)
+               ++iCount;
+         }
+
+         // Uh oh, we can't support those rank 2 skills anymore.
+         if (iCount < 2)
+         {
+            for (i = 0; i < ListBox_GetCount(hList2); ++i)
+            {
+               s = (Skill *) ListBox_GetItemData(hList2, i);
+
+               if (s->cost == 25)
+               {
+                  spell_points += s->cost;
+                  SendMessage(hPoints, GRPH_POSSET, 0, spell_points);
+                  index1 = ListBox_AddString(hList1, s->list_str);
+                  ListBox_SetItemData(hList1, index1, s);
+                  s->chosen = False;
+                  ListBox_DeleteString(hList2, i);
+                  ListBox_SetCurSel(hList2, min(i, ListBox_GetCount(hList2) - 1));
+                  --i;
+                  FORWARD_WM_COMMAND(hwnd, IDC_SKILLIST2, hList2, LBN_SELCHANGE, CharSkillsDialogProc);
+               }
+            }
+         }
+      }
+
+      MaybeEnableAddButton(hwnd);
       break;
 
    case IDC_SKILLIST1:
@@ -133,6 +173,8 @@ void CharSkillsCommand(HWND hwnd, int id, HWND hwndCtl, UINT codeNotify)
       SetDlgItemText(hwnd, IDC_SKILLINFO, LookupNameRsc(s->desc_res));
       sprintf(temp, "%d", s->cost);
       SetDlgItemText(hwnd, IDC_COST2, temp);
+
+      MaybeEnableAddButton(hwnd);
       break;
 
    case IDC_SKILLIST2:
@@ -153,4 +195,39 @@ void CharSkillsCommand(HWND hwnd, int id, HWND hwndCtl, UINT codeNotify)
       CharTabPageCommand(hwnd, id, hwndCtl, codeNotify);
       return;
    }
+}
+
+/********************************************************************/
+/*
+ * MaybeEnableAddButton: Enable/disable the "add spell" button
+ *   depending on whether the currently selected spell in the available
+ *   list box can be chosen.
+ */
+void MaybeEnableAddButton(HWND hDlg)
+{
+   int i;
+   int iCount = 0;
+   Skill *s;
+   BOOL enable = TRUE;
+   int index = ListBox_GetCurSel(hList1);
+
+   if (index != LB_ERR)
+   {
+      // Count how many level 1 skills we have.
+      for (i = 0; i < ListBox_GetCount(hList2); ++i)
+      {
+         s = (Skill *) ListBox_GetItemData(hList2, i);
+
+         if (s->cost == 10)
+            ++iCount;
+      }
+
+      s = (Skill *) ListBox_GetItemData(hList1, index);
+
+      // If we don't have the required level 1 skills, disable button
+      if (s->cost == 25 && iCount < 2)
+         enable = FALSE;
+   }
+
+   EnableWindow(GetDlgItem(hDlg, IDC_ADDSKILL), enable);
 }

@@ -49,7 +49,7 @@ void CharactersDestroy(Character *c, WORD num_characters);
 
 #define NUM_CHAR_STATS 6
 
-#define SPELL_POINTS_INITIAL   45   // Initial # of available spell/skill points
+#define SPELL_POINTS_INITIAL   125   // Initial # of available spell/skill points
 #define STAT_POINTS_INITIAL    50   // Initial # of available stat points
 
 typedef struct {

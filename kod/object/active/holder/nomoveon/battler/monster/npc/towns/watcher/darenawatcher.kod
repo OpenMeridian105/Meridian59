@@ -157,16 +157,31 @@ classvars:
    viDefinite = ARTICLE_NONE
    viIndefinite = ARTICLE_NONE
 
-   viAttributes = MOB_NOMOVE | MOB_FULL_TALK | MOB_LISTEN | MOB_NOFIGHT \
-                  | MOB_NOQUEST | MOB_RANDOM
+   viAttributes = MOB_NOMOVE | MOB_FULL_TALK | MOB_LISTEN | MOB_NOFIGHT | \
+                  MOB_RANDOM | MOB_SELLER | MOB_TEACHER
    viOccupation = MOB_ROLE_WATCHER
    viWatcherID = WATCHER_DEATH_ARENA
+   viQuestID = QNT_ID_RAT_KING_QUEST
 
 properties:
 
    pbCrashProtection = TRUE
 
 messages:
+
+   SetForSale()
+   {
+      plFor_sale = [
+         [ 
+            Create(&Mace)
+         ],
+         [
+            SKID_CLEAVE
+         ], 
+      $,$];
+
+      return;
+   }
 
    // Speech resources messages.
    GetNeedChampionRsc()
@@ -217,6 +232,18 @@ messages:
             #parm3=Send(who,@GetHimHer),#parm4=Send(who,@GetHeShe));
 
       return;
+   }
+   
+   CanAddSkill(who=$,num=0)
+   "We require that a quest be done before one of the spells can be learned"
+   {
+      if (num = SKID_CLEAVE)
+         AND NOT Send(self,@HasDoneLearnQuest,#who=who)
+      {
+         return FALSE;
+      }
+
+      propagate;
    }
 
 end

@@ -1,0 +1,160 @@
+// Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+// All rights reserved.
+//
+// This software is distributed under a license that is described in
+// the LICENSE file that accompanies it.
+//
+// Meridian is a registered trademark.
+
+
+/////////////////////////////////////////////////////////////////////////////////
+RatKingQuest is QuestTemplate
+// Quest nodes 222, 223
+// QNT_ID_RAT_KING_QUEST_ONE, QNT_ID_RAT_KING_QUEST_TWO,
+
+// QuestTemplate is
+// [ quest template index
+//   quest template object
+//   number of players,
+//   type of quest,
+//   eligible player restrictions,
+//   quest nodes,
+//   max number active,
+//   currently active quests,
+//   percent chance of scheduling (on timer firing)
+//   special restrictions ]
+
+constants:
+
+   include blakston.khd
+
+resources:
+
+   include ratkingqt.lkod
+
+   // Quest description.
+   RatKingQuest_icon_rsc = ratking.bgf
+   RatKingQuest_name_rsc = "Vermin Extermination"
+   RatKingQuest_desc_rsc = \
+      "Tos is plagued with rats, locate their king and exterminate him.  "
+      "Completing this will make you a pupil of Johlan."
+
+   RatKingQuest_kill_rsc = \
+      "Johlan will teach you a skill, but first you must "
+      "slay a %s.  Complete this task and report back to him."
+
+   RatKingQuest_return_rsc = \
+      "Return to Johlan and let him know the task has been completed."
+
+   RatKingQuest_completed = \
+      "You have proven your worth to Johlan.  He will now be willing to "
+      "train you in the art of Cleave, provided you know at least level 5 "
+      "weaponcraft."
+
+   // Quest resources.
+   ratkingquest_trigger = "pupil"
+   ratkingquest_assign_2 = \
+      "Can you not see I am busy here, fool?  I want to see some dead bodies!  "
+      "You could be of some use to me however.  This town is littered "
+      "with dirty rodents that need to be exterminated.  "
+      "Go kill me a rat king and I will teach you a thing or two."
+   ratkingquest_failure_2 = \
+      "Subject: Vermin Extermination\n"
+      "Pathetic, you are no warrior.  Get out of my sight."
+   ratkingquest_success_2 = \
+      "Wonderful killing machine you are...I shall teach you."
+classvars:
+
+   vrIcon = RatKingQuest_icon_rsc
+   vrName = RatKingQuest_name_rsc
+   vrDesc = RatKingQuest_desc_rsc
+
+   vrKill = RatKingQuest_kill_rsc
+   vrReturn = RatKingQuest_return_rsc
+   vrCompleted = RatKingQuest_completed
+
+   // The QST_ID constant for this quest.
+   viQuestID = QNT_ID_RAT_KING_QUEST
+
+properties:
+
+   piNumPlayers = 1
+   piPlayerRestrict = Q_PLAYER_NOTSUCCEEDED | Q_PLAYER_NOTFAILED_RECENTLY
+   plSpecialRestrict = $
+   piMaxPlayers = 30
+   piSchedulePct = 100
+   piTimeLimit = 12 * 3600 // 12 hours.
+
+messages:
+
+   Constructor()
+   {
+      // Quest node list to send to QuestEngine.
+      plQuestNodes = [QNT_ID_RAT_KING_QUEST_ONE, QNT_ID_RAT_KING_QUEST_TWO];
+
+      propagate;
+   }
+
+   SendQuestNodeTemplates()
+   {
+      local lNPCs, oQE, oLib;
+
+      oQE = Send(SYS,@GetQuestEngine);
+      oLib = Send(SYS,@GetLibrary);
+
+      // Template #222 is rat king quest kickoff, "pupil"
+      // QNT_ID_RAT_KING_QUEST_ONE
+      if Send(oQE,@AddQuestNodeTemplate,#questnode_type=QN_TYPE_MESSAGE,
+               #cargolist=[ratkingquest_trigger],
+               #quest_node_index=QNT_ID_RAT_KING_QUEST_ONE)
+      {
+         Send(oQE,@SetQuestNodeNPCList,#index=QNT_ID_RAT_KING_QUEST_ONE,
+               #new_NPC_list=Send(oLib,@GetOccupationList,
+                                 #cNPC_class=&DeathArenaWatcher));
+      }
+      else
+      {
+         Debug("Error building QN: QNT_ID_RAT_KING_QUEST_ONE");
+      }
+
+      // Template #223 is rat king quest, kill the rat king
+      // QNT_ID_RAT_KING_QUEST_TWO
+      if Send(oQE,@AddQuestNodeTemplate,#questnode_type=QN_TYPE_MONSTER,
+               #NPC_modifier=QN_NPCMOD_SAME,#monsterlist=[&GiantRatKing],
+               #timelimit=piTimeLimit,#quest_node_index=QNT_ID_RAT_KING_QUEST_TWO)
+      {
+               
+         Send(oQE,@SetQuestNodeAssignHint,#index=QNT_ID_RAT_KING_QUEST_TWO,
+               #new_hint=ratkingquest_assign_2);
+         Send(oQE,@SetQuestNodeSuccessHint,#index=QNT_ID_RAT_KING_QUEST_TWO,
+               #new_hint=ratkingquest_success_2);
+         Send(oQE,@SetQuestNodeFailureHint,#index=QNT_ID_RAT_KING_QUEST_TWO,
+               #new_hint=ratkingquest_failure_2);
+      }
+      else
+      {
+         Debug("Error building QN: QNT_ID_RAT_KING_QUEST_TWO");
+      }
+
+      return;
+   }
+
+   MainDesc(who=$,index=$,oQuestNode=$)
+   {
+      local oMob;
+
+      oMob = Send(oQuestNode,@GetQuestMonster);
+      if oMob = $
+      {
+         AddPacket(4,vrReturn);
+      }
+      else
+      {
+         AddPacket(4,vrKill,4,Send(oMob,@GetName));
+      }
+
+      return;
+   }
+
+end
+/////////////////////////////////////////////////////////////////////////////////

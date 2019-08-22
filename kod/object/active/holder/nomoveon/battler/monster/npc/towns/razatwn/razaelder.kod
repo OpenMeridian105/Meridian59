@@ -13,6 +13,7 @@ RazaElder is RazaTown
 constants:
 
    include blakston.khd
+   include protocol.khd
 
    ANIM_WAVE = 1
 
@@ -193,16 +194,18 @@ messages:
       propagate;
    }
 
-   SendReportLevel(parm1=$)
+   SendReportLevel(lAvailable=$)
    {
       local i, iNumAbilities, iNumRsc, iCounter;
 
-      AddPacket(4,self, 4,Send(self,@GetName),1,5, 4,monster_said_resource_str,
-                4,Send(self,@GetCapDef), 4,Send(self,@GetName));
+      AddPacket(1,BP_SAID, 4,self, 4,Send(self,@GetName), 1,SAY_RESOURCE,
+                4,monster_said_resource_str, 4,Send(self,@GetCapDef),
+                4,Send(self,@GetName));
                 
-      if parm1 = $
+      if lAvailable = $
       {
          AddPacket(4, vrTeach_nothing);
+         Send(poOwner,@SendCopyPacketAllInRoom);
 
          return;
       }
@@ -213,9 +216,9 @@ messages:
       iCounter = 0;
       iNumRsc = 0;
 
-      iNumAbilities = Length(parm1);
+      iNumAbilities = Length(lAvailable);
 
-      foreach i in parm1
+      foreach i in lAvailable
       {
          iCounter++;
 
@@ -245,6 +248,8 @@ messages:
       {
          AddPacket(4,monster_teach_blank);
       }
+
+      Send(poOwner,@SendCopyPacketAllInRoom);
 
       return;
    }

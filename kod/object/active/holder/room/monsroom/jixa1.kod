@@ -71,7 +71,7 @@ messages:
 
    Constructed()
    {
-      plMonsters = [ [&Chupacabra, 80], [&Scorpion, 20] ];
+      plMonsters = [ [&Chupacabra, 100] ];
 
       // Use Random Spawn
       // plGenerators = [ [7, 9], [16, 11], [8, 18], [21, 17], [20, 5], [27, 19] ];
@@ -98,6 +98,25 @@ messages:
            #fine_row=56,#fine_col=16,#new_angle=ANGLE_SOUTH_EAST);
       Send(self,@NewHold,#what=Create(&DukeGuard),#new_row=33,#new_col=29,
            #fine_row=8,#fine_col=56,#new_angle=ANGLE_SOUTH_EAST);
+
+      propagate;
+   }
+
+   RecalcLightAndWeather()
+   {
+      local iHour;
+
+      // Wendigo come out at night
+      iHour = Send(SYS,@GetHour);
+
+      if (iHour = 20)
+      {
+         plMonsters = [ [&Chupacabra, 90], [&Wendigo, 10] ];
+      }
+      else if (iHour = 5)
+      {
+         plMonsters = [ [&Chupacabra, 100] ];
+      }
 
       propagate;
    }

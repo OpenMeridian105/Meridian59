@@ -86,27 +86,10 @@ messages:
 
    Constructed()
    {
-      plMonsters = [ [&EvilEnt, 100] ];
+      plMonsters = [ [&Ranuculus, 75], [&EvilEnt, 25] ];
 
       plGenerators = [ [32, 11], [44, 11], [49, 14], [56, 22], [47, 22],
                        [51, 27], [50, 33], [42, 37], [39, 33], [32, 38] ];
-
-      propagate;
-   }
-
-   TryCreateMonster(initroom = FALSE,loadfirst = FALSE)
-   {
-      local iHour;
-
-      iHour = Send(SYS,@GetHour);
-      if iHour < 5 OR iHour > 20
-      {
-         plMonsters = [ [&GiantEye, 100] ];
-      }
-      else
-      {
-         plMonsters = [ [&EvilEnt, 100] ];
-      }
 
       propagate;
    }
@@ -123,12 +106,14 @@ messages:
          Send(self,@SomeoneSaid,#type=SAY_MESSAGE,#what=self,
                #string=swamp2_dusk_msg);
          Send(self,@SomethingWaveRoom,#wave_rsc=swamp2_sound_evil);
+         plMonsters = [ [&GiantEye, 100] ];
       }
       else if iHour = 5 AND pbDay = FALSE
       {
          pbDay = TRUE;
          Send(self,@SomeoneSaid,#type=SAY_MESSAGE,#what=self,
                #string=swamp2_dawn_msg);
+         plMonsters = [ [&Ranuculus, 55], [&EvilEnt, 45] ];
       }
 
       propagate;

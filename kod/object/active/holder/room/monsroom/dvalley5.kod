@@ -22,6 +22,13 @@ resources:
    room_name_dvalley5 = "Crumbling Ruins"
    dvalley5_music = dvalley.ogg
 
+   dvalley5_node_msg = \
+      "The sun hangs high above during the peak hour of the day.  "
+      "Magical energies intensify through the area."
+
+   dvalley5_boss_msg = "A mightly Xeochicatl rises from the sand."
+   dvalley5_sound = kantimag.ogg
+
 classvars:
 
    vrName = room_name_dvalley5
@@ -31,6 +38,8 @@ classvars:
    viTeleport_col = 12
 
    viWeatherZone = WEATHER_ZONE_DVALLEY
+
+   viXeo_KillsReq = 20
 
 properties:
 
@@ -44,12 +53,31 @@ properties:
    piGen_percent = 100
    piInit_count_min = 3
    piInit_count_max = 4
-   piMonster_count_max = 8
+   piMonster_count_max = 16
    
    pbSnowGroundTexture = FALSE
    pbWeatherEffects = FALSE
+   
+   poNode = $
+   piXeo_Kills = 0
 
 messages:
+
+   Delete()
+   {
+      local oNode;
+
+      oNode = Send(SYS,@FindNodeByNum,#num=NODE_DVALLEY);
+      if oNode <> $
+      {
+         // delete 'our' node
+         Send(oNode,@Delete);
+      }
+
+      poNode = $;
+
+      propagate;
+   }
 
    Constructed()
    {
@@ -77,9 +105,8 @@ messages:
 
    CreateStandardObjects()
    {
-      Send(self,@NewHold,#what=Create(&ManaNode,#node_num=NODE_DVALLEY),
-           #new_row=27,#new_col=19,#fine_row=24,#fine_col=8,
-           #new_angle=ANGLE_WEST);
+      // Just construct the Node.  We can find and place it later.
+      Create(&ManaNode,#node_num=NODE_DVALLEY,#iRoomNum=piRoom_num);
 
       Send(self,@NewHold,#what=Create(&Skull),
            #new_row=10,#new_col=5,#fine_row=0,#fine_col=0,#angle=ANGLE_EAST);      
@@ -145,13 +172,13 @@ messages:
    FirstUserEntered()
    {
       Post(self,@DoHeat);
+      piXeo_Kills = 0;
 
       propagate;
    }
    
    TryCreateMonster()
    {
-      // When we try to create a monster, then make sure Heats is up.
       Send(self,@DoHeat);
 
       propagate;
@@ -183,6 +210,74 @@ messages:
              #iSpellPower=99, #iPowerLevel=100, #report=FALSE);
 
       return;
+   }
+
+   RecalcLightAndWeather()
+   {
+      local iHour,iLight_effect, i, bFound;
+
+      iHour = Send(SYS,@GetHour);
+
+      if iHour = 18 
+      {
+         if poNode <> $
+         {
+            Send(poNode,@NodeDisappear);
+            poNode = $;
+         }
+
+         // When the Xeos calm down, the Minotaur run wild at night
+         plMonsters = [ [&Minotaur, 100]  ];
+         piMonster_count_max = 16;
+      }
+      else if iHour = 12 AND poNode = $
+      {
+         poNode = Send(SYS,@FindNodeByNum,#num=NODE_DVALLEY);
+         Send(poNode,@NodeAppear,#where=self,#row=27,#col=19,
+               #fine_row=24,#fine_col=8,#new_angle=ANGLE_WEST);
+         Send(self,@SomeoneSaid,#type=SAY_MESSAGE,#what=self,
+               #string=dvalley5_node_msg);
+
+         // After the node, Xeo spawn here
+         plMonsters = [ [&Minotaur, 60], 
+                        [&XeoAcid, 5],
+                        [&XeoAir, 5],
+                        [&XeoEarth, 5],
+                        [&XeoFire, 5],
+                        [&XeoHoly, 5],
+                        [&XeoIll, 5],
+                        [&XeoUnholy, 5],
+                        [&XeoWater, 5]  ];
+         piMonster_count_max = 6;
+      }
+
+      propagate;
+   }
+
+   SomethingKilled(what=$,victim=$)
+   {
+      if IsClass(victim,&Xeochicatl)
+      {
+         if IsClass(victim,&XeoNeru)
+         {
+            piXeo_Kills = 0;
+         }
+
+         piXeo_Kills++;
+      }
+      
+      if piXeo_Kills >= viXeo_KillsReq
+         AND Send(self,@CountHoldingHowMany,#class=&XeoNeru) = 0
+      {
+            Send(self,@NewHold,#what=Create(&XeoNeru),
+                  #new_row=9,#new_col=18,#fine_row=40,#fine_col=56);
+
+            Send(self,@SomeoneSaid,#type=SAY_MESSAGE,#what=self,
+                  #string=dvalley5_boss_msg);
+            Send(self,@SomethingWaveRoom,#wave_rsc=dvalley5_sound);
+      }
+
+      propagate;
    }
 
    SeanceCheck()

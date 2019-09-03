@@ -475,12 +475,18 @@ classvars:
    viFaction = FACTION_NEUTRAL
 
    vbIsAreaEffect = FALSE
+   
+   // What basic actions does the monster have access to?
+   // Standard mobs know how to slash, nothing else.
+   viAttacks = ATTACK_SLASH
 
    // What are the monster's priorities regarding basic actions?
    viMeleePriority = 600
    viMovePriority = 500
    viFirePriority = 550
-   vbSpin = FALSE
+
+   viMeleeAnimationTime = 400
+   viRangedAnimationTime = 400
    viSpinAnimationTime = 100
 
    // How well can the monster see in the dark? Default: 5
@@ -844,7 +850,7 @@ messages:
 
       foreach i in lActions
       {
-         // We recognize list lengths of 1,4 and 7. If we get anything
+         // We recognize list lengths of 1,4 and 8. If we get anything
          // else, skip and move on.
          // Nothing provided but the spell...
          if Length(i) = 1
@@ -885,31 +891,75 @@ messages:
       lTemp = [SKID_MINIMUM,0,20,MAX_KOD_INT,viMovePriority,0,100,COMBAT_ACTION_NEUTRAL];
       plActions = Cons(lTemp,plActions);
 
-      // Melee attacks.
-      if (GetListNode(plActions, 1, SKID_SLASH) = $)
+      // Melee attacks. Check what's available to us.
+      if (viAttacks & ATTACK_SLASH) 
+         AND (GetListNode(plActions, 1, SKID_SLASH) = $)
       {
          lTemp = [SKID_SLASH,0,100,piMeleeRange*piMeleeRange,viMeleePriority,0,100,COMBAT_ACTION_HARM];
          plActions = Cons(lTemp,plActions);
       }
-
-      // Only add fire, if we can attack at range.
-      if piFireRange > 0
+      
+      if (viAttacks & ATTACK_THRUST) 
+         AND (GetListNode(plActions, 1, SKID_THRUST) = $)
       {
-         if (GetListNode(plActions, 1, SKID_FIRE) = $)
-         {
-            lTemp = [SKID_FIRE,0,100,piFireRange*piFireRange,viFirePriority,0,100,COMBAT_ACTION_HARM];
-            plActions = Cons(lTemp,plActions);
-         }
+         lTemp = [SKID_THRUST,0,100,piMeleeRange*piMeleeRange,viMeleePriority,0,100,COMBAT_ACTION_HARM];
+         plActions = Cons(lTemp,plActions);
+      }
+      
+      if (viAttacks & ATTACK_STRIKE) 
+         AND (GetListNode(plActions, 1, SKID_STRIKE) = $)
+      {
+         lTemp = [SKID_STRIKE,0,100,piMeleeRange*piMeleeRange,viMeleePriority,0,100,COMBAT_ACTION_HARM];
+         plActions = Cons(lTemp,plActions);
+      }
+      
+      if (viAttacks & ATTACK_PUNCH) 
+         AND (GetListNode(plActions, 1, SKID_PUNCH) = $)
+      {
+         lTemp = [SKID_PUNCH,0,100,piMeleeRange*piMeleeRange,viMeleePriority,0,100,COMBAT_ACTION_HARM];
+         plActions = Cons(lTemp,plActions);
+      }
+      
+      if (viAttacks & ATTACK_CLAW) 
+         AND (GetListNode(plActions, 1, SKID_CLAW) = $)
+      {
+         lTemp = [SKID_CLAW,0,100,piMeleeRange*piMeleeRange,viMeleePriority,0,100,COMBAT_ACTION_HARM];
+         plActions = Cons(lTemp,plActions);
+      }
+      
+      if (viAttacks & ATTACK_STING) 
+         AND (GetListNode(plActions, 1, SKID_STING) = $)
+      {
+         lTemp = [SKID_STING,0,100,piMeleeRange*piMeleeRange,viMeleePriority,0,100,COMBAT_ACTION_HARM];
+         plActions = Cons(lTemp,plActions);
+      }
+      
+      if (viAttacks & ATTACK_BITE) 
+         AND (GetListNode(plActions, 1, SKID_BITE) = $)
+      {
+         lTemp = [SKID_BITE,0,100,piMeleeRange*piMeleeRange,viMeleePriority,0,100,COMBAT_ACTION_HARM];
+         plActions = Cons(lTemp,plActions);
+      }
+      
+      if (viAttacks & ATTACK_SPIT) 
+         AND (GetListNode(plActions, 1, SKID_SPIT) = $)
+      {
+         lTemp = [SKID_SPIT,0,100,piMeleeRange*piMeleeRange,viMeleePriority,0,100,COMBAT_ACTION_HARM];
+         plActions = Cons(lTemp,plActions);
       }
 
-      // Only add spin, if we have an area effect attack.
-      if vbSpin
+      if (viAttacks & ATTACK_SPIN) 
+         AND (GetListNode(plActions, 1, SKID_SPIN) = $)
       {
-         if (GetListNode(plActions, 1, SKID_SPIN) = $)
-         {
-            lTemp = [SKID_SPIN,0,500,piMeleeRange*piMeleeRange,viMeleePriority+1,0,75,COMBAT_ACTION_HARM];
-            plActions = Cons(lTemp,plActions);
-         }
+         lTemp = [SKID_SPIN,0,500,piMeleeRange*piMeleeRange,viMeleePriority+1,0,75,COMBAT_ACTION_HARM];
+         plActions = Cons(lTemp,plActions);
+      }
+
+      // Only add fire, if we can attack at range.
+      if piFireRange > 0 AND (GetListNode(plActions, 1, SKID_FIRE) = $)
+      {
+         lTemp = [SKID_FIRE,0,100,piFireRange*piFireRange,viFirePriority,0,100,COMBAT_ACTION_HARM];
+         plActions = Cons(lTemp,plActions);
       }
 
       // Check if the monster starts out socializing or minding their own business.
@@ -3073,6 +3123,23 @@ messages:
    // This is the type of damage done.
    GetAttackType(what = $)
    {
+      if piAction / 1000 = SKID_CLAW
+      {
+         return ATK_TYPE_CLAW;
+      }
+      if piAction / 1000 = SKID_BITE
+      {
+         return ATK_TYPE_BITE;
+      }
+      if piAction / 1000 = SKID_STING
+      {
+         return ATK_TYPE_STING;
+      }
+      if piAction / 1000 = SKID_SPIT
+      {
+         return ATK_TYPE_ACID;
+      }
+
       return viAttack_type;
    }
 
@@ -6488,7 +6555,14 @@ messages:
       iDelay = Send(self,@GetAttackTime);
 
       // Standard melee attack. Let's initiate the attack.
-      if (iNum = SKID_SLASH) OR (iNum = SKID_PUNCH)
+      if (iNum = SKID_SLASH) OR
+         (iNum = SKID_THRUST) OR
+         (iNum = SKID_STRIKE) OR
+         (iNum = SKID_PUNCH) OR
+         (iNum = SKID_CLAW) OR
+         (iNum = SKID_STING) OR
+         (iNum = SKID_BITE) OR
+         (iNum = SKID_SPIT)
       {
          iAttacks = 100 + viBonusSwing;
          i = 0;
@@ -6519,7 +6593,7 @@ messages:
                   #new_finerow=Send(oTarget,@GetFineRow),
                   #new_finecol=Send(oTarget,@GetFineCol),#face_target=TRUE);
             // We actually attack. Do the animation if we're still around.
-            Send(self,@DoMeleeAttack,#swings=i);
+            Send(self,@DoMeleeAttack,#swings=i,#iNum=iNum);
          }
       }
       // If we are a ranged attack, shoot something.
@@ -6668,13 +6742,20 @@ messages:
          // gained depends on mysticism.
          if iAction < SKID_MINIMUM
          {
+            // We just cast this. Lower priority.
             if iAction = iNum
             {
                SetNth(i,5,Bound(iPriority - iFactor,-10000,$));
             }
+            // We are running around. Increase priority slightly.
+            else if iNum = SKID_MINIMUM
+            {
+               SetNth(i,5,Bound(Nth(i,5) + (piMysticism/5),$,1000));
+            }
+            // We did something else. Increase priority.
             else
             {
-               SetNth(i,5,Bound(Nth(i,5)+(piMysticism/2),$,1000));
+               SetNth(i,5,Bound(Nth(i,5) + piMysticism,$,1000));
             }
          }
 
@@ -6682,23 +6763,40 @@ messages:
          // travelled. Gain depends on aim (1 to 5 points).
          if iAction > SKID_MINIMUM
          {
+            // We are moving, increase priority for every attack.
             if iNum = SKID_MINIMUM
             {
-               SetNth(i,5,Bound(Nth(i,5)+(piAim/10),$,1000));
+               SetNth(i,5,Bound(Nth(i,5) + (piAim/10),$,1000));
             }
-            else
+            // We are adjusting the priority of the attack that has just been executed.
+            else if iAction = iNum
             {
-               if iAction = SKID_SLASH
-               {
-                  SetNth(i,5,viMeleePriority);
-               }
-               if iAction = SKID_SPIN
-               {
-                  SetNth(i,5,viMeleePriority+1);
-               }
+               // Standard attacks are reset to standard priority.
                if iAction = SKID_FIRE
                {
                   SetNth(i,5,viFirePriority);
+               }
+               // We can tell it's the mobs standard attack because
+               // it's priority isn't lowered after use.
+               else if iFactor = 0
+               {
+                  SetNth(i,5,viMeleePriority);
+               }
+               else
+               // Special attacks are handled just like spells.
+               {
+                  SetNth(i,5,Bound(iPriority - iFactor,-10000,$));
+               }
+            }
+            // We are adjusting the priority of a different attack.
+            else
+            {
+               // Standard attacks keep their priority.
+               // The rest moves up in priority.
+               if Nth(i,6) <> 0
+               {
+                  // Special attacks gain priority based on aim.
+                  SetNth(i,5,Bound(Nth(i,5) + piAim,$,1000));
                }
             }
          }
@@ -6743,7 +6841,7 @@ messages:
       return FALSE;
    }
 
-   DoMeleeAttack(swings=0)
+   DoMeleeAttack(swings=0,iNum=0)
    "Calls melee attack animation as often as needed."
    {
       if ptAction = $
@@ -6768,7 +6866,7 @@ messages:
 
          if --piAction > 0
          {
-            ptAction = CreateTimer(self,@DoMeleeAnimation,400);
+            ptAction = CreateTimer(self,@DoMeleeAnimation,viMeleeAnimationTime);
          }
       }
 
@@ -6850,7 +6948,7 @@ messages:
 
          if --piAction > 0
          {
-            ptAction = CreateTimer(self,@DoMissileAnimation,400);
+            ptAction = CreateTimer(self,@DoMissileAnimation,viRangedAnimationTime);
          }
       }
 

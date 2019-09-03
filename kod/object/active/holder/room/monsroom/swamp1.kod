@@ -88,10 +88,30 @@ messages:
 
    Constructed()
    {
-      plMonsters = [ [&Ranuculus, 100] ];
+      plMonsters = [ [&Ranuculus, 75], [&EvilEnt, 25] ];
 
       plGenerators = [ [13, 13], [11, 29], [17, 31], [17, 25], [18, 36],
                        [26, 9], [28, 16], [32, 14], [35, 28], [29, 30] ];
+
+      propagate;
+   }
+   
+   RecalcLightAndWeather()
+   {
+      local iHour;
+
+      // The swamp has a diverse list of monsters
+      iHour = Send(SYS,@GetHour);
+
+      if (iHour = 20)
+      {
+         plMonsters = [ [&Ranuculus, 75], [&EvilEnt, 25] ];
+      }
+      else if (iHour = 5)
+      {
+         // during the day weaker monsters spawn
+         plMonsters = [ [&BigSlime, 40], [&Frogman, 60] ];
+      }
 
       propagate;
    }

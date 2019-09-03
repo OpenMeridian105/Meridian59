@@ -1,0 +1,334 @@
+// Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+// All rights reserved.
+//
+// This software is distributed under a license that is described in
+// the LICENSE file that accompanies it.
+//
+// Meridian is a registered trademark.
+
+
+////////////////////////////////////////////////////////////////////////////////
+Nyrphling is Monster
+
+constants:
+
+   include blakston.khd
+
+   ANIM_WALK = 1
+   ANIM_STING = 2
+   ANIM_CLAW = 3
+   ANIM_BITE = 4
+
+   FRAME_STAND = 1
+   FRAME_WALK_START = 2
+   FRAME_WALK_END = 12
+   FRAME_STING_START = 13
+   FRAME_STING_END = 20
+   FRAME_CLAW_START = 21
+   FRAME_CLAW_END = 27
+   FRAME_BITE_START = 28
+   FRAME_BITE_END = 33
+
+resources:
+
+   include nyrphling.lkod
+
+   nyrphling_koc_name_rsc = "imixshkir"
+   nyrphling_name_rsc = "nyrphling"
+   nyrphling_icon_rsc = nyrphling.bgf
+   nyrphling_desc_rsc = \
+      "Despite their diminutive frame, nyrphlings have no shortage of ways "
+      "to torment their adversaries.  With their razor-sharp claws, venomous fangs "
+      "and deadly stingers, these fiery creatures make for fearsome opponents - "
+      "especially when encountered in groups.  If taken on individually, however, "
+      "an experienced adventurer may dispatch them before they are able to do much harm."
+
+   nyrphling_dead_icon_rsc = nyrphlingX.bgf
+   nyrphling_dead_name_rsc = "dead nyrphling"
+
+   nyrphling_sound_hit = scp_atkh.ogg
+   nyrphling_sound_miss = scp_atkm.ogg
+   nyrphling_sound_death = scp_dth.ogg
+   nyrphling_sound_aware = scp_awr.ogg
+
+classvars:
+
+   vrKocName = nyrphling_koc_name_rsc
+   vrName = nyrphling_name_rsc
+   vrIcon = nyrphling_icon_rsc
+   vrDesc = nyrphling_desc_rsc
+   vrDead_icon = nyrphling_dead_icon_rsc
+   vrDead_name = nyrphling_dead_name_rsc
+
+   // This monster does all kinds of nefarious stuff...
+   viPoisonChance = 50
+   viPoisonStrength = 350
+   viPoisonDuration = 30000
+   viPoisonHealth = 100
+   viBleedChance = 15
+   viBleedStrength = 500
+   viBleedDuration = 20000
+   viFatigueChance = 50
+   viFatigueStrength = 250
+   viFatigueDuration = 60000
+   viBurnChance = 5
+   viBurnStrength = 2000
+   viBurnDuration = 4000
+
+   viTreasure_type = TID_MEDIUM_TOUGH
+   viSpeed = SPEED_FAST
+
+   viLevel = 90
+   viDifficulty = 3
+   viBonusHealth = -40
+   viVisionDistance = 10
+   viMeleeRange = 96
+   viKarma = -60
+   viDefault_behavior = AI_FIGHT_AGGRESSIVE | AI_FIGHT_SINGLEMINDED | AI_FIGHT_HYPERAGGRESSIVE
+   viWimpy = 20
+   viCashmin = 275
+   viCashmax = 650
+   vrSound_hit = nyrphling_sound_hit
+   vrSound_miss = nyrphling_sound_miss
+   vrSound_aware = nyrphling_sound_aware
+   vrSound_death = nyrphling_sound_death
+
+   viAttacks = ATTACK_CLAW | ATTACK_STING | ATTACK_BITE
+
+   viBonusSwing = 20
+   viMeleeAnimationTime = 700
+
+   viSocial = 80
+
+   vbCanSiphon = FALSE
+
+properties:
+
+   piAnimation = ANIM_NONE
+
+messages:
+
+   Constructed()
+   {
+      plResistances = [ [-SPL_TYPE_FIRE, 60 ],
+                        [ATK_TYPE_SLASH, -20 ] ];
+
+      plActions = [   [SKID_CLAW,0,100,piMeleeRange*piMeleeRange,viMeleePriority,0,100,COMBAT_ACTION_HARM],
+                      [SKID_STING,0,500,piMeleeRange*piMeleeRange,viMeleePriority/2,150,200,COMBAT_ACTION_HARM],
+                      [SKID_BITE,0,250,piMeleeRange*piMeleeRange,2*viMeleePriority/3,100,150,COMBAT_ACTION_HARM] ];
+
+      propagate;
+   }
+
+   SendLookAnimation()
+   {
+      AddPacket(1,ANIMATE_CYCLE,4,100,2,FRAME_WALK_START,2,FRAME_WALK_END);
+
+      return;
+   }
+
+   SendMoveAnimation()
+   {
+      AddPacket(1,ANIMATE_CYCLE,4,100,2,FRAME_WALK_START,2,FRAME_WALK_END);
+
+      return;
+   }
+
+   DoMeleeAttack(swings=0,iNum=0)
+   "Calls melee attack animation as often as needed."
+   {
+      if ptAction = $
+      {
+         piAction = swings + iNum*1000;
+         Send(self,@DoMeleeAnimation);
+      }
+
+      return;
+   }
+
+   DoMeleeAnimation()
+   "Handles melee attack animation."
+   {
+      ptAction = $;
+
+      if poOwner <> $
+      {
+         if piAction / 1000 = SKID_CLAW
+         {
+            piAnimation = ANIM_CLAW;
+         }
+         else if piAction / 1000 = SKID_STING
+         {
+            piAnimation = ANIM_STING;
+         }
+         else if piAction / 1000 = SKID_BITE
+         {
+            piAnimation = ANIM_BITE;
+         }
+         else
+         {
+            piAnimation = ANIM_ATTACK;
+         }
+
+         Send(poOwner,@SomethingChanged,#what=self);
+
+         piAnimation = ANIM_NONE;
+
+         if piAction % 1000 > 1
+         {
+            piAction -= 1;
+            ptAction = CreateTimer(self,@DoMeleeAnimation,viMeleeAnimationTime);
+         }
+      }
+
+      return;
+   }
+
+   // Nyrphlings attack quite quickly, making up for their low health pool.
+   GetAttackTime()
+   {
+      return MOB_ATTACK_TIMER_WAIT + Random(400,600);
+   }
+
+   SendAnimation()
+   {
+      if piAnimation = ANIM_ATTACK
+         OR piAnimation = ANIM_CLAW
+      {
+         AddPacket(1,ANIMATE_ONCE,4,100,
+            2,FRAME_CLAW_START,
+            2,FRAME_CLAW_END,
+            2,FRAME_STAND);
+
+         return;
+      }
+
+      if piAnimation = ANIM_STING
+      {
+         AddPacket(1,ANIMATE_ONCE,4,100,
+            2,FRAME_STING_START,
+            2,FRAME_STING_END,
+            2,FRAME_STAND);
+
+         return;
+      }
+
+      if piAnimation = ANIM_BITE
+      {
+         AddPacket(1,ANIMATE_ONCE,4,100,
+            2,FRAME_BITE_START,
+            2,FRAME_BITE_END,
+            2,FRAME_STAND);
+
+         return;
+      }
+
+      propagate;
+   }
+
+   // Nyrphlings are a bit special: Different attacks cause different effects.
+   // Clawing causes bleeding, biting causes poison and stinging causes fatigue.
+   // Additionally, all attacks can burn.
+   HitSideEffect(what=$,who=$,amount=0)
+   "Called after every non-fatal monster hit."
+   {
+      local oEffect, iStrength, iDuration;
+
+      // Who should be nil at this point, unless a player
+      // is assuming the form of a monster.
+      if who = $
+      {
+         who = self;
+      }
+
+      if piAction / 1000 = ANIM_CLAW
+      {
+         if viBleedChance > 0
+            AND Random(1,100) <= Bound(viBleedChance * (50 + piAim) / 75,0,100)
+            AND Send(what,@CanBleed)
+         {
+            oEffect = Send(SYS,@FindSpellByNum,#num=SID_BLEED);
+            iStrength = Send(self,@GetBleedStrength,#amount=amount);
+            iStrength = iStrength * Send(SETTINGS_OBJECT,@GetDrainFactor) / 100;
+            iStrength = iStrength * (50 + piAim) / 75;
+            iDuration = Send(self,@GetBleedDuration,#amount=amount);
+            iDuration = iDuration * (50 + piMight) / 75;
+            if Send(oEffect,@StartBleed,#who=what,#source=who,
+                  #strength=Random(iStrength / 5 * 4, iStrength),
+                  #duration=Random(iDuration / 5 * 4, iDuration))
+            {
+               Send(self,@IllusionHitEffectMessage,#who=who,#what=what,
+                     #amount=(iStrength/100)*(iDuration/100)/100,#num=SID_BLEED);
+            }
+         }
+      }
+      else if piAction / 1000 = SKID_STING
+      {
+         if viFatigueChance > 0
+            AND Random(1,100) <= Bound(viFatigueChance * (50 + piAim) / 75,0,100)
+            AND Send(what,@CanFatigue)
+         {
+            oEffect = Send(SYS,@FindSpellByNum,#num=SID_FATIGUE);
+            iStrength = Send(self,@GetFatigueStrength,#amount=amount);
+            iStrength = iStrength * Send(SETTINGS_OBJECT,@GetDrainFactor) / 100;
+            iStrength = iStrength * (50+piMight)/75;
+            iDuration = Send(self,@GetFatigueDuration,#amount=amount);
+            iDuration = iDuration * (50+piAim)/75;
+            if Send(oEffect,@StartFatigue,#who=what,#source=who,
+                  #strength=iStrength,#duration=iDuration)
+            {
+               Send(self,@IllusionHitEffectMessage,#who=who,#what=what,#num=SID_FATIGUE);
+            }
+         }
+      }
+      else if piAction / 1000 = SKID_BITE
+      {
+         if viPoisonChance > 0
+            AND Random(1,100) <= Bound(viPoisonChance * (50 + piIntellect) / 75,0,100)
+            AND Send(what,@CanPoison)
+         {
+            oEffect = Send(SYS,@FindSpellByNum,#num=SID_POISON);
+            iStrength = Send(self,@GetPoisonStrength,#amount=amount);
+            iStrength = iStrength * (50 + piIntellect) / 75;
+            iDuration = Send(self,@GetPoisonDuration,#amount=amount);
+            iDuration = iDuration * (50 + piMysticism) / 75;
+            if (Send(oEffect,@StartPoison,#who=what,#source=who,#duration=iDuration,
+                  #healthloss=iStrength * viPoisonHealth / 100,#manaloss=0,#vigorloss=0))
+            {
+               // Only display hit/visual effect if poison was successful.
+               Send(self,@IllusionHitEffectMessage,#who=who,#what=what,
+                     #effect=$,#num=SID_POISON);
+               Send(self,@PoisonVisualEffect,#what=what);
+            }
+         }
+      }
+
+      // Burn: Frequency scales with mysticism, strength with mysticism, duration with stamina.
+      if viBurnChance > 0
+         AND Random(1,100) <= Bound(viBurnChance * (50 + piMysticism) / 75,0,100)
+         AND Send(what,@CanBurn)
+      {
+         oEffect = Send(SYS,@FindSpellByNum,#num=SID_BURN);
+         iStrength = Send(self,@GetBurnStrength,#amount=amount);
+         iStrength = iStrength * Send(SETTINGS_OBJECT,@GetDrainFactor) / 100;
+         iStrength = iStrength * (50 + piMysticism) / 75;
+         iDuration = Send(self,@GetBurnDuration,#amount=amount);
+         iDuration = iDuration * (50 + piStamina) / 75;
+         if Send(oEffect,@StartBurn,#who=what,#source=who,
+               #strength=iStrength,#duration=iDuration)
+         {
+            Send(self,@IllusionHitEffectMessage,#who=who,#what=what,
+                  #amount=(iStrength/100)*(iDuration/100)/100,#num=SID_BURN);
+         }
+      }
+
+      return;
+   }
+
+   CanMorphTo()
+   {
+      return FALSE;
+   }
+
+end
+////////////////////////////////////////////////////////////////////////////////

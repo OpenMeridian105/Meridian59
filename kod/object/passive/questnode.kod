@@ -1284,7 +1284,7 @@ messages:
    {
       local i, iPrizeStat, iPrizeType, cPrizeClass, oPrize, iAmount, iDays,
             oBoon, iBoonNum, iPrizeBoon, iPrizeFaction, oQuestEngine, oQuester,
-            oLich, oNewLich, oQuestTemplate;
+            oLich, oNewLich, oQuestTemplate, iRID, iRow, iCol;
 
       if prize = $
          OR recipients = $
@@ -1767,6 +1767,23 @@ messages:
          foreach oQuester in recipients
          {
             Send(oQuester,@SetPlayerPvPPermaOff);
+         }
+
+         return;
+      }
+      
+      if iPrizeType = QN_PRIZETYPE_SPAWN
+      {
+         // Spawn class at destination RID, row and col
+         cPrizeClass = Nth(prize,2);
+         iRID = Nth(prize,3);
+         iRow = Nth(prize,4);
+         iCol = Nth(prize,5);
+         foreach oQuester in recipients
+         {
+            oPrize = Create(cPrizeClass);
+            Send(Send(SYS,@FindRoomByNum,#num=iRID),@NewHold,
+                  #what=oPrize,#new_row=iRow,#new_col=iCol);
          }
 
          return;

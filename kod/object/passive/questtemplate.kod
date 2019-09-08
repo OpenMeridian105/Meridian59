@@ -120,6 +120,7 @@ resources:
    questtemplate_using_item = "Must be using %s%s.\n"
    questtemplate_not_item = "Must not be carrying %s%s.\n"
    questtemplate_has_hp = "Must have at least %i HP.\n"
+   questtemplate_has_comp_quest_id = "Must have completed the quest \"%s\"."
 
    questtemplate_red = "~f"
    questtemplate_green = "~g"
@@ -510,7 +511,8 @@ messages:
             OR iRes = Q_R2_HAS_ITEM
             OR iRes = Q_R2_USING_ITEM
             OR iRes = Q_R2_HAS_HEALTH_LEVEL
-            OR iRes = Q_R2_DOES_NOT_HAVE_ITEM)
+            OR iRes = Q_R2_DOES_NOT_HAVE_ITEM
+            OR iRes = Q_R2_HAS_COMPLETED_QUEST_ID)
          {
             ++iCount;
          }
@@ -1038,6 +1040,28 @@ messages:
             AddPacket(4,questtemplate_not_item, 4,Send(oObj,@GetIndef),
                       4,Send(oObj,@GetName));
             Send(oObj,@Delete);
+            break;
+
+         case Q_R2_HAS_COMPLETED_QUEST_ID:
+            lHistory = Send(who,@GetQuestHistory,#index=Nth(i,2));
+            iHistory = 0;
+
+            if (lHistory <> $)
+            {
+               iHistory = First(lHistory) & (~QUEST_HISTORY_MASK);
+            }
+
+            if (iHistory = 0)
+            {
+               AddPacket(4,questtemplate_red);
+            }
+            else
+            {
+               AddPacket(4,questtemplate_green);
+            }
+            oObj = Send(Send(SYS,@GetQuestEngine),@GetQuestTemplateObject,
+                  #index=Nth(i,2));
+            AddPacket(4,questtemplate_has_comp_quest_id, 4,Send(oObj,@GetName));
             break;
          }
       }

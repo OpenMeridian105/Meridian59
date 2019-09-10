@@ -661,7 +661,7 @@ messages:
    "quests. Note this currently only supports single-player quests, however "
    "all quests are of this type for now."
    {
-      local lQT, oQuest, oQuester, iQT, iQNT, oQN, iInfo, iNodeType;
+      local lQT, oQuest, oQuester, iQT, iQNT, oQN, lInfo, iNodeType;
 
       // Save all active quest nodes so we can reassign them later.
       foreach lQT in plQuestTemplates
@@ -678,9 +678,6 @@ messages:
                continue;
             }
 
-            // Reset info field.
-            iInfo = 0;
-
             // Quest node index.
             iQNT = Send(oQN,@GetQuestNodeTemplateIndex);
             
@@ -690,20 +687,19 @@ messages:
             // Monster quests need to fill out the info field.
             if (iNodeType = QN_TYPE_MONSTER)
             {
-               if (Send(oQN,@GetQuestMonster) = $)
-               {
-                  iInfo |= QSTA_MOB_KILLED;
-               }
-               else
-               {
-                  iInfo |= QSTA_MOB_NOTKILLED;
-               }
+               lInfo = [Send(oQN,@GetQuestMonster), 0, 0];
+            }
+            else if (iNodeType = QN_TYPE_MONSTER_MULTIPLE)
+            {
+               lInfo = [Send(oQN,@GetQuestMonster),
+                        Send(oQN,@GetNumberMonstersKilled),
+                        Send(oQN,@GetMonsterKillTarget)];
             }
 
             foreach oQuester in Send(oQuest,@GetQuesters)
             {
                // Add quester, indexes and info to list.
-               plRecreateActiveQuests = Cons([oQuester, iQT, iQNT, iInfo],
+               plRecreateActiveQuests = Cons([oQuester, iQT, iQNT, lInfo],
                                           plRecreateActiveQuests);
             }
          }
@@ -718,7 +714,8 @@ messages:
    "Create and assign quests saved during RecreateAll. Also advances the quest "
    "to the specific quest node the player was up to."
    {
-      local i, iCount, oQuest, oQuestNode, oQuester, lQT, iQTIndex, iQNTIndex;
+      local i, iCount, oQuest, oQuestNode, oQuester, lQT, iQTIndex, iQNTIndex,
+            iNodeType, lInfo, iKilled, iTarget;
 
       foreach i in plRecreateActiveQuests
       {
@@ -773,14 +770,59 @@ messages:
          Debug("Reactivating quest ",iQTIndex, " node ", iQNTIndex,
             " for player ", Send(oQuester,@GetTrueName));
 
-         // Handle quest nodes with multiple parts (e.g. mob kill quest).
-         if (Nth(i,4) & QSTA_MOB_KILLED)
+         // Quest node type
+         iNodeType = Send(self,@GetQuestNodeType,#index=iQNTIndex);
+
+         // For QN_TYPE_MONSTER and QN_TYPE_MONSTER_MULTIPLE, we try to
+         // replicate the original quest path as close as possible. If they
+         // were part-way through finding a mob to kill, or towards reaching a
+         // kill target, keep the same mob class and # they killed/ # target.
+         // If they have finished the kill part, replicate the kills with
+         // MonsterKilled in case the quest needs to do something else each
+         // time a mob dies.
+         if (iNodeType = QN_TYPE_MONSTER)
          {
-            // Emulate a mob kill using the quester and quest node's mob
+            lInfo = Nth(i,4);
             oQuestNode = Send(oQuest,@GetActiveQuestNode);
 
-            Send(oQuestNode,@MonsterKilled,#killing_player=oQuester,
-                  #dead_monster=Send(oQuestNode,@GetQuestMonster));
+            // Handle quest nodes with multiple parts (e.g. mob kill quest).
+            if (First(lInfo) = $)
+            {
+               // Emulate a mob kill using the quester and quest node's mob
+               Send(oQuestNode,@MonsterKilled,#killing_player=oQuester,
+                     #dead_monster=Send(oQuestNode,@GetQuestMonster));
+            }
+            else
+            {
+               Send(oQuestNode,@SetMonsterData,#cMonster=GetClass(First(lInfo)));
+            }
+         }
+         else if (iNodeType = QN_TYPE_MONSTER_MULTIPLE)
+         {
+            lInfo = Nth(i,4);
+            iKilled = Nth(lInfo,2);
+            iTarget = Nth(lInfo,3);
+
+            oQuestNode = Send(oQuest,@GetActiveQuestNode);
+
+            if (First(lInfo) = $)
+            {
+               for(iCount = Send(oQuestNode,@GetMonsterKillTarget); iCount > 0; --iCount)
+               {
+                  Send(oQuestNode,@MonsterKilled,#killing_player=oQuester,
+                     #  dead_monster=Send(oQuestNode,@GetQuestMonster));
+               }
+            }
+            else
+            {
+               Send(oQuestNode,@SetMonsterData,#cMonster=GetClass(First(lInfo)),
+                     #iKillTarget=iTarget);
+               for (iCount = iKilled; iCount > 0; --iCount)
+               {
+                  Send(oQuestNode,@MonsterKilled,#killing_player=oQuester,
+                        #dead_monster=Send(oQuestNode,@GetQuestMonster));
+               }
+            }
          }
       }
 
@@ -828,7 +870,7 @@ messages:
          questnode_type = piDefaultQuestNodeType;
       }
       if questnode_type < QN_TYPE_MESSAGE
-         OR questnode_type > QN_TYPE_MONSTER_ITEMCLASS
+         OR questnode_type > QN_TYPE_MAX
       {
          return 0;
       }
@@ -1288,7 +1330,7 @@ messages:
          return 0;
       }
       if new_type < QN_TYPE_MESSAGE
-         OR new_type > QN_TYPE_MONSTER_ITEMCLASS
+         OR new_type > QN_TYPE_MAX
       {
          return 0;
       }

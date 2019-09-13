@@ -1,0 +1,298 @@
+// Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+// All rights reserved.
+//
+// This software is distributed under a license that is described in
+// the LICENSE file that accompanies it.
+//
+// Meridian is a registered trademark.
+
+
+/////////////////////////////////////////////////////////////////////////////////
+SwampHuntQuest is QuestTemplate
+// QNT_ID_SWAMP_HUNT_1, QNT_ID_SWAMP_HUNT_2,
+// QNT_ID_SWAMP_HUNT_3, QNT_ID_SWAMP_HUNT_4
+// QNT_ID_SWAMP_HUNT_5
+
+// QuestTemplate is
+// [ quest template index
+//   quest template object
+//   number of players,
+//   type of quest,
+//   eligible player restrictions,
+//   quest nodes,
+//   max number active,
+//   currently active quests,
+//   percent chance of scheduling (on timer firing)
+//   special restrictions ]
+
+constants:
+
+   include blakston.khd
+
+resources:
+
+   include swamphuntqt.lkod
+
+   // Quest description.
+   SwampHuntQuest_icon_rsc = ranu.bgf
+   SwampHuntQuest_name_rsc = "Muddy the Waters"
+
+   SwampHuntQuest_desc_rsc = \
+      "More hostile creatures have appeared at the swamp.  "
+      "Michael d'Adue is concerned with the current state of the wetlands, "
+      "and the effects it has on the environment.  "
+      "Gather some information as to why this may be happening."
+
+   SwampHuntQuest_return_rsc = \
+      "Return to %s and let %s know the task has been completed."
+
+   SwampHuntQuest_completed = \
+      "You gone hunting at the swamp."
+
+   // Quest resources.
+   SwampHuntQuest_trigger = "swamp"
+   SwampHuntQuest_assign_2 = \
+      "Have you been through the swamp lately?  The ranunculus have infested "
+      "the waters and have tainted the environment.  The swamp, home to the "
+      "gentle race of frogmen, are fighting a losing battle against the "
+      "diseased.  Care not to believe me?  Try taking on a dozen ranunculus and "
+      "coming back."
+
+   SwampHuntQuest_node2_rsc = \
+      "The %s have infested the swamps with no real predators to control "
+      "the population.  Michael d'Adue has asked you to kill %i.\n\n"
+      "Currently, you have slain %i towards that target.  "
+      "Complete this task and report back to Michael d'Adue."
+   SwampHuntQuest_failure_2 = \
+      "Subject: Muddy the Waters\n"
+      "Hey hello, are you dead?  You westeners should stay out of Berg."
+
+   SwampHuntQuest_node3_rsc = \
+      "Seek assistance from a royal council memeber.  "
+      "Esseldi is known as a researcher and traveller, he may be able to assist."
+   SwampHuntQuest_assign_3 = \
+      "You're back? Most that come in from the west aren't as strong as you..."
+      "The state of the bog really worries me, understand this affects us "
+      "all.  I would trust our King to handle these affairs, but it seems like "
+      "the only thing the King cares about is taking shillings out of our "
+      "pockets.  Is there someone from the royal council that would be willing "
+      "to help us?"
+   SwampHuntQuest_failure_3 = \
+      "Subject: Muddy the Waters\n"
+      "Have you ran off?  You westeners are worse than the ranunculus."
+
+   SwampHuntQuest_node4_rsc = \
+      "The council are not able to assist with the issues of the swamp.  "
+      "Report back to Michael d'Adue and let him know."
+   SwampHuntQuest_assign_4 = \
+      "The council does not have the jurisdiction to interfere with the "
+      "politics of the east.  I may have some information that could be of some "
+      "use to you...I was walking through the swamp late at night studying its "
+      "habitat.  When suddenly, I heard this flapping noise. I gazed up to see "
+      "a shadowy figure passed by the moon, it was a great winged bird it "
+      "seemed, floating in the air on great pinions, it had spanned the entire "
+      "sky.  As I walked out of the wetlands, the entire time I felt as if I "
+      "was being watched...Bards sing of these, ~Inight stalkers~I that follow "
+      "lost travellers before consuming their souls.  I was lucky to get "
+      "out of there.  Surely, this is the work of Qor."
+   SwampHuntQuest_failure_4 = \
+      "Subject: Muddy the Waters\n"
+      "It is a long journey to the east.  It is difficult to send resources "
+      "that way.  Sorry for the troubles!"
+
+   SwampHuntQuest_node5_rsc = \
+      "Servants of Qor may have infected the bog.  "
+      "Find and kill %i 'night stalkers'.\n\n"
+      "Currently, you have slain %i towards that target.  "
+      "Complete this task and report back to Michael d'Adue."
+   SwampHuntQuest_assign_5 = \
+      "No jurisdiction?  Where do our taxed shills go?  A giant bird?!  "
+      "Probably on some distant island, but not here..."
+      "Although... when the sun sets, there's a feeling of an evil presence.  "
+      "Go rally a team and banish these so called night-stalkers."
+   SwampHuntQuest_failure_5 = \
+      "Subject: Muddy the Waters\n"
+      "Night-stalkers my arse.  "
+      "Just another westener trying to cash in on our lands."
+
+   SwampHuntQuest_success = \
+      "Looks like it is already too late to reverse the effects of the environment.  "
+      "At least you tried..."
+
+classvars:
+
+   vrIcon = SwampHuntQuest_icon_rsc
+   vrName = SwampHuntQuest_name_rsc
+   vrDesc = SwampHuntQuest_desc_rsc
+   vrCompleted = SwampHuntQuest_completed
+
+   // The QST_ID constant for this quest.
+   viQuestID = QNT_ID_SWAMP_HUNT
+
+   vrReturn = SwampHuntQuest_return_rsc
+   vrNode2 = SwampHuntQuest_node2_rsc
+   vrNode3 = SwampHuntQuest_node3_rsc
+   vrNode4 = SwampHuntQuest_node4_rsc
+   vrNode5 = SwampHuntQuest_node5_rsc
+
+properties:
+
+   piNumPlayers = 1
+   piPlayerRestrict = Q_PLAYER_NOTSUCCEEDED | Q_PLAYER_NOTFAILED_RECENTLY
+   plSpecialRestrict = $
+   piMaxPlayers = 30
+   piSchedulePct = 100
+   piTimeLimit = 12 * 3600 // 12 hours.
+
+messages:
+
+   Constructor()
+   {
+      // Quest node list to send to QuestEngine.
+      plQuestNodes = [ QNT_ID_SWAMP_HUNT_1, QNT_ID_SWAMP_HUNT_2,
+                       QNT_ID_SWAMP_HUNT_3, QNT_ID_SWAMP_HUNT_4,
+                       QNT_ID_SWAMP_HUNT_5  ];
+
+      //Quest nodes with matching descriptions for the player.
+      plQuestNodeDesc = [ 
+                          [QNT_ID_SWAMP_HUNT_2, vrNode2],
+                          [QNT_ID_SWAMP_HUNT_3, vrNode3],
+                          [QNT_ID_SWAMP_HUNT_4, vrNode4],
+                          [QNT_ID_SWAMP_HUNT_5, vrNode5]
+                        ];
+
+      propagate;
+   }
+
+   SendQuestNodeTemplates()
+   {
+      local lNPCs, oQE, oLib, oNPC;
+
+      oQE = Send(SYS,@GetQuestEngine);
+      oLib = Send(SYS,@GetLibrary);
+
+      // QNT_ID_SWAMP_HUNT_1 - kickoff
+      if Send(oQE,@AddQuestNodeTemplate,#questnode_type=QN_TYPE_MESSAGE,
+               #cargolist=[SwampHuntQuest_trigger],
+               #quest_node_index=QNT_ID_SWAMP_HUNT_1)
+      {
+         Send(oQE,@SetQuestNodeNPCList,#index=QNT_ID_SWAMP_HUNT_1,
+               #new_NPC_list=Send(oLib,@GetOccupationList,
+                                 #cNPC_class=&BergBanker));
+      }
+      else
+      {
+         Debug("Error building QN: QNT_ID_SWAMP_HUNT_1");
+      }
+
+      // QNT_ID_SWAMP_HUNT_2 - Kill ranunculus
+      if Send(oQE,@AddQuestNodeTemplate,#questnode_type=QN_TYPE_MONSTER_MULTIPLE,
+               #NPC_modifier=QN_NPCMOD_SAME,#monsterlist=[ [&Ranuculus, 12] ],
+               #timelimit=piTimeLimit,#quest_node_index=QNT_ID_SWAMP_HUNT_2)
+      {
+         Send(oQE,@SetQuestNodeAssignHint,#index=QNT_ID_SWAMP_HUNT_2,
+               #new_hint=SwampHuntQuest_assign_2);
+         Send(oQE,@SetQuestNodeFailureHint,#index=QNT_ID_SWAMP_HUNT_2,
+               #new_hint=SwampHuntQuest_failure_2);
+      }
+      else
+      {
+         Debug("Error building QN: QNT_ID_SWAMP_HUNT_2");
+      }
+
+      // QNT_ID_SWAMP_HUNT_3 - find Esseldi
+      if Send(oQE,@AddQuestNodeTemplate,#questnode_type=QN_TYPE_SHOWUP,
+               #timelimit=piTimeLimit,#quest_node_index=QNT_ID_SWAMP_HUNT_3)
+      {
+         Send(oQE,@SetQuestNodeNPCList,#index=QNT_ID_SWAMP_HUNT_3,
+               #new_NPC_list=Send(oLib,@GetOccupationList,
+                                 #cNPC_class=&FiveCouncilor));
+         Send(oQE,@SetQuestNodeAssignHint,#index=QNT_ID_SWAMP_HUNT_3,
+               #new_hint=SwampHuntQuest_assign_3);
+         Send(oQE,@SetQuestNodeFailureHint,#index=QNT_ID_SWAMP_HUNT_3,
+               #new_hint=SwampHuntQuest_failure_3);
+      }
+      else
+      {
+         Debug("Error building QN: QNT_ID_SWAMP_HUNT_3");
+      }
+
+      // QNT_ID_SWAMP_HUNT_4 - find Esseldi
+      if Send(oQE,@AddQuestNodeTemplate,#questnode_type=QN_TYPE_SHOWUP,
+               #timelimit=piTimeLimit,#quest_node_index=QNT_ID_SWAMP_HUNT_4)
+      {
+         Send(oQE,@SetQuestNodeNPCList,#index=QNT_ID_SWAMP_HUNT_4,
+               #new_NPC_list=Send(oLib,@GetOccupationList,
+                                 #cNPC_class=&BergBanker));
+         Send(oQE,@SetQuestNodeAssignHint,#index=QNT_ID_SWAMP_HUNT_4,
+               #new_hint=SwampHuntQuest_assign_4);
+         Send(oQE,@SetQuestNodeFailureHint,#index=QNT_ID_SWAMP_HUNT_4,
+               #new_hint=SwampHuntQuest_failure_4);
+      }
+      else
+      {
+         Debug("Error building QN: QNT_ID_SWAMP_HUNT_4");
+      }
+
+      // QNT_ID_SWAMP_HUNT_5 - Go kill floating eyeballs.
+      // this also would be enough to summon a dark angel
+      if Send(oQE,@AddQuestNodeTemplate,#questnode_type=QN_TYPE_MONSTER_MULTIPLE,
+               #NPC_modifier=QN_NPCMOD_SAME,#monsterlist=[ [&GiantEye, 16] ],
+               #timelimit=piTimeLimit,#quest_node_index=QNT_ID_SWAMP_HUNT_5,
+               #prizelist=[ [ QN_PRIZETYPE_TRAINING_POINTS, 100 ] ])
+      {
+         Send(oQE,@SetQuestNodeAssignHint,#index=QNT_ID_SWAMP_HUNT_5,
+               #new_hint=SwampHuntQuest_assign_5);
+         Send(oQE,@SetQuestNodeFailureHint,#index=QNT_ID_SWAMP_HUNT_5,
+               #new_hint=SwampHuntQuest_failure_5);
+         Send(oQE,@SetQuestNodeSuccessHint,#index=QNT_ID_SWAMP_HUNT_5,
+               #new_hint=SwampHuntQuest_success);
+      }
+      else
+      {
+         Debug("Error building QN: QNT_ID_SWAMP_HUNT_5");
+      }
+
+      return;
+   }
+
+   MainDesc(who=$,index=$,oQuestNode=$)
+   {
+      local oMob, oNPC;
+
+      if plQuestNodeDesc = $
+      {
+         AddPacket(4,vrDesc);
+
+         return;
+      }
+
+      if index = QNT_ID_SWAMP_HUNT_2
+         OR index = QNT_ID_SWAMP_HUNT_5
+      {
+         oMob = Send(oQuestNode,@GetQuestMonster);
+         oNPC = Send(oQuestNode,@GetSourceNPC);
+         if oMob = $
+         {
+            AddPacket(4,vrReturn,4,Send(oNPC,@GetName),4,Send(oNPC,@GetHimHer));
+         }
+         else if index = QNT_ID_SWAMP_HUNT_2
+         {
+            AddPacket(4,vrNode2, 4,Send(oMob,@GetName),
+               4,Send(oQuestNode,@GetMonsterKillTarget),
+               4,Send(oQuestNode,@GetNumberMonstersKilled) );
+
+         }
+         else if index = QNT_ID_SWAMP_HUNT_5
+         {
+            AddPacket(4,vrNode5, 4,Send(oQuestNode,@GetMonsterKillTarget),
+               4,Send(oQuestNode,@GetNumberMonstersKilled) );
+         }
+         return;
+      }
+
+      propagate;
+   }
+
+end
+/////////////////////////////////////////////////////////////////////////////////

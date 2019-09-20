@@ -1,0 +1,248 @@
+// Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+// All rights reserved.
+//
+// This software is distributed under a license that is described in
+// the LICENSE file that accompanies it.
+//
+// Meridian is a registered trademark.
+
+
+/////////////////////////////////////////////////////////////////////////////////
+EastLoversQuest is QuestTemplate
+// QNT_ID_EAST_LOVERS_1, QNT_ID_EAST_LOVERS_2,
+// QNT_ID_EAST_LOVERS_3, QNT_ID_EAST_LOVERS_4
+// QNT_ID_EAST_LOVERS_5
+
+// QuestTemplate is
+// [ quest template index
+//   quest template object
+//   number of players,
+//   type of quest,
+//   eligible player restrictions,
+//   quest nodes,
+//   max number active,
+//   currently active quests,
+//   percent chance of scheduling (on timer firing)
+//   special restrictions ]
+
+constants:
+
+   include blakston.khd
+
+resources:
+
+   //include eastloversqt.lkod
+
+   // Quest description.
+   EastLoversQuest_icon_rsc = idisharm.bgf
+   EastLoversQuest_name_rsc = "For a Friend"
+
+   EastLoversQuest_desc_rsc = \
+      "Frederick did not start in Berg, but in Jixa.  "
+      "He misses his old 'friend', and would like to relay some information "
+      "to Tylo, the blacksmith of Jixa."
+
+   EastLoversQuest_return_rsc = \
+      "Return to %s and let %s know the task has been completed."
+
+   EastLoversQuest_completed = \
+      "You've helped Frederick relay information to Tylo.  "
+      "Frederick has left you with a quote from Priestess Themala. \n\n"
+      "'Without the harmonic balance from all sides, the gate shall only be "
+      "unlocked when the balance is met. Only then can the flames take down "
+      "the barrier.'"
+
+   // Quest resources.
+   EastLoversQuest_trigger = "errand"
+   EastLoversQuest_assign_2 = \
+      "Would you be able to give this to my friend, Tylo?"
+
+   EastLoversQuest_node2_rsc = \
+      "Deliver Frederick's letter the blacksmith of Jixa."
+
+   EastLoversQuest_node3_rsc = \
+      "Return to Berg and report back to Frederick."
+   EastLoversQuest_assign_3 = \
+      "This came from h-h-him?  Frederick is a great devotee to Jala, "
+      "he will sing to you the many tales of our land.  He would like me to "
+      "come to Berg...I cannot...Have you heard of the rumors?  Berg is said "
+      "to be haunted... There were bodies of a thousand fallen soldiers from "
+      "the great war... Where are these bodies now?  Can you really trust the "
+      "mountain king?  Tell Frederick, I cannot leave Jixa..."
+
+   EastLoversQuest_node4_rsc = \
+      "Meet Tylo again in Jixa, and speak to him about moving to Berg."
+   EastLoversQuest_assign_4 = \
+      "I wish I could go back to Jixa with him, but the people of Jixa cannot "
+      "accept me.  At least here, our king welcomes all.  Missing bodies?  "
+      "Tylo says some outlandish things!  He often is very stubborn.  I know "
+      "Jixa is not safe either, once Jorgan finds out about Tylo... "
+      "Him and his guild of thieves will chase him out of Jixa as well..."
+      "Maybe you can change his mind?"
+      
+   EastLoversQuest_node5_rsc = \
+      "You were unable to convince Tylo to come to Berg.  "
+      "Head back to Frederick and let him know."
+   EastLoversQuest_assign_5 = \
+      "Before the separation, Jala would often sing songs with with her "
+      "sister Shal'ille on this very land.  Shal'ille is the goddess of "
+      "goodness in your lands, isn't she?  Jixa is a holy place, "
+      "I cannot leave here.  I will miss Frederick very much...I'm sorry..."
+
+   EastLoversQuest_success = \
+      "I understand...I will miss Tylo.  Jala is the goddess of love, "
+      "there is a different fate for us all.  Priestess Themala taught me, "
+      "that a single flame will only ignite.  Without the harmonic balance "
+      "from all sides, the gate shall only be unlocked when the balance is met.  "
+      "Only then can the flames take down the barrier..."
+      "Maybe I understand this a little more now..."
+   EastLoversQuest_failure = \
+      "Subject: For a Friend\n"
+      "I haven't heard back from you, "
+      "don't worry about my request my friend."
+
+classvars:
+
+   vrIcon = EastLoversQuest_icon_rsc
+   vrName = EastLoversQuest_name_rsc
+   vrDesc = EastLoversQuest_desc_rsc
+   vrCompleted = EastLoversQuest_completed
+
+   // The QST_ID constant for this quest.
+   viQuestID = QNT_ID_EAST_LOVERS
+
+   vrReturn = EastLoversQuest_return_rsc
+   vrNode2 = EastLoversQuest_node2_rsc
+   vrNode3 = EastLoversQuest_node3_rsc
+   vrNode4 = EastLoversQuest_node4_rsc
+   vrNode5 = EastLoversQuest_node5_rsc
+
+properties:
+
+   piNumPlayers = 1
+   piPlayerRestrict = Q_PLAYER_NOTSUCCEEDED | Q_PLAYER_NOTFAILED_RECENTLY
+   plSpecialRestrict = $
+   piMaxPlayers = 30
+   piSchedulePct = 100
+   piTimeLimit = 3600 // 1 hour.
+
+messages:
+
+   Constructor()
+   {
+      // Quest node list to send to QuestEngine.
+      plQuestNodes = [ QNT_ID_EAST_LOVERS_1, QNT_ID_EAST_LOVERS_2,
+                       QNT_ID_EAST_LOVERS_3, QNT_ID_EAST_LOVERS_4,
+                       QNT_ID_EAST_LOVERS_5  ];
+
+      //Quest nodes with matching descriptions for the player.
+      plQuestNodeDesc = [ 
+                          [QNT_ID_EAST_LOVERS_2, vrNode2],
+                          [QNT_ID_EAST_LOVERS_3, vrNode3],
+                          [QNT_ID_EAST_LOVERS_4, vrNode4],
+                          [QNT_ID_EAST_LOVERS_5, vrNode5]
+                        ];
+
+      propagate;
+   }
+
+   SendQuestNodeTemplates()
+   {
+      local lNPCs, oQE, oLib, oNPC;
+
+      oQE = Send(SYS,@GetQuestEngine);
+      oLib = Send(SYS,@GetLibrary);
+
+      // QNT_ID_EAST_LOVERS_1 - kickoff
+      if Send(oQE,@AddQuestNodeTemplate,#questnode_type=QN_TYPE_MESSAGE,
+               #cargolist=[EastLoversQuest_trigger],
+               #quest_node_index=QNT_ID_EAST_LOVERS_1)
+      {
+         Send(oQE,@SetQuestNodeNPCList,#index=QNT_ID_EAST_LOVERS_1,
+               #new_NPC_list=Send(oLib,@GetOccupationList,
+                                 #cNPC_class=&BergBlacksmith));
+      }
+      else
+      {
+         Debug("Error building QN: QNT_ID_EAST_LOVERS_1");
+      }
+
+      // QNT_ID_EAST_LOVERS_2 - deliver letter to JixaBlacksmith
+      if Send(oQE,@AddQuestNodeTemplate,#questnode_type=QN_TYPE_ITEM,
+               #cargolist=[ [ QN_PRIZETYPE_ITEMCLASS, &LoveLetter, 1 ] ],
+               #NPC_modifier=QN_NPCMOD_NONE,
+               #timelimit=piTimeLimit,#quest_node_index=QNT_ID_EAST_LOVERS_2)
+      {
+         Send(oQE,@SetQuestNodeNPCList,#index=QNT_ID_EAST_LOVERS_2,
+               #new_NPC_list=Send(oLib,@GetOccupationList,
+                                 #cNPC_class=&JixaBlacksmith));
+         Send(oQE,@SetQuestNodeAssignHint,#index=QNT_ID_EAST_LOVERS_2,
+               #new_hint=EastLoversQuest_assign_2);
+         Send(oQE,@SetQuestNodeFailureHint,#index=QNT_ID_EAST_LOVERS_2,
+               #new_hint=EastLoversQuest_failure);
+      }
+      else
+      {
+         Debug("Error building QN: QNT_ID_EAST_LOVERS_2");
+      }
+
+      // QNT_ID_EAST_LOVERS_3 - go back to BergBlacksmith
+      if Send(oQE,@AddQuestNodeTemplate,#questnode_type=QN_TYPE_SHOWUP,
+               #timelimit=piTimeLimit,#quest_node_index=QNT_ID_EAST_LOVERS_3)
+      {
+         Send(oQE,@SetQuestNodeNPCList,#index=QNT_ID_EAST_LOVERS_3,
+               #new_NPC_list=Send(oLib,@GetOccupationList,
+                                 #cNPC_class=&BergBlacksmith));
+         Send(oQE,@SetQuestNodeAssignHint,#index=QNT_ID_EAST_LOVERS_3,
+               #new_hint=EastLoversQuest_assign_3);
+         Send(oQE,@SetQuestNodeFailureHint,#index=QNT_ID_EAST_LOVERS_3,
+               #new_hint=EastLoversQuest_failure);
+      }
+      else
+      {
+         Debug("Error building QN: QNT_ID_EAST_LOVERS_3");
+      }
+
+      // QNT_ID_EAST_LOVERS_4 - go back to JixaBlacksmith
+      if Send(oQE,@AddQuestNodeTemplate,#questnode_type=QN_TYPE_SHOWUP,
+               #timelimit=piTimeLimit,#quest_node_index=QNT_ID_EAST_LOVERS_4)
+      {
+         Send(oQE,@SetQuestNodeNPCList,#index=QNT_ID_EAST_LOVERS_4,
+               #new_NPC_list=Send(oLib,@GetOccupationList,
+                                 #cNPC_class=&JixaBlacksmith));
+         Send(oQE,@SetQuestNodeAssignHint,#index=QNT_ID_EAST_LOVERS_4,
+               #new_hint=EastLoversQuest_assign_4);
+         Send(oQE,@SetQuestNodeFailureHint,#index=QNT_ID_EAST_LOVERS_4,
+               #new_hint=EastLoversQuest_failure);
+      }
+      else
+      {
+         Debug("Error building QN: QNT_ID_EAST_LOVERS_4");
+      }
+
+      // QNT_ID_EAST_LOVERS_5 - Go back to BergBlacksmith
+      if Send(oQE,@AddQuestNodeTemplate,#questnode_type=QN_TYPE_SHOWUP,
+               #NPC_modifier=QN_NPCMOD_NONE,
+               #timelimit=piTimeLimit,#quest_node_index=QNT_ID_EAST_LOVERS_5,
+               #prizelist=[ [ QN_PRIZETYPE_TRAINING_POINTS, 100 ] ])
+      {
+         Send(oQE,@SetQuestNodeNPCList,#index=QNT_ID_EAST_LOVERS_5,
+               #new_NPC_list=Send(oLib,@GetOccupationList,
+                                 #cNPC_class=&BergBlacksmith));
+         Send(oQE,@SetQuestNodeAssignHint,#index=QNT_ID_EAST_LOVERS_5,
+               #new_hint=EastLoversQuest_assign_5);
+         Send(oQE,@SetQuestNodeFailureHint,#index=QNT_ID_EAST_LOVERS_5,
+               #new_hint=EastLoversQuest_failure);
+         Send(oQE,@SetQuestNodeSuccessHint,#index=QNT_ID_EAST_LOVERS_5,
+               #new_hint=EastLoversQuest_success);
+      }
+      else
+      {
+         Debug("Error building QN: QNT_ID_EAST_LOVERS_5");
+      }
+
+      return;
+   }
+
+end
+/////////////////////////////////////////////////////////////////////////////////

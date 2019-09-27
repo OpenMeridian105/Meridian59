@@ -20,7 +20,7 @@ BOFS = shaldiscqt.bof krandiscqt.bof farendiscqt.bof qordiscqt.bof \
        kocaleqt.bof warletterqt.bof idpotionqt.bof idwandqt.bof \
        jalanecklaceqt.bof murderqt.bof abstainpvp.bof mananodeqt.bof \
        razamumqt.bof ratkingqt.bof nerugolemqt.bof swamphuntqt.bof \
-       firegolemqt.bof eastloversqt.bof dangelqt.bof
+       firegolemqt.bof eastloversqt.bof dangelqt.bof wendigohuntqt.bof
       
 
 !include $(KODDIR)\kod.mak

@@ -1,0 +1,303 @@
+// Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+// All rights reserved.
+//
+// This software is distributed under a license that is described in
+// the LICENSE file that accompanies it.
+//
+// Meridian is a registered trademark.
+
+
+/////////////////////////////////////////////////////////////////////////////////
+BergKingPoliticsQuest is QuestTemplate
+// QNT_ID_BERG_KING_POLITCS_1, QNT_ID_BERG_KING_POLITCS_2,
+// QNT_ID_BERG_KING_POLITCS_3, QNT_ID_BERG_KING_POLITCS_4,
+// QNT_ID_BERG_KING_POLITCS_5, QNT_ID_BERG_KING_POLITCS_6,
+// QNT_ID_BERG_KING_POLITCS_7
+
+// QuestTemplate is
+// [ quest template index
+//   quest template object
+//   number of players,
+//   type of quest,
+//   eligible player restrictions,
+//   quest nodes,
+//   max number active,
+//   currently active quests,
+//   percent chance of scheduling (on timer firing)
+//   special restrictions ]
+
+constants:
+
+   include blakston.khd
+
+resources:
+
+   //include bergkingpolitics.lkod
+
+   // Quest description.
+   BergKingPoliticsQuest_icon_rsc = bergleader.bgf
+   BergKingPoliticsQuest_name_rsc = "The Mountain King"
+
+   BergKingPoliticsQuest_desc_rsc = \
+      "King Aaron Leone would like to reunite Meridian as one nation.  "
+      "Relay his message to the rest of the land. "
+
+   BergKingPoliticsQuest_return_rsc = \
+      "Return to %s and let %s know the task has been completed."
+
+   BergKingPoliticsQuest_completed = \
+      "You met with King Aaron Leone."
+
+   // Quest resources.
+   BergKingPoliticsQuest_trigger = "reunited"
+   BergKingPoliticsQuest_assign_2 = \
+      "After centuries of separation our world is finally whole once more.  "
+      "I would like to offer the protection of Berg's army to the rest of the "
+      "land, in exchange for resources that the western world has to offer.  "
+      "Would you be so kind to pass this letter over to your king?"
+
+   BergKingPoliticsQuest_node2_rsc = \
+      "Deliver King Aaron Leone's letter to Princess Kateriina."
+
+   BergKingPoliticsQuest_node3_rsc = \
+      "Return to King Aaron Leone."
+   BergKingPoliticsQuest_assign_3 = \
+      "King Aaron Leone? As many know, my father is quite ill.  "
+      "I will take this letter on his behalf and gather the council.  "
+      "The lands of the east are still foreign, we would like our borders to "
+      "remain active until we have better understanding of the new world."
+
+   BergKingPoliticsQuest_node4_rsc = \
+      "Meet with the Duke of Tos."
+   BergKingPoliticsQuest_assign_4 = \
+      "I understand there is a political divide... "
+      "The princess heir to the throne.  It is not often to see a female rule.  "
+      "I have three daughters myself you know?  I love them very much, but I "
+      "would not want them to go through the hardships that only a king can "
+      "endure.  I see the city that borders Jixa is ruled by such a young "
+      "Duke.  He also makes a claim for the crown?"
+      
+   BergKingPoliticsQuest_node5_rsc = \
+      "Return to King Aaron Leone."
+   BergKingPoliticsQuest_assign_5 = \
+      "Under my rule, I will restore order!  "
+      "I have opened all borders to the east to allow for new trade.  "
+      "Our army is far superior in numbers, so we do not require protection "
+      "from this territory.  The east can decide if they wish to work with us, "
+      "or against us."
+      
+   BergKingPoliticsQuest_node6_rsc = \
+      "Meet with the rebel, Jonas."
+   BergKingPoliticsQuest_assign_6 = \
+      "I often ponder what would it be like to have a son.  "
+      "Oh how this worries me, that I have not a son to take my throne.  "
+      "You westerners are rebelling.  Those in the far west seems they have been "
+      "forgotten as well.  How similar this mountain town Jasper is to Berg?"
+      
+   BergKingPoliticsQuest_node7_rsc = \
+      "Return to King Aaron Leone."
+   BergKingPoliticsQuest_assign_7 = \
+      "There is no telling what exists in the new world, we must fortify the "
+      "borders and remain vigilant.  Our land is filled with chaos, we don't "
+      "know if this king is a friend or foe...We must keep close, a treaty "
+      "with the east must be met at once.  We shall orchestrate a full scale "
+      "rebellion to take the crown, and bring order to Meridian once again.  "
+      "May we prosper in this new age of discovery."
+
+   BergKingPoliticsQuest_success = \
+      "Diverse bunch for contenders of the crown.  In Berg there is only one "
+      "nation... Oh how our world is in a fragile state once again.  "
+      "Without Jala's song their chaos slips into our lands.  Fear not, the "
+      "evil shall be eradicated at once."
+   BergKingPoliticsQuest_failure = \
+      "Subject: The Mountain King\n"
+      "A single nation and one crown won't be an easy one.  "
+      "Maybe one day we will be ready."
+
+classvars:
+
+   vrIcon = BergKingPoliticsQuest_icon_rsc
+   vrName = BergKingPoliticsQuest_name_rsc
+   vrDesc = BergKingPoliticsQuest_desc_rsc
+   vrCompleted = BergKingPoliticsQuest_completed
+
+   // The QST_ID constant for this quest.
+   viQuestID = QNT_ID_BERG_KING_POLITCS
+
+   viIcon_Animation_start = 1
+
+   vrReturn = BergKingPoliticsQuest_return_rsc
+   vrNode2 = BergKingPoliticsQuest_node2_rsc
+   vrNode3 = BergKingPoliticsQuest_node3_rsc
+   vrNode4 = BergKingPoliticsQuest_node4_rsc
+   vrNode5 = BergKingPoliticsQuest_node5_rsc
+   vrNode6 = BergKingPoliticsQuest_node6_rsc
+   vrNode7 = BergKingPoliticsQuest_node7_rsc
+
+properties:
+
+   piNumPlayers = 1
+   piPlayerRestrict = Q_PLAYER_NOTSUCCEEDED | Q_PLAYER_NOTFAILED_RECENTLY
+   plSpecialRestrict = $
+   piMaxPlayers = 30
+   piSchedulePct = 100
+   piTimeLimit = 3600 * 6 // 6 hours.
+
+messages:
+
+   Constructor()
+   {
+   
+      // Quest node list to send to QuestEngine.
+      plQuestNodes = [ QNT_ID_BERG_KING_POLITCS_1, QNT_ID_BERG_KING_POLITCS_2,
+                       QNT_ID_BERG_KING_POLITCS_3, QNT_ID_BERG_KING_POLITCS_4,
+                       QNT_ID_BERG_KING_POLITCS_5, QNT_ID_BERG_KING_POLITCS_6,
+                       QNT_ID_BERG_KING_POLITCS_7  ];
+
+      //Quest nodes with matching descriptions for the player.
+      plQuestNodeDesc = [ 
+                          [QNT_ID_BERG_KING_POLITCS_2, vrNode2],
+                          [QNT_ID_BERG_KING_POLITCS_3, vrNode3],
+                          [QNT_ID_BERG_KING_POLITCS_4, vrNode4],
+                          [QNT_ID_BERG_KING_POLITCS_5, vrNode5],
+                          [QNT_ID_BERG_KING_POLITCS_6, vrNode6],
+                          [QNT_ID_BERG_KING_POLITCS_7, vrNode7]
+                        ];
+
+      propagate;
+   }
+
+   SendQuestNodeTemplates()
+   {
+      local lNPCs, oQE, oLib, oNPC;
+
+      oQE = Send(SYS,@GetQuestEngine);
+      oLib = Send(SYS,@GetLibrary);
+
+      // QNT_ID_BERG_KING_POLITCS_1 - kickoff
+      if Send(oQE,@AddQuestNodeTemplate,#questnode_type=QN_TYPE_MESSAGE,
+               #cargolist=[BergKingPoliticsQuest_trigger],
+               #quest_node_index=QNT_ID_BERG_KING_POLITCS_1)
+      {
+         Send(oQE,@SetQuestNodeNPCList,#index=QNT_ID_BERG_KING_POLITCS_1,
+               #new_NPC_list=Send(oLib,@GetOccupationList,
+                                 #cNPC_class=&BergLeaderM));
+      }
+      else
+      {
+         Debug("Error building QN: QNT_ID_BERG_KING_POLITCS_1");
+      }
+
+      // QNT_ID_BERG_KING_POLITCS_2 - deliver letter to Princess
+      if Send(oQE,@AddQuestNodeTemplate,#questnode_type=QN_TYPE_ITEM,
+               #cargolist=[ [ QN_PRIZETYPE_ITEMCLASS, &CouncilLetter, 1 ] ],
+               #NPC_modifier=QN_NPCMOD_NONE,
+               #timelimit=piTimeLimit,#quest_node_index=QNT_ID_BERG_KING_POLITCS_2)
+      {
+         Send(oQE,@SetQuestNodeNPCList,#index=QNT_ID_BERG_KING_POLITCS_2,
+               #new_NPC_list=Send(oLib,@GetOccupationList,
+                                 #cNPC_class=&PrincessLiege));
+         Send(oQE,@SetQuestNodeAssignHint,#index=QNT_ID_BERG_KING_POLITCS_2,
+               #new_hint=BergKingPoliticsQuest_assign_2);
+         Send(oQE,@SetQuestNodeFailureHint,#index=QNT_ID_BERG_KING_POLITCS_2,
+               #new_hint=BergKingPoliticsQuest_failure);
+      }
+      else
+      {
+         Debug("Error building QN: QNT_ID_BERG_KING_POLITCS_2");
+      }
+
+      // QNT_ID_BERG_KING_POLITCS_3 - go back to BergLeaderM
+      if Send(oQE,@AddQuestNodeTemplate,#questnode_type=QN_TYPE_SHOWUP,
+               #timelimit=piTimeLimit,#quest_node_index=QNT_ID_BERG_KING_POLITCS_3)
+      {
+         Send(oQE,@SetQuestNodeNPCList,#index=QNT_ID_BERG_KING_POLITCS_3,
+               #new_NPC_list=Send(oLib,@GetOccupationList,
+                                 #cNPC_class=&BergLeaderM));
+         Send(oQE,@SetQuestNodeAssignHint,#index=QNT_ID_BERG_KING_POLITCS_3,
+               #new_hint=BergKingPoliticsQuest_assign_3);
+         Send(oQE,@SetQuestNodeFailureHint,#index=QNT_ID_BERG_KING_POLITCS_3,
+               #new_hint=BergKingPoliticsQuest_failure);
+      }
+      else
+      {
+         Debug("Error building QN: QNT_ID_BERG_KING_POLITCS_3");
+      }
+
+      // QNT_ID_BERG_KING_POLITCS_4 - go to Duke
+      if Send(oQE,@AddQuestNodeTemplate,#questnode_type=QN_TYPE_SHOWUP,
+               #timelimit=piTimeLimit,#quest_node_index=QNT_ID_BERG_KING_POLITCS_4)
+      {
+         Send(oQE,@SetQuestNodeNPCList,#index=QNT_ID_BERG_KING_POLITCS_4,
+               #new_NPC_list=Send(oLib,@GetOccupationList,
+                                 #cNPC_class=&DukeLiege));
+         Send(oQE,@SetQuestNodeAssignHint,#index=QNT_ID_BERG_KING_POLITCS_4,
+               #new_hint=BergKingPoliticsQuest_assign_4);
+         Send(oQE,@SetQuestNodeFailureHint,#index=QNT_ID_BERG_KING_POLITCS_4,
+               #new_hint=BergKingPoliticsQuest_failure);
+      }
+      else
+      {
+         Debug("Error building QN: QNT_ID_BERG_KING_POLITCS_4");
+      }
+      
+      // QNT_ID_BERG_KING_POLITCS_5 - go back to BergLeaderM
+      if Send(oQE,@AddQuestNodeTemplate,#questnode_type=QN_TYPE_SHOWUP,
+               #timelimit=piTimeLimit,#quest_node_index=QNT_ID_BERG_KING_POLITCS_5)
+      {
+         Send(oQE,@SetQuestNodeNPCList,#index=QNT_ID_BERG_KING_POLITCS_5,
+               #new_NPC_list=Send(oLib,@GetOccupationList,
+                                 #cNPC_class=&BergLeaderM));
+         Send(oQE,@SetQuestNodeAssignHint,#index=QNT_ID_BERG_KING_POLITCS_5,
+               #new_hint=BergKingPoliticsQuest_assign_5);
+         Send(oQE,@SetQuestNodeFailureHint,#index=QNT_ID_BERG_KING_POLITCS_5,
+               #new_hint=BergKingPoliticsQuest_failure);
+      }
+      else
+      {
+         Debug("Error building QN: QNT_ID_BERG_KING_POLITCS_5");
+      }
+      
+      // QNT_ID_BERG_KING_POLITCS_6 - go to RebelLiege
+      if Send(oQE,@AddQuestNodeTemplate,#questnode_type=QN_TYPE_SHOWUP,
+               #timelimit=piTimeLimit,#quest_node_index=QNT_ID_BERG_KING_POLITCS_6)
+      {
+         Send(oQE,@SetQuestNodeNPCList,#index=QNT_ID_BERG_KING_POLITCS_6,
+               #new_NPC_list=Send(oLib,@GetOccupationList,
+                                 #cNPC_class=&RebelLiege));
+         Send(oQE,@SetQuestNodeAssignHint,#index=QNT_ID_BERG_KING_POLITCS_6,
+               #new_hint=BergKingPoliticsQuest_assign_6);
+         Send(oQE,@SetQuestNodeFailureHint,#index=QNT_ID_BERG_KING_POLITCS_6,
+               #new_hint=BergKingPoliticsQuest_failure);
+      }
+      else
+      {
+         Debug("Error building QN: QNT_ID_BERG_KING_POLITCS_6");
+      }
+
+      // QNT_ID_BERG_KING_POLITCS_7 - Go back to BergLeaderM
+      if Send(oQE,@AddQuestNodeTemplate,#questnode_type=QN_TYPE_SHOWUP,
+               #NPC_modifier=QN_NPCMOD_NONE,
+               #timelimit=piTimeLimit,#quest_node_index=QNT_ID_BERG_KING_POLITCS_7,
+               #prizelist=[ [ QN_PRIZETYPE_TRAINING_POINTS, 100 ] ])
+      {
+         Send(oQE,@SetQuestNodeNPCList,#index=QNT_ID_BERG_KING_POLITCS_7,
+               #new_NPC_list=Send(oLib,@GetOccupationList,
+                                 #cNPC_class=&BergLeaderM));
+         Send(oQE,@SetQuestNodeAssignHint,#index=QNT_ID_BERG_KING_POLITCS_7,
+               #new_hint=BergKingPoliticsQuest_assign_7);
+         Send(oQE,@SetQuestNodeFailureHint,#index=QNT_ID_BERG_KING_POLITCS_7,
+               #new_hint=BergKingPoliticsQuest_failure);
+         Send(oQE,@SetQuestNodeSuccessHint,#index=QNT_ID_BERG_KING_POLITCS_7,
+               #new_hint=BergKingPoliticsQuest_success);
+      }
+      else
+      {
+         Debug("Error building QN: QNT_ID_BERG_KING_POLITCS_7");
+      }
+
+      return;
+   }
+
+end
+/////////////////////////////////////////////////////////////////////////////////

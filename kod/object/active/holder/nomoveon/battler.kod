@@ -15,10 +15,6 @@ constants:
    include blakston.khd
    include protocol.khd
 
-   // Raise or lower this number to raise or lower the chance the 'avoids 
-   //  your attack' message comes up.
-   BATTLER_AVOID_CHANCE = 50  
-
    // Threshold for the "wound" and "damage" levels of feedback.
    DAMAGE_THRESHOLD_WOUND = 500
    DAMAGE_THRESHOLD_DAMAGE = 1500
@@ -176,6 +172,22 @@ resources:
 
    battler_ambush_attacker = "~I~kYou ambush your prey!"
    battler_ambush_victim = "~I~rYou are caught off guard!"
+
+   battler_parry_sound1 = parry1.ogg
+   battler_parry_sound2 = parry2.ogg
+   battler_parry_sound3 = parry3.ogg
+
+   battler_block_sound1 = block1.ogg
+   battler_block_sound2 = block2.ogg
+   battler_block_sound3 = block3.ogg
+
+   battler_sound_weapon_miss1 = weaponmiss1.ogg
+   battler_sound_weapon_miss2 = weaponmiss2.ogg
+   battler_sound_weapon_miss3 = weaponmiss3.ogg
+
+   battler_sound_projectile_miss1 = projectilemiss1.ogg
+   battler_sound_projectile_miss2 = projectilemiss2.ogg
+   battler_sound_projectile_miss3 = projectilemiss3.ogg
 
 classvars:
 
@@ -2916,32 +2928,145 @@ messages:
    }
 
    // This returns defense reason of why opponent missed this battler.
-   GetDefenseDesc(stroke_obj=$)
+   GetDefenseDesc(stroke_obj=$,what=$)
    {
-      local iRandom, iParry, iBlock, iDodge;
-      
+      local iRandom, iParry, iBlock, iDodge, iDefense, rSound, rString,
+         oShield, oWeapon;
+
       iParry = Send(self,@GetParryAbility,#stroke_obj=stroke_obj);
       iBlock = Send(self,@GetBlockAbility,#stroke_obj=stroke_obj);
-      iDodge = Send(self,@GetDodgeAbility,#stroke_obj=stroke_obj);
-      iRandom = iParry + iBlock + iDodge + BATTLER_AVOID_CHANCE;
-      iRandom = Random(0,iRandom);
+      iDodge = Send(self,@GetDodgeAbility,#stroke_obj=stroke_obj)*2;
+      iDefense = Send(self,@GetDefense,#what=what,#stroke_obj=stroke_obj);
+
+      // Don't let armor reduce our defense below our rating from skills.
+      iDefense = Bound(iDefense,iParry+iBlock+iDodge,$);
+
+      iRandom = Random(0,iDefense);
 
       if iRandom < iParry
       {
-         return battler_parried;
+         // If we are a player, do a 1st person animation.
+         if IsClass(self,&Player)
+         {
+            oWeapon = Send(self,@LookupPlayerWeapon);
+
+            if oWeapon <> $
+            {
+               Send(oWeapon,@DoParry);
+            }
+         }
+
+         // Pick a fitting parry sound at random.
+         iRandom = Random(1,3);
+
+         if iRandom = 1
+         {
+            rSound = battler_parry_sound1;
+         }
+         else if iRandom = 2
+         {
+            rSound = battler_parry_sound2;
+         }
+         else
+         {
+            rSound = battler_parry_sound3;
+         }
+
+         rString = battler_parried;
+      }
+      else if iRandom < (iParry + iBlock)
+      {
+         // If we are a player, do a 1st person animation.
+         if IsClass(self,&Player)
+         {
+            oShield = Send(self,@LookupPlayerShield);
+
+            if oShield <> $
+            {
+               Send(oShield,@DoBlock);
+            }
+         }
+
+         // Pick a fitting block sound at random.
+         iRandom = Random(1,3);
+
+         if iRandom = 1
+         {
+            rSound = battler_block_sound1;
+         }
+         else if iRandom = 2
+         {
+            rSound = battler_block_sound2;
+         }
+         else
+         {
+            rSound = battler_block_sound3;
+         }
+
+         rString = battler_blocked;
+      }
+      else
+      {
+         // If we are a player and it's a dodge, do a 1st person animation.
+         if iRandom < (iParry + iBlock + iDodge)
+         {
+            // If we are a player, do a 1st person animation.
+            if IsClass(self,&Player)
+            {
+               iRandom = Random(1,10);
+               Send(self,@EffectSendUserDurationDirectionAndDistance,
+                  #effect=EFFECT_DODGE,#duration=400,
+                  #direction=(2*Random(0,1)-1)*iRandom*MAX_ANGLE/50,
+                  #distance=(150-iRandom*iRandom)*FINENESS/150);
+            }
+
+            rString = battler_dodged;
+         }
+         else
+         {
+            rString = battler_misses;
+         }
+
+         // Pick a fitting miss sound at random even if it's a dodge.
+         iRandom = Random(1,3);
+
+         // Check whether it's a projectile or a regular weapon.
+         if (stroke_obj <> $)
+            AND (IsClass(stroke_obj,&Fire) OR IsClass(stroke_obj,&Throw))
+         {
+            if iRandom = 1
+            {
+               rSound = battler_sound_projectile_miss1;
+            }
+            else if iRandom = 2
+            {
+               rSound = battler_sound_projectile_miss2;
+            }
+            else
+            {
+               rSound = battler_sound_projectile_miss3;
+            }
+         }
+         else
+         {
+            if iRandom = 1
+            {
+               rSound = battler_sound_weapon_miss1;
+            }
+            else if iRandom = 2
+            {
+               rSound = battler_sound_weapon_miss2;
+            }
+            else
+            {
+               rSound = battler_sound_weapon_miss3;
+            }
+         }
       }
 
-      if iRandom < (iParry + iBlock)
-      {
-         return battler_blocked;
-      }
+      Send(poOwner,@SomethingWaveRoom,#what=self,#wave_rsc=rSound);
 
-      if iRandom < (iParry + iBlock + iDodge)
-      {
-         return battler_dodged;
-      }
-      
-      return battler_misses;
+      return rString;
    }
 
    // The next three messages deal with the three defense skills.  These
@@ -3170,7 +3295,10 @@ messages:
    "This does the fallout of a miss, gives appropriate message, etc. "
    "Called on self when missing."
    {
-      local rColor;
+      local rColor, rDescription;
+
+      // Get this here so we can hand out the same message to everyone involved.
+      rDescription = Send(what,@GetDefenseDesc,#what=self,#stroke_obj=stroke_obj);
 
       // This is kinda kludgy, should call messages in subclasses instead.
       if IsClass(self,&User)
@@ -3188,14 +3316,14 @@ messages:
          if (IsClass(what,&User))
          {
             Send(self,@MsgSendUser,#message_rsc=battler_attacker_miss,#parm1=rColor,
-                  #parm2=Send(what,@GetDefenseDesc,#stroke_obj=stroke_obj),
+                  #parm2=rDescription,
                   #parm3=Send(what,@GetDef),#type4=STRING_RESOURCE,
                   #parm4=Send(what,@GetName));
          }
          else
          {
             Send(self,@MsgSendUser,#message_rsc=battler_attacker_miss_mob,
-                  #parm1=rColor,#parm2=Send(what,@GetDefenseDesc,#stroke_obj=stroke_obj),
+                  #parm1=rColor,#parm2=rDescription,
                   #parm3=Send(what,@GetDef),#parm4=Send(what,@GetName));
          }
 
@@ -3221,14 +3349,14 @@ messages:
             Send(what,@MsgSendUser,#message_rsc=battler_defender_miss,
                   #parm1=rColor,#parm2=Send(self,@GetCapDef),
                   #type3=STRING_RESOURCE,#parm3=Send(self,@GetName),
-                  #parm4=Send(what,@GetDefenseDesc,#stroke_obj=stroke_obj));
+                  #parm4=rDescription);
          }
          else
          {
             Send(what,@MsgSendUser,#message_rsc=battler_defender_miss_mob,
                   #parm1=rColor,#parm2=Send(self,@GetCapDef),
                   #parm3=Send(self,@GetName),
-                  #parm4=Send(what,@GetDefenseDesc,#stroke_obj=stroke_obj));
+                  #parm4=rDescription);
          }
 
          // Flag them as "dodging", so they can potentially improve.

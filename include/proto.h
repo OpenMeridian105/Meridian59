@@ -566,6 +566,7 @@ enum {
    EFFECT_XLATOVERRIDE  = 17,  // Use this xlat at end over the whole screen
    EFFECT_FIREWORKS     = 18,
    EFFECT_CLEAVE        = 19,  // Effect used by cleave skill.
+   EFFECT_DODGE         = 20,  // Effect used by dodge passive skill.
 };
 
 /* Room animation action codes */

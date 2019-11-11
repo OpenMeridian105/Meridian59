@@ -7449,8 +7449,15 @@ messages:
       // Set flag so that wall elements can affect us.
       Send(self,@SetPlayerFlag,#flag=PFLAG_MOVED_SINCE_ENTRY,#value=TRUE);
 
-      return Send(self,@TryAttack,#what=what,#use_weapon=use_weapon,
-                  #stroke_obj=stroke_obj);
+      if (Send(self,@TryAttack,#what=what,#use_weapon=use_weapon,
+                  #stroke_obj=stroke_obj)
+         AND (use_weapon <> $ AND Send(use_weapon,@HasSecondAttack)))
+      {
+         Send(self,@TryAttack,#what=what,#use_weapon=use_weapon,
+                  #stroke_obj=stroke_obj,#bCheck=FALSE);
+      }
+
+      return;
    }
 
    UserCast(oSpell=$,lTargets=$)

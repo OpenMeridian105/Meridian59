@@ -1,0 +1,107 @@
+// Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+// All rights reserved.
+//
+// This software is distributed under a license that is described in
+// the LICENSE file that accompanies it.
+//
+// Meridian is a registered trademark.
+
+
+////////////////////////////////////////////////////////////////////////////////
+WarHelm is Helmet
+
+constants:
+
+   include blakston.khd
+
+resources:
+
+   include warhelm.lkod
+
+   WarHelm_name_rsc = "war helmet"
+   WarHelm_icon_male_rsc = warhelm.bgf
+   WarHelm_icon_female_rsc = warhelmb.bgf
+   WarHelm_desc_rsc = \
+      "Strong and finely crafted, this impressive looking piece of headgear "
+      "is eerily cold to the touch.  These war helmets are not only "
+      "extremely hard wearing and durable, but they are said to have "
+      "certain magical properties as well."
+
+classvars:
+
+   vrName = WarHelm_name_rsc
+   vrDesc = WarHelm_desc_rsc
+   vrIcon = WarHelm_icon_male_rsc
+
+   //These helmets are quite durable
+   viHits_init_min = 300
+   viHits_init_max = 325
+
+   viValue_average = 200
+   viWeight = 50
+   viBulk = 25
+
+   viUse_type = ITEM_USE_HEAD
+   viUse_amount = 1
+   viSpell_modifier = -10
+
+   viGround_group = 3
+   viInventory_group = 2
+   viBroken_group = 4
+
+   viDefense_base = 15
+   viDamage_base = 1
+
+properties:
+
+messages:
+
+   NewUsed()
+   {
+      Send(poOwner,@RemoveHair,#what=self);
+
+      propagate;
+   }
+
+   NewUnused()
+   {
+      Send(poOwner,@ResetHair,#what=self);
+
+      propagate;
+   }
+
+   GetResistanceModifiers()
+   {
+      return [ [ATK_TYPE_BLUDGEON,-5]
+             ];
+   }
+   
+   // Called by player, for normal 3rd-person overlays on user.
+   GetOverlay(animation = $)
+   {
+      if Send(poOwner,@GetGender) = GENDER_FEMALE
+      {
+         return WarHelm_icon_female_rsc;
+      }
+
+      return WarHelm_icon_male_rsc;
+   }
+   
+   GetHeatDamage()
+   {
+      return 3;
+   }
+
+   GetBaseSpellModifier(oSpell=$)
+   {
+      // This helmet gives a boost to Kraanan
+      if Send(oSpell,@GetSchool) = SS_KRAANAN
+      {
+         return 5;
+      }
+
+      return 0;
+   }
+
+end
+////////////////////////////////////////////////////////////////////////////////

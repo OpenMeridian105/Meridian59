@@ -6917,7 +6917,20 @@ messages:
       local i;
 
       // in case it's on the list of window overlays 
-      Send(self,@RemoveWindowOverlayObject,#what=what);
+      // Commented out since item calls this when dropped.
+      //Send(self,@RemoveWindowOverlayObject,#what=what);
+
+      foreach i in plUsing
+      {
+         if i = what
+         {
+            plUsing = DelListElem(plUsing,i);
+            // implied by drop: Send(self,@NewUnusing,#what=what)
+            Send(what,@NewUnused,#what=self);
+
+            break;
+         }
+      }
 
       // in case it set our icon
       if poIcon_set = what
@@ -6940,18 +6953,6 @@ messages:
       if poArms_set = what
       {
          Send(self,@ResetPlayerArms);
-      }
-
-      foreach i in plUsing
-      {
-         if i = what
-         {
-            plUsing = DelListElem(plUsing,i);
-            // implied by drop: Send(self,@NewUnusing,#what=what)
-            Send(what,@NewUnused,#what=self);
-
-            break;
-         }
       }
 
       propagate;

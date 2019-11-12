@@ -1,0 +1,145 @@
+// Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+// All rights reserved.
+//
+// This software is distributed under a license that is described in
+// the LICENSE file that accompanies it.
+//
+// Meridian is a registered trademark.
+
+
+////////////////////////////////////////////////////////////////////////////////
+Wings is DefenseModifier
+
+constants:
+
+   include blakston.khd
+
+   USED = 1
+   UNUSED = 2
+   DEFENDING = 3
+
+resources:
+
+classvars:
+
+   viUse_type = ITEM_USE_BACK
+   viUse_amount = 1
+
+   vrposs_article = object_article_cap_this_rsc
+
+   vrWings_overlay = $
+
+   vbShow_condition = FALSE
+
+properties:
+
+   piUsed = UNUSED
+
+messages:
+
+   // General Combat messages:
+
+   ModifyDefensePower(who = $,what = $,defense_power = 0)
+   {
+      return defense_power;
+   }
+
+   ModifyDefenseDamage(who = $,what = $,damage = $,atype = 0,stype= 0)
+   {
+      return damage;
+   }
+
+   // Using messages:
+
+   NewUsed()
+   {
+      piUsed = USED;
+
+      // do third person overlay if we have one
+      if vrWings_overlay <> $
+      {
+         Send(poOwner,@SetOverlay,#what=self);
+      }
+
+      propagate;
+   }
+
+   NewUnused()
+   {
+      piUsed = UNUSED;
+
+      Send(poOwner,@RemoveOverlay,#what=self);
+
+      propagate;
+   }
+
+   // These 3 called by player, for normal 3rd-person overlays on user.
+
+   GetOverlay()
+   {
+      return vrWings_overlay;
+   }
+
+   GetOverlayHotSpot()
+   {
+      return HS_PLAYER_WINGS;
+   }
+
+   SendOverlayAnimation()
+   {
+      if (piItem_flags & ITEM_PALETTE_MASK) <> 0
+      {
+         AddPacket(1,ANIMATE_TRANSLATION,1,piItem_flags & ITEM_PALETTE_MASK);
+      }
+
+      AddPacket(1,ANIMATE_NONE,2,2); // group 2 is the player-overlay group
+
+      return;
+   }
+
+   GetHeatDamage()
+   {
+      return 0;
+   }
+
+   CanMend()
+   {
+      return FALSE;
+   }
+
+   CanShatter()
+   {
+      return FALSE;
+   }
+
+   CanDyeItem()
+   {
+      return FALSE;
+   }
+
+   ReqRepair()
+   {
+      return FALSE;
+   }
+
+   ChangeColor(xlat=0)
+   {
+      // Changing to same color, don't update.
+      if (xlat = piItem_flags)
+      {
+         return;
+      }
+
+      piItem_flags &= ITEM_INVERSE_PALETTE_MASK;
+      piItem_flags |= xlat;
+
+      if poOwner <> $
+      {
+         Send(poOwner,@SomethingChanged,#what=self);
+      }
+
+      return;
+   }
+
+end
+////////////////////////////////////////////////////////////////////////////////

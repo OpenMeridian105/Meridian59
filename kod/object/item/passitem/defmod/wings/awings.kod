@@ -1,0 +1,138 @@
+// Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+// All rights reserved.
+//
+// This software is distributed under a license that is described in
+// the LICENSE file that accompanies it.
+//
+// Meridian is a registered trademark.
+
+
+////////////////////////////////////////////////////////////////////////////////
+AngelWings is Wings
+
+constants:
+
+   include blakston.khd
+
+resources:
+
+   include awings.lkod
+
+   AngelWings_name_rsc = "angel wings"
+   AngelWings_icon_rsc = awings.bgf
+   AngelWings_icon_gray_rsc = awings2.bgf
+   AngelWings_desc_rsc = \
+      "As once a wise man said: \"A pair of wings doth not an angle make.\" .  "
+      "While the saying is rumored to stem from a heated exchange between said "
+      "wise man and a particularly ill-tempered and notoriously foul-mouthed "
+      "parrot, it holds equally true when it comes to the owner of this pair, "
+      "no matter how innocent they may act. That's right. We all know what you "
+      "did."
+
+classvars:
+
+   vrName = AngelWings_name_rsc
+   vrDesc = AngelWings_desc_rsc
+
+   vrPoss_article = object_article_cap_these_rsc
+
+   viHits_init_min = 250
+   viHits_init_max = 300
+
+   viValue_average = 0
+   viWeight = 225
+   viBulk = 200
+
+   viGround_group = 3
+   viInventory_group = 1
+
+   viDefense_base = 0
+   viDamage_base = 0
+
+   viLayer = 0
+
+properties:
+
+   vrIcon = AngelWings_icon_rsc
+   vrWings_overlay = AngelWings_icon_rsc
+
+   viUse_amount = 1
+
+   // Custom colour
+   piDefaultColor = 0
+
+messages:
+
+   GetResistanceModifiers()
+   {
+      return [ [-SPL_TYPE_ALL,5]
+             ];
+   }
+
+   NewUsed()
+   {
+      Send(self,@ChooseDisplayIcon);
+
+      propagate;
+   }
+
+   OwnerKarmaChanged()
+   {
+      Send(self,@ChooseDisplayIcon);
+
+      propagate;
+   }
+
+   ChooseDisplayIcon()
+   {
+      local iColor, iKarma;
+
+      if (poOwner = $
+         OR NOT IsClass(poOwner,&Battler))
+      {
+         return;
+      }
+
+      iKarma = Send(poOwner,@GetKarma);
+
+      // Different colours based on karma
+      if piDefaultColor <> 0
+      {
+         iColor = piDefaultColor;
+      }
+      else if iKarma <= -50
+      {
+         iColor = PT_GRAY_TO_BLACK;
+      }
+      else if iKarma >= 50
+      {
+         iColor = PT_GRAY_TO_PLATBLOND;
+      }
+      else
+      {
+         iColor = 0;
+      }
+
+      // Change icon if color is different from current.
+      // Neutral karma gets standard DA wings.
+      if (iColor <> piItem_flags)
+      {
+         if (iColor = 0)
+         {
+            vrIcon = AngelWings_icon_rsc;
+            vrWings_overlay = AngelWings_icon_rsc;
+         }
+         else
+         {
+            vrIcon = AngelWings_icon_gray_rsc;
+            vrWings_overlay = AngelWings_icon_gray_rsc;
+         }
+
+         Send(self,@ChangeColor,#xlat=iColor);
+      }
+
+      return;
+   }
+
+end
+////////////////////////////////////////////////////////////////////////////////

@@ -5,6 +5,6 @@
 !include $(TOPDIR)\common.mak
 
 DEPEND = ..\defmod.bof
-BOFS = armor.bof shield.bof helmet.bof pants.bof shirtbase.bof
+BOFS = armor.bof shield.bof helmet.bof pants.bof shirtbase.bof wings.bof
 
 !include $(KODDIR)\kod.mak

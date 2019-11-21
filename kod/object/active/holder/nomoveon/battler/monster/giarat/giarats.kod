@@ -59,7 +59,7 @@ classvars:
    vrSound_aware = giantratssound_aware
    vrSound_death = giantratssound_death
 
-   viPoisonChance = 15
+   viPoisonChance = 10
    viPoisonStrength = 1500
    viPoisonDuration = 20000
    viPoisonVigor = 25
@@ -67,15 +67,32 @@ classvars:
    viBleedStrength = 1000
    viBleedDuration = 8000
 
+   // Total health 130-170
+   viBonusHealth = 50
+
 properties:
 
 messages:
 
-   Constructed()
+   CreateTreasure(corpse=$)
    {
-      piHealth = 200 * 100;
-      piMax_Health = 200;                  
-                        
+      local oTreasure;
+
+      if (Random(1,20) = 1)
+      {
+         oTreasure = Create(&ResistPoisonPotion,#corpse=corpse,#iSpellpower=85);
+
+         if Send(poOwner,@ReqNewHold,#what=oTreasure,#new_row=piRow,#new_col=piCol)
+         {
+            Send(poOwner,@NewHold,#what=oTreasure,#new_row=piRow,#new_col=piCol,
+                  #fine_row=piFine_row,#fine_col=piFine_col);
+         }
+         else
+         {
+            Send(oTreasure,@Delete);
+         }
+      }
+
       propagate;
    }
 

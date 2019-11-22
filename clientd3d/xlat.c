@@ -71,9 +71,6 @@ xlat* FindStandardXlat(UINT uXlatID)
 
 	switch (uXlatID)
 	{
-
-	IMPLEMENT_XLAT(XLAT_IDENTITY);
-
 	IMPLEMENT_XLAT(XLAT_BLEND10RED);
 	IMPLEMENT_XLAT(XLAT_BLEND20RED);
 	IMPLEMENT_XLAT(XLAT_BLEND30RED);
@@ -203,7 +200,6 @@ xlat* FindStandardXlat(UINT uXlatID)
 	IMPLEMENT_XLAT(XLAT_FILTERBRIGHT1);
 	IMPLEMENT_XLAT(XLAT_FILTERBRIGHT2);
 	IMPLEMENT_XLAT(XLAT_FILTERBRIGHT3);
-
 	}
 
 	if (uXlatID >= XLAT_GUILDCOLOR_BASE && uXlatID <= XLAT_GUILDCOLOR_END)
@@ -212,7 +208,10 @@ xlat* FindStandardXlat(UINT uXlatID)
 		return &_std_guildcolors[uXlatID-XLAT_GUILDCOLOR_BASE];
 	}
  
-	return NULL;
+   // Default is to return identity xlat.
+   static xlat _std_XLAT_IDENTITY;
+
+   return &_std_XLAT_IDENTITY;
 }
 
 bixlat* FindStandardBiXlat(UINT uBiXlatID)

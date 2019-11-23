@@ -8,7 +8,8 @@ SOURCEDIR = .
 OUTDIR = $(CLIENTRUNDIR)\resource
 OUTDIRSUB = ..\$(OUTDIR)
 
-DIRS = monsters spells skills items angelwings warhelm armor_colour multibow
+DIRS = monsters spells skills items angelwings warhelm armor_colour multibow \
+       club
 
 all:
    @-for %i in (*.bgf) do @$(CP) %i $(OUTDIR) >nul

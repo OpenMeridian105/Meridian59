@@ -1,0 +1,92 @@
+// Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+// All rights reserved.
+//
+// This software is distributed under a license that is described in
+// the LICENSE file that accompanies it.
+//
+// Meridian is a registered trademark.
+
+
+////////////////////////////////////////////////////////////////////////////////
+IceSword is Weapon
+
+constants:
+
+   include blakston.khd
+
+resources:
+
+   //include iceswrd.lkod
+
+   IceSword_name_rsc = "frost blade"
+   IceSword_icon_rsc = iceswd.bgf
+   IceSword_desc_rsc = \
+      "This sword is very cold, as you wield it you feel a cool breeze of "
+      "confidence fill your soul. This blade of ice has surely taken many lives "
+      "and will do you justice against any who dare challenge its master."
+
+   IceSword_window_overlay_rsc = poviceswd.bgf
+   IceSword_player_overlay = iceswdov.bgf
+
+classvars:
+   vrName = IceSword_name_rsc
+   vrIcon = IceSword_icon_rsc
+   vrDesc = IceSword_desc_rsc
+
+   viWeaponType = WEAPON_TYPE_THRUST
+   viWeaponQuality = WEAPON_QUALITY_HIGH
+
+   viProficiency_Needed = SKID_PROFICIENCY_SWORD
+
+   viValue_average = 500
+   viWeight = 85
+   viBulk = 70
+
+   vrWeapon_window_overlay = IceSword_window_overlay_rsc
+   vrWeapon_overlay = IceSword_player_overlay
+
+   viGround_group = 1
+   viInventory_group = 3
+   viBroken_group = 2
+   
+   viRange = 3 * FINENESS
+   
+   viArcticBreath_Chance = 25
+   viArcticBreath_Spellpower = 15
+
+properties:
+
+   piAttack_type = ATK_TYPE_MAGIC+ATK_TYPE_SLASH+SPL_TYPE_COLD
+
+messages:
+
+   WeaponHitTarget()
+   {
+      local oSpell;
+      
+      oSpell = Send(SYS,@FindSpellByNum,#num=SID_ARCTIC_BREATH);
+      
+      if Random(1,100) <= viArcticBreath_Chance
+      {
+         Send(oSpell,@CastSpell,#who=poOwner,#lTargets=[Send(poOwner,@GetTarget)],
+            #iSpellPower=viArcticBreath_Spellpower,#bItemCast=TRUE);
+      }
+
+      propagate;
+   }
+   
+   CanEnchant()
+   {
+      return FALSE;
+   }
+   
+   CanMend()
+   {
+      return FALSE;
+   }
+   
+end
+////////////////////////////////////////////////////////////////////////////////
+
+
+

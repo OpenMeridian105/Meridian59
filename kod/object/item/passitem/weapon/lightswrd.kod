@@ -1,0 +1,115 @@
+// Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+// All rights reserved.
+//
+// This software is distributed under a license that is described in
+// the LICENSE file that accompanies it.
+//
+// Meridian is a registered trademark.
+
+
+////////////////////////////////////////////////////////////////////////////////
+LightningSword is Weapon
+
+constants:
+
+   include blakston.khd
+
+resources:
+
+   //include lightswrd.lkod
+
+   LightningSword_name_rsc = "lightning sword"
+   LightningSword_icon_rsc = lightsw.bgf
+   LightningSword_desc_rsc = \
+      "Mysterious and fascinating to look at, this fine weapon sparks violently "
+      "every so often as a dangerous current of electricity runs the length of "
+      "the blade.  Having this sword in your possesion gives you a feeling of "
+      "power greater than you could have ever imagined."
+
+   LightningSword_window_overlay_rsc = povlightsw.bgf
+   LightningSword_player_overlay = lightswov.bgf
+
+classvars:
+   vrName = LightningSword_name_rsc
+   vrIcon = LightningSword_icon_rsc
+   vrDesc = LightningSword_desc_rsc
+
+   viWeaponType = WEAPON_TYPE_THRUST
+   viWeaponQuality = WEAPON_QUALITY_HIGH
+
+   viProficiency_Needed = SKID_PROFICIENCY_SWORD
+
+   viValue_average = 500
+   viWeight = 85
+   viBulk = 70
+
+   vrWeapon_window_overlay = LightningSword_window_overlay_rsc
+   vrWeapon_overlay = LightningSword_player_overlay
+   
+   viRange = 3 * FINENESS
+
+   viGround_group = 1
+   viInventory_group = 3
+   viBroken_group = 2
+   
+   viLightning_Chance = 25
+   viLightning_Spellpower = 15
+
+properties:
+
+   piAttack_type = ATK_TYPE_MAGIC+ATK_TYPE_SLASH+SPL_TYPE_SHOCK
+   piLight = 15
+
+messages:
+
+   NewUsed()
+   {
+        if IsClass(poOwner, &Player)
+        {
+            Send(poOwner, @SetFlickerFlag);
+            Send(poOwner, @GainLight,  #amount = piLight);
+        }
+        propagate;
+   }
+   
+   NewUnused()
+   {
+        if IsClass(poOwner, &Player)
+        {
+            Send(poOwner, @SetFlickerFlag);
+            Send(poOwner, @LoseLight,  #amount = piLight);
+        }
+        propagate;
+   }
+
+
+   WeaponHitTarget()
+   {
+      local oSpell;
+      
+      oSpell = Send(SYS,@FindSpellByNum,#num=SID_LIGHTNING_WALL);
+      
+      if Random(1,100) <= viLightning_Chance
+      {
+         Send(oSpell,@CastSpell,#who=poOwner,#lTargets=[Send(poOwner,@GetTarget)],
+            #iSpellPower=viLightning_Spellpower,#bItemCast=TRUE);
+      }
+
+      propagate;
+   }
+   
+   CanEnchant()
+   {
+      return FALSE;
+   }
+   
+   CanMend()
+   {
+      return FALSE;
+   }
+
+end
+////////////////////////////////////////////////////////////////////////////////
+
+
+

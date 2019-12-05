@@ -9,7 +9,7 @@ OUTDIR = $(CLIENTRUNDIR)\resource
 OUTDIRSUB = ..\$(OUTDIR)
 
 DIRS = monsters spells skills items angelwings warhelm armor_colour multibow \
-       club iceswd knife kukri machete hatchet mallet lightsw
+       club iceswd knife kukri machete hatchet mallet lightsw fireswd
 
 all:
    @-for %i in (*.bgf) do @$(CP) %i $(OUTDIR) >nul

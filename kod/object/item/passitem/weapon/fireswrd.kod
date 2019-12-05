@@ -1,0 +1,108 @@
+// Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+// All rights reserved.
+//
+// This software is distributed under a license that is described in
+// the LICENSE file that accompanies it.
+//
+// Meridian is a registered trademark.
+
+
+////////////////////////////////////////////////////////////////////////////////
+FireSword is Weapon
+
+constants:
+
+   include blakston.khd
+
+resources:
+
+   //include firswrd.lkod
+
+   FireSword_name_rsc = "flaming sword"
+   FireSword_icon_rsc = fireswd.bgf
+   FireSword_desc_rsc = \
+      "Magical sword prized for its beauty and power."
+
+   FireSword_window_overlay_rsc = povfireswd.bgf
+   FireSword_player_overlay = fireswdov.bgf
+
+classvars:
+   vrName = FireSword_name_rsc
+   vrIcon = FireSword_icon_rsc
+   vrDesc = FireSword_desc_rsc
+
+   viWeaponType = WEAPON_TYPE_THRUST
+   viWeaponQuality = WEAPON_QUALITY_HIGH
+
+   viProficiency_Needed = SKID_PROFICIENCY_SWORD
+
+   viValue_average = 500
+   viWeight = 85
+   viBulk = 70
+
+   vrWeapon_window_overlay = FireSword_window_overlay_rsc
+   vrWeapon_overlay = FireSword_player_overlay
+
+   viGround_group = 1
+   viInventory_group = 3
+   viBroken_group = 2
+   
+   viRange = 3 * FINENESS
+   
+   viFlameWave_Chance = 15
+   viFlameWave_Spellpower = 15
+
+properties:
+
+   piAttack_type = ATK_TYPE_MAGIC+ATK_TYPE_SLASH+SPL_TYPE_FIRE
+   piLight = 15
+
+messages:
+
+   NewUsed()
+   {
+        if IsClass(poOwner, &Player)
+        {
+            Send(poOwner, @SetFlickerFlag);
+            Send(poOwner, @GainLight,  #amount = piLight);
+        }
+        propagate;
+   }
+   
+   NewUnused()
+   {
+        if IsClass(poOwner, &Player)
+        {
+            Send(poOwner, @SetFlickerFlag);
+            Send(poOwner, @LoseLight,  #amount = piLight);
+        }
+        propagate;
+   }
+   
+   WeaponHitTarget()
+   {
+      local oSpell;
+      
+      oSpell = Send(SYS,@FindSpellByNum,#num=SID_FLAME_WAVE);
+      
+      if Random(1,100) <= viFlameWave_Chance
+      {
+         Send(oSpell,@CastSpell,#who=poOwner,#lTargets=[Send(poOwner,@GetTarget)],
+            #iSpellPower=viFlameWave_Spellpower,#bItemCast=TRUE);
+      }
+
+      propagate;
+   }
+   
+   CanEnchant()
+   {
+      return FALSE;
+   }
+   
+   CanMend()
+   {
+      return FALSE;
+   }
+
+end
+////////////////////////////////////////////////////////////////////////////////

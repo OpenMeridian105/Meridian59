@@ -1,0 +1,128 @@
+// Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+// All rights reserved.
+//
+// This software is distributed under a license that is described in
+// the LICENSE file that accompanies it.
+//
+// Meridian is a registered trademark.
+
+
+////////////////////////////////////////////////////////////////////////////////
+Dissonance is BoltSpell
+
+constants:
+   include blakston.khd
+
+resources:
+
+   //include dissonance.lkod
+
+   Dissonance_name_rsc = "dissonance"
+   Dissonance_icon_rsc = idisharm.bgf
+   Dissonance_look_icon = idthnote.bgf
+   Dissonance_hit_rsc = "A sonic boom strikes %s%s!"
+   Dissonance_desc_rsc = \
+    "Produce a piercing sound wave which travels from the inner ear "
+    "directly to affect the brain, causing extreme pain."
+   Dissonance_sound = lute_equip.ogg
+
+   Dissonance_need_instrument = "You need an instrument to cast this spell!"
+
+classvars:
+   vrName = Dissonance_name_rsc
+   vrIcon = Dissonance_look_icon
+   vrDesc = Dissonance_desc_rsc
+   vrProjectile_icon = Dissonance_icon_rsc
+
+   viSpell_num = SID_DISSONANCE
+
+   viAttack_spell = SPL_TYPE_ALL
+
+   viMana = 6
+   viSchool = SS_JALA
+   viSpell_level = 2
+
+   viChance_To_Increase = 15
+   viMeditate_ratio = 25
+
+   vrSucceed_wav = Dissonance_sound
+
+   viPostCast_time = 2        // in seconds, since it works off gettime()
+
+   // Projectile lighting information.
+   viProjectileLightFlags = LIGHT_FLAG_ON | LIGHT_FLAG_DYNAMIC
+   // Medium light range, out of 255.
+   viProjectileLightIntensity = 100
+   // Color
+   viProjectileLightColor = LIGHT_SPECTRAL
+
+properties:
+
+   piDamageMin = 3
+   piDamageMax = 8
+   piRange = 10 * FINENESS
+   prSpellHit = Dissonance_hit_rsc
+
+   piManaFocusBonus = 0
+
+messages:
+
+
+   ResetReagents()
+   {
+      plReagents = $;
+      plReagents = Cons([&GreenMushroom,1],plReagents);
+
+      return;
+   }
+
+   CanPayCosts(who=$,lTargets=$,bItemCast=FALSE)
+   {
+      local iInstrument;
+      
+      iInstrument = Send(who,@GetInstrumentLevel);
+      
+      if IsClass(who,&User)
+         AND iInstrument = 0
+      {
+         Send(who,@MsgSendUser,#message_rsc=Dissonance_need_instrument);
+         return FALSE;
+      }
+
+      propagate;
+   }
+
+   DoSpellEffects(who=$,lTargets=$,iSpellPower=0,iPowerLevel=100,bItemCast=FALSE)
+   {
+      local iInstrument, iBaseDamage;
+
+      iInstrument = Send(who,@GetInstrumentLevel);
+      // Damage at max spellpower is 2-9 for a lute, 
+      // 3-12 for a fine lute and 4-15 for a true lute.
+      iBaseDamage = iInstrument / 10;
+      piDamageMin = iBaseDamage;
+      piDamageMax = (iBaseDamage * 3) + (iSpellPower / 33);
+
+      propagate;
+   }
+
+   DamageFactors(damage=0,who=$)
+   {
+      local iDamage, iIntellect;
+
+      // As a Jala spell, intellect provides a small bonus to damage.
+      // Up to 20% more damage at 50 intellect.
+      iIntellect = Send(who,@GetIntellect);
+      iDamage = ((100+Bound((iIntellect*2)/5,0,40))*damage)/100;
+
+      return iDamage;
+   }
+
+   GetProjectileSpeed()
+   {
+      return 20;
+   }
+
+end
+
+////////////////////////////////////////////////////////////////////////////////

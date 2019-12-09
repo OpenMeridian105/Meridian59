@@ -57,6 +57,8 @@ classvars:
    viChance_to_increase = 35
    viMeditate_ratio = 50
 
+   vbAllowRecast = TRUE
+
 properties:
 
 messages:
@@ -73,12 +75,15 @@ messages:
    CanPayCosts(who = $, lTargets = $)
    {
       // Check for enchantment already applied
-      if Send(who,@CheckPlayerFlag,#flag=PFLAG_MORPHED)
+      if (NOT vbAllowRecast)
       {
-         Send(who,@MsgSendUser,#message_rsc=morph_already_enchanted,
-               #parm1=Send(self,@GetIndef),#parm2=Send(self,@GetName));
+         if Send(who,@CheckPlayerFlag,#flag=PFLAG_MORPHED)
+         {
+            Send(who,@MsgSendUser,#message_rsc=morph_already_enchanted,
+                  #parm1=Send(self,@GetIndef),#parm2=Send(self,@GetName));
 
-         return FALSE;
+            return FALSE;
+         }
       }
 
       propagate;
@@ -121,7 +126,15 @@ messages:
       if Send(oTarget,@IsEnchanted,#byClass=&IllusionaryForm)
       {
          // Remove Illusionary form
-         Send(oTarget,@RemoveEnchantmentClass,#class=&IllusionaryForm);
+         Send(oTarget,@RemoveEnchantmentClass,#class=&IllusionaryForm,
+               #report=FALSE);
+      }
+
+      // Are they already enchanted by morph?
+      if Send(oTarget,@IsEnchanted,#what=self)
+      {
+         // Remove morph
+         Send(oTarget,@RemoveEnchantment,#what=self,#report=FALSE);
       }
 
       oRoom = Send(oTarget,@GetOwner);

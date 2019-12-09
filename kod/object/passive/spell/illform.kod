@@ -44,6 +44,8 @@ classvars:
 
    viFlash = FLASH_GOOD_SELF
 
+   vbAllowRecast = TRUE
+
 properties:
 
 messages:
@@ -59,12 +61,15 @@ messages:
 
    CanPayCosts(who = $, lTargets = $)
    {
-      if Send(who,@IsEnchanted,#what=self)
-         OR Send(who,@CheckPlayerFlag,#flag=PFLAG_MORPHED)
+      if (NOT vbAllowRecast)
       {
-         Send(who,@MsgSendUser,#message_rsc=illusionaryform_already_affected);
+         if Send(who,@IsEnchanted,#what=self)
+            OR Send(who,@CheckPlayerFlag,#flag=PFLAG_MORPHED)
+         {
+            Send(who,@MsgSendUser,#message_rsc=illusionaryform_already_affected);
 
-         return FALSE;
+            return FALSE;
+         }
       }
 
       propagate;
@@ -107,6 +112,20 @@ messages:
       else
       {
          oTarget = First(lTargets);
+      }
+
+      // Are they already enchanted by morph?
+      if Send(oTarget,@IsEnchanted,#byClass=&Morph)
+      {
+         // Remove Illusionary form
+         Send(oTarget,@RemoveEnchantmentClass,#class=&Morph,#report=FALSE);
+      }
+
+      // Are they already enchanted by illusionary form?
+      if Send(oTarget,@IsEnchanted,#what=self)
+      {
+         // Remove morph
+         Send(oTarget,@RemoveEnchantment,#what=self,#report=FALSE);
       }
 
       if iIllusion_type = $

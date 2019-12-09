@@ -1,0 +1,102 @@
+// Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+// All rights reserved.
+//
+// This software is distributed under a license that is described in
+// the LICENSE file that accompanies it.
+//
+// Meridian is a registered trademark.
+
+
+////////////////////////////////////////////////////////////////////////////////
+BoonBerry is Food
+
+constants:
+
+   include blakston.khd
+
+resources:
+
+   //include boonberry.lkod
+
+   BoonBerry_name_rsc = "boon berry"
+   BoonBerry_icon_rsc = boonberry.bgf
+   BoonBerry_desc_rsc = \
+      "Mystical and mysterious fruit said to contain immerse variety of powers, "
+      "but is also known to be bland and tasteless."
+
+   BoonBerry_name_plural_rsc = "boon berries"
+
+   BoonBerry_cannot_use = \
+      "You feel it is best to wait until your stomach settles from the last one."
+
+   BoonBerry_use = "Yuck - this better be good for you!"
+
+classvars:
+
+   vrName = BoonBerry_name_rsc
+   vrIcon = BoonBerry_icon_rsc
+   vrDesc = BoonBerry_desc_rsc
+
+   vrName_plural = BoonBerry_name_plural_rsc
+
+   viBulk = 5
+   viWeight = 4
+   viValue_average = 500
+
+properties:
+
+   viFilling = 20
+   viNutrition = 5
+   piNumber = 1
+
+messages:
+
+   SendTaste(what = $,apply_on = $)
+   {
+      Send(apply_on,@MsgSendUser,#message_rsc=BoonBerry_use);
+      return;
+   }
+
+   ReqNewApply(what = $,apply_on = $)
+   {
+      // If the user already has a boon...
+      if (IsClass(apply_on,&User) 
+            AND Send(apply_on,@IsEnchanted,#what=
+                     Send(SYS,@FindSpellByNum,#num=SID_AGILITY_BOON))
+               OR Send(apply_on,@IsEnchanted,#what=
+                     Send(SYS,@FindSpellByNum,#num=SID_AIM_BOON))
+               OR Send(apply_on,@IsEnchanted,#what=
+                     Send(SYS,@FindSpellByNum,#num=SID_STAMINA_BOON))
+               OR Send(apply_on,@IsEnchanted,#what=
+                     Send(SYS,@FindSpellByNum,#num=SID_STRENGTH_BOON))
+               OR Send(apply_on,@IsEnchanted,#what=
+                     Send(SYS,@FindSpellByNum,#num=SID_MYSTICISM_BOON))
+               OR Send(apply_on,@IsEnchanted,#what=
+                     Send(SYS,@FindSpellByNum,#num=SID_INTELLECT_BOON))
+               OR Send(apply_on,@IsEnchanted,#what=
+                     Send(SYS,@FindSpellByNum,#num=SID_MANA_BOON))
+               OR Send(apply_on,@IsEnchanted,#what=
+                     Send(SYS,@FindSpellByNum,#num=SID_HP_BOON))
+               OR Send(apply_on,@IsEnchanted,#what=
+                     Send(SYS,@FindSpellByNum,#num=SID_VIGOR_BOON)))
+      {
+         Send(apply_on,@MsgSendUser,#message_rsc=BoonBerry_cannot_use);
+         return FALSE;
+      }
+
+      propagate;
+   }
+
+   NewApplied(what = $,apply_on = $)
+   {
+      local oBoon;
+
+      // Assign a random boon - these will typically last around three hours.
+      oBoon = Send(SYS,@FindSpellByNum,#num=Random(SID_AGILITY_BOON,SID_VIGOR_BOON));
+      Post(oBoon,@CastSpell,#who=self,#lTargets=[apply_on],#iSpellPower=1);
+
+      propagate;
+   }
+
+end
+////////////////////////////////////////////////////////////////////////////////

@@ -112,6 +112,14 @@ properties:
    // identical to start off with).
    plArenaChampions = $
 
+   // Contains all available recipes in their own seperate lists
+   // [ [ingredient class, amount] ], [output class, amount]
+   // For example [ [&Snack, 2], [&Herbs, 2] ], [&Soup, 1] ] 
+   // Two snacks and 2 herbs are required to make a soup. 
+   // The output list will always be one class, 
+   // but you can specfiy any amount.
+   plCookingRecipes = $
+
 messages:
 
    Constructor()
@@ -139,11 +147,17 @@ messages:
          Send(self,@LoreVerifyArenaLists);
       }
 
+      // Create the cooking recipes.
+      Send(self,@LoreCreateCookingRecipes);
+
       return;
    }
 
    ResetLore()
    {
+      // Create the cooking recipes.
+      Send(self,@LoreCreateCookingRecipes);
+
       // Create the Hall of Heroes statue lists.
       Send(self,@LoreCreateHoHLists);
 
@@ -151,6 +165,23 @@ messages:
       Send(self,@LoreCreateArenaLists);
 
       return;
+   }
+
+   LoreCreateCookingRecipes()
+   {
+      plCookingRecipes = [
+         [ [ [&Snack, 1], [&Herbs, 1] ], [&Soup, 1] ],
+         [ [ [&Elderberry, 2] ], [&Bread, 1] ],
+         [ [ [&Bread, 1], [&Waterskin, 1] ], [&Mug, 1] ],
+         [ [ [&Grapes, 3] ], [&WineGoblet, 1] ]
+      ];
+
+      return;
+   }
+
+   GetCookingRecipes()
+   {
+      return plCookingRecipes;
    }
 
    LoreCreateHoHLists()

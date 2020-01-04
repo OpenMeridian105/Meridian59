@@ -1,0 +1,266 @@
+// Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+// All rights reserved.
+//
+// This software is distributed under a license that is described in
+// the LICENSE file that accompanies it.
+//
+// Meridian is a registered trademark.
+
+
+////////////////////////////////////////////////////////////////////////////////
+CookingPot is NoMoveOn
+
+constants:
+
+   include blakston.khd
+
+resources:
+
+   include cookpot.lkod
+
+   CookingPot_name_rsc = "cooking pot"
+   CookingPot_icon_rsc = cookingpot.bgf
+   CookingPot_desc_rsc = \
+      "This iron pot rests over a warm campfire.  A combination of different "
+      "ingredients in the cooking pot allows for the creation of many foods.  "
+
+   CookingPot_cant_cook = "You can't cook using %s%s."
+   CookingPot_no_recipe = "No recipes were found using these ingredients."
+
+   CookingPot_snd = splearn.ogg
+
+classvars:
+   vrName = CookingPot_name_rsc
+   vrIcon = CookingPot_icon_rsc
+   vrDesc = CookingPot_desc_rsc
+
+   viObject_flags = OF_OFFERABLE
+
+   viDefinite = ARTICLE_THE
+   viIndefinite = ARTICLE_A
+
+   viCancel_offer_time = 300000
+
+properties:
+   plChefs = $ // [[player obj], [offered items], [offer timer]]
+
+messages:
+
+   CookFood(who = $, lIngredients = $)
+   {
+      local lRecipe, iIngredient, lTemp, lIngredientsUsed,
+            iAmount, lOfferItems, iOfferAmount, obj, i, j, k;
+
+      foreach lRecipe in Send(Send(SYS,@GetLore),@GetCookingRecipes)
+      {
+         iIngredient = 0;
+         foreach i in First(lRecipe)
+         {
+            iOfferAmount = 0;
+            obj = GetListElemByClass(lIngredients, First(i));
+            if NOT (obj = $ OR Send(obj,@GetNumber) < Nth(i,2))
+            {
+               // Has an ingredient for a recipe, check for other ingredients
+               iIngredient++;
+               lTemp = Cons(obj, lTemp);
+
+               // Has all the ingredients, create food
+               if (iIngredient = Length(First(lRecipe)))
+               {
+                  lIngredientsUsed = lTemp;
+
+                  // Check how many to create
+                  foreach j in lIngredientsUsed
+                  {
+                     iAmount = Send(j,@GetNumber) / Nth(i,2);
+
+                     if (iAmount < iOfferAmount) OR (iOfferAmount = 0)
+                     {
+                        iOfferAmount = iAmount;
+                     }
+                  }
+
+                  lOfferItems = Cons(Create(First(Nth(lRecipe,2)),
+                                 #number=iOfferAmount),lOfferItems);
+
+                  // give back any leftovers
+                  iAmount = 0;
+                  foreach j in lIngredientsUsed
+                  {
+                     iAmount = Send(j,@GetNumber) / Nth(i,2);
+                     k = iAmount - (iOfferAmount * Nth(i,2));
+                     if ((iAmount > iOfferAmount) AND (k > 0)
+                        AND GetListElemByClass(lOfferItems, GetClass(j)) = $)
+                     {
+                        lOfferItems = Cons(Create(GetClass(j),#number=(k)), lOfferItems);
+                     }
+
+                  }
+               }
+            }
+         }
+      }
+
+      if lIngredientsUsed <> $
+      {
+         Send(poOwner,@SomethingWaveRoom,#what=self,#wave_rsc=CookingPot_snd);
+      }
+      else 
+      {
+         // Nothing found
+         Send(who,@MsgSendUser,#message_rsc=CookingPot_no_recipe);
+      }
+
+      // Give back anything that isn't used
+      foreach obj in lIngredients
+      {
+         if GetListElemByClass(lIngredientsUsed, GetClass(obj) ) = $
+         {
+            lOfferItems = Cons(obj, lOfferItems);
+         }
+      }
+
+      Send(who,@CounterOffer,#item_list=lOfferItems);
+      plChefs = Cons([ who, lOfferItems, CreateTimer(self,@CancelOfferTimer,
+                                             viCancel_offer_time) ], plChefs);
+      return;
+   }
+
+   #region Offer
+   CanAcceptOffer(who=$)
+   {
+      return TRUE;
+   }
+
+   OfferSubtractNumberItems()
+   "filler because some junk in user.kod assumes everyone has this"
+   {
+      return;
+   }
+
+   AcceptOffer(who=$)
+   {
+      local lChef, i, oHolder, lTake_items;
+
+      // set the stuff where the user can get to it
+      oHolder = Send(SYS,@GetSystemHolder2);
+
+      foreach lChef in plChefs
+      {
+         if First(lChef) = who
+         {
+            foreach i in Nth(lChef,2)
+            {
+               Send(oHolder,@NewHold,#what=i);
+            }
+         }
+      }
+
+      // take stuff the user put there
+      oHolder = Send(SYS,@GetSystemHolder1);
+      foreach lTake_items in [ Send(oHolder,@GetHolderActive),
+                           Send(oHolder,@GetHolderPassive) ]
+      {
+         foreach i in lTake_items
+         {
+            Send(self,@NewHold,#what=i);
+         }
+      }
+
+      // kill the cancel offer timer
+      Send(self,@OfferCanceled,#who=who);
+
+      return TRUE;
+   }
+
+   ReqOffer(what = $, item_list = $)
+   {
+      local obj;
+
+      if item_list = $
+      {
+         return FALSE;
+      }
+
+      // Check for if in the same room.
+      if Send(what,@GetOwner) <> poOwner
+      {
+         Debug("ALERT! ",Send(what,@GetTrueName),what,"offered items to cooking pot",
+               Send(self,@GetTrueName),"from distant RID",
+               Send(Send(what,@GetOwner),@GetRoomNum));
+         
+         return FALSE;
+      }     
+
+      foreach obj in item_list
+      {
+
+         // We can only cook foods using other foods or certain reagents
+         if NOT Send(obj,@IsCookingIngredient)
+         {
+            Post(what,@MsgSendUser,#message_rsc=CookingPot_cant_cook,
+                 #parm1=Send(obj,@GetIndef),#parm2=Send(obj,@GetName));
+
+            return FALSE;
+         }
+      }
+
+      return TRUE;
+   }
+
+   Offer(what = $, item_list = $)
+   {
+      Send(self,@CookFood,#who=what,#lIngredients=item_list);
+
+      return;
+   }
+
+   CancelOfferTimer(timer=$)
+   {
+      local lChef, oChef;
+
+      foreach lChef in plChefs
+      {
+         if Nth(lChef,3) = timer
+         {
+            SetNth(lChef,3,$);
+
+            oChef = First(lChef);
+            Send(oChef,@OfferCanceled);
+            Send(self,@OfferCanceled,#who=oChef);
+            break;
+         }
+      }
+
+      return;
+   }
+
+   OfferCanceled(who=$)
+   {
+      local lChef, tTimer;
+
+      foreach lChef in plChefs
+      {
+         if First(lChef) = who
+         {
+            tTimer = Nth(lChef,3);
+            if (tTimer <> $ AND IsTimer(tTimer))
+            {
+               DeleteTimer(tTimer);
+            }
+
+            SetFirst(lChef,$);
+            SetNth(lChef,2,$);
+            SetNth(lChef,3,$);
+
+            plChefs = DelListElem(plChefs, lChef);
+            break;
+         }
+      }
+
+      return;
+   }
+   #endregion
+
+end
+////////////////////////////////////////////////////////////////////////////////

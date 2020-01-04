@@ -14,6 +14,7 @@ BOFS = arsenic.bof attmod.bof betap.bof bosshead.bof \
    rose.bof sanctkey.bof scepter.bof shruhead.bof spcgift2.bof spdregg.bof \
    spdreggX.bof specgift.bof spelitem.bof spelitemsplit.bof swshard.bof \
    token.bof totem.bof warjoin.bof weapon.bof bardnote.bof qormasgift.bof \
-   easteregg.bof lorebook.bof mscroll.bof merccontract.bof dyebottle.bof
+   easteregg.bof lorebook.bof mscroll.bof merccontract.bof dyebottle.bof \
+   cookrecipe.bof
 
 !include $(KODDIR)\kod.mak

@@ -14,6 +14,8 @@ constants:
 
    include blakston.khd
 
+   FOOD_SPELLPOWER = 50
+
 resources:
 
    include food.lkod
@@ -21,11 +23,17 @@ resources:
    food_use = "Yum-yum good!"
    food_cant_use_on = "You can't feed %s%s"
 
+   food_append_desc = \
+      "\n\nConsumption will increase your vigor by "
+      "%i and decrease your hunger by %i points."
+
    food_eat_wav = eat.ogg
 
 classvars:
 
    viItem_type = ITEMTYPE_FOOD | ITEMTYPE_SUNDRY
+
+   viSpellEffect = 0
 
    viFilling = 50
    viNutrition = 10
@@ -71,8 +79,63 @@ messages:
       Send(self,@SendTaste,#what=what,#apply_on=apply_on);
       Send(what,@WaveSendUser,#wave_rsc=vrEat_wav);
       Send(apply_on,@EatSomething,#nutrition=viNutrition,#filling=viFilling);
+
+      if viSpellEffect <> 0
+      {
+         Send(self,@CastFoodSpell,#who=what,#lTargets=[apply_on]);
+      }
+
       Send(self,@SubtractNumber,#number=1);
       return;
+   }
+
+   CastFoodSpell(who = $,lTargets = $)
+   {
+      local oSpell;
+
+      if who = $
+      {
+         return;
+      }
+
+      oSpell = Send(SYS,@FindSpellByNum,#num=viSpellEffect);
+
+      // No harmful spells.
+      if Send(oSpell,@IsHarmful)
+      {
+         Debug("Food had a harmful spell!  Spell is ",
+               Send(oSpell,@GetName)," and owner of food is ",
+               Send(who,@GetTrueName));
+
+         return FALSE;
+      }
+
+      if (Send(oSpell,@CanPayCosts,#who=poOwner,#lTargets=lTargets,
+           #iSpellPower=FOOD_SPELLPOWER,#bItemCast=TRUE))
+         AND (Send(Send(who,@GetOwner),@ReqSpellCast,#who=who,#oSpell=oSpell))
+      {
+         // Deal with Elusion's odd spell structure, so we can have it
+         // as an item-castable spell.
+         if viSpellEffect = SID_ELUSION
+         {
+            Send(oSpell,@BeginCastingTrance,#who=poOwner,#lTargets=lTargets,
+                  #iSpellPower=FOOD_SPELLPOWER);
+         }
+         else
+         {
+            Send(oSpell,@CastSpell,#who=poOwner,#lTargets=lTargets,
+                  #iSpellPower=FOOD_SPELLPOWER,#bItemCast=TRUE);
+         }
+      }
+
+      return;
+   }
+
+   AppendDesc()
+   {
+      AddPacket(4,food_append_desc, 4, viNutrition, 4, viFilling);
+
+      propagate;
    }
 
    IsAlcohol()

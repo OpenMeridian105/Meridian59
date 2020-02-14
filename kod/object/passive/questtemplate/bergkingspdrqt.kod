@@ -1,0 +1,224 @@
+// Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+// All rights reserved.
+//
+// This software is distributed under a license that is described in
+// the LICENSE file that accompanies it.
+//
+// Meridian is a registered trademark.
+
+
+/////////////////////////////////////////////////////////////////////////////////
+BergKingSpiderQuest is QuestTemplate
+// QNT_ID_BERG_KING_SPIDER_QUEST_1, 
+// QNT_ID_BERG_KING_SPIDER_QUEST_2,
+// QNT_ID_BERG_KING_SPIDER_QUEST_3
+
+// QuestTemplate is
+// [ quest template index
+//   quest template object
+//   number of players,
+//   type of quest,
+//   eligible player restrictions,
+//   quest nodes,
+//   max number active,
+//   currently active quests,
+//   percent chance of scheduling (on timer firing)
+//   special restrictions ]
+
+constants:
+
+   include blakston.khd
+
+resources:
+
+   //include BergKingSpiderQuest.lkod
+
+   // Quest description.
+   BergKingSpiderQuest_icon_rsc = spdrby.bgf
+   BergKingSpiderQuest_name_rsc = "Eradication of Evil"
+
+   BergKingSpiderQuest_desc_rsc = \
+      "Qor has entered the eastern lands. King Aaron Leone wants you to "
+      "eliminate the children of the vile."
+
+   BergKingSpiderQuest_return_rsc = \
+      "Let %s know the task has been completed."
+
+   BergKingSpiderQuest_completed = \
+      "You have eradicated the spider queen."
+
+   // Quest resources.
+   BergKingSpiderQuest_trigger = "dark angel"
+   BergKingSpiderQuest_assign_2 = \
+      "Qor has seeped back into our lands, see this creature here.  "
+      "This baby spider will always be inherently evil, and it doesn't "
+      "matter that it is not an adult yet. We will be preventing the "
+      "horrible austerities it will commit when it grows up. "
+      "Evil cannot be anything but evil. Banish the evil that stands "
+      "before you, prove your worth to Berg. ~IYou have 60 seconds to "
+      "decide its fate."
+
+   BergKingSpiderQuest_node2_rsc = \
+      "Send a killing blow to the baby spider, and bow down to the King of Berg.  "
+      "You have %i seconds to decide its fate."
+
+   BergKingSpiderQuest_node3_rsc = \
+      "Let King Aaron Leone know the task is completed."
+   BergKingSpiderQuest_assign_3 = \
+      "I respect your bow...Killing isn't always easy but often necessary. "
+      "Especially when it is for the greater good. There is a nasty nest "
+      "of these vile beasts. Seek out and eliminate their so called queen..."
+
+   BergKingSpiderQuest_success = \
+      "You've eliminated their queen, but another will quickly rise. "
+      "It is true that evil can never be truly defeated. As light cannot exist "
+      "without the darkness in our world, the vile can only be contained not "
+      "eliminated. We have done this here at Berg you see."
+
+   BergKingSpiderQuest_failure_2 = \
+      "Subject: Eradication of Evil\n"
+      "You are a fool for sparing a creature of Qor."
+
+   BergKingSpiderQuest_failure = \
+      "Subject: Eradication of Evil\n"
+      "Maybe you are not ready for such missions."
+
+classvars:
+
+   vrIcon = BergKingSpiderQuest_icon_rsc
+   vrName = BergKingSpiderQuest_name_rsc
+   vrDesc = BergKingSpiderQuest_desc_rsc
+   vrCompleted = BergKingSpiderQuest_completed
+
+   // The QST_ID constant for this quest.
+   viQuestID = QNT_ID_BERG_KING_SPIDER_QUEST
+
+   viIcon_Animation_start = 1
+
+   vrReturn = BergKingSpiderQuest_return_rsc
+   vrNode2 = BergKingSpiderQuest_node2_rsc
+   vrNode3 = BergKingSpiderQuest_node3_rsc
+
+properties:
+
+   piNumPlayers = 1
+   piPlayerRestrict = Q_PLAYER_NOTSUCCEEDED | Q_PLAYER_NOTFAILED_RECENTLY
+   plSpecialRestrict = $
+   piMaxPlayers = 30
+   piSchedulePct = 100
+   piTimeLimit = 60
+
+messages:
+
+   Constructor()
+   {
+      // Quest node - restrictions
+      plSpecialRestrict = [ [Q_R2_HAS_COMPLETED_QUEST_ID, QNT_ID_DARK_ANGEL] ];
+   
+      // Quest node list to send to QuestEngine.
+      plQuestNodes = [ QNT_ID_BERG_KING_SPIDER_QUEST_1, 
+                       QNT_ID_BERG_KING_SPIDER_QUEST_2,
+                       QNT_ID_BERG_KING_SPIDER_QUEST_3 ];
+
+      //Quest nodes with matching descriptions for the player.
+      plQuestNodeDesc = [ 
+                          [QNT_ID_BERG_KING_SPIDER_QUEST_2, vrNode2],
+                          [QNT_ID_BERG_KING_SPIDER_QUEST_3, vrNode3]
+                        ];
+
+      propagate;
+   }
+
+   SendQuestNodeTemplates()
+   {
+      local lNPCs, oQE, oLib, oNPC;
+
+      oQE = Send(SYS,@GetQuestEngine);
+      oLib = Send(SYS,@GetLibrary);
+
+      // QNT_ID_BERG_KING_SPIDER_QUEST_1 - kickoff
+      if Send(oQE,@AddQuestNodeTemplate,#questnode_type=QN_TYPE_MESSAGE,
+               #cargolist=[BergKingSpiderQuest_trigger],
+               #prizelist=[ [ QN_PRIZETYPE_SPAWN,&SpiderBaby, 
+                              RID_BERG_LEADER_HALL, 15, 21 ] ],
+               #quest_node_index=QNT_ID_BERG_KING_SPIDER_QUEST_1)
+      {
+         Send(oQE,@SetQuestNodeNPCList,#index=QNT_ID_BERG_KING_SPIDER_QUEST_1,
+               #new_NPC_list=Send(oLib,@GetOccupationList,
+                                 #cNPC_class=&BergLeaderM));
+      }
+      else
+      {
+         Debug("Error building QN: QNT_ID_BERG_KING_SPIDER_QUEST_1");
+      }
+
+      // QNT_ID_BERG_KING_SPIDER_QUEST_2 - kill a baby spider, you have 60 seconds
+      if Send(oQE,@AddQuestNodeTemplate,#questnode_type=QN_TYPE_MONSTER,
+               #NPC_modifier=QN_NPCMOD_SAME,#monsterlist=[&SpiderBaby],
+               #timelimit=piTimeLimit,#quest_node_index=QNT_ID_BERG_KING_SPIDER_QUEST_2,
+               #prizelist=[ [ QN_PRIZETYPE_TRAINING_POINTS, 100 ] ])
+      {
+               
+         Send(oQE,@SetQuestNodeAssignHint,#index=QNT_ID_BERG_KING_SPIDER_QUEST_2,
+               #new_hint=BergKingSpiderQuest_assign_2);
+         Send(oQE,@SetQuestNodeFailureHint,#index=QNT_ID_BERG_KING_SPIDER_QUEST_2,
+               #new_hint=BergKingSpiderQuest_failure_2);
+      }
+      else
+      {
+         Debug("Error building QN: QNT_ID_BERG_KING_SPIDER_QUEST_2");
+      }
+
+      // QNT_ID_BERG_KING_SPIDER_QUEST_3 - go kill a queen spider
+      if Send(oQE,@AddQuestNodeTemplate,#questnode_type=QN_TYPE_MONSTER,
+               #NPC_modifier=QN_NPCMOD_SAME,#monsterlist=[&SpiderQueen],
+               #timelimit=(piTimeLimit*3600*6),#quest_node_index=QNT_ID_BERG_KING_SPIDER_QUEST_3,
+               #prizelist=[ [ QN_PRIZETYPE_ITEMCLASS, &SpiderEgg, 1 ] ])
+      {
+         Send(oQE,@SetQuestNodeAssignHint,#index=QNT_ID_BERG_KING_SPIDER_QUEST_3,
+               #new_hint=BergKingSpiderQuest_assign_3);
+         Send(oQE,@SetQuestNodeFailureHint,#index=QNT_ID_BERG_KING_SPIDER_QUEST_3,
+               #new_hint=BergKingSpiderQuest_failure);
+         Send(oQE,@SetQuestNodeSuccessHint,#index=QNT_ID_BERG_KING_SPIDER_QUEST_3,
+               #new_hint=BergKingSpiderQuest_success);
+      }
+      else
+      {
+         Debug("Error building QN: QNT_ID_BERG_KING_SPIDER_QUEST_3");
+      }
+
+      propagate;
+   }
+
+   MainDesc(who=$,index=$,oQuestNode=$)
+   {
+      local oMob, oNPC;
+
+      if plQuestNodeDesc = $
+      {
+         AddPacket(4,vrDesc);
+
+         return;
+      }
+
+      if index = QNT_ID_BERG_KING_SPIDER_QUEST_2
+      {
+         oMob = Send(oQuestNode,@GetQuestMonster);
+         oNPC = Send(oQuestNode,@GetSourceNPC);
+         if oMob = $
+         {
+            AddPacket(4,vrReturn, 4,Send(oNPC,@GetName));
+         }
+         else if index = QNT_ID_BERG_KING_SPIDER_QUEST_2
+         {
+            AddPacket(4,vrNode2, 4,piTimeLimit);
+         }
+
+         return;
+      }
+
+      propagate;
+   }
+
+end
+/////////////////////////////////////////////////////////////////////////////////

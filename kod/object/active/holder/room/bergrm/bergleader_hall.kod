@@ -24,6 +24,10 @@ resources:
    bergleaderhall_music = avarwar.ogg
    wind_sound_bergleaderhall = rs_wind.ogg
 
+   HonorLeaderboard_title_on = "show my title"
+   HonorLeaderboard_title_off = "hide my title"
+   HonorLeaderboard_title_alt = "show my alternative title"
+
 classvars:
 
    vrName = room_name_bergleaderhall
@@ -51,6 +55,7 @@ properties:
 
    ptTombResetTimer = $
    piLastTombOpenTime = $
+   plStatues = $
 
 messages:
 
@@ -75,8 +80,11 @@ messages:
 
    CreateStandardObjects()
    {
+      Send(self,@CreateStatues);
 
-      // NPC
+      Send(self,@NewHold,#what=Create(&HonorSign),#new_row=21,#new_col=3,
+            #fine_row=32,#fine_col=32);
+
       Send(self,@NewHold,#what=Create(&BergLeaderM),
             #new_row=14,#new_col=21,#fine_row=24,#fine_col=24);
 
@@ -361,10 +369,132 @@ messages:
 
    Delete()
    {
+      plStatues = $;
+
       if ptTombResetTimer <> $
       {
          DeleteTimer(ptTombResetTimer);
          ptTombResetTimer = $;
+      }
+
+      propagate;
+   }
+
+   CreateStatues()
+   {
+      local oStatue;
+
+      plStatues = $;
+
+      oStatue = Create(&Statue,#bDefault=TRUE);
+      plStatues = Cons(oStatue,plStatues);
+      Send(self,@NewHold,#what=oStatue,#new_angle=ANGLE_SOUTH,
+            #new_row=5,#new_col=20,#fine_row=48,#fine_col=28);
+
+      oStatue = Create(&Statue,#bDefault=TRUE);
+      plStatues = Cons(oStatue,plStatues);
+      Send(self,@NewHold,#what=oStatue,#new_angle=ANGLE_SOUTH,
+            #new_row=5,#new_col=16,#fine_row=48,#fine_col=48);
+
+      oStatue = Create(&Statue,#bDefault=TRUE);
+      plStatues = Cons(oStatue,plStatues);
+      Send(self,@NewHold,#what=oStatue,#new_angle=ANGLE_SOUTH,
+            #new_row=5,#new_col=12,#fine_row=48,#fine_col=64);
+
+      oStatue = Create(&Statue,#bDefault=TRUE);
+      plStatues = Cons(oStatue,plStatues);
+      Send(self,@NewHold,#what=oStatue,#new_angle=ANGLE_SOUTH,
+            #new_row=5,#new_col=9,#fine_row=48,#fine_col=16);
+
+      oStatue = Create(&Statue,#bDefault=TRUE);
+      plStatues = Cons(oStatue,plStatues);
+      Send(self,@NewHold,#what=oStatue,#new_angle=ANGLE_NORTH,
+            #new_row=22,#new_col=16,#fine_row=48,#fine_col=42);
+
+      oStatue = Create(&Statue,#bDefault=TRUE);
+      plStatues = Cons(oStatue,plStatues);
+      Send(self,@NewHold,#what=oStatue,#new_angle=ANGLE_NORTH,
+            #new_row=22,#new_col=12,#fine_row=48,#fine_col=52);
+
+      oStatue = Create(&Statue,#bDefault=TRUE);
+      plStatues = Cons(oStatue,plStatues);
+      Send(self,@NewHold,#what=oStatue,#new_angle=ANGLE_NORTH,
+            #new_row=22,#new_col=20,#fine_row=48,#fine_col=28);
+
+      oStatue = Create(&Statue,#bDefault=TRUE);
+      plStatues = Cons(oStatue,plStatues);
+      Send(self,@NewHold,#what=oStatue,#new_angle=ANGLE_NORTH,
+            #new_row=22,#new_col=9,#fine_row=48,#fine_col=8);
+
+      oStatue = Create(&Statue,#bDefault=TRUE);
+      plStatues = Cons(oStatue,plStatues);
+      Send(self,@NewHold,#what=oStatue,#new_angle=ANGLE_SOUTH,
+            #new_row=5,#new_col=5,#fine_row=48,#fine_col=32);
+
+      oStatue = Create(&Statue,#bDefault=TRUE);
+      plStatues = Cons(oStatue,plStatues);
+      Send(self,@NewHold,#what=oStatue,#new_angle=ANGLE_NORTH,
+            #new_row=22,#new_col=5,#fine_row=48,#fine_col=32);
+
+      return;
+   }
+
+   UpdateStatues()
+   {
+      local lData, i, index, oPlayer;
+
+      lData = Send(SYS,@GetHonorList);
+      if lData = $
+         OR NOT Send(SETTINGS_OBJECT,@HonorSystemActive)
+      {
+
+         return;
+      }
+
+      if plStatues = $
+      {
+         // Statues haven't been created yet.  No one has entered yet.
+         return;
+      }
+
+      index = 0;
+      foreach i in plStatues
+      {
+         ++index;
+         oPlayer = First(Nth(lData,index));
+         if oPlayer <> $
+            AND Send(i,@GetOriginal) <> oPlayer
+         {
+            Send(i,@SetStatue,#original=oPlayer);
+         }
+      }
+
+      return;
+   }
+
+   FirstUserEntered()
+   {
+      Post(self,@UpdateStatues);
+
+      propagate;
+   }
+
+   SomeoneSaid(what = $,type = $,string = $)
+   {
+      if StringContain(string,HonorLeaderboard_title_on)
+      {
+         Send(what,@ShowHonorTitle,#iTitle=1);
+         return;
+      }
+      else if StringContain(string,HonorLeaderboard_title_off)
+      {
+         Send(what,@ShowHonorTitle,#iTitle=0);
+         return;
+      }
+      else if StringContain(string,HonorLeaderboard_title_alt)
+      {
+         Send(what,@ShowHonorTitle,#iTitle=2);
+         return;
       }
 
       propagate;

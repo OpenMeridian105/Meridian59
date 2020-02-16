@@ -43,6 +43,8 @@ resources:
    
    Bandit_loot_rsc = "~IThe bandit snatches the %s!"
 
+   Bandit_sound_aware = DgSwish1.ogg
+
 classvars:
 
    vrDead_name = Bandit_dead_name_rsc
@@ -78,6 +80,8 @@ properties:
    vrIcon = human_male_icon_rsc
    vrDead_Icon = human_dead_male_icona_rsc
    vrDead_Legs = human_dead_male_iconb_rsc
+   vrSound_aware = Bandit_sound_aware
+
    viLevel = 100         // piBaseLevel
    viDifficulty = 6     // piBaseDifficulty
    viKarma = 0
@@ -127,7 +131,7 @@ messages:
 
    SetEquipment()
    {
-      local oArmor, oWeapon, oShield, iRandomNumber, iBonusModifier, iRndMax;
+      local oArmor, oWeapon, oShield, oHelm, iRandomNumber, iBonusModifier, iRndMax;
 
       iRndMax = viBanditChance + viSniperChance + viCaptainChance;
       iRandomNumber = Random(1, iRndMax);
@@ -142,40 +146,48 @@ messages:
 
          // Armor
          iRandomNumber = Random(1, 100);
-         if iRandomNumber <= 50
+         if iRandomNumber <= 70
          {
             oArmor = Create(&LeatherArmor);
-         }
-         else
-         {
-            oArmor = Create(&ChainArmor);
          }
 
          // Weapon
          iRandomNumber = Random(1, 100);
-         if iRandomNumber <= 33
+         if iRandomNumber <= 25
+         {
+            oWeapon = Create(&Knife);
+         }
+         else if iRandomNumber <= 50
          {
             oWeapon = Create(&ShortSword);
          }
-         else if iRandomNumber <= 66
+         else if iRandomNumber <= 75
          {
-            oWeapon = Create(&LongSword);
+            oWeapon = Create(&Axe);
          }
          else
          {
-            oWeapon = Create(&Axe);
+            oWeapon = Create(&Kukri);
          }
 
          // Shield
          iRandomNumber = Random(1, 100);
-         if iRandomNumber <= 50
-         {
-            oShield = Create(&MetalShield);
-         }
-         else
+         if iRandomNumber <= 10
          {
             oShield = Create(&WoodenShield);
          }
+
+         // Helm
+         iRandomNumber = Random(1, 100);
+         if iRandomNumber <= 10
+         {
+            oHelm = Create(&ThornedCirclet);
+         }
+         else if iRandomNumber <= 25
+         {
+            oHelm = Create(&WarHelm);
+         }
+
       }
 
       else if iRandomNumber <= (viSniperChance + viBanditChance) // Sniper
@@ -199,21 +211,28 @@ messages:
          }
 
          // Weapon
-         oWeapon = Create(&LongBow);
+         oWeapon = Create(&ShortBow);
 
          // Shield - snipers get ammo for their bow instead
          iRandomNumber = Random(1, 100);
-         if iRandomNumber <= 33
+         if iRandomNumber <= 60
          {
-            oShield = Create(&IceArrow);
-         }
-         else if iRandomNumber <= 66
-         {
-            oShield = Create(&FireArrow);
+            oShield = Create(&Arrow);
          }
          else
          {
-            oShield = Create(&Arrow);
+            oShield = Create(&AcidArrow);
+         }
+
+         // Helm
+         iRandomNumber = Random(1, 100);
+         if iRandomNumber <= 10
+         {
+            oHelm = Create(&ThornedCirclet);
+         }
+         else if iRandomNumber <= 25
+         {
+            oHelm = Create(&WarHelm);
          }
       }
 
@@ -227,20 +246,47 @@ messages:
          viLevel = piBaseLevel + iBonusModifier;
 
          // Armor
-         oArmor = Create(&PlateArmor);
+         oArmor = Create(&ScaleArmor);
 
          // Weapon
-         oWeapon = Create(&Scimitar);
+         iRandomNumber = Random(1, 100);
+         if iRandomNumber <= 33
+         {
+            oWeapon = Create(&Scimitar);
+         }
+         else if iRandomNumber <= 66
+         {
+            oWeapon = Create(&Hatchet);
+         }
+         else
+         {
+            oWeapon = Create(&Machete);
+         }
 
-         // Shield
-         oShield = Create(&Knightshield);
+         // Helm
+         iRandomNumber = Random(1, 100);
+         if iRandomNumber <= 10
+         {
+            oHelm = Create(&ThornedCirclet);
+         }
+         else if iRandomNumber <= 25
+         {
+            oHelm = Create(&WarHelm);
+         }
 
-         Send(self,@AddEquipmentObject,#what=Create(&Gauntlet));
+         // Guantlets
+         iRandomNumber = Random(1, 100);
+         if iRandomNumber <= 50
+         {
+            Send(self,@AddEquipmentObject,#what=Create(&Gauntlet));
+         }
+
       }
 
          Send(self,@AddEquipmentObject,#what=oArmor);
          Send(self,@AddEquipmentObject,#what=oWeapon);
          Send(self,@AddEquipmentObject,#what=oShield);
+         Send(self,@AddEquipmentObject,#what=oHelm);
 
       return;
    }

@@ -575,23 +575,43 @@ typedef struct {
 } FormatCode;
 
 static FormatCode code_table[] = {
-{ 'r', CODE_COLOR, PALETTERGB(128,   0,   0) }, // Dark red
-{ 'f', CODE_COLOR, PALETTERGB(200,   0,   0) }, // Bright red
-{ 'g', CODE_COLOR, PALETTERGB(  0, 100,   0) }, // Dark green
-{ 'l', CODE_COLOR, PALETTERGB(  0, 255,   0) }, // Light green
-{ 'b', CODE_COLOR, PALETTERGB(  0,   0, 255) }, // Dark blue
-{ 'k', CODE_COLOR, PALETTERGB(  0,   0,   0) }, // Black
-{ 'w', CODE_COLOR, PALETTERGB(255, 255, 255) }, // White
-{ 'y', CODE_COLOR, PALETTERGB(230, 230,  25) }, // Yellow
-{ 'p', CODE_COLOR, PALETTERGB(255, 105, 210) }, // Pink
-{ 'o', CODE_COLOR, PALETTERGB(255, 150,   0) }, // Orange
-{ 'a', CODE_COLOR, PALETTERGB(127, 255, 212) }, // Aquamarine
-{ 'c', CODE_COLOR, PALETTERGB( 46, 234, 250) }, // Cyan
-{ 'q', CODE_COLOR, PALETTERGB(143,  38, 170) }, // Purple
-{ 't', CODE_COLOR, PALETTERGB( 11,  59, 112) }, // Teal
-{ 's', CODE_COLOR, PALETTERGB( 60,  60,  60) }, // Dark grey
-{ 'v', CODE_COLOR, PALETTERGB(128,   0, 128) }, // Violet
-{ 'm', CODE_COLOR, PALETTERGB(205,   0, 205) }, // Magenta
+{ 'a', CODE_COLOR, PALETTERGB(127, 255, 212) }, // (a)quamarine
+{ 'b', CODE_COLOR, PALETTERGB(  0,   0, 240) }, // deep (b)lue
+{ 'c', CODE_COLOR, PALETTERGB(  0, 255, 255) }, // (c)yan
+{ 'd', CODE_COLOR, PALETTERGB( 64,  64,   0) }, // (d)rab
+{ 'e', CODE_COLOR, PALETTERGB(  0, 250, 120) }, // (e)merald
+{ 'f', CODE_COLOR, PALETTERGB(225,   0,   0) }, // (f)ire
+{ 'g', CODE_COLOR, PALETTERGB(  0,  80,   0) }, // dark (g)reen
+{ 'h', CODE_COLOR, PALETTERGB(232, 213, 195) }, // c(h)ampagne
+{ 'i', CODE_COLOR, PALETTERGB(  0,   0, 128) }, // (i)mperial blue
+{ 'j', CODE_COLOR, PALETTERGB(255, 180,  50) }, // (j)onquil
+{ 'k', CODE_COLOR, PALETTERGB(  0,   0,   0) }, // blac(k)
+{ 'l', CODE_COLOR, PALETTERGB(  0, 240,   0) }, // (l)ime
+{ 'm', CODE_COLOR, PALETTERGB(255,   0, 255) }, // (m)agenta
+{ 'o', CODE_COLOR, PALETTERGB(250, 120,   0) }, // (o)range
+{ 'p', CODE_COLOR, PALETTERGB(255,   0, 166) }, // (p)ink
+{ 'q', CODE_COLOR, PALETTERGB(105,   0, 220) }, // Pur(q)le :p
+{ 'r', CODE_COLOR, PALETTERGB(128,   0,   0) }, // dark (r)ed
+{ 's', CODE_COLOR, PALETTERGB(  0,  71, 146) }, // (s)teel
+{ 't', CODE_COLOR, PALETTERGB(120, 250,   0) }, // (t)oxic green
+{ 'u', CODE_COLOR, PALETTERGB(245, 244, 239) }, // (u)serfriendly and easy to read
+{ 'v', CODE_COLOR, PALETTERGB(128,   0, 128) }, // (v)iolet
+{ 'w', CODE_COLOR, PALETTERGB(255, 255, 255) }, // (w)hite
+{ 'x', CODE_COLOR, PALETTERGB(245, 205,  90) }, // (x)specially golden
+{ 'y', CODE_COLOR, PALETTERGB(255, 255,   0) }, // (y)ellow
+{ 'z', CODE_COLOR, PALETTERGB(230, 190, 138) }, // faded bron(z)e
+{ '0', CODE_COLOR, PALETTERGB( 10,  10,  10) }, // Gray Scale 1
+{ '1', CODE_COLOR, PALETTERGB( 20,  20,  20) }, // Gray Scale 2
+{ '2', CODE_COLOR, PALETTERGB( 30,  30,  30) }, // Gray Scale 3
+{ '3', CODE_COLOR, PALETTERGB( 40,  40,  40) }, // Gray Scale 4
+{ '4', CODE_COLOR, PALETTERGB( 50,  50,  50) }, // Gray Scale 5
+{ '5', CODE_COLOR, PALETTERGB(200, 200, 200) }, // Gray Scale 6
+{ '6', CODE_COLOR, PALETTERGB(210, 210, 210) }, // Gray Scale 7
+{ '7', CODE_COLOR, PALETTERGB(220, 220, 220) }, // Gray Scale 8
+{ '8', CODE_COLOR, PALETTERGB(230, 230, 230) }, // Gray Scale 9
+{ '9', CODE_COLOR, PALETTERGB(240, 240, 240) }, // Gray Scale 10
+{ 'G', CODE_COLOR, PALETTERGB(  0, 150,  15) }, // Quest Green
+{ 'R', CODE_COLOR, PALETTERGB(180,  20,   0) }, // Quest Red
 { 'B', CODE_STYLE, STYLE_BOLD },
 { 'I', CODE_STYLE, STYLE_ITALIC },
 { 'U', CODE_STYLE, STYLE_UNDERLINE },

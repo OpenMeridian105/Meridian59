@@ -368,16 +368,13 @@ messages:
    }
 
    OriginalPhased()
-   "If the original phases out, set the ET to behave like a NPC."
+   "If the original phases out, ET goes to limbo if still owned by "
+   "the original caster."
    {
       if (poMaster = poCaster)
       {
-         Send(self,@EnterStateWait,#actnow=TRUE);
-         piBehavior |= AI_NPC | AI_NOMOVE;
-         if (poOwner <> $)
-         {
-            Send(poOwner,@SomethingChangedFlags,#what=self);
-         }
+         Send(self,@EnterStateLimbo);
+         Send(self,@NewOwner,#what=$);
       }
 
       return;
@@ -386,13 +383,6 @@ messages:
    OriginalUnphased(who = $)
    "If original phases back in, unset the NPC flag and alert us to their entry."
    {
-      piBehavior &= ~(AI_NPC | AI_NOMOVE);
-
-      if (poOwner <> $)
-      {
-         Send(poOwner,@SomethingChangedFlags,#what=self);
-      }
-
       if (poMaster = poCaster)
       {
          // Go get original target!
@@ -416,17 +406,12 @@ messages:
 
       if (what = poOriginal)
       {
-         if (oRoom = $
-            OR (IsClass(poOriginal,&User)
-               AND Send(poOriginal,@CheckPlayerFlag,#flag=PFLAG_SPECTATOR)))
+         if (oRoom = $)
          {
             // If the original logs off, we go to 'limbo' and await their
-            // return. Check spectator flag here also, since SomethingLeft
-            // can be used to limbo the ET.
+            // return.
             Send(self,@EnterStateLimbo);
             Send(self,@NewOwner,#what=$);
-            // Reset our AI flag, in case owner was phased then spectated.
-            piBehavior &= ~(AI_NPC | AI_NOMOVE);
 
             return;
          }
@@ -578,10 +563,11 @@ messages:
          AND poCaster = poMaster
          AND Send(poOriginal,@IsInCannotInteractMode))
       {
-         piBehavior |= AI_NPC | AI_NOMOVE;
          if (poOwner <> $)
          {
-            Send(poOwner,@SomethingChangedFlags,#what=self);
+            // Go to limbo and await their return.
+            Send(self,@EnterStateLimbo);
+            Send(self,@NewOwner,#what=$);
          }
       }
 
@@ -611,16 +597,6 @@ messages:
       piGender = Send(poOriginal,@GetGender);
 
       return;
-   }
-
-   GetMoveOnType()
-   {
-      if (piBehavior & AI_NPC)
-      {
-         return MOVEON_YES;
-      }
-
-      propagate;
    }
 
    GetObjectFlags(what = $)

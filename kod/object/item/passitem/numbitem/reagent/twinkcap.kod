@@ -1,0 +1,137 @@
+// Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+// All rights reserved.
+//
+// This software is distributed under a license that is described in
+// the LICENSE file that accompanies it.
+//
+// Meridian is a registered trademark.
+
+
+////////////////////////////////////////////////////////////////////////////////
+TwinkleCap is Reagent
+
+constants:
+
+   include blakston.khd
+
+resources:
+
+   //include twinkcap.lkod
+
+   TwinkleCap_name_rsc = "twinkle cap mushroom"
+   TwinkleCap_icon_rsc = mushroom.bgf
+   TwinkleCap_desc_rsc = \
+      "Pulses with vibrant colours, magical energies radiate from the twinkle "
+      "cap mushroom.  Only those able to connect with these energies can use "
+      "them for their own benefit.  This unique mushroom may be substitued as "
+      "a reagent for any spell that require the use of mushrooms regardless of "
+      "its color."
+   TwinkleCap_name_plural_rsc = "twinkle cap mushrooms"
+
+classvars:
+
+   vrName = TwinkleCap_name_rsc
+   vrIcon = TwinkleCap_icon_rsc
+   vrDesc = TwinkleCap_desc_rsc
+
+   vrName_plural = TwinkleCap_name_plural_rsc
+
+   viValue_average = 0
+   viWeight = 2
+   viBulk = 5
+
+properties:
+
+   piNumber = 4
+
+messages:
+
+   Constructor()
+   {
+      piItem_flags = Send(SYS,@EncodeTwoColorXLAT,#color1=XLAT_TO_PURPLE,
+                           #color2=XLAT_TO_BLUE);
+      
+      propagate;
+   }
+
+   ChangeColor(color=0,iHour=0)
+   {
+      local iRandom, iColor;
+
+      if poOwner = $
+      {
+         return;
+      }
+
+      iRandom = Random(1,5);
+
+      if color <> 0
+      {
+         iRandom = color;
+      }
+
+      if iHour < 12
+      {
+         switch(iRandom)
+         {
+            case 1:
+               iColor = XLAT_TO_RED;
+               break;
+            case 2:
+               iColor = XLAT_TO_ORANGE;
+               break;
+            case 3:
+               iColor = XLAT_TO_GREEN;
+               break;
+            case 4:
+               iColor = XLAT_TO_YELLOW;
+               break;
+            default:
+               iColor = XLAT_TO_BLUE;
+               break;
+         }
+      }
+      else
+      {
+         switch(iRandom)
+         {
+            case 1:
+               iColor = XLAT_TO_GRAY;
+               break;
+            case 2:
+               iColor = XLAT_TO_SKY;
+               break;
+            case 3:
+               iColor = XLAT_TO_RED;
+               break;
+            case 4:
+               iColor = XLAT_TO_ORANGE;
+               break;
+            default:
+               iColor = XLAT_TO_BLUE;
+               break;
+         }
+      }
+      piItem_flags = Send(SYS,@EncodeTwoColorXLAT,#color1=XLAT_TO_PURPLE,
+                           #color2=iColor);
+
+      if poOwner <> $
+      {
+         Send(poOwner,@SomethingChanged,#what=self);
+      }
+
+      return;
+   }
+
+   IsCookingIngredient()
+   {
+      return TRUE;
+   }
+
+   GetSubstitueReagentClass()
+   {
+      return &TwinkleCap;
+   }
+
+end
+////////////////////////////////////////////////////////////////////////////////

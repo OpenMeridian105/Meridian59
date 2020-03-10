@@ -225,7 +225,7 @@ messages:
 
       if number < 0
       {
-	      return;
+         return;
       }
       
       iOld_weight = Send(self,@GetWeight);
@@ -249,16 +249,20 @@ messages:
    "Decreases the number amount of a number object by the parameter <number>"
    "<number> must be positive!"
    {
-      local iOld_weight,iOld_bulk;
+      local iOld_weight, iOld_bulk, iDiff;
 
       // this can delete self, so can only do return after calling this
 
-      if (piNumber - number) <= 0
+      iDiff = piNumber - number;
+      if iDiff <= 0
       {
-	      Send(self,@Delete);
-	      return;
+         Send(self,@Delete);
+
+         // return remainder if subtracted too much
+         return Abs(iDiff);
       }
 
+      iDiff = 0;
       iOld_weight = Send(self,@GetWeight);
       iOld_bulk = Send(self,@GetBulk);
       
@@ -273,7 +277,7 @@ messages:
               #weight_change=Send(self,@GetWeight)-iOld_weight);
       }
       
-      return;
+      return iDiff;
    }
 
    NewNumber()

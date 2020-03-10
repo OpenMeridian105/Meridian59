@@ -789,8 +789,8 @@ messages:
 
    CanPayReagents(who=$,lTargets=$,iSpellPower=0,bFreeCast=FALSE)
    {
-      local lReagent, cReagentClass, iNumNeeded, bFound, lItems, lLists,
-            oUserObject, iNum, oOwner, oSpell, oRing, oRoom;
+      local lReagent, cReagentClass, iNumNeeded, bFound, lItems, lLists, oReg,
+            oUserObject, iNum, oOwner, oSpell, oRing, oRoom, cSubReagentClass;
 
       oRoom = Send(who,@GetOwner);
       if Send(who,@PlayerIsImmortal)
@@ -809,6 +809,8 @@ messages:
       foreach lReagent in plReagents
       {
          cReagentClass = First(lReagent);
+         oReg = Send(SYS,@FindTemplateItemByClass,#cClass=cReagentClass);
+         cSubReagentClass = Send(oReg,@GetSubstitueReagentClass);
          iNumNeeded = Nth(lReagent,2);
 
          bFound = FALSE;
@@ -821,7 +823,8 @@ messages:
             // Count # of reagent that user has; complain if not enough
             foreach oUserObject in lItems
             {
-               if IsClass(oUserObject,cReagentClass)
+               if (IsClass(oUserObject,cReagentClass)
+                  OR IsClass(oUserObject,cSubReagentClass))
                {
                   if Send(oUserObject,@IsStackable)
                   {
@@ -1484,7 +1487,7 @@ messages:
    "half the exertion, and no reagents."
    {
       local num, iAbility, lReagent, cReagentClass, iLists, lItems,
-            iNumNeeded, oUserObject, oRoom;
+            iNumNeeded, oUserObject, oRoom, oReg, iLeftover;
 
       oRoom = Send(who,@GetOwner);
       if NOT IsClass(who,&User)
@@ -1533,54 +1536,59 @@ messages:
       {
          cReagentClass = First(lReagent);
          iNumNeeded = Nth(lReagent,2);
-         iLists = 1;
-         while iLists <= 3
+
+         iLeftover = Send(self,@PayReagent,#who=who,
+                        #cReagentClass=cReagentClass,#iAmount=iNumNeeded);
+         if iLeftover <> 0
          {
-            if iLists = 1
+            // check if the reg can be substitued
+            oReg = Send(SYS,@FindTemplateItemByClass,#cClass=cReagentClass);
+            cReagentClass = Send(oReg,@GetSubstitueReagentClass);
+
+            if NOT (iLeftover = iNumNeeded)
             {
-               lItems = Send(who,@GetHolderActive);
-            }
-            else if iLists = 2
-            {
-               lItems = Send(who,@GetHolderPassive);
-            }
-            else
-            {
-               lItems = Send(who,@GetReagentBagContents);
+               iNumNeeded = iNumNeeded - iLeftover;
             }
 
-            // Since spell is cast, we can be cavalier about deleting things
-            foreach oUserObject in lItems
-            {
-               if IsClass(oUserObject,cReagentClass)
-               {
-                  if Send(oUserObject,@IsStackable)
-                  {
-                     Send(oUserObject,@SubtractNumber,#number=iNumNeeded);
-                     iNumNeeded = 0;
-
-                     break;
-                  }
-                  else
-                  {
-                     Send(oUserObject,@Delete);
-                     if --iNumNeeded = 0
-                     {
-                        break;
-                     }
-                  }
-               }
-            }
-            if iNumNeeded = 0
-            {
-               // Found all we need.
-               break;
-            }
-            ++iLists;
+            Send(self,@PayReagent,#who=who,
+               #cReagentClass=cReagentClass,#iAmount=iNumNeeded);
          }
       }
 
       return TRUE;
+   }
+
+   PayReagent(who=$,cReagentClass=$,iAmount=0)
+   {
+      local lLists, lItems, oUserObject, iLeftover;
+
+      iLeftover = iAmount;
+      lLists = [Send(who,@GetHolderActive),Send(who,@GetHolderPassive),
+                  Send(who,@GetReagentBagContents)];
+
+      foreach lItems in lLists
+      {
+         foreach oUserObject in lItems
+         {
+            if IsClass(oUserObject,cReagentClass)
+            {
+               if Send(oUserObject,@IsStackable)
+               {
+                  // SubtractNumber will return anything left over
+                  iLeftover = Send(oUserObject,@SubtractNumber,#number=iAmount);
+                  return iLeftover;
+               }
+               else
+               {
+                  Send(oUserObject,@Delete);
+                  iLeftover = 0;
+                  return iLeftover;
+               }
+            }
+         }
+      }
+
+      return iLeftover;
    }
 
    SpellFailed(who=$,iSpellpower=0)

@@ -3813,7 +3813,9 @@ messages:
          iStillGo = TRUE;
 
          // check if this was a 'good' step (=on a path or directly towards)
+         // revenants use STATE_ENGAGE when moving
          if (iState & STATE_MOVE_PATH) OR (iState & STATE_MOVE_DIRECT)
+            OR ((iState & STATE_ENGAGE) AND GetClass(self) = &Revenant)
          {
             // reset badstep counter
             piBadSteps = 0;
@@ -3821,7 +3823,7 @@ messages:
          else
          {
             // increment bad step counter
-            piBadSteps = piBadSteps + 1;
+            ++piBadSteps;
 
             // Unreachable targets are lowered on the hate list.
             if bEngage
@@ -9909,7 +9911,7 @@ messages:
          if (poTarget <> $)
             AND IsClass(poTarget,&User)
          {
-            Send(poTarget,@SubtractFromMonsterChasers,#level=viLevel);
+            Send(poTarget,@SubtractFromMonsterChasers,#level=viLevel,#what=self);
          }
 
          // We have a new target now. If that new target is a User,

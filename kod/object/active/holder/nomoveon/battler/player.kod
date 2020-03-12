@@ -4633,7 +4633,7 @@ messages:
 
       if IsClass(victim,&Monster)
       {
-         /*oSpell = Send(SYS,@FindSpellByNum,#num=SID_TRUCE);
+         oSpell = Send(SYS,@FindSpellByNum,#num=SID_TRUCE);
          if (Send(oRoom,@GetEnchantedState,#what=oSpell) <> $)
          {
             if report
@@ -4642,7 +4642,7 @@ messages:
             }
 
             return FALSE;
-         }*/
+         }
 
          if IsClass(victim,&Reflection)
             OR IsClass(victim,&EvilTwin)
@@ -14384,14 +14384,23 @@ messages:
 
    AddToMonsterChasers(level=0)
    {
-      piMonsterChasers = piMonsterChasers + level;
+      piMonsterChasers += level;
 
       return;
    }
 
-   SubtractFromMonsterChasers(level=0)
+   SubtractFromMonsterChasers(level=0, what = $)
    {
-      piMonsterChasers = piMonsterChasers - level;
+      piMonsterChasers -= level;
+
+      // Catch bug where this can be less than 0, and log it.
+      if (piMonsterChasers < 0)
+      {
+         Debug("ALERT: ", vrName, " got piMonsterChasers < 0. Calling mob was "
+         , what, GetClass(what));
+
+         piMonsterChasers = 0;
+      }
 
       return;
    }

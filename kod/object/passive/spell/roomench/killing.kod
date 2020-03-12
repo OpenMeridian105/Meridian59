@@ -69,7 +69,7 @@ messages:
 
    DoSpellEffects(who = $,iSpellPower = 0)
    {
-      local oRoom;
+      local oRoom, oSpell;
 
       if (IsClass(who,&Room))
       {
@@ -78,6 +78,13 @@ messages:
       else
       {
          oRoom = Send(who,@GetOwner);
+      }
+
+      // Remove any truces
+      oSpell = Send(SYS,@FindSpellByNum,#num=SID_TRUCE);
+      if Send(oRoom,@IsEnchanted,#what=oSpell)
+      {
+         Send(oRoom,@RemoveEnchantment,#what=oSpell);
       }
 
       // Global effects of the enchantment.

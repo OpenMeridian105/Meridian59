@@ -33,6 +33,11 @@ resources:
    truce_guardian = \
       "Your guardian angel tells you, \"You are not ready to cast this spell.\""
    truce_no_towns = "Shal'ille does not permit you to interfere right now."
+   truce_killing_fields = \
+     "The lust to reap the harvest of the killing fields overwhelms you, "
+     "you cannot bring yourself to raise the flag of truce.  Must..."
+     "kill..."
+
    truce_sound = shalille.ogg
 
 classvars:
@@ -64,9 +69,6 @@ classvars:
 
 properties:
 
-   pbAccessible = FALSE
-   pbEnabled = FALSE
-
 messages:
 
    ResetReagents()
@@ -80,7 +82,7 @@ messages:
 
    CanPayCosts(who = $, lTargets = $)
    {
-      local oRoom, i, oActive;
+      local oRoom, i, oActive, oSpell;
 
       oRoom = Send(who,@GetOwner);
 
@@ -113,6 +115,15 @@ messages:
          return FALSE;
       }
 
+      // Cannot truce if killing fields is up
+      oSpell = Send(SYS,@FindSpellByNum,#num=SID_KILLING_FIELDS);
+      if Send(oRoom,@IsEnchanted,#what=oSpell)
+      {
+         Send(who,@MsgSendUser,#message_rsc=truce_killing_fields);
+         
+         return FALSE;
+      }
+
       propagate;
    }
 
@@ -127,7 +138,7 @@ messages:
       Send(oRoom,@SomeoneSaid,#type=SAY_MESSAGE,#string=truce_on,#what=self);
       Send(oRoom,@RoomStartEnchantment,#what=self,#state=[iSpellPower,who],
            #time=Send(self,@GetDuration,#iSpellPower=iSpellPower));
-      Send(oRoom,@SetRoomFlag,#flag=ROOM_NO_MOB_COMBAT,#value=TRUE);
+      Send(oRoom,@SetRoomFlag,#flag=ROOM_NO_COMBAT,#value=TRUE);
 
       return TRUE;
    }
@@ -167,9 +178,9 @@ messages:
       local i;
 
       Send(where,@SomeoneSaid,#type=SAY_MESSAGE,#string=truce_off,#what=self);
-      if Send(where,@CheckRoomFlag,#flag=ROOM_NO_MOB_COMBAT)
+      if Send(where,@CheckRoomFlag,#flag=ROOM_NO_COMBAT)
       {
-         Send(where,@SetRoomFlagtoDefault,#flag=ROOM_NO_MOB_COMBAT);
+         Send(where,@SetRoomFlagtoDefault,#flag=ROOM_NO_COMBAT);
       }
 
       return;

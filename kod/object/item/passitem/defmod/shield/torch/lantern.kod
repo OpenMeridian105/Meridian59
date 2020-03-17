@@ -1,0 +1,126 @@
+// Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+// All rights reserved.
+//
+// This software is distributed under a license that is described in
+// the LICENSE file that accompanies it.
+//
+// Meridian is a registered trademark.
+
+
+////////////////////////////////////////////////////////////////////////////////
+Lantern is Torch
+
+constants:
+
+   include blakston.khd
+
+   LANTERN_LIT_FRAME = 1
+
+resources:
+
+   //include lantern.lkod
+
+   Lantern_name_rsc = "lantern"
+   Lantern_icon_male_rsc = lantern.bgf
+   Lantern_icon_female_rsc = lanternb.bgf
+   Lantern_desc_rsc = \
+      "A mechanical substitue for keen night-eyes.  It was thought keepers of "
+      "these lanterns were guided by its flame, revealing paths that would "
+      "not be visible to the naked eye."
+
+   Lantern_dead_rsc = "This lantern has shattered and burned beyond use."
+
+classvars:
+
+   vrName = Lantern_name_rsc
+   vrIcon = Lantern_icon_male_rsc
+   vrDesc = Lantern_desc_rsc
+
+   vrDead = Lantern_dead_rsc
+
+   viHits_init_min = 200
+   viHits_init_max = 200
+
+   viBulk = 10
+   viWeight = 10
+
+   viValue_average = 90
+
+   viGround_group = 3
+   viBroken_group = 4
+   viInventory_group = 5
+
+   viBaseLightIntensity = 75
+   viTorch_Light = 50
+
+   vbShow_condition = FALSE
+
+properties:
+
+   pbIn_use = FALSE
+   ptBurn = $
+
+   vrShield_overlay = Lantern_icon_male_rsc
+   vrShield_window_overlay = $
+
+messages:
+
+   SendOverlayInformation()
+   {
+      AddPacket(4,Send(self,@GetOverlay));
+      AddPacket(1,Send(self,@GetOverlayHotspot));
+      Send(self,@SendOverlayAnimation);
+      
+      return;
+   }
+
+   // Called by player, for normal 3rd-person overlays on user.
+   GetOverlay(animation = $)
+   {
+      if Send(poOwner,@GetGender) = GENDER_FEMALE
+      {
+         return Lantern_icon_female_rsc;
+      }
+
+      return Lantern_icon_male_rsc;
+   }
+
+   SendLookAnimation()
+   {
+      if piHits > 0
+      {
+         if pbIn_Use
+         {
+            AddPacket(1,ANIMATE_NONE,2,LANTERN_LIT_FRAME);
+         }
+         else
+         {
+            AddPacket(1,ANIMATE_NONE,2,viInventory_group);
+         }
+      }
+      else
+      {
+         AddPacket(1,ANIMATE_NONE,2,viBroken_group);
+      }
+
+      return;
+   }
+
+   GetBaseSpellModifier(oSpell=$)
+   {
+      local iSchool;
+
+      if (oSpell <> $)
+      {
+         iSchool = Send(oSpell,@GetSchool);
+         if (iSchool = SS_FAREN OR iSchool = SS_SHALILLE)
+         {
+            return 5;
+         }
+      }
+
+      return 0;
+   }
+
+end
+////////////////////////////////////////////////////////////////////////////////

@@ -19,8 +19,6 @@ constants:
    // use a torch charge every x milliseconds
    TORCH_CHARGE_RATE = 60000
 
-   TORCH_LIGHT = 40
-
 resources:
 
    include torch.lkod
@@ -42,6 +40,8 @@ classvars:
    vrIcon = torch_icon_rsc
    vrDesc = torch_desc_rsc
 
+   vrDead = torch_dead_rsc
+
    viUse_type = ITEM_USE_HAND
    viUse_amount = 1
 
@@ -58,6 +58,7 @@ classvars:
    viInventory_group = 7
 
    viBaseLightIntensity = 60
+   viTorch_Light = 40
 
 properties:
 
@@ -87,7 +88,7 @@ messages:
       Send(poOwner,@SetFlickerFlag);
       if NOT pbIn_use
       {
-         Send(poOwner,@GainLight,#amount=TORCH_LIGHT);
+         Send(poOwner,@GainLight,#amount=viTorch_Light);
       }
 
       pbIn_use = TRUE;
@@ -108,7 +109,7 @@ messages:
 
       if pbIn_use
       {
-         Send(poOwner,@LoseLight,#amount=TORCH_LIGHT);
+         Send(poOwner,@LoseLight,#amount=viTorch_Light);
       }
 
       pbIn_use = FALSE;
@@ -125,7 +126,7 @@ messages:
             piHits = piHits - 1;
             if piHits = 0
             {
-               Send(poOwner,@MsgSendUser,#message_rsc=torch_dead_rsc);
+               Send(poOwner,@MsgSendUser,#message_rsc=vrDead);
                Post(self,@Delete);
             }
          }
@@ -142,7 +143,7 @@ messages:
       piHits = piHits - 1;
       if piHits = 0
       {
-         Send(poOwner,@MsgSendUser,#message_rsc=torch_dead_rsc);
+         Send(poOwner,@MsgSendUser,#message_rsc=vrDead);
          Send(self,@NewUnused,#what=poOwner);
          Post(self,@Delete);
 
@@ -289,7 +290,7 @@ messages:
 
    GetLightEffect()
    {
-      return TORCH_LIGHT;
+      return viTorch_Light;
    }
 
    ReqRepair()

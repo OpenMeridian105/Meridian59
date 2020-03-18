@@ -4,7 +4,7 @@
 
 !include $(TOPDIR)\common.mak
 
-DEPEND = ..\nomoveon.bof
-BOFS = battler.bof pawnman.bof oblak.bof interactive.bof
+DEPEND = ..\interactive.bof
+BOFS = cookpot.bof plantsoil.bof
 
 !include $(KODDIR)\kod.mak

@@ -1,0 +1,174 @@
+// Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+// All rights reserved.
+//
+// This software is distributed under a license that is described in
+// the LICENSE file that accompanies it.
+//
+// Meridian is a registered trademark.
+
+
+////////////////////////////////////////////////////////////////////////////////
+InteractiveObject is NoMoveOn
+
+constants:
+
+   include blakston.khd
+
+resources:
+
+classvars:
+   viObject_flags = OF_OFFERABLE
+   viCancel_offer_time = 300000
+
+properties:
+   viDefinite = ARTICLE_THE
+   viIndefinite = ARTICLE_A
+
+   plUser_Offers = $ // [[user obj], [offered items], [offer timer]]
+
+messages:
+
+   ReqOffer(what = $, item_list = $)
+   {
+      local obj;
+
+      if item_list = $
+      {
+         return FALSE;
+      }
+
+      // Check for if in the same room.
+      if Send(what,@GetOwner) <> poOwner
+      {
+         Debug("ALERT! ",Send(what,@GetTrueName),what,"offered items to interactive obj",
+               Send(self,@GetTrueName),"from distant RID",
+               Send(Send(what,@GetOwner),@GetRoomNum));
+         
+         return FALSE;
+      }
+
+      foreach obj in item_list
+      {
+         if NOT Send(self,@OfferedWantedItem,#who=what,#oItem=obj)
+         {
+            return FALSE;
+         }
+      }
+
+      return TRUE;
+   }
+
+   Offer(what = $, item_list = $)
+   {
+      local lOfferItems;
+
+      lOfferItems = $;
+      Send(what,@CounterOffer,#item_list=lOfferItems);
+      plUser_Offers = Cons([ what, lOfferItems, CreateTimer(self,@CancelOfferTimer,
+                                             viCancel_offer_time) ], plUser_Offers);
+
+      return;
+   }
+
+   CanAcceptOffer(who=$)
+   {
+      return TRUE;
+   }
+
+   OfferSubtractNumberItems()
+   "filler because some junk in user.kod assumes everyone has this"
+   {
+      return;
+   }
+
+   AcceptOffer(who=$)
+   {
+      local lUser, i, oHolder, lTake_items;
+
+      // set the stuff where the user can get to it
+      oHolder = Send(SYS,@GetSystemHolder2);
+
+      foreach lUser in plUser_Offers
+      {
+         if First(lUser) = who
+         {
+            foreach i in Nth(lUser,2)
+            {
+               Send(oHolder,@NewHold,#what=i);
+            }
+         }
+      }
+
+      // take stuff the user put there
+      oHolder = Send(SYS,@GetSystemHolder1);
+      foreach lTake_items in [ Send(oHolder,@GetHolderActive),
+                           Send(oHolder,@GetHolderPassive) ]
+      {
+         foreach i in lTake_items
+         {
+            Send(self,@NewHold,#what=i);
+         }
+      }
+
+      // kill the cancel offer timer
+      Send(self,@OfferCanceled,#who=who);
+
+      return TRUE;
+   }
+
+   CancelOfferTimer(timer=$)
+   {
+      local lUser, oUser;
+
+      foreach lUser in plUser_Offers
+      {
+         if Nth(lUser,3) = timer
+         {
+            SetNth(lUser,3,$);
+
+            oUser = First(lUser);
+            Send(oUser,@OfferCanceled);
+            Send(self,@OfferCanceled,#who=oUser);
+            break;
+         }
+      }
+
+      return;
+   }
+
+   OfferCanceled(who=$)
+   {
+      local lUser, tTimer;
+
+      foreach lUser in plUser_Offers
+      {
+         if First(lUser) = who
+         {
+            tTimer = Nth(lUser,3);
+            if (tTimer <> $ AND IsTimer(tTimer))
+            {
+               DeleteTimer(tTimer);
+            }
+
+            SetFirst(lUser,$);
+            SetNth(lUser,2,$);
+            SetNth(lUser,3,$);
+
+            plUser_Offers = DelListElem(plUser_Offers, lUser);
+            break;
+         }
+      }
+
+      return;
+   }
+
+   SendLightingInformation()
+   {
+      AddPacket(2,(LIGHT_FLAG_ON | LIGHT_FLAG_DYNAMIC | LIGHT_FLAG_HIGHLIGHT),
+         1,255, 2,LIGHT_BWHITE);
+
+      return;
+   }
+
+end
+////////////////////////////////////////////////////////////////////////////////

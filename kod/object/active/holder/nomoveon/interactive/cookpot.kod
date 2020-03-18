@@ -8,7 +8,7 @@
 
 
 ////////////////////////////////////////////////////////////////////////////////
-CookingPot is NoMoveOn
+CookingPot is InteractiveObject
 
 constants:
 
@@ -30,19 +30,12 @@ resources:
    CookingPot_snd = splearn.ogg
 
 classvars:
+
    vrName = CookingPot_name_rsc
    vrIcon = CookingPot_icon_rsc
    vrDesc = CookingPot_desc_rsc
 
-   viObject_flags = OF_OFFERABLE
-
-   viDefinite = ARTICLE_THE
-   viIndefinite = ARTICLE_A
-
-   viCancel_offer_time = 300000
-
 properties:
-   plChefs = $ // [[player obj], [offered items], [offer timer]]
 
 messages:
 
@@ -121,91 +114,9 @@ messages:
       }
 
       Send(who,@CounterOffer,#item_list=lOfferItems);
-      plChefs = Cons([ who, lOfferItems, CreateTimer(self,@CancelOfferTimer,
-                                             viCancel_offer_time) ], plChefs);
+      plUser_Offers = Cons([ who, lOfferItems, CreateTimer(self,@CancelOfferTimer,
+                                             viCancel_offer_time) ], plUser_Offers);
       return;
-   }
-
-   #region Offer
-   CanAcceptOffer(who=$)
-   {
-      return TRUE;
-   }
-
-   OfferSubtractNumberItems()
-   "filler because some junk in user.kod assumes everyone has this"
-   {
-      return;
-   }
-
-   AcceptOffer(who=$)
-   {
-      local lChef, i, oHolder, lTake_items;
-
-      // set the stuff where the user can get to it
-      oHolder = Send(SYS,@GetSystemHolder2);
-
-      foreach lChef in plChefs
-      {
-         if First(lChef) = who
-         {
-            foreach i in Nth(lChef,2)
-            {
-               Send(oHolder,@NewHold,#what=i);
-            }
-         }
-      }
-
-      // take stuff the user put there
-      oHolder = Send(SYS,@GetSystemHolder1);
-      foreach lTake_items in [ Send(oHolder,@GetHolderActive),
-                           Send(oHolder,@GetHolderPassive) ]
-      {
-         foreach i in lTake_items
-         {
-            Send(self,@NewHold,#what=i);
-         }
-      }
-
-      // kill the cancel offer timer
-      Send(self,@OfferCanceled,#who=who);
-
-      return TRUE;
-   }
-
-   ReqOffer(what = $, item_list = $)
-   {
-      local obj;
-
-      if item_list = $
-      {
-         return FALSE;
-      }
-
-      // Check for if in the same room.
-      if Send(what,@GetOwner) <> poOwner
-      {
-         Debug("ALERT! ",Send(what,@GetTrueName),what,"offered items to cooking pot",
-               Send(self,@GetTrueName),"from distant RID",
-               Send(Send(what,@GetOwner),@GetRoomNum));
-         
-         return FALSE;
-      }     
-
-      foreach obj in item_list
-      {
-
-         // We can only cook foods using other foods or certain reagents
-         if NOT Send(obj,@IsCookingIngredient)
-         {
-            Post(what,@MsgSendUser,#message_rsc=CookingPot_cant_cook,
-                 #parm1=Send(obj,@GetIndef),#parm2=Send(obj,@GetName));
-
-            return FALSE;
-         }
-      }
-
-      return TRUE;
    }
 
    Offer(what = $, item_list = $)
@@ -215,52 +126,18 @@ messages:
       return;
    }
 
-   CancelOfferTimer(timer=$)
+   OfferedWantedItem(who=$, oItem=$)
    {
-      local lChef, oChef;
-
-      foreach lChef in plChefs
+      if Send(oItem,@IsCookingIngredient)
       {
-         if Nth(lChef,3) = timer
-         {
-            SetNth(lChef,3,$);
-
-            oChef = First(lChef);
-            Send(oChef,@OfferCanceled);
-            Send(self,@OfferCanceled,#who=oChef);
-            break;
-         }
+         return TRUE;
       }
 
-      return;
+      Send(who,@MsgSendUser,#message_rsc=CookingPot_cant_cook,
+                 #parm1=Send(oItem,@GetIndef),#parm2=Send(oItem,@GetName));
+
+      return FALSE;
    }
-
-   OfferCanceled(who=$)
-   {
-      local lChef, tTimer;
-
-      foreach lChef in plChefs
-      {
-         if First(lChef) = who
-         {
-            tTimer = Nth(lChef,3);
-            if (tTimer <> $ AND IsTimer(tTimer))
-            {
-               DeleteTimer(tTimer);
-            }
-
-            SetFirst(lChef,$);
-            SetNth(lChef,2,$);
-            SetNth(lChef,3,$);
-
-            plChefs = DelListElem(plChefs, lChef);
-            break;
-         }
-      }
-
-      return;
-   }
-   #endregion
 
 end
 ////////////////////////////////////////////////////////////////////////////////

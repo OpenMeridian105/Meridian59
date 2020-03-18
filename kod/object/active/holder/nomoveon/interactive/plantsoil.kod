@@ -1,0 +1,277 @@
+// Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+// All rights reserved.
+//
+// This software is distributed under a license that is described in
+// the LICENSE file that accompanies it.
+//
+// Meridian is a registered trademark.
+
+
+////////////////////////////////////////////////////////////////////////////////
+PlantSoil is InteractiveObject
+
+constants:
+
+   include blakston.khd
+
+   GROW_REQUIREMENT = 1000
+
+   PHASE_DIRT    = 1
+   PHASE_SPROUT  = 2
+   PHASE_GROWING = 3
+   PHASE_PLANT   = 4
+   PHASE_DEAD    = 5
+
+resources:
+
+   //include plantsoil.lkod
+
+   PlantSoil_icon_1_rsc = plantsoil.bgf
+   PlantSoil_icon_2_rsc = plantpot.bgf
+
+   PlantSoil_name_1_rsc = "rich soil"
+   PlantSoil_desc_1_rsc = \
+      "This nutrient-rich soil contains the perfect circumstances for growing "
+      "a magical plant."
+
+   PlantSoil_name_2_rsc = "windroot sprout"
+   PlantSoil_desc_2_rsc = \
+      "A small sprout emerges from the pile of dirt."
+
+   PlantSoil_name_3_rsc = "windroot buds"
+   PlantSoil_desc_3_rsc = \
+      "This delicate small plant attracts a lot of attention from collectors "
+      "and gardeners.  Tiny bright green leaves grow from its stem."
+
+   PlantSoil_name_4_rsc = "windroot plant"
+   PlantSoil_desc_4_rsc = \
+      "Beautiful yet delicate, the Windroot plant gets its name from the soft "
+      "humming noise it produces from its leaves. The sound also has a functional "
+      "purpose, as it attracts flies, beetles and other insects for pollination."
+
+   PlantSoil_name_5_rsc = "a twig"
+   PlantSoil_desc_5_rsc = \
+      "Remains of a windroot plant."
+
+   PlantSoil_plant_seed = "You plant your windroot seed into the rich soil."
+   plantsoil_plant_snd = "further_quest.ogg"
+
+   plantsoil_harvest = "You pick the leaves off the windroot plant."
+   plantsoil_harvest_snd = "splearn.ogg"
+
+   plantsoil_water = "You pour water over the dirt."
+   plantsoil_water_snd = "Drips.ogg"
+
+   PlantSoil_cant_rsc = "You are not sure how effective %s%s will be for farming."
+   PlantSoil_full_rsc = "There is already a plant growing here."
+   PlantSoil_too_many_rsc = "That might be a bit too much to plant in this small space of soil."
+   PlantSoil_no_water_rsc = "You second-guess your actions and decide to save your water until there are plants in the soil."
+   PlantSoil_no_can_hold = "You can't hold anything more!"
+
+classvars:
+
+properties:
+
+   vrName = PlantSoil_name_1_rsc
+   vrIcon = PlantSoil_icon_1_rsc
+   vrDesc = PlantSoil_desc_1_rsc
+ 
+   viObject_flags = OF_OFFERABLE
+   piPhase = PHASE_DIRT
+   piGrow = 0
+
+messages:
+
+   Constructor(bPotted=FALSE)
+   {
+      if bPotted
+      {
+         vrIcon = PlantSoil_icon_2_rsc;
+      }
+      else 
+      {
+         vrIcon = PlantSoil_icon_1_rsc;
+      }
+
+      propagate;
+   }
+
+   SendAnimation()
+   {
+      AddPacket(1, ANIMATE_NONE, 2, piPhase);
+
+      return;
+   }
+
+   UpdatePlantSoil()
+   {
+      if piPhase = PHASE_PLANT
+      {
+         piPhase = PHASE_DEAD;
+      }
+      else if (piPhase > PHASE_DIRT) AND (piPhase < PHASE_PLANT)
+      {
+         piGrow = piGrow + Send(SETTINGS_OBJECT,@GetPlantGrowFactor);
+         if piGrow >= GROW_REQUIREMENT
+         {
+            piPhase++;
+            piGrow = 0;
+         }
+      }
+      else
+      {
+         piPhase = PHASE_DIRT;
+         piGrow = 0;
+      }
+
+      switch(piPhase)
+      {
+         case PHASE_DIRT:
+            vrName = PlantSoil_name_1_rsc;
+            vrDesc = PlantSoil_desc_1_rsc;
+            viObject_Flags |= OF_OFFERABLE;
+            viObject_Flags &= ~OF_ACTIVATABLE;
+            break;
+
+         case PHASE_SPROUT:
+            vrName = PlantSoil_name_2_rsc;
+            vrDesc = PlantSoil_desc_2_rsc;
+            viObject_Flags |= OF_OFFERABLE;
+            viObject_Flags &= ~OF_ACTIVATABLE;
+            break;
+
+         case PHASE_GROWING:
+            vrName = PlantSoil_name_3_rsc;
+            vrDesc = PlantSoil_desc_3_rsc;
+            viObject_Flags |= OF_OFFERABLE;
+            viObject_Flags &= ~OF_ACTIVATABLE;
+            break;
+
+         case PHASE_PLANT:
+            vrName = PlantSoil_name_4_rsc;
+            vrDesc = PlantSoil_desc_4_rsc;
+            viObject_Flags &= ~OF_OFFERABLE;
+            viObject_Flags |= OF_ACTIVATABLE;
+            break;
+
+         case PHASE_DEAD:
+            vrName = PlantSoil_name_5_rsc;
+            vrDesc = PlantSoil_desc_5_rsc;
+            viObject_Flags &= ~OF_OFFERABLE;
+            viObject_Flags &= ~OF_ACTIVATABLE;
+            break;
+      }
+
+      Send(poOwner,@SomethingChanged,#what=self);
+      return;
+   }
+
+   NewGameHour(iHour=0)
+   {
+      if poOwner = $
+      {
+         return;
+      }
+
+      if NOT ((piPhase = PHASE_DIRT) OR (piPhase = PHASE_PLANT))
+      {
+         Send(self,@UpdatePlantSoil);
+         return TRUE;
+      }
+
+      return;
+   }
+
+   AcceptOffer(who = $)
+   {
+      if piPhase = PHASE_DIRT
+      {
+         // planting a seed
+         piPhase++;
+         Send(self,@UpdatePlantSoil);
+         Send(who,@MsgSendUser,#message_rsc=plantsoil_plant_seed);
+         Send(poOwner,@SomethingWaveRoom,#what=self,#wave_rsc=plantsoil_plant_snd);
+      }
+      else
+      {
+         // watering plants, (this is more for roleplay - doesn't actually do much)
+         piGrow++;
+         Send(who,@MsgSendUser,#message_rsc=plantsoil_water);
+         Send(poOwner,@SomethingWaveRoom,#what=self,#wave_rsc=plantsoil_water_snd);
+      }
+
+      propagate;
+   }
+
+   OfferedWantedItem(who=$, oItem=$)
+   {
+      if piPhase = PHASE_DIRT
+      {
+         if (IsClass(oItem,&WindrootSeed))
+         {
+            if Send(oItem,@GetNumber) > 1
+            {
+                // Offering too many seeds
+                Send(who,@MsgSendUser,#message_rsc=PlantSoil_too_many_rsc,
+                #parm1=Send(oItem,@GetIndef),#parm2=Send(oItem,@GetName));
+                return FALSE;
+            }
+
+            return TRUE;
+         }
+
+         // no water is needed on dirt
+         if (IsClass(oItem,&Waterskin))
+         {
+            Send(who,@MsgSendUser,#message_rsc=PlantSoil_no_water_rsc,
+            #parm1=Send(oItem,@GetIndef),#parm2=Send(oItem,@GetName));
+
+            return FALSE;
+         }
+      }
+      else if (IsClass(oItem,&Waterskin))
+      {
+         return TRUE;
+      }
+      else if (IsClass(oItem,&WindrootSeed))
+      {
+         // Offering seed to sprouted dirt, tell them it's full
+         Send(who,@MsgSendUser,#message_rsc=PlantSoil_full_rsc,
+            #parm1=Send(oItem,@GetIndef),#parm2=Send(oItem,@GetName));
+         return FALSE;
+      }
+
+      // Generic fail message for anything not seed or water skin.
+      Send(who,@MsgSendUser,#message_rsc=PlantSoil_cant_rsc,
+            #parm1=Send(oItem,@GetIndef),#parm2=Send(oItem,@GetName));
+
+      return FALSE;
+   }
+
+   TryActivate(who=$)
+   {
+      local oItem;
+
+      if IsClass(who,&User)
+         AND poOwner = Send(who,@GetOwner)
+      {
+         oItem = Create(&WindrootLeaf);
+         if Send(who,@ReqNewHold,#what=oItem)
+         {
+            Send(who,@NewHold,#what=oItem);
+            Send(who,@MsgSendUser,#message_rsc=plantsoil_harvest);
+            Send(poOwner,@SomethingWaveRoom,#what=self,#wave_rsc=plantsoil_harvest_snd);
+            Send(self,@UpdatePlantSoil);
+         }
+         else
+         {
+            Send(who,@MsgSendUser,#message_rsc=PlantSoil_no_can_hold);
+            return TRUE;
+         }
+      }
+
+      return TRUE;
+   }
+
+end
+////////////////////////////////////////////////////////////////////////////////

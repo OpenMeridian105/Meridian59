@@ -11601,6 +11601,15 @@ messages:
          return;
       }
 
+      // If we have an active follower, let them know.
+      if (poMercenary <> $)
+         AND NOT IsTimer(poMercenary)
+         AND IsClass(poMercenary,&Follower)
+         AND (Send(poMercenary,@GetOwner) = poOwner)
+      {
+         Send(poMercenary,@BriefLeader,#template=template,#node=node);
+      }
+
       // See if we need to change the quest node.
       // QuestEngine prevents duplicate quests.
       foreach i in plActiveQuests
@@ -11685,6 +11694,52 @@ messages:
       }
 
       return $;
+   }
+
+   HasQuest(index=$)
+   {
+      local i;
+
+      foreach i in plActiveQuests
+      {
+         if First(i) = index
+         {
+            return TRUE;
+         }
+      }
+
+      return FALSE;
+   }
+
+   HasQuestNode(index=$)
+   {
+      local i;
+
+      foreach i in plActiveQuests
+      {
+         if Send(Nth(i,2),@GetQuestNodeTemplateIndex) = index
+         {
+            return TRUE;
+         }
+      }
+
+      return FALSE;
+   }
+
+   HasCompletedQuest(index=$)
+   {
+      local i;
+
+      foreach i in plQuestHistory
+      {
+         if (First(i) & QUEST_HISTORY_MASK) = index
+            AND (First(i) & QUEST_HISTORY_SUCCESS)
+         {
+            return TRUE;
+         }
+      }
+
+      return FALSE;
    }
 
    ResignFaction()
@@ -12595,6 +12650,11 @@ messages:
    {
       piLastServerTeleport = GetTickCount();
       return;
+   }
+
+   GetActiveQuests()
+   {
+      return plActiveQuests;
    }
 
 end

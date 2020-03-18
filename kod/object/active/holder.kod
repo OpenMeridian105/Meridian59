@@ -202,7 +202,7 @@ messages:
    }
 
    CountHoldingHowMany(class = $)
-   "Does not count quantity in a numbitem (500 apples counts as 1)"
+   "Counts stack size if applicable."
    {
       local n, i, each_obj;
 
@@ -227,7 +227,14 @@ messages:
          each_obj = Send(self,@HolderExtractObject,#data=i);
          if IsClass(each_obj, class)
          {
-            ++n;
+            if IsClass(each_obj,&NumberItem)
+            {
+               n += Send(each_obj,@GetNumber);
+            }
+            else
+            {
+               ++n;
+            }
          }
       }
 

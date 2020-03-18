@@ -995,7 +995,7 @@ messages:
    
    CompletionCriteriaMet()
    {
-      local lQuesters, oQuester, oQuestEngine, lPrize, lPenalty, sSay;
+      local lQuesters, oQuester, oQuestEngine, lPrize, lPenalty, sSay, oMercenary;
 
       lQuesters = Send(poQuest,@GetQuesters);
 
@@ -1052,6 +1052,13 @@ messages:
             Send(oQuester,@AddQuestHistory,
                  #index=Send(poQuest,@GetQuestTemplateIndex),
                  #success=TRUE);
+
+            oMercenary = Send(oQuester,@GetMercenary);
+
+            if (oMercenary <> $) AND IsClass(oMercenary,&Follower)
+            {
+               Send(oMercenary,@QuestFinished);
+            }
          }
       }
 

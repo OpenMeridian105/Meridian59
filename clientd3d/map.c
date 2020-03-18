@@ -23,31 +23,35 @@
 #define MAP_PLAYER_THICKNESS 4
 #define MAP_OBJECT_THICKNESS 2
 #define MAP_BOSS_THICKNESS 3
+#define MAP_MERCENARY_THICKNESS 2
+#define MAP_MERCENARY_AGGRO_THICKNESS 5
 #define MAP_AGGRO_SELF_THICKNESS 5
 #define MAP_AGGRO_OTHER_THICKNESS 4
 #define MAP_BOSS_AGGRO_SELF_THICKNESS 6
 #define MAP_BOSS_AGGRO_OTHER_THICKNESS 5
 
-#define MAP_WALL_COLOR          PALETTERGB(0, 0, 0)
-#define MAP_PLAYER_COLOR        PALETTERGB(0, 0, 255)
-#define MAP_PLAYER_FRONT_COLOR  PALETTERGB(0, 0, 0)      // Pixel at front of player
-#define MAP_OBJECT_COLOR        PALETTERGB(255, 0, 0)    // Red
-#define MAP_MINION_COLOR        PALETTERGB(0,200,0)      // Green
-#define MAP_MINION_OTH_COLOR    PALETTERGB(70,5,130)     // Purple
-#define MAP_FRIEND_COLOR        PALETTERGB(0, 255, 120)  // Green with blue tint
-#define MAP_ENEMY_COLOR         PALETTERGB(255, 0, 0)    // Red
-#define MAP_AGGRO_SELF_COLOR    PALETTERGB(0,0,0)        // Black
-#define MAP_AGGRO_OTHER_COLOR   PALETTERGB(255,255,255)  // White
-#define MAP_MERCENARY_COLOR     PALETTERGB(255, 169, 27) // Gold
-#define MAP_GUILDMATE_COLOR     PALETTERGB(255, 255, 0)  // Yellow
-#define MAP_BUILDGRP_COLOR      PALETTERGB(0, 255, 0)    // Bright Green
-#define MAP_COLOR_NOPVP         PALETTERGB(255,255,255)  // White
-#define MAP_NPC_COLOR           PALETTERGB(0, 0, 0)      // Black
-#define MAP_TEMPSAFE_COLOR      PALETTERGB(0,170,255)    // Cyan
-#define MAP_MINIBOSS_COLOR      PALETTERGB(160, 66, 194) // Purple
-#define MAP_BOSS_COLOR          PALETTERGB(127, 0, 0)    // Dark Red
-#define MAP_RARE_ITEM_COLOR     PALETTERGB(237, 255, 9)  // Orange
-#define MAP_MOB_QUEST_COLOR     PALETTERGB(179,0,179)    // Brighter purple
+#define MAP_WALL_COLOR              PALETTERGB(0, 0, 0)
+#define MAP_PLAYER_COLOR            PALETTERGB(0, 0, 255)
+#define MAP_PLAYER_FRONT_COLOR      PALETTERGB(0, 0, 0)      // Pixel at front of player
+#define MAP_OBJECT_COLOR            PALETTERGB(255, 0, 0)    // Red
+#define MAP_MINION_COLOR            PALETTERGB(0,200,0)      // Green
+#define MAP_MINION_OTH_COLOR        PALETTERGB(70,5,130)     // Purple
+#define MAP_FRIEND_COLOR            PALETTERGB(0, 255, 120)  // Green with blue tint
+#define MAP_ENEMY_COLOR             PALETTERGB(255, 0, 0)    // Red
+#define MAP_AGGRO_SELF_COLOR        PALETTERGB(0,0,0)        // Black
+#define MAP_AGGRO_OTHER_COLOR       PALETTERGB(255,255,255)  // White
+#define MAP_MERCENARY_COLOR         PALETTERGB(224,180,148)  // Gold
+#define MAP_MERCENARY_BG_COLOR      PALETTERGB(185,122, 81)  // Dark Gold
+#define MAP_MERCENARY_AGGRO_COLOR   PALETTERGB(123,70,38)    // Dark Brown
+#define MAP_GUILDMATE_COLOR         PALETTERGB(255, 255, 0)  // Yellow
+#define MAP_BUILDGRP_COLOR          PALETTERGB(0, 255, 0)    // Bright Green
+#define MAP_COLOR_NOPVP             PALETTERGB(255,255,255)  // White
+#define MAP_NPC_COLOR               PALETTERGB(0, 0, 0)      // Black
+#define MAP_TEMPSAFE_COLOR          PALETTERGB(0,170,255)    // Cyan
+#define MAP_MINIBOSS_COLOR          PALETTERGB(160, 66, 194) // Purple
+#define MAP_BOSS_COLOR              PALETTERGB(127, 0, 0)    // Dark Red
+#define MAP_RARE_ITEM_COLOR         PALETTERGB(237, 255, 9)  // Orange
+#define MAP_MOB_QUEST_COLOR         PALETTERGB(179,0,179)    // Brighter purple
 
 #define MAP_OBJECT_RADIUS (FINENESS / 4)  // Radius of circle drawn for an object
 
@@ -60,12 +64,13 @@
 
 static HBRUSH hObjectBrush, hPlayerBrush, hNullBrush, hMinionBrush, hNoPVPBrush,
               hMinionOtherBrush, hNpcBrush, hTempsafeBrush, hItemBrush, hAggroSelfBrush,
-              hAggroOtherBrush, hMercenaryBrush, hMobQuestBrush;
+              hAggroOtherBrush, hMobQuestBrush, hMercenaryBrush, hMercenaryBgBrush,
+              hMercenaryAggroBrush;
 static HPEN hWallPen, hPlayerPen, hObjectPen, hMinionPen, hMinionOtherPen,
             hMinibossPen, hBossPen, hItemPen, hFriendPen, hEnemyPen, hAggroSelfPen,
             hGuildmatePen, hBuilderPen, hNpcPen, hTempsafePen, hAggroOtherPen,
             hNoPVPPen, hBossAggroSelfPen, hBossAggroOtherPen, hMercenaryPen,
-            hMobQuestPen;
+            hMercenaryBgPen, hMercenaryAggroPen, hMobQuestPen;
 
 static float zoom;              // Factor to zoom in on map
 
@@ -157,7 +162,9 @@ void MapInitialize(void)
    hEnemyPen = CreatePen(PS_SOLID, MAP_PLAYER_THICKNESS, MAP_ENEMY_COLOR);
    hAggroSelfPen = CreatePen(PS_SOLID, MAP_AGGRO_SELF_THICKNESS, MAP_AGGRO_SELF_COLOR);
    hAggroOtherPen = CreatePen(PS_SOLID, MAP_AGGRO_OTHER_THICKNESS, MAP_AGGRO_OTHER_COLOR);
-   hMercenaryPen = CreatePen(PS_SOLID, MAP_OBJECT_THICKNESS, MAP_MERCENARY_COLOR);
+   hMercenaryPen = CreatePen(PS_SOLID, MAP_MERCENARY_THICKNESS, MAP_MERCENARY_COLOR);
+   hMercenaryBgPen = CreatePen(PS_SOLID, MAP_MERCENARY_THICKNESS, MAP_MERCENARY_BG_COLOR);
+   hMercenaryAggroPen = CreatePen(PS_SOLID, MAP_MERCENARY_AGGRO_THICKNESS, MAP_MERCENARY_AGGRO_COLOR);
    hBossAggroSelfPen = CreatePen(PS_SOLID, MAP_BOSS_AGGRO_SELF_THICKNESS, MAP_AGGRO_SELF_COLOR);
    hBossAggroOtherPen = CreatePen(PS_SOLID, MAP_BOSS_AGGRO_OTHER_THICKNESS, MAP_AGGRO_OTHER_COLOR);
    hGuildmatePen = CreatePen(PS_SOLID, MAP_PLAYER_THICKNESS, MAP_GUILDMATE_COLOR);
@@ -179,6 +186,8 @@ void MapInitialize(void)
    hAggroSelfBrush = CreateSolidBrush(MAP_AGGRO_SELF_COLOR);
    hAggroOtherBrush = CreateSolidBrush(MAP_AGGRO_OTHER_COLOR);
    hMercenaryBrush = CreateSolidBrush(MAP_MERCENARY_COLOR);
+   hMercenaryBgBrush = CreateSolidBrush(MAP_MERCENARY_BG_COLOR);
+   hMercenaryAggroBrush = CreateSolidBrush(MAP_MERCENARY_AGGRO_COLOR);
    hPlayerBrush = CreateSolidBrush(MAP_PLAYER_COLOR);
    hTempsafeBrush = CreateSolidBrush(MAP_TEMPSAFE_COLOR);
    hNoPVPBrush = CreateSolidBrush(MAP_COLOR_NOPVP);
@@ -215,6 +224,8 @@ void MapClose(void)
    DeleteObject(hAggroSelfPen);
    DeleteObject(hAggroOtherPen);
    DeleteObject(hMercenaryPen);
+   DeleteObject(hMercenaryBgPen);
+   DeleteObject(hMercenaryAggroPen);
    DeleteObject(hBossAggroSelfPen);
    DeleteObject(hBossAggroOtherPen);
    DeleteObject(hGuildmatePen);
@@ -241,6 +252,8 @@ void MapClose(void)
    DeleteObject(hMercenaryBrush);
    DeleteObject(hMobQuestPen);
    DeleteObject(hMobQuestBrush);
+   DeleteObject(hMercenaryBgBrush);
+   DeleteObject(hMercenaryAggroBrush);
 
    if (pMapWalls)
       SafeFree(pMapWalls);
@@ -535,7 +548,16 @@ void MapDrawObjects(HDC hdc, list_type objects, int x, int y, float scale)
          if (r->obj.minimapflags & MM_AGGRO_SELF)
             DrawMinimapDot(hdc, hAggroSelfPen, hAggroSelfBrush, radius, new_x, new_y);
          else if (r->obj.minimapflags & MM_AGGRO_OTHER)
-            DrawMinimapDot(hdc, hAggroOtherPen, hAggroOtherBrush, radius, new_x, new_y);
+         {
+            if (r->obj.minimapflags & MM_MERCENARY)
+               DrawMinimapDot(hdc, hMercenaryAggroPen, hMercenaryAggroBrush, radius * 1.5f, new_x, new_y);
+            else
+               DrawMinimapDot(hdc, hAggroOtherPen, hAggroOtherBrush, radius, new_x, new_y);
+         }
+
+         // Draw a faint outline around our mercenary for contrast.
+         if (r->obj.minimapflags & MM_MERCENARY)
+            DrawMinimapDot(hdc, hMercenaryBgPen, hMercenaryBgBrush, radius * 1.5f, new_x, new_y);
 
          // Draw a mercenary dot if the mob is our mercenary, otherwise draw a regular red dot.
          if (r->obj.minimapflags & MM_MERCENARY)

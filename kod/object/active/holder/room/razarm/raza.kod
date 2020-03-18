@@ -39,12 +39,7 @@ resources:
       "you can use the + and - keys to zoom in/out.  Other players will show "
       "up as blue dots, monsters as red dots, and NPCs as black dots.  "
       "You can add comments to the map by RIGHT CLICKING on the map, and then "
-      "entering your reminder to yourself.\n\n"
-      "-------------------\n\n"
-      "After you experiment a bit, you should head towards the blacksmith's "
-      "shop, which is housed in the south wing of the stone building at the "
-      "east end of the pond. The shop has the hammer and anvil sign next to "
-      "the door."
+      "entering your reminder to yourself."
 
    raza_signname2 = "Entering the world"
    raza_sign2 = \
@@ -72,6 +67,15 @@ resources:
    raza_locked_tavern = \
       "The door to Eric D'Jorn's living quarters is locked."
 
+   raza_info = \
+      "The town of Raza offers almost everything a fresh adventurer could "
+      "possibly wish for.  Equipment, capable trainers and - of course - "
+      "quests!  Take your time and look around for yourself.  I'll tell you "
+      "a bit more about the town as we walk around."
+      "\n~I[Hint: Interact with NPCs and objects with a right click.  "
+      "In Ogre, target the NPC or object with a left click instead, then "
+      "use the symbols in the target window to interact.]~I"
+
 classvars:
 
    vrName = room_name_raza
@@ -87,6 +91,11 @@ classvars:
    viFlag_col = 6
 
    vrWading_Sound = raza_wading_sound
+
+   vrInfo = raza_info
+
+   // Tutorial messages are only displayed once unless asked about.
+   viInfo_time = FALSE
 
 properties:
 
@@ -349,6 +358,27 @@ messages:
 
    AvailableTombstone()
    {
+      return;
+   }
+
+   // Excluding the inn.
+   GetMercenaryInfoObject(who=$)
+   {
+      local iRow, iCol, i;
+
+      iRow = Send(who,@GetRow);
+      iCol = Send(who,@GetCol);
+
+      foreach i in plExits
+      {
+         if (Nth(i,3) <> RID_RAZA_INN)
+            AND (Abs(iRow - First(i)) < 3)
+            AND (Abs(iCol - Nth(i,2)) < 3)
+         {
+            return Send(SYS,@FindRoomByNum,#num=Nth(i,3));
+         }
+      }
+
       return;
    }
 

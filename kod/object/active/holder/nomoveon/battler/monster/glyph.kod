@@ -1,0 +1,132 @@
+// Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+// All rights reserved.
+//
+// This software is distributed under a license that is described in
+// the LICENSE file that accompanies it.
+//
+// Meridian is a registered trademark.
+
+
+////////////////////////////////////////////////////////////////////////////////
+DesertGlyph is Monster
+
+constants:
+
+   include blakston.khd
+
+resources:
+
+   //include glyph.lkod
+
+   DesertGlyph_name_rsc = "stone glyph"
+   DesertGlyph_icon_rsc = blank.bgf
+   DesertGlyph_desc_rsc = \
+      "You are not sure what you are staring at."
+
+   DesertGlyph_dead_name_rsc = "glyph ruins"
+   DesertGlyph_dead_icon_rsc = blank.bgf
+
+   DesertGlyph_sound_hit = elem_atkh.ogg
+   DesertGlyph_sound_miss = elem_atkm.ogg
+   DesertGlyph_sound_death = elem_dth.ogg
+
+classvars:
+
+   vrName = DesertGlyph_name_rsc
+   vrIcon = DesertGlyph_icon_rsc
+   vrDesc = DesertGlyph_desc_rsc
+
+   vrDead_name = DesertGlyph_dead_name_rsc
+   vrDead_icon = DesertGlyph_dead_icon_rsc
+
+   vrSound_hit = DesertGlyph_sound_hit
+   vrSound_miss = DesertGlyph_sound_miss
+   vrSound_death = DesertGlyph_sound_death
+
+   viSpell_type = SPL_TYPE_QUAKE
+   viAttributes = MOB_NOMOVE | MOB_NOQUEST
+   viDefault_behavior = AI_NOMOVE | AI_FIGHT_SINGLEMINDED
+   viLevel = 200
+   viDifficulty = 0
+   viKarma = 0
+   viCashmin = 0
+   viCashmax = 0
+
+   viMeleePriority = 0
+   viMovePriority = 0
+   viVisionDistance = 255
+   viNightVision = 255
+
+   viTreasure_type = TID_NONE
+
+   viTheurgicRemnant_min = 5
+   viTheurgicRemnant_max = 8
+
+properties:
+
+   pbDontDispose = TRUE
+   piMax_mana = 100
+
+messages:
+
+   Constructed()
+   {
+      plResistances = [ [-SPL_TYPE_COLD, 90],
+                        [-SPL_TYPE_SHOCK, 90],
+                        [-SPL_TYPE_FIRE, 90],
+                        [ATK_TYPE_THRUST, 90],
+                        [ATK_TYPE_SLASH, 90],
+                        [ATK_TYPE_PIERCE, 90],
+                        [ATK_TYPE_BLUDGEON, -50]
+                     ];
+
+      plActions =  [ [SID_FIREBALL,0,0,147456,500,0,99,COMBAT_ACTION_HARM],
+                     [SID_METEOR,10,0,147456,500,0,99,COMBAT_ACTION_HARM],
+                     [SID_FLAME_WAVE,5,0,147456,500,0,25,COMBAT_ACTION_HARM],
+                     [SID_RING_OF_FLAMES,0,0,16384,700,1000,1,COMBAT_ACTION_HARM] ];
+
+      propagate;
+   }
+
+   NewOwner(what=$)
+   {
+      // This should never happen, but if it does...
+      if what <> $
+         AND NOT (IsClass(what,&DValley2) 
+            OR IsClass(what,&DValley4))
+      {
+         Debug("Tried to create glyph outside of death valley.");
+         Send(self,@Delete);
+      }
+
+      propagate;
+   }
+
+   CreateTreasure(who=$,corpse=$)
+   {
+      local iNum, oLoot;
+
+      if poOwner <> $
+      {
+         iNum = Random(viTheurgicRemnant_min,viTheurgicRemnant_max);
+         oLoot = Create(&TheurgicRemnant,#number=iNum,#corpse=corpse);
+         Send(poOwner,@NewHold,#what=oLoot,
+               #new_row=piRow,#new_col=piCol,
+               #fine_row=piFine_row,#fine_col=piFine_col);
+      }
+
+      propagate;
+   }
+
+   IsArenaMonster()
+   {
+      return FALSE;
+   }
+
+   IsExpansionMonster()
+   {
+      return TRUE;
+   }
+
+end
+////////////////////////////////////////////////////////////////////////////////

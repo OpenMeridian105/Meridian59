@@ -14,6 +14,10 @@ constants:
 
    include blakston.khd
 
+   SEC_GLYPH_A = 11
+   SEC_GLYPH_B = 12
+   SEC_GLYPH_C = 13
+
 resources:
 
    include dvalley4.lkod
@@ -21,6 +25,11 @@ resources:
    room_dvalley4 = dvalley4.roo
    room_name_dvalley4 = "A Parched and Barren Stretch of Land"
    dvalley4_music = dvalley.ogg
+
+   dvalley4_glyth_killed = \
+      "~rThe stone glyph echoes, \"...it was promised that they would turn pain "
+      "into delight, war into victory, and even death into life...They had "
+      "answered all those wishes but at what cost?...Beware the Vitkhul...~k\""
 
 classvars:
 
@@ -32,6 +41,8 @@ classvars:
 
    viWeatherZone = WEATHER_ZONE_DVALLEY
 
+   viGlyph_RespawnTime = 3600000
+
 properties:
 
    prRoom = room_dvalley4
@@ -42,12 +53,17 @@ properties:
    piDirectional_percent = DIRECTIONAL_PERCENT_OUTDOORS
 
    piGen_percent = 100
-   piInit_count_min = 2
-   piInit_count_max = 3
-   piMonster_count_max = 6
+   piInit_count_min = 3
+   piInit_count_max = 4
+   piMonster_count_max = 3
    
    pbSnowGroundTexture = FALSE
    pbWeatherEffects = FALSE
+
+   poGlyph = $
+   ptGlyph_respawn = $
+
+   piTrainingPointsReward = 20
 
 messages:
 
@@ -63,7 +79,7 @@ messages:
 
    Constructed()
    {
-      plMonsters = [ [&Minotaur, 100] ];
+      plMonsters = [ [&DaemonSkeleton, 60], [&Minotaur, 40]  ];
 
       // Use Random Spawn
       // plGenerators = [ [21, 12], [17, 22], [10, 21] ];
@@ -84,14 +100,15 @@ messages:
            #new_row=13,#new_col=22,#fine_row=16,#fine_col=32,#angle=ANGLE_EAST);
       Send(self,@NewHold,#what=Create(&OrnamentalObject,#type=OO_HALFSKULL),
            #new_row=19,#new_col=29,#fine_row=48,#fine_col=48,#angle=ANGLE_EAST);
-   
-      Send(self,@NewHold,#what=Create(&OrnamentalObject,#type=OO_HALFSKULL),
-           #new_row=8,#new_col=22,#fine_row=32,#fine_col=32,#angle=ANGLE_EAST);
 
       Send(self,@NewHold,#what=Create(&SmokeColumn),
             #new_row=8,#new_col=13,#fine_row=38,#fine_col=35);
       Send(self,@NewHold,#what=Create(&SmokeColumn),
             #new_row=20,#new_col=9,#fine_row=33,#fine_col=1);
+
+      poGlyph = Create(&DesertGlyph);
+      Send(self,@NewHold,#what=poGlyph,
+            #new_row=9,#new_col=22,#fine_row=40,#fine_col=40,#new_angle=ANGLE_SOUTH);
 
       propagate;
    }
@@ -137,6 +154,107 @@ messages:
              #iSpellPower=99, #iPowerLevel=100, #report=FALSE);
 
       return;
+   }
+
+   GlyphRespawnTimer()
+   {
+      local i, bFound;
+
+      ptGlyph_respawn = $;
+
+      bFound = FALSE;
+      foreach i in plActive
+      {
+         if IsClass(First(i),&DesertGlyph)
+         {
+            bFound = TRUE;
+
+            break;
+         }
+      }
+
+      if NOT bFound
+      {
+         Send(self,@RaiseGlyph);
+         poGlyph = Create(&DesertGlyph);
+         Send(self,@NewHold,#what=poGlyph,#new_row=9,#new_col=22,
+            #fine_row=40,#fine_col=40,#new_angle=ANGLE_SOUTH);
+      }
+
+      ptGlyph_respawn = CreateTimer(self,@GlyphRespawnTimer,viGlyph_RespawnTime);
+
+      return;
+   }
+
+   SomethingKilled(what=$,victim=$)
+   {
+      local oDValley4;
+
+      if IsClass(victim,&DesertGlyph)
+      {
+         Send(self,@LowerGlyph);
+
+         if IsClass(what,&User)
+         {
+            Send(what,@MsgSendUser,#message_rsc=dvalley4_glyth_killed);
+         }
+
+         oDValley4 = Send(SYS,@FindRoomByNum,#num=RID_DVALLEY_4);
+         if ((Send(oDValley4,@GetGlyph) = $)
+            AND IsClass(what,&User))
+         {
+            Send(what,@AddTrainingPoints,#points=piTrainingPointsReward,#report=TRUE);
+         }
+      }
+
+      propagate;
+   }
+
+   LowerGlyph()
+   {
+      poGlyph = $;
+      Send(self,@Rumble);
+      Send(self,@SetSector,#sector=SEC_GLYPH_A,
+            #animation=ANIMATE_FLOOR_LIFT,#height=730,#speed=30);
+      Send(self,@SetSector,#sector=SEC_GLYPH_B,
+            #animation=ANIMATE_FLOOR_LIFT,#height=730,#speed=30);
+      Send(self,@SetSector,#sector=SEC_GLYPH_C,
+            #animation=ANIMATE_FLOOR_LIFT,#height=730,#speed=30);
+
+      Send(self,@GlyphRespawnTimer);
+
+      return;
+   }
+
+   RaiseGlyph()
+   {
+      Send(self,@Rumble);
+      Send(self,@SetSector,#sector=SEC_GLYPH_A,
+            #animation=ANIMATE_FLOOR_LIFT,#height=850,#speed=30);
+      Send(self,@SetSector,#sector=SEC_GLYPH_B,
+            #animation=ANIMATE_FLOOR_LIFT,#height=760,#speed=30);
+      Send(self,@SetSector,#sector=SEC_GLYPH_C,
+            #animation=ANIMATE_FLOOR_LIFT,#height=780,#speed=30);
+
+      return;
+   }
+
+   Delete()
+   {
+      poGlyph = $;
+
+      if ptGlyph_respawn <> $
+      {
+         DeleteTimer(ptGlyph_respawn);
+         ptGlyph_respawn = $;
+      }
+
+      propagate;
+   }
+
+   GetGlyph()
+   {
+      return poGlyph;
    }
 
    SeanceCheck()

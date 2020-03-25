@@ -10,6 +10,7 @@ BOFS = inkycap.bof snack.bof watrskin.bof meatpie.bof apple.bof \
        grapes.bof ftncooky.bof soup.bof goblet.bof gobletst.bof stew.bof \
        gobletwn.bof kocmug.bof cheese.bof mint.bof turkyleg.bof chaosfood.bof \
        cookie.bof pear.bof orange.bof telofruit.bof truffle.bof boonberry.bof \
-       kebab.bof fruitbowl.bof pancake.bof moonshine.bof
+       kebab.bof fruitbowl.bof pancake.bof moonshine.bof pepper.bof sushi.bof \
+       pretzel.bof
 
 !include $(KODDIR)\kod.mak

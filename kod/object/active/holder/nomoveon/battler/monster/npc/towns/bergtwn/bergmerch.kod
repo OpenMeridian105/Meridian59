@@ -14,6 +14,15 @@ constants:
 
    include blakston.khd
 
+   // How many items do we hold at the start?
+   NUMBER_STARTING_ITEMS = 5
+
+   // What's the maximum items we'll hold?
+   MAX_FORSALE = 5
+
+   //  Base is about 2 hours (in seconds).
+   INVENTORY_DELAY = 2 * 60 * 60
+
 resources:
 
    include bergmerch.lkod
@@ -31,35 +40,317 @@ resources:
       "Welcome to my modest herb shop. Visit also the inn of my brother Bastiane "
       "afterwards and rest there."
 
+   BergMerchant_AlreadyHaveOne_rsc = \
+      "Can't you see, I already have one."
+   BergMerchant_Full_rsc = "You moron, I cannot carry no more."
+   BergMerchant_Not_Interested = "As if I'm interested."
+
+   BergMerchant_too_many_rsc = \
+      "Can't you see, I already have so many."
+
+   BergMerchant_sold_rsc = "I'll see you again."
+
 classvars:
 
    vrName = bergmerchant_name_rsc
    vrIcon = bergmerchant_icon_rsc
    vrDesc = bergmerchant_desc_rsc
    viAttributes = \
-      MOB_NOFIGHT | MOB_SELLER | MOB_BUYER | MOB_NOMOVE | MOB_NOQUEST \
-      | MOB_RANDOM | MOB_LISTEN | MOB_COND_SELLER
+      MOB_NOFIGHT | MOB_RANDOM | MOB_LISTEN \
+      | MOB_NOMOVE | MOB_BUYER | MOB_SELLER | MOB_NOQUEST
    viOccupation = MOB_ROLE_MERCHANT
    viMerchant_markup = MERCHANT_RIPOFF
    viGender = GENDER_FEMALE
 
+   // We sell what other people have given us
+   vbSellFromInventory = TRUE
+
 properties:
+
+   ptNew_Inventory = $
 
 messages:
 
+   Constructor()
+   {
+      local iInventoryTime;
+
+      iInventoryTime = (INVENTORY_DELAY * Random(90,110)) / 100;
+      // Convert to ms.
+      iInventoryTime = iInventoryTime * 1000;
+      ptNew_Inventory = CreateTimer(self,@AddNewInventoryToSell,iInventoryTime);
+
+      propagate;
+   }
+
+   Delete()
+   {
+      if ptNew_Inventory <> $
+      {
+         DeleteTimer(ptNew_Inventory);
+         ptNew_Inventory = $;
+      }
+
+      propagate;
+   }
+
+   AddNewInventoryToSell()
+   {
+      local oInventory, lForSale, i, bDuplicate, iInventoryTime;
+
+      ptNew_Inventory = $;
+
+      lForSale = First(plFor_sale);
+
+      if Length(lForSale) < MAX_FORSALE
+      {
+         oInventory = Send(self,@PickInventory);
+         bDuplicate = FALSE;
+
+         foreach i in lForSale
+         {
+            if Send(i,@GetName) = Send(oInventory,@Getname)
+            {
+               bDuplicate = TRUE;
+               Send(oInventory,@Delete);
+
+               break;
+            }
+         }
+
+         if NOT bDuplicate
+         {
+            lForSale = Cons(oInventory,lForSale);
+            SetNth(plFor_Sale,1,lForSale);
+         }
+      }
+
+      iInventoryTime = (INVENTORY_DELAY * Random(90,110)) / 100;
+      // Convert to ms.
+      iInventoryTime = iInventoryTime * 1000;
+      ptNew_Inventory = CreateTimer(self,@AddNewInventoryToSell,iInventoryTime);
+
+      return;
+   }
+
    SetForSale()
    {
-      plFor_sale = [
-         [  
-            Create(&Sapphire,#number=1),
-            Create(&Emerald,#number=2),
-            Create(&PurpleMushroom,#number=2),
-            Create(&BlueMushroom,#number=4),
-            Create(&Mushroom,#number=4),
-            Create(&Elderberry,#number=4),
-            Create(&Herbs,#number=4)
-         ],
-         $,$,$];
+      local i, oInventory, lForSale;
+
+      oInventory = Create(&WindrootSeed,#number=3);
+      lForSale = [ oInventory ];
+      Send(self,@NewHold,#what=oInventory);
+
+      i = NUMBER_STARTING_ITEMS;
+      while i > 0
+      {
+         oInventory = Send(self,@PickInventory);
+
+         if IsClass(oInventory,&WindrootSeed)
+         {
+            Send(oInventory,@Delete);
+            oInventory = Create(&Knife);
+         }
+
+         lForSale = Cons(oInventory,lForSale);
+         Send(self,@NewHold,#what=oInventory);
+         i = i - 1;
+      }
+
+      plFor_sale = [ lForSale,$,$ ];
+
+      return;
+   }
+
+   PickInventory()
+   {
+      local oInventory,iRandom,iRan,lInventoryList;
+
+      iRandom = Random(1,100);
+
+      if (iRandom = 1)
+      {
+         lInventoryList = [  &TheurgicRemnant  ];
+      }
+      else if (iRandom < 5)
+      {
+         lInventoryList = [  &EssenceDust  ];
+      }
+      else if (iRandom < 8)
+      {
+         lInventoryList = [  &WindrootLeaf,
+                             &TwinkleCap,
+                             &SpessartineRock
+                          ];
+      }
+      else if (iRandom < 12)
+      {
+         lInventoryList = [  &YrxlSap,
+                             &BlueDragonScale,
+                             &DarkAngelFeather
+                          ];
+      }
+      else if (iRandom < 25)
+      {
+         lInventoryList = [  &PurpleMushroom,
+                             &Ruby,
+                             &PolishedSeraphym,
+                             &ShamanBlood
+                          ];
+      }
+      else if (iRandom < 40)
+      {
+         lInventoryList = [  
+                             &KriipaClaw,
+                             &Firesand,
+                             &UncutSeraphym,
+                             &Lantern,
+                             &Flask
+                          ];
+      }
+      else if (iRandom < 75)
+      {
+         lInventoryList = [  &BlueMushroom,
+                             &OrcTooth,
+                             &Sapphire,
+                             &Solagh,
+                             &RainbowFern,
+                             &WebMoss,
+                             &FairyWing,
+                             &EntrootBerry
+                          ];
+      }
+      else 
+      {
+         lInventoryList = [  &Herbs,
+                             &Elderberry,
+                             &Snack,
+                             &Mushroom,
+                             &WindrootSeed,
+                             &Emerald,
+                             &RedMushroom
+                          ];
+      }
+
+      iRan = Random(1,Length(lInventoryList));
+      oInventory = Create(Nth(lInventoryList,iRan));
+
+      return oInventory;
+   }
+
+   ObjectDesired(what=$,report=TRUE)
+   "This is set in individual buyers.  It allows them to pick and choose"
+   "what they want to buy."
+   {
+      local i;
+
+      if (NOT IsClass(what,&NumberItem)
+         OR IsClass(what,&Money)
+         OR IsClass(what,&Token)
+         OR IsClass(what,&Totem)
+         OR Send(what,@IsItemType,#type=ITEMTYPE_SPECIAL)
+         OR Send(what,@HasAttribute,#ItemAtt=IA_BONDED))
+      {
+         return FALSE;
+      }
+
+      if Length(First(plFor_Sale)) > MAX_FORSALE
+      {
+         Post(poOwner,@SomeoneSaid,#what=self,
+               #string=BergMerchant_Full_rsc,#type=SAY_RESOURCE);
+
+         return FALSE;
+      }
+
+      foreach i in First(plFor_Sale)
+      {
+         if GetClass(i) = GetClass(what)
+         {
+            if Send(what,@IsStackable)
+            {
+                return TRUE;
+            }
+            else
+            {
+               if report
+               {
+                  Post(poOwner,@SomeoneSaid,#what=self,
+                        #string=BergMerchant_AlreadyHaveOne_rsc,#type=SAY_RESOURCE);
+               }
+            }
+
+            return FALSE;
+         }
+      }
+
+      return TRUE;
+   }
+
+   AcceptOffer()
+   "Transfer the purchased merchandise - MOB_BUYER"
+   {
+      local i,j,oHolder,lTake_items, bHadSomeNum, lForSale;
+
+      lForSale = First(plFor_Sale);
+      // Set the stuff where the user can get to it.
+      oHolder = Send(SYS,@GetSystemHolder2);
+      foreach i in plOffer_items
+      {
+         Send(oHolder,@NewHold,#what=i);
+      }
+
+      // Take stuff the user put there.
+      oHolder = Send(SYS,@GetSystemHolder1);
+      foreach lTake_items in [ Send(oHolder,@GetHolderActive),
+                           Send(oHolder,@GetHolderPassive) ]
+      {
+         foreach i in lTake_items
+         {
+            Send(self,@NewHold,#what=i);
+            if Send(i,@IsStackable)
+            {
+               bHadSomeNum = FALSE;
+               foreach j in lForSale
+               {
+                  if GetClass(j) = GetClass(i)
+                  {
+                     bHadSomeNum = TRUE;
+                     Send(j,@AddNumber,#number=Send(i,@GetNumber));
+                     // We don't need 'i' any more, delete it.
+                     Send(i,@Delete);
+
+                     break;
+                  }
+               }
+               if NOT bHadSomeNum
+               {
+                  lForSale = Cons(i,lForSale);
+               }
+            }
+            else
+            {
+               // If this is a spell item, then stop the go bad timer.
+               if IsClass(i,&SpellItem)
+               {
+                  Send(i,@StopGoBadTimer);
+               }
+
+               lForSale = Cons(i,lForSale);
+            }
+         }
+      }
+
+      // kill the cancel offer timer
+      SetNth(plFor_Sale,1,lForSale);
+      Send(self,@OfferCanceled);
+
+      return TRUE;
+   }
+
+   ItemBoughtHook(buyer = $)
+   {
+      Post(poOwner,@SomeoneSaid,#what=self,
+            #string=BergMerchant_sold_rsc,#type=SAY_RESOURCE);
 
       return;
    }

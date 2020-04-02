@@ -65,6 +65,8 @@ classvars:
 
 properties:
 
+   vrBuyer_Unwanted = izzio_Not_Interested
+
    ptNew_Junk = $
 
 messages:
@@ -254,23 +256,25 @@ messages:
       return;
    }
 
-   ObjectDesired(what=$,report=TRUE)
+   ObjectDesired(what=$)
    "This is set in individual buyers.  It allows them to pick and choose"
    "what they want to buy."
    {
       local i;
 
-      // Don't take money for resale.  That's just silly.
-      if IsClass(what,&Money)
+      if (IsClass(what,&Money)
+         OR IsClass(what,&Token)
+         OR IsClass(what,&Totem)
+         OR Send(what,@IsItemType,#type=ITEMTYPE_SPECIAL)
+         OR Send(what,@HasAttribute,#ItemAtt=IA_BONDED))
       {
+         vrBuyer_Unwanted = izzio_Not_Interested;
          return FALSE;
       }
 
       if Length(First(plFor_Sale)) > MAX_FORSALE
       {
-         Post(poOwner,@SomeoneSaid,#what=self,
-               #string=Izzio_Full_rsc,#type=SAY_RESOURCE);
-
+         vrBuyer_Unwanted = izzio_Full_rsc;
          return FALSE;
       }
 
@@ -282,28 +286,10 @@ messages:
             {
                 return TRUE;
             }
-            else
-            {
-               if report
-               {
-                  Post(poOwner,@SomeoneSaid,#what=self,
-                        #string=Izzio_AlreadyHaveOne_rsc,#type=SAY_RESOURCE);
-               }
-            }
-
+            
+            vrBuyer_Unwanted = izzio_AlreadyHaveOne_rsc;
             return FALSE;
          }
-      }
-
-      if Send(what,@HasAttribute,#ItemAtt=IA_BONDED)
-         OR Send(what,@IsItemType,#type=ITEMTYPE_SPECIAL)
-      {
-         return FALSE;
-      }
-
-      if IsClass(what,&Token) OR IsClass(what,&Totem)
-      {
-         return FALSE;
       }
 
       return TRUE;

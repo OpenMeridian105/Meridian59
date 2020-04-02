@@ -42,7 +42,7 @@ resources:
 
    BergMerchant_AlreadyHaveOne_rsc = \
       "Can't you see, I already have one."
-   BergMerchant_Full_rsc = "You moron, I cannot carry no more."
+   BergMerchant_Full_rsc = "You nyrphling, I cannot carry no more."
    BergMerchant_Not_Interested = "As if I'm interested."
 
    BergMerchant_too_many_rsc = \
@@ -66,6 +66,8 @@ classvars:
    vbSellFromInventory = TRUE
 
 properties:
+
+   vrBuyer_Unwanted = BergMerchant_Not_Interested
 
    ptNew_Inventory = $
 
@@ -238,9 +240,7 @@ messages:
       return oInventory;
    }
 
-   ObjectDesired(what=$,report=TRUE)
-   "This is set in individual buyers.  It allows them to pick and choose"
-   "what they want to buy."
+   ObjectDesired(what=$)
    {
       local i;
 
@@ -251,14 +251,14 @@ messages:
          OR Send(what,@IsItemType,#type=ITEMTYPE_SPECIAL)
          OR Send(what,@HasAttribute,#ItemAtt=IA_BONDED))
       {
+         vrBuyer_Unwanted = BergMerchant_Not_Interested;
          return FALSE;
       }
 
       if Length(First(plFor_Sale)) > MAX_FORSALE
       {
-         Post(poOwner,@SomeoneSaid,#what=self,
-               #string=BergMerchant_Full_rsc,#type=SAY_RESOURCE);
 
+         vrBuyer_Unwanted = BergMerchant_AlreadyHaveOne_rsc;
          return FALSE;
       }
 
@@ -270,15 +270,8 @@ messages:
             {
                 return TRUE;
             }
-            else
-            {
-               if report
-               {
-                  Post(poOwner,@SomeoneSaid,#what=self,
-                        #string=BergMerchant_AlreadyHaveOne_rsc,#type=SAY_RESOURCE);
-               }
-            }
 
+            vrBuyer_Unwanted = BergMerchant_too_many_rsc;
             return FALSE;
          }
       }

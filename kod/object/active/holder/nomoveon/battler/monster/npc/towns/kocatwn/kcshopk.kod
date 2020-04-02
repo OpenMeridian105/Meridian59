@@ -60,6 +60,8 @@ classvars:
 
 properties:
 
+   vrBuyer_Unwanted = JunkMan_Not_Interested
+
    ptNew_Junk = $
 
 messages:
@@ -210,20 +212,25 @@ messages:
       return;
    }
 
-   ObjectDesired(what=$,report=TRUE)
+   ObjectDesired(what=$)
    "This is set in individual buyers.  It allows them to pick and choose"
    "what they want to buy."
    {
       local i;
 
-      // Don't take money for resale.  That's just silly.
-      if IsClass(what,&Money)
+      if (IsClass(what,&Money)
+         OR IsClass(what,&Token)
+         OR IsClass(what,&Totem)
+         OR Send(what,@IsItemType,#type=ITEMTYPE_SPECIAL)
+         OR Send(what,@HasAttribute,#ItemAtt=IA_BONDED))
       {
+         vrBuyer_Unwanted = JunkMan_Not_Interested;
          return FALSE;
       }
 
       if length(first(plFor_Sale)) > MAX_FORSALE
       {
+         vrBuyer_Unwanted = JunkMan_Full_rsc;
          return FALSE;
       }
 
@@ -238,19 +245,9 @@ messages:
                return TRUE;
             }
 
+            vrBuyer_Unwanted = JunkMan_AlreadyHaveOne_rsc;
             return FALSE;
          }
-      }
-
-      if Send(what,@HasAttribute,#ItemAtt=IA_BONDED)
-         OR Send(what,@IsItemType,#type=ITEMTYPE_SPECIAL)
-      {
-         return FALSE;
-      }
-
-      if IsClass(what,&Token) OR IsClass(what,&Totem)
-      {
-         return FALSE;
       }
       
       return TRUE;

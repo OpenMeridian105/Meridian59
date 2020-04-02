@@ -19,7 +19,8 @@ BGFS = \
 	$(OUTDIR)\mystswd.bgf \
 	$(OUTDIR)\mystwdov.bgf \
 	$(OUTDIR)\ring3.bgf \
-	$(OUTDIR)\povmystsw.bgf
+	$(OUTDIR)\povmystsw.bgf \
+	$(OUTDIR)\wnizzio.bgf
 
 all:
 	@-for %i in ($(DIRS)) do \

@@ -103,7 +103,7 @@ messages:
 
    CanPayCosts(who = $)
    {
-      local oRoom;
+      local oRoom, oSpell;
 
       if who = $
       {
@@ -118,9 +118,14 @@ messages:
 
       if Send(oRoom,@CheckRoomFlag,#flag=ROOM_NO_COMBAT)
       {
-         Send(who,@MsgSendUser,#message_rsc=no_phasing_in_safe_place_msg);
+         // Ignore ROOM_NO_COMBAT if Truce is up.
+         oSpell = Send(SYS,@FindSpellByNum,#num=SID_TRUCE);
+         if NOT Send(oRoom,@IsEnchanted,#what=oSpell)
+         {
+            Send(who,@MsgSendUser,#message_rsc=no_phasing_in_safe_place_msg);
 
-         return FALSE;
+            return FALSE;
+         }
       }
 
       if Send(oRoom,@IsArena)

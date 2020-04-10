@@ -1146,7 +1146,7 @@ messages:
    SomethingKilled(what=$,victim=$)
    {
       local iKills;
- 
+
       // We handle all death messages here, but not 'win fight' messages.
       // Those are handled after the renege messages.
       if IsClass(what,&Spell) AND Send(self,@IsCombatant,#who=victim)
@@ -1175,44 +1175,45 @@ messages:
 
       if piCombat_Style = STYLE_MONSTER_ARENA
       {
-        // check if arena monster is a combatant
-        if Send(self,@IsCombatant,#who=victim)
+         // check if arena monster is a combatant
+         if Send(self,@IsCombatant,#who=victim)
             AND IsClass(victim, &Monster)
             AND NOT Send(victim, @IsMinion)
-        {
-             if IsClass(what,&Player)
-                AND (Send(poOwner,@IsMiniBoss,#what=victim)
-                OR Send(poOwner,@IsBoss,#what=victim))
-             {
-                 // Gain a life for killing a mini boss or boss
-                 Send(self,@PlayerGainLife,#who=what);
-             }
-        
-             //The combatant hasn't renged yet, remove one to the count for now
-             piWaveGoal--;
+         {
+            if IsClass(what,&Player)
+               AND (Send(poOwner,@IsMiniBoss,#what=victim)
+                  OR Send(poOwner,@IsBoss,#what=victim))
+            {
+               // Gain a life for killing a mini boss or boss
+               Send(self,@PlayerGainLife,#who=what);
+            }
 
-             if piWaveGoal = 1
-             {
-                 Send(self,@Say,#message_rsc=vrMonsterKillRemaining);
-             }
-             else if piWaveGoal > 1
-             {
-                 Post(poOwner,@AggroMonsters,#who=what);
-                 Send(self,@Say,#message_rsc=vrMonsterKillsRemaining,
-                        #parm1=piWaveGoal);
-             }
-        }
-        else if Send(self,@IsCombatant,#who=victim)
+            //The combatant hasn't renged yet, remove one to the count for now
+            piWaveGoal--;
+
+            if piWaveGoal = 1
+            {
+               Send(self,@Say,#message_rsc=vrMonsterKillRemaining);
+            }
+            else if piWaveGoal > 1
+            {
+               Post(poOwner,@AggroMonsters,#who=what);
+               Send(self,@Say,#message_rsc=vrMonsterKillsRemaining,
+                     #parm1=piWaveGoal);
+            }
+         }
+         else if Send(self,@IsCombatant,#who=victim)
             AND IsClass(victim, &Player)
             AND Send(self,@CheckPlayerLives,#who=victim) >= 1
-        {
-             Send(victim,@SetHealth,#amount=Send(victim,@GetMaxHealth));
-             Send(self,@Teleport,#what=victim,#goinplay=TRUE);
-             Post(self,@PlayerLoseLife,#who=victim);
-             return;
-        }
+         {
+            Send(victim,@SetHealth,#amount=Send(victim,@GetMaxHealth));
+            Send(self,@Teleport,#what=victim,#goinplay=TRUE);
+            Post(self,@PlayerLoseLife,#who=victim);
+
+            return;
+         }
       }
-      
+
       Send(self,@CombatantReneges,#who=victim,#died=TRUE);
 
       propagate;
@@ -1751,7 +1752,7 @@ messages:
             foreach i in Send(poOwner,@GetHolderActive)
             {
                if IsClass(First(i),&Player)
-                  AND StringEqual(string,Send(First(i),@GetName))
+                  AND StringEqual(string,Send(First(i),@GetTrueName))
                {
                   if plCombatants = $
                   {
@@ -2212,7 +2213,7 @@ messages:
 
             // Yuckily, this is the easiest way to deal with this.
             //  Get rid of all wall element spells.
-            if IsClass(j,&ActiveWallElement)
+            else if IsClass(j,&ActiveWallElement)
                OR IsClass(j,&Brambles)
             {
                Send(j,@Delete);

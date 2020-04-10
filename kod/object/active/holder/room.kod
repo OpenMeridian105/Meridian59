@@ -3296,6 +3296,9 @@ messages:
          Send(Nth(i,2),@EndRoomEnchantment,#who=what,#state=Nth(i,3));
       }
 
+      // Remove blocker from room.
+      BlockerRemoveBSP(prmRoom, what);
+
       SendList(plActive,1,@SomethingPhasedOut,#what=what,#iHealth=iHealth,
             #iMaxHealth=iMaxHealth);
 
@@ -3310,6 +3313,17 @@ messages:
       if (Send(what,@GetOwner) <> self)
       {
          return;
+      }
+
+      // Replace blocker in room.
+      if (Send(what,@GetMoveOnType) = MOVEON_NO)
+      {
+         if NOT BlockerAddBSP(prmRoom, what,
+            Send(what,@GetRow),Send(what,@GetCol),
+            Send(what,@GetFineRow),Send(what,@GetFineCol))
+         {
+            Debug("Failed to add BSP blocker ", what, " to ", prmRoom);
+         }
       }
 
       SendList(plActive,1,@SomethingPhasedIn,#what=what,#bTeleport=bTeleport);
@@ -3342,6 +3356,9 @@ messages:
          Send(Nth(i,2),@EndRoomEnchantment,#who=what,#state=Nth(i,3));
       }
 
+      // Remove blocker from room.
+      BlockerRemoveBSP(prmRoom, what);
+
       SendList(plActive,1,@SomethingSpectatedOut,#what=what);
 
       return;
@@ -3355,6 +3372,17 @@ messages:
       if (Send(what,@GetOwner) <> self)
       {
          return;
+      }
+
+      // Replace blocker in room.
+      if (Send(what,@GetMoveOnType) = MOVEON_NO)
+      {
+         if NOT BlockerAddBSP(prmRoom, what,
+            Send(what,@GetRow),Send(what,@GetCol),
+            Send(what,@GetFineRow),Send(what,@GetFineCol))
+         {
+            Debug("Failed to add BSP blocker ", what, " to ", prmRoom);
+         }
       }
 
       SendList(plActive,1,@SomethingSpectatedIn,#what=what);

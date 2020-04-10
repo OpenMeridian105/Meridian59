@@ -9622,6 +9622,10 @@ messages:
          piHealth = 1;
          Send(self,@NewHealth);
 
+         // Need to clear any lethal overtime effects so the user doesn't
+         // get multiple-killed.
+         Send(self,@DeleteAllLethalOverTimeEffects);
+
          // Currently, the following block is only for
          // Necromancer Amulets and Hunter Swords.
          foreach i in plActive
@@ -15417,6 +15421,7 @@ messages:
          oEffect = Nth(i,5);
 
          if (Nth(i,3) < iStrength)
+            AND IsObject(oEffect)
             AND Send(oEffect,@IsLethal,#who=self)   // Not all effects are lethal.
             AND Nth(i,10) = FALSE                   // ...or real.
          {

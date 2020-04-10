@@ -80,6 +80,31 @@ messages:
       propagate;
    }
 
+   SomethingPhasedIn(what=$,bTeleport=FALSE)
+   "Faster override for Room, don't need to propagate to Holder."
+   {
+      local i, oActive;
+
+      foreach i in plActive
+      {
+         oActive = Send(self,@HolderExtractObject,#data=i);
+
+         if oActive = what
+         {
+            continue;
+         }
+
+         if IsClass(oActive,&User) AND NOT Send(oActive,@IsInCannotInteractMode)
+         {
+            propagate;
+         }
+      }
+
+      Send(self,@SpawnGhost);
+
+      propagate;
+   }
+
    FirstUserEntered()
    {
       Send(self,@SpawnGhost);
@@ -89,8 +114,6 @@ messages:
 
    LastUserLeft()
    {
-      local i;
-
       if ptGhost <> $
       {
          DeleteTimer(ptGhost);

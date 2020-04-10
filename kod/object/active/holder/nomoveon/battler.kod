@@ -2307,6 +2307,49 @@ messages:
       return;
    }
 
+   DeleteAllLethalOverTimeEffects()
+   {
+      local i, oSpell, bRemoved;
+
+      bRemoved = FALSE;
+
+      foreach i in plOverTimeEffects
+      {
+         oSpell = Nth(i,5);
+         if (IsObject(oSpell)
+            AND Send(oSpell,@IsLethal))
+         {
+            if Nth(i,8)
+            {
+               Send(self,@ShowRemoveEnchantment,#what=oSpell,
+                     #type=ENCHANTMENT_PLAYER);
+            }
+
+            if First(i) <> $ AND IsTimer(First(i))
+            {
+               DeleteTimer(First(i));
+               SetFirst(i,$);
+            }
+
+            plOverTimeEffects = DelListElem(plOverTimeEffects,i);
+            bRemoved = TRUE;
+         }
+      }
+
+      if bRemoved
+      {
+         Send(self,@RecalcFlickerFlag);
+         Send(self,@UpdateRates);
+
+         if poOwner <> $
+         {
+            Send(poOwner,@SomethingChanged,#what=self);
+         }
+      }
+
+      return;
+   }
+
    //// Combat functionality.
 
    // All conditions have been checked at this point and the battler is eligible

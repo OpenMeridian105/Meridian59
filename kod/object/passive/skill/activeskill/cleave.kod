@@ -57,6 +57,9 @@ classvars:
    vbCanBreakTrance = FALSE
    vbIsAreaEffect = TRUE
 
+   // Percentage of additional damage compared to regular attack.
+   viBonus = 20
+
 properties:
 
    plPrerequisites = $
@@ -115,6 +118,11 @@ messages:
                continue;
             }
 
+            if NOT Send(who,@AllowBattlerAttack,#victim=each_obj,#stroke_obj=self,#report=FALSE)
+            {
+               continue;
+            }
+
             lFinalTargets = Cons(each_obj,lFinalTargets);
          }
       }
@@ -125,7 +133,7 @@ messages:
    GetGoodTargets(who=$, lTargets=$, report=TRUE)
    {
       local lGoodTargets;
-      
+
       // This gets all targets within range.  Most skills just return the
       //  list back.
       lGoodTargets = Send(self,@GetTargets,#who=who,#lTargets=lTargets);
@@ -149,7 +157,7 @@ messages:
       use_weapon = Send(who,@GetWeapon);
       stroke_obj = Send(who,@GetStrokeObject);
 
-      iPower = Send(self,@GetSkillPower,#who=who);
+      iPower = viBonus + Send(self,@GetSkillPower,#who=who);
 
       bTarget = FALSE;
 

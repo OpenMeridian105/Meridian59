@@ -109,7 +109,7 @@ messages:
 
    Constructor(seed=$)
    {
-      local oCaster, iCharges, iTime;
+      local oCaster, iCharges, iTime, iStep;
 
       plSeed = ListCopy(seed);
 
@@ -145,7 +145,11 @@ messages:
 
       // Base the affected radius of our element on step size.
       // To allow full coverage, we need a radius > iStep*0.5*sqrt(2).
-      piRange = (Nth(plSeed,7)*71/100) + 1;  // Add one for good measure.
+      iStep = Nth(plSeed,7);
+      if (iStep <> 0)
+      {
+         piRange = (iStep * 71 / 100) + 1;  // Add one for good measure.
+      }
 
       // If we have a charge left, create a new element after an amount of ms
       // specified in speed.
@@ -526,6 +530,41 @@ messages:
       }
 
       return FALSE;
+   }
+
+   IsOwnedByPlayer()
+   "Check poCaster, then check minion stuff in Monster."
+   {
+      if poCaster <> $
+      {
+         if poCaster = self
+         {
+            return FALSE;
+         }
+
+         if IsClass(poCaster,&Player)
+         {
+            return TRUE;
+         }
+
+         if IsClass(poCaster,&Monster)
+         {
+            return Send(poCaster,@IsOwnedByPlayer);
+         }
+
+         // Could be a room or an item that owns the bramble.
+         // If we allow players to attach minions to guild halls
+         // or other creative uses of non-player/monster owners,
+         // we may need to change this.
+         return FALSE;
+      }
+
+      propagate;
+   }
+
+   GetCaster()
+   {
+      return poCaster;
    }
 
    Expire()

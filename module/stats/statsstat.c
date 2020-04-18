@@ -64,7 +64,7 @@ static void CharStatsInit(HWND hDlg);
 static long CALLBACK StatGraphProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
 static void CharStatsGraphChanging(HWND hDlg, WPARAM wParam, LPARAM lParam);
 static BOOL StatsCanReduceIntellect();
-static int StatsIntellectNeeded();
+
 /********************************************************************/
 BOOL CALLBACK CharStatsDialogProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 {
@@ -100,6 +100,12 @@ BOOL CALLBACK CharStatsDialogProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM
                }
             }
          }
+         else if (stat_points < 0)
+         {
+            ClientError(hInst, hDlg, IDS_NEGATIVESTATSMSG);
+            SetWindowLong(hDlg, DWL_MSGRESULT, PSNRET_INVALID_NOCHANGEPAGE);
+            return TRUE;
+         }
          else
          {
             if (!VerifySettings())
@@ -120,47 +126,54 @@ BOOL CALLBACK CharStatsDialogProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM
    }
    return FALSE;
 }
-/********************************************************************/
-int StatsIntellectNeeded()
-{
-   int i;
-   int levels_count = 0;
-   int schools_count = 0;
-   int level_ones = 0;
-   int intellect_needed = 99;
-    
-   for (i = 0; i < NUM_CHAR_SCHOOLS; ++i)
-   {
-      if (schools[i].val == 1)
-      {
-         level_ones += 1;
-      }
-      if (schools[i].val > 1)
-      {
-         schools_count += 1;
-      }
-      if (schools[i].val > 1)
-      {
-         levels_count += schools[i].val;
-      }
-   }
 
-   // assume if the player has level 1 in something, that they
-   // must have enough int for level 2.  This prevents abusing the
-   // system to retain level 1s
-   levels_count += level_ones;
-   
-   if (levels_count <= 8)
-   {
-      intellect_needed = 1;
-   }
-   else
-   {
-      intellect_needed = ((levels_count - schools_count - 8) * 5);
-   }
-   
-   return intellect_needed;
-   
+// Stat reset intellect functions
+// Level calculations are done using a points system server-side, with a base
+// level of 16 points, and a max (at 50 int) of 36 points. Each multiple of 5
+// int adds 2 points. Point list used server-side is in GetLevelLearnPoints.
+
+/********************************************************************/
+/*
+ * GetLevelLearnPoints: Returns the points required to learn a specific level.
+ */
+int GetLevelLearnPoints(int level)
+{
+   // Mirrors the server's points list [1, 2, 4, 6, 8, 10]
+   int points_needed = (level <= 2) ? level : level * 2 - 2;
+
+   return MAX(0, points_needed);
+}
+/********************************************************************/
+/*
+ * GetMaxLearnPoints: Returns the max possible learn pts for the given int.
+ */
+int GetMaxLearnPoints(int intellect)
+{
+   return 16 + intellect * 2 / 5;
+}
+/********************************************************************/
+/*
+ * GetTotalLearnPoints: Returns the total learn pts for the character's schools.
+ */
+int GetTotalLearnPoints()
+{
+   int total_points = 0;
+   for (int i = 0; i < NUM_CHAR_SCHOOLS; ++i)
+      total_points += GetLevelLearnPoints(schools[i].val);
+
+   return total_points;
+}
+/********************************************************************/
+/*
+ * GetIntellectNeeded: Returns the int needed for the character's schools.
+ *   Note that this uses the school levels set in the UI, not the original
+ *   levels.
+ */
+int GetIntellectNeeded()
+{
+   int points_needed = (GetTotalLearnPoints() - 16) * 5 / 2;
+
+   return MAX(1, points_needed);
 }
 /********************************************************************/
 void initStatsFromServer(int *stats_in, int *levels_in)
@@ -265,27 +278,36 @@ void CharStatsGraphChanging(HWND hDlg, WPARAM wParam, LPARAM lParam)
          return;
       sc->val = lParam;
       
-      if (SendMessage((HWND) wParam, GRPH_POSGET, 0, 0) < lParam)
-         if(StatsIntellectNeeded() <=50)
-            SendMessage(hIntellect, GRPH_POSSET, 0, StatsIntellectNeeded());
-         else
-            SendMessage(hIntellect, GRPH_POSSET, 0, 50);
+      if (SendMessage((HWND)wParam, GRPH_POSGET, 0, 0) < lParam)
+      {
+         int intNeeded = GetIntellectNeeded();
+         if (intNeeded > SendMessage(hIntellect, GRPH_POSGET, 0, 0))
+            SendMessage(hIntellect, GRPH_POSSET, 0, intNeeded);
+      }
    }
    else
    {
       s = CharFindControl((HWND) wParam);
       if (s == NULL || (HWND) wParam == hPoints)
          return;
-         
+
       index = SendMessage((HWND) wParam, GRPH_POSGET, 0, 0);  // Get old value
       cost = s->cost * (lParam - index);
-      
-      s->val = lParam;
-      
-      // Don't change points when controls are being created
-      if (controls_created)
-         stat_points -= cost;
-      
+
+      // Check if user is allowed to lower intellect, set slider back if not.
+      if ((HWND)wParam == hIntellect
+         && GetIntellectNeeded() > lParam)
+      {
+         SendMessage(hIntellect, GRPH_POSSET, 0, GetIntellectNeeded());
+      }
+      else
+      {
+         s->val = lParam;
+
+         // Don't change points when controls are being created
+         if (controls_created)
+            stat_points -= cost;
+      }
       SendMessage(hPoints, GRPH_POSSET, 0, stat_points);
    }
 }
@@ -371,9 +393,10 @@ long CALLBACK StatGraphProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
          
          if (s->hGraph == hIntellect)
          {
-            if (new_pos < StatsIntellectNeeded())
+            int intellect_needed = GetIntellectNeeded();
+            if (new_pos < intellect_needed)
             {
-               new_pos = StatsIntellectNeeded();
+               new_pos = intellect_needed;
                return 0;
             }
          }
@@ -387,7 +410,12 @@ long CALLBACK StatGraphProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
                return 0;
 
             lParam = cur_pos + stat_points / s->cost;
-            if (lParam == cur_pos)
+
+            // Don't allow this to set int lower than the user needs
+            // for the schools they have.
+            if (lParam == cur_pos
+               || (s->hGraph == hIntellect
+                  && lParam < GetIntellectNeeded()))
                return 0;
          }
       }

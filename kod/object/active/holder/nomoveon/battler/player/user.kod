@@ -7630,7 +7630,10 @@ messages:
          }
       }
 
-      if Send(self,@IsInCannotInteractMode)
+      if (piFlags & PFLAG_NO_FIGHT)
+         OR (piFlags & PFLAG_NO_MOVE)
+         OR Send(self,@IsInCannotInteractMode)
+
       {
          Send(self,@MsgSendUser,#message_rsc=user_no_perform);
 
@@ -12312,31 +12315,30 @@ messages:
    "Processes a stat change request from the client"
    {
       local i, lSpellLevels, lSkillLevels, lSpellLevels_new, lSkillLevels_new,
-            totalLevels, totalSchools, totalLvlOnes, iPrimaryStat, oSpell,
-            iSpellAbility, iSpellNum, oSkill, iSkillAbility, iSkillNum;
+            iMaxLearnPoints, iPrimaryStat, oSpell, iSpellAbility, iSpellNum,
+            oSkill, iSkillAbility, iSkillNum, iTotalLearnPoints;
 
       // if stats reset is turned off, ignore the request
       if NOT Send(SETTINGS_OBJECT,@GetStatsResetEnabled)
       {
          return;
       }
-      
+
       if Send(self,@FindHolding,#class=&StatsResetToken) = $
          AND (piBase_Max_Health > Send(SETTINGS_OBJECT,@GetFreeStatsResetCap))
       {
          return;
       }
-      
-      i = 1;
-      totallevels = 0;
-      totalLvlOnes = 0;
-      totalSchools = 0;
+
+      iTotalLearnPoints = 0;
+      iMaxLearnPoints = 0;
       lSpellLevels = Send(self, @GetSpellSchoolLevels);
       lSpellLevels_new = [shallile_lvl,qor_lvl,kraanan_lvl,
                            faren_lvl,riija_lvl,jala_lvl];
       lSkillLevels = Send(self, @GetSkillSchoolLevels);
       lSkillLevels_new = [weaponcraft_lvl];
-   
+      ClearTempString();
+
       // Range Checks, no client hacking negative stats funny business!
       if (might < 1 OR might > 50)
          OR (intellect < 1 OR intellect > 50)
@@ -12345,10 +12347,11 @@ messages:
          OR (mysticism < 1 OR mysticism > 50)
          OR (aim < 1 OR aim > 50)
       {
-         Debug("Stat Range Check: Failed!");
-         return FALSE;
+         Debug("Stat Range Check: Failed for ", self, vrName);
+
+         return;
       }
-      
+
       // School Range Check
       if (shallile_lvl < 0 OR shallile_lvl > 6)
          OR (qor_lvl < 0 OR qor_lvl > 6)
@@ -12358,89 +12361,98 @@ messages:
          OR (jala_lvl < 0 OR jala_lvl > 6)
          OR (weaponcraft_lvl < 0 OR weaponcraft_lvl > 6)
       {
-         Debug("School Range Check: Failed!");
-         return FALSE;
+         Debug("School Range Check: Failed for ", self, vrName);
+
+         return;
       }
-         
+
       // Quick check for too many points in stats
-      if ((might + intellect + stamina + agility + mysticism + aim) > 200 )
+      if ((might + intellect + stamina + agility + mysticism + aim) > 200)
       {
-         Debug("Points Check: FAIL!");
-         return FALSE;
+         Debug("Points Check: Failed for ", self, vrName);
+
+         return;
       }
-      Debug(("points check: PASS"));
 
       // Check school levels for funny business
-      
-      // Count schools above level 1
-      
+
       // Spell Levels - skipping DM school (7)
-      while (i < NUM_SCHOOLS)
+      for (i = 1; i < NUM_SCHOOLS; ++i)
       {
-         if (Nth(lSpellLevels_new,i) = 1)
+         if (Nth(lSpellLevels_new,i) > 0)
          {
-            ++totalLvlOnes;
-         }
-         if (Nth(lSpellLevels_new,i) > 1)
-         {
-            ++totalSchools;
-            totalLevels += Nth(lSpellLevels_new,i);
+            iTotalLearnPoints += Send(SYS,@GetLevelLearnPoints,
+                                       #level=Nth(lSpellLevels_new,i));
          }
          if (Nth(lSpellLevels_new,i) > Nth(lSpellLevels,i))
          {
-            Debug("School Not Increased Check: FAIL!");
-            return FALSE;
+            Debug("School Not Increased Check: Failed for ", self, vrName);
+
+            return;
          }
-         ++i;
       }
-      
+
       // skill levels
-      i = 1;
-      while (i <= NUM_SKILL_SCHOOLS)
+      for (i = 1; i <= NUM_SKILL_SCHOOLS; ++i)
       {
-         if (Nth(lSkillLevels_new,i) = 1)
+         if (Nth(lSkillLevels_new,i) > 0)
          {
-            ++totalLvlOnes;
-         }
-         if (Nth(lSkillLevels,i) > 1)
-         {
-            ++totalSchools;
-            totalLevels += Nth(lSkillLevels_new,i);
+            iTotalLearnPoints += Send(SYS,@GetLevelLearnPoints,
+                                       #level=Nth(lSkillLevels_new,i));
          }
          if (Nth(lSkillLevels_new,i) > Nth(lSkillLevels,i))
          {
-            Debug("School Not Increased Check: FAIL!");
-            return FALSE;
+            Debug("School Not Increased Check: Failed for ", self, vrName);
+
+            return;
          }
-         ++i;
       }
 
-      // treat level 1s as level 2s
-      totalLevels += totalLvlOnes;
-
+      iMaxLearnPoints = Send(SETTINGS_OBJECT,@GetMaxLearnPoints)
+                              + (intellect * 2) / 5;
       // See if the player has enough int to support their levels
-      if ((totalLevels - totalSchools > 8)
-               AND (((totalLevels - totalSchools - 8) * 5) > intellect))
+      if (iMaxLearnPoints < iTotalLearnPoints)
       {
-         Debug("Int Check: FAIL!");
-         //Debug("total levels",totalLevels,"intellect",intellect,"needed",
-         //      (totalLevels - totalSchools - 8) * 5);
-         return FALSE;
+         Debug("Int Check: Failed for ", self, vrName);
+
+         return;
       }
-      
-      Debug(("School Level Check: PASS"));
-      
+
+      // Log old/new schools.
+      AppendTempString("Old schools: ");
+      foreach i in lSpellLevels
+      {
+         AppendTempString(i);
+         AppendTempString(", ");
+      }
+      foreach i in lSkillLevels
+      {
+         AppendTempString(i);
+         AppendTempString(", ");
+      }
+      AppendTempString(" New schools: ");
+      foreach i in lSpellLevels_new
+      {
+         AppendTempString(i);
+         AppendTempString(", ");
+      }
+      foreach i in lSkillLevels_new
+      {
+         AppendTempString(i);
+         AppendTempString(", ");
+      }
+      Debug(GetTempString());
+
       // everything looks good, start adjusting stats
-      
+
       // Consume token
       if piBase_Max_Health > Send(SETTINGS_OBJECT,@GetFreeStatsResetCap)
       {
          Send(Send(self,@FindHolding,#class=&StatsResetToken),@Delete);
       }
-      
+
       // Strip Spell Levels
-      i = 1;
-      while (i < NUM_SCHOOLS)
+      for (i = 1; i < NUM_SCHOOLS; ++i)
       {
          if (Nth(lSpellLevels,i) > 0 )
          {
@@ -12451,13 +12463,10 @@ messages:
                SetNth(lSpellLevels,i,Nth(lSpellLevels,i) - 1);
             }
          }
-         ++i;
       }
 
-      Debug("Spell Schools Stripped");
       // Strip Skills (Skill schools start at 10)
-      i = 1;
-      while (i <= NUM_SKILL_SCHOOLS)
+      for (i = 1; i <= NUM_SKILL_SCHOOLS; ++i)
       {
          if (Nth(lSkillLevels,i) > 0)
          {
@@ -12469,9 +12478,7 @@ messages:
                SetNth(lSkillLevels,i,Nth(lSkillLevels,i) - 1);
             }
          }
-         ++i;
       }
-      Debug("Skill Schools Stripped");
 
       // Now iterate through the player's spells and strip 2// per stat loss
       foreach i in plSpells
@@ -12512,8 +12519,7 @@ messages:
             }
          }
       }
-      Debug("Spell % Recalculated");
-      
+
       foreach i in plSkills
       {
          iSkillNum = Send(self,@DecodeSkillNum,#compound=i);
@@ -12558,9 +12564,8 @@ messages:
             }
          }
       }
-      Debug("Skill % Recalculated");
 
-      Debug(Send(self,@GetTrueName), " changed stats from ",
+      Debug(vrName, " changed stats from ",
          piMight, piIntellect, piStamina, piAgility, piMysticism, piAim,
          " to ", might, intellect, stamina, agility, mysticism, aim);
 
@@ -12576,13 +12581,11 @@ messages:
 
       // recalculate mana pool based on nodes and mysticism
       Send(self,@ComputeMaxMana);
-      Debug("Mana Recalculated");
-      
+
       // TODO: Unload stats.dll module.
 
       // Refresh the client screen so they see the new stats
       Send(self, @InvalidateData);
-      Debug("Player Updated!");
 
       return;
    }

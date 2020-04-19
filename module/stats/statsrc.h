@@ -17,6 +17,7 @@
 #define IDS_CHARSTATS                   20
 #define IDS_DIALOGTITLE                 21
 #define IDS_NEWCHARACTER                22
+#define IDS_NEGATIVESTATSMSG            23
 #define IDD_MAKECHAR                    102
 #define IDD_MODIFYCHAR                  139
 #define IDD_MODIFYFACE                  140

@@ -75,7 +75,7 @@ messages:
       return;
    }
 
-   DoSpellEffects(who=$,lTargets=$,iDuration=$,report=TRUE,iSpellPower=$)
+   DoSpellEffects(who=$,lTargets=$,iDuration=$,report=TRUE,iSpellPower=$,iSpeedPercent=$)
    "Holds target for duration milliseconds."
    {
       local i, oSpell, oTarget, iSpeed;
@@ -93,7 +93,12 @@ messages:
          iDuration = 5000;
       }
 
-      iSpeed = -(Send(self,@GetSlowAmount,#iSpellPower=iSpellPower));
+      iSpeed = iSpeedPercent;
+      if iSpeed = $
+      {
+         iSpeed = -(Send(self,@GetSlowAmount,#iSpellPower=iSpellPower));
+      }
+      
       Send(oTarget,@AddMovementSpeedPercent,#iSpeed=iSpeed);
 
       if (report)

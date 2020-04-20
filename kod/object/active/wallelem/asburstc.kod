@@ -40,15 +40,21 @@ classvars:
    vrDissipateMessage = ActiveSporeCloud_dissipates
    vrUnaffectedMessage = ActiveSporeCloud_unaffected
 
-   // Hold min percent is the base chance to hold a target. This number
-   // then has spellpower/2 added to it.
-   viHoldMinPercent = 40
+   // Effect min percent is the base chance to use spell on target.
+   // This number then has spellpower/2 added to it.
+   viEffectMinPercent = 40
 
    // How much does each element contribute to the summoning limit?
    viLimitCount = 0
 
    // Time between checks for effect.
    viEffectInterval = 2500
+
+   // Slow down user by this percent, if slow effect enabled
+   viMovementSpeed = 60
+
+   // Toggle for sporeburst effect
+   vbSporeBurstHold = TRUE
 
 properties:
 
@@ -60,15 +66,31 @@ messages:
    {
       local oSpell;
 
-      if (Random(1,100) > viHoldMinPercent + Nth(plSeed,2) / 2)
+      if what = $
+      {
+         return;
+      }
+
+      if (Random(1,100) > viEffectMinPercent + Nth(plSeed,2) / 2)
       {
          propagate;
       }
 
-      oSpell = Send(SYS,@FindSpellByNum,#num=SID_HOLD);
-
-      Send(oSpell,@DoSpellEffects,#who=self,#lTargets=[what],
+      if vbSporeBurstHold
+      {
+         oSpell = Send(SYS,@FindSpellByNum,#num=SID_HOLD);
+         Send(oSpell,@DoSpellEffects,#who=self,#lTargets=[what],
             #iDuration=Send(oSpell,@GetDuration,#iSpellPower=Nth(plSeed,2)));
+      }
+      else
+      {
+         if NOT Send(what,@IsEnchanted,#byClass=&Slow)
+         {
+            oSpell = Send(SYS,@FindSpellByNum,#num=SID_SLOW);
+            Send(oSpell,@DoSpellEffects,#who=self,#lTargets=[what],
+               #iDuration=500+(Nth(plSeed,2)*10),#iSpeedPercent=-(viMovementSpeed));
+         }
+      }
 
       Send(poOwner,@SomethingAttacked,#what=poCaster,#victim=what,
             #use_weapon=self,#stroke_obj=self);

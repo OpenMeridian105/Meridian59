@@ -53,6 +53,8 @@ classvars:
 
    viChance_To_Increase = 20
 
+   vbCombatOnly = FALSE
+
 properties:
 
    piLightLevel
@@ -99,6 +101,14 @@ messages:
 
                   return FALSE;
                }
+            }
+
+            // Special case: Followers only cast on unenchanted targets.
+            if (oWeapon <> $)
+               AND IsClass(who,&Follower)
+               AND Send(oWeapon,@GetAttributeData,#ItemAtt=WA_GLOWING) <> $
+            {
+               return FALSE;
             }
          }
          else
@@ -195,6 +205,11 @@ messages:
       iPower = 20 + (iSpellPower / 3);
 
       return iPower;
+   }
+
+   GetCombatType()
+   {
+      return COMBAT_ACTION_BUFF;
    }
 
 end

@@ -155,6 +155,8 @@ classvars:
    // Can't seduce human mobs.
    vbCanSeduce = FALSE
 
+   viMeleeAnimationTime = 1000
+
 properties:
 
    piBaseLevel = 80
@@ -191,7 +193,7 @@ properties:
    plUsing = $
    plOverlays = $
    viGender = GENDER_MALE
-   piAction = 1
+   piExpression = 1
    piBody_translations = 0
    piBody_translations2 = 0
    // Object that set our icon (usually armor)
@@ -949,10 +951,12 @@ messages:
       return Send(oWeapon,@GetSpellType);
    }
 
-   DoMeleeAnimation(what = $)
+   DoMeleeAnimation()
    "Add in any attack animation calls."
    {
       local oWeapon;
+
+      ptAction = $;
 
       oWeapon = Send(self,@GetWeapon);
 
@@ -975,6 +979,13 @@ messages:
       else
       {
          Send(self,@DoSlash);
+      }
+
+      piAction = piAction%10000 + Bound((piAction/10000)-1,0,$)*10000;
+
+      if piAction/10000 > 0
+      {
+         ptAction = CreateTimer(self,@DoMeleeAnimation,viMeleeAnimationTime);
       }
 
       return;
@@ -1276,8 +1287,8 @@ messages:
       AddPacket(4,prHead,1,HS_HEAD,1,ANIMATE_TRANSLATION,1,iSkin_xlat);
       Addpacket(1,ANIMATE_NONE,2,1);        
 
-      AddPacket(4,prMouth,1,HS_MOUTH,1,ANIMATE_TRANSLATION,1,iSkin_xlat,1,ANIMATE_NONE,2,piAction);
-      AddPacket(4,prEyes,1,HS_EYES,1,ANIMATE_TRANSLATION,1,iSkin_xlat,1,ANIMATE_NONE,2,piAction);
+      AddPacket(4,prMouth,1,HS_MOUTH,1,ANIMATE_TRANSLATION,1,iSkin_xlat,1,ANIMATE_NONE,2,piExpression);
+      AddPacket(4,prEyes,1,HS_EYES,1,ANIMATE_TRANSLATION,1,iSkin_xlat,1,ANIMATE_NONE,2,piExpression);
       AddPacket(4,prNose,1,HS_NOSE,1,ANIMATE_TRANSLATION,1,iSkin_xlat,1,ANIMATE_NONE,2,1);
 
       if poHair_remove = $
@@ -1442,8 +1453,8 @@ messages:
                 1,ANIMATE_NONE,2,1);
 
       AddPacket(4,prMouth,1,HS_MOUTH,1,ANIMATE_TRANSLATION,1,iSkin_xlat,
-                1,ANIMATE_NONE,2,piAction, 4,prEyes,1,HS_EYES,1,
-                ANIMATE_TRANSLATION,1,iSkin_xlat,1,ANIMATE_NONE,2,piAction,
+                1,ANIMATE_NONE,2,piExpression, 4,prEyes,1,HS_EYES,1,
+                ANIMATE_TRANSLATION,1,iSkin_xlat,1,ANIMATE_NONE,2,piExpression,
                 4,prNose,1,HS_NOSE,1,ANIMATE_TRANSLATION,1,iSkin_xlat,
                 1,ANIMATE_NONE,2,1);
 
@@ -2160,7 +2171,26 @@ messages:
 
    GetExpression()
    {
-      return piAction;
+      return piExpression;
+   }
+
+   SetExpression(expression=$)
+   "Used to set facial expression."
+   {
+      if expression <> $
+         AND expression <> piExpression
+         AND expression >= UA_NORMAL
+         AND expression <= UA_WRY
+      {
+         piExpression = expression;
+
+         if poOwner <> $
+         {
+            Send(poOwner,@SomethingDidAction,#what=self,#action=expression);
+         }
+      }
+
+      return;
    }
 
    GetShieldRsc()

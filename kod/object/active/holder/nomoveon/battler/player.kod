@@ -389,14 +389,22 @@ resources:
 
    player_newbie_honor_string = "This soul is new to the lands of Meridian 59.\n"
 
-   player_newbie_commands = \
+   player_intro = \
+      "~I~kYou feel a bit wobbly on your legs and you just can't seem to recall what...  "
+      "what... ...that ominous dull pain in the back of your head...  ...might have "
+      "something to do with...  It doesn't matter.  At least you can remember your name – "
+      "%r.  Hmm, even that sounds pretty strange right now.  Who would possibly come up with "
+      "a name like that?!  As you struggle to come to terms with these fairly basic facts of "
+      "your existence, you notice a worried face looking over you, one eye brow raised.~I"
+
+   player_intro_no_follower = \
       "\n~BBasic Commands for Meridian 59:~B\n"
       "~IUse these mouse and keyboard commands to interact with the world.\n"
       "These are the default commands.  You can change the keyboard commands "
       "by going to the menu item~I ~wGame > Configuration.\n"
       "~rright-click on an object ~b- examines an object, letting you see "
       "more detail.  Right-click on the sign in this area to learn more.\n"
-      "~rspace bar ~b- go through doors, like the blue door to the north.\n"
+      "~rspace bar ~b- go through doors, like the blue door to the south.\n"
       "~rE key ~b- attack monsters.  You may want to wield a weapon first!\n"
       "~n~IType the following commands (red text) into the text bar below. "
       "You can press the RETURN key to move to the chat window.~I\n"
@@ -411,6 +419,25 @@ resources:
       "guardian angel!\n"
       "~rhelp ~b- opens our web-based help pages.  It will take a few "
       "seconds to load.\n"
+
+   player_follower_join_newbie = \
+      "Are you alright, friend?  Man, you had me worried there for a moment!  "
+      "Told ya – you should've worn the helmet we found on that dead guy, gross "
+      "or not...  and just for once in your life, would it have killed you to "
+      "READ A SIGN?  Seriously...  "
+      "Was kinda hilarious watching you tumble down that ledge like a lemming "
+      "though.  ~IHeh!~I  Less fun dragging your body out of that mausoleum "
+      "all by myself though...  Anyway, you look a bit groggy from the fall.  "
+      "Take your time to rest up and tell me if you need any ~I~Bhelp~I~B before "
+      "we get back out there.  All you need to do is ~I~Bsay~I~B it!  "
+      "~I[Go ahead and try it!  First, hit the ~B[RETURN]~B key to begin chat input, "
+      "then type '~I~Bs help~I~B' and hit the ~B[RETURN]~B key again to send your "
+      "chat input on its way!]"
+
+   player_follower_join = \
+      "Hey, friend!  Mind if I join you for a bit?  I'm on my way to Jasper "
+      "and I'd feel a lot safer with a capable adventurer by my side.  I won't "
+      "be a burden, I promise!"
 
    player_safety_on_mail = \
       "Your safety is currently on, meaning you cannot cast hostile spells or "
@@ -1685,6 +1712,11 @@ messages:
       return age;
    }
 
+   IsVeteran()
+   {
+      return (piFlags & PFLAG_TUTORIAL);
+   }
+
    DoesPlayerTakeNewbieDeath()
    {
       // Always newbie death if honor string, but after it disappears
@@ -2235,15 +2267,6 @@ messages:
 
       Send(self,@SetPlayerFlag,#flag=PFLAG_MOVED_SINCE_ENTRY,#value=FALSE);
 
-      // If we log into the Raza inn and aren't past the tutorial,
-      // then give us a commands list.
-      // TODO: update this to not require a room check.
-      if (IsClass(poOwner,&RazaInn)
-            AND NOT (piFlags & PFLAG_TUTORIAL))
-      {
-         Post(self,@MsgSendUser,#message_rsc=player_newbie_commands);
-      }
-
       // Max mana could have changed while offline (e.g. mana node changes).
       // We used to do this when the mana nodes changed, but iterating
       // over all players became far too expensive.
@@ -2751,7 +2774,6 @@ messages:
          Send(self,@ReceiveNestedMail,#from=player_angel,
                #dest_list=[self],#nest_list=[4,player_first_mail]);
          Send(self,@AddHonorString,#string=player_newbie_honor_string);
-         Post(self,@MsgSendUser,#message_rsc=player_newbie_commands);
       }
 
       // Reset their non-pvp flag if present.
@@ -2769,6 +2791,37 @@ messages:
       // Give them the default amount of honor points.
       Send(self,@SetHonorPoints,#honor=Send(SETTINGS_OBJECT,@GetDefaultHonor));
 
+      return;
+   }
+
+   PlayIntro()
+   {
+      if Send(SETTINGS_OBJECT,@IsFollowerEnabled)
+      {
+         // Add friend...
+         Send(self,@CreateFollower,#iDifficulty=1,#iRole=FOLLOWER_ROLE_BARD);
+
+         // If a new player: Story time...
+         if NOT (piFlags & PFLAG_TUTORIAL)
+         {
+            // Coming to dazed and confused...
+            Send(self,@LoseHealth,#amount=15);
+            Send(self,@EffectSendUserDuration,#effect=EFFECT_PAIN,#duration=6000);
+
+            // Give intro text...
+            Send(self,@MsgSendUser,#message_rsc=player_intro,#parm1=Send(self,@GetTrueName));
+            Send(poMercenary,@MercenarySayToOne,#target=self,#message_rsc=player_follower_join_newbie);
+         }
+         else
+         {
+            Send(poMercenary,@MercenarySayToOne,#target=self,#message_rsc=player_follower_join);
+         }
+      }
+      // Well, duh, at least explain the basics...
+      else if NOT (piFlags & PFLAG_TUTORIAL)
+      {
+         Send(self,@MsgSendUser,#message_rsc=player_intro_no_follower);
+      }
 
       return;
    }
@@ -2878,6 +2931,19 @@ messages:
          Send(SYS,@ClearLastMurderer);
       }
 
+      if poMercenary <> $
+      {
+         if IsTimer(poMercenary)
+         {
+            DeleteTimer(poMercenary);
+            poMercenary = $;
+         }
+         else
+         {
+            Send(poMercenary,@Delete,#bConfirm=TRUE);
+         }
+      }
+
       Send(self,@UpdateRates);
       Send(self,@PeriodicSounds,#bSuspend=TRUE);
 
@@ -2904,21 +2970,90 @@ messages:
    AddDefaultObjects()
    "Add the objects a player is given when creating a character in newbie zone"
    {
-      local iInfo, oSpell, lReagents, lItems, cReagent, iNumber;
+      local oItem;
 
-      // Give the poor newbie an weapon and a bit of cash.
-      Send(self,@NewHold,#what=Create(&Mace));
+      // Give the poor newbie a weapon, a bit of cash and some clothes.
       Send(self,@NewHold,#what=Create(&Money,#number=500));
       Send(Send(SYS,@GetStatistics),@MoneyCreated,#amount=500);
-      Send(self,@AddReagentsForSpells,#iNumCasts=10);
+      Send(self,@AddDefaultClothes);
+      Send(self,@NewHold,#what=Create(&Mace));
 
-      // If player hasn't suicided in last 5 hours, give them cash and prizes!
-      if (GetTime() - piLast_restart_time) > (5*60*60)   
+      // If player hasn't suicided in last 5 hours, give them a little extra.
+      if (GetTime() - piLast_restart_time) > (5*60*60)
       {
-         Send(self,@NewHold,#what=Create(&Money,#number=500));
-         Send(Send(SYS,@GetStatistics),@MoneyCreated,#amount=500);
-         Send(self,@AddReagentsForSpells,#iNumCasts=10);
+         // A bit of extra cash cause shopping's fun.
+         Send(self,@NewHold,#what=Create(&Money,#number=1500));
+         Send(Send(SYS,@GetStatistics),@MoneyCreated,#amount=1500);
+
+         // A few more equippable items. Helmet also ties into intro text.
+         Send(self,@NewHold,#what=Create(&ShortSword));
+         Send(self,@NewHold,#what=Create(&MetalShield));
+         Send(self,@NewHold,#what=Create(&SimpleHelm));
+
+         // Equip armor by default.
+         oItem = Create(&LeatherArmor);
+         Send(self,@NewHold,#what=oItem);
+         Send(self,@TryUseItem,#what=oItem);
+
+         // A few consumables. Both educational and tasty!
+         Send(self,@NewHold,#what=Create(&Bread,#number=2));
+         Send(self,@NewHold,#what=Create(&Apple,#number=3));
+         Send(self,@NewHold,#what=Create(&Cookie,#number=1));
+         Send(self,@NewHold,#what=Create(&TurkeyLeg,#number=1));
+
+         // Some magical stuff...
+         Send(self,@NewHold,#what=Create(&StrengthPotion));
+         Send(self,@NewHold,#what=Create(&LightScroll));
+
+         // A decent stash of ragents to get started with those spells.
+         Send(self,@AddReagentsForSpells,#iNumCasts=20);
       }
+
+      return;
+   }
+
+   AddDefaultClothes()
+   {
+      local iRandom, oItem;
+
+      // Pants/Skirt
+      // Skirts for mage type chars for the robe look
+      // Females have a chance to substitute pants for short skirt
+      if piIntellect + piMysticism >= 75
+      {
+         oItem = Create(&Skirt);
+         Send(oItem,@Randomize);
+      }
+      else
+      {
+         if (piGender = GENDER_MALE) OR Random(0,1)
+         {
+            oItem = Create(&PantsC,#translation=Send(SYS,@GetRandomGreyTranslation));
+         }
+         else
+         {
+            oItem = Create(&ShortSkirt);
+            Send(oItem,@Randomize);
+         }
+      }
+
+      Send(self,@NewHold,#what=oItem);
+      Send(self,@TryUseItem,#what=oItem);
+
+      // Shirt
+      if Random(0,1)
+      {
+         oItem = Create(&Tanktop);
+         Send(oItem,@Randomize);
+      }
+      else
+      {
+         oItem = Create(&Shirt);
+         Send(oItem,@Randomize);
+      }
+
+      Send(self,@NewHold,#what=oItem);
+      Send(self,@TryUseItem,#what=oItem);
 
       return;
    }
@@ -4915,6 +5050,12 @@ messages:
          if actual = TRUE
          {
             piTimeAttackedPlayer = GetTime();
+
+            // Followers faint at such excitement...
+            if (poMercenary <> $) AND IsClass(poMercenary,&Follower)
+            {
+               Send(poMercenary,@Killed,#bPvP=TRUE);
+            }
          }
 
          return TRUE;
@@ -4984,6 +5125,12 @@ messages:
       if actual = TRUE
       {
          piTimeAttackedPlayer = GetTime();
+
+         // Followers faint at such excitement...
+         if (poMercenary <> $) AND IsClass(poMercenary,&Follower)
+         {
+            Send(poMercenary,@Killed,#bPvP=TRUE);
+         }
       }
 
       return TRUE;
@@ -5128,11 +5275,11 @@ messages:
    // whether they have attacked anyone. CanHelpPlayer allows helping those
    // who have been attacked but haven't reciprocated, CanHelpPlayerStrict
    // checks if they have been involved in any sort of combat with other players.
-   CanHelpPlayerStrict()
+   CanHelpPlayerStrict(bFollower=FALSE)
    {
       local iTime;
 
-      if (Send(SYS,@GetChaosNight))
+      if Send(SYS,@GetChaosNight) AND NOT bFollower
       {
          return TRUE;
       }
@@ -7346,6 +7493,13 @@ messages:
 
       Send(self,@ComputeMaxMana);
 
+      // Also update our follower's max mana.
+      if (poMercenary <> $)
+         AND IsClass(poMercenary,&Follower)
+      {
+         Send(poMercenary,@ComputeMaxMana);
+      }
+
       return;
    }
 
@@ -7366,6 +7520,13 @@ messages:
       }
 
       Send(self,@ComputeMaxMana);
+
+      // Also update our follower's max mana.
+      if (poMercenary <> $)
+         AND IsClass(poMercenary,&Follower)
+      {
+         Send(poMercenary,@ComputeMaxMana);
+      }
 
       return;
    }
@@ -15365,6 +15526,12 @@ messages:
       // Set our attacked-by time here.
       piTimeAttackedByPlayer = iTime;
 
+      // Followers faint at such excitement...
+      if (poMercenary <> $) AND IsClass(poMercenary,&Follower)
+      {
+         Send(poMercenary,@Killed,#bPvP=TRUE);
+      }
+
       return;
    }
 
@@ -15610,9 +15777,9 @@ messages:
       return FALSE;
    }
 
-   CreateFollower(iDifficulty=$,iGender=$,bContracted=FALSE)
+   CreateFollower(iDifficulty=$,iGender=$,bContracted=FALSE,iRole=FOLLOWER_ROLE_BARD)
    {
-      local oFollower;
+      local oFollower, iAngle, lCoordinates;
 
       if (poMercenary <> $)
       {
@@ -15630,10 +15797,14 @@ messages:
       }
 
       oFollower = Create(&Follower,#oLeader=self,#iLevel=piBase_Max_Health,
-                     #iDifficulty=iDifficulty,#iGender=iGender);
+                     #iDifficulty=iDifficulty,#iGender=iGender,#iRole=iRole);
 
-      Send(poOwner,@NewHold,#what=oFollower,#new_row=piRow+2,#new_col=piCol+2,
-                          #fine_row=piFine_row,#fine_col=piFine_col);
+
+      iAngle = Send(self,@GetAngle);
+      lCoordinates = Send(poOwner,@GetStepCoordinates,#angle=iAngle,#who=self);
+      Send(poOwner,@NewHold,#what=oFollower,#new_angle=iAngle+MAX_ANGLE/2,
+         #new_col=First(lCoordinates),#fine_col=Nth(lCoordinates,2),
+         #new_row=Nth(lCoordinates,3),#fine_row=Nth(lCoordinates,4));
 
       Send(oFollower,@SetLeader,#oLeader=self,#bContracted=bContracted);
 

@@ -3265,12 +3265,27 @@ messages:
          return 0;
       }
 
+      if (piFlags2 & PFLAG2_WINGS_ABSORB)
+      {
+         return 0;
+      }
+
       if (amount > 0
          AND (piFlags & PFLAG_TRANCE))
       {
          // Losing 10 percent of our max health causes 100 percent disruption.
          amount = 10*amount/piMax_health;
          Send(self,@BreakTrance,#event=EVENT_DAMAGE,#disruption=amount);
+      }
+
+      propagate;
+   }
+
+   HealthDecay()
+   {
+      if (piFlags2 & PFLAG2_WINGS_ABSORB)
+      {
+         return;
       }
 
       propagate;
@@ -5961,7 +5976,7 @@ messages:
       precision=FALSE)
    {
       local i, j, iResistance, oSoldierShield, gainchance, color_rsc,
-            iDuration, oSpell, oGort,iLimit, origdamage, oWeapon, shrunken;
+            iDuration, oSpell, iLimit, origdamage, oWeapon, shrunken;
 
       if NOT precision
       {
@@ -5971,7 +5986,7 @@ messages:
       origdamage = damage/100;
       color_rsc = player_hit_color_none;
 
-      if what <> $ AND IsClass(what,&monster)
+      if what <> $ AND IsClass(what,&Monster)
       {
          color_rsc = player_hit_color_blue;
       }
@@ -5979,14 +5994,14 @@ messages:
       if NOT absolute
       {
          // Armor of Gort has a special effect that must go first
-         oGort = Send(SYS,@FindSpellByNum,#Num=SID_ARMOR_OF_GORT);
-         if Send(self,@IsEnchanted,#what=oGort)
+         oSpell = Send(SYS,@FindSpellByNum,#Num=SID_ARMOR_OF_GORT);
+         if Send(self,@IsEnchanted,#what=oSpell)
          {
-            damage = Send(oGort,@PriorityModifyDefenseDamage,#who=self,
+            damage = Send(oSpell,@PriorityModifyDefenseDamage,#who=self,
                            #what=what,#damage=damage,
                            #atype=atype,#stype=stype);
          }
-         
+
          foreach i in plDefense_modifiers
          {
             damage = Send(i,@ModifyDefenseDamage,#who=self,#what=what,
@@ -6043,15 +6058,6 @@ messages:
                #effect=EFFECT_PAIN,#duration=iDuration);
       }
 
-      if damage > 0
-      {
-         if (piFlags2 & PFLAG2_PARALYZED)
-         {
-            Send(self,@RemoveEnchantment,
-                  #what=Send(SYS,@FindSpellByNum,#num=SID_PARALYZE));
-         }
-      }
-
       if NOT absolute
          AND what <> $
          AND IsClass(what,&Player)
@@ -6074,7 +6080,7 @@ messages:
          damage = Bound(damage,$,MAX_DAMAGE_PER_HIT*100);
       }
 
-      // Faction enemies an extra 15// damage to each other, above caps.
+      // Faction enemies an extra 15% damage to each other, above caps.
       if what <> $ AND IsClass(what,&Player)
       {
          oSoldierShield = Send(what,@FindUsing,#class=&SoldierShield,#damage=TRUE);
@@ -6106,6 +6112,23 @@ messages:
             RecordStat(STAT_ASSESS_DAM,Send(self,@GetTrueName),
                Send(what,@GetTrueName),stype,atype,damage/100,origdamage,
                player_no_weapon_string);
+         }
+      }
+
+      if (piFlags2 & PFLAG2_WINGS_ABSORB)
+      {
+         oSpell = Send(SYS,@FindSpellByNum,#num=SID_SPIRITUAL_WINGS);
+         if (oSpell <> $)
+         {
+            damage = Send(oSpell,@CalculateDamage,#who=self,#what=what,
+                           #damage=damage);
+         }
+
+         if (damage = 0)
+         {
+            // Don't report resist if wings absorb 100% of the damage.
+            report_resistance = FALSE;
+            // Wings protect msg
          }
       }
 
@@ -9748,7 +9771,7 @@ messages:
    {
       local lItems,i, j, amount, oBody, oSoldierShield, bNo_drop_death, oItemAtt,
             oRoom, iRow, iCol, iFine_Row, iFine_Col, iAngle, oItem,
-            iRoom, lInventoryContents, lReagentBagContents;
+            iRoom, lInventoryContents, lReagentBagContents, oSpell;
 
       // If this player has created any evil twins, delete them.
       Send(self,@RemoveAllCreatedEvilTwins);

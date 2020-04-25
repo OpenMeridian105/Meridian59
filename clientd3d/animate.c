@@ -93,12 +93,11 @@ void AnimationTimerProc(HWND hwnd, UINT timer)
 
    PingTimerProc(hwnd, 0, 0, 0);
 
-   if (!(GameGetState() == GAME_PLAY || GameGetState() == GAME_SELECT))
-      return;
-
-   if (last_animate_time == 0)
+   if (!(GameGetState() == GAME_PLAY || GameGetState() == GAME_SELECT)
+      || last_animate_time == 0)
    {
       last_animate_time = GetMilliCountDouble();
+
       return;
    }
 

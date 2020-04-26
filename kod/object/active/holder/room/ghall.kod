@@ -1362,5 +1362,22 @@ messages:
       return;
    }
 
+   ReqLift(who=$,what=$)
+   {
+      local oGuildWho, oGuildWhat;
+
+      oGuildWho = Send(who,@GetGuild);
+      oGuildWhat = Send(what,@GetGuild);
+
+      // Guild members can lift each other. Strangers can lift each other.
+      if ((oGuildWho = poGuild_owner) AND (oGuildWhat = poGuild_owner))
+         OR ((oGuildWho <> poGuild_owner) AND (oGuildWhat <> poGuild_owner))
+      {
+         return TRUE;
+      }
+
+      return FALSE;
+   }
+
 end
 ////////////////////////////////////////////////////////////////////////////////

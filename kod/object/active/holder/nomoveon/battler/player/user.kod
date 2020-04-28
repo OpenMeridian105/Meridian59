@@ -331,7 +331,7 @@ resources:
       "You could not be restored to your previous location."
 
    user_logon = \
-      "Welcome to the world of Meridian 59! (type \"help\" to see the manual)."
+      "Welcome to the world of Meridian 59!"
    user_goto_lastsaferoom = "You have been sent to the last safe place you visited."
    user_goto_safety = "You have been sent to a safe place."
    user_goto_object = "You have been sent to %s%s."
@@ -456,13 +456,17 @@ resources:
    inventory_sort_no_item = \
       "There is no item or type of item with that name."
    inventory_sort_help = \
-      "Say 'inventory sort add scimitar' to add a scimitar, for example, to "
-      "your preferences. Any item will work; you may also use item types, "
-      "such as weapons, armors, helmets, shields, rings, potions, scrolls, "
-      "wands, rods, reagents, ammo, and food. Say 'sort inventory' to "
-      "instantly sort your inventory at any time. Say 'inventory sort clear' "
-      "to delete your current preferences. Say 'inventory sort report' to "
-      "see your current preferences."
+      "You can list the items in your inventory in order and restore that order "
+      "at any time with a few simple commands.\n"
+      "First, add one item at a time by using the command ~I~B's inventory sort add "
+      "itemname'~I~B.  Any item name will work! You may even specify item types, "
+      "such as ~Iweapons~I, ~Iarmors~I, ~Ihelmets~I, ~Ishields~I, ~Irings~I, ~Ipotions~I, "
+      "~Iscrolls~I, ~Iwands~I, ~Irods~I, ~Ireagents~I, ~Iammo~I and ~Ifood~I.\n"
+      "Once you have added all the items in the correct order, use the "
+      "command ~I~B's sort inventory'~B~I to automatically arrange the items in your "
+      "inventory in the specified order.\n"
+      "Finally, use the commands ~I~B's inventory sort clear'~B~I and ~I~B's inventory "
+      "sort report'~B~I to delete or review your current sorting preferences."
    inventory_sort_report_header = \
       "Your inventory will sort with this order:"
    inventory_sort_report = \
@@ -867,14 +871,17 @@ messages:
 
       Send(SYS,@SystemUserLogon,#what=self);
 
-      // Let the user know whether safety is on or off.
-      if piPreferences & CF_SAFETY_OFF
+      // If relevant, let the user know whether safety is on or off.
+      if Send(self,@CanPlayerPvP)
       {
-         Send(self,@MsgSendUser,#message_rsc=user_safety_off);
-      }
-      else
-      {
-         Send(self,@MsgSendUser,#message_rsc=user_safety_on);
+         if piPreferences & CF_SAFETY_OFF
+         {
+            Send(self,@MsgSendUser,#message_rsc=user_safety_off);
+         }
+         else
+         {
+            Send(self,@MsgSendUser,#message_rsc=user_safety_on);
+         }
       }
 
       if NOT (IsClass(self,&DM) AND Send(self,@IsHidden))
@@ -920,15 +927,6 @@ messages:
       Send(self,@ToCliSpellSchools);
       Send(self,@UserLogonHook);
 
-      // Give a new user a buddy upon first login. Has to happen
-      // after the user has arrived in poOwner.
-      if (piXP_total = 0)
-         AND (poMercenary = $)
-         AND Send(SETTINGS_OBJECT,@IsFollowerEnabled)
-      {
-         Post(self,@CreateFollower,#iDifficulty=5);
-      }
-
       if (poEvilTwin <> $)
       {
          Send(poEvilTwin,@PlaceEvilTwin,#who=self);
@@ -963,6 +961,12 @@ messages:
          {
             RecordStat(STAT_GUILD, sGuild, Send(Send(poGuild,@GetGuildMaster),@GetName), system_blank_resource );
          }
+      }
+
+      // Finally, give a new user a proper introduction and possibly a friend.
+      if (piTimeLoggedIn = 0)
+      {
+         Post(self,@PlayIntro);
       }
 
       RecordStat(STAT_PLAYER, poSession, Send(self,@GetTrueName), Send(oHRoom,@GetName), Send(oBRoom,@GetName), 

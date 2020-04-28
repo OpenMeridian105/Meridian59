@@ -16,7 +16,58 @@ constants:
    include protocol.khd
 
    // Follower chat lockout time in ms.
-   FOLLOWER_CHAT_DELAY = 4000
+   FOLLOWER_CHAT_DELAY = 6000
+
+   // Distance in regular units.
+   FOLLOWER_MAX_DISTANCE_LEADER = 8
+
+   // Chance of 1 in n+1
+   FOLLOWER_KILLED_SOMETHING_CHAT_CHANCE = 2
+   FOLLOWER_LEADER_KILLED_SOMETHING_CHAT_CHANCE = 3
+   FOLLOWER_ENTER_CONTINUOUS_COMBAT_CHANCE = 20
+   FOLLOWER_ENTER_BRIEF_PAUSE_CHANCE = 15
+   FOLLOWER_ENTER_EXTENDED_PAUSE_CHANCE = 10
+   FOLLOWER_ENTER_LONG_PAUSE_CHANCE = 4
+   FOLLOWER_ENTER_INACTIVITY_CHANCE = 2
+   FOLLOWER_ENTER_RANDOM_CHANCE = 40
+
+   // Number of seconds that define a timespan.
+   FOLLOWER_CONTINUOUS_COMBAT = 5
+   FOLLOWER_BRIEF_PAUSE = 15
+   FOLLOWER_EXTENDED_PAUSE = 60
+   FOLLOWER_LONG_PAUSE = 600
+   FOLLOWER_MAJOR_PAUSE = 1800
+   FOLLOWER_HIATUS = 5400
+
+   // Duration REs are maintained out of combat in seconds.
+   FOLLOWER_MAINTAIN_TIME = 30
+
+   // Maximum delay between out of combat actions.
+   FOLLOWER_OUT_OF_COMBAT_DELAY = 10
+
+   FOLLOWER_MAX_LEVEL = 150
+
+   FOLLOWER_FRESH = 30
+   FOLLOWER_NOVICE = 50
+   FOLLOWER_EXPERIENCED = 70
+   FOLLOWER_SEASONED = 90
+   FOLLOWER_HARDENED = 110
+   FOLLOWER_VETERAN = 130
+   FOLLOWER_MASTER = 150
+
+   // Effect chance of viLevel*chance/base.
+   FOLLOWER_EFFECT_BASE = 150
+   FOLLOWER_EFFECT_CHANCE_LOW = 20
+   FOLLOWER_EFFECT_CHANCE_FAIR = 40
+   FOLLOWER_EFFECT_CHANCE_GOOD = 60
+   FOLLOWER_EFFECT_CHANCE_HIGH = 80
+   FOLLOWER_EFFECT_CHANCE_TRUE = 100
+
+   FOLLOWER_SPECIALIZED_MANA_PERCENTAGE = 50
+   FOLLOWER_SPECIALIZED_EXERTION_PERCENTAGE = 50
+   FOLLOWER_SPECIALIZED_FREQUENCY_PERCENTAGE = 200
+   FOLLOWER_SPECIALIZED_POWER_PERCENTAGE = 200
+
 
 resources:
 
@@ -27,19 +78,90 @@ resources:
    follower_desc_rsc = \
       "A trustworthy soul that has decided to join you on your adventures."
 
-   // Mercenary messages adjusted specifically for followers
-   // Triggered upon hiring and firing a mecenary/follower
-   follower_join = \
-      "Hey, friend!  I'll join you for a bit if you don't mind.  It's "
-      "dangerous out there and it would really put my mind at ease if I "
-      "didn't have to travel alone.  Just let me know if you need any "
-      "~I~Bhelp~I~B. All you need to do is to ~I~Bsay~I~B it! ~I[Go ahead and try "
-      "it by entering '~I~Bs help~I~B' into your chat input!]"
+   // Mercenary message adjusted specifically for followers
+   // Triggered upon firing a follower
    follower_leave = \
       "Alright, friend.  Don't worry, I'm sure I can make it on my own from "
       "here on and perhaps, we will meet again one day.  I'll just drop the "
       "loot that you shared with me on the floor - be sure to pick it up!  "
       "Anyway... thanks for the great run and stay safe out there!"
+
+   // Originally automatically displayed on first login.
+   // Not integrated into follower chat.
+   follower_commands_basic = \
+      "The following commands may be entered directly into chat input.  "
+      "Most of them can be abbreviated: '~I~Bs~I~B' for '~Isay~I', "
+      "'~I~Bb~I~B' for '~Ibroadcast~I'...\n"
+      "~Bsay~B (message)   ~Isend a message to everyone in the same room~I\n"
+      "~Btell~B (player name) (message)   ~Isend a direct message to a single player~I\n"
+      "~Byell~B (message)   ~Isend a message that can be heard in adjacent rooms~I\n"
+      "~Bbroadcast~B (message)   ~Isend a message to everyone that is logged on~I\n\n"
+      "~Bcast~B (spellname)   ~Icast the spell you specified~I\n"
+      "~Bperform~B (skillname)   ~Iperform the skill you specified (active skills only)~I\n"
+      "~Brest/stand~B   ~Irest to recover resources more quickly, stand to stop resting~I\n\n"
+      "~Bget~B   ~Ibring up a list of items in reach and view that you can get from the ground~I\n"
+      "~Bdrop~B   ~Ibring up a list of items in your inventory that you can drop~I\n"
+      "~Bbuy~B   ~Iopen up the buy window near a vendor~I\n"
+      "~Boffer~B   ~Iselect inventory items to offer to a nearby vendor or player~I\n\n"
+      "~Bwho~B   ~Ishow a list of all the people logged into the game right now~I\n"
+      "~Bmail~B   ~Iopen up your mail folder~I\n"
+      "~Bhelp~B   ~Iopen the game's web-based help pages~I\n"
+      "~Bquit~B   ~Iquit to character selection~I\n\n"
+      "~IIf you want to know about other commands, enter ~B's commands advanced'~B, "
+      "~B's commands social'~B, ~B's commands settings'~B or ~B's commands say'~B!"
+
+   follower_commands_advanced = \
+      "These are advanced game commands that you may find helpful a bit later...\n"
+      "~Bdeposit~B (amount)   ~Ideposit the amount of shillings near a banker~I\n"
+      "~Bwithdraw~B (amount)   ~Iwithdraw the amount of shillings near a banker~I\n"
+      "~Bbalance~B   ~Idisplay your current account balance near a banker~I\n\n"
+      "~Buse~B   ~Iactivate nearby object or bring up contents of a nearby container~I\n"
+      "~Bput~B   ~Iselect inventory items to be put into a nearby container~I\n\n"
+      "~Balias~B   ~Ibring up a window to organize your F-Keys as hotkeys~I\n"
+      "~Bcmdalias~B   ~Ibring up a window to organize command aliases~I\n\n"
+      "~Bmap~B   ~Itoggle the display of a large zone map in the main window ~I\n\n"
+      "~Btime~B   ~Iprint the current game time ~I\n\n"
+      "~Bappeal~B (message)  ~Isend a message to every guide/admin that is logged on ~I\n\n"
+      "~Bsuicide~B   ~Ibring up a prompt that allows you to delete your character~I"
+
+   follower_commands_social = \
+      "These are commands that you can use to better communicate with your friends...\n"
+      "~Bemote~B (message)   ~Iallows you to tell those nearby what you are doing~I\n"
+      "~Bpoint/wave/dance~B   ~Iexecute a visual emote~I\n"
+      "~Bneutral/happy/sad/wry~B   ~Iset your facial expression accordingly~I\n\n"
+      "~Bgroup~B   ~Ibring up a window that allows you to manage messaging groups~I\n"
+      "~Bnewgroup~B (groupname)   ~Icreate a new group you can add players to~I\n"
+      "~Bdelgroup~B (groupname)   ~Idelete the specified group~I\n"
+      "~Baddgroup~B (groupname) (playername)   ~Iadd a player to the existing group~I\n"
+      "~Bt~B (groupname) (message)   ~Isend a message to every player in that group~I\n\n"
+      "~Bguild~B   ~Ibring up the guild window~I\n"
+      "~Binvite~B (playername)   ~Iplace a guild invitiation in a nearby player's inventory~I\n"
+      "~Btguild~B (message)   ~Isend a message to every logged on guild member~I\n"
+      "~Btg set motd~B (message)   ~Iset a message of the day for your guild, printed upon login~I\n"
+      "~Btg clear motd~B (message)   ~Iclear your guild's current MotD~I"
+
+   follower_commands_settings = \
+      "These are game commands to toggle different game settings...\n"
+      "~Bsafety on/off~B   ~Itoggle ability to attack friendly players and soldiers~I\n"
+      "~Btempsafe on/off~B   ~Itoggle activation of temporary PvP protection upon a PvP death~I\n\n"
+      "~Bspellpower on/off~B   ~Itoggle the display of effective spellpower when casting~I\n\n"
+      "~Bgrouping on/off~B   ~Itoggle automatic joining of local players to share combat XP~I\n"
+      "~Bautoloot on/off~B   ~Itoggle automatic looting of money and stackable items~I\n\n"
+      "~Bautocombine on/off~B   ~Itoggle automatic charge fusing for potions, scrolls and wands~I\n"
+      "~Breagentbag on/off~B   ~Itoggle automatic storage of picked up ragents if you own one~I"
+
+   follower_commands_say = \
+      "The following commands are said, meaning that they begin with ~B~I's ...'~I~B\n"
+      "~Bs inventory sort help~B   ~Iprint information about automatic inventory sorting~I\n"
+      "~Bs inventory sort add~B   ~Iadd the next item/itemclass to your ordered list~I\n"
+      "~Bs inventory sort clear~B   ~Iclear your current sorting preferences~I\n"
+      "~Bs inventory sort report~B   ~Iprint your current sorting preferences~I\n"
+      "~Bs sort inventory~B   ~Iautomatically sort your inventory based on your preferences~I\n\n"
+      "~Bs start solo survival~B   ~Istart a private survival arena session from a safe place~I\n"
+      "~Bs start public survival~B   ~Istart a public survival arena that others can join~I\n"
+      "~Bs join public survival~B   ~Ijoin a public survival arena that has just begun~I\n"
+      "~Bs start guild survival~B   ~Istart a closed survival arena that only guild members can join~I\n"
+      "~Bs join guild survival~B   ~Ijoin your guild's survival arena that has just begun~I"
 
    // Messages triggered by the follower's return after dying or being left behind.
    follower_return_death = \
@@ -151,7 +273,6 @@ resources:
 
    // Messages triggered by MercenaryCommand()
    follower_break = "Alright. See you later, friend!"
-   follower_light = "You are right, it ~Iis~I a bit dark around these parts."
    follower_close = "Very well. I'll stick really close."
    follower_closer = "Very well. I'll follow a bit more closely."
    follower_not_closer = "No offense, but I'm fairly sure I don't want to get ~Ithat~I close."
@@ -160,12 +281,12 @@ resources:
    follower_not_farther = "Are you trying to ditch me?!"
    follower_help = \
       "Need help with something? You can ask me to...\n"
+      "...tell you about the basic game ~I~Bcommands~I~B that you can enter in the chat.\n"
       "...give you some ~I~Binfo~I~Brmation about this general area.\n"
       "...~I~Brefresh~I~B your memory about basic game concepts (info signs you may have missed).\n"
       "...give you some ~I~Btips~I~B to make adventuring life easier.\n"
       "...~I~Bbrief~I~B you on quests that we are currently trying to complete.\n"
       "...tell you what ~I~Bspells~I~B I have learned so far.\n"
-      "...make some ~I~Blight~I~B, so we can see better in dark places.\n"
       "...move in a little ~I~Bcloser~I~B, or really ~I~Bclose~I~B so I don't fall behind.\n"
       "...stay a bit ~I~Bfarther~I~B back or stay ~I~Bfar~I~B back to stay out of trouble.\n"
       "...~I~Bmeet up~I~B with you later in case you don't need me at the moment.\n"
@@ -212,7 +333,6 @@ resources:
    follower_info_repeat_c = "Again... "
    follower_info_none = \
       "I'm afraid I don't have any useful information about this place.  Sorry!"
-   follower_info_self = ""
 
    // Messaged used by GreetLeader() triggered by MercenaryCommand()
    follower_greet_leader_template = "%s%s%s"
@@ -274,9 +394,13 @@ resources:
    follower_brief_leader_end_e = ".  What could possibly go wrong?~n~M\""
 
    // Triggers for MercenaryCommand()
+   follower_commands_trigger = "command"
+   follower_commands_advanced_trigger = "adv"
+   follower_commands_social_trigger = "soc"
+   follower_commands_settings_trigger = "set"
+   follower_commands_say_trigger = "say"
    follower_spells_trigger = "spells"
    follower_break_trigger = "meet up"
-   follower_light_trigger = "light"
    follower_close_trigger = "close"
    follower_closer_trigger = "closer"
    follower_far_trigger = "far"
@@ -307,9 +431,11 @@ resources:
    follower_hello_trigger_c = "hello"
    follower_hello_trigger_d = "hail"
 
+   follower_pvp = "Ayeeeeeeeeeeeeeeeeeeeeeeeeeeehhhhhhhhhhhhhhhhh!!! ~IGlbs.~I"
+
    // The loooong list of quest feedback. At least at some point, hopefully?
    follower_quest_mummy = \
-      "Find the mausoleum, kill the shadow mummy.  Got it.  I believe the elder "
+      "Back to the mausoleum, kill the shadow mummy.  Got it.  I believe the elder "
       "also mentioned something about levers that needed to be flipped.  Sounds "
       "complicated, but I guess we'll deal with that once we get there.  Let's "
       "get going!"
@@ -320,14 +446,13 @@ classvars:
 
    viSpeed = SPEED_VERY_FAST
    viAttributes = MOB_LISTEN | MOB_RECEIVE
-   vrMercenaryJoin = follower_join
    vrMercenaryLeave = follower_leave
    vrFollowerReturnDeath = follower_return_death
    vrFollowerReturnLost = follower_return_lost
    viSocial = 100
-   vrInfo = follower_info_self
+   vrInfo = $
    viInfo_time = 1800
-   viChatFrequency = 20
+   viChat_frequency = 100
 
 properties:
 
@@ -337,10 +462,11 @@ properties:
    viChanceFemale = 50
    viKarma = 0
    viLevel = 250
-   viDifficulty = 5
+   viDifficulty = 1
+   piRole = 0
    ptAbsence = $
    poBody = $
-   piLightCheck = 0
+   piOutOfCombatAction = 0
    piCombatCheck = 0
    viNaturalVigorRegeneration = 0
    piStayClose = 2
@@ -349,10 +475,20 @@ properties:
    poInfo = $
    plInfo = $
 
+   viAttacks = ATTACK_SLASH
+   viBonusSwing = 0
+   viPoisonChance = 0
+   viBleedChance = 0
+   viSiphonChance = 0
+   viFatigueChance = 0
+   viBurnChance = 0
+
 messages:
 
-   Constructor(iLevel=0,iDifficulty=$,iGender=$)
+   Constructor(iLevel=0,iDifficulty=$,iGender=$,iRole=0)
    {
+      piRole = iRole;
+
       if iLevel > 0
       {
          viLevel = iLevel;
@@ -378,6 +514,60 @@ messages:
       propagate;
    }
 
+   // Followers aren't randomized but come with certain stat distributions based on their role.
+   CreateStats()
+   {
+      switch (piRole)
+      {
+         case FOLLOWER_ROLE_WARRIOR:
+            piAgility = 40;
+            piAim = 40;
+            piMight = 50;
+            piStamina = 50;
+            piIntellect = 10;
+            piMysticism = 10;
+            break;
+
+         case FOLLOWER_ROLE_WIZARD:
+            piAgility = 25;
+            piAim = 25;
+            piMight = 25;
+            piStamina = 25;
+            piIntellect = 50;
+            piMysticism = 50;
+            break;
+
+         case FOLLOWER_ROLE_PRIEST:
+            piAgility = 20;
+            piAim = 20;
+            piMight = 30;
+            piStamina = 40;
+            piIntellect = 40;
+            piMysticism = 50;
+            break;
+
+         case FOLLOWER_ROLE_WARLOCK:
+            piAgility = 50;
+            piAim = 30;
+            piMight = 15;
+            piStamina = 20;
+            piIntellect = 50;
+            piMysticism = 35;
+            break;
+
+         default:
+            piAgility = 35;
+            piAim = 35;
+            piMight = 35;
+            piStamina = 35;
+            piIntellect = 30;
+            piMysticism = 35;
+            break;
+      }
+
+      return;
+   }
+
    Delete(bConfirm=FALSE)
    {
       // No accidential deletions. Go into absence unless
@@ -394,6 +584,9 @@ messages:
          DeleteTimer(ptAbsence);
          ptAbsence = $;
       }
+
+      // If the follower had any minions, remove them.
+      Send(self,@RemoveAllMinions);
 
       propagate;
    }
@@ -567,6 +760,13 @@ messages:
       return TRUE;
    }
 
+   NewUsing(what = $)
+   {
+      Send(self,@ComputeMaxMana);
+
+      propagate;
+   }
+
    UnuseItem(what=$,bDrop=TRUE)
    {
       local i;
@@ -579,11 +779,18 @@ messages:
 
             Send(what,@NewUnused,#what=self);
 
+            if (IsClass(what,&Weapon))
+            {
+               Send(self,@RemoveWeaponAction,#what=what);
+            }
+
             if bDrop
             {
                Send(poOwner,@NewHold,#what=what,#new_row=piRow,#new_col=piCol,
                      #fine_row=piFine_row+2,#fine_col=piFine_col+2);
             }
+
+            Send(self,@ComputeMaxMana);
 
             return TRUE;
          }
@@ -660,7 +867,7 @@ messages:
    // Follower was knocked out. Let's put him on a timeout before
    // he rejoins his leader. If the leader is nowhere in sight,
    // return to him the next time he enters a safe room.
-   Killed(what=$)
+   Killed(what=$,bPvP=FALSE)
    {
       local oBody;
 
@@ -678,7 +885,11 @@ messages:
             poBody = oBody;
          }
 
-         if vrSound_death <> $
+         if bPvP
+         {
+            Post(self,@MercenarySayToOne,#target=poLeader,#message_rsc=follower_pvp);
+         }
+         else if vrSound_death <> $
          {
             Send(poOwner,@SomethingWaveRoom,#what=oBody,#wave_rsc=vrSound_death,
                   #flags=SOUND_RANDOM_PITCH);
@@ -739,6 +950,9 @@ messages:
 
       // If the follower has Apparitions attacking it, delete them.
       Send(self,@RemoveAllApparitions);
+
+      // If the follower had any minions, remove them.
+      Send(self,@RemoveAllMinions);
 
       foreach i in plHurtMeRecently
       {
@@ -811,6 +1025,7 @@ messages:
          // Let's check if our master had the decency to stick around our
          // unconscious body. If so, revive at our body.
          if (oOwner = Send(poLeader,@GetOwner))
+            AND Send(poLeader,@CanHelpPlayerStrict,#bFollower=TRUE)
          {
             Send(oOwner,@NewHold,#what=self,
                #new_row=Send(oBody,@GetRow),#new_col=Send(oBody,@GetCol));
@@ -902,7 +1117,7 @@ messages:
       piHealth = piMax_health * 100;
 
       // Mana
-      piMax_mana = viLevel * Bound(75 + piMysticism,$,125) / 100;
+      piMax_mana = (150 + 2 * piMysticism)/10;
       piMana = piMax_mana * 100;
 
       // Vigor
@@ -922,26 +1137,159 @@ messages:
 
    FollowerDing(bCreation=FALSE)
    {
-      local iSpell, oSpell, lSpell;
-      viLevel = Send(poLeader,@GetBaseMaxHealth);
-      piMax_health = viLevel * Bound(80 + piStamina,$,120) / 100;
-      piMax_mana = viLevel * Bound(80 + piMysticism,$,120) / 100;
+      local iSpell, oSpell, iMana, iExertion, iPriority, iPower, iAttacks, iCount, iLevelPercentage;
+
+      iLevelPercentage = 100*Send(poLeader,@GetBaseMaxHealth)/(100 + Send(poLeader,@GetRawStamina));
+      viLevel = FOLLOWER_MAX_LEVEL*iLevelPercentage/100;
+      piMax_health = (100 + piStamina)*iLevelPercentage/100;
 
       // Automatic capping takes care of the rest.
       Send(self,@GainHealth,#amount=200);
       Send(self,@GainMana,#amount=200);
       Send(self,@GainVigor,#amount=200);
 
-      while (viLevel / 5 > Length(plActions) + 2)
+      // Update our combat abilities depending on role.
+      if piRole = FOLLOWER_ROLE_WARRIOR
       {
-         iSpell = Send(self,@GetRandomSpellID,#iRank=Length(plActions)-1);
+         if viLevel < FOLLOWER_EXPERIENCED
+         {
+            iAttacks = ATTACK_SLASH;
+         }
+         else if viLevel < FOLLOWER_SEASONED
+         {
+            iAttacks = ATTACK_SLASH | ATTACK_TAUNT; 
+         }
+         else if viLevel < FOLLOWER_HARDENED
+         {
+            iAttacks = ATTACK_SLASH | ATTACK_TAUNT | ATTACK_WEAKEN;
+         }
+         else if viLevel < FOLLOWER_VETERAN
+         {
+            iAttacks = ATTACK_SLASH | ATTACK_TAUNT | ATTACK_WEAKEN | ATTACK_FRIGHTEN; 
+         }
+         else
+         {
+            iAttacks = ATTACK_SLASH | ATTACK_TAUNT | ATTACK_WEAKEN | ATTACK_FRIGHTEN | ATTACK_STUN; 
+         }
 
-         if Send(self,@AddCombatAction,#iNum=iSpell)
+         // Update our list of default attacks if necessary.
+         if iAttacks <> viAttacks
+         {
+            viAttacks = iAttacks;
+            Send(self,@AddDefaultAttacks,#bUpdate=TRUE);
+         }
+
+         viBonusSwing = viLevel*FOLLOWER_EFFECT_CHANCE_TRUE/FOLLOWER_EFFECT_BASE;
+         viBleedChance = viLevel*FOLLOWER_EFFECT_CHANCE_FAIR/FOLLOWER_EFFECT_BASE;
+      }
+
+      if piRole = FOLLOWER_ROLE_BARD
+      {
+         if viLevel < FOLLOWER_EXPERIENCED
+         {
+            iAttacks = ATTACK_SLASH;
+         }
+         else if viLevel < FOLLOWER_SEASONED
+         {
+            iAttacks = ATTACK_SLASH | ATTACK_SNARE; 
+         }
+         else if viLevel < FOLLOWER_HARDENED
+         {
+            iAttacks = ATTACK_SLASH | ATTACK_SNARE | ATTACK_DISTRACT;
+         }
+         else
+         {
+            iAttacks = ATTACK_SLASH | ATTACK_SNARE | ATTACK_DISTRACT | ATTACK_DAZE; 
+         }
+
+         // Update our list of default attacks if necessary.
+         if iAttacks <> viAttacks
+         {
+            viAttacks = iAttacks;
+            Send(self,@AddDefaultAttacks,#bUpdate=TRUE);
+         }
+
+         viPoisonChance = viLevel*FOLLOWER_EFFECT_CHANCE_HIGH/FOLLOWER_EFFECT_BASE;
+         viBonusSwing = viLevel*FOLLOWER_EFFECT_CHANCE_GOOD/FOLLOWER_EFFECT_BASE;
+      }
+
+      if piRole = FOLLOWER_ROLE_WARLOCK
+      {
+         if viLevel < FOLLOWER_SEASONED
+         {
+            iAttacks = ATTACK_SLASH;
+         }
+         else if viLevel < FOLLOWER_VETERAN
+         {
+            iAttacks = ATTACK_SLASH | ATTACK_CRIPPLE; 
+         }
+         else
+         {
+            iAttacks = ATTACK_SLASH | ATTACK_CRIPPLE | ATTACK_FRIGHTEN; 
+         }
+
+         // Update our list of default attacks if necessary.
+         if iAttacks <> viAttacks
+         {
+            viAttacks = iAttacks;
+            Send(self,@AddDefaultAttacks,#bUpdate=TRUE);
+         }
+
+         viSiphonChance = viLevel*FOLLOWER_EFFECT_CHANCE_GOOD/FOLLOWER_EFFECT_BASE;
+      }
+
+      if piRole = FOLLOWER_ROLE_WIZARD
+      {
+         viBurnChance = viLevel*FOLLOWER_EFFECT_CHANCE_FAIR/FOLLOWER_EFFECT_BASE;
+      }
+
+      if piRole = FOLLOWER_ROLE_PRIEST
+      {
+         viFatigueChance = viLevel*FOLLOWER_EFFECT_CHANCE_GOOD/FOLLOWER_EFFECT_BASE;
+      }
+
+      iCount = Length(Send(self,@GetSpellObjects));
+
+      // We are starting at level 25, hence iCount + 4.
+      while (viLevel / 5 > iCount + 4)
+      {
+         iMana = 100;
+         iExertion = 100;
+         iPriority = 100;
+         iPower = 25 + viDifficulty*5;
+
+         iSpell = Send(self,@GetNewSpellID,#iRank=iCount+1);
+
+         if iSpell
+         {
+            oSpell = Send(SYS,@FindSpellByNum,#num=iSpell);
+
+            // Special modifications on a role by role basis...
+            if (IsClass(oSpell,&AttackSpell) AND ((piRole = FOLLOWER_ROLE_WIZARD) OR (piRole = FOLLOWER_ROLE_WARLOCK)))
+               OR (IsClass(oSpell,&Jala) AND (piRole = FOLLOWER_ROLE_BARD))
+               OR (IsClass(oSpell,&Heal) AND (piRole = FOLLOWER_ROLE_PRIEST))
+               OR ((IsClass(oSpell,&PersonalEnchantment) OR (iSpell = SID_RELAY)) AND (piRole = FOLLOWER_ROLE_WARRIOR))
+               OR (Send(oSpell,@IsIllusion) AND (piRole = FOLLOWER_ROLE_WARLOCK))
+            {
+               iMana = FOLLOWER_SPECIALIZED_MANA_PERCENTAGE;
+               iExertion = FOLLOWER_SPECIALIZED_EXERTION_PERCENTAGE;
+               iPriority = 10000/FOLLOWER_SPECIALIZED_FREQUENCY_PERCENTAGE;
+               iPower = Bound(iPower*FOLLOWER_SPECIALIZED_POWER_PERCENTAGE/100,$,99);
+            }
+         }
+
+         if Send(self,@AddCombatAction,#iNum=iSpell,
+                                       #iMana=iMana,
+                                       #iExertion=iExertion,
+                                       #iPriority=iPriority,
+                                       #iPower=iPower)
          {
             if NOT bCreation
             {
                Send(self,@FollowerLearnMessage,#iNum=iSpell);
             }
+
+            ++iCount;
          }
          else
          {
@@ -952,132 +1300,266 @@ messages:
       return;
    }
 
-   GetRandomSpellID(iRank=0)
+   ComputeMaxMana()
    {
-      local iSchool, iSpell;
+      local i, index, iNodeList, oNode, iMagic;
 
-      iSchool = 1;
+      if poLeader = $
+      {
+         return;
+      }
 
-      if Send(poLeader,@CountKnownAtLevel,#school=SS_SHALILLE)
+      iMagic = Send(self,@GetMysticism);
+      piMax_mana = 150 + (2 * iMagic);
+
+      for (index = 1, iNodelist = Send(poLeader,@GetNodeList);
+           iNodeList > 0 AND index <= NODE_MAX_VALUE;
+           index *= 2)
       {
-         iSchool = 2;
-         viKarma = 60;
+         if (iNodeList & index)
+         {
+            oNode = Send(SYS,@FindNodeByNum,#num=index);
+            piMax_mana += Send(oNode,@GetManaAdjust,#who=self,#myst=iMagic);
+            iNodelist &= ~index;
+         }
       }
-      else if Send(poLeader,@CountKnownAtLevel,#school=SS_QOR)
+
+      piMax_mana /= 10;
+
+      // Account for any items that may affect max mana
+      foreach i in plUsing
       {
-         iSchool = 3;
-         viKarma = -60;
+         if Send(i,@AdjustsMaxMana)
+         {
+            piMax_mana += Send(i,@GetManaChange);
+         }
       }
+
+      foreach i in plEnchantments
+      {
+         if Send(Nth(i,2),@AffectsMaxMana)
+         {
+            piMax_mana += Send(Nth(i,2),@GetManaBonus,#state=Nth(i,3));
+         }
+      }
+
+      Send(self,@NewMana);
+
+      return;
+   }
+
+   GetNewSpellID(iRank=0)
+   {
+      local iSpell;
 
       switch(iRank)
       {
-         // Starter spells are the same for every follower. They
-         // introduce important game concepts to new players, such
-         // as restoring resources, buffing and casting utility spells.
-         // Starter spell 1: Light
          case 1:
-            iSpell = SID_LIGHT;
-            break;
-         // Starter spell 2: Relay
-         case 2:
-            iSpell = SID_INVIGORATE;
-            break;
-         // Starter spell 3: Super Strength
-         case 3:
-            iSpell = SID_SUPER_STRENGTH;
-            break;
-         // Starter spell 4: BLESS
-         case 4:
-            iSpell = SID_BLESS;
-            break;
-         // Time to diversify and take player schools into account.
-         // Rank 3 spells
-         case 5:
-            switch(iSchool)
+            switch(piRole)
             {
-               case 1:
-                  iSpell = SID_RESTORATE;
+               case FOLLOWER_ROLE_BARD:
+                  iSpell = SID_GLOW;
                   break;
-               case 2:
-                  iSpell = SID_FORCES_OF_LIGHT;
+               case FOLLOWER_ROLE_WARRIOR:
+                  iSpell = SID_RELAY;
                   break;
-               case 3:
+               case FOLLOWER_ROLE_WIZARD:
+                  iSpell = SID_LIGHT;
+                  break;
+               case FOLLOWER_ROLE_PRIEST:
+                  iSpell = SID_MINOR_HEAL;
+                  break;
+               case FOLLOWER_ROLE_WARLOCK:
+                  iSpell = SID_SHADOW_FORM;
+                  break;
+            }
+            break;
+
+         case 2:
+            switch(piRole)
+            {
+               case FOLLOWER_ROLE_BARD:
+                  iSpell = SID_MIRTH;
+                  break;
+               case FOLLOWER_ROLE_WARRIOR:
+                  iSpell = SID_HASTE;
+                  break;
+               case FOLLOWER_ROLE_WIZARD:
+                  iSpell = SID_MYSTIC_TOUCH;
+                  break;
+               case FOLLOWER_ROLE_PRIEST:
+                  iSpell = SID_HOLY_SYMBOL;
+                  break;
+               case FOLLOWER_ROLE_WARLOCK:
+                  iSpell = SID_KARAHOLS_CURSE;
+                  break;
+            }
+            break;
+
+         case 3:
+            switch(piRole)
+            {
+               case FOLLOWER_ROLE_BARD:
+                  iSpell = SID_MELANCHOLY;
+                  break;
+               case FOLLOWER_ROLE_WARRIOR:
+                  iSpell = SID_SUPER_STRENGTH;
+                  break;
+               case FOLLOWER_ROLE_WIZARD:
+                  iSpell = SID_SHOCKING_FURY;
+                  break;
+               case FOLLOWER_ROLE_PRIEST:
+                  iSpell = SID_REMOVE_CURSE;
+                  break;
+               case FOLLOWER_ROLE_WARLOCK:
                   iSpell = SID_ENFEEBLE;
                   break;
             }
             break;
-         // Rank 3 spells
-         case 6:
-            switch(iSchool)
+
+         case 4:
+            switch(piRole)
             {
-               case 1:
-                  iSpell = SID_MAGIC_SHIELD;
+               case FOLLOWER_ROLE_BARD:
+                  iSpell = SID_INVIGORATE;
                   break;
-               case 2:
-                  iSpell = SID_HOSPICE;
+               case FOLLOWER_ROLE_WARRIOR:
+                  iSpell = SID_RESIST_POISON;
                   break;
-               case 3:
+               case FOLLOWER_ROLE_WIZARD:
+                  iSpell = SID_MINOR_HEAL;
+                  break;
+               case FOLLOWER_ROLE_PRIEST:
+                  iSpell = SID_BREATH_OF_LIFE;
+                  break;
+               case FOLLOWER_ROLE_WARLOCK:
                   iSpell = SID_VAMPIRIC_DRAIN;
                   break;
             }
             break;
-         // Rank 4 spells
-         case 7:
-            switch(iSchool)
+
+         case 5:
+            switch(piRole)
             {
-               case 1:
-                  iSpell = SID_EXPLOSIVE_FROST;
+               case FOLLOWER_ROLE_BARD:
+                  iSpell = SID_CURE_POISON;
                   break;
-               case 2:
+               case FOLLOWER_ROLE_WARRIOR:
+                  iSpell = SID_BLESS;
+                  break;
+               case FOLLOWER_ROLE_WIZARD:
+                  iSpell = SID_BLAST_OF_FIRE;
+                  break;
+               case FOLLOWER_ROLE_PRIEST:
                   iSpell = SID_HOLY_BLAZE;
                   break;
-               case 3:
+               case FOLLOWER_ROLE_WARLOCK:
+                  iSpell = SID_ILLUSIONARY_WOUNDS;
+                  break;
+            }
+            break;
+
+         case 6:
+            switch(piRole)
+            {
+               case FOLLOWER_ROLE_BARD:
+                  iSpell = SID_REMOVE_CURSE;
+                  break;
+               case FOLLOWER_ROLE_WARRIOR:
+                  iSpell = SID_NIGHT_VISION;
+                  break;
+               case FOLLOWER_ROLE_WIZARD:
+                  iSpell = SID_EXPLOSIVE_FROST;
+                  break;
+               case FOLLOWER_ROLE_PRIEST:
+                  iSpell = SID_HOSPICE;
+                  break;
+               case FOLLOWER_ROLE_WARLOCK:
                   iSpell = SID_SPLASH_OF_ACID;
                   break;
             }
             break;
-         // Rank 4 spells
-         case 8:
-            switch(iSchool)
+
+         case 7:
+            switch(piRole)
             {
-               case 1:
-                  iSpell = SID_VERTIGO;
+               case FOLLOWER_ROLE_BARD:
+                  iSpell = SID_RESTORATE;
                   break;
-               case 2:
-                  iSpell = SID_DAZZLE;
+               case FOLLOWER_ROLE_WARRIOR:
+                  iSpell = SID_MAGIC_SHIELD;
                   break;
-               case 3:
-                  iSpell = SID_HOLD;
+               case FOLLOWER_ROLE_WIZARD:
+                  iSpell = SID_FIREBALL;
+                  break;
+               case FOLLOWER_ROLE_PRIEST:
+                  iSpell = SID_CURE_DISEASE;
+                  break;
+               case FOLLOWER_ROLE_WARLOCK:
+                  iSpell = SID_APPARITION;
                   break;
             }
             break;
-         // Rank 5 spells
-         case 9:
-            switch(iSchool)
+
+         case 8:
+            switch(piRole)
             {
-               case 1:
-                  iSpell = SID_ARMOR_OF_GORT;
+               case FOLLOWER_ROLE_BARD:
+                  iSpell = SID_HOSPICE;
                   break;
-               case 2:
-                  iSpell = SID_MAJOR_HEAL;
+               case FOLLOWER_ROLE_WARRIOR:
+                  iSpell = SID_MINOR_HEAL;
                   break;
-               case 3:
+               case FOLLOWER_ROLE_WIZARD:
+                  iSpell = SID_LIGHTNING_BOLT;
+                  break;
+               case FOLLOWER_ROLE_PRIEST:
+                  iSpell = SID_FORCES_OF_LIGHT;
+                  break;
+               case FOLLOWER_ROLE_WARLOCK:
                   iSpell = SID_BLIND;
                   break;
             }
             break;
-         // Rank 5 spells
-         case 10:
-            switch(iSchool)
+
+         case 9:
+            switch(piRole)
             {
-               case 1:
+               case FOLLOWER_ROLE_BARD:
+                  iSpell = SID_ILLUSIONARY_WOUNDS;
+                  break;
+               case FOLLOWER_ROLE_WARRIOR:
                   iSpell = SID_KILLING_FIELDS;
                   break;
-               case 2:
-                  iSpell = SID_FINAL_RITES;
+               case FOLLOWER_ROLE_WIZARD:
+                  iSpell = SID_ICE_NOVA;
                   break;
-               case 3:
+               case FOLLOWER_ROLE_PRIEST:
+                  iSpell = SID_DAZZLE;
+                  break;
+               case FOLLOWER_ROLE_WARLOCK:
+                  iSpell = SID_EVIL_TWIN;
+                  break;
+            }
+            break;
+
+         case 10:
+            switch(piRole)
+            {
+               case FOLLOWER_ROLE_BARD:
+                  iSpell = SID_ILLUSIONARY_FIREWALL;
+                  break;
+               case FOLLOWER_ROLE_WARRIOR:
+                  iSpell = SID_ARMOR_OF_GORT;
+                  break;
+               case FOLLOWER_ROLE_WIZARD:
                   iSpell = SID_RING_OF_FLAMES;
+                  break;
+               case FOLLOWER_ROLE_PRIEST:
+                  iSpell = SID_MAJOR_HEAL;
+                  break;
+               case FOLLOWER_ROLE_WARLOCK:
+                  iSpell = SID_REFLECTION;
                   break;
             }
             break;
@@ -1103,38 +1585,29 @@ messages:
 
    FollowerSpellInform()
    {
-      local i, iNum, oSpell, iSpells, iResources;
-
-      iSpells = 0;
+      local i, iNum, oSpell, iSpells, iTotal, iResources, lSpells;
 
       // Figure the number of spells to pick the according resources.
-      foreach i in plActions
-      {
-         iNum = First(i);
+      lSpells = Send(self,@GetSpellObjects);
+      iTotal = Length(lSpells);
 
-         if iNum < 400
-         {
-            ++iSpells;
-         }
-      }
-
-      if iSpells = 0
+      if iTotal = 0
       {
          iResources = 3;
       }
       else
       {
-         iResources = 2 * iSpells + 2;
+         iResources = 2 * iTotal + 2;
       }
 
-      AddPacket(4,Send(SYS,@AddResourceTemplate,#iNum=iResources));
-      AddPacket(4,follower_say_start);
+      AddPacket(4,Send(SYS,@AddResourceTemplate,#iNum=iResources),
+                4,follower_say_start);
 
-      if iSpells = 0
+      if iTotal = 0
       {
          AddPacket(4,follower_no_spell_inform);
       }
-      else if iSpells = 1
+      else if iTotal = 1
       {
          AddPacket(4,follower_one_spell_inform);
       }
@@ -1146,30 +1619,22 @@ messages:
       iSpells = 0;
 
       // Actually get the name of each spell and add each individually.
-      foreach i in plActions
+      foreach i in lSpells
       {
-         iNum = First(i);
-
-         if iNum < 400
+         // Add an "and" if we reach the end of our list.
+         if (i = Nth(lSpells,iTotal))
+            AND iSpells > 0
          {
-            oSpell = Send(SYS,@FindSpellByNum,#num=iNum);
-
-            // The last two entries are move and slash.
-            if (i = Nth(plActions,Length(plActions)-2))
-               AND iSpells > 0
-            {
-               AddPacket(4,follower_and);
-            }
-            else if i <> First(plActions)
-            {
-               AddPacket(4,follower_comma);
-            }
-
-            AddPacket(4,follower_spell);
-            AddPacket(4,Send(oSpell,@GetName));
-
-            ++iSpells;
+            AddPacket(4,follower_and);
          }
+         else if i <> First(lSpells)
+         {
+            AddPacket(4,follower_comma);
+         }
+
+         AddPacket(4,follower_spell,4,Send(i,@GetName));
+
+         ++iSpells;
       }
 
       AddPacket(4,follower_say_end);
@@ -1177,85 +1642,83 @@ messages:
       return TRUE;
    }
 
-   FollowerAdjustLight(bRequest=FALSE)
+   GetSpellObjects()
+   {
+      local i, iNum, lSpells;
+
+      foreach i in plActions
+      {
+         iNum = First(i);
+
+         if iNum < 400
+         {
+            lSpells = Cons(Send(SYS,@FindSpellByNum,#num=iNum),lSpells);
+         }
+      }
+
+      return lSpells;
+   }
+
+   FollowerAdjustLight()
    {
       local iLight, i, oObject, oSpell, iSpellPower;
 
-      iLight = Send(poOwner,@GetRoomLight);
-      iLight += Send(poLeader,@GetLightLevel);
-
-      if (iLight >= LIGHT_NICE) AND NOT bRequest
+      if Send(poLeader,@GetOwner) = poOwner
       {
-         foreach i in plUsing
-         {
-            if IsClass(i,&Torch)
-            {
-               Send(self,@UnuseItem,#what=i,#bDrop=FALSE);
-               break;
-            }
-         }
+         iLight = Send(poOwner,@GetRoomLight);
+         iLight += Send(poLeader,@GetLightLevel);
 
-         foreach i in plPassive
-         {
-            oObject = Send(self,@HolderExtractObject,#data=i);
-
-            if IsClass(oObject,&Shield)
-               AND NOT IsClass(oObject,&Torch)
-            {
-               break;
-            }
-            else
-            {
-               oObject = $;
-            }
-         }
-
-         if oObject <> $
-         {
-            Send(self,@TryUseItem,#what=oObject);
-         }
-      }
-      else
-      {
-         oSpell = $;
-         iSpellPower = 0;
-
-         foreach i in plActions
-         {
-            if First(i) = SID_LIGHT
-            {
-               oSpell = Send(SYS,@FindSpellByNum,#num=SID_LIGHT);
-               iSpellPower = piSpellPower + Nth(i,7);
-               break;
-            }
-         }
-
-         if (oSpell <> $)
-            AND NOT Send(poOwner,@IsEnchanted,#what=oSpell)
-         {
-            Send(oSpell,@CastSpell,#who=self,#lTargets=[self],#iSpellPower=iSpellPower);
-            Send(self,@MonsterCastAnimation);
-
-            return TRUE;
-         }
-
-         oObject = Send(self,@FindHolding,#class=&Torch);
-
-         if (oObject <> $)
-            AND (GetListElemByClass(plUsing,&Torch) = $)
+         if (iLight >= LIGHT_NICE)
          {
             foreach i in plUsing
             {
-               if IsClass(i,&Shield)
+               if IsClass(i,&Torch)
                {
                   Send(self,@UnuseItem,#what=i,#bDrop=FALSE);
                   break;
                }
             }
 
-            if Send(self,@TryUseItem,#what=oObject)
+            foreach i in plPassive
             {
-               return TRUE;
+               oObject = Send(self,@HolderExtractObject,#data=i);
+
+               if IsClass(oObject,&Shield)
+                  AND NOT IsClass(oObject,&Torch)
+               {
+                  break;
+               }
+               else
+               {
+                  oObject = $;
+               }
+            }
+
+            if oObject <> $
+            {
+               Send(self,@TryUseItem,#what=oObject);
+            }
+         }
+         else
+         {
+            oObject = Send(self,@FindHolding,#class=&Torch);
+
+            if (oObject <> $)
+               AND (GetListElemByClass(plUsing,&Torch) = $)
+            {
+               foreach i in plUsing
+               {
+                  if IsClass(i,&Shield)
+                  {
+                     Send(self,@UnuseItem,#what=i,#bDrop=FALSE);
+                     break;
+                  }
+               }
+
+               if Send(self,@TryUseItem,#what=oObject)
+               {
+                  return TRUE;
+               }
             }
          }
       }
@@ -1267,65 +1730,79 @@ messages:
    {
       local oObject, i, oEnch, state, oInfo, iInfo;
 
-      // First things first: If we have a trigger object, let the leader know
-      // that we are ready to activate it, but only if it's fresh.
-      oObject = poObject;
-      poObject = Send(poOwner,@GetMercenaryTriggerObject,#who=self);
-
-      if (poObject <> $)
-         AND (oObject <> poObject)
+      // The following is only relevant if we have a leader.
+      // If we don't, chances are we have just been fired and are trying
+      // to spend the last ten seconds of our life in a meaningful way.
+      // The world is a horrible place, man. :(
+      if poLeader <> $
       {
-         Send(self,@MercenarySayToOne,#target=poLeader,#message_rsc=follower_object,
-            #parm1=Send(poObject,@GetDef),#parm2=Send(poObject,@GetName));
-      }
+         // First things first: If we have a trigger object, let the leader know
+         // that we are ready to activate it, but only if it's fresh.
+         oObject = poObject;
+         poObject = Send(poOwner,@GetMercenaryTriggerObject,#who=self);
 
-      // Secondly, let's see if we have anything interesting to say about
-      // our current info object. Let's see what that is first.
-      oInfo = Send(poOwner,@GetMercenaryInfoObject,#who=poLeader);
-
-      // No pointers from the room we're in. Let's look around for enemies.
-      if oInfo = $
-      {
-         oInfo = Send(self,@GetClosestMonster);
-      }
-
-      if (oInfo <> $)
-      {
-         poInfo = oInfo;
-         iInfo = FALSE;
-
-         if IsClass(poInfo,&Monster) AND Send(poLeader,@UserDisplayMobQuestActive,#what=poInfo)
+         if (poObject <> $)
+            AND (oObject <> poObject)
          {
-            iInfo |= MONSTER_INFO_QUEST;
+            Send(self,@MercenarySayToOne,#target=poLeader,#message_rsc=follower_object,
+               #parm1=Send(poObject,@GetDef),#parm2=Send(poObject,@GetName));
          }
 
-         Send(self,@GiveInfo,#iInfo=iInfo);
+         // Secondly, let's see if we have anything interesting to say about
+         // our current info object. Let's see what that is first.
+         oInfo = Send(poOwner,@GetMercenaryInfoObject,#who=poLeader);
+
+         // No pointers from the room we're in. Let's look around for enemies.
+         if oInfo = $
+         {
+            oInfo = Send(self,@GetClosestMonster);
+         }
+
+         if (oInfo <> $)
+         {
+            poInfo = oInfo;
+            iInfo = FALSE;
+
+            if IsClass(poInfo,&Monster) AND Send(poLeader,@UserDisplayMobQuestActive,#what=poInfo)
+            {
+               iInfo |= MONSTER_INFO_QUEST;
+            }
+
+            Send(self,@GiveInfo,#iInfo=iInfo);
+         }
+
+         // Finally, try to be helpful and provide light with a torch if needed.
+         Send(self,@FollowerAdjustLight);
       }
 
       // Finally, maintenance work. Gotta conserve that mana and what not.
-      if (Abs(piLightCheck - GetTickCount()) > 5000)
+      if GetTime() - piOutOfCombatAction > 5
       {
-         if poLeader <> $
-            AND (Send(poLeader,@GetOwner) = poOwner)
+         // Periodically heal up, cure debuffs, remove curses when out of combat.
+         if (poTarget = $)
+            AND (GetTime() - piCombatCheck > FOLLOWER_OUT_OF_COMBAT_DELAY*100/(100+piIntellect+piMysticism))
          {
-            Send(self,@FollowerAdjustLight);
-
-            // REs are no longer maintained when out of combat for 30 secs.
-            if (Abs(piCombatCheck - GetTickCount()) > 30000)
-            {
-               foreach i in plRadiusEnchantments
-               {
-                  oEnch = Nth(i,2);
-                  state = Nth(i,3);
-                  if (Send(oEnch,@GetCaster,#state=state) = self)
-                  {
-                     Send(oEnch,@BreakTrance,#who=self,#state=state,#event=EVENT_REST);
-                  }
-               }
-            }
+            Send(self,@MonsterAction);
          }
 
-         piLightCheck = GetTickCount();
+         // REs are no longer maintained when out of combat for too long secs.
+         // Neither are minions such as Reflections, Evil Twins etc.
+         if (GetTime() - piCombatCheck > FOLLOWER_MAINTAIN_TIME)
+         {
+            foreach i in plRadiusEnchantments
+            {
+               oEnch = Nth(i,2);
+               state = Nth(i,3);
+               if (Send(oEnch,@GetCaster,#state=state) = self)
+               {
+                  Send(oEnch,@BreakTrance,#who=self,#state=state,#event=EVENT_REST);
+               }
+            }
+
+            Send(self,@RemoveAllMinions);
+         }
+
+         piOutOfCombatAction = GetTime();
       }
 
       propagate;
@@ -1389,7 +1866,7 @@ messages:
          Send(self,@FollowerEnterCombat,#target=target);
       }
 
-      piCombatCheck = GetTickCount();
+      piCombatCheck = GetTime();
 
       propagate;
    }
@@ -1419,9 +1896,9 @@ messages:
 
    KeepDistanceFromLeader(bMax=FALSE)
    {
-      if bMax AND (piStayClose <> 8)
+      if bMax AND (piStayClose <> FOLLOWER_MAX_DISTANCE_LEADER)
       {
-         piStayClose = 8;
+         piStayClose = FOLLOWER_MAX_DISTANCE_LEADER;
 
          return TRUE;
       }
@@ -1459,18 +1936,6 @@ messages:
       {
          Post(poLeader,@MsgSendUserCallback,#what=self,#sCallback=SetString($,@FollowerSpellInform));
          Send(self,@FaceLeader);
-
-         return TRUE;
-      }
-
-      // Ask follower for more light
-      if StringContain(message,follower_light_trigger)
-      {
-         if Send(self,@FollowerAdjustLight,#bRequest=TRUE)
-         {
-            Post(self,@MercenarySayToOne,#target=what,#message_rsc=follower_light);
-            Send(self,@FaceLeader);
-         }
 
          return TRUE;
       }
@@ -1560,6 +2025,31 @@ messages:
          Send(self,@FaceLeader);
 
          return TRUE;
+      }
+
+      // Ask follower to refresh our memory with some tutorials.
+      if StringContain(message,follower_commands_trigger)
+      {
+         if StringContain(message,follower_commands_advanced_trigger)
+         {
+            Post(self,@MercenarySayToOne,#target=what,#message_rsc=follower_commands_advanced);
+         }
+         else if StringContain(message,follower_commands_social_trigger)
+         {
+            Post(self,@MercenarySayToOne,#target=what,#message_rsc=follower_commands_social);
+         }
+         else if StringContain(message,follower_commands_settings_trigger)
+         {
+            Post(self,@MercenarySayToOne,#target=what,#message_rsc=follower_commands_settings);
+         }
+         else if StringContain(message,follower_commands_say_trigger)
+         {
+            Post(self,@MercenarySayToOne,#target=what,#message_rsc=follower_commands_say);
+         }
+         else
+         {
+            Post(self,@MercenarySayToOne,#target=what,#message_rsc=follower_commands_basic);
+         }
       }
 
       // Ask follower to refresh our memory with some tutorials.
@@ -1665,6 +2155,12 @@ messages:
       local rIntro, i, rInfo, lInfo, oObject, iTime,cClass;
 
       rIntro = follower_info_repeat_none;
+
+      // No spamming veterans unless requested!
+      if (NOT bRequested) AND Send(poLeader,@IsVeteran)
+      {
+         return FALSE;
+      }
 
       if poInfo = $
       {
@@ -1810,6 +2306,16 @@ messages:
       return;
    }
 
+   MercenaryJoinMessage(what=$,bContracted=FALSE)
+   {
+      if bContracted
+      {
+         Post(self,@MercenarySayToOne,#target=what,#message_rsc=vrMercenaryJoinContracted);
+      }
+
+      return;
+   }
+
    GreetLeader(bRequested=FALSE)
    {
       local lInfo, rGreet, rEnd, iTime;
@@ -1827,19 +2333,19 @@ messages:
          {
             iTime = GetTime() - First(lInfo);
 
-            // It's been more than 30 minutes...
-            if iTime > 1800
+            // It's been quite some time.
+            if iTime > FOLLOWER_HIATUS
             {
                plInfo = DelListElem(plInfo,lInfo);
             }
             // Leader may suffer from Asperger syndrome. Be polite and reply.
-            else if bRequested AND iTime > 300
+            else if bRequested AND iTime > FOLLOWER_LONG_PAUSE
             {
                rEnd = follower_greet_leader_end_b;
                plInfo = DelListElem(plInfo,lInfo);
             }
             // It's getting a bit annoying.
-            else if bRequested AND iTime > 30
+            else if bRequested AND iTime > FOLLOWER_EXTENDED_PAUSE
             {
                rEnd = follower_greet_leader_end_c;
                plInfo = DelListElem(plInfo,lInfo);
@@ -2277,6 +2783,12 @@ messages:
    {
       local iInfo;
 
+      // Avoids errors when follower is dismissed mid combat.
+      if poLeader = $
+      {
+         propagate;
+      }
+
       poInfo = what;
 
       iInfo = MONSTER_INFO_KILLED;
@@ -2292,10 +2804,10 @@ messages:
       }
 
       if NOT iInfo
+         AND NOT Random(0,FOLLOWER_KILLED_SOMETHING_CHAT_CHANCE*100/viChat_frequency)
          AND (use_weapon <> $)
          AND IsClass(use_weapon,&Weapon)
          AND Send(self,@ChatTimer)
-         AND NOT Random(0,2)
       {
          switch(Random(1,6))
          {
@@ -2346,10 +2858,10 @@ messages:
       }
 
       if NOT iInfo
+         AND NOT Random(0,FOLLOWER_LEADER_KILLED_SOMETHING_CHAT_CHANCE*100/viChat_frequency)
          AND (use_weapon <> $)
          AND IsClass(use_weapon,&Weapon)
          AND Send(self,@ChatTimer)
-         AND NOT Random(0,3)
       {
          switch(Random(1,6))
          {
@@ -2391,6 +2903,12 @@ messages:
    FollowerRetreat()
    {
       local iInfo;
+
+      // Avoids errors when follower is dismissed mid combat.
+      if poLeader = $
+      {
+         return;
+      }
 
       poInfo = poTarget;
 
@@ -2442,11 +2960,17 @@ messages:
             Send(self,@MercenarySayToOne,#target=poLeader,#message_rsc=follower_injured_b);
             break;
          case 2:
-            Send(self,@MercenarySayToOne,#target=poLeader,#message_rsc=follower_injured_c);
+            if Send(self,@ChatTimer)
+            {
+               Send(self,@MercenarySayToOne,#target=poLeader,#message_rsc=follower_injured_c);
+            }
             break;
          case 3:
-            Send(self,@MercenarySayToOne,#target=poLeader,#message_rsc=follower_injured_d);
-            Send(self,@DoWave);
+            if Send(self,@ChatTimer)
+            {
+               Send(self,@MercenarySayToOne,#target=poLeader,#message_rsc=follower_injured_d);
+               Send(self,@DoWave);
+            }
             break;
       }
 
@@ -2485,6 +3009,12 @@ messages:
    {
       local iInfo;
 
+      // Avoids errors when follower is dismissed mid combat.
+      if poLeader = $
+      {
+         return;
+      }
+
       poInfo = target;
 
       iInfo = MONSTER_INFO_ENGAGED;
@@ -2502,10 +3032,9 @@ messages:
       if Send(self,@ChatTimer)
       {
          // Looks like we have nothing meaningful to say about this enemy. Hence, battlecry!
-         // 5 seconds check. Continuous combat. Only comment 1 in 5 times.
-         if (Abs(piCombatCheck - GetTickCount()) < 5000)
+         if (GetTime() - piCombatCheck < FOLLOWER_CONTINUOUS_COMBAT)
          {
-            if NOT Random(0,viChatFrequency)
+            if NOT Random(0,FOLLOWER_ENTER_CONTINUOUS_COMBAT_CHANCE*100/viChat_frequency)
             {
                switch(Random(1,6))
                {
@@ -2531,10 +3060,9 @@ messages:
                return;
             }
          }
-         // 15 seconds check. Little hold up. Only comment 1 in 3 times.
-         else if  (Abs(piCombatCheck - GetTickCount()) < 15000)
+         else if (GetTime() - piCombatCheck < FOLLOWER_BRIEF_PAUSE)
          {
-            if NOT Random(0,viChatFrequency*2/3)
+            if NOT Random(0,FOLLOWER_ENTER_BRIEF_PAUSE_CHANCE*100/viChat_frequency)
             {
                switch(Random(1,3))
                {
@@ -2551,10 +3079,9 @@ messages:
                return;
             }
          }
-         // 60 seconds check. Taken a break. Only comment 1 in 3 times.
-         else if  (Abs(piCombatCheck - GetTickCount()) < 60000) AND Random(0,1)
+         else if (GetTime() - piCombatCheck < FOLLOWER_EXTENDED_PAUSE)
          {
-            if NOT Random(0,viChatFrequency/2)
+            if NOT Random(0,FOLLOWER_ENTER_EXTENDED_PAUSE_CHANCE*100/viChat_frequency)
             {
                switch(Random(1,3))
                {
@@ -2571,10 +3098,9 @@ messages:
                return;
             }
          }
-         // 10 minutes check. Longer break. Comment every other time.
-         else if  (Abs(piCombatCheck - GetTickCount()) < 600000)
+         else if (GetTime() - piCombatCheck < FOLLOWER_LONG_PAUSE)
          {
-            if NOT Random(0,viChatFrequency/5)
+            if NOT Random(0,FOLLOWER_ENTER_LONG_PAUSE_CHANCE*100/viChat_frequency)
             {
                switch(Random(1,3))
                {
@@ -2591,10 +3117,9 @@ messages:
                return;
             }
          }
-         // Inactive for an extended period of time. Comment every time.
          else
          {
-            if NOT Random(0,viChatFrequency/10)
+            if NOT Random(0,FOLLOWER_ENTER_INACTIVITY_CHANCE*100/viChat_frequency)
             {
                switch(Random(1,7))
                {
@@ -2627,9 +3152,9 @@ messages:
 
          // These are generic battle cries that don't depend on time and that come up when
          // a time dependent trigger doesn't pass its random check. Simply for variety.
-         if NOT Random(0,5)
+         if NOT Random(0,FOLLOWER_ENTER_RANDOM_CHANCE*100/viChat_frequency)
          {
-            switch(Random(1,viChatFrequency*2))
+            switch(Random(1,10))
             {
                case 1:
                   Send(self,@MercenarySayToOne,#target=poLeader,#message_rsc=follower_entered_combat_f_a);
@@ -2751,6 +3276,26 @@ messages:
                   #fine_row=piFine_row+2,#fine_col=piFine_col+2);
          }
       }
+
+      Send(self,@ComputeMaxMana);
+
+      return;
+   }
+
+   AddHurtMeRecently(who=$)
+   {
+      if IsClass(who,&Player)
+      {
+         return;
+      }
+
+      propagate;
+   }
+
+   UpdateTimeValues()
+   {
+      piOutOfCombatAction = GetTime();
+      piCombatCheck = GetTime();
 
       return;
    }

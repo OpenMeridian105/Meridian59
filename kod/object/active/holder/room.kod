@@ -2811,6 +2811,35 @@ messages:
       return Send(self,@GetXFineStep,#angle=angle+3*MAX_ANGLE/4);
    }
 
+   GetStepCoordinates(who=$,angle=0,step=1,finestep=0)
+   "Returns a list [col,finecol,row,finerow] of coordinates for the position"
+   "of who once specified number and directon of steps have been taken."
+   {
+      local iFineCol, iFineRow, iXFineStep, iYFineStep;
+
+      if who = $
+      {
+         Debug("Nil who!");
+
+         return;
+      }
+
+      // Delta of coordinates for a single step being taken in given direction.
+      iXFineStep = Send(self,@GetXFineStep,#angle=angle);
+      iYFineStep = Send(self,@GetYFineStep,#angle=angle);
+
+      // Let's multiply these values by the amount of steps and finesteps to take.
+      iXFineStep = iXFineStep * (FINENESS*step + finestep) / FINENESS;
+      iYFineStep = iYFineStep * (FINENESS*step + finestep) / FINENESS;
+
+      // We know the amount of finesteps to take now, add them to our coordinates.
+      iFineCol = Send(who,@GetCol)*FINENESS + Send(who,@GetFineCol) + iXFineStep;
+      iFineRow = Send(who,@GetRow)*FINENESS + Send(who,@GetFineRow) + iYFineStep;
+
+      // That's all we need for our coordinates...
+      return [iFineCol/FINENESS,iFinecol%FINENESS,iFineRow/FINENESS,iFineRow%FINENESS];
+   }
+
    ReqSomethingUse(what = $, use_item = $)
    {
       propagate;

@@ -210,7 +210,8 @@ messages:
 
       plReputationEnemies = [REP_FAROL];
 
-      plActions =  [ [SID_VAMPIRIC_DRAIN,100,0,65536,0,200,99,COMBAT_ACTION_HARM],
+      plActions =  [ [SKID_MINIMUM,0,20,MAX_KOD_INT,viMovePriority,0,100,0],
+                     [SID_VAMPIRIC_DRAIN,100,0,65536,0,200,99,COMBAT_ACTION_HARM],
                      [SID_HOLD,100,0,16384,0,600,99,COMBAT_ACTION_HARM],
                      [SID_BLIND,500,0,MAX_KOD_INT,0,1200,99,COMBAT_ACTION_HARM],
                      [SID_CURSE_WEAPON,200,0,16384,0,600,99,COMBAT_ACTION_HARM],
@@ -354,12 +355,12 @@ messages:
       propagate;
    }
 
-   MonsterCombatAction(distance=0,sight=TRUE)
+   MonsterAction(distance=0,sight=TRUE)
    "Figure out what the monster is going to attack with."
    "Depending on our action, return an appropriate delay."
    {
       local i, iPriority, lActions, lAction, iNum, oSpell, iAttacks,
-         iMana, iVigor, iFactor, iSpellPower, lTargets, iDelay, iPowerLevel,
+         iFactor, iSpellPower, lTargets, iDelay, iPowerLevel,
          oTarget, iAction;
 
       // If we have sight, proceed as usual, else, only allow moving.
@@ -621,10 +622,8 @@ messages:
       }
 
       // We did something. Pay the cost.
-      iMana = Nth(lAction,2);
-      iVigor = Nth(lAction,3);
-      Send(self,@LoseMana,#amount=iMana,#precision=TRUE);
-      Send(self,@LoseVigor,#amount=iVigor,#precision=TRUE);
+      Send(self,@LoseMana,#amount=Nth(lAction,2),#precision=TRUE);
+      Send(self,@LoseVigor,#amount=Nth(lAction,3),#precision=TRUE);
 
       // If we made it this far, we acted in some way. Adjust our priorities.
       iFactor = Nth(lAction,6);
@@ -712,7 +711,7 @@ messages:
 
       if Send(self,@MonsterCombatCheck)
       {
-         iDelay = Send(self,@MonsterCombatAction,#distance=iDistance,#sight=bSight);
+         iDelay = Send(self,@MonsterAction,#distance=iDistance,#sight=bSight);
       }
       else
       {

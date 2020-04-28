@@ -107,6 +107,8 @@ messages:
                         [ATK_TYPE_NERUDITE, -25 ]
                       ];
 
+      plActions =  [ [SKID_MINIMUM,0,20,MAX_KOD_INT,viMovePriority,0,100,0] ];
+
       propagate;
    }
 
@@ -175,11 +177,10 @@ messages:
       return;
    }
 
-   MonsterCombatAction(distance=0,sight=TRUE)
+   MonsterAction(distance=0,sight=TRUE)
    "Kriipas have special attack patterns, which are handled here."
    {
-      local i, iPriority, lActions, lAction, iNum, oSpell, 
-         iMana, iVigor, iFactor, iSpellPower, lTargets, iDelay, bStateChange;
+      local i, iPriority, lActions, lAction, iNum, iDelay, bStateChange;
 
       lActions = $;
 
@@ -314,8 +315,7 @@ messages:
       }
 
       // We did something. Pay the cost.
-      iVigor = Nth(lAction,3);
-      Send(self,@LoseVigor,#amount=iVigor,#precision=TRUE);
+      Send(self,@LoseVigor,#amount=Nth(lAction,3),#precision=TRUE);
 
       return iDelay;
    }

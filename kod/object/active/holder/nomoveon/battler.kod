@@ -583,13 +583,21 @@ messages:
    IsEnchanted(what=$,byClass=&Spell,state=$)
    "Returns whether or not currently enchanted by <what>."
    {
-      local i;
+      local i, oEnchantment;
 
       if what = $
       {
          foreach i in plEnchantments
          {
             if IsClass(Nth(i,2),byClass)
+            {
+               return TRUE;
+            }
+         }
+
+         foreach i in plOverTimeEffects
+         {
+            if IsClass(Nth(i,5),byClass)
             {
                return TRUE;
             }
@@ -601,7 +609,15 @@ messages:
          {
             return Send(self,@IsEnchantedRadius,#what=what,#state=state);
          }
-         return GetListNode(plEnchantments, 2, what) <> $;
+
+         oEnchantment = GetListNode(plEnchantments, 2, what);
+
+         if oEnchantment = $
+         {
+            oEnchantment = GetListNode(plOverTimeEffects, 5, what);
+         }
+
+         return oEnchantment <> $;
       }
 
       return FALSE;
@@ -769,6 +785,11 @@ messages:
    GetExactHealth()
    {
       return piHealth;
+   }
+
+   GetHealthPercentage()
+   {
+      return piHealth/piMax_health;
    }
 
    LoseHealth(amount = 0, precision = FALSE)
@@ -1110,6 +1131,11 @@ messages:
       return piMana;
    }
 
+   GetManaPercentage()
+   {
+      return piMana/piMax_mana;
+   }
+
    SetMana(amount=$)
    {
       if amount <> $
@@ -1448,6 +1474,11 @@ messages:
    GetExactVigor()
    {
       return piVigor;
+   }
+
+   GetVigorPercentage()
+   {
+      return piVigor/200;
    }
 
    LoseVigor(amount = 0, precision = FALSE)
@@ -2383,7 +2414,7 @@ messages:
    // run into this cap as piBaseRating is increased though.
    //
    // NOTE: For a monster, the stroke_obj is the monster itself for now.
-   TryAttack(what=$,stroke_obj=$,ambush=FALSE,factor=100,bGuaranteed=FALSE)
+   TryAttack(what=$,stroke_obj=$,ambush=FALSE,factor=100,bGuaranteed=FALSE,iNum=$)
    {
       local iOffense, iDefense, iChanceToHit, iDamage, iScalefactor, oWeapon;
 
@@ -2447,7 +2478,7 @@ messages:
          }
          else
          {
-            Send(self,@DidDamage,#amount=iDamage,#what=what);
+            Send(self,@DidDamage,#amount=iDamage,#what=what,#iNum=iNum);
          }
       }
       else

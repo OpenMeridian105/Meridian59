@@ -258,6 +258,8 @@ classvars:
 
    vbCanBreakTrance = TRUE
 
+   vbCombatOnly = TRUE
+
 properties:
 
    // Format of reagents:  Each element of plReagents is a list, describing a
@@ -3197,6 +3199,18 @@ messages:
    IsLightSource()
    {
       return vbIsLightSource;
+   }
+
+   // Certain spells may have additional criteria that need to be met for a monster
+   // to cast them. Most spells will only be cast in combat.
+   MonsterCastCheck(who=$,lTargets=$,bCombat=FALSE)
+   {
+      if NOT bCombat AND vbCombatOnly
+      {
+         return FALSE;
+      }
+
+      return TRUE;
    }
 
 end

@@ -22,25 +22,21 @@ resources:
    mercenary_contract_icon_rsc = scr05.bgf
 
    mercenary_contract_desc_rsc = \
-      "This is a mercenary contract for %r %r warrior, who is willing to "
-      "offer %r services for the %r price of %i shillings.\n\n"
+      "This is a mercenary contract for a %s %s, who is willing to "
+      "offer %s services for the fair price of %i shillings.\n\n"
       "Use this contract, to call your new mercenary to your side."
-
-   mercenary_contract_skill_one = "an untrained"
-   mercenary_contract_skill_two = "a somewhat competent"
-   mercenary_contract_skill_three = "a fairly skilled"
-   mercenary_contract_skill_four = "an expert"
 
    mercenary_contract_gender_male = "male"
    mercenary_contract_gender_female = "female"
 
+   mercenary_contract_bard = "bard"
+   mercenary_contract_warrior = "warrior"
+   mercenary_contract_wizard = "wizard"
+   mercenary_contract_priest = "priest"
+   mercenary_contract_warlock = "warlock"
+
    mercenary_contract_his = "his"
    mercenary_contract_her = "her"
-
-   mercenary_contract_price_one = "low"
-   mercenary_contract_price_two = "fair"
-   mercenary_contract_price_three = "hefty"
-   mercenary_contract_price_four = "exorbitant"
 
 classvars:
 
@@ -59,54 +55,41 @@ classvars:
 properties:
    piHits = 1
    viValue_average = 10000
-   piMerc_level = 1
-   piMerc_gender = GENDER_MALE
+   piMerc_role = FOLLOWER_ROLE_BARD
+   piMerc_gender = GENDER_FEMALE
    piLabelColor = 0
    piColor = $
 
 messages:
 
-   Constructor(iLevel=$,iGender=$)
+   Constructor(iRole=$,iGender=$)
    {
-      local iValue;
-
-      iValue = 5000;
-      if iLevel <> $
+      if iRole <> $
       {
-         piMerc_level = iLevel;
-
-         while iLevel > 0
-         {
-            iValue *= 2;
-
-            --iLevel;
-         }
+         piMerc_role = iRole;
       }
-      else
-      {
-         iValue = 1000;
-      }
-
-      viValue_average = iValue;
 
       if iGender <> $
       {
          piMerc_gender = iGender;
       }
 
-      switch(piMerc_level)
+      switch(piMerc_role)
       {
-         case 1:
-            piLabelColor = XLAT_TO_GREEN;
-            break;
-         case 2:
+         case FOLLOWER_ROLE_BARD:
             piLabelColor = XLAT_TO_YELLOW;
             break;
-         case 3:
-            piLabelColor = XLAT_TO_PURPLE;
+         case FOLLOWER_ROLE_WARRIOR:
+            piLabelColor = XLAT_TO_BLUE;
             break;
-         case 4:
+         case FOLLOWER_ROLE_WIZARD:
             piLabelColor = XLAT_TO_RED;
+            break;
+         case FOLLOWER_ROLE_PRIEST:
+            piLabelColor = XLAT_TO_GREEN;
+            break;
+         case FOLLOWER_ROLE_WARLOCK:
+            piLabelColor = XLAT_TO_PURPLE;
             break;
       }
 
@@ -127,27 +110,7 @@ messages:
 
    ShowDesc()
    {
-      local rSkill, rGender, rPos, rPrice;
-
-      switch(piMerc_level)
-      {
-         case 1:
-            rSkill = mercenary_contract_skill_one;
-            rPrice = mercenary_contract_price_one;
-            break;
-         case 2:
-            rSkill = mercenary_contract_skill_two;
-            rPrice = mercenary_contract_price_two;
-            break;
-         case 3:
-            rSkill = mercenary_contract_skill_three;
-            rPrice = mercenary_contract_price_three;
-            break;
-         case 4:
-            rSkill = mercenary_contract_skill_four;
-            rPrice = mercenary_contract_price_four;
-            break;
-      }
+      local rRole, rGender, rPos;
 
       switch(piMerc_gender)
       {
@@ -161,17 +124,36 @@ messages:
             break;
       }
 
-      AddPacket(4,vrDesc,4,rSkill,4,rGender,4,rPos,4,rPrice,4,viValue_average);
+      switch(piMerc_role)
+      {
+         case FOLLOWER_ROLE_BARD:
+            rRole = mercenary_contract_bard;
+            break;
+         case FOLLOWER_ROLE_WARRIOR:
+            rRole = mercenary_contract_warrior;
+            break;
+         case FOLLOWER_ROLE_WIZARD:
+            rRole = mercenary_contract_wizard;
+            break;
+         case FOLLOWER_ROLE_PRIEST:
+            rRole = mercenary_contract_priest;
+            break;
+         case FOLLOWER_ROLE_WARLOCK:
+            rRole = mercenary_contract_warlock;
+            break;
+      }
+
+      AddPacket(4,vrDesc,4,rGender,4,rRole,4,rPos,4,viValue_average);
 
       return;
    }
 
    ReqNewApply(what=$)
    {
-      // Merc are created at viDifficulty 2 to 5. 5 matches the starting follower.
-      if Send(what,@CreateFollower,#iDifficulty=piMerc_level+1,#iGender=piMerc_gender,
-         #bContracted=TRUE)
+      if Send(SETTINGS_OBJECT,@IsMercenaryContractEnabled)
+         AND Send(what,@CreateFollower,#iGender=piMerc_gender,#iRole=piMerc_role,#bContracted=TRUE)
       {
+         Post(Send(what,@GetMercenary),@ComputeMaxMana);
          return TRUE;
       }
 

@@ -507,6 +507,13 @@ resources:
    user_honor_loss_penalty = \
       "You lose %i honor points as you retreat from the battlefield."
 
+   user_offer_lift_helper = "You extend your hand."
+   user_offer_lift = "%s%s extends %s hand."
+   user_cancel_lift_helper = "You retract your hand."
+   user_cancel_lift = "%s%s retracts %s hand."
+   user_accept_lift_helper = "%s%s grabs your hand."
+   user_accept_lift = "You grab %s%s's hand."
+
 classvars:
 
    viIndefinite = ARTICLE_NONE
@@ -1037,6 +1044,7 @@ messages:
       pbLogged_on = FALSE;
 
       Send(self,@CancelIfOffer);
+      Send(self,@CancelLift);
       Send(self,@UserLogoffHook);
 
       // If player logs off somewhere other than an inn or inside a guildhall
@@ -2101,7 +2109,10 @@ messages:
          return;
       }
 
-      // The <space> key doubles as room enter and cancel cast hotkey.
+      //// The <space> key is multip mapped
+      // 1) Enter rooms.
+      // 2) Cancel trance spells.
+      // 3) Lift people or accept a lift. > See UserGo()
       if liClient_cmd = BP_REQ_GO
       {
          bCancel = FALSE;
@@ -2418,6 +2429,7 @@ messages:
       local oObj, sName;
 
       Send(self,@CancelIfOffer);
+      Send(self,@CancelLift);
 
       if poGuild <> $
          AND Send(poGuild,@GetRank,#who=self) = RANK_MASTER
@@ -3273,6 +3285,7 @@ messages:
    GarbageCollecting()
    {
       Send(self,@CancelIfOffer);
+      Send(self,@CancelLift);
 
       Send(self,@SysMsgSendUser,#message_rsc=user_garbage_collecting);
       //Send(self,@WaveSendUser,#what=self,#wave_rsc=user_saving_wav_rsc);
@@ -5125,8 +5138,10 @@ messages:
       piSpeed = speed * speed;
 
       //
-      // 3.2 Break trance or stop dance if user is running
-      // 
+      // 3.2 Abandon lift offer if moving, break trance or stop dance if running
+      //
+      Send(self,@CancelLift);
+
       if (speed > USER_WALKING_SPEED)
       {
          // Stop dance
@@ -7369,6 +7384,8 @@ messages:
    {
       local i, use_weapon, stroke_id, stroke_obj, is_spell;
 
+      Send(self,@CancelLift);
+
       if piFlags & PFLAG_TRANCE
       {
          Send(self,@BreakTrance,#event=EVENT_ATTACK);
@@ -7477,6 +7494,8 @@ messages:
       {
          return;
       }
+
+      Send(self,@CancelLift);
 
       // PFLAG_TRANCE can stem from...
       // 1) ...&Trance when a spell with cast time is being cast
@@ -7621,6 +7640,8 @@ messages:
       {
          return;
       }
+
+      Send(self,@CancelLift);
 
       if piFlags & PFLAG_TRANCE
       {
@@ -8570,6 +8591,15 @@ messages:
          }
       }
 
+      if Send(self,@AcceptLift)
+      {
+         bCancel = TRUE;
+      }
+      else if Send(self,@OfferLift)
+      {
+         bCancel = TRUE;
+      }
+
       if NOT bCancel
       {
          Send(self,@MsgSendUser,#message_rsc=user_cant_go);
@@ -9096,6 +9126,7 @@ messages:
       local i, oOldRoom, iNewRoomNum;
 
       Send(self,@CancelIfOffer);
+      Send(self,@CancelLift);
 
       if (what <> $)
       {
@@ -10802,6 +10833,7 @@ messages:
    Killed(what = $)
    {
       Send(self,@CancelIfOffer);
+      Send(self,@CancelLift);
 
       if what = self
       {
@@ -12662,6 +12694,315 @@ messages:
    GetActiveQuests()
    {
       return plActiveQuests;
+   }
+
+   OfferLift()
+   {
+      local i, oObject, iHeight, bOffer;
+
+      if piFlags2 & PFLAG2_OFFER_LIFT
+         OR NOT Send(self,@IsOkayAttackTime)
+      {
+         return FALSE;
+      }
+
+      bOffer = FALSE;
+
+      // Inform suitable targets.
+      foreach i in Send(poOwner,@GetHolderActive)
+      {
+         oObject = Send(poOwner,@HolderExtractObject,#data=i);
+         iHeight = Send(oObject,@GetHeight);
+
+         if (IsClass(oObject,&Player) OR IsClass(oObject,&Follower))
+            AND oObject <> self
+            AND (piHeight > iHeight)
+            AND (piHeight - iHeight) < 3*FINENESS
+            AND (Send(self,@SquaredFineDistanceTo,#what=oObject) < 25*FINENESS_SQUARED)
+            AND Send(poOwner,@LineOfSight,#obj1=self,#obj2=oObject)
+            AND Send(self,@CanLift,#what=oObject)
+         {
+            // Inform the other parties about the offer.
+            Send(self,@SendLiftMessage,#who=self,#what=oObject,#iAction=LIFT_OFFER);
+
+            bOffer = TRUE;
+         }
+      }
+
+      // Inform the offerer and extend hand, but only if we have targets.
+      if bOffer
+      {
+         // Inform us that we have a potential liftee and extend our hand.
+         Send(self,@SendLiftMessage,#who=self,#iAction=LIFT_OFFER);
+         piFlags2 = piFlags2 | PFLAG2_OFFER_LIFT;
+
+         return TRUE;
+      }
+
+      return FALSE;
+   }
+
+   IsOfferingLift()
+   {
+      return piFlags2 & PFLAG2_OFFER_LIFT;
+   }
+
+   CancelLift()
+   {
+      local i, oObject;
+
+      if NOT (piFlags2 & PFLAG2_OFFER_LIFT)
+      {
+         return;
+      }
+
+      // Inform the offerer.
+      Send(self,@SendLiftMessage,#who=self,#iAction=LIFT_CANCEL);
+
+      // Inform suitable targets.
+      foreach i in Send(poOwner,@GetHolderActive)
+      {
+         oObject = Send(poOwner,@HolderExtractObject,#data=i);
+
+         if IsClass(oObject,&Player)
+            AND oObject <> self
+            AND (Send(self,@SquaredFineDistanceTo,#what=oObject) < 25*FINENESS_SQUARED)
+            AND Send(poOwner,@LineOfSight,#obj1=self,#obj2=oObject)
+         {
+            // Inform the other parties about the canceled operation.
+            Send(self,@SendLiftMessage,#who=self,#what=oObject,#iAction=LIFT_CANCEL);
+         }
+      }
+
+      piFlags2 = piFlags2 & ~PFLAG2_OFFER_LIFT;
+
+      return;
+   }
+
+   AcceptLift()
+   {
+      local i, oObject, iHeight, bOffer, iRowDiff, iColDiff,
+         iAbsRow, iAbsCol, iLifterRow, iLifterCol;
+
+      // Find a friendly helper.
+      foreach i in Send(poOwner,@GetHolderActive)
+      {
+         oObject = Send(poOwner,@HolderExtractObject,#data=i);
+         iHeight = Send(oObject,@GetHeight);
+
+         if (IsClass(oObject,&Player) OR IsClass(oObject,&Follower))
+            AND (oObject <> self)
+            AND Send(oObject,@IsOfferingLift)
+            AND (piHeight < iHeight)
+            AND (iHeight - piHeight) < 3*FINENESS
+            AND (Send(self,@SquaredFineDistanceTo,#what=oObject) < 4*FINENESS_SQUARED)
+            AND Send(poOwner,@LineOfSight,#obj1=self,#obj2=oObject)
+            AND Send(oObject,@CanLift,#what=self)
+            AND Send(self,@IsOkayAttackTime)
+         {
+            iLifterRow = FINENESS * Send(oObject,@GetRow) + Send(oObject,@GetFineRow);
+            iRowDiff = iLifterRow - FINENESS * piRow - piFine_row;
+            iAbsRow = Abs(iRowDiff);
+            iLifterCol = FINENESS * Send(oObject,@GetCol) + Send(oObject,@GetFineCol);
+            iColDiff = iLifterCol - FINENESS * piCol - piFine_col;
+            iAbsCol = Abs(iColDiff);
+
+            if iAbsRow > iAbsCol
+            {
+               iRowDiff = iRowDiff * FINENESS / iAbsRow;
+               iColDiff = iColDiff * FINENESS / iAbsRow;
+            }
+            else
+            {
+               iRowDiff = iRowDiff * FINENESS / iAbsCol;
+               iColDiff = iColDiff * FINENESS / iAbsCol;
+            }
+
+            // Final desired location in fine units.
+            iLifterRow -= iRowDiff / 3;
+            iLifterCol -= iColDiff / 3;
+
+            if Send(SYS,@UtilGoNearSquare,#what=self,#where=poOwner,
+                 #new_row=iLifterRow/FINENESS,
+                 #fine_row=iLifterRow%FINENESS,
+                 #new_col=iLifterCol/FINENESS,
+                 #fine_col=iLifterCol%FINENESS,
+                 #new_angle=Send(self,@GetAngle),
+                 #mob_override=TRUE)
+            {
+               // Inform the involved parties about the successful operation.
+               Send(self,@SendLiftMessage,#who=oObject,#what=self,#iAction=LIFT_ACCEPT);
+
+               if IsClass(oObject,&Player)
+               {
+                  // Allow the helper to stop offering lifts.
+                  Send(oObject,@SetPlayerFlag,#flag=PFLAG2_OFFER_LIFT,#value=FALSE,#flagset=2);
+               }
+
+               return TRUE;
+            }
+         }
+      }
+
+      return FALSE;
+   }
+
+   SendLiftMessage(who=$,what=$,iAction=LIFT_OFFER)
+   {
+      if (who <> $) AND IsClass(who,&Player)
+      {
+         switch(iAction)
+         {
+            case LIFT_OFFER:
+               if what = $
+               {
+                  Send(who,@MsgSendUser,#message_rsc=user_offer_lift_helper);
+               }
+               break;
+            case LIFT_ACCEPT:
+               Send(who,@MsgSendUser,#message_rsc=user_accept_lift_helper,
+                  #parm1=Send(what,@GetCapDef),#parm2=Send(what,@GetName,#cap=TRUE));
+               break;
+            case LIFT_CANCEL:
+               if what = $
+               {
+                  Send(who,@MsgSendUser,#message_rsc=user_cancel_lift_helper);
+               }
+               break;
+         }
+      }
+
+      if (what <> $) AND IsClass(what,&Player)
+      {
+         switch(iAction)
+         {
+            case LIFT_OFFER:
+               Send(what,@MsgSendUser,#message_rsc=user_offer_lift,
+                  #parm1=Send(who,@GetCapDef),#parm2=Send(who,@GetName,#cap=TRUE),
+                  #parm3=Send(who,@GetHisHer));
+               break;
+            case LIFT_ACCEPT:
+               Send(what,@MsgSendUser,#message_rsc=user_accept_lift,
+                  #parm1=Send(who,@GetDef),#parm2=Send(who,@GetName));
+               break;
+            case LIFT_CANCEL:
+               Send(what,@MsgSendUser,#message_rsc=user_cancel_lift,
+                  #parm1=Send(who,@GetCapDef),#parm2=Send(who,@GetName,#cap=TRUE),
+                  #parm3=Send(who,@GetHisHer));
+               break;
+         }
+      }
+
+      return;
+   }
+
+   CanLift(what=$)
+   "Determines if we can offer a lift to our target."
+   {
+      local oRoom, bAngel;
+
+      if NOT Send(SETTINGS_OBJECT,@IsLiftEnabled)
+      {
+         return FALSE;
+      }
+
+      // No lifting while phased, spectating, incapacitated or morphed.
+      // Also can't lift when holding a token.
+      if Send(self,@IsOfflineOrCannotInteract)
+         OR piFlags & (PFLAG_NO_MOVE|PFLAG_NO_FIGHT|PFLAG_MORPHED)
+         OR Send(self,@PossessesA,#class=&Token)
+      {
+         return FALSE;
+      }
+
+      // Just a precaution. Lifts are only offered to players.
+      if (what = $)
+      {
+         return FALSE;
+      }
+
+      // We can always lift our followers.
+      if IsClass(what,&Follower) AND (what = poMercenary)
+      {
+         // As long as they can act.
+         if Send(what,@CheckMonsterBehavior,#flag=AI_NOMOVE|AI_NOFIGHT)
+         {
+            return FALSE;
+         }
+         else
+         {
+            return TRUE;
+         }
+      }
+
+      if NOT IsClass(what,&Player)
+      {
+         return FALSE;
+      }
+
+      // Can't lift them if they are phased, spectating, incapacitated or morphed.
+      // Also can't be lifted while holding a token. Invisible DMs are off limits, too.
+      if Send(what,@CheckPlayerFlag,#flag=PFLAG_NO_MOVE|PFLAG_NO_FIGHT|PFLAG_MORPHED)
+         OR Send(what,@IsOfflineOrCannotInteract)
+         OR Send(what,@PossessesA,#class=&Token)
+         OR (IsClass(what,&DM) AND Send(what,@IsHidden))
+      {
+         return FALSE;
+      }
+
+      // Room checks...
+      oRoom = Send(what,@GetOwner);
+
+      if (oRoom = $)
+         OR (oRoom <> poOwner)
+         OR Send(oRoom,@IsArena)
+         OR NOT Send(oRoom,@ReqLift,#who=self,#what=what)
+      {
+         return FALSE;
+      }
+
+      // Don't lift enemy guild members, even if you are a crook or careless.
+      if (poGuild <> $)
+         AND Send(poGuild,@IsEnemy,#otherguild=Send(what,@GetGuild))
+      {
+         return FALSE;
+      }
+
+      bAngel = NOT Send(self,@CanPlayerPvP);
+
+      // Don't lift active PvPers if you are not PvP enabled.
+      if bAngel AND (NOT Send(what,@CanHelpPlayerStrict))
+      {
+         return FALSE;
+      }
+
+      // Having checked the obvious cases and room restrictions, the
+      // general rule is: If you can attack them, you can't lift them,
+      // unless you are an outlaw or have your safety off.
+      if (piFlags & PFLAG_MURDERER)
+         OR (piFlags & PFLAG_OUTLAW)
+         OR ((piPreferences & CF_SAFETY_OFF) AND NOT bAngel)
+      {
+         return TRUE;
+      }
+
+      // Don't lift enemy soldiers
+      if (Send(self,@FindUsing,#class=&SoldierShield) <> $)
+         AND (Send(what,@FindUsing,#class=&SoldierShield) <> $)
+         AND (piFaction <> Send(what,@GetFaction))
+      {
+         return FALSE;
+      }
+
+      // Don't lift criminals or people you don't know. Morphed has been checked.
+      if Send(what,@CheckPlayerFlag,#flag=PFLAG_MURDERER)
+         OR Send(what,@CheckPlayerFlag,#flag=PFLAG_OUTLAW)
+         OR Send(what,@CheckPlayerFlag,#flag=PFLAG_ANONYMOUS)
+      {
+         return FALSE;
+      }
+
+      return TRUE;
    }
 
 end

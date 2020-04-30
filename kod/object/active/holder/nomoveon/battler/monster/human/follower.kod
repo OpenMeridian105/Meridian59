@@ -1728,7 +1728,8 @@ messages:
 
    EnterStateMove()
    {
-      local oObject, i, oEnch, state, oInfo, iInfo;
+      local oObject, i, oEnch, state, oInfo, iInfo, iRowDiff, iColDiff,
+         iAbsRow, iAbsCol, iLeaderRow, iLeaderCol, iHeight;
 
       // The following is only relevant if we have a leader.
       // If we don't, chances are we have just been fired and are trying
@@ -1736,6 +1737,59 @@ messages:
       // The world is a horrible place, man. :(
       if poLeader <> $
       {
+         // If the leader reaches us a hand, we grab it!
+         if Send(poLeader,@IsOfferingLift)
+         {
+            iHeight = Send(poLeader,@GetHeight);
+
+            if (piHeight < iHeight)
+               AND (iHeight - piHeight) < 3*FINENESS
+               AND (Send(self,@SquaredFineDistanceTo,#what=poLeader) < 4*FINENESS_SQUARED)
+               AND Send(poOwner,@LineOfSight,#obj1=self,#obj2=poLeader)
+            {
+               iLeaderRow = FINENESS * Send(poLeader,@GetRow) + Send(poLeader,@GetFineRow);
+               iRowDiff = iLeaderRow - FINENESS * piRow - piFine_row;
+               iAbsRow = Abs(iRowDiff);
+               iLeaderCol = FINENESS * Send(poLeader,@GetCol) + Send(poLeader,@GetFineCol);
+               iColDiff = iLeaderCol - FINENESS * piCol - piFine_col;
+               iAbsCol = Abs(iColDiff);
+
+               if iAbsRow > iAbsCol
+               {
+                  iRowDiff = iRowDiff * FINENESS / iAbsRow;
+                  iColDiff = iColDiff * FINENESS / iAbsRow;
+               }
+               else
+               {
+                  iRowDiff = iRowDiff * FINENESS / iAbsCol;
+                  iColDiff = iColDiff * FINENESS / iAbsCol;
+               }
+
+               // Final desired location in fine units.
+               iLeaderRow -= iRowDiff / 3;
+               iLeaderCol -= iColDiff / 3;
+
+               if Send(SYS,@UtilGoNearSquare,#what=self,#where=poOwner,
+                    #new_row=iLeaderRow/FINENESS,
+                    #fine_row=iLeaderRow%FINENESS,
+                    #new_col=iLeaderCol/FINENESS,
+                    #fine_col=iLeaderCol%FINENESS,
+                    #new_angle=Send(self,@GetAngle),
+                    #mob_override=TRUE)
+               {
+                  // Let our leader know so they may stop offering lifts.
+                  Send(poLeader,@SendLiftMessage,#who=poLeader,#what=self,#iAction=LIFT_ACCEPT);
+                  Send(poLeader,@SetPlayerFlag,#flag=PFLAG2_OFFER_LIFT,#value=FALSE,#flagset=2);
+
+                  propagate;
+               }
+            }
+            else if piStayClose > 2
+            {
+               piStayClose = 2;
+            }
+         }
+
          // First things first: If we have a trigger object, let the leader know
          // that we are ready to activate it, but only if it's fresh.
          oObject = poObject;
@@ -3298,6 +3352,27 @@ messages:
       piCombatCheck = GetTime();
 
       return;
+   }
+
+   IsOfferingLift()
+   {
+      return TRUE;
+   }
+
+   CanLift(what=$)
+   {
+      if NOT Send(SETTINGS_OBJECT,@IsLiftEnabled)
+      {
+         return FALSE;
+      }
+
+      // We can only lift our leader.
+      if (what = poLeader)
+      {
+         return TRUE;
+      }
+
+      return FALSE;
    }
 
 end

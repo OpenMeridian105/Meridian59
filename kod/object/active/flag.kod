@@ -13,6 +13,7 @@ Flagpole is ActiveObject
 constants:
 
    include blakston.khd
+   include protocol.khd
 
    HS_FLAG = 1
 
@@ -39,8 +40,9 @@ resources:
    flag_append_desc = \
       "%s%s is currently attempting to stake a claim to this "
       "territory in the name of %s."
-
    flag_append_desc_empty = ""
+   flag_append_desc_player = "This territory has been captured by %q."
+   flag_append_desc_guild = "This territory has been captured by %q of %s%q."
 
    flag_icon_rsc = flagpole.bgf
    flag_duke_icon_rsc = flagduke.bgf
@@ -48,25 +50,25 @@ resources:
    flag_rebel_icon_rsc = flagjspr.bgf
 
    flag_claim_attempt = \
-      "~I%s%s has bravely staked a claim to %s%s in the name of %s!"
+      "~B~U~k[###]~n ~B%s%s has bravely staked a claim to %s%s in the name of %s!"
    flag_claim_plugin_duke = "Duke Akardius"
    flag_claim_plugin_princess = "Princess Kateriina"
    flag_claim_plugin_rebel = "the rebel forces"
    flag_claim_plugin_unfactioned = "the unfactioned"
    flag_claim_attempt_succeeded = \
-      "~IAll hail %s%s, who has successfully claimed %s%s in the name of %s!"
+      "~B~U~k[###]~n ~BAll hail %s%s, who has successfully claimed %s%s in the name of %s!"
    flag_claim_attempt_failed_flee = \
-      "~I%s%s has fled the battlefield, abandoning the claim to %s%s in "
+      "~B~U~k[###]~n ~B%s%s has fled the battlefield, abandoning the claim to %s%s in "
       "the name of %s!"
    flag_claim_attempt_failed_killed = \
-      "~I%s%s has valiantly defended %s%s against %s%s's attempt to claim "
+      "~B~U~k[###]~n ~B%s%s has valiantly defended %s%s against %s%s's attempt to claim "
       "it in the name of %s!"
    flag_claim_attempt_failed_dropped_flag = \
-      "~I%s%s has surrendered the claim to %s%s in the name of %s!"
+      "~B~U~k[###]~n ~B%s%s has surrendered the claim to %s%s in the name of %s!"
    flag_claim_attempt_failed_generic = \
-      "~I%s%s has failed to claim %s%s in the name of %s!"
+      "~B~U~k[###]~n ~B%s%s has failed to claim %s%s in the name of %s!"
    flag_claim_attempt_failed_happyland = \
-      "~I%s%s's attempt to claim %s%s in the name of %s has been "
+      "~B~U~k[###]~n ~B%s%s's attempt to claim %s%s in the name of %s has been "
       "lost due to a lack of political support in the area!"
 
    flag_failed_yours = \
@@ -107,6 +109,7 @@ properties:
    piFaction = FACTION_NEUTRAL
    pbClaimable = TRUE
 
+   poCapturer = $
    poClaimer = $
    ptClaimAttempt = $
    ptNextAllowedAttempt = $
@@ -378,7 +381,8 @@ messages:
 
    ClaimAttempt()
    {
-      local i, oClaimingFlag, iClaimerFaction, iClaimerVotes, iDefenderVotes;
+      local i, oClaimingFlag, iClaimerFaction, iClaimerVotes, iDefenderVotes,
+         oTerritoryGame;
 
       ptClaimAttempt = $;
 
@@ -430,6 +434,19 @@ messages:
                #parm5=Send(self,@GetFactionNamePlugin,#who=poClaimer));
       }
 
+      // Update guild territory counts
+      oTerritoryGame = Send(SYS,@GetTerritoryGame);
+      Send(oTerritoryGame,@AddGuildTerritory,
+         #oGuild=Send(poClaimer,@GetGuild),#iFaction=Send(poClaimer,@GetFaction));
+
+      if poCapturer <> $
+      {
+         Send(oTerritoryGame,@SubtractGuildTerritory,
+            #oGuild=Send(poCapturer,@GetGuild),#iFaction=piFaction);
+      }
+
+      Send(oTerritoryGame,@UpdateGuildTerritories);
+
       piFaction = Send(poClaimer,@GetFaction);
       Send(poOwner,@SomethingChanged,#what=self);
 
@@ -456,13 +473,14 @@ messages:
          Send(oClaimingFlag,@Delete);
       }
 
+      poCapturer = poClaimer;
       poClaimer = $;
 
       // Slow down troop generation again.
-      piGen_time = Send(Send(SYS,@GetTerritoryGame),@GetNonclaimTroopGenTime);
-      piTroopCap = Send(Send(SYS,@GetTerritoryGame),@GetNonclaimTroopCap);
+      piGen_time = Send(oTerritoryGame,@GetNonclaimTroopGenTime);
+      piTroopCap = Send(oTerritoryGame,@GetNonclaimTroopCap);
       Send(self,@CleanupExtraTroops);
-      Send(Send(SYS,@GetTerritoryGame),@FlagClaimed,#flag=self);
+      Send(oTerritoryGame,@FlagClaimed,#flag=self);
 
       return;
    }
@@ -642,6 +660,8 @@ messages:
 
    ShowDesc()
    {
+      local oGuild;
+
       if piFaction = FACTION_DUKE
       {
          AddPacket(4,flag_duke_desc_rsc);
@@ -663,9 +683,26 @@ messages:
          AND (ptClaimAttempt <> $)
          AND IsClass(poClaimer,&Player)
       {
-         AddPacket(4,flag_append_desc, 4,Send(poClaimer,@GetCapIndef),
+         AddPacket(4,flag_append_desc,
+                   4,Send(poClaimer,@GetCapIndef),
                    4,Send(poClaimer,@GetName),
                    4,Send(self,@GetFactionNamePlugin,#who=poClaimer));
+      }
+      else if poCapturer
+      {
+         oGuild = Send(poCapturer,@GetGuild);
+         if oGuild
+         {
+            AddPacket(4,flag_append_desc_guild,
+               STRING_RESOURCE,Send(poCapturer,@GetName), 
+               4,Send(oGuild,@GetDef),
+               STRING_RESOURCE,Send(oGuild,@GetName));
+         }
+         else
+         {
+            AddPacket(4,flag_append_desc_player,
+               STRING_RESOURCE,Send(poCapturer,@GetName));
+         }
       }
       else
       {
@@ -1012,6 +1049,11 @@ messages:
       }
 
       propagate;
+   }
+
+   GetCapturer()
+   {
+      return poCapturer;
    }
 
 end

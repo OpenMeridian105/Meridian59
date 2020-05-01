@@ -2201,7 +2201,7 @@ messages:
 
    UserLogonHook()
    {
-      local i, oObj, iBonus, iDefaultBonus, iTimespan;
+      local i, oObj, iBonus, iDefaultBonus, iTimespan, oTerritoryGame;
 
       SendList(plPassive, 0, @UserLogon);
       SendList(plActive, 0, @UserLogon);
@@ -2304,6 +2304,13 @@ messages:
          // Scale the logon bonus with the time that has passed since it has last
          // been received for a total bonus of up to 150 percent.
          iBonus = iDefaultBonus * iTimespan / (24*60*60);
+
+         // Add extra training points for every flag that has been captured
+         oTerritoryGame = Send(SYS,@GetTerritoryGame);
+         if (oTerritoryGame <> $)
+         {
+            iBonus = iBonus + Send(oTerritoryGame,@CalcGuildBonus,#oGuild=poGuild);
+         }
 
          Send(self,@MsgSendUser,#message_rsc=player_logon_bonus,#parm1=iBonus);
          Send(self,@AddTrainingPoints,#points=iBonus,#report=FALSE);
@@ -4990,7 +4997,7 @@ messages:
    "CF_SAFETY_OFF prevents accidental attacks. You can always successfully "
    "hit a murderer or outlaw, though."
    {
-      local oEnemyGuild, oSoldierShield, iPenTime;
+      local oEnemyGuild, oSoldierShield, iPenTime, oFlagPole;
 
       // Don't care about monsters or token holders...
       if IsClass(victim,&Monster)
@@ -5036,6 +5043,19 @@ messages:
 
       oEnemyGuild = Send(victim,@GetGuild);
       oSoldierShield = Send(self,@FindUsing,#class=&SoldierShield);
+
+      // When a flag claim attempt is in progress, faction combat is open to 
+      // the zone with no legal restrictions. Same faction members will be able 
+      // to attack each other. Guild vs guild combat is also open in the zone,  
+      // but players cannot attack their guildmates without legal repercussions. 
+      oFlagPole = Send(poOwner,@FindHoldingActive,#Class=&Flagpole);
+      if (oFlagPole <> $)
+         AND Send(oFlagPole,@IsClaimAttemptInProgress)
+         AND NOT (Send(poGuild,@IsAlly,#otherguild=oEnemyGuild))
+         AND (poGuild <> oEnemyGuild)
+      {
+         return TRUE;
+      }
 
       // Check for enemy guild or faction soldier fighting - If attacking a (mutual)
       //  enemy, then they can whack on each other freely, without outlaw penalty
@@ -9695,7 +9715,7 @@ messages:
 
    GetDailyTrainingReward()
    {
-      local iBonus;
+      local iBonus, oTerritoryGame;
 
       ptReward_timer = CreateTimer(self,@GetDailyTrainingReward,24*60*60*1000);
 
@@ -9706,6 +9726,13 @@ messages:
 
       // Retrieve the daily logon bonus from settings.
       iBonus = Send(SETTINGS_OBJECT,@GetLogonBonus);
+
+      // Add extra training points for every flag that has been captured
+      oTerritoryGame = Send(SYS,@GetTerritoryGame);
+      if (oTerritoryGame <> $)
+      {
+         iBonus = iBonus + Send(oTerritoryGame,@CalcGuildBonus,#oGuild=poGuild);
+      }
 
       Send(self,@MsgSendUser,#message_rsc=player_logon_bonus,#parm1=iBonus);
       Send(self,@AddTrainingPoints,#points=iBonus,#report=FALSE);

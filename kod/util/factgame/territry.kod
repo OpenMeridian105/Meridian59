@@ -71,13 +71,20 @@ properties:
    piClaimWait = 8
 
    // Number of minutes to wait before you can claim a flag again.
-   piClaimRetry = 30
+   piClaimRetry = 16
 
    // Minimum number of users needed online before you can take a flag
-   piMinUsers = 20
+   piMinUsers = 15
 
    // Minimum number of allies you must have in the same room to make a claim
    piMinAllies = 2
+
+   // Players of the same guild get an additional training point bonus per flag
+   piGuildFlagBonus = 4
+
+   // Counts guild territories 
+   // [guild obj, total, duke, cess, rebel]
+   plGuildTerritories = $
 
    plFlagStates = $
 
@@ -88,6 +95,7 @@ messages:
       local i;
 
       plFlagStates = $;
+      plGuildTerritories = [$,0,0,0,0];
       //Send(self,@Recreate);
 
       return;
@@ -947,6 +955,164 @@ messages:
 
       return;
    }
+
+#region Guild Territory Scoring
+
+   AddGuildTerritory(oGuild=$, iFaction=0)
+   {
+      local i, j, lNew, iTotal, bFound;
+
+      bFound = FALSE;
+
+      if (iFaction <= FACTION_NEUTRAL)
+         OR (iFaction > FACTION_MAX)
+         OR (oGuild = $)
+      {
+         return;
+      }
+
+      // Offset index by 2 for faction; [oGuild, iTotal, iDuke, iCess, iRebel]
+      j = iFaction + 2;
+      iTotal = 2;
+
+      foreach i in plGuildTerritories
+      {
+         if First(i) = oGuild
+         {
+            // +1 to faction and total count
+            SetNth(i,j,Nth(i,j)+1);
+            SetNth(i,iTotal,Nth(i,iTotal)+1);
+
+            bFound = TRUE;
+            break;
+         }
+      }
+
+      if NOT bFound
+      {
+         // Guild doesn't have any previous territories, 
+         // create new list to track each faction
+         lNew = [oGuild,1,0,0,0];
+         SetNth(lNew,j,1);
+         plGuildTerritories = Cons(lNew,plGuildTerritories);
+      }
+
+      return;
+   }
+
+   SubtractGuildTerritory(oGuild=$, iFaction=0)
+   {
+      local i, j, k, iTotal, bFound;
+
+      bFound = FALSE;
+
+      if (iFaction <= FACTION_NEUTRAL)
+         OR (iFaction > FACTION_MAX)
+         OR (oGuild = $)
+      {
+         return;
+      }
+
+      // Offset index by 2 for faction; [oGuild, iTotal, iDuke, iCess, iRebel]
+      j = iFaction + 2;
+      iTotal = 2;
+
+      foreach i in plGuildTerritories
+      {
+         if First(i) = oGuild
+         {
+            // k = subtract one from the value at 'j'
+            k = Nth(i,j)-1;
+            if (k <= 0)
+            {
+               // Don't allow count to fall below 0
+               SetNth(i,j,0);
+            }
+            else
+            {
+               // Subtract one from faction count
+               SetNth(i,j,k);
+            }
+
+            // Subtract from total as well
+            SetNth(i,iTotal,Nth(i,iTotal)-1);
+
+            // If guild has no score, remove from the list
+            if (Nth(i,iTotal) <= 0)
+            {
+               plGuildTerritories = DelListElem(plGuildTerritories,i);
+            }
+
+            break;
+         }
+      }
+
+      return;
+   }
+
+   CalcGuildBonus(oGuild=$)
+   {
+      local lGuildScore, iBonus;
+
+      if plGuildTerritories = $
+      {
+         return 0;
+      }
+
+      iBonus = 0;
+      lGuildScore = GetListNode(plGuildTerritories, 1, oGuild);
+      if lGuildScore
+      {
+         iBonus = Nth(lGuildScore,2) * piGuildFlagBonus;
+      }
+
+      return iBonus;
+   }
+
+   UpdateGuildTerritories()
+   "Sort plGuildTerritories by overall score"
+   {
+      local i, j, oGuild, lTemp, lSorted;
+
+      lTemp = $;
+      lSorted = $;
+
+      if plGuildTerritories = $
+      {
+         return;
+      }
+
+      // Sort plGuildTerritories by overall score
+      foreach i in plGuildTerritories
+      {
+         lTemp = Send(self,@AddToSortedList,#what=First(i),
+                     #lList=lTemp,#number=Nth(i,2),
+                     #bReverse=TRUE);
+      }
+
+      foreach i in lTemp
+      {
+         foreach j in plGuildTerritories
+         {
+            if First(j) = First(i)
+            {
+               lSorted = Cons(j,lSorted);
+               break;
+            }
+         }
+      }
+
+      plGuildTerritories = lSorted;
+
+      return plGuildTerritories;
+   }
+
+   GetGuildTerritories()
+   {
+      return plGuildTerritories;
+   }
+
+#endregion Guild Territory Scoring
 
 end
 ////////////////////////////////////////////////////////////////////////////////

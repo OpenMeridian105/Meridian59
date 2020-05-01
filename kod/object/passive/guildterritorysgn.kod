@@ -1,0 +1,112 @@
+// Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+// All rights reserved.
+//
+// This software is distributed under a license that is described in
+// the LICENSE file that accompanies it.
+//
+// Meridian is a registered trademark.
+
+
+////////////////////////////////////////////////////////////////////////////////
+GuildTerritorySign is PassiveObject
+
+constants:
+
+   include blakston.khd
+   include protocol.khd
+
+resources:
+
+   include guildterritorysgn.lkod
+
+   GuildTerritorySign_name_rsc = "King of the Hill"
+   GuildTerritorySign_icon_rsc = newbsign.bgf
+   GuildTerritorySign_master = "%r%r%r%r%r%r"
+   GuildTerritorySign_1st = "1st"
+   GuildTerritorySign_2nd = "2nd"
+   GuildTerritorySign_3rd = "3rd"
+   GuildTerritorySign_4th = "4th"
+   GuildTerritorySign_5th = "5th"
+   GuildTerritorySign_info = \
+      "'King of the Hill' is a title awarded to the guild with the most influence "
+      "over the territories.  For every flag, guild members are awarded additional "
+      "training points to their daily training bonus.  "
+      "The highest ranking guilds are:\n\n"
+   GuildTerritorySign_desc = \
+      "%s: %q - %i \n"
+      "(Duke - %i, Princess - %i, Rebels - %i)\n\n"
+   GuildTerritorySign_no_list = "No guild holds the title of 'King of the Hill'."
+
+classvars:
+
+   vrName = GuildTerritorySign_name_rsc
+   vrIcon = GuildTerritorySign_icon_rsc
+
+   viObject_flags = OF_SIGN | OF_DISPLAY_NAME
+
+properties:
+
+   piNameColor = NC_DM
+
+messages:
+
+   ReqNewOwner(what = $)
+   {
+      return FALSE;
+   }
+
+   ShowDesc()
+   {
+      local i, rGuild, lGuildList, lScore, iCount, iCountMax;
+
+      lGuildList = Send(Send(SYS,@GetTerritoryGame),@GetGuildTerritories);
+      iCount = 0;
+      iCountMax = 5;
+
+      if lGuildList = $
+      {
+         AddPacket(4,GuildTerritorySign_no_list);
+         return;
+      }
+
+      if Length(lGuildList) < iCountMax
+      {
+         iCountMax = Length(lGuildList);
+      }
+
+      AddPacket(4,GuildTerritorySign_master);
+      AddPacket(4,GuildTerritorySign_info);
+
+      // Count top 5 guilds. If there's fewer than 5 people participating,
+      // only show the expected number.
+      while iCount < 5
+      {
+         ++iCount;
+         if iCount <= iCountMax
+         {
+            lScore = Nth(lGuildList,iCount);
+
+            rGuild = Send(First(lScore),@GetName);
+            AddPacket(4,GuildTerritorySign_desc);
+            switch(iCount)
+            {
+               case 1: AddPacket(4,GuildTerritorySign_1st); break;
+               case 2: AddPacket(4,GuildTerritorySign_2nd); break;
+               case 3: AddPacket(4,GuildTerritorySign_3rd); break;
+               case 4: AddPacket(4,GuildTerritorySign_4th); break;
+               case 5: AddPacket(4,GuildTerritorySign_5th); break;
+            }
+            AddPacket(STRING_RESOURCE,rGuild, 4,Nth(lScore,2),4,Nth(lScore,3),
+                      4,Nth(lScore,4),4,Nth(lScore,5));
+         }
+         else
+         {
+            AddPacket(4,system_blank_resource);
+         }
+      }
+
+      return;
+   }
+
+end
+////////////////////////////////////////////////////////////////////////////////

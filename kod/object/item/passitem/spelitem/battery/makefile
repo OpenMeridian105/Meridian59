@@ -4,7 +4,7 @@
 
 !include $(TOPDIR)\common.mak
 
-DEPEND = ..\spelitem.bof
-BOFS = potion.bof scroll.bof wand.bof battery.bof
+DEPEND = ..\battery.bof
+BOFS = mendbattery.bof 
 
 !include $(KODDIR)\kod.mak

@@ -744,7 +744,7 @@ messages:
       return $;
    }
 
-   DoBaseDesc()
+   DoBaseDesc(bShowAll=FALSE)
    "Items can override this to provide a more detailed base description."
    {
       AddPacket(4,vrDesc);
@@ -760,7 +760,7 @@ messages:
 
       AddPacket(4,item_desc_template);
 
-      Send(self,@DoBaseDesc);
+      Send(self,@DoBaseDesc,#bShowAll=bShowAll);
 
       if Send(self,@HasAttribute,#ItemAtt=IA_MISDIRECTION)
          AND NOT bShowAll
@@ -2623,6 +2623,25 @@ messages:
       return;
    }
 
+   SetAuctioned(who=$)
+   {
+      local oItemAtt;
+
+      if (who = $
+         OR NOT IsClass(who,&Player))
+      {
+         return system_failure_rsc;
+      }
+
+      oItemAtt = Send(SYS,@FindItemAttByNum,#num=IA_AUCTIONED);
+      if Send(oItemAtt,@ReqAddToItem,#oItem=self)
+      {
+         Send(oItemAtt,@AddToItem,#oItem=self,#state1=who);
+      }
+
+      return system_success_rsc;
+   }
+
    ReportDMCreated()
    {
       local i, iNum;
@@ -2679,6 +2698,24 @@ messages:
    PrintWeight()
    {
       GodLog(Send(self,@GetTrueName)," weight: ",viWeight," bulk: ",viBulk);
+
+      return;
+   }
+
+   CheckEnchantments(num=3)
+   {
+      local i, iNum, oItemAtt;
+
+      if (Length(plItem_attributes) >= num)
+      {
+         GodLog(vrName,self, " has ", Length(plItem_attributes), " enchantments");
+         foreach i in plItem_attributes
+         {
+            iNum = Send(self,@GetNumFromCompound,#compound=First(i));
+            oItemAtt = Send(SYS,@FindItemAttByNum,#num=iNum);
+            GodLog(Send(oItemAtt,@GetDMTrigger));
+         }
+      }
 
       return;
    }

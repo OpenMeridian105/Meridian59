@@ -1736,15 +1736,7 @@ messages:
 
       if IsClass(who,&DM)
       {
-         if (lTargets <> $)
-         {
-            GodLog("DM ",Send(who,@GetTrueName)," cast ", Send(self,@GetName),
-                  " on ",Send(First(lTargets),@GetTrueName));
-         }
-         else
-         {
-            GodLog("DM ",Send(who,@GetTrueName)," cast ", Send(self,@GetName));
-         }
+         Send(self,@LogDMCast,#who=who,#lTargets=lTargets);
       }
 
       if NOT bItemCast
@@ -1944,6 +1936,26 @@ messages:
       // Count that this spell was cast successfully.
       // Counts spells cast by monsters, items etc.
       Send(Send(SYS,@GetStatistics),@SpellCast,#oSpell=self,#who=who);
+
+      return;
+   }
+
+   LogDMCast(who=$,lTargets=$)
+   {
+      if (who = $)
+      {
+         return;
+      }
+
+      if (lTargets <> $)
+      {
+         GodLog("DM ",Send(who,@GetTrueName)," cast ", Send(self,@GetName),
+               " on ",Send(First(lTargets),@GetTrueName));
+      }
+      else
+      {
+         GodLog("DM ",Send(who,@GetTrueName)," cast ", Send(self,@GetName));
+      }
 
       return;
    }

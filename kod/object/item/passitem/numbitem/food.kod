@@ -40,11 +40,27 @@ classvars:
 
    vrEat_wav = food_eat_wav
 
+   vrName_magical = $
+   vrName_magical_true = $
+   vrDesc_magical = $
+   vrDesc_magical_true = $
+
 properties:
 
    viObject_flags = OF_GETTABLE
+   pbMagical = FALSE
 
 messages:
+
+   Constructor(bMagical=FALSE)
+   {
+      if bMagical
+      {
+         Post(self,@MakeMagical);
+      }
+
+      propagate;
+   }
 
    GetFilling()
    {
@@ -86,6 +102,7 @@ messages:
       }
 
       Send(self,@SubtractNumber,#number=1);
+
       return;
    }
 
@@ -150,7 +167,111 @@ messages:
 
    IsCookingIngredient()
    {
-      return TRUE;
+      return NOT pbMagical;
+   }
+
+   GetName(number = 0)
+   {
+      if pbMagical AND vrName_magical <> $
+      {
+         return vrName_magical;
+      }
+
+      propagate;
+   }
+
+   GetApparentName()
+   {
+      if pbMagical AND vrName_magical <> $
+      {
+         return vrName_magical;
+      }
+
+      propagate;
+   }
+
+   GetTrueName()
+   {
+      if pbMagical
+      {
+         if vrName_magical_true <> $
+         {
+            return vrName_magical_true;
+         }
+         else if vrName_magical <> $
+         {
+            return vrName_magical;
+         }
+      }
+
+      propagate;
+   }
+
+   IsStackable()
+   {
+      return NOT pbMagical;
+   }
+
+   AddNumber()
+   {
+      if pbMagical
+      {
+         return;
+      }
+
+      propagate;
+   }
+
+   SubtractNumber()
+   {
+      if pbMagical
+      {
+         return 1;
+      }
+
+      propagate;
+   }
+
+   MakeMagical()
+   {
+      pbMagical = TRUE;
+      Send(self,@AddMagicFlag);
+      piNumber = 1;
+      Send(self,@NewNumber);
+
+      return;
+   }
+
+   DoBaseDesc(bShowAll=FALSE)
+   "Items can override this to provide a more detailed base description."
+   {
+      if pbMagical
+      {
+         if bShowAll AND (vrDesc_magical_true <> $)
+         {
+            AddPacket(4,vrDesc_magical_true);
+
+            return;
+         }
+         else if vrDesc_magical <> $
+         {
+            AddPacket(4,vrDesc_magical);
+
+            return;
+         }
+      }
+
+      propagate;
+   }
+
+   GetMinimapDotFlags()
+   {
+      if pbMagical
+      {
+         return MM_RARE_ITEM;
+      }
+
+      propagate;
    }
 
 end

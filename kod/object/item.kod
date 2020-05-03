@@ -2618,6 +2618,25 @@ messages:
       return;
    }
 
+   SetAuctioned(who=$)
+   {
+      local oItemAtt;
+
+      if (who = $
+         OR NOT IsClass(who,&Player))
+      {
+         return system_failure_rsc;
+      }
+
+      oItemAtt = Send(SYS,@FindItemAttByNum,#num=IA_AUCTIONED);
+      if Send(oItemAtt,@ReqAddToItem,#oItem=self)
+      {
+         Send(oItemAtt,@AddToItem,#oItem=self,#state1=who);
+      }
+
+      return system_success_rsc;
+   }
+
    ReportDMCreated()
    {
       local i, iNum;

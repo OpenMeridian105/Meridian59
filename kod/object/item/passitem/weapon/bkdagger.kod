@@ -375,16 +375,18 @@ messages:
 
    PlayerHealTimer()
    {
-      if piPlayer_hits < 1 OR piPlayer_hits > (PLAYER_MAX - 1)
+      if piPlayer_hits < 1 OR piPlayer_hits > PLAYER_MAX
       {
          Debug("PlayerHealTimer called while piPlayer_hits was an invalid value!");
+
+         ptPlayer_heal = $;
 
          return;
       }
 
       if piPlayer_hits < PLAYER_MAX
       {
-         piPlayer_hits = piPlayer_hits + 1;
+         ++piPlayer_hits;
          Send(poOwner,@MsgSendUser,#message_rsc=BlackDagger_glows);
 
          ptPlayer_heal = CreateTimer(self,@PlayerHealTimer,PLAYER_HEAL_TIME);

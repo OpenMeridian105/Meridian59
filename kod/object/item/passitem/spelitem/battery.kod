@@ -1,0 +1,246 @@
+// Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+// All rights reserved.
+//
+// This software is distributed under a license that is described in
+// the LICENSE file that accompanies it.
+//
+// Meridian is a registered trademark.
+
+
+////////////////////////////////////////////////////////////////////////////////
+Battery is SpellItem
+
+constants:
+
+   include blakston.khd
+
+resources:
+
+   include battery.lkod
+
+   battery_name_rsc = "arcane battery"
+   battery_label_name_rsc = "generic arcane battery"
+   battery_icon_rsc = tough.bgf
+   battery_desc_rsc = "This convenient %s allows even the least magically gifted adventurer "
+      "to harness the powers of the %s spell, provided it has been charged by a trained "
+      "professional."
+   battery_append_hits = "\n\nIt is currently charged with %i of %i spell power and will "
+      "consume %i charges per use.\n\n"
+      "Remaining uses: %i"
+   battery_target_gone = \
+      "Your attempt to attune your %s to %s%s fails as your target has disappears."
+   battery_fails = "You try to activate your %s but nothing happens."
+   battery_empty = "Your %s needs to be recharged before it can be used again."
+   battery_charge = "You charge your %s with ~B%i~B spell power."
+   battery_charge_fail = "Your lack the expertise to adequately charge the %s."
+   battery_charge_full = "Your %s is fully charged."
+   battery_self = "You really wouldn't want to cause a singularity, now would you?"
+
+classvars:
+
+   vrLabelName = battery_label_name_rsc
+   vrIcon = battery_icon_rsc
+   vrDescHits = battery_append_hits
+   vrFails = battery_fails
+   viSpellEffect = SID_MEND
+   viColor = XLAT_TO_RED
+   viItem_Type = ITEMTYPE_BATTERY
+   viGround_group = 2
+   viInventory_group = 1
+   viHits_init_min = 300
+   viHits_init_max = 300
+   viConsumesHits = 100
+   viBulk = 25
+   viWeight = 25
+   viValue_average = 5000
+
+properties:
+
+   vrName = battery_name_rsc
+   vrDesc = battery_desc_rsc
+   viObject_flags = OF_APPLYABLE | OF_GETTABLE
+
+   // Set to negative so it doesn't expire naturally.
+   piGoBadTime = -1
+
+   piSpellPower = SPELLPOWER_MAXIMUM
+   pbCanSplit = FALSE
+
+messages:
+
+   DoBaseDesc()
+   {
+      local oSpell;
+
+      oSpell = Send(SYS,@FindSpellByNum,#num=viSpellEffect);
+      AddPacket(4,vrDesc,4,Send(self,@GetName),4,Send(oSpell,@GetName));
+
+      return;
+   }
+
+   AppendDesc()
+   {
+      AddPacket(4,vrDescHits,
+                4,piHits,
+                4,piHits_init,
+                4,viConsumesHits,
+                4,piHits/viConsumesHits);
+
+      return;
+   }
+
+   CastSpell(what=$,apply_on=$)
+   {
+      // If our owner and the target share the same owner (a room),
+      // then there needs to be line of sight.  Also, make sure the 
+      // target is within sight and range.
+      if (NOT ((Send(poOwner,@GetOwner) <> Send(apply_on,@GetOwner))
+               OR Send(Send(poOwner,@GetOwner),@LineOfSight,#obj1=poOwner,#obj2=apply_on)))
+         OR (IsClass(poOwner,&Player)
+             AND NOT Send(poOwner,@TargetWithinSightAndRange,#oTarget=apply_on))
+      {
+         Send(self,@DoFailure,#what=what,#lTargets=[apply_on]);
+
+         return;
+      }
+
+      propagate;
+   }
+
+   DoFailure(what=$,lTargets=$)
+   {
+      Send(what,@MsgSendUser,#message_rsc=vrFails,
+            #parm1=Send(self,@GetName));
+
+      return;
+   }
+
+   SetDesc(desc = $)
+   {
+      if (desc <> $)
+      {
+         vrDesc = desc;
+      }
+
+      return;
+   }
+
+   ReqNewApply(what=$,apply_on=$)
+   {
+      local oSpell;
+
+      if piHits < viConsumesHits
+      {
+         Send(what,@MsgSendUser,#message_rsc=battery_empty,
+               #parm1=Send(self,@GetName));
+         return FALSE;
+      }
+
+      if self = apply_on
+      {
+         Send(what,@MsgSendUser,#message_rsc=battery_self);
+         return FALSE;
+      }
+
+      oSpell = Send(SYS,@FindSpellByNum,#num=viSpellEffect);
+
+      if Send(oSpell,@IsHarmful)
+         AND IsClass(apply_on,&Monster)
+         AND NOT Send(apply_on,@CanMonsterFight,#who=poOwner,#oStroke=self)
+      {
+         return FALSE;
+      }
+
+      if (vbFailSafe)
+         OR ( Send(oSpell,@CanPayCosts,#who=poOwner,#lTargets=[apply_on],
+                    #iSpellPower=piSpellPower,#bItemCast=TRUE)
+              AND (Send(Send(what,@GetOwner),@ReqSpellCast,#who=what,#oSpell=oSpell))
+              AND ((NOT Send(oSpell,@IsHarmful))
+                   OR Send(Send(what,@GetOwner),@ReqSomethingAttack,#what=what,
+                            #victim=apply_on)) )
+      {
+         propagate;
+      }
+
+      return FALSE;
+   }
+
+   NewApplied(what=$,apply_on=$)
+   "Cast spells and reduces charges accordingly."
+   "Bypasses SetHits() in parent class."
+   {
+      // Cast the spell specific to the Spellitem
+      Send(self,@CastSpell,#what=what,#apply_on=apply_on);
+
+      piHits -= viConsumesHits;
+
+      return;
+   }
+
+   CanMend()
+   {
+      return TRUE;
+   }
+
+   ChargeBattery(amount=0)
+   {
+      piHits += amount;
+      piHits = Bound(piHits,0,piHits_init);
+
+      if poOwner <> $
+      {
+         if amount > 1
+         {
+            Send(poOwner,@MsgSendUser,#message_rsc=battery_charge,
+                  #parm1=Send(self,@GetName),#parm2=amount);
+         }
+         else
+         {
+            Send(poOwner,@MsgSendUser,#message_rsc=battery_charge_fail,
+               #parm1=Send(self,@GetName));
+         }
+
+         if piHits = piHits_init
+         {
+            Send(poOwner,@MsgSendUser,#message_rsc=battery_charge_full,
+               #parm1=Send(self,@GetName));
+         }
+      }
+
+      return;
+   }
+
+   GetBulk()
+   {
+      return viBulk;
+   }
+
+   GetWeight()
+   {
+      return viWeight;
+   }
+
+   GetInitValue()
+   {
+      return viValue_average;
+   }
+
+   GetValue()
+   {
+      return viValue_average;
+   }
+
+   // Overriding item.kod to avoid broken message at zero hits.
+   GetItemUseType()
+   {
+      return viUse_type;
+   }
+
+   GetMinimapDotFlags()
+   {
+      // Special item, add minimap dot.
+      return MM_RARE_ITEM;
+   }
+
+end
+////////////////////////////////////////////////////////////////////////////////

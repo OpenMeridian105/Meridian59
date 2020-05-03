@@ -8,7 +8,7 @@ SOURCEDIR = .
 OUTDIR = $(CLIENTRUNDIR)\resource
 OUTDIRSUB = ..\$(OUTDIR)
 
-DIRS = holyblaze martyrsgrace wdshield bleed poison siphon fatigue burn \
+DIRS = holyblaze martyrsgrace wdshield bleed poison siphon fatigue burn anvil \
        lullaby freeze electrify frostwall flamewave arcticbreath meteor \
        nimble tough sharp strong cleave apple
 

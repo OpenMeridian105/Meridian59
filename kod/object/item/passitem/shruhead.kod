@@ -404,6 +404,15 @@ messages:
       return;
    }
 
+   DeleteOverheard()
+   "Can be used from admin window to clear overheard data."
+   {
+      psOverheard = $;
+      poOverheard = $;
+
+      return;
+   }
+
    SomeoneOverheard(from=$,string=$)
    {
       local oRoom;
@@ -483,7 +492,7 @@ messages:
 
    PickSomeoneNearby()
    {
-      local oRoom, i, lNearby, lPlayers;
+      local oRoom, i, lPlayers, each_obj;
 
       oRoom = Send(SYS,@UtilGetRoomRecurse,#what=self);
 
@@ -492,15 +501,20 @@ messages:
          return $;
       }
 
-      lPlayers = $;
-      lNearby = Send(oRoom,@GetHolderActive);
-
-      foreach i in lNearby
+      foreach i in Send(oRoom,@GetHolderActive)
       {
-         if IsClass(First(i),&Player)
-            AND NOT Send(First(i),@CheckPlayerFlag,#flag=PFLAG_ANONYMOUS)
-            AND NOT Send(First(i),@CheckPlayerFlag,#flag=PFLAG_INVISIBLE)
+         each_obj = First(i);
+         if IsClass(each_obj,&Player)
+            AND NOT Send(each_obj,@CheckPlayerFlag,#flag=PFLAG_ANONYMOUS)
+            AND NOT Send(each_obj,@CheckPlayerFlag,#flag=PFLAG_INVISIBLE)
          {
+            // Also check for DMs.
+            if (IsClass(each_obj,&DM)
+               AND Send(each_obj,@IsDMStealthed))
+            {
+               continue;
+            }
+
             lPlayers = Cons(First(i),lPlayers);
          }
       }
@@ -622,6 +636,13 @@ messages:
       if IsClass(poOwner,&Player)
          AND (Send(poOwner,@CheckPlayerFlag,#flag=PFLAG_ANONYMOUS)
             OR Send(poOwner,@CheckPlayerFlag,#flag=PFLAG_INVISIBLE))
+      {
+         return;
+      }
+
+      // Also check for DMs.
+      if (IsClass(poOwner,&DM)
+         AND Send(poOwner,@IsDMStealthed))
       {
          return;
       }

@@ -105,13 +105,13 @@ messages:
 
       Send(oTarget,@StartEnchantment,#what=self,#time=BOON_HOUR,#state=iState);
       if who <> $
+         AND IsClass(who,&DM)
       {
-         if IsClass(who,&DM)
-         {
-            Send(who,@MsgSendUser,#message_rsc=boon_caster_msg,
-                  #parm1=Send(self,@GetName),#parm2=Send(oTarget,@GetDef),
-                  #parm3=Send(oTarget,@GetName));
-         }
+         Send(self,@LogDMCast,#who=who,#lTargets=lTargets);
+
+         Send(who,@MsgSendUser,#message_rsc=boon_caster_msg,
+               #parm1=Send(self,@GetName),#parm2=Send(oTarget,@GetDef),
+               #parm3=Send(oTarget,@GetName));
       }
 
       Send(self,@PlaySpellSound,#room_obj=Send(oTarget,@GetOwner),#what=oTarget);

@@ -1,0 +1,83 @@
+// Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+// All rights reserved.
+//
+// This software is distributed under a license that is described in
+// the LICENSE file that accompanies it.
+//
+// Meridian is a registered trademark.
+
+
+////////////////////////////////////////////////////////////////////////////////
+BergJail is BergRoom
+
+constants:
+
+   include blakston.khd
+
+resources:
+
+   //include BergJail.lkod
+
+   room_BergJail = berg_jail.roo
+   room_name_BergJail = "Bouldergate Prison"
+
+   BergJail_music = BONEPRST.ogg
+   wind_sound_BergJail = rs_wind.ogg
+
+   BergJail_locked_doors = "The door is locked."
+   
+classvars:
+
+   vrName = room_name_BergJail
+
+   viTeleport_row = 10
+   viTeleport_col = 2
+   
+   viPermanent_flags = ROOM_NO_COMBAT
+
+   viTerrain_Type = TERRAIN_CITY
+   
+properties:
+
+   piRoom_num = RID_BERG_JAIL
+   prRoom = room_BergJail
+
+   prMusic = BergJail_music
+
+   piBaseLight = LIGHT_NICE
+   piOutside_factor = 3
+
+   piDirectional_percent = DIRECTIONAL_PERCENT_OUTDOORS
+
+   pbSnowGroundTexture = FALSE
+
+messages:
+
+   CreateStandardObjects()
+   {
+      Send(self,@NewHold,#what=Create(&BountyHunter),
+         #new_row=3,#new_col=6,#fine_row=32,#fine_col=32);
+
+      Send(self,@NewHold,#what=Create(&Brazier),
+         #new_row=13,#new_col=2,#fine_row=32,#fine_col=32);
+      Send(self,@NewHold,#what=Create(&Brazier),
+         #new_row=5,#new_col=2,#fine_row=40,#fine_col=22);
+
+      propagate;
+   }
+
+   CreateStandardExits()
+   {
+      plExits = $;
+      plEdge_Exits = $;
+
+      plExits = Cons([ 2, 2, RID_BERG_LEADER, 28, 16, ROTATE_NONE ],plExits);
+
+      plExits = Cons([ 9, 5, RID_BERG_JAIL, 9, 3, ROTATE_NONE ],plExits);
+      plExits = Cons([ 9, 4, RID_BERG_JAIL, 9, 6, ROTATE_NONE ],plExits);
+
+      propagate;
+   }
+
+end
+////////////////////////////////////////////////////////////////////////////////

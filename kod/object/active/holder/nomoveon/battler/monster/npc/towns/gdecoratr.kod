@@ -1,0 +1,440 @@
+// Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+// All rights reserved.
+//
+// This software is distributed under a license that is described in
+// the LICENSE file that accompanies it.
+//
+// Meridian is a registered trademark.
+
+
+////////////////////////////////////////////////////////////////////////////////
+GuildDecorator is Towns
+
+constants:
+
+   include blakston.khd
+   include protocol.khd
+
+resources:
+
+   //include decoratr.lkod
+
+   GuildDecorator_name_rsc = "Bonji"
+   GuildDecorator_icon_rsc = gdecorator.bgf
+   GuildDecorator_desc_rsc = \
+      "At first glance you aren't quite sure what to make of this strange "
+      "creature.  He watches the room lazily, occasionally waving his wings in "
+      "a more-than-magical way.  This guild owl is available to 'help' guild "
+      "leaders with modifications to this hall."
+
+   GuildDecorator_command_help = "help"
+   GuildDecorator_help = \
+      "I am here to assist with adding who-ho...items to this hall.\n"
+      "'Offer' shillings to increase the hall's ~Icredit~I.  \n"
+      "Say ~Ilist~I objects to see a full list of available objects.\n"
+      "Say ~Iplace~I followed by the name of the ~Iobject~I you wish to build.\n"
+      "Say ~Imove~I to relocate any existing object.\n"
+      "Say ~Idestroy~I followed by the name of the object you wish to remove. "
+      "If you decide to remove objects from the room, you earn "
+      "credits for shillings spent, which can be applied to future hall "
+      "modifications.  Feel free to ask me for your ~Icredit balance~I at any time."
+
+   GuildDecorator_command_credit = "credit"
+   GuildDecorator_command_balance = "balance"
+   GuildGuildDecorator_credit_balance = \
+      "Ho-ho, this hall has a credit balance of %i shillings."
+   GuildGuildDecorator_cant_pay = \
+      "I'm afraid you don't have enough resources to pay for that hall "
+      "modification.  'Offer' shillings to myself to increase this hall's "
+      "available credit."
+
+   GuildDecorator_command_list = "list"
+   GuildDecorator_list = "You may choose from the following objects: %r"
+   GuildDecorator_add_item = "%s - %i. %r"
+
+   GuildDecorator_command_place = "place"
+   GuildDecorator_command_build = "build"
+   GuildDecorator_already_placed = "You already have a portal in this hall."
+   GuildDecorator_too_many = \
+      "You already have too many objects in this hall.  Please ~Idestroy~I some "
+      "of your upgrades if you wish to add another."
+
+   GuildDecorator_command_move = "move"
+   GuildDecorator_command_move_cant = \
+      "I'm not able to move this object. Try to ~Idestroy~I it first, "
+      "and ~Iplace~I it again."
+   GuildDecorator_too_close_entrance = \
+      "This object is a bit too close to the hall's entrance."
+   GuildDecorator_command_remove = "destroy"
+
+   GuildDecorator_confused = "I'm sorry, can you state your request more simply?"
+
+classvars:
+
+   vrName = GuildDecorator_name_rsc
+   vrIcon = GuildDecorator_icon_rsc
+   vrDesc = GuildDecorator_desc_rsc
+   viMerchant_markup = MERCHANT_EXPENSIVE
+   viAttributes = \
+      MOB_NOFIGHT | MOB_RANDOM | MOB_NOMOVE | MOB_LISTEN \
+      | MOB_RECEIVE | MOB_SELLER
+   viOccupation = MOB_ROLE_SCHOLAR
+   viDefinite = ARTICLE_THE
+
+   viObject_flags = OF_OFFERABLE
+
+   viUpgradeLimit = 50
+
+properties:
+
+   piGuild_Credit = 0
+   plUpgrades = $
+
+messages:
+
+   Constructor()
+   {
+      plWantedItems = [&Money];
+
+      plUpgrades = [
+                     [Create(&Statue), 100000],
+                     [Create(&KillerBunny), 100000],
+                     [Create(&Cow), 75000],
+                     [Create(&HellPortal), 75000],
+                     //[Create(&SmallBox), 60000],
+                     [Create(&GuildDevice,#num=SID_INVISIBILITY), 60000],
+                     [Create(&CookingPot), 50000],
+                     [Create(&GuildDevice,#num=SID_DETECT_INVISIBLE), 50000],
+                     [Create(&GuildDevice,#num=SID_ARMOR_OF_GORT), 45000],
+                     [Create(&GuildDevice,#num=SID_MAJOR_HEAL), 40000],
+                     [Create(&FoodDispenser,#classtype=&Snowball), 25000],
+                     [Create(&DragonflyCage), 10000],
+                     [Create(&Fountain), 5000],
+                     [Create(&FeyTree), 5000],
+                     [Create(&DukeGuard), 5000],
+                     [Create(&Tombstone), 2500],
+                     [Create(&Chandelier), 2000],
+                     [Create(&SkullBrazier), 2000],
+                     [Create(&OrcTorch), 2000]
+                   ];
+
+      propagate;
+   }
+
+   SetForSale()
+   {
+      plFor_sale = [ 
+         [
+            Create(&LoadoutScroll,#labelled=TRUE),
+            Create(&SetScroll,#labelled=TRUE)
+         ],
+      $,$,$];
+
+      return;
+   }
+
+   SayToGuildDecorator(what=$,type=$,string=$)
+   "Use a specific message for hall customization."
+   {
+      local oGuild, bMove, bPlace, bRemove, bClarify, oObject, iCost, i, 
+         each_obj, bFound, obj, iRow, iCol, iAngle, iFine_Row, iFine_Col;
+
+      if NOT IsClass(what,&User)
+         OR NOT IsClass(poOwner,&GuildHall)
+      {
+          return;
+      }
+
+      // Anyone can check the hall's credit balance
+      if StringContain(string, GuildDecorator_command_credit)
+         OR StringContain(string, GuildDecorator_command_balance)
+      {
+         Send(self,@DecoratorSayCredit,#who=what);
+         return;
+      }
+
+      // Only high ranking guild members may customize the hall
+      oGuild = Send(what,@GetGuild);
+      if oGuild = $
+         OR (Send(poOwner,@GetGuildOwner) <> oGuild)
+         OR Send(oGuild,@GetRank,#who=what) < RANK_LIEUTENANT
+      {
+         return;
+      }
+
+      // Respond to special commands.
+      if StringContain(string, GuildDecorator_command_help)
+      {
+         Send(self,@SayToOne,#target=what,#type=SAY_RESOURCE,
+            #message_rsc=GuildDecorator_help);
+         return;
+      }
+      
+      if StringContain(string, GuildDecorator_command_list)
+      {
+         Send(self,@DecoratorListObjects,#who=what);
+         return;
+      }
+
+      // Next, extract the 'topic' keywords, check for multiples.
+      bClarify = FALSE;
+      bPlace = (StringContain(string, Decorator_command_place)
+                  OR StringContain(string, GuildDecorator_command_build));
+      bMove = StringContain(string, GuildDecorator_command_move);
+      bRemove = StringContain(string, GuildDecorator_command_remove);
+
+      if (bMove + bPlace + bRemove) > 1
+      {
+         // Ambiguous command, so ignore both keywords but proceed to
+         // give reminder messages, if any.
+         bClarify = TRUE;
+         bMove = FALSE;
+         bPlace = FALSE;
+         bRemove = FALSE;
+      }
+
+      if bClarify
+      {
+         Send(self,@SayToOne,#target=what,#type=SAY_RESOURCE,
+            #message_rsc=GuildDecorator_confused);
+         return;
+      }
+
+      if bPlace
+      {
+         i = TRUE;
+      }
+      oObject = Send(poOwner,@ParseObject,#string=string,#lookup_list=i);
+      iCost = Send(self,@GetUpgradeCost,#obj=oObject);
+
+      // Place object in room
+      if bPlace AND (oObject <> $)
+      {
+         if IsClass(oObject,&HellPortal)
+            AND (Send(poOwner,@CountHoldingHowMany,#class=&HellPortal) >= 1)
+         {
+            // already placed this object
+            Send(self,@SayToOne,#target=what,#type=SAY_RESOURCE,
+               #message_rsc=GuildDecorator_already_placed);
+            return;
+         }
+
+         if (Send(poOwner,@CountGuildHallUpgrades) >= viUpgradeLimit)
+         {
+            // too many objects
+            Send(self,@SayToOne,#target=what,#type=SAY_RESOURCE,
+               #message_rsc=GuildDecorator_too_many);
+            return;
+         }
+
+         // No objects in front of the door
+         if Send(poOwner,@SomethingNearEnterance,#what=what)
+         {
+            Send(self,@SayToOne,#target=what,#type=SAY_RESOURCE,
+               #message_rsc=GuildDecorator_too_close_entrance);
+            return;
+         }
+
+         // check if we have enough to purchase
+         if piGuild_Credit >= iCost
+         {
+            if IsClass(oObject,&Statue)
+            {
+               obj = Create(GetClass(oObject),#original=what);
+            }
+            else if IsClass(oObject,&GuildDevice)
+            {
+               obj = Create(GetClass(oObject),#num=Send(oObject,@GetSpellEffect));
+            }
+            else if IsClass(oObject,&FoodDispenser)
+            {
+               obj = Create(GetClass(oObject),#classtype=&Snowball);
+            }
+            else 
+            {
+               obj = Create(GetClass(oObject));
+            }
+
+            if IsClass(oObject,&HellPortal)
+            {
+               // place portal in specific spot
+               iRow = Send(poOwner,@GetHellPortalRow);
+               iCol = Send(poOwner,@GetHellPortalCol);
+               iAngle = Send(poOwner,@GetHellPortalAngle);
+               iFine_Row = 32;
+               iFine_Col = 32;
+            }
+            else 
+            {
+               iRow = Send(what,@GetRow);
+               iCol = Send(what,@GetCol);
+               iAngle = Send(what,@GetAngle);
+               iFine_Row = Send(what,@GetFineRow);
+               iFine_Col = Send(what,@GetFineCol);
+            }
+
+            Send(poOwner,@NewHold,#what=obj,#new_row=iRow,#new_col=iCol,
+               #fine_row=iFine_Row,#fine_col=iFine_Col,#new_angle=iAngle);
+
+            piGuild_Credit = piGuild_Credit - iCost;
+            Send(self,@DecoratorSayCredit,#who=what);
+         }
+         else 
+         {
+            Send(self,@SayToOne,#target=what,#type=SAY_RESOURCE,
+               #message_rsc=GuildGuildDecorator_cant_pay);
+         }
+         return;
+      }
+
+      // Move object
+      if bMove AND (oObject <> $)
+      {
+         // No objects in front of the door
+         if Send(poOwner,@SomethingNearEnterance,#what=what)
+         {
+            Send(self,@SayToOne,#target=what,#type=SAY_RESOURCE,
+               #message_rsc=GuildDecorator_too_close_entrance);
+            return;
+         }
+
+         // There can be some issues with moving portals, 
+         // better to have player destroy the object and place it again.
+         if IsClass(oObject,&Portal)
+         {
+            Send(self,@SayToOne,#target=what,#type=SAY_RESOURCE,
+               #message_rsc=GuildDecorator_command_move_cant);
+            return;
+         }
+         else
+         {
+            Send(poOwner,@SomethingMoved,#what=oObject,#new_row=Send(what,@GetRow),
+               #new_col=Send(what,@GetCol),#fine_row=Send(what,@GetFineRow),
+               #fine_col=Send(what,@GetFineCol),#new_angle=Send(what,@GetAngle));
+         }
+           
+         return;
+      }
+
+      // Remove object
+      if bRemove AND (oObject <> $)
+      {
+         // Guild devices drop loaded regs
+         if IsClass(oObject,&GuildDevice)
+         {
+            Send(oObject,@DropFuel);
+         }
+
+         if Send(poOwner,@TryRemoveObject,#who=what,#template=oObject)
+         {
+            piGuild_Credit = piGuild_Credit + iCost;
+            Send(self,@DecoratorSayCredit,#who=what);
+         }
+         return;
+      }
+
+      return;
+   }
+
+   DecoratorListObjects(who=$)
+   {
+      local i, obj;
+
+      // Add protocol packet and headers.
+      AddPacket(1,BP_SAID, 4,self, 4,Send(self,@GetName), 1,SAY_RESOURCE,
+                4,monster_said_resource_str, 4,Send(self,@GetCapDef),
+                4,Send(self,@GetName),4,GuildDecorator_list);
+
+      foreach i in plUpgrades
+      {
+         AddPacket(4,GuildDecorator_add_item,4,Send(First(i),@GetName),4,Nth(i,2));
+      }
+      AddPacket(4,system_blank_resource);
+
+      Send(poOwner,@SendCopyPacketAllInRoom);
+
+      return;
+   }
+
+   DecoratorSayCredit(who=$)
+   {
+      Send(self,@SayToOne,#target=who,#type=SAY_RESOURCE,
+         #message_rsc=GuildGuildDecorator_credit_balance,
+         #parm1=piGuild_Credit);
+
+      return;
+   }
+
+   GotWantedItem(obj = $, who = $)
+   {
+
+      if IsClass(obj,&Money)
+      {
+        piGuild_Credit = piGuild_Credit + Send(obj,@GetNumber);
+        Send(self,@DecoratorSayCredit,#who=who);
+        Send(who,@RemoveNumberItemFromPossession,#ToBeRemoved=obj);
+        Send(obj,@Delete);
+        return;
+      }
+
+      propagate;
+   }
+
+   Delete()
+   {
+      Send(self,@DeleteUpgrades);
+
+      propagate;
+   }
+
+   DeleteUpgrades()
+   {
+      local i;
+
+      foreach i in plUpgrades
+      {
+         Send(First(i),@Delete);
+      }
+      piGuild_Credit = 0;
+
+      return;
+   }
+
+   GetUpgrades()
+   {
+      return plUpgrades;
+   }
+
+   GetUpgradeCost(obj=$)
+   {
+      local i;
+
+      if obj = $
+      {
+         return 0;
+      }
+
+      foreach i in plUpgrades
+      {
+         if IsClass(obj,GetClass(First(i)))
+         {
+            return Nth(i,2);
+         }
+      }
+
+      return 0;
+   }
+
+   GetCreditBalance()
+   {
+       return piGuild_Credit;
+   }
+
+   SetCreditBalance(num=0)
+   {
+      piGuild_Credit = num;
+       return;
+   }
+
+end
+////////////////////////////////////////////////////////////////////////////////

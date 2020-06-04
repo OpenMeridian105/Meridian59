@@ -2921,7 +2921,7 @@ messages:
    "CreateAllRoomsIfNew.\nUNSAFE to call from admin mode, as items"
    "in rooms lose state.  Use RecreateAll instead."
    {
-      local i, n, bFeast_Hall_Locked, oFeast_Hall;
+      local i, n, bFeast_Hall_Locked, oFeast_Hall, lGuildHall_Upgrades;
 
       if plUsers_logged_on <> $
       {
@@ -2962,6 +2962,13 @@ messages:
                   Send(i,@GetRoomNum));
          }
 
+         // Save guild hall objects
+         if IsClass(i,&GuildHall)
+         {
+            lGuildHall_Upgrades = Cons(Send(i,@SaveGuildHallUpgrades),
+            lGuildHall_Upgrades);
+         }
+
          Send(i,@Delete);
       }
 
@@ -2988,6 +2995,10 @@ messages:
       {
          Send(oFeast_Hall, @SetLocked, #value = bFeast_Hall_Locked);
       }
+
+      // Restore Guild Hall Objects
+      Send(self,@RecreateGuildHallUpgrades,
+         #lGuildHall_Upgrades=lGuildHall_Upgrades);
 
       // Fix up old Raza RIDs
       foreach i in plUsers
@@ -5567,6 +5578,66 @@ messages:
       }
 
       return TRUE;
+   }
+
+   RecreateGuildHallUpgrades(lGuildHall_Upgrades=$)
+   {
+      local index, i, j, k, obj, oRoom;
+
+      if lGuildHall_Upgrades = $
+      {
+         return;
+      }
+
+      foreach j in lGuildHall_Upgrades
+      {
+         // Restore hall's balance
+         foreach i in j
+         {
+            if (Length(i) = 2)
+            {
+               oRoom = Send(self,@FindRoomByNum,#num=First(i));
+               Send(Send(oRoom,@GetGuildDecorator),@SetCreditBalance,#num=Nth(i,2));
+            }
+         }
+
+         // Restore guild hall objects
+         index = 2;
+         while index <= Length(j)
+         {
+            foreach i in Nth(j,index)
+            {
+               if i <> $
+               {
+                  obj = First(i);
+                  if (obj = &GuildDevice)
+                  {
+                     k = Create(obj,#num=Nth(i,7));
+                     Send(k,@SetCharges,#num=Nth(i,8));
+                  }
+                  else if (obj = &FoodDispenser)
+                  {
+                     k = Create(obj,#classtype=Nth(i,7));
+                  }
+                  else if (obj = &Statue)
+                  {
+                     k = Create(obj);
+                     Send(k,@SetStatue,#Original=Nth(i,7));
+                  }
+                  else
+                  {
+                     k = Create(obj);
+                  }
+
+                  Send(oRoom,@NewHold,#what=k,#new_row=Nth(i,2),
+                     #new_col=Nth(i,3),#fine_row=Nth(i,4),#fine_col=Nth(i,5),
+                     #new_angle=Nth(i,6));
+               }
+            }
+            index++;
+         }
+      }
+      return;
    }
 
    ChangeRentDue(amount=-20000)

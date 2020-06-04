@@ -30,6 +30,8 @@ constants:
    PURCHASE_MODIFIER = 5000
    RENT_MODIFIER = 50
 
+   UPGRADE_FROM_DOOR_DISTANCE = 2
+
 resources:
 
    include ghall.lkod
@@ -113,6 +115,10 @@ classvars:
    viLever_fine_row = 32
    viLever_fine_col = 32
 
+   viHellPortal_row
+   viHellPortal_col
+   viHellPortal_angle
+
    // Quality is the overall guildhall quality, ranges from 1 to 10
    viQuality = 6
 
@@ -178,6 +184,8 @@ properties:
    prNewsball = $
 
    piLastDoorOpen = 0
+
+   poDecorator = $
 
 messages:
 
@@ -460,6 +468,11 @@ messages:
       {
          DeleteTimer(ptWarning);
          ptWarning = $;
+      }
+
+      if poDecorator <> $
+      {
+         Send(self,@DeleteGuildHallUpgrades);
       }
 
       return;
@@ -1016,6 +1029,13 @@ messages:
          Send(self,@OpenSecretDoor);
       }
 
+      if poDecorator <> $
+      {
+         Send(poDecorator,@SayToGuildDecorator,#what=what,#type=type,#string=string,
+               #parm1=parm1,#parm2=parm2,#parm3=parm3,#parm4=parm4,
+               #parm5=parm5,#parm6=parm6,#parm7=parm7,#parm8=parm8);
+      }
+
       return;
    }
 
@@ -1377,6 +1397,238 @@ messages:
       }
 
       return FALSE;
+   }
+
+   CountGuildHallUpgrades()
+   {
+      local i, j, obj, iCount, lUpgrades;
+
+      iCount = 0;
+      if poDecorator = $
+      {
+         return;
+      }
+
+      lUpgrades = Send(poDecorator,@GetUpgrades);
+
+      foreach i in plPassive
+      {
+         obj = Send(self,@HolderExtractObject,#data=i);
+         foreach j in lUpgrades
+         {
+            if (IsClass(First(j),GetClass(obj)))
+            {
+               iCount++;
+               break;
+            }
+         }
+      }
+
+      foreach i in plActive
+      {
+         obj = Send(self,@HolderExtractObject,#data=i);
+         foreach j in lUpgrades
+         {
+            if (IsClass(First(j),GetClass(obj)))
+            {
+               iCount++;
+               break;
+            }
+         }
+      }
+      return iCount;
+   }
+
+   DeleteGuildHallUpgrades()
+   {
+      local i, j, obj, lUpgrades;
+
+      if poDecorator = $
+      {
+         return;
+      }
+
+      lUpgrades = Send(poDecorator,@GetUpgrades);
+
+      foreach i in plPassive
+      {
+         obj = Send(self,@HolderExtractObject,#data=i);
+         foreach j in lUpgrades
+         {
+            if (IsClass(First(j),GetClass(obj)))
+            {
+               Send(obj,@Delete);
+               break;
+            }
+         }
+      }
+
+      foreach i in plActive
+      {
+         obj = Send(self,@HolderExtractObject,#data=i);
+         foreach j in lUpgrades
+         {
+            if (IsClass(First(j),GetClass(obj)))
+            {
+               Send(obj,@Delete);
+               break;
+            }
+         }
+      }
+      return;
+   }
+   
+   SaveGuildHallUpgrades()
+   {
+      local i, j, obj, lUpgrades, lGuildHall_Upgrades;
+
+      if poDecorator = $
+      {
+         return;
+      }
+
+      lUpgrades = Send(poDecorator,@GetUpgrades);
+      if lUpgrades = $
+      {
+         return;
+      }
+
+      foreach i in plPassive
+      {
+         obj = Send(self,@HolderExtractObject,#data=i);
+         foreach j in lUpgrades
+         {
+            if (IsClass(First(j),GetClass(obj)))
+            {
+               lGuildHall_Upgrades = Cons(Send(self,@SaveObjectCoords,
+                  #obj=obj),lGuildHall_Upgrades);
+               break;
+            }
+         }
+      }
+
+      foreach i in plActive
+      {
+         obj = Send(self,@HolderExtractObject,#data=i);
+         foreach j in lUpgrades
+         {
+            if (IsClass(First(j),GetClass(obj)))
+            {
+               lGuildHall_Upgrades = Cons(Send(self,@SaveObjectCoords,
+                  #obj=obj),lGuildHall_Upgrades);
+               break;
+            }
+         }
+      }
+
+      lGuildHall_Upgrades = Cons([Send(self,@GetRoomNum), 
+         Send(poDecorator,@GetCreditBalance)],lGuildHall_Upgrades);
+      return lGuildHall_Upgrades;
+   }
+
+   SaveObjectCoords(obj=$)
+   {
+      local state1, state2, lGuildHall_Upgrades;
+
+      state1 = 0;
+      state2 = 0;
+
+      if IsClass(obj,&GuildDevice)
+      {
+         state1 = Send(obj,@GetSpellEffect);
+         state2 = Send(obj,@GetCharges);
+      }
+      else if IsClass(obj,&FoodDispenser)
+      {
+         state1 = &Snowball;
+      }
+      else if IsClass(obj,&Statue)
+      {
+         state1 = Send(obj,@GetOriginal);
+      }
+
+      lGuildHall_Upgrades = Cons([GetClass(obj),Send(obj,@GetRow),
+         Send(obj,@GetCol),Send(obj,@GetFineRow),Send(obj,@GetFineCol),
+         Send(obj,@GetAngle), state1, state2],lGuildHall_Upgrades);
+      return lGuildHall_Upgrades;
+   }
+
+   ParseObject(string=$,lookup_list=FALSE)
+   {
+      local i, j;
+
+      if poDecorator = $
+      {
+         return;
+      }
+
+      if lookup_list
+      {
+         foreach i in Send(poDecorator,@GetUpgrades)
+         {
+            j = First(i);
+            if StringContain(string,Send(j,@GetName))
+            {
+               return j;
+            }
+         }
+      }
+
+      foreach i in plPassive
+      {
+         j = Send(self,@HolderExtractObject,#data=i);
+         if StringContain(string,Send(j,@GetName))
+         {
+            return j;
+         }
+      }
+
+      foreach i in plActive
+      {
+         j = Send(self,@HolderExtractObject,#data=i);
+         if StringContain(string,Send(j,@GetName))
+         {
+            return j;
+         }
+      }
+
+      return $;
+   }
+
+   SomethingNearEnterance(what=$)
+   {
+      local i;
+      
+      foreach i in plGuild_doors
+      {
+         if (Send(what,@SquaredDistanceToLocation,#row=First(i),
+            #col=Nth(i,2)) < UPGRADE_FROM_DOOR_DISTANCE)
+         {
+            return TRUE;
+         }
+      }
+
+      return FALSE;
+   }
+
+   GetGuildDecorator()
+   {
+      return poDecorator;
+   }
+
+   GetHellPortalRow()
+   {
+      return viHellPortal_row;
+   }
+
+   GetHellPortalCol()
+   {
+      return viHellPortal_col;
+   }
+
+   GetHellPortalAngle()
+   {
+      return viHellPortal_angle;
    }
 
 end

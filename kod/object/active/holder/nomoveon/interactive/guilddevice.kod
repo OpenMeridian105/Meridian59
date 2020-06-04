@@ -1,0 +1,237 @@
+// Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+// All rights reserved.
+//
+// This software is distributed under a license that is described in
+// the LICENSE file that accompanies it.
+//
+// Meridian is a registered trademark.
+
+
+////////////////////////////////////////////////////////////////////////////////
+GuildDevice is InteractiveObject
+
+constants:
+
+   include blakston.khd
+
+resources:
+
+   //include woodbox.lkod
+
+   GuildDevice_desc = \
+      "This device allows even the least magically gifted adventurer to "
+      "harness the powers of the %s spell, provided it has been fueled by "
+      "%s to generate a charge. \n\nRemaining uses: %i"
+
+   GuildDevice_too_many = "You may only use one type of object as fuel."
+   GuildDevice_not_fuel = "This object cannot use this as fuel for this %s."
+
+   GuildDevice_invisibility_name = "cloaking device"
+   GuildDevice_invisibility_icon = guildcloak.bgf
+
+   GuildDevice_detectinvis_name = "true seeing crystal"
+   GuildDevice_detectinvis_icon = guildcrystal.bgf
+
+   GuildDevice_gort_name = "totem of gort"
+   GuildDevice_gort_icon = guildtotem.bgf
+
+   GuildDevice_heal_name = "restoration altar"
+   GuildDevice_heal_icon = guildaltar.bgf
+
+classvars:
+
+   vrDesc = GuildDevice_desc
+
+   viBulk_hold_max = 20000
+   viWeight_hold_max = $
+
+   viSpellpower = 75
+
+properties:
+
+   vrName = GuildDevice_invisibility_name
+   vrIcon = GuildDevice_invisibility_icon
+
+   viObject_flags = OF_OFFERABLE
+
+   piSpellEffect = 0
+   plReagentCost = $
+
+   piCharges = 0
+   piCharges_Pending = 0
+
+messages:
+
+   Constructor(num=0)
+   {
+      if num <> 0
+      {
+         Send(self,@ResetDeviceSpell,#num=num,#const=TRUE);
+      }
+
+      propagate;
+   }
+
+   ResetDeviceSpell(num=0,const=FALSE)
+   {
+      piSpellEffect = num;
+
+      switch(num)
+      {
+        case SID_INVISIBILITY:
+            vrName = GuildDevice_invisibility_name;
+            vrIcon = GuildDevice_invisibility_icon;
+            plReagentCost = [&DarkAngelFeather, 1];
+            break;
+        case SID_DETECT_INVISIBLE:
+            vrName = GuildDevice_detectinvis_name;
+            vrIcon = GuildDevice_detectinvis_icon;
+            plReagentCost = [&Solagh, 2];
+            break;
+        case SID_ARMOR_OF_GORT:
+            vrName = GuildDevice_gort_name;
+            vrIcon = GuildDevice_gort_icon;
+            plReagentCost = [&BlueDragonScale, 2];
+            break;
+        case SID_MAJOR_HEAL:
+            vrName = GuildDevice_heal_name;
+            vrIcon = GuildDevice_heal_icon;
+            plReagentCost = [&Herbs, 4];
+            break;
+      }
+
+      /// tell the room we changed, unless this is in constructor
+      if (NOT const) AND poOwner <> $
+      {
+         Send(poOwner,@SomethingChanged,#what=self);
+      }
+
+       return;
+   }
+
+   ShowDesc()
+   {
+      local oSpell, oReg;
+
+      oSpell = Send(SYS,@FindSpellByNum,#num=piSpellEffect);
+      oReg = Send(SYS,@FindTemplateItemByClass,#cClass=First(plReagentCost));
+
+      AddPacket(4,vrDesc,4,Send(oSpell,@GetName),
+        4,Send(oReg,@GetPluralName),4,piCharges);
+
+      return;
+   }
+
+   TryActivate(who=$)
+   {
+      local oSpell;
+
+      if IsClass(who,&User)
+         AND poOwner = Send(who,@GetOwner)
+      {
+          oSpell = Send(SYS,@FindSpellByNum,#num=piSpellEffect);
+          Send(oSpell,@CastSpell,#who=who,#lTargets=[who],
+            #iSpellPower=viSpellpower,#bItemCast=TRUE);
+          piCharges--;
+
+          Send(self,@UpdateGuildDevice);
+      }
+
+      return TRUE;
+   }
+
+   UpdateGuildDevice()
+   {
+      piCharges_Pending = 0;
+       if piCharges > 0
+       {
+            viObject_Flags &= ~OF_OFFERABLE;
+            viObject_Flags |= OF_ACTIVATABLE;
+       }
+       else 
+       {
+            viObject_Flags |= OF_OFFERABLE;
+            viObject_Flags &= ~OF_ACTIVATABLE;
+       }
+
+       Send(poOwner,@SomethingChanged,#what=self);
+
+       return;
+   }
+
+   DropFuel(what=$,where=$)
+   {
+      local i, each_obj;
+
+      if piCharges > 0
+         AND IsClass(poOwner,&GuildHall)
+      {
+         i = Create(First(plReagentCost),#number=piCharges*Nth(plReagentCost,2));
+         Send(poOwner,@NewHold,#what=i,#new_row=piRow,#new_col=piCol);
+         piCharges = 0;
+      }
+
+      Send(self,@UpdateGuildDevice);
+
+      return;
+   }
+
+   ReqOffer(what = $, item_list = $)
+   {
+      piCharges_Pending = 0;
+      if Length(item_list) > 1
+      {
+         Send(what,@MsgSendUser,#message_rsc=GuildDevice_too_many);
+         return FALSE;
+      }
+      else if NOT IsClass(First(item_list),First(plReagentCost))
+      {
+         Send(what,@MsgSendUser,#message_rsc=GuildDevice_not_fuel,
+            #parm1=Send(self,@GetName));
+         return FALSE;
+      }
+
+      propagate;
+   }
+
+   OfferedWantedItem(who=$, oItem=$)
+   {
+      piCharges_Pending = Bound((piCharges + Send(oItem,@GetNumber)) 
+         / Nth(plReagentCost,2),1,100000);
+      return TRUE;
+   }
+
+   AcceptOffer(who = $)
+   {
+      piCharges = piCharges_Pending;
+      Send(self,@UpdateGuildDevice);
+      return;
+   }
+
+   GetSpellEffect()
+   {
+      return piSpellEffect;
+   }
+
+   GetCharges()
+   {
+      return piCharges;
+   }
+
+   SetCharges(num=0)
+   {
+      piCharges = num;
+      return;
+   }
+
+   GetMoveOnType()
+   {
+      if (poOwner = $ OR NOT IsClass(poOwner,&GuildHall))
+      {
+         propagate;
+      }
+      return MOVEON_YES;
+   }
+
+end
+////////////////////////////////////////////////////////////////////////////////

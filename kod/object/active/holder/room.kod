@@ -6518,5 +6518,135 @@ messages:
       return TRUE;
    }
 
+   TryRemoveObject(who=$, template=$)
+   {
+      local i, lInventory, oClosest, iClosestDistance, iCurrentDistance, iTemp,
+            iFirst, iSecond, iRowDiff, iColDiff, bConfused;
+
+      if who = $ OR template = $
+      {
+         return FALSE;
+      }
+
+      oClosest = $;
+
+      // About 1.5 squares away
+      iClosestDistance = FINENESS + FINENESS_HALF;
+
+      // Apply distance formula.
+      iClosestDistance = (iClosestDistance*iClosestDistance);
+      iClosestDistance = iClosestDistance * 2;
+
+      // This is set if there could be confusion between two objects.
+      bConfused = FALSE;
+
+      // Determine which list to use.
+      if Send(template,@GetObjectType) = ACTIVE
+      {
+         lInventory = Send(self,@GetHolderActive);
+      }
+      else
+      {
+         lInventory = Send(self,@GetHolderPassive);
+      }
+      
+      foreach i in lInventory
+      {
+         if IsClass(First(i),GetClass(template))
+            AND StringEqual(Send(First(i),@GetName),Send(template,@GetName))
+         {
+            // First, figure the difference between the rows.  Depending on
+            // the sign of the difference depends on what amount of the
+            // fine row we need to count.  IE, if the difference is negative,
+            // that means that the player has a greater row value than the
+            // object, so count the fineness between them (from object's
+            // fineness to max fineness, then from 0 to the player's fineness)
+            // Space between them is the number of full squares between
+            // them.  Same logic for columns.
+            iRowDiff = Send(First(i),@GetRow) - Send(who,@GetRow);
+            iColDiff = Send(First(i),@GetCol) - Send(who,@GetCol);
+
+            // Don't bother if it's greater than two full rows/columns away.
+            if Abs(iRowDiff) > 2 OR Abs(iColDiff) > 2
+            {
+               continue;
+            }
+
+            if iRowDiff < 0
+            {
+               iFirst = FINENESS - Send(First(i),@GetFineRow);
+               iSecond = Send(who,@GetFineRow);
+               iTemp = iFirst + iSecond + ((Abs(iRowDiff) - 1) * FINENESS);
+            }
+            else
+            {
+               if iRowDiff > 0
+               {
+                  iFirst = FINENESS - Send(who,@GetFineRow);
+                  iSecond = Send(First(i),@GetFineRow);
+                  iTemp = iFirst + iSecond + ((Abs(iRowDiff) - 1) * FINENESS);
+               }
+               else
+               {
+                  // This means iRowDiff = 0
+                  iTemp = Abs((Send(First(i),@GetFineRow)
+                                 - Send(who,@GetFineRow)));
+               }
+            }
+
+            iCurrentDistance = (iTemp * iTemp);
+
+            if iColDiff < 0
+            {
+               iFirst = FINENESS - Send(First(i),@GetFineCol);
+               iSecond = Send(who,@GetFineCol);
+               iTemp = iFirst + iSecond + ((Abs(iColDiff) - 1) * FINENESS);
+            }
+            else
+            {
+               if iColDiff > 0
+               {
+                  iFirst = FINENESS - Send(who,@GetFineCol);
+                  iSecond = Send(First(i),@GetFineCol);
+                  iTemp = iFirst + iSecond + ((Abs(iColDiff) - 1) * FINENESS);
+               }
+               else
+               {
+                  // This means iColDiff = 0
+                  iTemp = Abs((Send(First(i),@GetFineCol)
+                              - Send(who,@GetFineCol)));
+               }
+            }
+
+            iCurrentDistance = (iCurrentDistance + (iTemp * iTemp));
+
+            if iCurrentDistance < iClosestDistance
+            {
+               // We're cool if we're closer than about a quarter of a
+               // "box" away, otherwise there may be some confusion.
+               if (iClosestDistance - iCurrentDistance)
+                     > ((FINENESS/4) * (FINENESS/4))
+               {
+                  iClosestDistance = iCurrentDistance;
+                  oClosest = First(i);
+               }
+               else
+               {
+                  bConfused = TRUE;
+               }
+            }
+         }
+      }
+
+      if NOT bConfused AND oClosest <> $
+      {
+         Send(oClosest,@Delete);
+
+         return TRUE;
+      }
+
+      return FALSE;
+   }
+
 end
 ////////////////////////////////////////////////////////////////////////////////

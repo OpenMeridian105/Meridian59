@@ -6,6 +6,6 @@
 
 DEPEND = ..\wings.bof
 
-BOFS = awings.bof
+BOFS = awings.bof spriwings.bof
 
 !include $(KODDIR)\kod.mak

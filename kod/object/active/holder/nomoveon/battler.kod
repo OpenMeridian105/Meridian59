@@ -57,6 +57,8 @@ resources:
    battler_attacker_slay_mob = "%sYour %s %s %s%s."
    battler_attacker_miss_mob = "%sYour attack %s %s%s."
    battler_attacker_fail_mob = "%sYour %s %s %s%s, failing to cause any real harm."
+   battler_attacker_wings_absorb = \
+      "The divine field surrounding %s%q protects them from your attack."
 
    battler_defender_hit = "%s%s%q's %s %s you for ~r~B%i~B%s damage."
    battler_defender_slay = "%s%s%q's %s %s you."
@@ -66,6 +68,8 @@ resources:
    battler_defender_slay_mob = "%s%s%s's %s %s you."
    battler_defender_miss_mob = "%s%s%s's attack %s you."
    battler_defender_fail_mob = "%s%s%s's %s %s you, failing to cause any real harm."
+   battler_defender_wings_absorb = \
+      "The divine field surrounding you protects you from harm."
 
    battler_punch = "punch"
    battler_attack = "attack"
@@ -3231,7 +3235,6 @@ messages:
             }
          }
 
-
          if IsClass(what,&User)
             AND NOT Send(what,@CheckPlayerFlag,#flag=PFLAG_MORPHED)
          {
@@ -3281,10 +3284,20 @@ messages:
             {
                if (IsClass(what,&User))
                {
-                  Send(self,@MsgSendUser,#message_rsc=battler_attacker_fail,
-                        #parm1=rColor,#parm2=rWeaponName,#parm3=rDamageDesc,
-                        #parm4=Send(what,@GetDef),#type5=STRING_RESOURCE,
-                        #parm5=Send(what,@GetName));
+                  // Displayed instead of the hit message to the attacker.
+                  if (Send(what,@CheckPlayerFlag,#flag=PFLAG2_WINGS_ABSORB))
+                  {
+                     Send(self,@MsgSendUser,#message_rsc=battler_attacker_wings_absorb,
+                           #parm1=Send(what,@GetDef),#type2=STRING_RESOURCE,
+                           #parm2=Send(what,@GetName));
+                  }
+                  else
+                  {
+                     Send(self,@MsgSendUser,#message_rsc=battler_attacker_fail,
+                           #parm1=rColor,#parm2=rWeaponName,#parm3=rDamageDesc,
+                           #parm4=Send(what,@GetDef),#type5=STRING_RESOURCE,
+                           #parm5=Send(what,@GetName));
+                  }
                }
                else
                {
@@ -3345,6 +3358,12 @@ messages:
          }
          else
          {
+            // Displayed as well as the hit message to the defender.
+            if (Send(what,@CheckPlayerFlag,#flag=PFLAG2_WINGS_ABSORB))
+            {
+               Send(what,@MsgSendUser,#message_rsc=battler_defender_wings_absorb);
+            }
+
             if (IsClass(self,&User))
             {
                Send(what,@MsgSendUser,#message_rsc=battler_defender_fail,

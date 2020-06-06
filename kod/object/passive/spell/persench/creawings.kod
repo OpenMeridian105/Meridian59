@@ -1,0 +1,217 @@
+// Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+// All rights reserved.
+//
+// This software is distributed under a license that is described in
+// the LICENSE file that accompanies it.
+//
+// Meridian is a registered trademark.
+
+
+////////////////////////////////////////////////////////////////////////////////
+CreateSpiritualWings is PersonalEnchantment
+
+constants:
+
+   include blakston.khd
+
+resources:
+
+   include creawings.lkod
+
+   CreateSpiritualWings_name_rsc = "wings of faith"
+   CreateSpiritualWings_icon_rsc = iawings.bgf
+   CreateSpiritualWings_desc_rsc = \
+      "The goddess Shal'ille imparts the caster with an aspect of her immortal "
+      "divinity, granting them wings of faith so that they may soar from the "
+      "wicked clutches of evil and depravity.  While the blessing persists, the "
+      "caster may travel at great speeds and untroubled by their mortality."
+   CreateSpiritualWings_on = \
+      "Touched by divinity, you travel on wings of faith."
+   CreateSpiritualWings_off = \
+      "You lose your sense of divinity as your wings fade into the light."
+   CreateSpiritualWings_already_enchanted_rsc = \
+      "You couldn't possibly get any closer to divinity."
+   CreateSpiritualWings_break = \
+      "Your attack rends the field of divinity surrounding %s%s."
+
+   CreateSpiritualWings_sound = awings.ogg
+
+classvars:
+
+   viPersonal_ench = TRUE
+
+   vrName = CreateSpiritualWings_name_rsc
+   vrIcon = CreateSpiritualWings_icon_rsc
+   vrDesc = CreateSpiritualWings_desc_rsc
+   
+   viSpell_num = SID_SPIRITUAL_WINGS
+   viSchool = SS_SHALILLE
+   viSpell_level = 6
+   viMana = 15
+   viSpellExertion = 15
+
+   vrSucceed_wav = CreateSpiritualWings_sound
+   viMeditate_ratio = 100
+   viChance_To_Increase = 20
+
+   vrAlreadyEnchanted = CreateSpiritualWings_already_enchanted_rsc
+   vrEnchantment_On = CreateSpiritualWings_on
+   vrEnchantment_Off = CreateSpiritualWings_off
+
+   viFlash = FLASH_GOOD_SELF
+
+   vbCanCastOnOthers = FALSE
+   viDefensive = TRUE
+
+   viCooldownSID = SID_COOLDOWN_SPIRITUAL_WINGS
+
+properties:
+
+   piBase_Duration = 5000
+   piDuration_Factor = 30
+
+   piBase_Speed = 1000
+   piSpeed_Modifer = 30
+
+   viPurgeFactor = 10
+
+   // Max amount of damage a player can take while they have wings
+   // High resolution damage.
+   piDamageAbsorbHighRes = 5000
+
+messages:
+
+   ResetReagents()
+   {
+      plReagents = $;
+      plReagents = Cons([&Emerald,2],plReagents);
+      plReagents = Cons([&PolishedSeraphym,1],plReagents);
+
+      return;
+   }
+
+   GetSpeedAmount(iSpellPower = 0)
+   {
+      return (piBase_Speed + (iSpellPower + 1) * piSpeed_Modifer) / 100;
+   }
+
+   GetDuration(iSpellPower=0)
+   {
+      return piBase_Duration + (piDuration_Factor * Bound(iSpellPower, 1,99));
+   }
+
+   GetAbsorbAmount()
+   {
+      return piDamageAbsorbHighRes;
+   }
+
+   DoSpellEffects(who=$, iDuration=$, iSpellPower=$, report=TRUE)
+   {
+      local oSpiritualWings, iSpeed;
+
+      if (report)
+      {
+         if IsClass(who,&User)
+         {
+            Send(who,@MsgSendUser,#message_rsc=vrEnchantment_On);
+         }
+      }
+
+      iSpeed = Send(self,@GetSpeedAmount,#iSpellPower=iSpellPower);
+      Send(who,@AddMovementSpeedPercent,#iSpeed=iSpeed);
+
+      oSpiritualWings = Create(&SpiritualWings,#oCaster=who);
+      if Send(who,@ReqNewHold,#what=oSpiritualWings)
+      {
+         Send(who,@NewHold,#what=oSpiritualWings);
+      }
+      else
+      {
+         Send(oSpiritualWings,@Delete);
+      }
+
+      Send(who,@StartEnchantment,#what=self,#time=iDuration,#report=report,
+            #state=[iSpeed, 0, Send(self,@GetAbsorbAmount)]);
+
+      return TRUE;
+   }
+
+   EndEnchantment(who=$,report=TRUE,state=$)
+   {
+      local oWings, oSpell;
+
+      if (report AND IsClass(who,&User))
+      {
+         Send(who,@MsgSendUser,#message_rsc=vrEnchantment_Off);
+      }
+
+      Send(who,@AddMovementSpeedPercent,#iSpeed=-First(state));
+
+      oWings = Send(who,@FindHolding,#class=&SpiritualWings);
+      if oWings <> $
+      {
+         Send(oWings,@Delete);
+      }
+      else
+      {
+         Debug(self,vrName, "is using wings of faith without wings!");
+      }
+
+      // Cooldown after the enchantment has ended
+      if (viCooldownSID > 0)
+      {
+         oSpell = Send(SYS,@FindSpellByNum,#num=viCooldownSID);
+         if (oSpell <> $)
+         {
+            Send(oSpell,@CastSpell,#who=self,#oTarget=who);
+         }
+      }
+
+      return;
+   }
+
+   SetSpellPlayerFlag(who=$)
+   {
+      Send(who,@SetPlayerFlag,#flag=PFLAG2_WINGS_ABSORB,#flagset=2,#value=TRUE);
+
+      return;
+   }
+
+   CalculateDamage(who = $, what = $, damage = 0)
+   {
+      local lState, iMaxDamage, iTotalDamage;
+
+      lState = Send(who,@GetEnchantedState,#what=self);
+
+      if (lState = $)
+      {
+         Debug("Tried to modify damage for ",who, Send(who,@GetTrueName));
+
+         return damage;
+      }
+
+      iTotalDamage = Nth(lState,2) + damage;
+      iMaxDamage = Nth(lState,3);
+
+      if (iTotalDamage >= iMaxDamage)
+      {
+         Send(who,@RemoveEnchantment,#what=self,#report=TRUE);
+
+         // Let the attacker know they broke the spell.
+         if (what <> $
+            AND IsClass(what,&User))
+         {
+            Send(what,@MsgSendUser,#message_rsc=CreateSpiritualWings_break,
+                  #parm1=Send(who,@GetDef),#parm2=Send(who,@GetName));
+         }
+
+         return iTotalDamage - iMaxDamage;
+      }
+
+      SetNth(lState,2,iTotalDamage);
+
+      return 0;
+   }
+
+end
+////////////////////////////////////////////////////////////////////////////////

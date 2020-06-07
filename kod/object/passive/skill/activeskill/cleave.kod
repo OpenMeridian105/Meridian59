@@ -118,7 +118,8 @@ messages:
                continue;
             }
 
-            if NOT Send(who,@AllowBattlerAttack,#victim=each_obj,#stroke_obj=self,#report=FALSE)
+            if NOT Send(who,@AllowBattlerAttack,#victim=each_obj,
+                        #stroke_obj=self,#report=FALSE)
             {
                continue;
             }
@@ -152,23 +153,29 @@ messages:
 
    PerformSkill(who=$,lTargets=$)
    {
-      local use_weapon, stroke_obj, iPower, i, bTarget;
+      local use_weapon, stroke_obj, iPower, i, bTarget, iTargetNum;
 
       use_weapon = Send(who,@GetWeapon);
       stroke_obj = Send(who,@GetStrokeObject);
 
       iPower = viBonus + Send(self,@GetSkillPower,#who=who);
 
-      bTarget = FALSE;
+      Send(who,@StartAOEAttack);
 
+      bTarget = FALSE;
+      iTargetNum = 1;
       foreach i in lTargets
       {
          // Pass bCheck=FALSE so that our attacks don't check the timer.
          Send(who,@TryAttack,#what=i,#stroke_obj=stroke_obj,
-            #use_weapon=use_weapon,#factor=iPower,#bCheck=FALSE);
+               #use_weapon=use_weapon,#factor=iPower,#bCheck=FALSE,
+               #iTargetNum=iTargetNum);
 
          bTarget = TRUE;
+         ++iTargetNum;
       }
+
+      Send(who,@EndAOEAttack,#lTargets=lTargets);
 
       // No attack timer and improvement check if we haven't swung at anything.
       if NOT bTarget

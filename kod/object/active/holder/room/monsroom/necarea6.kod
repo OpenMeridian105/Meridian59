@@ -621,6 +621,8 @@ messages:
          // Make skeletons in area two.
          Send(self,@CreateSkeletons,#bArea=AREA_2);
          ptGateOne = CreateTimer(self,@CloseGateOne,DOOR_CLOSE_TIMER);
+         // Try to close 3rd gate in case players are doing the dungeon quickly.
+         Send(self,@CloseGateThree,#bRestart=FALSE);
       }
       else if (iNum = GATE_2)
       {
@@ -676,7 +678,7 @@ messages:
       return;
    }
 
-   CloseGateThree(timer = $)
+   CloseGateThree(timer = $, bRestart = TRUE)
    {
       if (ptGateThree <> $
          AND ptGateThree <> timer)
@@ -688,7 +690,10 @@ messages:
       Send(self,@LowerGate,#iNum=GATE_3);
 
       // Create skeletons in area one, start the dungeon again.
-      Send(self,@CreateSkeletons,#bArea=AREA_1);
+      if (bRestart)
+      {
+         Send(self,@CreateSkeletons,#bArea=AREA_1);
+      }
 
       return;
    }

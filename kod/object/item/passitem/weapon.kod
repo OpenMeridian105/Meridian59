@@ -698,9 +698,13 @@ messages:
       }
 
       Send(poOwner,@SomethingChanged,#what=self);
-      Send(poOwner,@MsgSendUser,#message_rsc=vrWeaponBroke,
-            #parm1=Send(self,@GetCapDef),#parm2=vrName);
-      Send(poOwner,@TryUnuseItem,#what=self);
+
+      if (poOwner <> $) AND IsClass(poOwner,&Battler)
+      {
+         Send(poOwner,@MsgSendUser,#message_rsc=vrWeaponBroke,
+               #parm1=Send(self,@GetCapDef),#parm2=vrName);
+         Send(poOwner,@TryUnuseItem,#what=self);
+      }
 
       return;
    }

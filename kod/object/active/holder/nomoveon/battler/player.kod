@@ -5325,7 +5325,42 @@ messages:
          AND piTimeAttackedPlayer + ATTACKED_PLAYER_WAIT < iTime;
    }
 
-   TryAttack(what = $, use_weapon = $, stroke_obj = $, bCheck = TRUE)
+   // StartAOEAttack and EndAOEAttack set and unset a bitflag for code that
+   // behaves differently for an AOE attack. Assumption is that a player can
+   // only perform one AOE attack at a time. If this changes, this code will
+   // need refactoring.
+   StartAOEAttack()
+   {
+      piFlags2 |= PFLAG2_AOE_ATTACK;
+
+      return;
+   }
+
+   EndAOEAttack(lTargets = $)
+   {
+      local i;
+
+      piFlags2 &= ~PFLAG2_AOE_ATTACK;
+
+      // If this attack killed all our targets, reset gain flags.
+      foreach i in lTargets
+      {
+         if (Send(i,@GetOwner) <> $)
+         {
+            return;
+         }
+      }
+
+      Send(self,@ResetGainFlags);
+
+      return;
+   }
+
+   // iTargetNum is set higher than 1 if more than one target is hit by the
+   // attack. Used for cleave when hitting 2+ targets, to avoid performing
+   // specific things more than once.
+   TryAttack(what = $, use_weapon = $, stroke_obj = $, bCheck = TRUE,
+             iTargetNum = 1)
    {
       local i, iRange, oSpell, state;
 
@@ -5333,18 +5368,18 @@ messages:
       if what = self
       {
          Send(self,@MsgSendUser,#message_rsc=player_no_target_self);
-         
+
          return FALSE;
       }
 
-      // Check attack time.
+      // Check attack time if bCheck is TRUE.
       if bCheck AND NOT Send(self,@IsOkayAttackTime)
       {
          return FALSE;
       }
 
       // Is it in the same room?
-      if poOwner <> Send(what,@GetOwner) 
+      if poOwner <> Send(what,@GetOwner)
       {
          return FALSE;
       }
@@ -5378,7 +5413,7 @@ messages:
       if IsClass(what,&User) AND Send(what,@HasMovedRecently)
          AND (use_weapon <> $ AND NOT IsClass(use_weapon,&RangedWeapon))
       {
-         iRange = iRange + RANGE_MOVEMENT_BONUS;
+         iRange += RANGE_MOVEMENT_BONUS;
       }
 
       if NOT Send(self,@TargetWithinSightAndRange,#oTarget=what,#iRange=iRange,
@@ -5491,19 +5526,23 @@ messages:
          }
       }
 
-      // Record the swing for potential advancement.
-      if Send(what,@CanPlayerAdvanceOnMe)         
+      // These things are done only on the first target hit.
+      if (iTargetNum = 1)
       {
-         // We got another swing in, so increment that.
-         Send(self,@SwingWeapon,#times=1);
-      }
-
-      // Give offensive buffs a small chance to improve each swing!
-      foreach i in plPassiveImprovement
-      {
-         if Nth(i,3) AND Random(1,50) = 50
+         // Record the swing for potential advancement.
+         if Send(what,@CanPlayerAdvanceOnMe)
          {
-            Send(First(i),@ImproveAbility,#who=self,#target=what);
+            // We got another swing in, so increment that.
+            Send(self,@SwingWeapon,#times=1);
+         }
+
+         // Give offensive buffs a small chance to improve each swing!
+         foreach i in plPassiveImprovement
+         {
+            if Nth(i,3) AND Random(1,50) = 50
+            {
+               Send(First(i),@ImproveAbility,#who=self,#target=what);
+            }
          }
       }
 
@@ -6301,7 +6340,7 @@ messages:
          Send(self,@ResetWeaponSwings,#prof=iProfNum);
       }
 
-      piWeaponSwings = piWeaponSwings + times;
+      piWeaponSwings += times;
       if (piWeaponSwings % Send(SETTINGS_OBJECT,
                                  @GetSwingsPerImproveCheck)) = 0
       {
@@ -9162,9 +9201,14 @@ messages:
    ResetGainFlags()
    {
       poKill_target = $;
-      Send(self,@SetPlayerFlag,#flag=PFLAG_DID_DAMAGE,#value=FALSE);
-      Send(self,@SetPlayerFlag,#flag=PFLAG_TOOK_DAMAGE, #value=FALSE);
-      Send(self,@SetPlayerFlag,#flag=PFLAG_DODGED, #value=FALSE);
+
+      // Don't reset these if player is in the middle of an AOE attack.
+      if (NOT (piFlags2 & PFLAG2_AOE_ATTACK))
+      {
+         Send(self,@SetPlayerFlag,#flag=PFLAG_DID_DAMAGE,#value=FALSE);
+         Send(self,@SetPlayerFlag,#flag=PFLAG_TOOK_DAMAGE, #value=FALSE);
+         Send(self,@SetPlayerFlag,#flag=PFLAG_DODGED, #value=FALSE);
+      }
 
       return;
    }

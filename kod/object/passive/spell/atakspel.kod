@@ -218,6 +218,11 @@ messages:
          Send(self,@HurtCaster,#who=who,#iDamage=iDamage);
       }
 
+      if (vbIsAreaEffect AND IsClass(who,&User))
+      {
+         Send(who,@StartAOEAttack);
+      }
+
       // After figuring damage, do an AssessDamage.  This will handle the necessary
       //  attack messages.
       foreach i in lTargets
@@ -297,6 +302,11 @@ messages:
          }
 
          Send(self,@DoSideEffect,#who=who,#victim=i,#damage=iDamage);
+      }
+
+      if (vbIsAreaEffect AND IsClass(who,&User))
+      {
+         Send(who,@EndAOEAttack,#lTargets=lTargets);
       }
 
       return TRUE;

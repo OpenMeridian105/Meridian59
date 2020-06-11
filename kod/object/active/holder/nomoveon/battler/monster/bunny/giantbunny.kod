@@ -58,6 +58,8 @@ classvars:
    viBleedStrength = 4000
    viBleedDuration = 5000
 
+   viMaxChildSpawns = 10
+
 properties:
 
    viTreasure_type = TID_EASTER_BUNNY
@@ -103,9 +105,11 @@ messages:
             iRow_sign, iCol_sign;
 
       ptSpawnKillerBunny = $;
-      
+
       if poOwner <> $
          AND Send(poOwner,@IsUserInRoom)
+         AND Send(poOwner,@CountHoldingHowMany,#class=&KillerBunny)
+            < viMaxChildSpawns
       {
          iTries = 0;
          bValid_location = FALSE;

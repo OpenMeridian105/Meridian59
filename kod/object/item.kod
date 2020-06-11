@@ -100,6 +100,9 @@ classvars:
    // How much this item will help or hinder spell usage.
    viSpell_modifier = 0
 
+   // How much movement speed % this item adds/subtracts.
+   viSpeedModifer = 0
+
    vrIcon_male       = $
    vrIcon_female     = $
    vrLeftArm_male    = $
@@ -1051,16 +1054,11 @@ messages:
          Post(poOwner,@RefreshPlayerVisualGear);
       }
 
-      foreach i in plItem_Attributes
+      // Movement speed bonuses.
+      iSpeed = Send(self,@GetItemMoveSpeedBonus);
+      if (iSpeed <> 0)
       {
-         iNum = Send(self,@GetNumFromCompound,#compound=First(i));
-         if (iNum = IA_MOVESPEED)
-         {
-            // TranslatePowerFromCompound from ItemAtt.
-            // Avoid looking up the itematt object here.
-            iSpeed = (First(i) / 10) % 10;
-            Send(poOwner,@AddMovementSpeedPercent,#iSpeed=iSpeed);
-         }
+         Send(poOwner,@AddMovementSpeedPercent,#iSpeed=iSpeed);
       }
 
       return;
@@ -1122,23 +1120,18 @@ messages:
 
       Send(self,@UndoPlayerArt);
 
-      foreach i in plItem_Attributes
+      // Movement speed bonuses.
+      iSpeed = Send(self,@GetItemMoveSpeedBonus);
+      if (iSpeed <> 0)
       {
-         iNum = Send(self,@GetNumFromCompound,#compound=First(i));
-         if (iNum = IA_MOVESPEED)
-         {
-            // TranslatePowerFromCompound from ItemAtt.
-            // Avoid looking up the itematt object here.
-            iSpeed = (First(i) / 10) % 10;
-            Send(poOwner,@AddMovementSpeedPercent,#iSpeed=-iSpeed);
-         }
+         Send(poOwner,@AddMovementSpeedPercent,#iSpeed=-iSpeed);
       }
 
       return;
    }
 
    ReqNewOwner(what=$)
-   {      
+   {
       return ((poOwner = $) OR Send(poOwner,@ReqLeaveHold,#what=self));
    }
 
@@ -1943,7 +1936,7 @@ messages:
    RemoveAttributeSpecifics(oItemAtt=$, ItemAtt = 0, index = 1)
    "Don't call this directly!  Call this from itematt.kod!"
    {
-      local lData;
+      local lData, iMoveSpeed;
 
       if oItemAtt = $ OR ItemAtt = 0
       {
@@ -1955,7 +1948,21 @@ messages:
       lData = Send(self,@GetAttributeData,#ItemAtt=ItemAtt,#index=index);
       if lData = $
       {
-         Debug("Can't remove a node that isn't there!"); return;
+         Debug("Can't remove a node that isn't there!");
+
+         return;
+      }
+
+      // Handle removing move speed from owner. Have to do this here because
+      // if an item breaks, the attributes are removed prior to the item
+      // being unequipped.
+      if (ItemAtt = IA_MOVESPEED
+         AND poOwner <> $
+         AND IsClass(poOwner,&Battler))
+      {
+         iMoveSpeed = Send(oItemAtt,@TranslatePowerFromCompound,
+                           #iCompound=First(lData));
+         Send(poOwner,@AddMovementSpeedPercent,#iSpeed=-iMoveSpeed);
       }
 
       // First kill the timer if it has one
@@ -2139,7 +2146,7 @@ messages:
    {
       local oItemAtt, iMoveSpeed, i, iNum, oObjectAttribute;
 
-      iMoveSpeed = 0;
+      iMoveSpeed = viSpeedModifer;
 
       foreach i in plItem_Attributes
       {

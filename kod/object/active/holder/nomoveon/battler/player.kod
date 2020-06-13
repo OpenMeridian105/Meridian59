@@ -14856,6 +14856,42 @@ messages:
       return;
    }
 
+   CalcMovementSpeedPercent(bAdjust = FALSE)
+   "Checks calculated movement speed against the stored value, logs it "
+   "if the values disagree. Set bAdjust to TRUE to change the property to "
+   "the calculated value."
+   {
+      local i, iSpeed, oSpell;
+
+      iSpeed = 100;
+
+      foreach i in plUsing
+      {
+         iSpeed += Send(i,@GetItemMoveSpeedBonus);
+      }
+
+      foreach i in plEnchantments
+      {
+         oSpell = Nth(i,2);
+         if (Send(oSpell,@IsMoveSpeedModifier))
+         {
+            iSpeed += Send(oSpell,@GetSpellMoveSpeedBonus,#state=Nth(i,3));
+         }
+      }
+
+      if (iSpeed <> piMovementSpeedPercent)
+      {
+         Debug(self,Send(self,@GetTrueName)," has invalid move speed ",
+            piMovementSpeedPercent, " calculated value was ", iSpeed);
+         if (bAdjust)
+         {
+            piMovementSpeedPercent = iSpeed;
+         }
+      }
+
+      return;
+   }
+
    IsUndead()
    {
       return Send(self,@IsUsingA,#class=&NecromancerAmulet);

@@ -156,7 +156,7 @@ messages:
       }
 
       if IsClass(oTakerOwner,&GuildHall)
-         AND NOT Send(oTakerOwner,@ReqUseGuildChest,#who=taker)
+         AND NOT Send(oTakerOwner,@ReqUseGuildChest,#who=taker,#what=self)
       {
          return FALSE;
       }
@@ -164,9 +164,14 @@ messages:
       propagate;
    }
 
-   ReqNewHold(what = $, who = $)
+   ReqNewHold(what = $, who = $,bTransfer=FALSE)
    {
       local oWhoOwner;
+
+      if bTransfer
+      {
+         propagate;
+      }
 
       // The player's owner.
       oWhoOwner = Send(who,@GetOwner);
@@ -201,7 +206,7 @@ messages:
 
       if IsClass(oWhoOwner,&GuildHall)
       {
-         return Send(oWhoOwner,@ReqUseGuildChest,#who=who);
+         return Send(oWhoOwner,@ReqUseGuildChest,#who=who,#what=self);
       }
 
       propagate;

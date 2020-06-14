@@ -1,0 +1,180 @@
+// Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+// All rights reserved.
+//
+// This software is distributed under a license that is described in
+// the LICENSE file that accompanies it.
+//
+// Meridian is a registered trademark.
+
+
+////////////////////////////////////////////////////////////////////////////////
+Transference is UtilitySpell
+
+constants:
+
+   include blakston.khd
+
+resources:
+
+   include transference.lkod
+
+   Transference_name_rsc = "transference"
+   Transference_icon_rsc = icounter.bgf
+   Transference_desc_rsc = \
+      "Transport a stack of items from your inventory to your guildhall.  "
+      "Requires that the caster be guilded, and that the guild owns a hall with "
+      "sufficient space in its public chest.  Additional fee is also required "
+      "for the transportation of goods."
+   Transference_cant = "You cannot cast transference on %s%s."
+   Transference_not_enough_cash = \
+      "You don't have enough shillings to transfer %s%s."
+   Transference_not_enough_space = \
+      "Your guild does not have enough storage space!"
+   Transference_not_holding = \
+      "You cannot cast transference on an item you are not holding!"
+   Transference_no_guild = "You can only cast transference while guilded."
+   Transference_no_hall = "Your guild does not own a hall."
+   Transference_cast = \
+      "A small portal whips into existence, pulling %s%s to your guild hall."
+
+classvars:
+
+   vrName = Transference_name_rsc
+   vrIcon = Transference_icon_rsc
+   vrDesc = Transference_desc_rsc
+
+   viCast_time = 0
+
+   viSpell_num = SID_TRANSFERENCE
+   viSpell_level = 1
+   viSchool = SS_RIIJA
+   viMana = 0
+   viSpellExertion = 0
+   viChance_To_Increase = 15
+
+   viMeditate_ratio = 60
+
+properties:
+
+   piDeposit_Cost = 300
+
+messages:
+
+   ResetReagents()
+   {
+      plReagents = $;
+
+      return;
+   }
+
+   GetNumSpellTargets()
+   {
+      return 1;
+   }
+
+   DoSpellEffects(who = $, lTargets = $)
+   {
+      local oTarget, oRoom, bDeposited, iFee, oMoney, iCash, oGuild, oHall,
+         oGuildChest, i;
+
+      if (lTargets = $)
+      {
+         return FALSE;
+      }
+
+      oTarget = First(lTargets);
+
+      if (oTarget = $)
+      {
+         return FALSE;
+      }
+
+      oGuild = Send(who,@GetGuild);
+      if oGuild = $
+      {
+         Send(who,@MsgSendUser,#message_rsc=Transference_no_guild);
+         return FALSE;
+      }
+
+      oHall = Send(oGuild,@GetGuildHall);
+      if oHall = $
+      {
+         Send(who,@MsgSendUser,#message_rsc=Transference_no_hall);
+         return FALSE;
+      }
+
+      if NOT Send(oTarget,@IsStackable)
+         OR NOT Send(oTarget,@CanBeStoredInVault)
+         OR IsClass(oTarget,&Money)
+      {
+         Send(who,@MsgSendUser,#message_rsc=Transference_cant,
+               #parm1=Send(oTarget,@GetDef),#parm2=Send(oTarget,@GetName));
+
+         return FALSE;
+      }
+
+      if NOT Send(who,@IsHolding,#what=oTarget)
+      {
+         Send(who,@MsgSendUser,#message_rsc=Transference_not_holding);
+
+         return FALSE;
+      }
+
+      iFee = Send(oTarget,@GetBulk) * (piDeposit_Cost / 100);
+      if iFee = $
+         OR iFee = 0
+         OR NOT Send(who,@ReqLeaveHold,#what=oTarget)
+      {
+         Send(who,@MsgSendUser,#message_rsc=Transference_cant,
+               #parm1=Send(oTarget,@GetDef),#parm2=Send(oTarget,@GetName));
+
+         return FALSE;
+      }
+
+      oMoney = Send(who,@GetMoneyObject);
+      if oMoney = $
+      {
+         // No cash.
+         iCash = 0;
+      }
+      else
+      {
+         iCash = Send(oMoney,@GetValue);
+      }
+
+      if iCash < iFee
+         AND iFee <> 0
+      {
+         Send(who,@MsgSendUser,#message_rsc=Transference_not_enough_cash,
+               #parm1=Send(oTarget,@GetDef),#parm2=Send(oTarget,@GetName));
+
+         return FALSE;
+      }
+
+      oGuildChest = Send(oHall,@GetPublicChest);
+      if NOT Send(oGuildChest,@ReqNewHold,#what=oTarget,#bTransfer=TRUE)
+      {
+         Send(who,@MsgSendUser,#message_rsc=Transference_not_enough_space);
+         return FALSE;
+      }
+
+      Send(oGuildChest,@NewHold,#what=oTarget);
+      Send(who,@MsgSendUser,#message_rsc=Transference_cast,
+            #parm1=Send(oTarget,@GetDef),#parm2=Send(oTarget,@GetName));
+
+      if iFee <> 0
+      {
+         Send(oMoney,@SubtractNumber,#number=iFee);
+      }
+
+      return TRUE;
+   }
+
+   SuccessChance(who=$)
+   "Starter spell will always work."
+   {
+      return TRUE;
+   }
+
+end
+////////////////////////////////////////////////////////////////////////////////

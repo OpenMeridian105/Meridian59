@@ -119,6 +119,10 @@ classvars:
    viHellPortal_col
    viHellPortal_angle
 
+   viPublicChest_row
+   viPublicChest_col
+   viPublicChest_angle
+
    // Quality is the overall guildhall quality, ranges from 1 to 10
    viQuality = 6
 
@@ -186,6 +190,7 @@ properties:
    piLastDoorOpen = 0
 
    poDecorator = $
+   poPublicChest = $
 
 messages:
 
@@ -263,6 +268,10 @@ messages:
 
       Send(self,@NewHold,#what=oNews,#new_row=viNews_row,#new_col=viNews_col,
             #fine_row=viNews_finerow,#fine_col=viNews_finecol);
+
+      poPublicChest = Create(&WoodenBox);
+      Send(self,@NewHold,#what=poPublicChest,#new_row=viPublicChest_row,
+         #new_col=viPublicChest_col,#new_angle=viPublicChest_angle);
 
       propagate;
    }
@@ -960,9 +969,13 @@ messages:
       propagate;
    }
 
-   ReqUseGuildChest(who=$)
+   ReqUseGuildChest(who=$,what=$)
    {
-      if Send(self,@InFoyer,#who=who)
+      if (poPublicChest <> $) AND (what = poPublicChest)
+      {
+         return TRUE;
+      }
+      else if Send(self,@InFoyer,#who=who)
       {
          Debug("ALERT!  ",Send(who,@GetTrueName),who,
                "tried to use Guild Hall chest in GH ",
@@ -1170,6 +1183,8 @@ messages:
       poOld_guild = $;
       poShield_lever = $;
       plGuild_doors = $;
+      poDecorator = $;
+      poPublicChest = $;
 
       if ptWarning <> $
       {
@@ -1629,6 +1644,11 @@ messages:
    GetHellPortalAngle()
    {
       return viHellPortal_angle;
+   }
+
+   GetPublicChest()
+   {
+      return poPublicChest;
    }
 
 end

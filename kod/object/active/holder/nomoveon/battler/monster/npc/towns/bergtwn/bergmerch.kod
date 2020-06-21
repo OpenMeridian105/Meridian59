@@ -79,7 +79,7 @@ messages:
 
       iInventoryTime = (INVENTORY_DELAY * Random(90,110)) / 100;
       // Convert to ms.
-      iInventoryTime = iInventoryTime * 1000;
+      iInventoryTime *= 1000;
       ptNew_Inventory = CreateTimer(self,@AddNewInventoryToSell,iInventoryTime);
 
       propagate;
@@ -100,9 +100,7 @@ messages:
    {
       local oInventory, lForSale, i, bDuplicate, iInventoryTime;
 
-      ptNew_Inventory = $;
-
-      lForSale = First(plFor_sale);
+      lForSale = First(plFor_Sale);
 
       if Length(lForSale) < MAX_FORSALE
       {
@@ -111,7 +109,7 @@ messages:
 
          foreach i in lForSale
          {
-            if Send(i,@GetName) = Send(oInventory,@Getname)
+            if Send(i,@GetName) = Send(oInventory,@GetName)
             {
                bDuplicate = TRUE;
                Send(oInventory,@Delete);
@@ -123,13 +121,13 @@ messages:
          if NOT bDuplicate
          {
             lForSale = Cons(oInventory,lForSale);
-            SetNth(plFor_Sale,1,lForSale);
+            SetFirst(plFor_Sale, lForSale);
          }
       }
 
       iInventoryTime = (INVENTORY_DELAY * Random(90,110)) / 100;
       // Convert to ms.
-      iInventoryTime = iInventoryTime * 1000;
+      iInventoryTime *= 1000;
       ptNew_Inventory = CreateTimer(self,@AddNewInventoryToSell,iInventoryTime);
 
       return;
@@ -143,8 +141,7 @@ messages:
       lForSale = [ oInventory ];
       Send(self,@NewHold,#what=oInventory);
 
-      i = NUMBER_STARTING_ITEMS;
-      while i > 0
+      for (i = NUMBER_STARTING_ITEMS; i > 0; --i)
       {
          oInventory = Send(self,@PickInventory);
 
@@ -156,10 +153,9 @@ messages:
 
          lForSale = Cons(oInventory,lForSale);
          Send(self,@NewHold,#what=oInventory);
-         i = i - 1;
       }
 
-      plFor_sale = [ lForSale,$,$ ];
+      plFor_sale = [lForSale, $ ,$, $];
 
       return;
    }
@@ -252,6 +248,7 @@ messages:
          OR Send(what,@HasAttribute,#ItemAtt=IA_BONDED))
       {
          vrBuyer_Unwanted = BergMerchant_Not_Interested;
+
          return FALSE;
       }
 
@@ -259,6 +256,7 @@ messages:
       {
 
          vrBuyer_Unwanted = BergMerchant_AlreadyHaveOne_rsc;
+
          return FALSE;
       }
 
@@ -272,6 +270,7 @@ messages:
             }
 
             vrBuyer_Unwanted = BergMerchant_too_many_rsc;
+
             return FALSE;
          }
       }
@@ -334,7 +333,7 @@ messages:
       }
 
       // kill the cancel offer timer
-      SetNth(plFor_Sale,1,lForSale);
+      SetFirst(plFor_Sale, lForSale);
       Send(self,@OfferCanceled);
 
       return TRUE;
@@ -363,4 +362,3 @@ messages:
 
 end
 ////////////////////////////////////////////////////////////////////////////////
-

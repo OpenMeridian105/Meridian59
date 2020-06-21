@@ -276,7 +276,7 @@ messages:
             Send(poOwner,@NewHold,#what=obj,#new_row=iRow,#new_col=iCol,
                #fine_row=iFine_Row,#fine_col=iFine_Col,#new_angle=iAngle);
 
-            piGuild_Credit = piGuild_Credit - iCost;
+            piGuild_Credit -= iCost;
             Send(self,@DecoratorSayCredit,#who=what);
          }
          else 
@@ -327,7 +327,7 @@ messages:
 
          if Send(poOwner,@TryRemoveObject,#who=what,#template=oObject)
          {
-            piGuild_Credit = piGuild_Credit + iCost;
+            piGuild_Credit += iCost;
             Send(self,@DecoratorSayCredit,#who=what);
          }
          return;
@@ -359,8 +359,8 @@ messages:
    DecoratorSayCredit(who=$)
    {
       Send(self,@SayToOne,#target=who,#type=SAY_RESOURCE,
-         #message_rsc=GuildGuildDecorator_credit_balance,
-         #parm1=piGuild_Credit);
+            #message_rsc=GuildGuildDecorator_credit_balance,
+            #parm1=piGuild_Credit);
 
       return;
    }
@@ -370,10 +370,11 @@ messages:
 
       if IsClass(obj,&Money)
       {
-        piGuild_Credit = piGuild_Credit + Send(obj,@GetNumber);
+        piGuild_Credit += Send(obj,@GetNumber);
         Send(self,@DecoratorSayCredit,#who=who);
         Send(who,@RemoveNumberItemFromPossession,#ToBeRemoved=obj);
         Send(obj,@Delete);
+
         return;
       }
 
@@ -382,22 +383,13 @@ messages:
 
    Delete()
    {
-      Send(self,@DeleteUpgrades);
+      SendList(plUpgrades,1,@Delete);
 
-      propagate;
-   }
+      plUpgrades = $;
 
-   DeleteUpgrades()
-   {
-      local i;
-
-      foreach i in plUpgrades
-      {
-         Send(First(i),@Delete);
-      }
       piGuild_Credit = 0;
 
-      return;
+      propagate;
    }
 
    GetUpgrades()
@@ -433,7 +425,8 @@ messages:
    SetCreditBalance(num=0)
    {
       piGuild_Credit = num;
-       return;
+
+      return;
    }
 
 end

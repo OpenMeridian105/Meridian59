@@ -2957,6 +2957,24 @@ messages:
       return;
    }
 
+   ClearInventoryIfNotCreated()
+   "Message to clear up empty char slots which have inventory items due to "
+   "globalgive.  Globalgive no longer gives items to empty char slots."
+   {
+      if (Send(self,@GetLastLoginTime) <> 0
+         OR plPassive = $)
+      {
+         return;
+      }
+
+      Debug("Clearing inventory for player ",self, vrName, "with ",
+            Length(plPassive), " items.");
+
+      SendList(plPassive,0,@Delete);
+
+      return;
+   }
+
    AddDefaultSpells()
    "Add the spells a player is given when creating a character"
    {
@@ -8437,6 +8455,12 @@ messages:
       local i, j, oSpell, lSpell_info, lPrereqs, bFound,
             iBoundAbility, lEncode;
 
+      // Don't give spell if player hasn't created a character yet.
+      if (Send(self,@GetLastLoginTime) = 0)
+      {
+         return FALSE;
+      }
+
       if Send(self,@HasSpell,#num=num)
       {
          if Send(self,@GetSpellAbility,#spell_num=num) < iAbility
@@ -8892,6 +8916,12 @@ messages:
    "Adds a Skill by Skill ID to the user's castable list of Skills"
    {
       local i,j,oSkill, lSkill_info, lPrereqs, bFound, iBoundAbility;
+
+      // Don't give skill if player hasn't created a character yet.
+      if (Send(self,@GetLastLoginTime) = 0)
+      {
+         return FALSE;
+      }
 
       if Send(self,@HasSkill,#num=num)
       {
@@ -14023,6 +14053,12 @@ messages:
       local i, iStartingLearnPoints, iTotalLearnPoints,
             iMaxLevel, iMaxLearnPoints;
 
+      // Don't give spells if player hasn't created a character yet.
+      if (Send(self,@GetLastLoginTime) = 0)
+      {
+         return FALSE;
+      }
+
       if level = -1 OR level > 6
       {
          upto = TRUE;
@@ -14105,6 +14141,12 @@ messages:
    {
       local i, iStartingLearnPoints, iTotalLearnPoints,
             iMaxLevel, iMaxLearnPoints;
+
+      // Don't give skills if player hasn't created a character yet.
+      if (Send(self,@GetLastLoginTime) = 0)
+      {
+         return FALSE;
+      }
 
       if level = -1 OR level > 6
       {

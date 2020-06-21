@@ -269,9 +269,14 @@ messages:
       Send(self,@NewHold,#what=oNews,#new_row=viNews_row,#new_col=viNews_col,
             #fine_row=viNews_finerow,#fine_col=viNews_finecol);
 
-      poPublicChest = Create(&WoodenBox);
-      Send(self,@NewHold,#what=poPublicChest,#new_row=viPublicChest_row,
-         #new_col=viPublicChest_col,#new_angle=viPublicChest_angle);
+      if (viPublicChest_row <> $
+         AND viPublicChest_col <> $
+         AND viPublicChest_angle <> $)
+      {
+         poPublicChest = Create(&WoodenBox);
+         Send(self,@NewHold,#what=poPublicChest,#new_row=viPublicChest_row,
+               #new_col=viPublicChest_col,#new_angle=viPublicChest_angle);
+      }
 
       propagate;
    }
@@ -971,11 +976,13 @@ messages:
 
    ReqUseGuildChest(who=$,what=$)
    {
-      if (poPublicChest <> $) AND (what = poPublicChest)
+      if (poPublicChest <> $
+         AND what = poPublicChest)
       {
          return TRUE;
       }
-      else if Send(self,@InFoyer,#who=who)
+
+      if Send(self,@InFoyer,#who=who)
       {
          Debug("ALERT!  ",Send(who,@GetTrueName),who,
                "tried to use Guild Hall chest in GH ",

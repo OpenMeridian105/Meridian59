@@ -1019,6 +1019,11 @@ int SendListMessage(int list_id, bool ret_false, int message_id,
          return_int = False;
       }
    }
+   else
+   {
+      bprintf("SendListMessage got invalid type %i instead of TAG_OBJECT in list %i.\n",
+         l->first.v.tag, list_id);
+   }
    /* Sending to built-in objects in a list disabled for now.
    else if (l->first.v.tag == TAG_INT)
    {
@@ -1061,6 +1066,11 @@ int SendListMessage(int list_id, bool ret_false, int message_id,
                return False;
             return_int = False;
          }
+      }
+      else
+      {
+         bprintf("SendListMessage got invalid type %i instead of TAG_OBJECT in list %i.\n",
+            l->first.v.tag, list_id);
       }
       /* Sending to built-in objects in a list disabled for now.
       else if (l->first.v.tag == TAG_INT)
@@ -1117,6 +1127,11 @@ int SendFirstListMessage(int list_id, bool ret_false, int message_id,
                return False;
             return_int = False;
          }
+      }
+      else
+      {
+         bprintf("SendFirstListMessage got invalid type %i instead of TAG_OBJECT in list %i.\n",
+            first->first.v.tag, list_id);
       }
       /* Sending to built-in objects in a list disabled for now.
       else if (first->first.v.tag == TAG_INT)
@@ -1175,6 +1190,11 @@ int SendFirstListMessage(int list_id, bool ret_false, int message_id,
                return_int = False;
             }
          }
+         else
+         {
+            bprintf("SendFirstListMessage got invalid type %i instead of TAG_OBJECT in list %i.\n",
+               first->first.v.tag, list_id);
+         }
          /* Sending to built-in objects in a list disabled for now.
          else if (first->first.v.tag == TAG_INT)
          {
@@ -1229,6 +1249,11 @@ int SendNthListMessage(int list_id, int position, bool ret_false,
             return_int = False;
          }
       }
+      else
+      {
+         bprintf("SendNthListMessage got invalid type %i instead of TAG_OBJECT in list %i.\n",
+            obj_val.v.tag, list_id);
+      }
       /* Sending to built-in objects in a list disabled for now.
       else if (obj_val.v.tag == TAG_INT)
       {
@@ -1280,6 +1305,11 @@ int SendNthListMessage(int list_id, int position, bool ret_false,
             return_int = False;
          }
       }
+      else
+      {
+         bprintf("SendNthListMessage got invalid type %i instead of TAG_OBJECT in list %i.\n",
+            obj_val.v.tag, list_id);
+      }
       /* Sending to built-in objects in a list disabled for now.
       else if (obj_val.v.tag == TAG_INT)
       {
@@ -1321,6 +1351,11 @@ int SendListMessageByClass(int list_id, int class_id, bool ret_false,
 
    if (l->first.v.tag == TAG_OBJECT)
       o = GetObjectByID(l->first.v.data);
+   else
+   {
+      bprintf("SendListMessageByClass got invalid type %i instead of TAG_OBJECT in list %i.\n",
+         l->first.v.tag, list_id);
+   }
    /* Sending to built-in objects in a list disabled for now.
    else if (l->first.v.tag == TAG_INT)
    {
@@ -1374,8 +1409,14 @@ int SendListMessageByClass(int list_id, int class_id, bool ret_false,
          return return_int;
       }
 
-      if (l->first.v.tag == TAG_OBJECT)
-         o = GetObjectByID(l->first.v.data);
+      if (l->first.v.tag != TAG_OBJECT)
+      {
+         bprintf("SendListMessageByClass got invalid type %i instead of TAG_OBJECT in list %i.\n",
+            l->first.v.tag, list_id);
+         continue;
+      }
+
+      o = GetObjectByID(l->first.v.data);
       /* Sending to built-in objects in a list disabled for now.
       else if (l->first.v.tag == TAG_INT)
       {
@@ -1451,6 +1492,11 @@ int SendFirstListMessageByClass(int list_id, int class_id, bool ret_false,
       }
       else if (first->first.v.tag == TAG_OBJECT)
          o = GetObjectByID(first->first.v.data);
+      else
+      {
+         bprintf("SendFirstListMessageByClass got invalid type %i instead of TAG_OBJECT in list %i.\n",
+            first->first.v.tag, list_id);
+      }
       /* Sending to built-in objects in a list disabled for now.
       else if (first->first.v.tag == TAG_INT)
       {
@@ -1520,8 +1566,15 @@ int SendFirstListMessageByClass(int list_id, int class_id, bool ret_false,
          continue;
       }
 
-      if (first->first.v.tag == TAG_OBJECT)
-         o = GetObjectByID(first->first.v.data);
+      if (first->first.v.tag != TAG_OBJECT)
+      {
+         bprintf("SendFirstListMessageByClass got invalid type %i instead of TAG_OBJECT in list %i.\n",
+            first->first.v.tag, list_id);
+         continue;
+      }
+
+      o = GetObjectByID(first->first.v.data);
+
       /* Sending to built-in objects in a list disabled for now.
       else if (first->first.v.tag == TAG_INT)
       {
@@ -1593,6 +1646,11 @@ int SendNthListMessageByClass(int list_id, int position, int class_id, bool ret_
 
       if (obj_val.v.tag == TAG_OBJECT)
          o = GetObjectByID(obj_val.v.data);
+      else
+      {
+         bprintf("SendNthListMessageByClass got invalid type %i instead of TAG_OBJECT in list %i.\n",
+            obj_val.v.tag, list_id);
+      }
       /* Sending to built-in objects in a list disabled for now.
       else if (obj_val.v.tag == TAG_INT)
       {
@@ -1655,8 +1713,14 @@ int SendNthListMessageByClass(int list_id, int position, int class_id, bool ret_
 
       obj_val.int_val = Nth(position, l->first.v.data);
 
-      if (obj_val.v.tag == TAG_OBJECT)
-         o = GetObjectByID(obj_val.v.data);
+      if (obj_val.v.tag != TAG_OBJECT)
+      {
+         bprintf("SendNthListMessageByClass got invalid type %i instead of TAG_OBJECT in list %i.\n",
+            obj_val.v.tag, list_id);
+         continue;
+      }
+
+      o = GetObjectByID(obj_val.v.data);
       /* Sending to built-in objects in a list disabled for now.
       else if (obj_val.v.tag == TAG_INT)
       {

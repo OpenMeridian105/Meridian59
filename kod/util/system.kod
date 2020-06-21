@@ -6461,6 +6461,11 @@ messages:
 
          foreach i in lGiveList
          {
+            // Exclude players who haven't created a character yet.
+            if (Send(i,@GetLastLoginTime) = 0)
+            {
+               continue;
+            }
             if number <> -1
             {
                Send(i,@NewHold,#what=Create(Classtype,#number=number));
@@ -6568,16 +6573,18 @@ messages:
    "This is always considered optional, just in case the admin doesn't want "
    "to recreate the chests."
    {
-      local iRoom, oRoom, iRow, iCol, iFineRow, iFineCol, oChest, i, j, oObj;
+      local iRoom, oRoom, iRow, iCol, iFineRow, iFineCol, oChest, i, j, oObj,
+            bFound, iAngle;
 
       foreach i in plChests
       {
+         bFound = FALSE;
          oChest = First(i);
          iRoom = Nth(i,2);
          iRow = Nth(i,3);
          iCol = Nth(i,4);
          iFineRow = Nth(i,5);
-         iFineCOl = Nth(i,6);
+         iFineCol = Nth(i,6);
 
          oRoom = Send(self,@FindRoomByNum,#num=iRoom);
          if oRoom = $
@@ -6595,17 +6602,32 @@ messages:
                   AND iFineRow = Send(oObj,@GetFineRow)
                   AND iFineCol = Send(oObj,@GetFineCol)
                {
+                  // Use whichever angle the new chest was placed with.
+                  iAngle = Send(oObj,@GetAngle);
                   Send(oObj,@Delete);
                   Send(oRoom,@NewHold,#what=oChest,#new_row=iRow,#new_col=iCol,
-                        #fine_row=iFineRow,#fine_col=iFineCol);
+                        #fine_row=iFineRow,#fine_col=iFineCol,#new_angle=iAngle);
+                  bFound = TRUE;
+                  break;
                }
             }
          }
+         if (bFound)
+         {
+            plChests = DelListElem(plChests,i);
+         }
+         else
+         {
+            Debug("Chest",oChest,"in room num",iRoom, " couldn't be replaced!");
+         }
       }
 
-     plChests = $;
+      if (plChests <> $)
+      {
+         Debug(Length(plChests), " remaining that need to be manually placed.");
+      }
 
-     return;
+      return;
    }
 
    RemoveChestFromList(oChest=$)

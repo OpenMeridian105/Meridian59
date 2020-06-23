@@ -33,6 +33,9 @@ classvars:
    vbDropItematt = TRUE
    vbDropTrinket = TRUE
    vbDropBook = TRUE
+   vbDropRecipe = TRUE
+
+   viMinItemDrop = 1
 
 properties:
 
@@ -259,7 +262,7 @@ messages:
       iNumberItems = 1 + (level / 55) + Random(0,difficulty/3) + iSurvivalLoot;
       iNumberItems = Bound(iNumberItems,$,6 + iSurvivalLoot);
       iNumberItems = (Send(SETTINGS_OBJECT,@GetItemFactor) * iNumberItems) / 100;
-      iNumberItems = Bound(iNumberItems,1,$);
+      iNumberItems = Bound(iNumberItems,viMinItemDrop,$);
 
       // Prevent factioned mobs from dropping tokens.
       tokengen = (Send(mob,@GetFaction) = FACTION_NEUTRAL);
@@ -375,6 +378,21 @@ messages:
 
                   return oObj;
                }
+            }
+         }
+
+         if vbDropRecipe
+            AND (Random(1,Send(SETTINGS_OBJECT,@GetCookingRecipeDropFactor)) = 1)
+            AND Send(who,@GetGuild) <> $
+         {
+            oObj = Create(&CookingRecipe,#corpse=corpse);
+            if oObj <> $
+            {
+               Debug(Send(who,@GetTrueName)," found a cooking recipe on a ",
+                     Send(mob,@GetName), ". Recipe constant: ",
+                     Send(oObj,@GetRecipeConstant));
+
+               return oObj;
             }
          }
 

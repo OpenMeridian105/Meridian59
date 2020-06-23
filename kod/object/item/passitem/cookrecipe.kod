@@ -16,16 +16,14 @@ constants:
 
 resources:
 
-   //include cookrecipe.lkod
+   include cookrecipe.lkod
 
    CookingRecipe_name_rsc = "cooking recipe"
    CookingRecipe_icon_rsc = scr04.bgf
    CookingRecipe_desc_rsc = \
-        "With the use of a cooking pot, using these ingredients will create "
-        "%s%s. %r"
-
+      "This recipe lists the ingredients needed to prepare "
+      "a serving of %s%s.  (Requires a suitable cooking pot.) %r"
    CookingRecipe_ingredients = "\n  %i %s"
-   CookingRecipe_blank = ""
 
 classvars:
 
@@ -37,71 +35,85 @@ classvars:
 
 properties:
 
-    plRecipe = $
+   piRecipe = CR_NONE
 
 messages:
 
-    Constructor()
-    {
-        Send(self,@SetRandomRecipe);
+   Constructor()
+   {
+      Send(self,@SetRandomRecipe);
 
-        propagate;
-    }
+      propagate;
+   }
 
-    ShowDesc()
-    {
-        local lTemplates, lIngredients, lFoods, i, iNumber, oItem, obj;
+   ShowDesc()
+   {
+      local lRecipe, lTemplates, lIngredients, lFoods, i, iNumber, oItem, obj;
 
-        if plRecipe = $
-        {
-            AddPacket(4,CookingRecipe_blank);
+      if piRecipe = CR_NONE
+      {
+         AddPacket(4,system_blank_resource);
 
-            return;
-        }
+         return;
+      }
 
-        lTemplates = Send(SYS,@GetItemTemplates);
-        if (lTemplates = $)
-        {
-            AddPacket(4,CookingRecipe_blank);
+      lRecipe = Send(self,@GetRecipe);
+      if (lRecipe = $)
+      {
+         Debug("Cooking recipe got $ recipe for recipe constant ", piRecipe);
+         AddPacket(4,system_blank_resource);
 
-            return;
-        }
+         return;
+      }
 
-        lIngredients = First(plRecipe);
-        oItem = GetListElemByClass(lTemplates,First(Nth(plRecipe,2)));
+      lTemplates = Send(SYS,@GetItemTemplates);
+      if (lTemplates = $)
+      {
+         AddPacket(4,system_blank_resource);
 
-        AddPacket(4,CookingRecipe_desc_rsc, 
-            4,Send(oItem,@GetInDef), 4,Send(oItem,@GetName),
-            4,Send(SYS,@AddResourceTemplate,#iNum=Length(lIngredients)) );
+         return;
+      }
 
-        foreach i in lIngredients
-        {
-            oItem = GetListElemByClass(lTemplates,First(i));
-            iNumber = Nth(i,2);
-            AddPacket(4, CookingRecipe_ingredients, 4,iNumber,
-                    4, Send(oItem,@GetName,#number=iNumber));
-        }
+      lIngredients = Nth(lRecipe,2);
+      oItem = GetListElemByClass(lTemplates,First(Nth(lRecipe,3)));
 
-        return;
-    }
+      AddPacket(4,CookingRecipe_desc_rsc,
+                4,Send(oItem,@GetInDef), 4,Send(oItem,@GetName),
+                4,Send(SYS,@AddResourceTemplate,#iNum=Length(lIngredients)) );
 
-    SetRandomRecipe()
-    {
-        local lRecipes;
+      foreach i in lIngredients
+      {
+         oItem = GetListElemByClass(lTemplates,First(i));
+         iNumber = Nth(i,2);
+         AddPacket(4, CookingRecipe_ingredients, 4,iNumber,
+                   4, Send(oItem,@GetName,#number=iNumber));
+      }
 
-        lRecipes = Send(Send(SYS,@GetLore),@GetCookingRecipes);
-        if lRecipes <>  $
-        {
-            plRecipe = Nth( lRecipes, Random(1, Length(lRecipes)) );
-        }
+      return;
+   }
 
-        return TRUE;
-    }
+   SetRandomRecipe()
+   {
+      local lRecipes;
 
-    GetRecipe()
-    {
-        return plRecipe;
-    }
+      lRecipes = Send(Send(SYS,@GetLore),@GetCookingRecipes);
+      if lRecipes <> $
+      {
+         piRecipe = First(Nth(lRecipes,Random(1,Length(lRecipes))));
+      }
+
+      return TRUE;
+   }
+
+   GetRecipe()
+   {
+      return Send(Send(SYS,@GetLore),@GetCookingRecipe,#iRecipe=piRecipe);
+   }
+
+   GetRecipeConstant()
+   {
+      return piRecipe;
+   }
 
 end
 ////////////////////////////////////////////////////////////////////////////////

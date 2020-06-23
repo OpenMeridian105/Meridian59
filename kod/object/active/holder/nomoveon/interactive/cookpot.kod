@@ -41,13 +41,14 @@ messages:
 
    CookFood(who = $, lIngredients = $)
    {
-      local lRecipe, iIngredient, lTemp, lIngredientsUsed,
+      local lRecipe, iIngredient, lTemp, lIngredientsUsed, lRecipeIngred,
             iAmount, lOfferItems, iOfferAmount, obj, i, j, k;
 
       foreach lRecipe in Send(Send(SYS,@GetLore),@GetCookingRecipes)
       {
          iIngredient = 0;
-         foreach i in First(lRecipe)
+         lRecipeIngred = Nth(lRecipe,2);
+         foreach i in lRecipeIngred
          {
             iOfferAmount = 0;
             obj = GetListElemByClass(lIngredients, First(i));
@@ -58,7 +59,7 @@ messages:
                lTemp = Cons(obj, lTemp);
 
                // Has all the ingredients, create food
-               if (iIngredient = Length(First(lRecipe)))
+               if (iIngredient = Length(lRecipeIngred))
                {
                   lIngredientsUsed = lTemp;
 
@@ -73,7 +74,7 @@ messages:
                      }
                   }
 
-                  lOfferItems = Cons(Create(First(Nth(lRecipe,2)),
+                  lOfferItems = Cons(Create(First(Nth(lRecipe,3)),
                                  #number=iOfferAmount),lOfferItems);
 
                   // give back any leftovers
@@ -85,7 +86,8 @@ messages:
                      if ((iAmount > iOfferAmount) AND (k > 0)
                         AND GetListElemByClass(lOfferItems, GetClass(j)) = $)
                      {
-                        lOfferItems = Cons(Create(GetClass(j),#number=(k)), lOfferItems);
+                        lOfferItems = Cons(Create(GetClass(j),#number=(k)),
+                                          lOfferItems);
                      }
 
                   }
@@ -145,6 +147,7 @@ messages:
       {
          propagate;
       }
+
       return MOVEON_YES;
    }
 

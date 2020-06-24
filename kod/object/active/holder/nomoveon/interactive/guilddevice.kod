@@ -124,10 +124,29 @@ messages:
 
    TryActivate(who=$)
    {
-      local oSpell;
+      local oSpell, oGuild, oPlayerGuild;
 
-      if IsClass(who,&User)
-         AND poOwner = Send(who,@GetOwner)
+      if (who = $
+         OR NOT IsClass(who,&User)
+         OR NOT (poOwner = Send(who,@GetOwner)))
+      {
+         return FALSE;
+      }
+
+      // Must have LoS.
+      if (NOT Send(poOwner,@LineOfSight,#obj1=who,#obj2=self))
+      {
+         return FALSE;
+      }
+
+      oGuild = Send(poOwner,@GetGuildOwner);
+      oPlayerGuild = Send(who,@GetGuild);
+
+      // Can use if no guild owns the hall (and this item exists somehow),
+      // if the player is in the guild owning the hall, or in an allied guild.
+      if (oGuild = $
+         OR oPlayerGuild = oGuild
+         OR Send(oGuild,@IsMutualAlly,#otherguild=oPlayerGuild))
       {
           oSpell = Send(SYS,@FindSpellByNum,#num=piSpellEffect);
           Send(oSpell,@CastSpell,#who=who,#lTargets=[who],
@@ -135,9 +154,11 @@ messages:
           piCharges--;
 
           Send(self,@UpdateGuildDevice);
+
+          return TRUE;
       }
 
-      return TRUE;
+      return FALSE;
    }
 
    UpdateGuildDevice()

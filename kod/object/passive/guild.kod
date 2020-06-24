@@ -2088,33 +2088,13 @@ messages:
    IsAlly(otherguild = $)
    "Returns TRUE if the guild in question is in the ally list."
    {
-      local i;
-
-      foreach i in plAllies
-      {
-         if i = otherguild
-         {
-            return TRUE;
-         }
-      }
-
-      return FALSE;
+      return FindListElem(plAllies,otherguild) > 0;
    }
 
    IsEnemy(otherguild = $)
    "Returns TRUE if the guild in question is in the enemy list."
    {
-      local i;
-
-      foreach i in plEnemies
-      {
-         if i = otherguild
-         {
-            return TRUE;
-         }
-      }
-
-      return FALSE;
+      return FindListElem(plEnemies,otherguild) > 0;
    }
 
    IsMutualEnemy(otherguild = $)
@@ -2122,6 +2102,18 @@ messages:
       if otherguild <> $
          AND Send(otherguild,@IsEnemy,#otherguild=self)
          AND Send(self,@IsEnemy,#otherguild=otherguild)
+      {
+         return TRUE;
+      }
+
+      return FALSE;
+   }
+
+   IsMutualAlly(otherguild = $)
+   {
+      if otherguild <> $
+         AND Send(otherguild,@IsAlly,#otherguild=self)
+         AND Send(self,@IsAlly,#otherguild=otherguild)
       {
          return TRUE;
       }

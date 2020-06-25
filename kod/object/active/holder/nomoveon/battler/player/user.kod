@@ -11646,9 +11646,7 @@ messages:
       }
 
       // If we have an active follower, let them know.
-      if (poMercenary <> $)
-         AND NOT IsTimer(poMercenary)
-         AND IsClass(poMercenary,&Follower)
+      if (Send(self,@HasActiveFollower))
          AND (Send(poMercenary,@GetOwner) = poOwner)
       {
          Send(poMercenary,@BriefLeader,#template=template,#node=node);
@@ -12784,6 +12782,8 @@ messages:
       return;
    }
 
+   
+   
    AcceptLift()
    {
       local i, oObject, iHeight, bOffer, iRowDiff, iColDiff,
@@ -12792,8 +12792,13 @@ messages:
       // Find a friendly helper.
       foreach i in Send(poOwner,@GetHolderActive)
       {
-         oObject = Send(poOwner,@HolderExtractObject,#data=i);
+         oObject = First(i);
          iHeight = Send(oObject,@GetHeight);
+
+         if (iHeight = $)
+         {
+            continue;
+         }
 
          if (IsClass(oObject,&Player) OR IsClass(oObject,&Follower))
             AND (oObject <> self)
@@ -12807,10 +12812,10 @@ messages:
          {
             iLifterRow = FINENESS * Send(oObject,@GetRow) + Send(oObject,@GetFineRow);
             iRowDiff = iLifterRow - FINENESS * piRow - piFine_row;
-            iAbsRow = Abs(iRowDiff);
+            iAbsRow = Bound(Abs(iRowDiff),1,$);
             iLifterCol = FINENESS * Send(oObject,@GetCol) + Send(oObject,@GetFineCol);
             iColDiff = iLifterCol - FINENESS * piCol - piFine_col;
-            iAbsCol = Abs(iColDiff);
+            iAbsCol = Bound(Abs(iColDiff),1,$);
 
             if iAbsRow > iAbsCol
             {

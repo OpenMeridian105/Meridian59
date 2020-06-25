@@ -1595,13 +1595,15 @@ messages:
             Send(self,@RefreshPhaseTimeToBase);
          }
 
-         if poMercenary <> $
-            AND NOT IsTimer(poMercenary)
-            AND IsClass(poMercenary,&Follower)
+         if Send(self,@HasActiveFollower)
             AND Send(poMercenary,@IsAbsent)
             AND Send(poOwner,@IsAccessibleForFollowers)
          {
-            Send(poMercenary,@FollowerReturn);
+            // Must Post this, or it will cause a crash in Ogre client
+            // due to 'scene object with same name as the player'. Not
+            // sure yet why that actually happens in the Ogre code, but
+            // Posting mitigates it.
+            Post(poMercenary,@FollowerReturn);
          }
       }
 
@@ -2400,9 +2402,7 @@ messages:
       }
 
       // Make our follower linger for a while, then poof.
-      if poMercenary <> $
-         AND NOT IsTimer(poMercenary)
-         AND IsClass(poMercenary,&Follower)
+      if Send(self,@HasActiveFollower)
          AND NOT Send(poMercenary,@IsAbsent)
       {
          Send(poMercenary,@FollowerAbsence,#iDelay=30000);
@@ -5031,7 +5031,7 @@ messages:
    "CF_SAFETY_OFF prevents accidental attacks. You can always successfully "
    "hit a murderer or outlaw, though."
    {
-      local oEnemyGuild, oSoldierShield, iPenTime, oFlagPole;
+      local oEnemyGuild, oSoldierShield, iPenTime, oFlagPole, oRoom;
 
       // Don't care about monsters or token holders...
       if IsClass(victim,&Monster)
@@ -5082,13 +5082,26 @@ messages:
       // the zone with no legal restrictions. Same faction members will be able 
       // to attack each other. Guild vs guild combat is also open in the zone,  
       // but players cannot attack their guildmates without legal repercussions. 
-      oFlagPole = Send(poOwner,@FindHoldingActive,#Class=&Flagpole);
+      if (poOwner = $)
+      {
+         oRoom = Send(SYS,@FindRoomByNum,#num=Send(self,@GetSaveRoom));
+         oFlagPole = Send(oRoom,@FindHoldingActive,#Class=&Flagpole);
+      }
+      else
+      {
+         oFlagPole = Send(poOwner,@FindHoldingActive,#Class=&Flagpole);
+      }
+
       if (oFlagPole <> $)
          AND Send(oFlagPole,@IsClaimAttemptInProgress)
-         AND NOT (Send(poGuild,@IsAlly,#otherguild=oEnemyGuild))
-         AND (poGuild <> oEnemyGuild)
       {
-         return TRUE;
+         if (poGuild <> $
+            AND oEnemyGuild <> $
+            AND (poGuild <> oEnemyGuild)
+            AND NOT (Send(poGuild,@IsAlly,#otherguild=oEnemyGuild)))
+         {
+            return TRUE;
+         }
       }
 
       // Check for enemy guild or faction soldier fighting - If attacking a (mutual)
@@ -5106,7 +5119,7 @@ messages:
             piTimeAttackedPlayer = GetTime();
 
             // Followers faint at such excitement...
-            if (poMercenary <> $) AND IsClass(poMercenary,&Follower)
+            if (Send(self,@HasActiveFollower))
             {
                Send(poMercenary,@Killed,#bPvP=TRUE);
             }
@@ -5181,7 +5194,7 @@ messages:
          piTimeAttackedPlayer = GetTime();
 
          // Followers faint at such excitement...
-         if (poMercenary <> $) AND IsClass(poMercenary,&Follower)
+         if (Send(self,@HasActiveFollower))
          {
             Send(poMercenary,@Killed,#bPvP=TRUE);
          }
@@ -6406,10 +6419,8 @@ messages:
 
       // Let our follower know if we have one. It'll make their day!
       // Also gotta do this first, to avoid complications... (They're crazy jealous!)
-      if (poMercenary <> $)
-         AND NOT IsTimer(poMercenary)
-         AND IsClass(poMercenary,&Follower)
-         AND (Send(poMercenary,@GetOwner) = poOwner)
+      if (Send(self,@HasActiveFollower)
+         AND (Send(poMercenary,@GetOwner) = poOwner))
       {
          Send(poMercenary,@LeaderKilledSomething,#what=what,#use_weapon=use_weapon);
       }
@@ -7595,8 +7606,7 @@ messages:
       Send(self,@ComputeMaxMana);
 
       // Also update our follower's max mana.
-      if (poMercenary <> $)
-         AND IsClass(poMercenary,&Follower)
+      if (Send(self,@HasActiveFollower))
       {
          Send(poMercenary,@ComputeMaxMana);
       }
@@ -7623,8 +7633,7 @@ messages:
       Send(self,@ComputeMaxMana);
 
       // Also update our follower's max mana.
-      if (poMercenary <> $)
-         AND IsClass(poMercenary,&Follower)
+      if (Send(self,@HasActiveFollower))
       {
          Send(poMercenary,@ComputeMaxMana);
       }
@@ -9610,9 +9619,7 @@ messages:
          }
 
          // Allow our mercenary to gain a level as well.
-         if poMercenary <> $
-            AND NOT IsTimer(poMercenary)
-            AND IsClass(poMercenary,&Follower)
+         if (Send(self,@HasActiveFollower))
          {
             Send(poMercenary,@FollowerDing);
          }
@@ -12124,10 +12131,8 @@ messages:
       Send(self,@NewVigor);
 
       // If we have a follower, make them take a break, too.
-      if (poMercenary <> $)
-         AND NOT IsTimer(poMercenary)
-         AND IsClass(poMercenary,&Follower)
-         AND (Send(poMercenary,@GetOwner) = poOwner)
+      if (Send(self,@HasActiveFollower)
+         AND (Send(poMercenary,@GetOwner) = poOwner))
       {
          Send(poMercenary,@StartResting);
       }
@@ -12142,10 +12147,8 @@ messages:
       Send(self,@NewVigor);
 
       // Followers gotta follow.
-      if (poMercenary <> $)
-         AND NOT IsTimer(poMercenary)
-         AND IsClass(poMercenary,&Follower)
-         AND (Send(poMercenary,@GetOwner) = poOwner)
+      if (Send(self,@HasActiveFollower)
+         AND (Send(poMercenary,@GetOwner) = poOwner))
       {
          Send(poMercenary,@StopResting);
       }
@@ -15700,7 +15703,7 @@ messages:
       piTimeAttackedByPlayer = iTime;
 
       // Followers faint at such excitement...
-      if (poMercenary <> $) AND IsClass(poMercenary,&Follower)
+      if (Send(self,@HasActiveFollower))
       {
          Send(poMercenary,@Killed,#bPvP=TRUE);
       }
@@ -16015,10 +16018,16 @@ messages:
       return TRUE;
    }
 
+   HasActiveFollower()
+   {
+      return (poMercenary <> $
+         AND IsObject(poMercenary)
+         AND IsClass(poMercenary,&Follower));
+   }
+
    StoreFollower()
    {
-      if (poMercenary <> $)
-         AND IsClass(poMercenary,&Follower)
+      if (Send(self,@HasActiveFollower))
       {
          poSavedFollower = poMercenary;
          poMercenary = $;

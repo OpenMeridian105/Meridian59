@@ -14,9 +14,6 @@ constants:
 
    include blakston.khd
 
-   // Used for sanity checks, not a valid XLAT value
-   XLAT_NONE = -1
-
 resources:
 
    include armor.lkod
@@ -54,28 +51,12 @@ classvars:
    // Armor goes over layer 0 items such as shirts
    viLayer = 1
 
-   viBaseXLAT = XLAT_NONE
-
 properties:
 
    // If set to true, armor can be colored.
    pbColored = FALSE
 
 messages:
-
-   Constructor()
-   {
-      local iTranslation;
-
-      if viBaseXLAT <> XLAT_NONE
-      {
-         iTranslation = Send(SYS,@EncodeTwoColorXlat,
-                                    #color1=XLAT_TO_SKIN1,#color2=viBaseXLAT);
-         Send(self,@SetPaletteTranslation,#translation=iTranslation);
-      }
-
-      propagate;
-   }
 
    ReqRepair()
    {
@@ -171,31 +152,6 @@ messages:
       }
 
       propagate;
-   }
-
-   ResetXLATsToShirt()
-   {
-      local iXlat;
-
-      if NOT Send(self,@ShowShirt)
-      {
-         return;
-      }
-
-      iXlat = Send(poOwner,@GetCurrentShirtColor);
-
-      if (viBaseXLAT <> XLAT_NONE)
-      {
-         iXlat = Send(SYS,@DecodePrimaryColor,#Xlat=iXlat);
-         iXlat = Send(SYS,@EncodeTwoColorXlat,#color1=iXlat,#color2=viBaseXLAT);
-      }
-
-      if (iXlat <> Send(self,@GetPaletteTranslation))
-      {
-         Send(self,@SetPaletteTranslation,#translation=iXlat);
-      }
-
-      return;
    }
 
 end

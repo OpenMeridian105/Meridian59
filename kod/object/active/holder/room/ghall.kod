@@ -1577,16 +1577,17 @@ messages:
 
    ParseObject(string=$,lookup_list=FALSE)
    {
-      local i, j;
+      local i, j, k, cUpgrade, lUpgrades;
 
       if poDecorator = $
       {
          return;
       }
 
+      lUpgrades = Send(poDecorator,@GetUpgrades);
       if lookup_list
       {
-         foreach i in Send(poDecorator,@GetUpgrades)
+         foreach i in lUpgrades
          {
             j = First(i);
             if StringContain(string,Send(j,@GetName))
@@ -1601,7 +1602,15 @@ messages:
          j = Send(self,@HolderExtractObject,#data=i);
          if StringContain(string,Send(j,@GetName))
          {
-            return j;
+            foreach k in lUpgrades
+            {
+               cUpgrade = GetClass(First(k));
+               if (j <> $) AND IsClass(j,cUpgrade)
+               {
+                  return j;
+               }
+            }
+            return $;
          }
       }
 
@@ -1610,7 +1619,15 @@ messages:
          j = Send(self,@HolderExtractObject,#data=i);
          if StringContain(string,Send(j,@GetName))
          {
-            return j;
+            foreach k in lUpgrades
+            {
+               cUpgrade = GetClass(First(k));
+               if (j <> $) AND IsClass(j,cUpgrade)
+               {
+                  return j;
+               }
+            }
+            return $;
          }
       }
 

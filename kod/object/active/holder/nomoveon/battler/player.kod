@@ -1621,6 +1621,35 @@ messages:
       return;
    }
 
+   PlayerIntraRoomTeleport(row=$, col=$)
+   "If the player uses a door to move within a room, make follower and "
+   "minions also use the door."
+   {
+      local i;
+
+      if (row = $
+         OR col = $)
+      {
+         return;
+      }
+
+      if (Send(self,@HasActiveFollower)
+         AND Send(poMercenary,@GetOwner) = poOwner)
+      {
+         Post(poOwner,@SomethingTryGo,#what=poMercenary,#row=row,#col=col);
+      }
+
+      foreach i in plControlledMinions
+      {
+         if (Send(i,@GetOwner) = poOwner)
+         {
+            Post(poOwner,@SomethingTryGo,#what=i,#row=row,#col=col);
+         }
+      }
+
+      return;
+   }
+
    InformHunters()
    {
       local i, j, oSpell, state, oSpellCloak, rLocation, lRoomlist, oRoom;

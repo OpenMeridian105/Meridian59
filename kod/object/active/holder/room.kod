@@ -4292,7 +4292,7 @@ messages:
 
    SomethingTryGo(what = $,row = $,col = $)
    {
-      local i, iAngle;
+      local i, iAngle, oRoom;
 
       foreach i in plExits
       {
@@ -4339,9 +4339,17 @@ messages:
                Send(what,@WaveSendUser,#wave_rsc=Send(self,@GetDoorSound));
             }
 
-            Send(SYS,@UtilGoNearSquare,#what=what,
-                 #where=Send(SYS,@FindRoomByNum,#num=Nth(i,3)),
-                 #new_row=Nth(i,4),#new_col=Nth(i,5),#new_angle=iAngle);
+            oRoom = Send(SYS,@FindRoomByNum,#num=Nth(i,3));
+            Send(SYS,@UtilGoNearSquare,#what=what,#where=oRoom,
+                 #new_row=Nth(i,4),#new_col=Nth(i,5),#new_angle=iAngle,
+                 #mob_override=TRUE);
+
+            // Using a door in the same room.
+            if (oRoom = self
+               AND IsClass(what,&User))
+            {
+               Send(what,@PlayerIntraRoomTeleport,#row=row,#col=col);
+            }
 
             return TRUE;
          }

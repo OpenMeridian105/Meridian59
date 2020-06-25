@@ -1,0 +1,88 @@
+// Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+// All rights reserved.
+//
+// This software is distributed under a license that is described in
+// the LICENSE file that accompanies it.
+//
+// Meridian is a registered trademark.
+
+
+////////////////////////////////////////////////////////////////////////////////
+GuildHallPortal is Portal
+
+constants:
+
+   include blakston.khd
+
+resources:
+
+   include ghallport.lkod
+
+   GHallPortal_icon_rsc = teleport.bgf
+   GHallPortal_no_enter = \
+      "A wave of energy forces you away from the portal."
+   GHallPortal_enter = \
+      "You step into the portal and are whisked away to %s!"
+
+classvars:
+
+   viMoveOn_type = MOVEON_TELEPORTER
+
+properties:
+
+   vrIcon = GHallPortal_icon_rsc
+   piDrawFx = DRAWFX_TRANSLUCENT_75
+
+messages:
+
+   TeleportSomething(what=$)
+   "Called when something walks on top of us."
+   {
+      local oUser, oRoom, oGuild, oHall;
+
+        if (IsClass(what,&Monster))
+        {
+            oUser = Send(what,@GetMaster);
+            if (oUser = $)
+            {
+                propagate;
+            }
+        }
+        else
+        {
+            oUser = what;
+        }
+        
+        if (IsClass(oUser,&User))
+        {
+            oGuild = Send(what,@GetGuild);
+            if oGuild = $
+            {
+                Send(what,@MsgSendUser,#message_rsc=GHallPortal_no_enter);
+                return FALSE;
+            }
+
+            oHall = Send(oGuild,@GetGuildHall);
+            if oHall = $
+            {
+                Send(what,@MsgSendUser,#message_rsc=GHallPortal_no_enter);
+                return FALSE;
+            }
+
+            oRoom = Send(SYS,@FindRoomByNum,#num=Send(oHall,@GetRoomNum));
+            Post(oRoom,@Teleport,#what=what,#foyer=TRUE);
+
+            if (what = oUser) AND (oRoom <> $)
+            {
+                // Assume they made it through the portal, UtilGoNearSquare
+                // should not fail.
+                Send(what,@MsgSendUser,#message_rsc=GHallPortal_enter,
+                    #parm1=Send(oRoom,@GetName));
+            }
+        }
+
+        propagate;
+    }
+
+end
+////////////////////////////////////////////////////////////////////////////////

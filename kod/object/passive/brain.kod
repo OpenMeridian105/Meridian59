@@ -251,8 +251,9 @@ messages:
       {
          // Special case: Attacker is a douche and we don't like that.
          if (Send(mob,@GetBehavior) & AI_FIGHT_MURDERERS)
-            AND (Send(what,@CheckPlayerFlag,#flag=PFLAG_OUTLAW)
-               OR Send(what,@CheckPlayerFlag,#flag=PFLAG_MURDERER))
+            AND (IsClass(what,&User)
+               AND (Send(what,@CheckPlayerFlag,#flag=PFLAG_OUTLAW)
+                  OR Send(what,@CheckPlayerFlag,#flag=PFLAG_MURDERER)))
          {
             iType = TS_MURDER;
          }
@@ -1192,7 +1193,7 @@ messages:
    "Returns a value to AttemptTargetSwitch.  If this value exceeds "
    "our current hatred level, we attack."
    {
-      local iHatred, iKarma1, iKarma2, oMaster,
+      local iHatred, iKarma1, iKarma2, oMaster, oLeader,
             oApparentForm, oApparentTarget, iAdd, oMobTarget,
             iSquaredVision, iSquaredDistance, iSwarm, iLevel;
 
@@ -1563,14 +1564,18 @@ messages:
          }
          else if IsClass(what,&Follower)
          {
-            // Debug("Target is a follower! Using leader's swarm for calculations!");
-            // Followers use their leader's swarm.
-            iSwarm = Send(Send(what,@GetLeader),@GetMonsterChasers) * 200 / iLevel;
-            // Debug("Leader has chasers worth ",iSwarm/2," percent of his HP on him!");
-            iSwarm = iSwarm * piChaser_factor / 100;
-            // Debug("Swarm was adjusted to ",iSwarm," by chase factor ",piChaser_factor,"!");
-            iHatred -= iSwarm;
-            // Debug("Hatred has been adjuste to ",iHatred," by Swarm of size ",iSwarm/2,"!");
+            oLeader = Send(what,@GetLeader);
+            if (oLeader <> $)
+            {
+               // Debug("Target is a follower! Using leader's swarm for calculations!");
+               // Followers use their leader's swarm.
+               iSwarm = Send(oLeader,@GetMonsterChasers) * 200 / iLevel;
+               // Debug("Leader has chasers worth ",iSwarm/2," percent of his HP on him!");
+               iSwarm = iSwarm * piChaser_factor / 100;
+               // Debug("Swarm was adjusted to ",iSwarm," by chase factor ",piChaser_factor,"!");
+               iHatred -= iSwarm;
+               // Debug("Hatred has been adjuste to ",iHatred," by Swarm of size ",iSwarm/2,"!");
+            }
          }
       }
 

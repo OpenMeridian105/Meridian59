@@ -1918,8 +1918,36 @@ messages:
       return oTarget;
    }
 
+   TargetSwitch(what=$)
+   {
+      if what = $
+         OR poOwner = $
+      {
+         Debug("BAD target we're switching to here!");
+
+         return FALSE;
+      }
+
+      // Can't switch targets to the leader.
+      if (what = poLeader)
+      {
+         return FALSE;
+      }
+
+      propagate;
+   }
+
    EnterStateEngage( target = $, actnow = TRUE, delay = 0)
    {
+      // Can't engage against the leader.
+      if (poLeader <> $
+         AND poLeader = target)
+      {
+         Send(self,@EnterStateMove,#actnow=FALSE);
+
+         return;
+      }
+
       if (piState & STATE_MOVE)
       {
          Send(self,@FollowerEnterCombat,#target=target);

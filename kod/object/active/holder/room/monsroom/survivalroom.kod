@@ -391,7 +391,7 @@ messages:
                       &OrcPitBoss,
                       &DragonFlyQueen,
                       &Shadowbeast,
-                      &SpiderQueen,
+                      &GiantDaemonSkeleton,
                       &GiantRatKing,
                       &EarthElemental,
                       &FireElemental,
@@ -561,6 +561,7 @@ messages:
       {
          each_obj = First(i);
          if IsClass(each_obj,&Monster)
+            AND NOT Send(each_obj,@IsOwnedByPlayer)
          {
             Send(each_obj,@SetBehaviorFlag,#flag=AI_MOVE_WALKTHROUGH_WALLS);
          }
@@ -711,7 +712,7 @@ messages:
       }
 
       iRand = Random(iTotalParticipants * 5, iTotalParticipants * 15);
-      iRand = Bound(iRand,1,75);
+      iRand = Bound(iRand,3,75);
 
       plLevelGoals = Cons([GOAL_KILLS,iRand],plLevelGoals);
 
@@ -749,10 +750,13 @@ messages:
 
    SpawnBoss()
    {
-      local cBoss;
+      local cBoss, oBoss;
 
       cBoss = Nth(plBosses,Random(1,Length(plBosses)));
-      Send(self,@GenerateMonster,#oMonster=Create(cBoss),#bStack=TRUE,
+      oBoss = Create(cBoss);
+      Send(oBoss,@SetBehaviorFlag,#flag=AI_FIGHT_SINGLEMINDED);
+
+      Send(self,@GenerateMonster,#oMonster=oBoss,#bStack=TRUE,
             #piSurvivalLevel=piLevel);
       piSpawnedBossThisRound = TRUE;
 
@@ -769,10 +773,12 @@ messages:
 
    SpawnMiniboss()
    {
-      local cMiniboss;
+      local cMiniboss, oMiniBoss;
 
       cMiniboss = Nth(plMinibosses,Random(1,Length(plMinibosses)));
-      Send(self,@GenerateMonster,#oMonster=Create(cMiniboss),#bStack=TRUE,
+      oMiniBoss = Create(cMiniboss);
+      Send(oMiniBoss,@SetBehaviorFlag,#flag=AI_FIGHT_SINGLEMINDED);
+      Send(self,@GenerateMonster,#oMonster=oMiniBoss,#bStack=TRUE,
             #piSurvivalLevel=piLevel);
 
       return;
@@ -780,7 +786,7 @@ messages:
 
    SomethingKilled(what=$,victim=$)
    {
-      local i, cDeadClass, oTarget, mob, oMonster, iGoal, iKills;
+      local i, cDeadClass, oTarget, mob, oMonster, iGoal, iKills, bOnlyBosses;
 
       if IsClass(victim,&User)
       {
@@ -852,14 +858,21 @@ messages:
          }
       }
 
+      bOnlyBosses = TRUE;
+
       foreach i in plLevelGoals
       {
          iGoal = First(i);
+         if (iGoal = GOAL_KILLS)
+         {
+            bOnlyBosses = FALSE;
+         }
+
          if Nth(i,2) <= 0
          {
             if iGoal = GOAL_KILLS
             {
-               Post(self,@AggroBosses,#victim=victim);
+               Post(self,@AggroOneBoss,#oTarget=what);
             }
             else if iGoal = GOAL_BOSS
             {
@@ -880,6 +893,7 @@ messages:
          }
 
          if plParticipants <> $
+            AND NOT bOnlyBosses // If true, aggroing something further down.
             AND Length(plParticipants) = 1
             AND plLevelGoals <> $
          {
@@ -892,7 +906,7 @@ messages:
                   if IsClass(oMonster,&Monster)
                      AND (NOT Send(oMonster,@IsOwnedByPlayer))
                      AND oMonster <> victim
-                     AND Random(1,2) = 1
+                     AND Random(1,4) = 1
                      AND plParticipants <> $ // Sometimes $ by this stage?
                   {
                      oTarget = First(plParticipants);
@@ -901,6 +915,7 @@ messages:
                         Send(oMonster,@TargetSwitch,#what=oTarget,#iHatred=100);
                         Send(oMonster,@EnterStateEngage,#target=oTarget,
                               #actnow=TRUE);
+                        break;
                      }
                   }
                }
@@ -908,8 +923,7 @@ messages:
             else
             {
                // Aggro one mob on the player.
-               Send(self,@AggroOne,#who=(First(plParticipants)),
-                     #victim=victim);
+               Post(self,@AggroOne,#who=(First(plParticipants)),#victim=victim);
             }
          }
       }
@@ -931,8 +945,54 @@ messages:
       {
          Send(self,@LevelComplete);
       }
+      else if (bOnlyBosses)
+      {
+         // Only bosses left, aggro one of them on a player.
+         Post(self,@AggroOneBoss,#oTarget=what);
+      }
 
       propagate;
+   }
+
+   AggroOneBoss(oTarget = $)
+   {
+      local mob, oMonster;
+
+      if plParticipants = $
+         OR plLevelGoals = $
+      {
+         return;
+      }
+
+      if (oTarget = $)
+      {
+         if Length(plParticipants) = 1
+         {
+            oTarget = First(plParticipants);
+         }
+         else
+         {
+            oTarget = Nth(plParticipants,Random(1,Length(plParticipants)));
+         }
+      }
+
+      foreach mob in plActive
+      {
+         oMonster = First(mob);
+         if (oMonster = oTarget
+            OR NOT IsClass(oMonster,&Monster)
+            OR NOT Send(self,@IsBossOrMiniBoss,#what=oMonster)
+            OR Send(oMonster,@IsOwnedByPlayer))
+         {
+            continue;
+         }
+         Send(oMonster,@TargetSwitch,#what=oTarget,#iHatred=200);
+         Send(oMonster,@EnterStateEngage,#target=oTarget,#actnow=TRUE);
+
+         break;
+      }
+
+      return;
    }
 
    AggroBosses(victim = $)
@@ -1142,6 +1202,12 @@ messages:
    AggroOne(who = $,victim = $)
    {
       local i, oMonster;
+
+      if plParticipants = $
+         OR plLevelGoals = $
+      {
+         return;
+      }
 
       if (IsClass(who,&DM)
             AND Send(who,@PlayerIsImmortal))
@@ -1807,6 +1873,11 @@ messages:
       }
 
       return FALSE;
+   }
+
+   IsBossOrMiniBoss(what = $)
+   {
+      return Send(self,@IsBoss,#what=what) OR Send(self,@IsMiniBoss,#what=what);
    }
 
 end

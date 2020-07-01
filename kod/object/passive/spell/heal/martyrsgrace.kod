@@ -94,7 +94,9 @@ messages:
          each_obj = First(i);
 
          if (each_obj = who
-            OR NOT IsClass(each_obj,&Player)
+            OR NOT (IsClass(each_obj,&Player)
+               OR (IsClass(each_obj,&Follower)
+                  AND Send(each_obj,@GetLeader) = who))
             OR Send(each_obj,@IsInCannotInteractMode)
             OR (IsClass(oRoom,&GuildHall)
                AND Send(oRoom,@InFoyer,#who=each_obj)
@@ -204,8 +206,9 @@ messages:
             continue;
          }
 
-         if Send(each_obj,@CheckPlayerFlag,#flag=PFLAG_MURDERER)
-            OR Send(each_obj,@CheckPlayerFlag,#flag=PFLAG_OUTLAW)
+         if IsClass(each_obj,&User)
+            AND (Send(each_obj,@CheckPlayerFlag,#flag=PFLAG_MURDERER)
+            OR Send(each_obj,@CheckPlayerFlag,#flag=PFLAG_OUTLAW))
          {
             continue;
          }

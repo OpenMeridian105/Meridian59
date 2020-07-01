@@ -59,6 +59,8 @@ resources:
       "You already have too many objects in this hall.  Please ~Idestroy~I some "
       "of your upgrades if you wish to add another."
 
+   GuildDecorator_chest_outside = "You may not place a chest in the hall's foyer."
+
    GuildDecorator_command_move = "move"
    GuildDecorator_command_move_cant = \
       "I'm not able to move this object. Try to ~Idestroy~I it first, "
@@ -97,11 +99,11 @@ messages:
       plWantedItems = [&Money];
 
       plUpgrades = [
+                     [Create(&SmallBox), 125000],
                      [Create(&Statue), 100000],
                      [Create(&KillerBunny), 100000],
                      [Create(&Cow), 75000],
                      [Create(&HellPortal), 75000],
-                     //[Create(&SmallBox), 60000],
                      [Create(&GuildDevice,#num=SID_INVISIBILITY), 60000],
                      [Create(&CookingPot), 50000],
                      [Create(&GuildDevice,#num=SID_DETECT_INVISIBLE), 50000],
@@ -219,6 +221,14 @@ messages:
             return;
          }
 
+         if IsClass(oObject,&SmallBox)
+            AND Send(poOwner,@InFoyer,#who=what)
+         {
+            Send(self,@SayToOne,#target=what,#type=SAY_RESOURCE,
+               #message_rsc=GuildDecorator_chest_outside);
+            return;
+         }
+
          if (Send(poOwner,@CountGuildHallUpgrades) >= viUpgradeLimit)
          {
             // too many objects
@@ -323,6 +333,12 @@ messages:
          if IsClass(oObject,&GuildDevice)
          {
             Send(oObject,@DropFuel);
+         }
+
+         // Drop personal chest contents
+         if IsClass(oObject,&SmallBox)
+         {
+            Send(oObject,@DropContents);
          }
 
          if Send(poOwner,@TryRemoveObject,#who=what,#template=oObject)

@@ -30,12 +30,38 @@ classvars:
    vrIcon = SmallBox_icon_rsc
    vrDesc = SmallBox_desc_rsc
 
-   viBulk_hold_max = 15000
+   viBulk_hold_max = 50000
    viWeight_hold_max = $
 
 properties:
 
 messages:
+
+   DropContents()
+   {
+      local i, each_obj;
+
+      if IsClass(poOwner,&GuildHall)
+      {
+         foreach i in plActive
+         {
+            each_obj = Send(self,@HolderExtractObject,#data=i);
+            Send(poOwner,@NewHold,#what=i,
+               #new_row=Send(self,@GetRow),#new_col=Send(self,@GetCol),
+               #fine_row=Send(self,@GetFineRow),#fine_col=Send(self,@GetFineCol));
+         }
+
+         foreach i in plPassive
+         {
+            each_obj = Send(self,@HolderExtractObject,#data=i);
+            Send(poOwner,@NewHold,#what=i,
+               #new_row=Send(self,@GetRow),#new_col=Send(self,@GetCol),
+               #fine_row=Send(self,@GetFineRow),#fine_col=Send(self,@GetFineCol));
+         }
+      }
+
+      return;
+   }
 
 end
 ////////////////////////////////////////////////////////////////////////////////

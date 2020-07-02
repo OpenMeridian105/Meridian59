@@ -2008,9 +2008,18 @@ messages:
          propagate;
       }
 
+      // Ask follower what commands he accepts
+      if StringEqual(message,follower_help_trigger)
+      {
+         Post(self,@MercenarySayToOne,#target=what,#message_rsc=follower_help);
+         Send(self,@FaceLeader);
+
+         return TRUE;
+      }
+
       //// Follower Chat Commands
       // Send follower away temporarily
-      if StringContain(message,follower_break_trigger)
+      if StringEqual(message,follower_break_trigger)
       {
          Send(self,@FollowerAbsence,#iDelay=3000);
          Post(self,@MercenarySayToOne,#target=what,#message_rsc=follower_break);
@@ -2021,7 +2030,7 @@ messages:
       }
 
       // Ask follower to say what spells they know
-      if StringContain(message,follower_spells_trigger)
+      if StringEqual(message,follower_spells_trigger)
       {
          Post(poLeader,@MsgSendUserCallback,#what=self,#sCallback=SetString($,@FollowerSpellInform));
          Send(self,@FaceLeader);
@@ -2030,7 +2039,7 @@ messages:
       }
 
       // Ask follower to come closer
-      if StringContain(message,follower_closer_trigger)
+      if StringEqual(message,follower_closer_trigger)
       {
          if Send(self,@StayCloseToLeader)
          {
@@ -2047,7 +2056,7 @@ messages:
       }
 
       // Ask follower to keep min distance
-      if StringContain(message,follower_close_trigger)
+      if StringEqual(message,follower_close_trigger)
       {
          if Send(self,@StayCloseToLeader,#bMin=TRUE)
          {
@@ -2060,7 +2069,7 @@ messages:
       }
 
       // Ask follower to move farther away
-      if StringContain(message,follower_farther_trigger)
+      if StringEqual(message,follower_farther_trigger)
       {
          if Send(self,@KeepDistanceFromLeader)
          {
@@ -2075,7 +2084,7 @@ messages:
       }
 
       // Ask follower to keep max distance
-      if StringContain(message,follower_far_trigger)
+      if StringEqual(message,follower_far_trigger)
       {
          if Send(self,@KeepDistanceFromLeader,#bMax=TRUE)
          {
@@ -2086,10 +2095,10 @@ messages:
       }
 
       // Give the follower a friendly greeting!
-      if (StringContain(message,follower_hello_trigger_a)
-         OR StringContain(message,follower_hello_trigger_b)
-         OR StringContain(message,follower_hello_trigger_c)
-         OR StringContain(message,follower_hello_trigger_d))
+      if (StringEqual(message,follower_hello_trigger_a)
+         OR StringEqual(message,follower_hello_trigger_b)
+         OR StringEqual(message,follower_hello_trigger_c)
+         OR StringEqual(message,follower_hello_trigger_d))
       {
          Post(self,@GreetLeader,#bRequested=TRUE);
          Send(self,@FaceLeader);
@@ -2098,7 +2107,7 @@ messages:
       }
 
       // Ask follower for information about the environment.
-      if StringContain(message,follower_info_trigger)
+      if StringEqual(message,follower_info_trigger)
       {
          poInfo = poOwner;
          Post(self,@GiveInfo,#bRequested=TRUE);
@@ -2108,7 +2117,7 @@ messages:
       }
 
       // Ask follower to brief us on our quests.
-      if StringContain(message,follower_brief_trigger)
+      if StringEqual(message,follower_brief_trigger)
       {
          Post(self,@BriefLeader,#bRequested=TRUE);
          Send(self,@FaceLeader);
@@ -2222,15 +2231,6 @@ messages:
             Post(self,@MercenarySayToOne,#target=what,#message_rsc=follower_tips);
          }
 
-         Send(self,@FaceLeader);
-
-         return TRUE;
-      }
-
-      // Ask follower what commands he accepts
-      if StringContain(message,follower_help_trigger)
-      {
-         Post(self,@MercenarySayToOne,#target=what,#message_rsc=follower_help);
          Send(self,@FaceLeader);
 
          return TRUE;

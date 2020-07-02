@@ -7062,7 +7062,8 @@ messages:
       else if (iNum = SKID_TAUNT) OR (iNum = SKID_STUN) OR (iNum = SKID_CRIPPLE)
          OR (iNum = SKID_SNARE) OR (iNum = SKID_DAZE) OR (iNum = SKID_WEAKEN)
       {
-         Send(self,@TryAttack,#what=oTarget,#stroke_obj=self,#factor=Nth(lAction,7),#iNum=iNum);
+         Send(self,@TryAttack,#what=oTarget,#stroke_obj=self,
+               #factor=Nth(lAction,7),#iNum=iNum);
 
          if poOwner <> $
          {
@@ -7103,10 +7104,25 @@ messages:
 
          if poOwner <> $
          {
-            Send(self,@MonsterOrient,#new_row=Send(poTarget,@GetRow),
-                  #new_col=Send(poTarget,@GetCol),
-                  #new_finerow=Send(poTarget,@GetFineRow),
-                  #new_finecol=Send(poTarget,@GetFineCol),#face_target=TRUE);
+            if (poTarget = $)
+            {
+               if (oTarget <> $)
+               {
+                  Send(self,@MonsterOrient,#new_row=Send(poTarget,@GetRow),
+                        #new_col=Send(poTarget,@GetCol),
+                        #new_finerow=Send(poTarget,@GetFineRow),
+                        #new_finecol=Send(poTarget,@GetFineCol),
+                        #face_target=TRUE);
+               }
+            }
+            else
+            {
+               Send(self,@MonsterOrient,#new_row=Send(poTarget,@GetRow),
+                     #new_col=Send(poTarget,@GetCol),
+                     #new_finerow=Send(poTarget,@GetFineRow),
+                     #new_finecol=Send(poTarget,@GetFineCol),#face_target=TRUE);
+            }
+
             Send(self,@DoSpecialAttack,#iNum=iNum);
          }
       }

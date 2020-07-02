@@ -87,14 +87,16 @@ messages:
 
       foreach i in plActive
       {
-         oActive = Send(self,@HolderExtractObject,#data=i);
+         oActive = First(i);
 
          if oActive = what
+            OR IsClass(oActive,&DM)
          {
             continue;
          }
 
-         if IsClass(oActive,&User) AND NOT Send(oActive,@IsInCannotInteractMode)
+         if IsClass(oActive,&User)
+            AND NOT Send(oActive,@IsInCannotInteractMode)
          {
             propagate;
          }
@@ -123,8 +125,15 @@ messages:
       propagate;
    }
 
-   GhostTimer()
+   GhostTimer(timer = $)
    {
+      if (ptGhost <> $
+         AND (timer = $
+            OR timer <> ptGhost))
+      {
+         DeleteTimer(ptGhost);
+      }
+
       ptGhost = $;
       Send(self,@SpawnGhost);
 
@@ -137,8 +146,8 @@ messages:
 
       if ptGhost = $
       {
-         // Randomize the time by 10//
-         iTime = (GHOST_CYCLE * random(90,110)) / 100;
+         // Randomize the time by 10%
+         iTime = (GHOST_CYCLE * Random(90,110)) / 100;
          // Convert to ms (numbers get too big if you do it above)
          iTime = iTime * 1000;
          ptGhost = CreateTimer(self,@GhostTimer,iTime);
@@ -146,20 +155,21 @@ messages:
 
       foreach i in plActive
       {
-         if IsClass(Send(self,@HolderExtractObject,#data=i),&Ghost)
+         if IsClass(First(i),&Ghost)
          {
             return FALSE;
          }
       }
 
       oGhost = Create(&Ghost);
-      Send(self,@NewHold,#what=oGhost,#new_row=5,#new_col=8,#new_fine_row=0,#new_fine_col=32,#new_angle=ANGLE_SOUTH);
+      Send(self,@NewHold,#what=oGhost,#new_row=5,#new_col=8,#new_fine_row=0,
+            #new_fine_col=32,#new_angle=ANGLE_SOUTH);
 
       if pbUser_in_room
       {
          Send(self,@SomeoneSaid,#type=SAY_MESSAGE,#string=throne2_ghost_spawn,
               #what=self);
-         Send(self, @SomethingWaveRoom, #what=oGhost, 
+         Send(self, @SomethingWaveRoom, #what=oGhost,
               #wave_rsc=ghost_spawn_wav_rsc);
       }
 

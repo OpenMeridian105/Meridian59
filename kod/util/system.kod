@@ -578,7 +578,6 @@ messages:
       Send(self,@RecreateVisibleCargoTypes);
 
       Send(self,@RefigureAllAbilityTotals);
-      Send(self,@RefigureAllAbilityTotals);
       Send(self,@RecomputeShrineTotals);
       Send(self,@RecreateLearnAdvice);
 
@@ -8558,6 +8557,28 @@ messages:
       foreach i in lRooms
       {
          GodLog(First(First(i))," | ", Nth(First(i),2)," | ", Nth(First(i),3));
+      }
+
+      return;
+   }
+
+   PrintGuildHallInfo()
+   {
+      local i, oOwner;
+
+      GodLog("Hall Name | Guild Name | No. Members");
+
+      foreach i in plGuild_halls
+      {
+         oOwner = Send(i,@GetGuildOwner);
+         if (oOwner = $)
+         {
+            GodLog(Send(i,@GetName), " | $ | $");
+
+            continue;
+         }
+         GodLog(Send(i,@GetName), " | ", Send(oOwner,@GetName), " | ",
+            Send(oOwner,@GetNumMembers));
       }
 
       return;

@@ -11256,6 +11256,18 @@ messages:
          return FALSE;
       }
 
+      // Kill follower if user is teleported somewhere they can't follow.
+      if (RID = RID_UNDERWORLD
+         OR RID = RID_OOG
+         OR (RID >= RID_GUILDH_MIN
+            AND rid <= RID_GUILDH_MAX))
+      {
+         if (Send(self,@HasActiveFollower))
+         {
+            Send(poMercenary,@Killed,#bPvP=TRUE);
+         }
+      }
+
       Send(oRoom,@Teleport,#what=self,#foyer=foyer);
 
       if bAdminPort

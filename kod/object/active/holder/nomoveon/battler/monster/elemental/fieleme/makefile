@@ -5,7 +5,7 @@
 !include $(TOPDIR)\common.mak
 
 DEPEND = ..\fieleme.bof
-BOFS  = fielech.bof \
+BOFS  = fielech.bof fielechboss.bof \
 
 
 

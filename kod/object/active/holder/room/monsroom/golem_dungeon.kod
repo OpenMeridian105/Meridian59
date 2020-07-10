@@ -258,9 +258,9 @@ messages:
                           [ 7, TREASURE_OBJECT, &Truffle, 20 ],
                           [ 5, TREASURE_OBJECT, &InkyCap, 20 ],
                           [ 5, TREASURE_OBJECT, &BlueDragonScale, 20 ],
-                          [ 5, TREASURE_OBJECT, &EntrootBerry, 50 ],
-                          [ 5, TREASURE_OBJECT, &DarkAngelFeather, 20 ],
-                          [ 6, TREASURE_OBJECT, &Ruby, 35 ],
+                          [ 5, TREASURE_OBJECT, &Ruby, 50 ],
+                          [ 5, TREASURE_OBJECT, &Yrxlsap, 20 ],
+                          [ 6, TREASURE_OBJECT, &SpessartineRock, 35 ],
                           [ 3, TREASURE_OBJECT, &Money, 25000 ]
                         ];
 
@@ -444,7 +444,7 @@ messages:
 
    SomethingKilled(what = $, victim = $)
    {
-      if IsClass(victim,&FireElementalChampion)
+      if IsClass(victim,&FireElementalBoss)
       {
          Send(self,@DoEndTreasure);
          Send(poChest,@LockChest,#bLocked=FALSE);
@@ -553,9 +553,9 @@ messages:
    {
       ptBossTimer = $;
       if pbCanSpawnBoss
-         AND NOT Send(self,@CountHoldingHowMany,#class=&FireElementalChampion)
+         AND NOT Send(self,@CountHoldingHowMany,#class=&FireElementalBoss)
       {
-         Send(self,@NewHold,#what=Create(&FireElementalChampion),
+         Send(self,@NewHold,#what=Create(&FireElementalBoss),
              #new_row=84,#new_col=21);
          Send(self,@SomethingWaveRoom,
              #wave_rsc=golem_dungeon_lava_spash_sound,#what=self);
@@ -593,7 +593,7 @@ messages:
       ptMaintenance = $;
       
       if Send(self,@CountHoldingHowMany,#class=&FireElemental) 
-         OR Send(self,@CountHoldingHowMany,#class=&FireElementalChampion)
+         OR Send(self,@CountHoldingHowMany,#class=&FireElementalBoss)
       {
           ptMaintenance = CreateTimer(self,@ResetDungeon,MAINTENANCE_DELAY);
           return FALSE;

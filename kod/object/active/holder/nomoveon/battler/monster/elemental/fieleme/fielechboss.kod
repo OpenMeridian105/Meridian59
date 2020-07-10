@@ -1,0 +1,96 @@
+// Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+// All rights reserved.
+//
+// This software is distributed under a license that is described in
+// the LICENSE file that accompanies it.
+//
+// Meridian is a registered trademark.
+
+
+////////////////////////////////////////////////////////////////////////////////
+FireElementalBoss is FireElemental
+
+constants:
+
+   include blakston.khd
+
+resources:
+
+   include fielechboss.lkod
+   
+   fielem_boss_name_rsc = "Inferno"
+   fielem_boss_icon_rsc = fielemeboss.bgf
+   fielem_boss_desc_rsc = \
+      "As living embodiment of destruction unleashed, Inferno, Lord of Fire, presides "
+      "over his realm with unrivaled ferocity, granting no mercy to would-be intruders "
+      "but a quick, fiery death."
+
+   fielem_boss_dead_name_rsc = "dead Inferno"
+
+classvars:
+
+   vrName = fielem_boss_name_rsc
+   vrIcon = fielem_boss_icon_rsc
+   vrDesc = fielem_boss_desc_rsc
+   vrDead_name = fielem_boss_dead_name_rsc
+
+   vbNamedMob = TRUE
+   viIndefinite = ARTICLE_NONE
+   viDefinite = ARTICLE_NONE
+
+   viTreasure_type = TID_FIRE_ELE
+   viSpeed = SPEED_FAST
+
+   viLevel = 300
+   viDifficulty = 9
+
+   viCashmin = 3000
+   viCashmax = 12000
+
+   viBurnChance = 40
+   viBurnStrength = 4000
+   viBurnDuration = 5000
+
+   viBonusXP = 100
+   viBonusTP = 15
+
+properties:
+
+   piAnimation = ANIM_NONE
+
+messages:
+
+   Constructed()
+   {
+      plActions =  [ [SID_FIRE_STORM], [SID_FIREBALL],
+                     [SID_FLAME_WAVE,500,0,MAX_KOD_INT,0,1200,99,COMBAT_ACTION_HARM],
+                     [SID_RING_OF_FLAMES,200,0,16384,0,600,99,COMBAT_ACTION_HARM],
+                     [SID_HEAT,0,0,MAX_KOD_INT,1000,0,99,COMBAT_ACTION_NEUTRAL] ];
+   
+      plResistances = [ [-SPL_TYPE_COLD, -80 ],
+                        [-SPL_TYPE_ALL, 90 ],
+                        [ATK_TYPE_THRUST, -50],
+                        [ATK_TYPE_ALL, 60 ] ];
+
+      propagate;
+   }
+
+   SomethingMoved(what=$)
+   {
+      local oTrance, oActive, lActive, i;
+
+      if what <> self OR poOwner = $
+      {
+         propagate;
+      }
+
+      // Shake the ground when I take a step.
+      // Small chance each person might lose any active trance.
+
+      Send(poOwner,@Rumble,#duration=250,#disruption=50);
+      
+      propagate;
+   }
+
+end
+////////////////////////////////////////////////////////////////////////////////

@@ -314,7 +314,7 @@ Bool DeleteTimer(int timer_id)
       return true;
    }
 
-   eprintf("DeleteTimer can't find timer %i\n", timer_id);
+   bprintf("DeleteTimer can't find timer %i\n", timer_id);
 
 #if 0
    // list the active timers.

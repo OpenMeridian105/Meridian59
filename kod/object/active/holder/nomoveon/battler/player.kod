@@ -4738,14 +4738,14 @@ messages:
          return TRUE;
       }
 
-         // If snowballs are set to do 0 damage, bypass checks.
-         if (actual
-            AND use_weapon <> $
-            AND IsClass(use_weapon,&Snowball)
-            AND NOT Send(use_weapon,@CanDoDamage))
-         {
-            return TRUE;
-         }
+      // If snowballs are set to do 0 damage, bypass checks.
+      if (actual
+         AND use_weapon <> $
+         AND IsClass(use_weapon,&Snowball)
+         AND NOT Send(use_weapon,@CanDoDamage))
+      {
+         return TRUE;
+      }
 
       // Frenzies!  Anything goes if allowed by the room!
       if Send(SYS,@GetChaosNight)
@@ -5538,7 +5538,13 @@ messages:
       // initially, but then not again until PVP_NOTIFY_DECAY has passed
       if IsClass(what,&User)
       {
-         Send(what,@DoPvpNotify);
+         // If snowballs are set to do 0 damage, don't PVP notify.
+         if (use_weapon = $
+            OR NOT (IsClass(use_weapon,&Snowball)
+               AND NOT Send(use_weapon,@CanDoDamage)))
+         {
+            Send(what,@DoPvpNotify);
+         }
       }
 
       // Okay, checking is done, attack is okay.  Do the animation thing.

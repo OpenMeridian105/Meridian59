@@ -23,21 +23,21 @@ resources:
    loadout_rank_too_low = "You are not high enough rank to cast loadout."
    loadout_no_hall = "With no guild hall to link with, the loadout spell fails."
 
-   loadout_items_not_found = "The chests did not contain any %s."
-   loadout_items_not_enough = "The chests did not contain enough %s."
-   loadout_item_not_found = "The chests did not contain %s%s."
+   loadout_items_not_found = "Your storage did not contain any %s."
+   loadout_items_not_enough = "Your storage did not contain enough %s."
+   loadout_item_not_found = "Your storage did not contain %s%s."
    loadout_cant_carry_all = "You can't carry all the %s."
    loadout_cant_carry_one = "You can't carry %s%s."
    loadout_cant_carry_any = "You can't carry any %s."
 
-   loadout_cast = "You activate your link with your guild hall's storage."
+   loadout_cast = "You activate your link with your storage."
    loadout_not_set = "You currently have no inventory preferences set."
 
    loadout_name_rsc = "loadout"
    loadout_icon_rsc = imend.bgf
    loadout_desc_rsc = \
-      "Attempts to translocate gear and reagents from your guild hall's "
-      "storage, according to preferences previously registered with "
+      "Attempts to translocate gear and reagents from your guild hall's storage "
+      "and personal vault, according to preferences previously registered with "
       "Frular's office."
 
 classvars:
@@ -85,6 +85,7 @@ messages:
 
       oGuild = Send(who,@GetGuild);
 
+      /*
       if oGuild = $
       {
          Send(who,@MsgSendUser,#message_rsc=loadout_not_guilded);
@@ -105,6 +106,7 @@ messages:
 
          return FALSE;
       }
+      */
 
       oRoom = Send(who,@GetOwner);
       if NOT (IsClass(oRoom,&GuildHall)
@@ -128,20 +130,14 @@ messages:
    DoSpellEffects(who = $, lTargets = $)
    {
       local i, n, class, number, bFound, lLoadout_list, lInventory, school,
-            oItem, lDRobes, lLRobes, oGuild, oGuildHall, lSpellItems;
+            oItem, lDRobes, lLRobes, oGuild, oGuildHall, lSpellItems, iLeftover;
 
       Send(who,@MsgSendUser,#message_rsc=loadout_cast);
 
       oGuild = Send(who,@GetGuild);
-      if (oGuild = $)
+      if (oGuild <> $)
       {
-         return TRUE;
-      }
-
-      oGuildHall = Send(oGuild,@GetGuildHall);
-      if (oGuildHall = $)
-      {
-         return TRUE;
+         oGuildHall = Send(oGuild,@GetGuildHall);
       }
 
       lLoadout_list = Send(who,@GetLoadoutList);
@@ -180,8 +176,11 @@ messages:
          {
             if (oItem = $)
             {
-               Send(self,@GetSingleItemFromHallChest,#who=who,#class=class,
-                     #oGuildHall=oGuildHall);
+               if NOT Send(self,@GetSingleItemFromHallChest,
+                        #who=who,#class=class,#oGuildHall=oGuildHall)
+               {
+                  Send(self,@GetSingleItemFromVault,#who=who,#class=class);
+               }
             }
             else
             {
@@ -201,13 +200,25 @@ messages:
 
             if (IsClass(oItem,&SpellItem))
             {
-               Send(self,@GetSpellItemFromHallChest,#who=who,#class=class,
-                     #oGuildHall=oGuildHall,#number=number);
+               iLeftover = Send(self,@GetSpellItemFromHallChest,#who=who,
+                        #class=class,#oGuildHall=oGuildHall,#number=number);
+
+               if (iLeftover > 0) OR (iLeftover = -1)
+               {
+                  Send(self,@GetSpellItemFromVault,
+                     #who=who,#class=class,#number=iLeftover);
+               }
             }
             else
             {
-               Send(self,@GetNumberItemFromHallChest,#who=who,#class=class,
-                     #oGuildHall=oGuildHall,#number=number);
+               iLeftover = Send(self,@GetNumberItemFromHallChest,#who=who,
+                              #class=class,#oGuildHall=oGuildHall,#number=number);
+
+               if iLeftover > 0
+               {
+                  Send(self,@GetNumberItemFromVault,#who=who,
+                     #class=class,#number=iLeftover);
+               }
             }
          }
          else if (IsClass(oItem,&SpellItem))
@@ -219,8 +230,15 @@ messages:
          }
          else
          {
-            Send(self,@GetNumberItemFromHallChest,#who=who,#class=class,
-                  #oGuildHall=oGuildHall,#number=number-Send(oItem,@GetNumber));
+            iLeftover = Send(self,@GetNumberItemFromHallChest,#who=who,#class=class,
+                           #oGuildHall=oGuildHall,#number=number-Send(oItem,@GetNumber));
+
+            if iLeftover > 0
+            {
+               Send(self,@GetNumberItemFromVault,#who=who,
+                  #class=class,#number=iLeftover);
+            }
+
             // Remove this item from inventory.
             lInventory = DelListElem(lInventory,oItem);
          }
@@ -229,7 +247,7 @@ messages:
       if (lSpellItems <> $)
       {
          Send(self,@LoadoutSpellItems,#who=who,#lList=lSpellItems,
-               #lInventory=lInventory,#oGuildHall=oGuildHall);
+                  #lInventory=lInventory,#oGuildHall=oGuildHall);
       }
 
       // Now deal with disciple robes. If lDRobes and lLRobes are both $,
@@ -273,13 +291,20 @@ messages:
       // need, so try get them from the chest.
       foreach school in lDRobes
       {
-         Send(self,@GetDiscipleRobeFromHallChest,#who=who,#oGuildHall=oGuildHall,
-               #school=school);
+         if NOT Send(self,@GetDiscipleRobeFromHallChest,
+                  #who=who,#oGuildHall=oGuildHall,#school=school)
+         {
+            Send(self,@GetDiscipleRobeFromVault,#who=who,#school=school);
+         }
       }
       foreach school in lLRobes
       {
-         Send(self,@GetDiscipleRobeFromHallChest,#who=who,#oGuildHall=oGuildHall,
-               #school=school,#class=&LightDiscipleRobe);
+         if NOT Send(self,@GetDiscipleRobeFromHallChest,#who=who,
+                  #oGuildHall=oGuildHall,#school=school,#class=&LightDiscipleRobe)
+         {
+            Send(self,@GetDiscipleRobeFromVault,
+               #who=who,#school=school,#class=&LightDiscipleRobe);
+         }
       }
 
       return TRUE;
@@ -287,7 +312,7 @@ messages:
 
    LoadoutSpellItems(who=$,lList=$,lInventory=$,oGuildHall=$)
    {
-      local bFound, class, i, j, oItem, lInvSorted, number;
+      local bFound, class, i, j, oItem, lInvSorted, number, iLeftover;
 
       // First need a sorted list of what the player has.
       foreach oItem in lInventory
@@ -315,9 +340,15 @@ messages:
             {
                if (number > Nth(j,2))
                {
-                  Send(self,@GetSpellItemFromHallChest,#who=who,#class=class,
-                        #oGuildHall=oGuildHall,#oPlayerItem=First(j),
-                        #number=number - Nth(j,2));
+                  iLeftover = Send(self,@GetSpellItemFromHallChest,
+                                 #who=who,#class=class,#oGuildHall=oGuildHall,
+                                 #oPlayerItem=First(j),#number=number - Nth(j,2));
+
+                  if (iLeftover > 0) OR (iLeftover = -1)
+                  {
+                     Send(self,@GetSpellItemFromVault,#who=who,#class=class,
+                        #oPlayerItem=First(j),#number=iLeftover);
+                  }
                }
                lInvSorted = DelListElem(lInvSorted,j);
                bFound = TRUE;
@@ -328,8 +359,14 @@ messages:
 
          if (NOT bFound)
          {
-            Send(self,@GetSpellItemFromHallChest,#who=who,#class=class,
-                  #oGuildHall=oGuildHall,#number=number);
+            iLeftover = Send(self,@GetSpellItemFromHallChest,#who=who,#class=class,
+                           #oGuildHall=oGuildHall,#number=number-Nth(j,2));
+
+            if iLeftover > 0
+            {
+               Send(self,@GetSpellItemFromVault,#who=who,#class=class,
+                  #oPlayerItem=First(j),#number=iLeftover);
+            }
          }
       }
 
@@ -339,7 +376,18 @@ messages:
    GetDiscipleRobeFromHallChest(who=$,oGuildHall=$,school=SS_RIIJA,
                                 class=&DiscipleRobe)
    {
-      local i, oBox, oItem, bFound;
+      local i, oBox, oItem, bFound, oGuild;
+
+      if (oGuildHall = $)
+      {
+         return FALSE;
+      }
+
+      oGuild = Send(oGuildHall,@GetGuildOwner);
+      if Send(oGuild,@GetRank,#who=who) = RANK_APPRENTICE
+      {
+         return FALSE;
+      }
 
       bFound = FALSE;
 
@@ -373,26 +421,25 @@ messages:
          }
       }
 
-      if NOT bFound
-      {
-         // Get item template for message.
-         oItem = Send(SYS,@FindTemplateItemByClass,#cClass=class);
-         if (oItem <> $)
-         {
-            Send(who,@MsgSendUser,#message_rsc=loadout_item_not_found,
-                  #parm1=Send(oItem,@GetIndef),
-                  #parm2=Send(oItem,@GetTrueName));
-         }
-      }
-
-      return FALSE;
+      return bFound;
    }
 
    GetSingleItemFromHallChest(who=$,oGuildHall=$,class=&Item)
    {
-      local i, oItem, oBox, bFound;
+      local i, oItem, oBox, bFound, oGuild;
 
       bFound = FALSE;
+
+      if (oGuildHall = $)
+      {
+         return FALSE;
+      }
+
+      oGuild = Send(oGuildHall,@GetGuildOwner);
+      if Send(oGuild,@GetRank,#who=who) = RANK_APPRENTICE
+      {
+         return FALSE;
+      }
 
       foreach i in Send(oGuildHall,@GetHolderActive)
       {
@@ -423,6 +470,35 @@ messages:
          }
       }
 
+      return bFound;
+   }
+
+   GetSingleItemFromVault(who=$,class=&Item)
+   {
+      local i, oItem, oBox, bFound;
+
+      bFound = FALSE;
+      oItem = GetListElemByClass(Send(self,@GetVaultItems,#who=who),class);
+
+      if (oItem <> $)
+      {
+         bFound = TRUE;
+         if Send(who,@ReqNewHold,#what=oItem)
+         {
+            Send(who,@NewHold,#what=oItem);
+
+            return TRUE;
+         }
+         else
+         {
+            Send(who,@MsgSendUser,#message_rsc=loadout_cant_carry_one,
+                     #parm1=Send(oItem,@GetIndef),
+                     #parm2=Send(oItem,@GetTrueName));
+
+            return FALSE;
+         }
+      }
+
       if NOT bFound
       {
          // Get item template for message.
@@ -439,13 +515,25 @@ messages:
    }
 
    GetNumberItemFromHallChest(who=$,oGuildHall=$,class=&Item,number=-1)
+   "Returns leftover number of items."
    {
       local i, oBox, oItem, bFound, iCanHold, iNumInChest, iGetNumber,
-            bSentErrorMsg;
+            bSentErrorMsg, oGuild;
+
+      if (oGuildHall = $)
+      {
+         return number;
+      }
+
+      oGuild = Send(oGuildHall,@GetGuildOwner);
+      if Send(oGuild,@GetRank,#who=who) = RANK_APPRENTICE
+      {
+         return number;
+      }
 
       if number < 1
       {
-         return;
+         return number;
       }
 
       bFound = FALSE;
@@ -492,7 +580,7 @@ messages:
                           #parm1=Send(oItem,@GetPluralName));
                      bSentErrorMsg = TRUE;
                   }
-                  return;
+                  return number;
                }
                iGetNumber = iCanHold;
             }
@@ -507,9 +595,78 @@ messages:
                number = number - iGetNumber;
                if number < 1
                {
-                  return;
+                  return 0;
                }
             }
+         }
+      }
+
+      return number;
+   }
+
+   GetNumberItemFromVault(who=$,class=&Item,number=-1)
+   {
+      local i, oBox, oItem, bFound, iCanHold, iNumInChest, iGetNumber,
+            bSentErrorMsg;
+
+      if number < 1
+      {
+         return;
+      }
+
+      bFound = FALSE;
+      bSentErrorMsg = FALSE;
+      iGetNumber = number;
+
+      oItem = GetListElemByClass(Send(self,@GetVaultItems,#who=who), class);
+      if (oItem <> $)
+      {
+         bFound = TRUE;
+         iCanHold = Send(who,@GetNumberCanHold,#what=oItem);
+         iNumInChest = Send(oItem,@GetNumber);
+
+         if iGetNumber > iNumInChest
+         {
+               iGetNumber = iNumInChest;
+         }
+
+         if iCanhold <> $
+               AND iGetNumber > iCanHold
+         {
+            if iCanHold > 0
+            {
+               if NOT bSentErrorMsg
+               {
+                  Send(who,@MsgSendUser,#message_rsc=loadout_cant_carry_all,
+                     #parm1=Send(oItem,@GetPluralName));
+                  bSentErrorMsg = TRUE;
+               }
+            }
+            else
+            {
+               if NOT bSentErrorMsg
+               {
+                  Send(who,@MsgSendUser,#message_rsc=loadout_cant_carry_any,
+                     #parm1=Send(oItem,@GetPluralName));
+                  bSentErrorMsg = TRUE;
+               }
+                  return;
+               }
+               iGetNumber = iCanHold;
+         }
+
+         if iGetNumber > 0
+         {
+               if (iGetNumber <> iNumInChest)
+               {
+                  oItem = Send(oItem,@Split,#number=iGetNumber);
+               }
+               Send(who,@NewHold,#what=oItem);
+               number = number - iGetNumber;
+               if number < 1
+               {
+                  return;
+               }
          }
       }
 
@@ -539,13 +696,25 @@ messages:
 
    GetSpellItemFromHallChest(who=$,oGuildHall=$,class=&Item,number=-1,
                              oPlayerItem=$)
+   "Returns leftover number of items."
    {
       local i, oBox, oItem, bFound, iCanHold, iNumHits, iGetNumber,
-            bSentErrorMsg;
+            bSentErrorMsg, oGuild;
+
+      if (oGuildHall = $)
+      {
+         return number;
+      }
+
+      oGuild = Send(oGuildHall,@GetGuildOwner);
+      if Send(oGuild,@GetRank,#who=who) = RANK_APPRENTICE
+      {
+         return number;
+      }
 
       if number < 1
       {
-         return;
+         return number;
       }
 
       bFound = FALSE;
@@ -593,7 +762,7 @@ messages:
                         bSentErrorMsg = TRUE;
                      }
 
-                     return;
+                     return number;
                   }
                   iGetNumber = iCanHold;
                }
@@ -617,12 +786,96 @@ messages:
                   number = number - iGetNumber;
                   if (number < 1)
                   {
-                     return;
+                     return 0;
                   }
                }
                oItem = GetListElemByClass(Send(oBox,@GetHolderPassive),class);
             }
          }
+      }
+
+      return number;
+   }
+
+   GetSpellItemFromVault(who=$,oGuildHall=$,class=&Item,number=-1,
+                             oPlayerItem=$)
+   {
+      local i, oBox, oItem, bFound, iCanHold, iNumHits, iGetNumber,
+            bSentErrorMsg;
+
+      if number < 1
+      {
+         return;
+      }
+
+      bFound = FALSE;
+      bSentErrorMsg = FALSE;
+
+      oItem = GetListElemByClass(Send(self,@GetVaultItems,#who=who),class);
+
+      // We either use up all the items and move to next box, or we
+      // get what we need and return.
+      while (oItem <> $)
+      {
+        iGetNumber = number;
+        iCanHold = Send(who,@GetNumberCanHold,#what=oItem);
+        iNumHits = Send(oItem,@GetHits);
+        bFound = TRUE;
+
+        if iGetNumber > iNumHits
+        {
+            iGetNumber = iNumHits;
+        }
+
+        if iCanhold <> $
+            AND iGetNumber > iCanHold
+        {
+            if iCanHold > 0
+            {
+                if NOT bSentErrorMsg
+                {
+                Send(who,@MsgSendUser,#message_rsc=loadout_cant_carry_all,
+                        #parm1=Send(oItem,@GetTrueName));
+                bSentErrorMsg = TRUE;
+                }
+            }
+            else
+            {
+                if NOT bSentErrorMsg
+                {
+                Send(who,@MsgSendUser,#message_rsc=loadout_cant_carry_any,
+                        #parm1=Send(oItem,@GetTrueName));
+                bSentErrorMsg = TRUE;
+                }
+
+                return;
+            }
+            iGetNumber = iCanHold;
+        }
+
+        if iGetNumber > 0
+        {
+            if (iGetNumber <> iNumHits)
+            {
+                oItem = Send(oItem,@Split,#number=iGetNumber);
+            }
+
+            if (oPlayerItem <> $)
+            {
+                Send(oPlayerItem,@CombineSpellItems,#what=oItem);
+            }
+            else
+            {
+                Send(who,@NewHold,#what=oItem,#check_combine=FALSE);
+                oPlayerItem = oItem;
+            }
+            number = number - iGetNumber;
+            if (number < 1)
+            {
+                return;
+            }
+        }
+        oItem = GetListElemByClass(Send(who,@GetVaultItems,#who=who),class);
       }
 
       if NOT bFound
@@ -661,6 +914,69 @@ messages:
       }
 
       return;
+   }
+
+   GetVaultItems(who=$)
+   {
+      local oRoom, oVault;
+
+      oRoom = Send(who,@GetOwner);
+      if oRoom = $
+         OR Send(oRoom,@GetRegion) <> RID_KOCATAN
+      {
+         oVault = Send(SYS,@FindVaultByNum,#num=VID_BARLOQUE);
+      }
+      else
+      {
+         oVault = Send(SYS,@FindVaultByNum,#num=VID_KOCATAN);
+      }
+
+      return Send(oVault,@GetItemsStored,#who=who);
+   }
+
+   GetDiscipleRobeFromVault(who=$,school=SS_RIIJA,class=&DiscipleRobe)
+   {
+      local i, oBox, oItem, bFound;
+
+      bFound = FALSE;
+
+      oItem = GetListElemByClass(Send(self,@GetVaultItems,#who=who),class);
+      if (oItem <> $)
+      {
+            if (GetClass(oItem) = class
+                AND Send(oItem,@GetSchool) = school)
+            {
+                bFound = TRUE;
+                if Send(who,@ReqNewHold,#what=oItem)
+                {
+                    Send(who,@NewHold,#what=oItem);
+
+                    return TRUE;
+                }
+                else
+                {
+                    Send(who,@MsgSendUser,#message_rsc=loadout_cant_carry_one,
+                        #parm1=Send(oItem,@GetIndef),
+                        #parm2=Send(oItem,@GetTrueName));
+
+                    return FALSE;
+                }
+            }
+      }
+
+      if NOT bFound
+      {
+         // Get item template for message.
+         oItem = Send(SYS,@FindTemplateItemByClass,#cClass=class);
+         if (oItem <> $)
+         {
+            Send(who,@MsgSendUser,#message_rsc=loadout_item_not_found,
+                  #parm1=Send(oItem,@GetIndef),
+                  #parm2=Send(oItem,@GetTrueName));
+         }
+      }
+
+      return FALSE;
    }
 
 end

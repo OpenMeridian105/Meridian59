@@ -1095,6 +1095,21 @@ messages:
       return;
    }
 
+   SomethingAttacked(what = $,victim = $,use_weapon = $)
+   "Something in the room has been attacked. We might want to respond"
+   "by defending ourselves or our allies."
+   {
+      // Completely ignore snowball fights.
+      if (use_weapon <> $
+         AND IsClass(use_weapon,&Snowball)
+         AND NOT Send(use_weapon,@CanDoDamage))
+      {
+         return;
+      }
+
+      propagate;
+   }
+
    SomethingEntered(what = $,where=$)
    {
       if what = poLeader

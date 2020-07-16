@@ -1717,6 +1717,15 @@ messages:
    {
       if poTarget <> target AND vrSound_aware <> $
       {
+         // Log a debug message for $ owner to help find out where these
+         // monsters are getting engaged with a target and no owner.
+         // Also don't obscure the error by doing a $ check before the
+         // SomethingWaveRoom call.
+         if (poOwner = $ AND poTarget <> $)
+         {
+            Debug("Monster ", vrName, " has $ owner with target ",
+               Send(poTarget,@GetTrueName));
+         }
          Send(poOwner,@SomethingWaveRoom,#what=self,#wave_rsc=vrSound_aware,
               #flags=SOUND_RANDOM_PITCH);
       }
@@ -2300,6 +2309,15 @@ messages:
       // Victim phased out or is now in spectator mode, break aggro.
       if IsClass(poTarget,&User)
          AND Send(poTarget,@IsInCannotInteractMode)
+      {
+         Send(self,@EnterStateMove);
+
+         return;
+      }
+
+      // Target is a monster but now has NPC flag.
+      if (IsClass(poTarget,&Monster)
+         AND (Send(poTarget,@GetBehavior) & AI_NPC))
       {
          Send(self,@EnterStateMove);
 
@@ -10024,6 +10042,13 @@ messages:
             OR (oHurter = self)
             OR (NOT IsClass(oHurter,&Battler))
             OR (Send(oHurter,@GetOwner) = $)
+         {
+            continue;
+         }
+
+         // Special case monsters that gain the AI_NPC flag.
+         if (IsClass(oHurter,&Monster)
+            AND (Send(oHurter,@GetBehavior) & AI_NPC))
          {
             continue;
          }

@@ -14,6 +14,14 @@ constants:
 
    include blakston.khd
 
+   SEC_OFFERING = 10
+
+   // How long is the until we reset a completed puzzle?  6 hours, in milliseconds.
+   PUZZLE_RESTART_TIME = 6 * 3600000
+
+   // A small delay efore the next item is shown, in milliseconds.
+   NEXT_ITEM_DELAY = 5000
+
 resources:
 
    include berg8.lkod
@@ -21,6 +29,15 @@ resources:
    room_berg8 = berg8.roo
    room_name_berg8 = "Northern Kardde's Pass"
    berg8_music = walkberg.ogg
+
+   berg8_new_item_appears_rsc = "The air shimmers and a ghostly image appears."
+   berg8_drop_correct_item_rsc = \
+      "The air crackles with energy and the %s disappears."
+   berg8_drop_incorrect_item_rsc = "You drop the %s and nothing happens."
+
+   berg8_SpinebeastBoss = "~B~k[Event]~n ~B~v A legendary behemoth spinebeast "
+      "has been spotted near Northen Kardde.  The council calls the of aid "
+      "adventurers to defend themselves against this gigantic beast."
 
 classvars:
 
@@ -46,14 +63,59 @@ properties:
 
    pbSnowGroundTexture = TRUE
 
-   piGen_percent = 70
+   piGen_percent = 100
 
    piInit_count_min = 3
    piInit_count_max = 4
 
    piMonster_count_max = 6
 
+   plPuzzleItems = $
+   plHardPuzzleItems = $
+
+   piItemNumber  = $
+   poItemNeeded = $
+   poGhostitem = $
+
+   // Time the user has to get each item in one hour units.  Admin adjustable.
+   piResetHours = 6
+
+   // Number of items users must bring.  the last is the hard item.
+   piSteps = 5
+
+   ptInitPuzzleTimer = $
+   ptSetNextItemTimer = $
+
 messages:
+
+   Constructed()
+   {
+      plMonsters = [ [&SpinebeastSmall, 60], [&Bandit, 40] ];
+
+      // Use Random Spawn
+      // plGenerators = [ [8, 13], [20, 4], [27, 11], [22, 24], [16, 36], [26, 54] ];
+
+      plPuzzleItems = [ &Lantern,
+                        &DyeBottle,
+                        &TowerShield,
+                        &ThornedCirclet,
+                        &RubiciteArmor,
+                        &MultishotBow,
+                        &BoonBerry,
+                        &AvarShamanFeather,
+                        &ShrunkenHead,
+                        &OrcPitBossHead,
+                        &Chalice,
+                        &CookingRecipe ];
+
+      plHardPuzzleItems = [ &IceSword,
+                            &FireSword,
+                            &LightningSword ];
+
+      Post(self,@InitPuzzle);
+
+      propagate;
+   }
 
    CreateStandardExits()
    {
@@ -66,16 +128,6 @@ messages:
       plEdge_Exits = Cons([ LEAVE_NORTH, RID_SURVIVAL_ARENA, 60, 43, ROTATE_NONE, COL_IS_GREATER_THAN,32], plEdge_exits);
 
       plEdge_Exits = Cons([ LEAVE_EAST, RID_BANDIT_CAMP, 23, 3, ROTATE_NONE ], plEdge_exits);
-
-      propagate;
-   }
-
-   Constructed()
-   {
-      plMonsters = [ [&SpinebeastSmall, 60], [&Bandit, 40] ];
-
-      // Use Random Spawn
-      // plGenerators = [ [8, 13], [20, 4], [27, 11], [22, 24], [16, 36], [26, 54] ];
 
       propagate;
    }
@@ -118,6 +170,243 @@ messages:
       // Plant Soil
       Send(self,@NewHold,#what=Create(&PlantSoil), 
          #new_row=29,#new_col=21,#fine_row=32,#fine_col=32,#angle=ANGLE_EAST);
+
+      Send(self,@NewHold,#what=Create(&SmokeColumn),#new_row=19,#new_col=14,
+            #fine_row=32,#fine_col=0);
+
+      propagate;
+   }
+
+   InitPuzzleTimer()
+   {
+      ptInitPuzzleTimer = $;
+      Send(self,@InitPuzzle);
+
+      return;
+   }
+
+   InitPuzzle()
+   {
+      piItemNumber = 0;
+      Send(self,@DeleteObjects);
+      Send(self,@DeleteTimers);
+      Send(self,@GotItem);
+
+      return;
+   }
+
+
+   GetItemNeededClass()
+   {
+      local cItemNeeded, iItem, iRand;
+
+      cItemNeeded = Nth(plPuzzleItems,Random(1,length(plPuzzleItems)));
+
+      return cItemNeeded;
+   }
+
+   GetHardItemNeededClass()
+   {
+      // List of really pain in the ass items.
+      local cItemNeeded;
+
+      cItemNeeded = Nth(plHardPuzzleItems,Random(1,length(plHardPuzzleItems)));
+
+      return cItemNeeded;
+   }
+
+   NewHoldObject(what=$, new_pos=$)
+   {
+      local iSectorID;
+
+      if (what = $
+         OR new_pos = $
+         OR NOT IsClass(what,&Item))
+      {
+         propagate;
+      }
+
+      iSectorID = Send(self,@GetSectorIDAtLocation,#row=Nth(new_pos,2),
+                        #col=Nth(new_pos,3),#fine_row=Nth(new_pos,4),
+                        #fine_col=Nth(new_pos,5));
+
+      Post(self,@ItemSectorCheck,#what=what,#iSectorID=iSectorID);
+
+      propagate;
+   }
+
+   ItemSectorCheck(what=$,iSectorID=0)
+   {
+
+      if (what = $) OR NOT IsClass(what,&Item)
+      {
+         return;
+      }
+      else if iSectorID = SEC_OFFERING
+      {
+         if IsClass(what,GetClass(poItemNeeded))
+         {
+            Send(self,@GotItem);
+            Send(what,@Delete);
+            Send(self,@SomeoneSaid,#type=SAY_MESSAGE,#what=self,
+                  #string=berg8_drop_correct_item_rsc,#parm1=Send(what,@GetName));
+         }
+         else
+         {
+            Send(what,@Delete);
+            Send(self,@SomeoneSaid,#type=SAY_MESSAGE,#what=self,
+                  #string=berg8_drop_incorrect_item_rsc,
+                  #parm1=Send(what,@GetName));
+         }
+      }
+
+      return;
+   }
+
+   GotItem()
+   {
+      piItemNumber = piItemNumber + 1;
+      if poGhostItem <> $
+      {
+         Post(poGhostitem,@Delete);
+      }
+
+      if ptInitPuzzleTimer = $
+      {
+         ptInitPuzzleTimer = CreateTimer(self,@InitPuzzleTimer,
+                                         (piResetHours*HOUR*1000));
+      }
+      else
+      {
+         DeleteTimer(ptInitPuzzleTimer);
+         ptInitPuzzleTimer = CreateTimer(self,@InitPuzzleTimer,
+                                         (piResetHours*HOUR*1000));
+      }
+
+      if piItemNumber = piSteps + 1
+      {
+         ptSetNextItemTimer = CreateTimer(self,@SpinebeastEventTimer,
+                                          NEXT_ITEM_DELAY);
+
+         return;
+      }
+
+      ptSetNextItemTimer = CreateTimer(self,@SetNextItemTimer,
+                                       NEXT_ITEM_DELAY);
+
+      return;
+   }
+
+   SetNextItemTimer()
+   {
+      Send(self,@SomeoneSaid,#type=SAY_MESSAGE,#what=self,
+            #string=berg8_new_item_appears_rsc);
+      ptSetNextItemTimer = $;
+      Send(self,@SetNextItem);
+
+      return;
+   }
+
+   SetNextItem()
+   {
+      if poItemNeeded <> $
+      {
+         Send(poItemNeeded,@delete);
+         poItemNeeded = $;
+      }
+
+      if piItemNumber = piSteps
+      {
+         poItemNeeded = Create(Send(self,@GetHardItemNeededClass));
+      }
+      else
+      {
+         poItemNeeded = Create(Send(self,@GetItemNeededClass));
+      }
+
+      Send(self,@PlaceNextItem);
+
+      return;
+   }
+
+   PlaceNextItem()
+   {
+      poGhostItem = Create(&GhostItem,#obj=poItemNeeded);
+      Send(self,@NewHold,#what=poGhostitem,#new_row=19,#new_col=14,
+            #fine_row=32,#fine_col=0);
+
+      return;
+   }
+
+   SpinebeastEventTimer()
+   {
+      ptSetNextItemTimer = $;
+      Send(self,@StartSpinebeastEvent);
+
+      return;
+   }
+
+   StartSpinebeastEvent()
+   {
+
+      if ptInitPuzzleTimer = $
+      {
+         ptInitPuzzleTimer = CreateTimer(self,@InitPuzzleTimer,
+                                         PUZZLE_RESTART_TIME);
+      }
+      else
+      {
+         DeleteTimer(ptInitPuzzleTimer);
+         ptInitPuzzleTimer = CreateTimer(self,@InitPuzzleTimer,
+                                         PUZZLE_RESTART_TIME);  
+      }
+
+      Send(self,@Rumble);
+      Send(self,@NewHold,#what=Create(&SpinebeastBoss),#new_row=21,#new_col=48);
+      Send(SYS,@SystemBroadcast,#what=$,#type=SAY_MESSAGE,
+           #string=berg8_SpinebeastBoss);
+
+      return;
+   }
+
+   DeleteObjects()
+   {
+      if poItemNeeded <> $
+      {
+         Send(poItemNeeded,@Delete);
+         poItemNeeded = $;
+      }
+
+      if poGhostItem <> $
+      {
+         Send(poGhostItem,@Delete);
+         poGhostItem = $;
+      }
+
+      return;
+   }
+
+   DeleteTimers()
+   {
+      if ptInitPuzzleTimer <> $
+      {
+         DeleteTimer(ptInitPuzzleTimer);
+         ptInitPuzzleTimer = $;
+      }
+
+      if ptSetNextItemTimer <> $
+      {
+         DeleteTimer(ptSetNextItemTimer);
+         ptSetNextItemTimer = $;
+      }
+
+      return;
+   }
+
+   Delete()
+   {
+      Send(self,@DeleteObjects);
+      Send(self,@DeleteTimers);
 
       propagate;
    }

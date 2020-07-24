@@ -1,0 +1,320 @@
+// Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+// All rights reserved.
+//
+// This software is distributed under a license that is described in
+// the LICENSE file that accompanies it.
+//
+// Meridian is a registered trademark.
+
+
+////////////////////////////////////////////////////////////////////////////////
+SpinebeastBoss is Monster
+
+constants:
+
+   include blakston.khd
+
+   ANIM_GORE = 2
+
+   FRAME_STAND = 1
+   FRAME_WALK_START = 2
+   FRAME_WALK_END = 12
+   FRAME_ATTACK_START = 13
+   FRAME_ATTACK_END = 19
+   FRAME_GORE_START = 20
+   FRAME_GORE_END = 26
+
+resources:
+
+   include spinebeastboss.lkod
+
+   SpinebeastBoss_koc_name_rsc = "gikokimakao"
+   SpinebeastBoss_name_rsc = "spinebeast behemoth"
+   SpinebeastBoss_icon_rsc = spinebeastbehemoth.bgf
+   SpinebeastBoss_desc_rsc = \
+    "The fabled spinebeast behemoth is a rare and terrifying sight indeed.  "
+    "Hulking at a height of over fifteen feet, few have seen the beast up close "
+    "and even fewer have lived to tell the tale.  A heavily armored beast of spikes "
+    "and plating, the spinebeast behemoth is the natural and uncontested ruler over "
+    "its territory and more than ready to tear apart anyone who would dare to "
+    "challenge this fact.  Obvious to anyone, it would be utter suicide to try and "
+    "take on such an enormous foe on one's own."
+
+   SpinebeastBoss_spawn = \
+      "The behemoth spinebeast rears up on its hind legs, and a child spinebeast "
+      "suddenly pops into existence!"
+
+   spinebeast_behemoth_dead_icon_rsc = spinebeast_behemothX.bgf
+   spinebeast_behemoth_dead_name_rsc = "dead spinebeast behemoth"
+   SpinebeastBoss_dead_icon_rsc = SpinebeastBossX.bgf
+   SpinebeastBoss_dead_name_rsc = "dead SpinebeastBoss"
+
+   SpinebeastBoss_sound_hit = yti_atkh.ogg
+   SpinebeastBoss_sound_miss = yti_atkm.ogg
+   SpinebeastBoss_sound_death = yti_dth.ogg
+   SpinebeastBoss_sound_aware = yti_awr.ogg
+
+classvars:
+
+   vrKocName = SpinebeastBoss_koc_name_rsc
+   vrName = SpinebeastBoss_name_rsc
+   vrIcon = SpinebeastBoss_icon_rsc
+   vrDesc = SpinebeastBoss_desc_rsc
+   vrDead_icon = SpinebeastBoss_dead_icon_rsc
+   vrDead_name = SpinebeastBoss_dead_name_rsc
+
+   viTreasure_type = TID_SPINEBEAST_BOSS
+   viSpeed = SPEED_FAST
+   viAttack_type = ATK_TYPE_THRUST
+   viDefault_behavior = AI_FIGHT_AGGRESSIVE  | AI_FIGHT_HYPERAGGRESSIVE
+   viLevel = 250
+   viDifficulty = 9
+   viVisionDistance = 30
+   viMeleeRange = 192
+   viKarma = 0   
+   viCashmin = 5000
+   viCashmax = 10000
+   vrSound_hit = SpinebeastBoss_sound_hit
+   vrSound_miss = SpinebeastBoss_sound_miss
+   vrSound_aware = SpinebeastBoss_sound_aware
+   vrSound_death = SpinebeastBoss_sound_death
+
+   vrSpawnChild = SpinebeastBoss_spawn
+
+   viBleedChance = 50
+   viBleedStrength = 5000
+   viBleedDuration = 10000
+
+   viFatigueChance = 20
+   viFatigueStrength = 2000
+   viFatigueDuration = 10000
+
+   viBonusHealth = 200
+   viBonusVigor = 500
+   viBonusArmor = 4
+
+   viBonusMight = 50
+   viBonusStamina = 50
+
+   vbCanSiphon = FALSE
+   vbCanSeduce = FALSE
+
+   viMaxChildSpawns = 20
+
+properties:
+
+   piAnimation = ANIM_NONE
+
+   ptSpawnSpinebeast = $
+   piSpawnChildTime = 10000
+
+messages:
+
+   Constructed()
+   {
+      plResistances = [ [-SPL_TYPE_COLD, 90],
+                        [-SPL_TYPE_SHOCK, 90],
+                        [-SPL_TYPE_ACID, 10 ],
+                        [-SPL_TYPE_FIRE, 10 ],
+                        [ATK_TYPE_SLASH, 55 ],
+                        [ATK_TYPE_NERUDITE, 25 ],
+                        [ATK_TYPE_PIERCE, 70 ],
+                        [ATK_TYPE_THRUST, 70 ],
+                        [ATK_TYPE_BLUDGEON, 30 ] ];
+
+      plReputationEnemies = [REP_UNDEAD];
+
+      ptSpawnSpinebeast = CreateTimer(self,@SpawnSpinebeast,piSpawnChildTime);
+
+      propagate;
+   }
+
+   Delete()
+   {
+      if ptSpawnSpinebeast <> $
+      {
+         DeleteTimer(ptSpawnSpinebeast);
+      }
+      ptSpawnSpinebeast = $;
+
+      propagate;
+   }
+
+   SpawnSpinebeast()
+   {
+      local oBunny, oObject, i, bValid_location, iTries, iRow, iCol,
+            iRow_sign, iCol_sign;
+
+      ptSpawnSpinebeast = $;
+
+      if poOwner <> $
+         AND Send(poOwner,@IsUserInRoom)
+         AND Send(poOwner,@CountHoldingHowMany,#class=&Spinebeast)
+            < viMaxChildSpawns
+      {
+         iTries = 0;
+         bValid_location = FALSE;
+
+         // Try 7 times
+         while NOT bValid_location
+            AND iTries < 7
+         {
+            iTries = iTries + 1;
+            if Random(1,2) = 1
+            {
+               iRow_sign= -1;
+            }
+            else
+            {
+               iRow_sign= 1;
+            }
+
+            if Random(1,2) = 1
+            {
+               iCol_sign= -1;
+            }
+            else
+            {
+               iCol_sign= 1;
+            }
+
+            iRow = piRow + iRow_sign*Random(1,3);
+            iCol = piCol + iCol_sign*Random(1,3);
+
+            if iRow >= 1
+               AND iRow <= Send(poOwner,@GetRoomRows)
+               AND iCol >= 1
+               AND iCol <= Send(poOwner,@GetRoomCols)
+            {
+               bValid_location = TRUE;
+            }
+         }
+
+         if bValid_location
+         {
+            oBunny = Create(&Spinebeast);
+            Send(poOwner,@NewHold,#what=oBunny,#new_row=iRow,#new_col=iCol);
+            if poTarget <> $
+               AND IsClass(poTarget,&Player)
+            {
+               Post(oBunny,@TargetSwitch,#what=poTarget,#iHatred=100);
+               Post(oBunny,@EnterStateEngage,#target=poTarget,#actnow=True);
+            }
+
+            // Do an attack animation.
+            Send(self,@DoMeleeAnimation);
+
+            foreach i in Send(poOwner,@GetHolderActive)
+            {
+               oObject = Send(poOwner,@HolderExtractObject,#data=i);
+               if IsClass(oObject,&Player)
+               {
+                  //Send(oObject,@MsgSendUser,#message_rsc=vrSpawnChild);
+               }
+            }
+         }
+      }
+
+      ptSpawnSpinebeast = CreateTimer(self,@SpawnSpinebeast,piSpawnChildTime);
+
+      return;
+   }
+
+   SendLookAnimation()
+   {
+      AddPacket(1,ANIMATE_CYCLE, 4,100,2,FRAME_WALK_START,2,FRAME_WALK_END);
+
+      return;
+   }
+
+   SendMoveAnimation()
+   {
+      AddPacket(1,ANIMATE_CYCLE,4,100,2,FRAME_WALK_START,2,FRAME_WALK_END);
+
+      return;
+   }
+
+   DoMeleeAnimation(what = $)
+   {
+      if NOT Random(0,2)
+      {
+         piAnimation = ANIM_GORE;
+      }
+      else
+      {
+         piAnimation = ANIM_ATTACK;
+      }
+
+      Send(poOwner,@SomethingChanged,#what=self);
+
+      piAnimation = ANIM_NONE;
+
+      return;
+   }
+
+   SendAnimation()
+   {
+      if piAnimation = ANIM_ATTACK
+      {
+         AddPacket(1,ANIMATE_ONCE,4,100,2,FRAME_ATTACK_START,2,
+                   FRAME_ATTACK_END,2,FRAME_STAND);
+
+         return;
+      }
+
+      if piAnimation = ANIM_GORE
+      {
+         AddPacket(1,ANIMATE_ONCE,4,125,2,FRAME_GORE_START,2,
+                   FRAME_GORE_END,2,FRAME_STAND);
+
+         return;
+      }
+
+      propagate;
+   }
+
+   // SpinebeastBosss are quite fast on their feet, but that shouldn't translate to
+   // equally fast attacks...
+   GetAttackTime()
+   {
+      return MOB_ATTACK_TIMER_WAIT + Random(500,1000);
+   }
+
+   DestroyDisposable()
+   {
+      return;
+   }
+
+   CanMorphTo()
+   {
+      return FALSE;
+   }
+
+   IsAlliedClass(what=$)
+   {
+      if IsClass(what,&SpinebeastBoss) OR
+         IsClass(what,&SpinebeastBossSmall)
+      {
+         return TRUE;
+      }
+
+      propagate;
+   }
+
+   IsEnemy(what=$)
+   {
+      if IsClass(what,&Nyrphling)
+      {
+         return TRUE;
+      }
+
+      propagate;
+   }
+
+   IsExpansionMonster()
+   {
+      return TRUE;
+   }
+
+end
+////////////////////////////////////////////////////////////////////////////////

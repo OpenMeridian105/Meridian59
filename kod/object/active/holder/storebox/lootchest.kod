@@ -1,0 +1,169 @@
+// Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+// All rights reserved.
+//
+// This software is distributed under a license that is described in
+// the LICENSE file that accompanies it.
+//
+// Meridian is a registered trademark.
+
+
+////////////////////////////////////////////////////////////////////////////////
+LootChest is StorageBox
+
+constants:
+
+   include blakston.khd
+
+resources:
+
+   //include LootChest.lkod
+
+   LootChest_name_rsc = "metal box"
+   LootChest_icon_rsc = box3.bgf
+
+   LootChest_desc_rsc = \
+      "This metal box is sturdy and well built.  On the front there appears "
+      "to be a keyhole."
+
+   LootChest_key_disappears = "Your key disappears into thin air!"
+   LootChest_locked = \
+      "This chest appears to be firmed locked."
+
+   LootChest_sound_rsc = kblow3.ogg
+   LootChest_lock_sound_rsc = doorlck.ogg
+
+classvars:
+   vrName = LootChest_name_rsc
+   vrIcon = LootChest_icon_rsc
+   vrDesc = LootChest_desc_rsc
+
+   viBulk_hold_max = 5000
+   viWeight_hold_max = $
+
+   viMaxNumTreasure = 20
+
+   // Reset after 10 minutes
+   viReset_time = 600000
+
+properties:
+
+   pbLocked = FALSE
+   ptReset_timer = $
+
+messages:
+
+   Constructor()
+   {
+      Send(self,@ResetLootChest);
+
+      propagate;
+   }
+
+   GenerateLootTreasure()
+   {
+      local lLootList, oObject, iMin, iMax;
+
+      // tbd
+      lLootList = [ &SpessartineRock,
+                    &FreeActionPotion,
+                    &BlueDragonScale,
+                    &Gauntlet,
+                    &Ruby,
+                    &WarHelm ];
+
+      iMin = 0;
+      iMax = Random(1,viMaxNumTreasure);
+
+      while (iMin < iMax)
+      {
+         oObject = Create(Nth(lLootList, Random(1, Length(lLootList))));
+         Send(self,@NewHold,#what=oObject);
+         iMin++;
+      }
+
+      return;
+   }
+
+   LockChest(bLocked=$)
+   {
+      pbLocked = bLocked;
+
+      if pbLocked
+      {
+         viObject_Flags &= ~OF_CONTAINER;
+         viObject_Flags |= OF_ACTIVATABLE;
+      }
+      else
+      {
+         viObject_Flags |= OF_CONTAINER;
+         viObject_Flags &= ~OF_ACTIVATABLE;
+
+         // Lock the chest again after a given amount of time.
+         ptReset_timer = CreateTimer(self,@ResetLootChest,viReset_time);
+      }
+
+      // Might have different graphic for locked - don't just send flags.
+      Send(poOwner,@SomethingChanged,#what=self);
+
+      return;
+   }
+
+   ResetLootChest()
+   {
+      ptReset_timer = $;
+
+      Send(self,@GenerateLootTreasure);
+      Send(self,@LockChest,#bLocked=TRUE);
+
+      return;
+   }
+
+   TryActivate(who=$)
+   {
+      local oKey;
+
+      if (who = $
+         OR NOT IsClass(who,&User)
+         OR NOT (poOwner = Send(who,@GetOwner)))
+      {
+         return FALSE;
+      }
+
+      // Must have LoS.
+      if (NOT Send(poOwner,@LineOfSight,#obj1=who,#obj2=self))
+      {
+         return FALSE;
+      }
+
+      oKey = Send(who,@FindHolding,#class=&ChestKey);
+      if oKey
+      {
+         Send(who,@MsgSendUser,#message_rsc=LootChest_key_disappears);
+         Send(who,@WaveSendUser,#wave_rsc=LootChest_sound_rsc);
+         Send(self,@LockChest,#bLocked=FALSE);
+         Send(oKey,@Delete);
+         return TRUE;
+      }
+      else 
+      {
+         Send(who,@MsgSendUser,#message_rsc=LootChest_locked);
+         Send(who,@WaveSendUser,#wave_rsc=LootChest_lock_sound_rsc);
+         return TRUE;
+      }
+
+      return FALSE;
+   }
+
+   Delete()
+   {
+      if ptReset_timer <> $
+      {
+         DeleteTimer(ptReset_timer);
+         ptReset_timer = $;
+      }
+
+      propagate;
+   }
+
+end
+////////////////////////////////////////////////////////////////////////////////

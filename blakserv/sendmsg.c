@@ -85,6 +85,11 @@ __forceinline void StoreValue(int object_id,local_var_type *local_vars,int data_
 __forceinline void StoreLocal(local_var_type *local_vars, int data, val_type new_data);
 __forceinline void StoreProperty(int object_id, int data, val_type new_data);
 
+void SetTraceOn(void)
+{
+   trace_session_id = 0;
+}
+
 void InitProfiling(void)
 {
    int i;
@@ -161,6 +166,7 @@ void InitBkodInterpret(void)
       ccall_table[i] = C_Invalid;
    
    ccall_table[CREATEOBJECT] = C_CreateObject;
+   ccall_table[SETTRACE] = C_SetTrace;
    
    ccall_table[SENDMESSAGE] = C_SendMessage;
    ccall_table[POSTMESSAGE] = C_PostMessage;

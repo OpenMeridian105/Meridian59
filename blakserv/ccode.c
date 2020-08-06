@@ -65,6 +65,18 @@ int C_Invalid(int object_id,local_var_type *local_vars,
 	return NIL;
 }
 
+int C_SetTrace(int object_id,local_var_type *local_vars,
+               int num_normal_parms,parm_node normal_parm_array[],
+               int num_name_parms,parm_node name_parm_array[])
+{
+#if defined BLAKDEBUG || defined DEBUG
+   SetTraceOn();
+#else
+   dprintf("SetTrace disabled for release build.");
+#endif
+   return NIL;
+}
+
 /*
  * C_SaveGame: Performs a system save, but without garbage collection. We
  *    can't garbage collect when the game is saved from blakod as object,

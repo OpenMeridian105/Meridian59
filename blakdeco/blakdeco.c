@@ -493,6 +493,7 @@ char * name_function(int fnum)
    switch (fnum)
    {
    case CREATEOBJECT : return "Create";
+   case SETTRACE : return "SetTrace";
 
    case SENDMESSAGE : return "Send";
    case POSTMESSAGE : return "Post";

@@ -32,6 +32,7 @@
 function_type Functions[] = {
 {"Send",                SENDMESSAGE,     STORE_OPTIONAL, AEXPRESSION,   AEXPRESSION,  ASETTINGS, ANONE},
 {"Create",              CREATEOBJECT,    STORE_OPTIONAL, AEXPRESSION,   ASETTINGS,    ANONE},
+{"SetTrace",            SETTRACE,        STORE_OPTIONAL, ANONE},
 {"Cons",                CONS,            STORE_REQUIRED, AEXPRESSION,   AEXPRESSION,  ANONE},
 {"Length",              LENGTH,          STORE_REQUIRED, AEXPRESSION,   ANONE},
 {"List",                MLIST,           STORE_REQUIRED, AEXPRESSIONS,  ANONE},

@@ -2588,6 +2588,7 @@ void AdminShowCalls(int session_id,admin_parm_type parms[],
 		switch (max_index)
 		{
 		case CREATEOBJECT : strcpy(c_name, "CreateObject"); break;
+		case SETTRACE : strcpy(c_name, "SetTrace"); break;
 		case SENDMESSAGE : strcpy(c_name, "Send"); break;
 		case POSTMESSAGE : strcpy(c_name, "Post"); break;
 		case SENDLISTMSG : strcpy(c_name, "SendList"); break;

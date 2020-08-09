@@ -443,6 +443,16 @@ messages:
             #new_row=row,#new_col=col,#new_angle=angle,
             #mob_override=mob_override);
 
+      // Have to refresh flags on all combatants for the teleported player,
+      // and all players in the room need to refresh flags for the
+      // teleported player. Handles auto-detect invis for arena.
+      Post(self,@SomethingChangedFlags,#what=what);
+      foreach i in Send(poWatcher,@GetCombatantList)
+      {
+         Post(what,@SomethingChangedFlags,#what=i);
+      }
+
+
       return;
    }
 

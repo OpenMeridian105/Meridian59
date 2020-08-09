@@ -23,6 +23,7 @@ resources:
 
    portal_name_rsc = "portal"
    portal_icon_rsc = portal.bgf
+   portal_hellportal_icon_rsc = teleport.bgf
    portal_desc_rsc = \
       "The portal flickers coldly, eerily inviting you to some unknown locale."
    portal_dead = "This archway stands cold and inanimate."
@@ -63,7 +64,8 @@ messages:
 
    Constructor(dest_room_num = RID_DEFAULT, dest_row = 1, dest_col = 1,
                dest_angle = $, dest_fine_row = FINENESS_HALF,
-               dest_fine_col = FINENESS_HALF, desc = $, icon=$)
+               dest_fine_col = FINENESS_HALF, desc = $, icon=$,
+               bHellPortIcon=FALSE)
    {
       piDest_room = dest_room_num;
       piDest_row = dest_row;
@@ -80,6 +82,10 @@ messages:
       if icon <> $
       {
          vrIcon = icon;
+      }
+      else if (bHellPortIcon)
+      {
+         vrIcon = portal_hellportal_icon_rsc;
       }
 
       propagate;
@@ -313,6 +319,16 @@ messages:
       else
       {
          AddPacket(2,LIGHT_FLAG_ON, 1,5, 2,LIGHT_PURPLE);
+      }
+
+      return;
+   }
+
+   ResetIcon(icon = $)
+   {
+      if (icon <> $)
+      {
+         vrIcon = icon;
       }
 
       return;

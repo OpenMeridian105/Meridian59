@@ -19,6 +19,9 @@ constants:
    DM_TRANSLATION_BODY_MASK = 0xff00
    DM_TRANSLATION_BODY_MUL = 0x100
 
+   DM_PORTAL_FRAMED = 0
+   DM_PORTAL_ROUND = 1
+
 resources:
 
    include dm.lkod
@@ -105,16 +108,26 @@ resources:
    dm_mortal_command = "mortal"
    dm_immortal_command = "immortal"
    dm_diceroll_command = "dice roll"
+   dm_portal_command = "portal"
+   dm_hellportal_command = "hellportal"
    dm_diceroll_display = \
       "~k%s%s rolls the dice from ~b%i ~kto ~b%i ~kand gets ~b~B%i~k~B!"
    dm_diceroll_usage = \
       "To roll the dice you must use two numbers separated by a comma, e.g. "
       "1, 6."
+   dm_portal_usage = \
+      "To create a portal, you must specify the destination room constant "
+      "followed by row, col, finerow, finecol, dest angle with all numbers "
+      "comma-separated.  The portal will be placed where you are standing."
+   dm_portal_success = \
+      "A portal has been created to %s."
+   dm_portal_invalid_room = "The entered room ID is invalid."
+   dm_portal_invalid_coords = "The entered coordinates are invalid."
 
    dm_currently_in = "The ROO for `b%s`n is `k`B%s`n.  The room number is %i."
    dm_currently_at = \
       "Your Location is: `bRow: `k`B%i`n `bCol: `k`B%i`n `bfRow: `k`B%i`n "
-      "`bfCol: `k`B%i`n `bHeight: `k`B%i`n."
+      "`bfCol: `k`B%i`n `bHeight: `k`B%i`n `bAngle: `k`B%i`n."
 
    // dm_disguise_command uses StringSubstitute, do not add separate language
    // string for this resource as it won't be substituted correctly.
@@ -484,6 +497,8 @@ properties:
 
    psIgnoreOne
    psIgnoreTwo
+
+   plPortalData
 
 messages:
 
@@ -1130,7 +1145,8 @@ messages:
          Send(self,@MsgSendUser,#message_rsc=dm_currently_at,
                #parm1=piRow,#parm2=piCol,
                #parm3=piFine_Row,#parm4=piFine_Col,
-               #parm5=Send(self,@GetHeightFloorAtObjectBSP));
+               #parm5=Send(self,@GetHeightFloorAtObjectBSP),
+               #parm6=Send(self,@GetAngle));
 
          return;
       }
@@ -1728,6 +1744,24 @@ messages:
          if StringContain(string,dm_getall)
          {
             Send(self,@GetAllOfItem,#string=string);
+
+            return;
+         }
+
+         if (StringContain(string,dm_hellportal_command))
+         {
+            // Remove command part.
+            StringSubstitute(string,dm_hellportal_command,"");
+            Send(self,@DMSayPortal,#type=DM_PORTAL_ROUND,#string=string);
+
+            return;
+         }
+
+         if (StringContain(string,dm_portal_command))
+         {
+            // Remove command part.
+            StringSubstitute(string,dm_portal_command,"");
+            Send(self,@DMSayPortal,#type=DM_PORTAL_FRAMED,#string=string);
 
             return;
          }
@@ -2665,6 +2699,86 @@ messages:
          piLowRoll = StringToNumber(string);
          pbSetLowRoll = TRUE;
       }
+
+      return;
+   }
+
+   DMSayPortal(type=DM_PORTAL_FRAMED,string = $)
+   {
+      local oPortal, oRoom, iRow, iCol, iFineRow, iFineCol, iSectorID;
+
+      if (string = $)
+      {
+         return;
+      }
+
+      plPortalData = $;
+      // Parse out the numbers (save in plPortalData property).
+      ParseString(string,",",@DMParsePortal);
+
+      // Need dest room, dest coords & dest angle.
+      if (Length(plPortalData) <> 6)
+      {
+         Send(self,@MsgSendUser,#message_rsc=dm_portal_usage);
+
+         return;
+      }
+
+      // Must be a valid room.
+      oRoom = Send(SYS,@FindRoomByNum,#num=First(plPortalData));
+      if (oRoom = $)
+      {
+         Send(self,@MsgSendUser,#message_rsc=dm_portal_invalid_room);
+
+         return;
+      }
+
+      iRow = Nth(plPortalData,2);
+      iCol = Nth(plPortalData,3);
+      iFineRow = Nth(plPortalData,4);
+      iFineCol = Nth(plPortalData,5);
+
+      // Must be valid coordinates in target room.
+      iSectorID = Send(oRoom,@GetSectorIDAtLocation,#row=iRow,#col=iCol,
+                  #fine_row=iFineRow,#fine_col=iFineCol);
+      if (iSectorID = $
+         OR iSectorID < 0)
+      {
+         Send(self,@MsgSendUser,#message_rsc=dm_portal_invalid_coords);
+
+         return;
+      }
+
+      if (type = DM_PORTAL_FRAMED)
+      {
+         oPortal = Create(&Portal,#dest_room_num=First(plPortalData),
+                     #dest_row=iRow,#dest_col=iCol,#dest_fine_row=iFineRow,
+                     #dest_fine_col=iFineCol,#dest_angle=Nth(plPortalData,6));
+      }
+      else
+      {
+         oPortal = Create(&Portal,#dest_room_num=First(plPortalData),
+                     #dest_row=iRow,#dest_col=iCol,#dest_fine_row=iFineRow,
+                     #dest_fine_col=iFineCol,#dest_angle=Nth(plPortalData,6),
+                     #bHellPortIcon=TRUE);
+      }
+
+      // Give the DM 2.5s to move out of the portal's teleport range.
+      Send(oPortal,@AddTeleportCooldown,#what=self);
+      Send(poOwner,@NewHold,#what=oPortal,#new_row=piRow,#new_col=piCol,
+            #fine_row=piFine_Row,#fine_col=piFine_Col,
+            #new_angle=Send(self,@GetAngle));
+
+      Send(self,@MsgSendUser,#message_rsc=dm_portal_success,
+            #parm1=Send(oRoom,@GetName));
+
+      return;
+   }
+
+   DMParsePortal(string = $)
+   "Called only by ParseString from DMSayPortal, adds numbers to plPortalData."
+   {
+      plPortalData = AppendListElem(StringToNumber(string), plPortalData);
 
       return;
    }

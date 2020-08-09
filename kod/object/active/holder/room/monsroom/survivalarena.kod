@@ -58,7 +58,7 @@ resources:
    include survivalarena.lkod
 
    room_SurvivalArena = survival_ex.roo
-   room_name_SurvivalArena = "The Survival Arena"
+   room_name_SurvivalArena = "The Hallowed Training Grounds"
    SurvivalArena_music = dance1.ogg
 
    SurvivalArena_no_offer = \
@@ -67,12 +67,19 @@ resources:
    SurvivalArena_cant_go = \
       "Osvann Vaendefdall says, \"You can't leave!  You're a combatant!\""
 
-   SurvivalArena_sign_name = "The Survival-Arena"
+   SurvivalArena_sign_name = "Using the Training Grounds"
    SurvivalArena_sign_text = \
       "Say 'join' or 'leave' to enter or leave the arena.\n"
       "Combantants will need to kill all the enemies in order to progress to "
       "the next wave of creatures. The difficulty increases as the players "
       "advance through each level. "
+   SurvivalArena_locked_house = \
+      "The door to Osvann Vaendefdall's house is locked."
+
+   SurvivalArena_start_tournament = \
+      "Banners unfurl and bugles warble to signify the beginning of the "
+      "Royal Tournament!"
+   SurvivalArena_end_tournament = "The Royal Tournament has come to an end."
 
    SurvivalArena_Fanfare_Sound = fanfare1.ogg
    SurvivalArena_Combat_Sound = arena1.ogg
@@ -219,6 +226,10 @@ messages:
 
    CreateStandardExits()
    {
+      plExits = $;
+      plExits = Cons([ 13, 68, ROOM_LOCKED_DOOR, SurvivalArena_locked_house ],plExits);
+      plExits = Cons([ 14, 68, ROOM_LOCKED_DOOR, SurvivalArena_locked_house ],plExits);
+
       plEdge_Exits = $;
 
       plEdge_Exits = Cons([ LEAVE_SOUTH, RID_BERG_8, 2, 60, ROTATE_NONE ], plEdge_exits);
@@ -281,7 +292,7 @@ messages:
       else if IsClass(what,&Monster)
         AND what <> poWatcher
       {
-         if NOT Send(what,@IsMinion)
+         if NOT Send(what,@IsOwnedByPlayer)
          {
             Post(poWatcher,@NewCombatant,#who=what,#isMonster=TRUE);
          }
@@ -348,6 +359,8 @@ messages:
 
    Teleport(what=$,goinplay=FALSE,outofplay=FALSE)
    {
+      local i;
+
       // Don't teleport players if logged off.
       if (what = $
          OR (IsClass(what,&User)
@@ -373,6 +386,15 @@ messages:
       else
       {
          Send(self,@TeleportOutOfPlay,#who=what);
+      }
+
+      // Have to refresh flags on all combatants for the teleported player,
+      // and all players in the room need to refresh flags for the
+      // teleported player. Handles auto-detect invis for arena.
+      Post(self,@SomethingChangedFlags,#what=what);
+      foreach i in Send(poWatcher,@GetCombatantList)
+      {
+         Post(what,@SomethingChangedFlags,#what=i);
       }
 
       return;
@@ -446,6 +468,16 @@ messages:
 
    ArenaBeginFight(lCombatants=$)
    {
+      // Checks for 2 combatants.
+      if (Send(poWatcher,@IsDuel))
+      {
+         // teleport 'em to the cage.
+         Send(SYS,@UtilGoNearSquare,#what=First(lCombatants),#where=self,
+              #new_row=47,#new_col=20,#fine_row=0,#fine_col=0,#new_angle=ANGLE_NORTH);
+         Send(SYS,@UtilGoNearSquare,#what=Nth(lCombatants,2),#where=self,
+              #new_row=12,#new_col=58,#fine_row=48,#fine_col=32,#new_angle=ANGLE_SOUTH);
+      }
+
       Send(self,@SomethingWaveRoom,#wave_rsc=SurvivalArena_Combat_Sound);
 
       return;
@@ -472,7 +504,7 @@ messages:
       }
 
       Send(self,@SetMonsterGeneration,#bValue=FALSE);
-
+      Send(self,@CheckBehindBars);
       // Remove room enchantments
       Send(self,@RemoveAllEnchantments);
       Send(self,@SomethingWaveRoom,#wave_rsc=SurvivalArena_Huzzah_Sound);
@@ -484,6 +516,26 @@ messages:
    {
       Send(self,@LowerGates);
       Send(self,@SomethingWaveRoom,#wave_rsc=SurvivalArena_gong_sound);
+
+      return;
+   }
+
+   ArenaStartTournament(marshal = $)
+   {
+      Send(self,@SomeoneSaid,#string=SurvivalArena_start_tournament,
+            #type=SAY_MESSAGE,#what=self);
+      Send(self,@SomethingWaveRoom,#wave_rsc=SurvivalArena_Fanfare_Sound);
+      pbNoReagents = FALSE;
+
+      return;
+   }
+
+   ArenaEndTournament(marshal = $)
+   {
+      Send(self,@SomeoneSaid,#string=SurvivalArena_end_tournament,
+            #type=SAY_MESSAGE,#what=self);
+      Send(self,@SomethingWaveRoom,#wave_rsc=SurvivalArena_Fanfare_Sound);
+      pbNoReagents = TRUE;
 
       return;
    }

@@ -110,6 +110,7 @@ resources:
    watcher_style_last_man_standing = "last man standing"
    watcher_style_guild_vs_guild = "guild vs guild"
    watcher_style_battle_royale = "battle royale"
+   watcher_style_survival = "survival"
 
    watcher_new_combatant = "%s%s will also be a combatant in this match!"
    watcher_more_combatants = \
@@ -242,6 +243,8 @@ resources:
    watcher_last_man_standing_command  = "last man standing"
    watcher_guild_vs_guild_command  = "guild vs guild"
    watcher_battle_royale_command  = "battle royale"
+   watcher_survival_command = "survival"
+   watcher_style_command = "style"
    watcher_fight_command  = "fight"
    watcher_clear_all_command  = "clear all"
    #endregion Speech Command Classvars
@@ -272,6 +275,7 @@ classvars:
    vrStyleLastManStanding = watcher_style_last_man_standing
    vrStyleGuildVsGuild = watcher_style_guild_vs_guild
    vrStyleLastGuildStanding = watcher_style_battle_royale
+   vrStyleSurvival = watcher_style_survival
    vrKilledBySpell = watcher_killed_by_spell
    vrKilledChamp = watcher_killed_champion
    vrKilledByChamp = watcher_champion_killed
@@ -324,6 +328,8 @@ classvars:
    vrCmdLastManStanding = watcher_last_man_standing_command
    vrCmdGuildVsGuild = watcher_guild_vs_guild_command
    vrCmdBattleRoyale = watcher_battle_royale_command
+   vrCmdSurvival = watcher_survival_command
+   vrCmdStyle = watcher_style_command
 
    viDefinite = ARTICLE_THE
    viIndefinite = ARTICLE_THE
@@ -402,9 +408,12 @@ properties:
    piWaveGoal = 0
    ptWaveDelay = $
    plWaveReward = $
-   
+
    // [player object, number of lives]
    plPlayerLives = $
+
+   // If monster arena is enabled
+   pbMonsterArena = FALSE
 
    #endregion Properties
 
@@ -681,6 +690,13 @@ messages:
    FightInSession()
    {
       return (ptFight <> $);
+   }
+
+   IsDuel()
+   {
+      return piCombat_style = STYLE_ONE_ON_ONE
+         OR (piCombat_style = STYLE_LAST_MAN_STANDING
+            AND Length(plCombatants) = 2);
    }
 
    Challenge(who=$)
@@ -1664,6 +1680,21 @@ messages:
             }
          }
 
+         if StringEqual(string,vrCmdStyle)
+         {
+            if (piCombat_style = STYLE_NO_FIGHT)
+            {
+               Send(self,@Say,#message_rsc=vrMustChooseStyle);
+            }
+            else
+            {
+               Send(self,@Say,#message_rsc=vrNewStyle,
+                     #parm1=Send(self,@GetCombatName));
+            }
+
+            return FALSE;
+         }
+
          if StringEqual(string,vrCmdOneOnOne)
          {
             if (Send(self,@ReqChangeArenaStyle,#what=what,#type=type))
@@ -1701,6 +1732,17 @@ messages:
             if (Send(self,@ReqChangeArenaStyle,#what=what,#type=type))
             {
                Post(self,@ChooseCombat,#style=STYLE_LAST_GUILD_STANDING,
+                    #actor=what);
+            }
+
+            return FALSE;
+         }
+
+         if pbMonsterArena AND StringEqual(string,vrCmdSurvival)
+         {
+            if (Send(self,@ReqChangeArenaStyle,#what=what,#type=type))
+            {
+               Post(self,@ChooseCombat,#style=STYLE_MONSTER_ARENA,
                     #actor=what);
             }
 
@@ -1790,6 +1832,7 @@ messages:
             OR StringEqual(string,vrCmdLastManStanding)
             OR StringEqual(string,vrCmdGuildVsGuild)
             OR StringEqual(string,vrCmdBattleRoyale)
+            OR StringEqual(string,vrCmdSurvival)
          {
             if NOT pbTournament
                OR (Send(what,@CheckDMFlag,#flag=DMFLAG_ALLOW_ARENA_CMDS))
@@ -2451,6 +2494,7 @@ messages:
          case STYLE_LAST_MAN_STANDING: return vrStyleLastManStanding;
          case STYLE_GUILD_VS_GUILD: return vrStyleGuildVsGuild;
          case STYLE_LAST_GUILD_STANDING: return vrStyleLastGuildStanding;
+         case STYLE_MONSTER_ARENA: return vrStyleSurvival;
       }
 
       return;

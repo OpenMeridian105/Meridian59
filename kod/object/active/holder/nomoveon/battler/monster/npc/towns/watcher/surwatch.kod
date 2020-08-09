@@ -24,8 +24,13 @@ resources:
    SurvivalWatcher_name_rsc = "Osvann Vaendefdall"
    SurvivalWatcher_icon_rsc = watchersurvival.bgf
    SurvivalWatcher_desc_rsc = \
-      "Many hateful words can be said about Osvann Vaendefdall, "
-      "but the fact he's sadistic and impatient is just the tip of the iceberg. "
+      "An eccentric man, Osvann Vaendefdall seems to enjoy living out in the "
+      "forest far away from the cities.  His occupation as the caretaker of "
+      "the Training Grounds carried more import in times past, when it was the "
+      "premier location for producing battle-ready soldiers.  In these times "
+      "of relative peace, Osvann mainly uses the arena to study his passion - "
+      "how monsters fight and how that knowledge can be used to improve human "
+      "fighting styles."
 
    SurvivalWatcher_join  = "join"
    SurvivalWatcher_leave = "leave"
@@ -33,8 +38,8 @@ resources:
    SurvivalWatcher_need_participants = "Have we no warrior to join the pit?"
 
    SurvivalWatcher_fight_in_progress = \
-      "A fight is currently in session, "
-      "players may only join after a boss wave has been completed."
+      "A fight is currently in session, players may only join in combat "
+      "after a boss wave has been completed."
    SurvivalWatcher_invalid_fight = "The match has ended!"
 
 classvars:
@@ -43,21 +48,25 @@ classvars:
    vrIcon = SurvivalWatcher_icon_rsc
    vrDesc = SurvivalWatcher_desc_rsc
 
-   vrFightInProgress = SurvivalWatcher_fight_in_progress
+   vrMonsterFightInProgress = SurvivalWatcher_fight_in_progress
    vrInvalidFight = SurvivalWatcher_invalid_fight
 
-   viDefinite = ARTICLE_THE
-   viIndefinite = ARTICLE_THE
+   viDefinite = ARTICLE_NONE
+   viIndefinite = ARTICLE_NONE
 
    viAttributes = MOB_NOMOVE | MOB_FULL_TALK | MOB_LISTEN | MOB_NOFIGHT \
                   | MOB_NOQUEST
    viOccupation = MOB_ROLE_WATCHER
    viWatcherID = WATCHER_SURVIVAL
 
+   // Lower random speech output
+   viRandom_delay = 150000
+
 properties:
 
    piCombat_Style = STYLE_MONSTER_ARENA
    pbCrashProtection = FALSE
+   pbMonsterArena = TRUE
 
 messages:
 
@@ -69,18 +78,21 @@ messages:
          propagate;
       }
 
-      if StringEqual(string,SurvivalWatcher_join)
+      if (piCombat_Style = STYLE_MONSTER_ARENA)
       {
-         Post(self,@TrigJoin,#what=what);
+         if StringEqual(string,SurvivalWatcher_join)
+         {
+            Post(self,@TrigJoin,#what=what);
 
-         propagate;
-      }
+            propagate;
+         }
 
-      if StringEqual(string,SurvivalWatcher_leave)
-      {
-         Post(self,@TrigRenege,#what=what);
+         if StringEqual(string,SurvivalWatcher_leave)
+         {
+            Post(self,@TrigRenege,#what=what);
 
-         propagate;
+            propagate;
+         }
       }
 
       if IsClass(what,&DM)
@@ -89,7 +101,7 @@ messages:
          // TBD
       }
 
-      return;
+      propagate;
    }
 
    TrigJoin(what=$)
@@ -106,7 +118,7 @@ messages:
 
       if NOT Send(self,@CanJoinMonsterWave,#who=what)
       {
-         Send(self,@SayToOne,#target=what,#message_rsc=vrFightInProgress);
+         Send(self,@SayToOne,#target=what,#message_rsc=vrMonsterFightInProgress);
 
          return;
       }

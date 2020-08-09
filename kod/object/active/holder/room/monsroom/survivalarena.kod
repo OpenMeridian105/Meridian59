@@ -16,15 +16,37 @@ constants:
 
    SECTOR_ID_FIGHT = 2
    SECTOR_ID_BARS = 3
+
+   // Includes the bar surrouding part
    SECTOR_ID_BEHIND_BARS = 4
    SECTOR_ID_GREEN = 5
-   SECTOR_ID_WATER = 10
+
+   SECTOR_ID_WATER_INPLAY = 11
    SECTOR_ID_BEHIND_BARS_WATER = 14
 
    SECTOR_ID_PILLAR_A = 20
    SECTOR_ID_PILLAR_B = 21
    SECTOR_ID_PILLAR_C = 22
    SECTOR_ID_PILLAR_D = 23
+
+   SECTOR_ID_STAIRS_A = 30
+   SECTOR_ID_STAIRS_B = 31
+   SECTOR_ID_STAIRS_C = 32
+   SECTOR_ID_STAIRS_D = 33
+   SECTOR_ID_STAIRS_E = 34
+   SECTOR_ID_STAIRS_F = 35
+
+   GROUND_HEIGHT = 252
+   PILLAR_A_HEIGHT = 312
+   PILLAR_BC_HEIGHT = 320
+   PILLAR_D_HEIGHT = 304
+
+   STAIRS_A_HEIGHT = 264
+   STAIRS_B_HEIGHT = 272
+   STAIRS_C_HEIGHT = 280
+   STAIRS_D_HEIGHT = 288
+   STAIRS_E_HEIGHT = 296
+   STAIRS_F_HEIGHT = 304
 
    // Percent of monsters that will aggro
    AGGRO_CHANCE = 20
@@ -36,7 +58,7 @@ resources:
    include survivalarena.lkod
 
    room_SurvivalArena = survival_ex.roo
-   room_name_SurvivalArena = "The Survival Arena"
+   room_name_SurvivalArena = "The Hallowed Training Grounds"
    SurvivalArena_music = dance1.ogg
 
    SurvivalArena_no_offer = \
@@ -45,12 +67,19 @@ resources:
    SurvivalArena_cant_go = \
       "Osvann Vaendefdall says, \"You can't leave!  You're a combatant!\""
 
-   SurvivalArena_sign_name = "The Survival-Arena"
+   SurvivalArena_sign_name = "Using the Training Grounds"
    SurvivalArena_sign_text = \
       "Say 'join' or 'leave' to enter or leave the arena.\n"
       "Combantants will need to kill all the enemies in order to progress to "
       "the next wave of creatures. The difficulty increases as the players "
       "advance through each level. "
+   SurvivalArena_locked_house = \
+      "The door to Osvann Vaendefdall's house is locked."
+
+   SurvivalArena_start_tournament = \
+      "Banners unfurl and bugles warble to signify the beginning of the "
+      "Royal Tournament!"
+   SurvivalArena_end_tournament = "The Royal Tournament has come to an end."
 
    SurvivalArena_Fanfare_Sound = fanfare1.ogg
    SurvivalArena_Combat_Sound = arena1.ogg
@@ -69,6 +98,7 @@ classvars:
    vbAccessibleForFollowers = FALSE
 
 properties:
+
    prRoom = room_SurvivalArena
    piRoom_num = RID_SURVIVAL_ARENA
    prMusic = SurvivalArena_music
@@ -87,6 +117,10 @@ properties:
    piInit_count_min = 10
    piInit_count_max = 10
    piMonster_count_max = 30
+
+   // Needed to correctly apply snow texture to certain linedefs.
+   pbIsMazeBDown = FALSE
+   pbIsMazeCDown = FALSE
 
    pbRealdeath = FALSE
    pbNoReagents = FALSE
@@ -192,6 +226,10 @@ messages:
 
    CreateStandardExits()
    {
+      plExits = $;
+      plExits = Cons([ 13, 68, ROOM_LOCKED_DOOR, SurvivalArena_locked_house ],plExits);
+      plExits = Cons([ 14, 68, ROOM_LOCKED_DOOR, SurvivalArena_locked_house ],plExits);
+
       plEdge_Exits = $;
 
       plEdge_Exits = Cons([ LEAVE_SOUTH, RID_BERG_8, 2, 60, ROTATE_NONE ], plEdge_exits);
@@ -226,8 +264,8 @@ messages:
       if poWatcher = $
       {
          poWatcher = what;
-         Send(self,@NewHold,
-            #what=what,#new_row=43,#new_col=43,#fine_row=0,#fine_col=0);
+         Send(self,@NewHold,#what=what,#new_row=43,#new_col=43,
+               #fine_row=0,#fine_col=0);
       }
 
       return;
@@ -254,7 +292,7 @@ messages:
       else if IsClass(what,&Monster)
         AND what <> poWatcher
       {
-         if NOT Send(what,@IsMinion)
+         if NOT Send(what,@IsOwnedByPlayer)
          {
             Post(poWatcher,@NewCombatant,#who=what,#isMonster=TRUE);
          }
@@ -280,8 +318,12 @@ messages:
          iSectorID = Send(what,@GetSectorIDAtObject);
 
          return iSectorID = SECTOR_ID_FIGHT
-                OR iSectorID = SECTOR_ID_WATER
-                OR iSectorID = SECTOR_ID_GREEN;
+                OR iSectorID = SECTOR_ID_WATER_INPLAY
+                OR iSectorID = SECTOR_ID_BARS
+                OR iSectorID = SECTOR_ID_BEHIND_BARS
+                OR iSectorID = SECTOR_ID_BEHIND_BARS_WATER
+                OR iSectorID = SECTOR_ID_GREEN
+                OR iSectorID >= SECTOR_ID_PILLAR_A; // >= 20
       }
 
       return FALSE;
@@ -317,6 +359,8 @@ messages:
 
    Teleport(what=$,goinplay=FALSE,outofplay=FALSE)
    {
+      local i;
+
       // Don't teleport players if logged off.
       if (what = $
          OR (IsClass(what,&User)
@@ -342,6 +386,15 @@ messages:
       else
       {
          Send(self,@TeleportOutOfPlay,#who=what);
+      }
+
+      // Have to refresh flags on all combatants for the teleported player,
+      // and all players in the room need to refresh flags for the
+      // teleported player. Handles auto-detect invis for arena.
+      Post(self,@SomethingChangedFlags,#what=what);
+      foreach i in Send(poWatcher,@GetCombatantList)
+      {
+         Post(what,@SomethingChangedFlags,#what=i);
       }
 
       return;
@@ -415,6 +468,16 @@ messages:
 
    ArenaBeginFight(lCombatants=$)
    {
+      // Checks for 2 combatants.
+      if (Send(poWatcher,@IsDuel))
+      {
+         // teleport 'em to the cage.
+         Send(SYS,@UtilGoNearSquare,#what=First(lCombatants),#where=self,
+              #new_row=47,#new_col=20,#fine_row=0,#fine_col=0,#new_angle=ANGLE_NORTH);
+         Send(SYS,@UtilGoNearSquare,#what=Nth(lCombatants,2),#where=self,
+              #new_row=12,#new_col=58,#fine_row=48,#fine_col=32,#new_angle=ANGLE_SOUTH);
+      }
+
       Send(self,@SomethingWaveRoom,#wave_rsc=SurvivalArena_Combat_Sound);
 
       return;
@@ -424,7 +487,6 @@ messages:
    {
       local i, j, k;
 
-      Send(self,@LowerMaze);
       Send(self,@RaiseGates);
 
       // Remove radius enchantments
@@ -442,7 +504,7 @@ messages:
       }
 
       Send(self,@SetMonsterGeneration,#bValue=FALSE);
-
+      Send(self,@CheckBehindBars);
       // Remove room enchantments
       Send(self,@RemoveAllEnchantments);
       Send(self,@SomethingWaveRoom,#wave_rsc=SurvivalArena_Huzzah_Sound);
@@ -454,6 +516,26 @@ messages:
    {
       Send(self,@LowerGates);
       Send(self,@SomethingWaveRoom,#wave_rsc=SurvivalArena_gong_sound);
+
+      return;
+   }
+
+   ArenaStartTournament(marshal = $)
+   {
+      Send(self,@SomeoneSaid,#string=SurvivalArena_start_tournament,
+            #type=SAY_MESSAGE,#what=self);
+      Send(self,@SomethingWaveRoom,#wave_rsc=SurvivalArena_Fanfare_Sound);
+      pbNoReagents = FALSE;
+
+      return;
+   }
+
+   ArenaEndTournament(marshal = $)
+   {
+      Send(self,@SomeoneSaid,#string=SurvivalArena_end_tournament,
+            #type=SAY_MESSAGE,#what=self);
+      Send(self,@SomethingWaveRoom,#wave_rsc=SurvivalArena_Fanfare_Sound);
+      pbNoReagents = TRUE;
 
       return;
    }
@@ -473,8 +555,8 @@ messages:
          iSectorID = Send(i,@GetSectorIDAtObject);
 
          if IsClass(i,&Player)
-            AND iSectorID = SECTOR_ID_BEHIND_BARS 
-            OR iSectorID = SECTOR_ID_BEHIND_BARS_WATER
+            AND iSectorID = SECTOR_ID_BEHIND_BARS
+               OR iSectorID = SECTOR_ID_BEHIND_BARS_WATER
          {
             Send(self,@Teleport,#what=i,#goinplay=TRUE);
          }
@@ -501,19 +583,156 @@ messages:
 
    RaiseMaze(maze = 14, sector = 0, height = 192)
    {
-      // TODO
+      Send(self,@RaiseMazeA);
+      Send(self,@RaiseMazeB);
+      Send(self,@RaiseMazeC);
+      Send(self,@RaiseMazeD);
+      Send(self,@RaiseStairs);
+
+      return;
+   }
+
+   RaiseMazeA()
+   {
+      Send(self,@SetSector,#sector=SECTOR_ID_PILLAR_A,#animation=ANIMATE_FLOOR_LIFT,
+            #height=PILLAR_A_HEIGHT,#speed=32);
+
+      return;
+   }
+
+   RaiseMazeB()
+   {
+      Send(self,@SetSector,#sector=SECTOR_ID_PILLAR_B,#animation=ANIMATE_FLOOR_LIFT,
+            #height=PILLAR_BC_HEIGHT,#speed=32);
+
+      pbIsMazeBDown = FALSE;
+
+      if (piRoom_flags & ROOM_SNOWING)
+      {
+         Send(self,@RemoveTextureChange,#id=16);
+      }
+
+      return;
+   }
+
+   RaiseMazeC()
+   {
+      Send(self,@SetSector,#sector=SECTOR_ID_PILLAR_C,#animation=ANIMATE_FLOOR_LIFT,
+            #height=PILLAR_BC_HEIGHT,#speed=32);
+
+      pbIsMazeCDown = FALSE;
+
+      if (piRoom_flags & ROOM_SNOWING)
+      {
+         Send(self,@RemoveTextureChange,#id=17);
+      }
+
+      return;
+   }
+
+   RaiseMazeD()
+   {
+      Send(self,@SetSector,#sector=SECTOR_ID_PILLAR_D,#animation=ANIMATE_FLOOR_LIFT,
+            #height=PILLAR_D_HEIGHT,#speed=32);
+
+      return;
+   }
+
+   RaiseStairs()
+   {
+      Send(self,@SetSector,#sector=SECTOR_ID_STAIRS_A,#animation=ANIMATE_FLOOR_LIFT,
+            #height=STAIRS_A_HEIGHT,#speed=32);
+      Send(self,@SetSector,#sector=SECTOR_ID_STAIRS_B,#animation=ANIMATE_FLOOR_LIFT,
+            #height=STAIRS_B_HEIGHT,#speed=32);
+      Send(self,@SetSector,#sector=SECTOR_ID_STAIRS_C,#animation=ANIMATE_FLOOR_LIFT,
+            #height=STAIRS_C_HEIGHT,#speed=32);
+      Send(self,@SetSector,#sector=SECTOR_ID_STAIRS_D,#animation=ANIMATE_FLOOR_LIFT,
+            #height=STAIRS_D_HEIGHT,#speed=32);
+      Send(self,@SetSector,#sector=SECTOR_ID_STAIRS_E,#animation=ANIMATE_FLOOR_LIFT,
+            #height=STAIRS_E_HEIGHT,#speed=32);
+      Send(self,@SetSector,#sector=SECTOR_ID_STAIRS_F,#animation=ANIMATE_FLOOR_LIFT,
+            #height=STAIRS_F_HEIGHT,#speed=32);
+
       return;
    }
 
    LowerMaze(sector=0)
    "If a sector is specified, just lower that sector.  Otherwise, lower 'em all."
    {
-      // TODO
+      Send(self,@LowerMazeA);
+      Send(self,@LowerMazeB);
+      Send(self,@LowerMazeC);
+      Send(self,@LowerMazeD);
+      Send(self,@LowerStairs);
+
+      return;
+   }
+
+   LowerMazeA()
+   {
+      Send(self,@SetSector,#sector=SECTOR_ID_PILLAR_A,#animation=ANIMATE_FLOOR_LIFT,
+            #height=GROUND_HEIGHT,#speed=32);
+
+      return;
+   }
+
+   LowerMazeB()
+   {
+      Send(self,@SetSector,#sector=SECTOR_ID_PILLAR_B,#animation=ANIMATE_FLOOR_LIFT,
+            #height=GROUND_HEIGHT,#speed=32);
+
+      pbIsMazeBDown = TRUE;
+
+      if (piRoom_flags & ROOM_SNOWING)
+      {
+         Send(self,@ChangeTexture,#id=16,#new_texture=61016,
+               #flags=CTF_BELOWWALL);
+      }
+
+      return;
+   }
+
+   LowerMazeC()
+   {
+      Send(self,@SetSector,#sector=SECTOR_ID_PILLAR_C,#animation=ANIMATE_FLOOR_LIFT,
+            #height=GROUND_HEIGHT,#speed=32);
+
+      pbIsMazeCDown = TRUE;
+
+      if (piRoom_flags & ROOM_SNOWING)
+      {
+         Send(self,@ChangeTexture,#id=17,#new_texture=61016,
+               #flags=CTF_BELOWWALL);
+      }
+
+      return;
+   }
+
+   LowerMazeD()
+   {
+      Send(self,@SetSector,#sector=SECTOR_ID_PILLAR_D,#animation=ANIMATE_FLOOR_LIFT,
+            #height=GROUND_HEIGHT,#speed=32);
+
+      return;
+   }
+
+   LowerStairs()
+   {
+      local i;
+
+      for (i = SECTOR_ID_STAIRS_A; i <= SECTOR_ID_STAIRS_F; ++i)
+      {
+         Send(self,@SetSector,#sector=i,#animation=ANIMATE_FLOOR_LIFT,
+               #height=GROUND_HEIGHT,#speed=32);
+      }
+
       return;
    }
 
    StartSnow(bOnGround=TRUE)
    {
+      local i;
+
       // Check if we can have weather effects here.
       if NOT pbWeatherEffects
       {
@@ -529,7 +748,45 @@ messages:
       if bOnGround
          AND pbSnowGroundTexture
       {
-         //Send(self,@ChangeTexture,#id=0,#new_texture=61015,#flags=CTF_FLOOR);
+         Send(self,@ChangeTexture,#id=0,#new_texture=61015,#flags=CTF_FLOOR);
+         Send(self,@ChangeTexture,#id=2,#new_texture=61015,#flags=CTF_FLOOR);
+         Send(self,@ChangeTexture,#id=3,#new_texture=61015,#flags=CTF_FLOOR);
+         Send(self,@ChangeTexture,#id=4,#new_texture=61015,#flags=CTF_FLOOR);
+         Send(self,@ChangeTexture,#id=5,#new_texture=61016,#flags=CTF_FLOOR);
+         Send(self,@ChangeTexture,#id=10,#new_texture=61017,#flags=CTF_FLOOR);
+         Send(self,@ChangeTexture,#id=11,#new_texture=61017,#flags=CTF_FLOOR);
+         Send(self,@ChangeTexture,#id=14,#new_texture=61017,#flags=CTF_FLOOR);
+
+         for (i = SECTOR_ID_PILLAR_A; i <= SECTOR_ID_PILLAR_D; ++i)
+         {
+            Send(self,@ChangeTexture,#id=i,#new_texture=61015,#flags=CTF_FLOOR);
+         }
+         for (i = SECTOR_ID_STAIRS_A; i <= SECTOR_ID_STAIRS_F; ++i)
+         {
+            Send(self,@ChangeTexture,#id=i,#new_texture=61015,#flags=CTF_FLOOR);
+         }
+
+         Send(self,@ChangeTexture,#id=15,#new_texture=61016,
+               #flags=CTF_BELOWWALL);
+
+         if (pbIsMazeBDown)
+         {
+            Send(self,@ChangeTexture,#id=16,#new_texture=61016,
+                  #flags=CTF_BELOWWALL);
+         }
+         if (pbIsMazeCDown)
+         {
+            Send(self,@ChangeTexture,#id=17,#new_texture=61016,
+                  #flags=CTF_BELOWWALL);
+         }
+
+         // Stop water scroll effect and remove depth.
+         Send(self,@SetSectorFlags,#sector=10,#depth=SF_DEPTH0,
+               #scrollSpeed=SCROLL_NONE);
+         Send(self,@SetSectorFlags,#sector=11,#depth=SF_DEPTH0,
+               #scrollSpeed=SCROLL_NONE);
+         Send(self,@SetSectorFlags,#sector=14,#depth=SF_DEPTH0,
+               #scrollSpeed=SCROLL_NONE);
       }
 
       Send(self,@SetRoomFlag,#flag=ROOM_SNOWING,#value=TRUE);
@@ -541,6 +798,8 @@ messages:
    EndSnow(override=FALSE)
    "Use override if rooms have manually placed textures."
    {
+      local i;
+
       if Send(self,@CheckRoomFlag,#flag=ROOM_SNOWING)
       {
          Send(self,@SetRoomFlag,#flag=ROOM_SNOWING,#value=FALSE);
@@ -550,7 +809,33 @@ messages:
       if pbSnowGroundTexture
          OR override
       {
-         //Send(self,@RemoveTextureChange,#id=0);
+         Send(self,@RemoveTextureChange,#id=0);
+         Send(self,@RemoveTextureChange,#id=2);
+         Send(self,@RemoveTextureChange,#id=3);
+         Send(self,@RemoveTextureChange,#id=4);
+         Send(self,@RemoveTextureChange,#id=5);
+         Send(self,@RemoveTextureChange,#id=10);
+         Send(self,@RemoveTextureChange,#id=11);
+         Send(self,@RemoveTextureChange,#id=14);
+
+         for (i = SECTOR_ID_PILLAR_A; i <= SECTOR_ID_PILLAR_D; ++i)
+         {
+            Send(self,@RemoveTextureChange,#id=i);
+         }
+         for (i = SECTOR_ID_STAIRS_A; i <= SECTOR_ID_STAIRS_F; ++i)
+         {
+            Send(self,@RemoveTextureChange,#id=i);
+         }
+
+         // Remove from small vertical ledges.
+         Send(self,@RemoveTextureChange,#id=15);
+         Send(self,@RemoveTextureChange,#id=16);
+         Send(self,@RemoveTextureChange,#id=17);
+
+         // Reset sector flag changes to water.
+         Send(self,@RemoveSectorFlagChange,#id=10);
+         Send(self,@RemoveSectorFlagChange,#id=11);
+         Send(self,@RemoveSectorFlagChange,#id=14);
       }
 
       return;

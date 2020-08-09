@@ -2422,8 +2422,10 @@ messages:
          return;
       }
 
-      // If we can move, we physically try to get closer.
+      // If we can move, we physically try to get closer if not in range.
       if iDelay = 0
+         // TODO: this might need to check whether we're in range or not.
+         //AND NOT Send(self,@CanReach,#what=poTarget,#bRanged=TRUE)
       {
          Send(poBrain,@GetEngageBehavior,#mob=self,#target=poTarget,
                #behavior=piBehavior,#bSight=bSight);
@@ -4050,6 +4052,7 @@ messages:
          // check if this was a 'good' step (=on a path or directly towards)
          // revenants use STATE_ENGAGE when moving
          if (iState & STATE_MOVE_PATH) OR (iState & STATE_MOVE_DIRECT)
+             OR (iState & ESTATE_AVOIDING)
             OR ((iState & STATE_ENGAGE) AND GetClass(self) = &Revenant)
          {
             // reset badstep counter
@@ -4060,17 +4063,16 @@ messages:
             // increment bad step counter
             ++piBadSteps;
 
-            // Unreachable targets are lowered on the hate list.
-            if bEngage
-            {
-               Send(self,@ModifyHurtMeRecently,#who=poTarget,
-                  #iPercentage=Send(poBrain,@GetAggroPercentageLoss));
-               Send(self,@SetTarget,#what=Send(self,@GetTopHurter));
-            }
-
             // too many heuristic steps, consider going elsewhere
-            if (piBadSteps % 2 = 0)
+            if (piBadSteps > 12)
             {
+               // Unreachable targets are lowered on the hate list.
+               if bEngage
+               {
+                  Send(self,@ModifyHurtMeRecently,#who=poTarget,
+                     #iPercentage=Send(poBrain,@GetAggroPercentageLoss));
+                  Send(self,@SetTarget,#what=Send(self,@GetTopHurter));
+               }
                iStillGo = Send(self,@ReconsiderMoveDestination);
             }
          }
@@ -5598,9 +5600,13 @@ messages:
             {
                oQuester = what;
             }
-            else
+            else if (IsClass(what,&Monster))
             {
                oQuester = Send(what,@GetLeader);
+               if (oQuester = $)
+               {
+                  oQuester = Send(what,@GetMaster);
+               }
             }
 
             if oQuester <> $
@@ -10297,6 +10303,36 @@ messages:
       if (piState & STATE_MOVE)
       {
          Debug(self,"is in move");
+      }
+
+      if (piState & STATE_REST)
+      {
+         Debug(self,"is in rest");
+      }
+
+      if (piState & STATE_MOVE_PATH)
+      {
+         Debug(self,"is in move path");
+      }
+
+      if (piState & STATE_MOVE_DIRECT)
+      {
+         Debug(self,"is in move direct");
+      }
+
+      if (piState & ESTATE_LONG_STEP)
+      {
+         Debug(self,"is in long step");
+      }
+
+      if (piState & ESTATE_AVOIDING)
+      {
+         Debug(self,"is in avoiding");
+      }
+
+      if (piState & ESTATE_CLOCKWISE)
+      {
+         Debug(self,"is in clockwise");
       }
 
       if ptBehavior = $

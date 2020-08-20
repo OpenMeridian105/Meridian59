@@ -11,6 +11,7 @@ BOFS = mushroom.bof mushb.bof mushp.bof mushr.bof herbs.bof elderbry.bof \
        dflyeye.bof kripclaw.bof solagh.bof rnbwfern.bof uncserpm.bof \
        shamblod.bof polserpm.bof yrxlsap.bof webmoss.bof mushgray.bof \
        mushgreen.bof mushyellow.bof mushcyan.bof twinkcap.bof essdust.bof \
-       spessartine.bof thuremt.bof windseed.bof windleaf.bof
+       spessartine.bof thuremt.bof windseed.bof windleaf.bof obsidian.bof \
+       onyx.bof rubiciterock.bof
 
 !include $(KODDIR)\kod.mak

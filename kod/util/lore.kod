@@ -120,6 +120,10 @@ properties:
    // but you can specfiy any amount.
    plCookingRecipes = $
 
+   // Similar to cooking recpies, contains all the available forgeable items
+   // [ FORGE_ITEM [ [material class, amount] ], [output class, amount] ]
+   plForge_Items = $
+
 messages:
 
    Constructor()
@@ -150,6 +154,9 @@ messages:
       // Create the cooking recipes.
       Send(self,@LoreCreateCookingRecipes);
 
+      // Create the forgeable list.
+      Send(self,@LoreCreateForgeable);
+
       return;
    }
 
@@ -157,6 +164,9 @@ messages:
    {
       // Create the cooking recipes.
       Send(self,@LoreCreateCookingRecipes);
+
+      // Create the forgeable list.
+      Send(self,@LoreCreateForgeable);
 
       // Create the Hall of Heroes statue lists.
       Send(self,@LoreCreateHoHLists);
@@ -198,6 +208,28 @@ messages:
    GetCookingRecipe(iRecipe = CR_NONE)
    {
       return GetListNode(plCookingRecipes,1,iRecipe);
+   }
+
+   LoreCreateForgeable()
+   {
+      plForge_Items = [
+         [ FI_RUBICITEARMOR, [ [&PlateArmor, 1], [&RubiciteRock, 100] ], [&RubiciteArmor, 1] ],
+         [ FI_BLACKAXE, [ [&Axe, 1], [&OnyxRock, 50] ], [&BlackAxe, 1] ],
+         [ FI_BLACKHAMMER, [ [&Hammer, 1], [&ObsidianRock, 50] ], [&BlackHammer, 1] ],
+         [ FI_GOLDARROW, [ [&Arrow, 1], [&Money, 5] ], [&GoldenArrow, 1] ]
+      ];
+
+      return;
+   }
+
+   GetForgeable()
+   {
+      return plForge_Items;
+   }
+
+   GetForgeItem(iForge_Item = FI_NONE)
+   {
+      return GetListNode(plForge_Items,1,iForge_Item);
    }
 
    LoreCreateHoHLists()

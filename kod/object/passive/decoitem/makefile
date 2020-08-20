@@ -4,7 +4,7 @@
 
 !include $(TOPDIR)\common.mak
 
-DEPEND = ..\interactive.bof
-BOFS = cookpot.bof plantsoil.bof guilddevice.bof forge.bof
+DEPEND = ..\decoitem.bof
+BOFS = forgeitemhint.bof
 
 !include $(KODDIR)\kod.mak

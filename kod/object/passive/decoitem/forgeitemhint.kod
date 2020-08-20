@@ -1,0 +1,163 @@
+// Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+// All rights reserved.
+//
+// This software is distributed under a license that is described in
+// the LICENSE file that accompanies it.
+//
+// Meridian is a registered trademark.
+
+
+////////////////////////////////////////////////////////////////////////////////
+ForgeHintItem is DecoItem
+
+constants:
+
+   include blakston.khd
+
+resources:
+
+   //include forgeitemhint.lkod
+
+   ForgeHintItem_name_default_rsc = "rubicite armor"
+   ForgeHintItem_icon_default_rsc = "amr_red.bgf"
+   ForgeHintItem_desc_rsc = \
+    "%s%s may be forged from the following raw materials:  \n%r"
+   ForgeHintItem_materials = "\n  %i %s"
+
+classvars:
+
+  viObject_Flags = OF_ACTIVATABLE
+
+properties:
+
+   vrName = ForgeHintItem_name_default_rsc
+   vrIcon = ForgeHintItem_icon_default_rsc
+   vrDesc = ForgeHintItem_desc_rsc
+
+   piDisplayGroup = 3
+   piForge_Item = FI_RUBICITEARMOR
+
+messages:
+
+   Constructor()
+   {
+      Send(self,@ViewForgeItemHint);
+
+      propagate;
+   }
+
+   ShowDesc()
+   {
+      local lForgeItem, lTemplates, lItems, i, iNumber, oItem;
+
+      if piForge_Item = FI_NONE
+      {
+         AddPacket(4,system_blank_resource);
+
+         return;
+      }
+
+      lForgeItem = Send(self,@GetForgeItem);
+      if (lForgeItem = $)
+      {
+         AddPacket(4,system_blank_resource);
+
+         return;
+      }
+
+      lTemplates = Send(SYS,@GetItemTemplates);
+      if (lTemplates = $)
+      {
+         AddPacket(4,system_blank_resource);
+
+         return;
+      }
+
+      lItems = Nth(lForgeItem,2);
+      oItem = GetListElemByClass(lTemplates,First(Nth(lForgeItem,3)));
+
+      AddPacket(4,ForgeHintItem_desc_rsc,
+                4,Send(oItem,@GetCapInDef), 4,Send(oItem,@GetName),
+                4,Send(SYS,@AddResourceTemplate,#iNum=Length(lItems)) );
+
+      foreach i in lItems
+      {
+         oItem = GetListElemByClass(lTemplates,First(i));
+         iNumber = Nth(i,2);
+         AddPacket(4, ForgeHintItem_materials, 4,iNumber,
+                   4, Send(oItem,@GetName,#number=iNumber));
+      }
+
+      return;
+   }
+
+   ViewForgeItemHint()
+   {
+      local lForgeItems, cForgeItemClass, oForgeItem;
+
+      lForgeItems = Send(Send(SYS,@GetLore),@GetForgeable);
+      if lForgeItems <> $
+      {
+         piForge_Item++;
+         if piForge_Item > Length(lForgeItems)
+         {
+             piForge_Item = FI_RUBICITEARMOR;
+         }
+
+         piForge_Item = First(Nth(lForgeItems,piForge_Item));
+         cForgeItemClass = Nth(Nth(Send(self,@GetForgeItem),3),1);
+         oForgeItem = Send(SYS,@FindTemplateItemByClass,#cClass=cForgeItemClass);
+      }
+
+      if poOwner <> $
+      {
+         vrName = Send(oForgeItem,@GetName);
+         vrIcon = Send(oForgeItem,@GetIcon);
+
+         if piForge_Item = FI_GOLDARROW
+         {
+            piDisplayGroup = 4;
+         }
+         else 
+         {
+            piDisplayGroup = 1;
+         }
+
+         Send(poOwner,@SomethingChanged,#what=self);
+      }
+
+      return;
+   }
+
+   GetForgeItem()
+   {
+      return Send(Send(SYS,@GetLore),@GetForgeItem,#iForge_Item=piForge_Item);
+   }
+
+   GetForgeItemConstant()
+   {
+      return piForge_Item;
+   }
+
+   TryActivate(who=$)
+   {
+      if (who = $
+         OR NOT IsClass(who,&User)
+         OR NOT (poOwner = Send(who,@GetOwner)))
+      {
+         return FALSE;
+      }
+
+      // Must have LoS.
+      if (NOT Send(poOwner,@LineOfSight,#obj1=who,#obj2=self))
+      {
+         return FALSE;
+      }
+
+      Send(self,@ViewForgeItemHint);
+
+      return TRUE;
+   }
+
+end
+////////////////////////////////////////////////////////////////////////////////

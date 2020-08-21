@@ -27,7 +27,7 @@ resources:
 
    LootChest_key_disappears = "Your key disappears into thin air!"
    LootChest_locked = \
-      "This chest appears to be firmed locked."
+      "This chest appears to be locked."
 
    LootChest_sound_rsc = kblow3.ogg
    LootChest_lock_sound_rsc = doorlck.ogg
@@ -37,13 +37,14 @@ classvars:
    vrIcon = LootChest_icon_rsc
    vrDesc = LootChest_desc_rsc
 
-   viBulk_hold_max = 5000
+   viBulk_hold_max = 50000
    viWeight_hold_max = $
 
-   viMaxNumTreasure = 20
+   viMinNumTreasure = 15
+   viMaxNumTreasure = 30
 
-   // Reset after 10 minutes
-   viReset_time = 600000
+   // Reset after 1 hour
+   viReset_time = 6000000
 
 properties:
 
@@ -61,18 +62,55 @@ messages:
 
    GenerateLootTreasure()
    {
-      local lLootList, oObject, iMin, iMax;
+      local oObject, iMin, iMax, iRand, lLootList;
 
-      // tbd
-      lLootList = [ &SpessartineRock,
-                    &FreeActionPotion,
-                    &BlueDragonScale,
-                    &Gauntlet,
-                    &Ruby,
-                    &WarHelm ];
+      iRand = Random(1,100);
+      if iRand > 66
+      {
+         lLootList = [ &OnyxRock,
+                       &Truffle,
+                       &WindrootLeaf,
+                       &WebMoss,
+                       &BlueDragonScale,
+                       &PlateArmor,
+                       &WarHelm,
+                       &Pork,
+                       &Spideye ];
+      }
+      else if iRand > 33
+      {
+         lLootList = [ &SpessartineRock,
+                       &ObsidianRock,
+                       &OnyxRock,
+                       &TheurgicRemnant,
+                       &EssenceDust,
+                       &BoonBerry,
+                       &WindrootLeaf,
+                       &HealWand,
+                       &Snowball,
+                       &BlankScroll,
+                       &BonkStick,
+                       &Herbs,
+                       &Mushroom,
+                       &ScaleArmor,
+                       &Knife,
+                       &MetalShield,
+                       &Pork,
+                       &WineGoblet,
+                       &TwinkleCap ];
+      }
+      else
+      {
+         lLootList = [ &RubiciteRock,
+                       &ObsidianRock,
+                       &OnyxRock,
+                       &KriipaClaw,
+                       &Mace,
+                       &TwinkleCap ];
+      }
 
       iMin = 0;
-      iMax = Random(1,viMaxNumTreasure);
+      iMax = Random(viMinNumTreasure,viMaxNumTreasure);
 
       while (iMin < iMax)
       {
@@ -103,7 +141,10 @@ messages:
       }
 
       // Might have different graphic for locked - don't just send flags.
-      Send(poOwner,@SomethingChanged,#what=self);
+      if poOwner <> $
+      {
+         Send(poOwner,@SomethingChanged,#what=self);
+      }
 
       return;
    }

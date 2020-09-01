@@ -5,6 +5,6 @@
 !include $(TOPDIR)\common.mak
 
 DEPEND = ..\interactive.bof
-BOFS = cookpot.bof plantsoil.bof guilddevice.bof forge.bof
+BOFS = cookpot.bof plantsoil.bof guilddevice.bof forge.bof psychostatue.bof
 
 !include $(KODDIR)\kod.mak

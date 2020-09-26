@@ -14,14 +14,19 @@ constants:
 
    include blakston.khd
 
+   ROLL_COMMON = 50
+   ROLL_UNCOMMON = 20
+   ROLL_RARE = 5
+
 resources:
 
    //include ChestKey.lkod
 
-   ChestKey_name_rsc = "green key"
+   ChestKey_name_rsc = "special key"
    ChestKey_icon_rsc = chestkey.bgf
    ChestKey_desc_rsc = \
-    "Made completely from emerald, this key may be used for a specific purpose."
+    "Made completely from an unknown raw material, this key may be used for a "
+    "specific purpose."
 
 classvars:
 
@@ -35,28 +40,115 @@ classvars:
 
 properties:
 
-   
+   piKey_Color = 0
 
 messages:
 
+   Constructor(iColor=0)
+   {
+      Send(self,@SetLootChestColor,#iColor=iColor);
+
+      propagate;
+   }
+
+   SetLootChestColor(iColor=0)
+   {
+      local xlat, iRand;
+
+      if (iColor = 0)
+      {
+         iRand = Random(1,100);
+         if iRand >= ROLL_COMMON
+         {
+            // green keys are common
+            piKey_Color = LC_GREEN;
+         }
+         else if iRand >= ROLL_UNCOMMON
+         {
+            piKey_Color = LC_RED;
+         }
+         else if iRand >= ROLL_RARE
+         {
+            piKey_Color = LC_ORANGE;
+         }
+         else
+         {
+            // rare colour
+            piKey_Color = LC_PURPLE;
+         }
+      }
+      else 
+      {
+         piKey_Color = iColor;
+      }
+       
+      switch(piKey_Color)
+      {
+         case 1:
+            xlat = PT_GRAY_TO_RED;
+            break;
+         case 2:
+            xlat = PT_GRAY_TO_ORANGE;
+            break;
+         case 3:
+            xlat = PT_GRAY_TO_DGREEN;
+            break;
+         case 4:
+            xlat = PT_GRAY_TO_PURPLE;
+            break;
+         default:
+            xlat = 0;
+            break;
+      }
+
+      piItem_flags = piItem_flags & ITEM_INVERSE_PALETTE_MASK;
+      piItem_flags = piItem_flags | xlat;
+
+      if poOwner <> $
+      {
+         Send(poOwner,@SomethingChanged,#what=self);
+      }
+
+      return;
+   }
+
    SendAnimation()
    {
+      if (piItem_flags & ITEM_PALETTE_MASK) <> 0
+      {
+         AddPacket(1,ANIMATE_TRANSLATION, 1,piItem_flags&ITEM_PALETTE_MASK);
+      }
+
       AddPacket(1,ANIMATE_NONE,2,2);
       return;
    }
 
    SendLookAnimation()
    {
+      if (piItem_flags & ITEM_PALETTE_MASK) <> 0
+      {
+         AddPacket(1,ANIMATE_TRANSLATION, 1,piItem_flags&ITEM_PALETTE_MASK);
+      }
+
       AddPacket(1,ANIMATE_NONE,2,2);
       return;
    }
 
    SendInventoryAnimation()
    {
+      if (piItem_flags & ITEM_PALETTE_MASK) <> 0
+      {
+         AddPacket(1,ANIMATE_TRANSLATION, 1,piItem_flags&ITEM_PALETTE_MASK);
+      }
+
       AddPacket(1,ANIMATE_NONE,2,1);
       return;
    }
 
+   GetKeyColor()
+   {
+      return piKey_Color;
+   }
 
 end
 ////////////////////////////////////////////////////////////////////////////////

@@ -48,10 +48,12 @@ static TypedCommand commands[] = {
 // Key translation table
 #define A_QEDITOR (A_MODULE + 900)
 #define A_GCHANNEL (A_MODULE + 901)
+#define A_BGFEDITOR (A_MODULE + 902)
 #define A_LOOKINVENTORY (A_MODULE + 202)    // Examine item in inventory (from merintr.dll)
 
 static keymap dm_key_table[] = {
 //{ '5',          KEY_SHIFT,   A_QEDITOR },
+{ '5',          KEY_SHIFT,   A_BGFEDITOR },
 { '6',          KEY_SHIFT,   A_GCHANNEL },
 { 0, 0, 0},   // Must end table this way
 };
@@ -159,6 +161,13 @@ Bool WINAPI EventUserAction(int action, void *action_data)
       if (GetQEditorDlg() || GetGChannelDlg())
 	 break;
       ShowGChannelDlg();
+      break;
+
+   case A_BGFEDITOR:
+      debug(("A_BGFEDITOR\n"));
+      if (GetQEditorDlg() || GetGChannelDlg())
+         break;
+      ShowBGFEditorDlg();
       break;
 
    case A_LOOKMOUSE: /* user 'looks' on main window */

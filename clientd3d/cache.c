@@ -198,3 +198,12 @@ list_type CacheGetGridList(void)
 {
 	return grid_cache.bitmaps;
 }
+
+/******************************************************************************/
+/*
+* CacheGetObjectList:  Return list of all loaded object bitmaps.
+*/
+list_type CacheGetObjectList(void)
+{
+   return object_cache.bitmaps;
+}

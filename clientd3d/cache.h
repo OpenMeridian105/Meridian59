@@ -21,6 +21,7 @@ void CacheAddGrid(grid_bitmap_type new_bmap);
 void CacheReport(void);
 void CacheClearAll(void);
 list_type CacheGetGridList(void);
+M59EXPORT list_type CacheGetObjectList(void);
 
 
 #endif /* #ifndef _CACHE_H */

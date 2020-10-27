@@ -15,6 +15,7 @@
 #include "command.h"
 #include "gchannel.h"
 #include "qeditor.h"
+#include "bgfedit.h"
 #include "resource.h"
 
 /***************************************************************************/

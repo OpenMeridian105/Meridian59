@@ -1,0 +1,88 @@
+// Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+// All rights reserved.
+//
+// This software is distributed under a license that is described in
+// the LICENSE file that accompanies it.
+//
+// Meridian is a registered trademark.
+
+
+////////////////////////////////////////////////////////////////////////////////
+PumpkinMask is FaceMask
+
+constants:
+
+   include blakston.khd
+
+resources:
+
+   include pumpkinmask.lkod
+
+   PumpkinMask_name_rsc = "pumpkin mask"
+   PumpkinMask_icon_male_rsc = pumpkinmaskm.bgf
+   PumpkinMask_icon_female_rsc = pumpkinmaskf.bgf
+   PumpkinMask_desc_rsc = \
+      "When viewed from the bottom, this is a hollowed-out pumpkin with enough "
+      "room for your head.  Through some illusion, looking at the pumpkin from "
+      "the front shows a lit candle. Happy Halloween 2020!"
+
+classvars:
+
+   vrName = PumpkinMask_name_rsc
+   vrDesc = PumpkinMask_desc_rsc
+   vrIcon = PumpkinMask_icon_male_rsc
+
+   vrMaleIcon = PumpkinMask_icon_male_rsc
+   vrFemaleIcon = PumpkinMask_icon_female_rsc
+
+properties:
+
+messages:
+
+   ReqUseSomething(what = $)
+   {
+      if IsClass(what,&DefenseModifier)
+         AND Send(what,@GetItemUseType) & ITEM_USE_HEAD
+      {
+         return Send(poOwner,@TryUnuseItem,#what=self);
+      }
+
+      propagate;
+   }
+
+   ReqUse()
+   {
+      local i;
+
+      if IsClass(poOwner,&Player)
+         OR IsClass(poOwner,&Human)
+      {
+         foreach i in Send(poOwner,@GetPlayerUsing)
+         {
+            if IsClass(i,&DefenseModifier)
+               AND Send(i,@GetItemUseType) & ITEM_USE_HEAD
+            {
+               Send(poOwner,@TryUnuseItem,#what=i);
+            }
+         }
+      }
+
+      propagate;
+   }
+
+   NewUsed()
+   {
+      Send(poOwner,@RemoveHair,#what=self);
+
+      propagate;
+   }
+
+   NewUnused()
+   {
+      Send(poOwner,@ResetHair,#what=self);
+
+      propagate;
+   }
+
+end
+////////////////////////////////////////////////////////////////////////////////

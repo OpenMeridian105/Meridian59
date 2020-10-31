@@ -1,0 +1,220 @@
+// Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+// All rights reserved.
+//
+// This software is distributed under a license that is described in
+// the LICENSE file that accompanies it.
+//
+// Meridian is a registered trademark.
+
+
+///////////////////////////////////////////////////////////////////////////
+LoginEvent is GameEvent
+// An event type that is called every time a user logs in. Can be used to
+// display a message when they log in, or to hand out items.
+
+constants:
+
+   include blakston.khd
+
+resources:
+
+classvars:
+
+properties:
+
+   // A list of players who have participated in the event.
+   plNotifiedUsers = $
+
+   // Whether each user can participate only once, or every time they log in.
+   // e.g. special item might be once only, but an informative message event
+   // might be displayed on every login.
+   pbOncePerUser = TRUE
+
+   // A list of items to hand out, in the form [ [class, number] ]
+   plItemsToGive = $
+
+   // A list of messages to display to the user.
+   plMessagesToGive = $
+
+   ptEventEnd = $
+
+messages:
+
+   Delete()
+   {
+      plNotifiedUsers = $;
+      plItemsToGive = $;
+      plMessagesToGive = $;
+
+      propagate;
+   }
+
+   StartEvent(parm1=$,parm2=$,parm3=$,parm4=$,parm5=$,parm6=$)
+   {
+      local i, lUsers, millis, sMessage;
+
+      sMessage = SetString($,@NotifyEngineEndEvent);
+
+      if (parm2 <> $ AND parm3 <> $)
+      {
+         switch(parm3)
+         {
+            case GAMEEVENT_SCALE_SECONDS:
+               millis = parm2 * 1000;
+               ptEventEnd = CreateTimer(self,@EndLoginEvent,millis);
+               break;
+
+            case GAMEEVENT_SCALE_MINUTES:
+               Send(REALTIME_OBJECT,@RegisterCallbackInMinutes,
+                     #oObject=self,
+                     #minutes=parm2,
+                     #message=sMessage);
+               break;
+
+            case GAMEEVENT_SCALE_HOURS:
+               Send(REALTIME_OBJECT,@RegisterCallbackInHours,
+                     #oObject=self,
+                     #hours=parm2,
+                     #message=sMessage);
+               break;
+
+            case GAMEEVENT_SCALE_DAYS:
+               Send(REALTIME_OBJECT,@RegisterCallbackInDays,
+                     #oObject=self,
+                     #days=parm2,
+                     #message=sMessage);
+               break;
+            
+            case GAMEEVENT_SCALE_WEEKS:
+               //Send(REALTIME_OBJECT,@RegisterCallbackInWeeks,
+               //      #oObject=self,
+               //      #weeks=parm2,
+               //      #message=sMessage);
+               Debug("GAMEEVENT_SCALE_WEEKS not implemented, event ending in 2 hours");
+               ptEventEnd = CreateTimer(self,@EndLoginEvent,3600000);
+               break;
+            
+            case GAMEEVENT_SCALE_MONTHS:
+               Send(REALTIME_OBJECT,@RegisterCallbackInMonths,
+                     #oObject=self,
+                     #months=parm2,
+                     #message=sMessage);
+               break;
+            
+            case GAMEEVENT_SCALE_YEARS:
+               Send(REALTIME_OBJECT,@RegisterCallbackInYears,
+                     #oObject=self,
+                     #years=parm2,
+                     #message=sMessage);
+               break;
+
+            default:
+               ptEventEnd = CreateTimer(self,@EndLoginEvent,3600000);
+               break;
+         }
+      }
+
+      if (parm4 <> $ AND parm5 <> $)
+      {
+         Send(self,@AddItemToGive,#cItem=parm4,#Num=parm5);
+      }
+
+      if (parm6 <> $)
+      {
+         Send(self,@AddMessageToGive,#rMessage=parm6);
+      }
+
+      lUsers = Send(SYS,@GetUsersLoggedOn);
+      if lUsers = $
+      {
+         propagate;
+      }
+
+      // Treat each user currently logged on as if they had just logged in
+      foreach i in lUsers
+      {
+         Send(self,@UserLogon,#who=i);
+      }
+
+      return;
+   }
+
+   AddItemToGive(cItem=$, iNum=1)
+   {
+      if (cItem <> $)
+      {
+         plItemsToGive = Cons([cItem, iNum], plItemsToGive);
+      }
+
+      return;
+   }
+
+   AddMessageToGive(rMessage = $)
+   "Note: this appends messages at the end of the list."
+   {
+      if (rMessage <> $)
+      {
+         plMessagesToGive = AppendListElem(rMessage, plMessagesToGive);
+      }
+
+      return;
+   }
+
+   UserLogon(who=$)
+   {
+      // Trigger event on user.
+      if (pbOncePerUser AND FindListElem(plNotifiedUsers, who))
+      {
+         return;
+      }
+
+      Send(self,@LoginEventTriggerUser,#who=who);
+
+      return;
+   }
+
+   LoginEventTriggerUser(who=$)
+   {
+      local i, oObj;
+
+      if (who = $)
+      {
+         Debug("LoginEventTriggerUser got $ user!");
+
+         return;
+      }
+
+      plNotifiedUsers = Cons(who, plNotifiedUsers);
+
+      foreach i in plItemsToGive
+      {
+         oObj = Create(First(i), #number=Nth(i,2));
+         if (oObj <> $)
+         {
+            // Ignores weight/bulk limits.
+            Send(who,@NewHold,#what=oObj);
+         }
+      }
+
+      foreach i in plMessagesToGive
+      {
+         // Post, so they appear after other login stuff.
+         Post(who,@MsgSendUser,#message_rsc=i);
+      }
+
+      return;
+   }
+
+   EndLoginEvent()
+   {
+      if ptEventEnd <> $
+      {
+         DeleteTimer(ptEventEnd);
+         ptEventEnd = $;
+      }
+
+      return event_success_rsc;
+   }
+
+end
+///////////////////////////////////////////////////////////////////////////

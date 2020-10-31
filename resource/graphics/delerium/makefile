@@ -13,7 +13,7 @@ BGFS = grd00004.bgf grd02703.bgf grd02704.bgf grd61017.bgf arrowqt.bgf \
 
 DIRS = appletree arms eastereggs greybunny icenova jixatextures \
        necroshield raza staticons kocatanroom spectate telofruit \
-       valegraphics scroll fixedbgf flagpole snowball
+       valegraphics scroll fixedbgf flagpole snowball masks
 
 all:
    @-for %i in (*.bgf) do @$(CP) %i $(OUTDIR) >nul

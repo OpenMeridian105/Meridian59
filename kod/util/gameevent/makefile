@@ -5,6 +5,6 @@
 !include $(TOPDIR)\common.mak
 
 DEPEND = ..\gameevent.bof
-BOFS = invasion.bof easteregghunt.bof qormas.bof chaosnight.bof
+BOFS = invasion.bof easteregghunt.bof qormas.bof chaosnight.bof loginevent.bof
 
 !include $(KODDIR)\kod.mak

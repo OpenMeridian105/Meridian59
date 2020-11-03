@@ -12,6 +12,17 @@
 #include "client.h"
 #include "dm.h"
 
+#define LIST_COLUMN_ADD(a, b, c, d, e) \
+   a.pszText = e; \
+   a.cx = d; \
+   ListView_InsertColumn(b, c, &a)
+
+#define LIST_COLUMN_DATA_ADD(a, b, c, d, e) \
+   a.iSubItem = d; \
+   sprintf(c, "%i", e); \
+   a.pszText = c; \
+   ListView_SetItem(b, &a)
+
 static HWND hBGFEditorDlg = NULL;
 static BOOL bBGFEditorHidden = FALSE;
 
@@ -23,10 +34,16 @@ static ID last_selected = 0;
 static BOOL isSelecting = FALSE;
 // Global to store selected subitem in frame list view.
 static LVITEM lvFrameItem;
+// Global to store selected subitem in hotspot list view.
+static LVITEM lvHotspotItem;
 
-// Globals for editing list view values.
-static WNDPROC     wpOrigEditProc;
-static RECT        rcSubItem;
+// Globals for editing frame list view values.
+static WNDPROC     wpOrigFrameEditProc;
+static RECT        rcFrameSubItem;
+// Globals for editing hotspot list view values.
+static WNDPROC     wpOrigHotspotEditProc;
+static RECT        rcHotspotSubItem;
+
 // Global for subclassed edit box procedure.
 static WNDPROC     shrinkEditProc;
 
@@ -34,14 +51,19 @@ static WNDPROC     shrinkEditProc;
 static list_type original_cache;
 
 static void OnBGFEditorCommand(HWND hDlg, int cmd_id, HWND hwndCtl, UINT codeNotify);
+BOOL OnFrameListViewNotify(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam);
+BOOL OnHotspotListViewNotify(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam);
 BOOL CALLBACK BGFEditorDialogProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam);
-LRESULT CALLBACK WndProcEditList(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam);
+LRESULT CALLBACK WndProcFrameEditList(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam);
+LRESULT CALLBACK WndProcHotspotEditList(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam);
 LRESULT CALLBACK WndProcEditShrink(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam);
 
 static void SetFrameOffset(int frame, int column, int value);
+static void SetHotspotData(int index, int column, int value);
 static void CacheOriginal(object_bitmap_type bmp);
 static void CacheRestore(ID id);
 static void ShowSelectedFrameData(HWND hDlg);
+static void ShowSelectedHotspotData(HWND hDlg, int frame_index);
 static void LoadBGFList(HWND hDlg);
 
 /****************************************************************************/
@@ -102,8 +124,9 @@ LRESULT CALLBACK WndProcEditShrink(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM l
             break;
          sprintf(buffer, "%i", value + (1 * wParam == VK_LEFT ? -1 : 1));
          SetWindowText(hDlg, buffer);
+         break;
       }
-      break;
+      // fallthrough
 
    default:
       return CallWindowProc(shrinkEditProc, hDlg, uMsg, wParam, lParam);
@@ -112,9 +135,9 @@ LRESULT CALLBACK WndProcEditShrink(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM l
 }
 /****************************************************************************/
 /*
- * WndProcEditList:  Handler for editable list view subclass.
+ * WndProcFrameEditList:  Handler for editable frame list view subclass.
  */
-LRESULT CALLBACK WndProcEditList(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
+LRESULT CALLBACK WndProcFrameEditList(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
    char buffer[32];
 
@@ -124,8 +147,8 @@ LRESULT CALLBACK WndProcEditList(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lPa
    {
       WINDOWPOS *pos = (WINDOWPOS*)lParam;
 
-      pos->x = rcSubItem.left;
-      pos->cx = rcSubItem.right;
+      pos->x = rcFrameSubItem.left;
+      pos->cx = rcFrameSubItem.right;
    }
    break;
 
@@ -140,8 +163,9 @@ LRESULT CALLBACK WndProcEditList(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lPa
          sprintf(buffer, "%i", value);
          SetWindowText(hDlg, buffer);
          SetFrameOffset(lvFrameItem.iItem, lvFrameItem.iSubItem, value);
+         break;
       }
-      break;
+      return CallWindowProc(wpOrigFrameEditProc, hDlg, uMsg, wParam, lParam);
 
    case WM_CHAR:
       // Only allow numbers, movement (arrow keys etc), deleting and '-'.
@@ -154,9 +178,62 @@ LRESULT CALLBACK WndProcEditList(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lPa
          || (wParam >= '0' && wParam <= '9'))) {
          return FALSE;
       }
+      // fallthrough
 
    default:
-      return CallWindowProc(wpOrigEditProc, hDlg, uMsg, wParam, lParam);
+      return CallWindowProc(wpOrigFrameEditProc, hDlg, uMsg, wParam, lParam);
+   }
+   return TRUE;
+}
+/****************************************************************************/
+/*
+ * WndProcHotspotEditList:  Handler for editable hotspot list view subclass.
+ */
+LRESULT CALLBACK WndProcHotspotEditList(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
+{
+   char buffer[32];
+
+   switch (uMsg)
+   {
+   case WM_WINDOWPOSCHANGING:
+   {
+      WINDOWPOS *pos = (WINDOWPOS*)lParam;
+
+      pos->x = rcHotspotSubItem.left;
+      pos->cx = rcHotspotSubItem.right;
+   }
+   break;
+
+   case WM_KEYDOWN:
+      // If holding shift and right or left arrow, increment or decrement
+      // value in edit box.
+      if (((GetKeyState(VK_SHIFT) & 0x8000) != 0)
+         && (wParam == VK_LEFT || wParam == VK_RIGHT))
+      {
+         GetWindowText(hDlg, buffer, 32);
+         int value = atoi(buffer) + (1 * wParam == VK_LEFT ? -1 : 1);
+         sprintf(buffer, "%i", value);
+         SetWindowText(hDlg, buffer);
+         SetHotspotData(lvHotspotItem.iItem, lvHotspotItem.iSubItem, value);
+         break;
+      }
+      return CallWindowProc(wpOrigHotspotEditProc, hDlg, uMsg, wParam, lParam);
+
+   case WM_CHAR:
+      // Only allow numbers, movement (arrow keys etc), deleting and '-'.
+      if (!(wParam == VK_BACK
+         || wParam == VK_RETURN
+         || wParam == VK_OEM_PLUS
+         || wParam == VK_OEM_MINUS
+         || wParam == VK_SUBTRACT
+         || (wParam >= VK_END && wParam <= VK_DELETE)
+         || (wParam >= '0' && wParam <= '9'))) {
+         return FALSE;
+      }
+      // fallthrough
+
+   default:
+      return CallWindowProc(wpOrigHotspotEditProc, hDlg, uMsg, wParam, lParam);
    }
    return TRUE;
 }
@@ -168,11 +245,6 @@ BOOL CALLBACK BGFEditorDialogProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM
 {
    HWND hList;
    LV_COLUMN lvcol;
-   static HWND hEdit;
-   static BOOL bEditing = FALSE;
-   UINT code;
-
-   hList = GetDlgItem(hDlg, IDC_FRAMEDATA);
 
    switch (message)
    {
@@ -185,28 +257,30 @@ BOOL CALLBACK BGFEditorDialogProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM
       // Set up Frame list
       hList = GetDlgItem(hDlg, IDC_FRAMEDATA);
       SetWindowFont(hList, GetFont(FONT_LIST), FALSE);
+
       // Columns
       ListView_SetExtendedListViewStyleEx(hList, LVS_EX_FULLROWSELECT,
          LVS_EX_FULLROWSELECT);
-         
+
       // Add column headings
       lvcol.mask = LVCF_TEXT | LVCF_WIDTH | LVCF_FMT;
-      lvcol.pszText = "Index";
-      lvcol.cx = 40;
       lvcol.fmt = LVCFMT_CENTER;
-      ListView_InsertColumn(hList, 0, &lvcol);
-      lvcol.pszText = "Width";
-      lvcol.cx = 46;
-      ListView_InsertColumn(hList, 1, &lvcol);
-      lvcol.pszText = "Height";
-      lvcol.cx = 46;
-      ListView_InsertColumn(hList, 2, &lvcol);
-      lvcol.pszText = "XOffset";
-      lvcol.cx = 54;
-      ListView_InsertColumn(hList, 3, &lvcol);
-      lvcol.pszText = "YOffset";
-      lvcol.cx = 54;
-      ListView_InsertColumn(hList, 4, &lvcol);
+      LIST_COLUMN_ADD(lvcol, hList, 0, 40, "Index");
+      LIST_COLUMN_ADD(lvcol, hList, 1, 46, "Width");
+      LIST_COLUMN_ADD(lvcol, hList, 2, 46, "Height");
+      LIST_COLUMN_ADD(lvcol, hList, 3, 54, "XOffset");
+      LIST_COLUMN_ADD(lvcol, hList, 4, 54, "YOffset");
+
+      // Set up Hotspot list
+      hList = GetDlgItem(hDlg, IDC_HOTSPOTDATA);
+      SetWindowFont(hList, GetFont(FONT_LIST), FALSE);
+
+      // Columns
+      ListView_SetExtendedListViewStyleEx(hList, LVS_EX_FULLROWSELECT,
+         LVS_EX_FULLROWSELECT);
+      LIST_COLUMN_ADD(lvcol, hList, 0, 40, "Index");
+      LIST_COLUMN_ADD(lvcol, hList, 1, 32, "X");
+      LIST_COLUMN_ADD(lvcol, hList, 2, 32, "Y");
 
       CenterWindow(hDlg, cinfo->hMain);
       return TRUE;
@@ -216,51 +290,11 @@ BOOL CALLBACK BGFEditorDialogProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM
       return TRUE;
 
    case WM_NOTIFY:
-      code = (UINT)-1 - ((NMHDR*)lParam)->code;
-      switch (((NMHDR*)lParam)->code)
-      {
-      case NM_CLICK:
-         lvFrameItem.iItem = ((NMITEMACTIVATE*)lParam)->iItem;
-         lvFrameItem.iSubItem = ((NMITEMACTIVATE*)lParam)->iSubItem;
+      if (((LPNMHDR)lParam)->idFrom == IDC_FRAMEDATA)
+         return OnFrameListViewNotify(hDlg, message, wParam, lParam);
+      else if (((LPNMHDR)lParam)->idFrom == IDC_HOTSPOTDATA)
+         return OnHotspotListViewNotify(hDlg, message, wParam, lParam);
 
-         break;
-
-      case NM_DBLCLK:
-         SendMessage(hList, LVM_EDITLABEL, lvFrameItem.iItem, 0);
-         break;
-
-      case LVN_BEGINLABELEDIT:
-         if (lvFrameItem.iSubItem == 0)
-         {
-            SetWindowLongPtr(hDlg, DWLP_MSGRESULT, TRUE);
-            return TRUE;
-         }
-         char text[32];
-         bEditing = TRUE;
-         hEdit = (HWND)SendMessage(hList, LVM_GETEDITCONTROL, 0, 0);
-         rcSubItem.top = lvFrameItem.iSubItem;
-         rcSubItem.left = LVIR_LABEL;
-         SendMessage(hList, LVM_GETSUBITEMRECT, lvFrameItem.iItem, (long)&rcSubItem);
-         rcSubItem.right = SendMessage(hList, LVM_GETCOLUMNWIDTH, lvFrameItem.iSubItem, 0);
-         wpOrigEditProc = (WNDPROC)SetWindowLong(hEdit, GWL_WNDPROC, (long)WndProcEditList);
-         lvFrameItem.pszText = text;
-         lvFrameItem.cchTextMax = 32;
-         SendMessage(hList, LVM_GETITEMTEXT, lvFrameItem.iItem, (long)&lvFrameItem);
-         SetWindowText(hEdit, lvFrameItem.pszText);
-         break;
-
-      case LVN_ENDLABELEDIT:
-         bEditing = 0;
-         SetWindowLong(hEdit, GWL_WNDPROC, (long)wpOrigEditProc);
-         if (!lvFrameItem.iSubItem)
-            return TRUE;
-         lvFrameItem.pszText = ((NMLVDISPINFO*)lParam)->item.pszText;
-         if (!lvFrameItem.pszText)
-            return TRUE;
-         SendMessage(hList, LVM_SETITEMTEXT, lvFrameItem.iItem, (long)&lvFrameItem);
-         SetFrameOffset(lvFrameItem.iItem, lvFrameItem.iSubItem, atoi(lvFrameItem.pszText));
-         break;
-      }
       return FALSE;
 
    HANDLE_MSG(hDlg, WM_COMMAND, OnBGFEditorCommand);
@@ -277,6 +311,132 @@ BOOL CALLBACK BGFEditorDialogProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM
 }
 /****************************************************************************/
 /*
+ * OnFrameListViewNotify:  Handler for WM_NOTIFY messages from frame list view.
+ */
+BOOL OnFrameListViewNotify(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
+{
+   static HWND hEdit;
+   LPNMLISTVIEW pnmv;
+
+   HWND hList = GetDlgItem(hDlg, IDC_FRAMEDATA);
+
+   switch (((NMHDR*)lParam)->code)
+   {
+   case LVN_ITEMCHANGED:
+      pnmv = (LPNMLISTVIEW)lParam;
+      if ((pnmv->uChanged & LVIF_STATE)
+         && (pnmv->uNewState & LVIS_SELECTED) != (pnmv->uOldState & LVIS_SELECTED))
+      {
+         if (pnmv->uNewState & LVIS_SELECTED)
+         {
+            lvFrameItem.iItem = pnmv->iItem;
+            ShowSelectedHotspotData(hDlg, lvFrameItem.iItem);
+         }
+      }
+      break;
+
+   case NM_CLICK:
+      lvFrameItem.iItem = ((NMITEMACTIVATE*)lParam)->iItem;
+      lvFrameItem.iSubItem = ((NMITEMACTIVATE*)lParam)->iSubItem;
+      break;
+
+   case NM_DBLCLK:
+      SendMessage(hList, LVM_EDITLABEL, lvFrameItem.iItem, 0);
+      break;
+
+   case LVN_BEGINLABELEDIT:
+      if (lvFrameItem.iSubItem < 3
+         || lvFrameItem.iSubItem > 4)
+      {
+         SetWindowLongPtr(hDlg, DWLP_MSGRESULT, TRUE);
+         return TRUE;
+      }
+      char text[32];
+      hEdit = (HWND)SendMessage(hList, LVM_GETEDITCONTROL, 0, 0);
+      rcFrameSubItem.top = lvFrameItem.iSubItem;
+      rcFrameSubItem.left = LVIR_LABEL;
+      SendMessage(hList, LVM_GETSUBITEMRECT, lvFrameItem.iItem, (long)&rcFrameSubItem);
+      rcFrameSubItem.right = SendMessage(hList, LVM_GETCOLUMNWIDTH, lvFrameItem.iSubItem, 0);
+      wpOrigFrameEditProc = (WNDPROC)SetWindowLong(hEdit, GWL_WNDPROC, (long)WndProcFrameEditList);
+      lvFrameItem.pszText = text;
+      lvFrameItem.cchTextMax = 32;
+      SendMessage(hList, LVM_GETITEMTEXT, lvFrameItem.iItem, (long)&lvFrameItem);
+      SetWindowText(hEdit, lvFrameItem.pszText);
+      break;
+
+   case LVN_ENDLABELEDIT:
+      SetWindowLong(hEdit, GWL_WNDPROC, (long)wpOrigFrameEditProc);
+      if (lvFrameItem.iSubItem < 3
+         || lvFrameItem.iSubItem > 4)
+         return TRUE;
+      lvFrameItem.pszText = ((NMLVDISPINFO*)lParam)->item.pszText;
+      if (!lvFrameItem.pszText)
+         return TRUE;
+      SendMessage(hList, LVM_SETITEMTEXT, lvFrameItem.iItem, (long)&lvFrameItem);
+      SetFrameOffset(lvFrameItem.iItem, lvFrameItem.iSubItem, atoi(lvFrameItem.pszText));
+      break;
+   }
+   return TRUE;
+}
+/****************************************************************************/
+/*
+ * OnHotspotListViewNotify:  Handler for WM_NOTIFY messages from hotspot list view.
+ */
+BOOL OnHotspotListViewNotify(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
+{
+   static HWND hEdit;
+   LPNMLISTVIEW pnmv;
+
+   HWND hList = GetDlgItem(hDlg, IDC_HOTSPOTDATA);
+
+   switch (((NMHDR*)lParam)->code)
+   {
+   case LVN_ITEMCHANGED:
+      pnmv = (LPNMLISTVIEW)lParam;
+      if ((pnmv->uChanged & LVIF_STATE)
+         && (pnmv->uNewState & LVIS_SELECTED) != (pnmv->uOldState & LVIS_SELECTED))
+      {
+         if (pnmv->uNewState & LVIS_SELECTED)
+            lvHotspotItem.iItem = pnmv->iItem;
+      }
+      break;
+
+   case NM_CLICK:
+      lvHotspotItem.iItem = ((NMITEMACTIVATE*)lParam)->iItem;
+      lvHotspotItem.iSubItem = ((NMITEMACTIVATE*)lParam)->iSubItem;
+      break;
+
+   case NM_DBLCLK:
+      SendMessage(hList, LVM_EDITLABEL, lvHotspotItem.iItem, 0);
+      break;
+
+   case LVN_BEGINLABELEDIT:
+      char text[32];
+      hEdit = (HWND)SendMessage(hList, LVM_GETEDITCONTROL, 0, 0);
+      rcHotspotSubItem.top = lvHotspotItem.iSubItem;
+      rcHotspotSubItem.left = LVIR_LABEL;
+      SendMessage(hList, LVM_GETSUBITEMRECT, lvHotspotItem.iItem, (long)&rcHotspotSubItem);
+      rcHotspotSubItem.right = SendMessage(hList, LVM_GETCOLUMNWIDTH, lvHotspotItem.iSubItem, 0);
+      wpOrigHotspotEditProc = (WNDPROC)SetWindowLong(hEdit, GWL_WNDPROC, (long)WndProcHotspotEditList);
+      lvHotspotItem.pszText = text;
+      lvHotspotItem.cchTextMax = 32;
+      SendMessage(hList, LVM_GETITEMTEXT, lvHotspotItem.iItem, (long)&lvHotspotItem);
+      SetWindowText(hEdit, lvHotspotItem.pszText);
+      break;
+
+   case LVN_ENDLABELEDIT:
+      SetWindowLong(hEdit, GWL_WNDPROC, (long)wpOrigHotspotEditProc);
+      lvHotspotItem.pszText = ((NMLVDISPINFO*)lParam)->item.pszText;
+      if (!lvHotspotItem.pszText)
+         return TRUE;
+      SendMessage(hList, LVM_SETITEMTEXT, lvHotspotItem.iItem, (long)&lvHotspotItem);
+      SetHotspotData(lvHotspotItem.iItem, lvHotspotItem.iSubItem, atoi(lvHotspotItem.pszText));
+      break;
+   }
+   return TRUE;
+}
+/****************************************************************************/
+/*
  * SetFrameOffset:  Sets an offset value in the frame list view. Caches the
  *   original data if not already done.
  */
@@ -285,6 +445,34 @@ static void SetFrameOffset(int frame, int column, int value)
    if (column != 3 && column != 4)
       return;
 
+   for (list_type l = bgf_list; l != NULL; l = l->next)
+   {
+      object_bitmap_type bmp = (object_bitmap_type)l->data;
+      if (last_selected == bmp->idnum)
+      {
+         CacheOriginal(bmp);
+         switch (column)
+         {
+         case 3:
+            bmp->bmaps.pdibs[frame]->xoffset = value;
+            break;
+         case 4:
+            bmp->bmaps.pdibs[frame]->yoffset = value;
+            break;
+         }
+         break;
+      }
+   }
+}
+/****************************************************************************/
+/*
+ * SetHotspotData:  Sets a data value in the hotspot list view. Caches the
+ *   original data if not already done.
+ */
+static void SetHotspotData(int index, int column, int value)
+{
+   if (column < 0 && column > 3)
+      return;
 
    for (list_type l = bgf_list; l != NULL; l = l->next)
    {
@@ -292,10 +480,18 @@ static void SetFrameOffset(int frame, int column, int value)
       if (last_selected == bmp->idnum)
       {
          CacheOriginal(bmp);
-         if (column == 3)
-            bmp->bmaps.pdibs[frame]->xoffset = value;
-         else
-            bmp->bmaps.pdibs[frame]->yoffset = value;
+         switch (column)
+         {
+         case 0:
+            bmp->bmaps.pdibs[lvFrameItem.iItem]->numbers[index] = (char)value;
+            break;
+         case 1:
+            bmp->bmaps.pdibs[lvFrameItem.iItem]->hotspots[index].x = value;
+            break;
+         case 2:
+            bmp->bmaps.pdibs[lvFrameItem.iItem]->hotspots[index].y = value;
+            break;
+         }
          break;
       }
    }
@@ -315,6 +511,9 @@ static void OnBGFEditorCommand(HWND hDlg, int cmd_id, HWND hwndCtl, UINT codeNot
    switch (cmd_id)
    {
    case IDC_BGFLIST:
+      if (codeNotify == LBN_KILLFOCUS)
+         break;
+
       hListFrame = GetDlgItem(hDlg, IDC_FRAMEDATA);
       hListBGF = GetDlgItem(hDlg, IDC_BGFLIST);
       index = ListBox_GetCurSel(hListBGF);
@@ -506,15 +705,16 @@ static void LoadBGFList(HWND hDlg)
  */
 static void ShowSelectedFrameData(HWND hDlg)
 {
-   HWND hListFrame, hShrink;
+   HWND hList, hShrink;
    LV_ITEM lvitem;
    char buffer[8];
 
    isSelecting = TRUE;
 
-   hListFrame = GetDlgItem(hDlg, IDC_FRAMEDATA);
+   // Frame data
+   hList = GetDlgItem(hDlg, IDC_FRAMEDATA);
    // Clear frame data.
-   ListView_DeleteAllItems(hListFrame);
+   ListView_DeleteAllItems(hList);
 
    for (list_type l = bgf_list; l != NULL; l = l->next)
    {
@@ -531,38 +731,84 @@ static void ShowSelectedFrameData(HWND hDlg)
          for (int i = 0; i < bmp->bmaps.num_bitmaps; ++i)
          {
             lvitem.mask = LVIF_TEXT | LVIF_PARAM;
-            lvitem.iItem = ListView_GetItemCount(hListFrame);
+            lvitem.iItem = ListView_GetItemCount(hList);
             lvitem.lParam = bmp->idnum;
 
             // Frame index
             lvitem.iSubItem = 0;
             sprintf(buffer, "%i", i + 1);
             lvitem.pszText = buffer;
-            ListView_InsertItem(hListFrame, &lvitem);
+            ListView_InsertItem(hList, &lvitem);
 
             // Add subitems
+            lvitem.mask = LVIF_TEXT;
 
             // Width
-            lvitem.mask = LVIF_TEXT;
-            lvitem.iSubItem = 1;
-            sprintf(buffer, "%i", bmp->bmaps.pdibs[i]->width);
-            lvitem.pszText = buffer;
-            ListView_SetItem(hListFrame, &lvitem);
+            LIST_COLUMN_DATA_ADD(lvitem, hList, buffer, 1, bmp->bmaps.pdibs[i]->width);
             // Height
-            lvitem.iSubItem = 2;
-            sprintf(buffer, "%i", bmp->bmaps.pdibs[i]->height);
-            lvitem.pszText = buffer;
-            ListView_SetItem(hListFrame, &lvitem);
+            LIST_COLUMN_DATA_ADD(lvitem, hList, buffer, 2, bmp->bmaps.pdibs[i]->height);
             // X offset
-            lvitem.iSubItem = 3;
-            sprintf(buffer, "%i", bmp->bmaps.pdibs[i]->xoffset);
-            lvitem.pszText = buffer;
-            ListView_SetItem(hListFrame, &lvitem);
+            LIST_COLUMN_DATA_ADD(lvitem, hList, buffer, 3, bmp->bmaps.pdibs[i]->xoffset);
             // Y offset
-            lvitem.iSubItem = 4;
-            sprintf(buffer, "%i", bmp->bmaps.pdibs[i]->yoffset);
+            LIST_COLUMN_DATA_ADD(lvitem, hList, buffer, 4, bmp->bmaps.pdibs[i]->yoffset);
+         }
+         if (bmp->bmaps.num_bitmaps > 0)
+         {
+            ListView_SetItemState(hList, 0, LVIS_SELECTED, LVIS_SELECTED);
+            ListView_SetItemState(hList, 0, LVIS_FOCUSED, LVIS_FOCUSED);
+         }
+         break;
+      }
+   }
+   isSelecting = FALSE;
+}
+/****************************************************************************/
+/*
+ * ShowSelectedHotspotData:  Displays the hotspot data for the selected frame in
+ *   the hotspot list view.  Assumes last_selected is set prior to calling this.
+ */
+static void ShowSelectedHotspotData(HWND hDlg, int frame_index)
+{
+   HWND hList;
+   LV_ITEM lvitem;
+   char buffer[8];
+
+   isSelecting = TRUE;
+
+   hList = GetDlgItem(hDlg, IDC_HOTSPOTDATA);
+   // Clear frame data.
+   ListView_DeleteAllItems(hList);
+
+   for (list_type l = bgf_list; l != NULL; l = l->next)
+   {
+      object_bitmap_type bmp = (object_bitmap_type)l->data;
+      if (last_selected == bmp->idnum)
+      {
+         for (int i = 0; i < bmp->bmaps.pdibs[frame_index]->num_hotspots; ++i)
+         {
+            lvitem.mask = LVIF_TEXT | LVIF_PARAM;
+            lvitem.iItem = ListView_GetItemCount(hList);
+            lvitem.lParam = i;
+
+            // Hotspot index
+            bmp->bmaps.pdibs[frame_index]->numbers[i];
+            lvitem.iSubItem = 0;
+
+            sprintf(buffer, "%i", (int)bmp->bmaps.pdibs[frame_index]->numbers[i]);
             lvitem.pszText = buffer;
-            ListView_SetItem(hListFrame, &lvitem);
+            ListView_InsertItem(hList, &lvitem);
+
+            // Add subitems
+            lvitem.mask = LVIF_TEXT;
+            // X
+            LIST_COLUMN_DATA_ADD(lvitem, hList, buffer, 1, bmp->bmaps.pdibs[frame_index]->hotspots[i].x);
+            // Y
+            LIST_COLUMN_DATA_ADD(lvitem, hList, buffer, 2, bmp->bmaps.pdibs[frame_index]->hotspots[i].y);
+         }
+         if (bmp->bmaps.pdibs[frame_index]->num_hotspots > 0)
+         {
+            ListView_SetItemState(hList, 0, LVIS_SELECTED, LVIS_SELECTED);
+            ListView_SetItemState(hList, 0, LVIS_FOCUSED, LVIS_FOCUSED);
          }
          break;
       }

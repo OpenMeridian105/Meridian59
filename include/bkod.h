@@ -129,6 +129,7 @@ enum
 enum
 {
    CREATEOBJECT = 1,
+   SETTRACE = 2,
 
    SENDMESSAGE = 11,
    POSTMESSAGE = 12,

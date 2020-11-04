@@ -87,6 +87,7 @@ typedef struct
    post_node data[MAX_POST_QUEUE];
 } post_queue_type;
 
+void SetTraceOn(void);
 void InitProfiling(void);
 void InitTimeProfiling(void);
 void EndTimeProfiling(void);

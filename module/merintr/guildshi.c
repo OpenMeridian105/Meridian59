@@ -247,7 +247,7 @@ void GuildShieldDraw(void)
       obj.translation = XLAT_GUILDCOLOR_BASE + iNumColors*iChosenColor1 + iChosenColor2;
       obj.overlays = &listBlank;
       hDC = GetDC(hwndShield);
-      DrawStretchedObjectDefault(hDC, &obj, &areaWndShield, GetSysColorBrush(COLOR_3DFACE));
+      DrawStretchedObjectDefault(hDC, &obj, &areaWndShield, GetTransparentBrush());
       ReleaseDC(hwndShield, hDC);
    }
 }

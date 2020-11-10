@@ -26,7 +26,7 @@ LIBS = \
     ws2_32.lib comctl32.lib advapi32.lib \
     winmm.lib wininet.lib ole32.lib \
     d3d9.lib dxerr.lib d3dx9.lib irrklang.lib \
-    rscload.lib libpng.lib zlib.lib
+    rscload.lib libpng.lib zlib.lib Msimg32.lib
 
 DEFFILE  = $(SOURCEDIR)\client.def
 

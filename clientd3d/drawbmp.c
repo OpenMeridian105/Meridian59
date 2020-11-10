@@ -19,6 +19,7 @@
 static HDC      gOffscreenDC;
 static HBITMAP  gOldOffscreenBitmap;
 static BYTE *gOffscreenBits;   /* Pointer to pixels of offscreen bitmap */
+static HBRUSH transparentBrush;
 
 /* Bitmap for drawing window background */
 static RawBitmap bkgnd;
@@ -39,10 +40,21 @@ static void OffscreenBitCopy(HDC hdc, int dest_x, int dest_y, int width, int hei
 							 BYTE *bits, int source_x, int source_y, int source_width, int options);
 /************************************************************************/
 /*
+* GetTransparentBrush:  Return a transparent brush for drawing bitmaps with
+*   a transparent background (transparent meaning palette index 254, cyan).
+*/
+HBRUSH GetTransparentBrush()
+{
+	return transparentBrush;
+}
+/************************************************************************/
+/*
 * DrawBitmapInitialize:  Setup up offscreen buffer.
 */
 void DrawBitmapInitialize(void)
 {
+	transparentBrush = CreateSolidBrush(RGB(0,255,255));
+
 	gOffscreenDC = CreateMemBitmap(OFFSCREEN_BITMAP_SIZE, OFFSCREEN_BITMAP_SIZE,
 		&gOldOffscreenBitmap, &gOffscreenBits);
 	if (gOffscreenDC == 0)
@@ -61,6 +73,7 @@ void DrawBitmapClose(void)
 	gCurrentBitmap = (HBITMAP) SelectObject(gOffscreenDC, gOldOffscreenBitmap);
 	DeleteObject(gCurrentBitmap);
 	DeleteDC(gOffscreenDC);
+	DeleteObject(transparentBrush);
 }
 /************************************************************************/
 /*
@@ -290,12 +303,17 @@ void DrawObject(HDC hdc, object_node *obj, int group, Bool draw_obj, AREA *area,
 	
 	if (!copy) 
 		return;
-	
-	/* Copy result to target DC, stretching if necessary */
-	if (draw_size > OFFSCREEN_BITMAP_SIZE)
-		StretchBlt(hdc, area->x, area->y, area->cx, area->cy,
-		gOffscreenDC, x, y, draw_size, draw_size, SRCCOPY);
-	else BitBlt(hdc, area->x, area->y, draw_size, draw_size, gOffscreenDC, x, y, SRCCOPY);
+
+   // Copy result to target DC, stretching if necessary
+   // Note that this now uses TransparentBlt instead of StretchBlt and BitBlt
+   // and assumes the brush passed into DrawObject is either null or uses the
+   // transparent brush (cyan).
+   if (draw_size > OFFSCREEN_BITMAP_SIZE)
+      TransparentBlt(hdc, area->x, area->y, area->cx, area->cy, gOffscreenDC,
+         x, y, draw_size, draw_size, RGB(0,255,255));
+   else
+      TransparentBlt(hdc, area->x, area->y, draw_size, draw_size, gOffscreenDC,
+         x, y, draw_size, draw_size, RGB(0, 255, 255));
 }
 /************************************************************************/
 /*

@@ -289,8 +289,7 @@ void CharDrawFace(void)
    obj.overlays = &face_overlays;
 
    hdc = GetDC(hFace);
-   DrawStretchedObjectDefault(hdc, &obj, &area, 
-			      GetSysColorBrush(COLOR_3DFACE));
+   DrawStretchedObjectDefault(hdc, &obj, &area, GetTransparentBrush());
    ReleaseDC(hFace, hdc);
 }
 /************************************************************************/

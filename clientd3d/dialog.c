@@ -406,7 +406,7 @@ BOOL CALLBACK DescDialogProc(HWND hDlg, UINT message, UINT wParam, LONG lParam)
 	   
 	   RectToArea(&dlg_rect, &area);
 	   DrawStretchedObjectGroup(hdc, info->obj, info->obj->animate->group, &area, 
-		   GetSysColorBrush(COLOR_3DFACE));
+		   GetTransparentBrush());
 	   
 	   ReleaseDC(hwndBitmap, hdc);
 	   break;

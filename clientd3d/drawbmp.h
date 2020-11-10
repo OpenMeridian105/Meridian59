@@ -36,6 +36,7 @@ DrawWindowBackgroundColor(NULL, hdc, rect, xin, yin, -1)
 #define OBB_TRANSPARENT  0x00000002        // Mask transparency
 #define OBB_COPY         0x00000004        // Copy result from offscreen bitmap to screen
 
+M59EXPORT HBRUSH GetTransparentBrush();
 M59EXPORT void OffscreenBitBlt(HDC hdc, int dest_x, int dest_y, int width, int height,
 		     BYTE *bits, int source_x, int source_y, int source_width, int options);
 M59EXPORT void OffscreenStretchBlt(HDC hdc, int dest_x, int dest_y, int dest_width, int dest_height,

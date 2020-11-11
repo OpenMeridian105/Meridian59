@@ -5,6 +5,6 @@
 !include $(TOPDIR)\common.mak
 
 DEPEND = ..\lute.bof
-BOFS = finelute.bof truelute.bof
+BOFS = finelute.bof truelute.bof lyre.bof
 
 !include $(KODDIR)\kod.mak

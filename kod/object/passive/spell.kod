@@ -1680,7 +1680,7 @@ messages:
    CastSpell(who = $, lTargets = $, iSpellPower = 0, iPowerLevel = 100,
              bItemCast=FALSE, bRing=FALSE, bStun=FALSE,report=TRUE)
    {
-      local oTarget, oRoom, i, iAggro, iDuration, oSpell;
+      local oTarget, oRoom, i, iAggro, iDuration, oSpell, oItem;
 
       // Insert any spellpower-modifying effects here that shouldn't affect
       // the actual casting/success of the spell, but still have an effect on
@@ -1893,6 +1893,13 @@ messages:
          //  This means you can catch up on lower level spells by casting
          //  higher level spells, but you can't do the reverse as easily.
          Send(who,@AddSchoolCast,#school=viSchool,#amount=viSpell_Level);
+
+         // Check special case for playing songs with a Lyre
+         oItem = Send(who,@FindUsing,#class=&Lyre);
+         if (oItem <> $) AND (viSchool = SS_JALA)
+         {
+            Send(oItem,@CalculateLyrePower,#iSpellLevel=viSpell_Level);
+         }
 
          // Check for special outlaw status effects, but only if the caster
          //  isn't already an outlaw or murderer.

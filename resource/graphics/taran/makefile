@@ -10,7 +10,7 @@ OUTDIRSUB = ..\$(OUTDIR)
 
 DIRS = monsters spells skills items angelwings warhelm armor_colour multibow \
        club iceswd knife kukri machete hatchet mallet lightsw fireswd food \
-       lantern misc weapons shields
+       lantern misc weapons shields instruments
 
 all:
    @-for %i in (*.bgf) do @$(CP) %i $(OUTDIR) >nul

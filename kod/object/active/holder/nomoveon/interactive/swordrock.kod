@@ -1,0 +1,181 @@
+// Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+// All rights reserved.
+//
+// This software is distributed under a license that is described in
+// the LICENSE file that accompanies it.
+//
+// Meridian is a registered trademark.
+
+
+////////////////////////////////////////////////////////////////////////////////
+SwordInStone is InteractiveObject
+
+constants:
+
+   include blakston.khd
+
+resources:
+
+   //include SwordInStone.lkod
+
+   SwordInStone_icon_rsc = rockswd.bgf
+
+   SwordInStone_name_0 = "sword in stone"
+   SwordInStone_desc_0 = \
+      "A blade powerful enough to penetrate rock, sits firmly wedged into the "
+      "stone.  Many have tried to release it from earth, but it appears "
+      "the sword will accept only a master by its own will."
+
+   SwordInStone_name_1 = "stone"
+   SwordInStone_desc_1 = \
+      "A large stone, often refered to as the stone of destiny.  "
+      "There doesn't appear to be anything special with this rock."
+
+    SwordInStone_worthy_rsc = \
+      "The sword is released from the stone, you are deemed worthy of this blade."
+
+   SwordInStone_notworthy_rsc = \
+      "You pull at the sword, but your attempt fails as the sword seems to have "
+      "rejected you."
+
+   SwordInStone_notworthy_sound_rsc = doorlck.ogg
+   SwordInStone_worthy_sound_rsc = KaterUp.ogg
+
+classvars:
+
+   vrIcon = SwordInStone_icon_rsc
+
+properties:
+
+   vrName = SwordInStone_name_0
+   vrDesc = SwordInStone_desc_0
+   viObject_flags = OF_ACTIVATABLE
+
+   pbSwordInStone = TRUE
+   poWorthyPlayer = $
+
+messages:
+
+   ResetSwordInStone()
+   "Admin Controlled"
+   {
+       pbSwordInStone = TRUE;
+
+       Send(self,@UpdateSwordInStone);
+
+       return;
+   }
+
+   TryActivate(who=$)
+   {
+      if pbSwordInStone 
+      {
+          if Send(self,@CheckForWorthy,#who=who)
+          {
+              Send(self,@OfferSword,#who=who);
+              return TRUE;
+          }
+          else 
+          {
+              Send(who,@MsgSendUser,#message_rsc=SwordInStone_notworthy_rsc);
+              Send(who,@WaveSendUser,#wave_rsc=SwordInStone_notworthy_sound_rsc);
+              return TRUE;
+          }
+      }
+
+      return FALSE;
+   }
+
+   CheckForWorthy(who=$)
+   {
+       // tbd - currently admin controlled
+       if (who = poWorthyPlayer)
+       {
+           poWorthyPlayer = $;
+           return TRUE;
+       }
+
+       return FALSE;
+   }
+
+   OfferSword(who=$)
+   {
+       local oSword;
+
+       oSword = Create(&Silvance);
+
+       if Send(who,@ReqNewHold,#what=oSword)
+       {
+            Send(who,@MsgSendUser,#message_rsc=SwordInStone_worthy_rsc);
+            Send(who,@WaveSendUser,#wave_rsc=SwordInStone_worthy_sound_rsc);
+
+            Send(who,@NewHold,#what=oSword);
+            Send(who,@TryUseItem,#what=oSword);
+            pbSwordInStone = FALSE;
+       }
+
+       Send(self,@UpdateSwordInStone);
+
+       return TRUE;
+   }
+
+   UpdateSwordInStone()
+   {
+       if pbSwordInStone
+       {
+           vrName = SwordInStone_name_0;
+           vrDesc = SwordInStone_desc_0;
+           viObject_Flags |=  OF_ACTIVATABLE;
+       }
+       else
+       {
+           vrName = SwordInStone_name_1;
+           vrDesc = SwordInStone_desc_1;
+           viObject_Flags &= ~OF_ACTIVATABLE;
+       }
+
+       Send(poOwner,@SomethingChanged,#what=self);
+
+       return;
+   }
+
+   SendAnimation()
+   {
+       local iFrame;
+
+       if pbSwordInStone
+       {
+           iFrame = 1;
+       }
+       else
+       {
+           iFrame = 2;
+       }
+
+      AddPacket(1, ANIMATE_NONE, 2, iFrame);
+
+      return;
+   }
+
+   SendLightingInformation()
+   {
+      local iFlag;
+
+      if pbSwordInStone
+      {
+          iFlag = 255;
+      }
+      else 
+      {
+          iFlag = 0;
+      }
+
+      AddPacket(2,(LIGHT_FLAG_ON | LIGHT_FLAG_DYNAMIC | LIGHT_FLAG_HIGHLIGHT));
+      AddPacket(1,iFlag);
+      AddPacket(2,LIGHT_BWHITE);
+
+      return;
+   }
+
+end
+////////////////////////////////////////////////////////////////////////////////

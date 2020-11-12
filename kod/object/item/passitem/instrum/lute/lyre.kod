@@ -1,0 +1,164 @@
+// Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+// All rights reserved.
+//
+// This software is distributed under a license that is described in
+// the LICENSE file that accompanies it.
+//
+// Meridian is a registered trademark.
+
+
+////////////////////////////////////////////////////////////////////////////////
+Lyre is Lute
+
+constants:
+
+   include blakston.khd
+
+   LYRE_XP_REQUIRED  = 10
+
+   LYRE_LEVEL_MIN    = 10
+   LYRE_LEVEL_ONE    = 15
+   LYRE_LEVEL_TWO    = 20
+   LYRE_LEVEL_THREE  = 30
+   LYRE_LEVEL_MAX    = 45
+
+resources:
+
+   //include Lyre.lkod
+
+   Lyre_name_rsc = "lyre"
+   Lyre_icon_rsc = lyre.bgf
+   Lyre_overlay_rsc = lyreov.bgf
+   Lyre_desc_rsc = \
+      "Ancient equivalent of the iconic lute, the lyre comes with a gentle "
+      "curve and a limited number of strings.  This instrument's unique sound "
+      "has been sought after by expert bards trying to replicate the "
+      "forgotten music of the past, prior to the burning of Jala's library."
+
+   Lyre_level_0 = \
+      "~IAs you begin to play this lyre you can't help but feel somewhat "
+      "disappointed with its sound.  This is an instrument that requires real "
+      "dedication..."
+
+   Lyre_level_1 = \
+      "~IThe sound of your instrument has improved, but you require further "
+      "practice in perfecting its melody."
+
+   Lyre_level_2 = \
+      "~IYour familiarity with this instrument has strengthen your musical "
+      "talents.  You hear a faint whisper, but it quickly fades away..."
+
+   Lyre_level_3 = \
+      "~IYour dedication to the lyre has blessed you.  The sound of whispers "
+      "return in your head, you begin to hear more vividly the sound of children."
+
+   Lyre_level_4 = \
+      "~k~IA ghostly voice whispers, \"Song, once you've accepted it into your soul, "
+      "it is a spirit that never fades.  Only the masterful bards can hear the echos of the past...\""
+
+   Lyre_maxlevel_snd = lostsoul_dth.ogg
+
+classvars:
+
+   vrName = Lyre_name_rsc
+   vrDesc = Lyre_desc_rsc
+
+   vrIcon = Lyre_icon_rsc
+   vrInstrument_overlay = Lyre_overlay_rsc
+
+   viValue_average = 1700
+   viWeight = 100
+   viBulk = 150
+
+properties:
+
+   viInstrument_strength = 10
+   piInstrument_experience = 0
+   poBard = $
+
+messages:
+
+   NewOwner(what = $)
+   {
+      if (poBard = $) AND IsClass(what,&Player)
+      {
+         poBard = what;
+      }
+
+      propagate;
+   }
+
+   CalculateLyrePower(iSpellLevel=0)
+   "Called by the CastSpell message in spell.kod"
+   {
+      piInstrument_experience = piInstrument_experience + iSpellLevel;
+
+      if (piInstrument_experience >= LYRE_XP_REQUIRED)
+         AND (viInstrument_strength <= LYRE_LEVEL_MAX)
+      {
+         piInstrument_experience = 0;
+         viInstrument_strength++;
+      }
+
+      if (viInstrument_strength = LYRE_LEVEL_MIN)
+      {
+         Send(poOwner,@MsgSendUser,#message_rsc=Lyre_level_0);
+         viInstrument_strength++;
+      }
+      else if (viInstrument_strength = LYRE_LEVEL_ONE)
+      {
+         Send(poOwner,@MsgSendUser,#message_rsc=Lyre_level_1);
+         viInstrument_strength++;
+      }
+      else if (viInstrument_strength = LYRE_LEVEL_TWO)
+      {
+         Send(poOwner,@MsgSendUser,#message_rsc=Lyre_level_2);
+         viInstrument_strength++;
+      }
+      else if (viInstrument_strength = LYRE_LEVEL_THREE)
+      {
+         Send(poOwner,@MsgSendUser,#message_rsc=Lyre_level_3);
+         viInstrument_strength++;
+      }
+      else if (viInstrument_strength = LYRE_LEVEL_MAX)
+      {
+         Send(poOwner,@MsgSendUser,#message_rsc=Lyre_level_4);
+         Send(poOwner,@WaveSendUser,#wave_rsc=Lyre_maxlevel_snd);
+         viInstrument_strength++;
+      }
+      else if (viInstrument_strength >= LYRE_LEVEL_MAX)
+      {
+         viInstrument_strength = LYRE_LEVEL_MAX;
+         piInstrument_experience = 10;
+      }
+
+      return;
+   }
+
+   NewGameDay()
+   {
+      // Have bards keep practicing at it, requires the instrument to 
+      // constantly be played in order to maintain its power.
+      if (viInstrument_strength >= LYRE_LEVEL_MIN)
+      {
+         piInstrument_experience--;
+      }
+
+      if (piInstrument_experience <= 0)
+      {
+         piInstrument_experience = LYRE_XP_REQUIRED;
+         viInstrument_strength--;
+      }
+
+      if poOwner <> poBard
+      {
+         // not in the hands of a bard, start over!
+         viInstrument_strength = LYRE_LEVEL_MIN;
+      }
+
+      return;
+   }
+
+end
+////////////////////////////////////////////////////////////////////////////////
+

@@ -429,6 +429,9 @@ properties:
    // Are we able to lift others by hitting the <space> key?
    pbIsLiftEnabled = TRUE
 
+   // Are sets enabled?
+   pbSetsEnabled = FALSE
+
 messages:
 
    Constructor()
@@ -1002,6 +1005,24 @@ messages:
       pbMercenaryContractEnabled = bEnabled;
 
       return pbMercenaryContractEnabled;
+   }
+
+   AreSetsEnabled()
+   {
+      return pbSetsEnabled;
+   }
+
+   SetSetsEnabled(bEnabled=TRUE)
+   {
+      pbSetsEnabled = bEnabled;
+
+      if bEnabled
+      {
+         Send(SYS,@RecreateSets);
+         Send(&Player,@CreateSetList);
+      }
+
+      return pbSetsEnabled;
    }
 
    GetChaseRangeFactor()

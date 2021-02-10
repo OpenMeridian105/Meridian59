@@ -1115,6 +1115,8 @@ properties:
 
    plPeriodicSounds = $
 
+   plSets = $
+
 messages:
 
    Constructor()
@@ -16408,6 +16410,131 @@ messages:
       }
 
       return;
+   }
+
+   CreateSetList()
+   {
+      local i, j, iNum, oItemAtt, lTemp, bFound, iOld, iNew, iSet;
+
+      lTemp = plSets;
+
+      plSets = $;
+
+      foreach i in plUsing
+      {
+         foreach j in Send(i,@GetAttributes)
+         {
+            iNum = Send(i,@GetNumFromCompound,#compound=First(j));
+            oItemAtt = Send(SYS,@FindItemAttByNum,#num=iNum);
+
+            plSets = Send(oItemAtt,@AddSets,#lList=plSets);
+         }
+      }
+
+      // Let's go through the list to check for any relevant changes.
+      // Going through our new set list.
+      foreach i in plSets
+      {
+         iSet = First(i);
+         iNew = Send(SYS,@GetRankPower,#iSet=iSet,#iRank=Nth(i,2));
+         bFound = FALSE;
+
+         // Comparing to entries in the old set list.
+         foreach j in lTemp
+         {
+            // We have found a set in both lists.
+            if iSet = First(j)
+            {
+               iOld = Send(SYS,@GetRankPower,#iSet=iSet,#iRank=Nth(j,2));
+               bFound = TRUE;
+
+               // Send a message if our set rank has gone up.
+               if iOld < iNew
+               {
+                  Send(self,@SetUpdate,#iSet=iSet);
+                  Send(self,@MsgSendUser,#message_rsc=
+                     Send(SYS,@GetSetMessage,#iSet=iSet),
+                     #parm1=iNew);
+               }
+               // Send a message if our set rank has gone down.
+               else if iOld > iNew
+               {
+                  Send(self,@SetUpdate,#iSet=iSet);
+                  Send(self,@MsgSendUser,#message_rsc=
+                     Send(SYS,@GetSetMessage,#iSet=iSet,#bAdd=FALSE),
+                     #parm1=iNew);
+               }
+
+               // Remove the matched item from our old list.
+               lTemp = DelListElem(lTemp,j);
+            }
+         }
+
+         // The entry in the new list wasn't found in the old list.
+         // That means that our set rank has gone up.
+         if (NOT bFound) AND (iNew > 0)
+         {
+            Send(self,@SetUpdate,#iSet=iSet);
+            Send(self,@MsgSendUser,#message_rsc=
+               Send(SYS,@GetSetMessage,#iSet=iSet),
+               #parm1=iNew);
+         }
+      }
+
+      // lTemp only contains sets that have been lost at this point.
+      foreach j in lTemp
+      {
+         iSet = First(j);
+
+         // Only display the loss if we actually had a bonus before.
+         if Send(SYS,@GetRankPower,#iSet=iSet,#iRank=Nth(j,2))
+         {
+            Send(self,@SetUpdate,#iSet=iSet);
+            Send(self,@MsgSendUser,#message_rsc=
+               Send(SYS,@GetSetMessage,#iSet=iSet,#bAdd=FALSE),
+               #parm1=0);
+         }
+      }
+
+      return;
+   }
+
+   SetUpdate(iSet=0)
+   "This is called whenever a player's set rank has changed."
+   {
+      return;
+   }
+
+   PrintSetList()
+   {
+      local i;
+
+      foreach i in plSets
+      {
+         Send(SYS,@PrintSet,#iSet=First(i),#iNum=Nth(i,2));
+      }
+
+      return;
+   }
+
+   GetSetRank(iSet=0)
+   {
+      local i;
+
+      foreach i in plSets
+      {
+         if iSet = First(i)
+         {
+            return Nth(i,2);
+         }
+      }
+
+      return 0;
+   }
+
+   GetSetPower(iSet=0)
+   {
+      return Send(SYS,@GetRankPower,#iSet=iSet,#iRank=Send(self,@GetSetRank,#iSet=iSet));
    }
 
 end

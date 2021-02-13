@@ -400,14 +400,16 @@ BOOL CALLBACK DescDialogProc(HWND hDlg, UINT message, UINT wParam, LONG lParam)
 	   /* fall through */
 	   
    case BK_ANIMATE:
-	   /* Draw object's bitmap */
+      // Invalidate to remove previous frame.
+      InvalidateRect(hwndBitmap, NULL, TRUE);
+      UpdateWindow(hwndBitmap);
+      
+      /* Draw object's bitmap */
 	   hdc = GetDC(hwndBitmap);
 	   GetClientRect(hwndBitmap, &dlg_rect);
-	   
 	   RectToArea(&dlg_rect, &area);
 	   DrawStretchedObjectGroup(hdc, info->obj, info->obj->animate->group, &area, 
 		   GetTransparentBrush());
-	   
 	   ReleaseDC(hwndBitmap, hdc);
 	   break;
 	   

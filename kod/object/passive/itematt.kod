@@ -67,6 +67,9 @@ properties:
    piValue_modifier = 100   /// modify the object's price by 100%
    piValue_power_modifier = 0
 
+   // This keeps track of the various sets that an item attribute may contribute to.
+   piSets = SET_NONE
+
 messages:
 
    Constructor()
@@ -721,6 +724,176 @@ messages:
    IsMagicalEffect()
    {
       return FALSE;
+   }
+
+/////////////////////////////////////////////////
+///
+///  Set Functions
+///
+/////////////////////////////////////////////////
+
+   AddSet(iSet=0)
+   {
+      if (iSet < 1) OR (iSet >= SET_SPACER)
+      {
+         return FALSE;
+      }
+
+      if piSets = 0
+      {
+         piSets = iSet;
+      }
+      else if piSets / SET_SPACER = 0
+      {
+         piSets += iSet*SET_SPACER;
+      }
+      else if piSets / (SET_SPACER*SET_SPACER) = 0
+      {
+         piSets += iSet*(SET_SPACER*SET_SPACER);
+      }
+      else if piSets / (SET_SPACER*SET_SPACER*SET_SPACER) = 0
+      {
+         piSets += iSet*(SET_SPACER*SET_SPACER*SET_SPACER);
+      }
+      else
+      {
+         return FALSE;
+      }
+
+      return TRUE;
+   }
+
+   RemoveSet(iSet=0)
+   {
+      if (iSet < 0) OR (iSet >= SET_SPACER)
+      {
+         return FALSE;
+      }
+
+      if iSet = 0
+      {
+         piSets = 0;
+      }
+
+      if piSets % SET_SPACER = iSet
+      {
+         piSets -= iSet;
+      }
+      else if (piSets / SET_SPACER) % SET_SPACER = iSet
+      {
+         piSets -= iSet*SET_SPACER;
+      }
+      else if (piSets / (SET_SPACER*SET_SPACER)) % SET_SPACER = iSet
+      {
+         piSets -= iSet*(SET_SPACER*SET_SPACER);
+      }
+      else if (piSets / (SET_SPACER*SET_SPACER*SET_SPACER)) % SET_SPACER = iSet
+      {
+         piSets -= iSet*(SET_SPACER*SET_SPACER*SET_SPACER);
+      }
+      else
+      {
+         return FALSE;
+      }
+
+      return TRUE;
+   }
+
+   PrintSets()
+   {
+      local iSet, i;
+
+      i = 1;
+
+      while i < 0x00100000
+      {
+         iSet = piSets / i;
+         i *= SET_SPACER;
+         iSet = iSet % SET_SPACER;
+         Send(SYS,@PrintSet,#iSet=iSet);
+      }
+
+      return;
+   }
+
+   AddSets(lList=$)
+   {
+      local iSet, i, j, bFound;
+
+      i = 1;
+
+      while i < 0x00100000
+      {
+         bFound = FALSE;
+
+         iSet = piSets / i;
+         i *= SET_SPACER;
+         iSet = iSet % SET_SPACER;
+
+         if iSet > 0
+         {
+            foreach j in lList
+            {
+               if First(j) = iSet
+               {
+                  bFound = TRUE;
+                  SetNth(j,2,Nth(j,2)+1);
+               }
+            }
+
+            if NOT bFound
+            {
+               lList = Cons([iSet,1], lList);
+            }
+         }
+      }
+
+      return lList;
+   }
+
+   RemoveSets(lList=$)
+   {
+      local iSet, i, j, bFound, iCount;
+
+      i = 1;
+
+      while i < 0x00100000
+      {
+         bFound = FALSE;
+
+         iSet = piSets / i;
+         i *= SET_SPACER;
+         iSet = iSet % SET_SPACER;
+
+         if iSet > 0
+         {
+            foreach j in lList
+            {
+               if First(j) = iSet
+               {
+                  bFound = TRUE;
+                  iCount = Nth(j,2);
+
+                  if iCount < 2
+                  {
+                     lList = DelListElem(lList,j);
+                  }
+                  else
+                  {
+                     SetNth(j,2,iCount-1);
+                  }
+               }
+            }
+
+            if NOT bFound
+            {
+               Debug("Tried to remove non-existant set!");
+               return FALSE;
+            }
+         }
+      }
+
+      return TRUE;
    }
 
 end

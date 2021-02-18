@@ -1,0 +1,146 @@
+// Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+// All rights reserved.
+//
+// This software is distributed under a license that is described in
+// the LICENSE file that accompanies it.
+//
+// Meridian is a registered trademark.
+
+
+///////////////////////////////////////////////////////////////////////////////
+TrollCave is MonsterRoom
+
+constants:
+
+   include blakston.khd
+
+   BOSS_ROW = 18
+   BOSS_COL = 25
+
+   SEC_CAVE_EXIT = 10
+
+   HOUR_MILLI = 3600000
+
+resources:
+
+   //include trollcave.lkod
+
+   room_TrollCave = trollcave2.roo
+   room_name_TrollCave ="A Giant's Hollow"
+   TrollCave_music = drgnfly.ogg
+
+classvars:
+
+   vrName = room_name_TrollCave
+
+   viTeleport_row = 41
+   viTeleport_col = 25
+
+   viTerrain_type = TERRAIN_MOUNTAIN
+
+   viWeatherZone = WEATHER_ZONE_CV
+   viWeatherMask = WEATHER_MASK_MOUNTAINS
+
+properties:
+
+   prRoom = room_TrollCave
+   prMusic = TrollCave_music
+   piRoom_num = RID_TROLL_CAVE
+
+   piBaseLight = LIGHT_NICE
+   piOutside_factor = 8
+
+   piDirectional_percent = DIRECTIONAL_PERCENT_OUTDOORS
+
+   pbSnowGroundTexture = TRUE
+
+   piGen_time = 20000
+   piGen_percent = 80
+
+   piInit_count_min = 15
+   piInit_count_max = 18
+
+   piMonster_count_max = 20
+
+   ptBoss_gen = $
+
+messages:
+
+   Constructed()
+   {
+      plMonsters = [ [&Troll, 80], [&StoneTroll, 20] ];
+
+      Send(self,@BossGenTimer);
+
+      propagate;
+   }
+
+   Delete()
+   {
+      if ptBoss_gen <> $
+      {
+         DeleteTimer(ptBoss_gen);
+         ptBoss_gen = $;
+      }
+
+      propagate;
+   }
+
+
+   BossGenTimer()
+   "Check if there's a queen spider in room.  If not, make one."
+   {
+      local i, bFound;
+
+      ptBoss_gen = $;
+
+      bFound = FALSE;
+      foreach i in plActive
+      {
+         if IsClass(First(i),&NeruditeTroll)
+         {
+            bFound = TRUE;
+
+            break;
+         }
+      }
+
+      if NOT bFound
+      {
+         Send(self,@NewHold,#what=Create(&NeruditeTroll),#new_row=BOSS_ROW,#new_col=BOSS_COL);
+      }
+
+      ptBoss_gen = CreateTimer(self,@BossGenTimer,1*HOUR_MILLI);
+
+      return;
+   }
+
+
+   SomethingMoved(what = $,new_row = $, new_col = $)
+   {
+      if (new_row = 12) 
+         AND ((new_col= 2) OR (new_col= 3))
+      {
+         Send(SYS,@UtilGoNearSquare,#what=what,
+              #where=Send(SYS,@FindRoomByNum,#num=RID_I8),
+              #new_row=53,#new_col=41,
+              #new_angle=ANGLE_WEST);
+
+         return;
+      }
+
+      // Special case: prevent boss from leaving battle zone
+      if IsClass(what,&NeruditeTroll)
+        AND Send(what,@GetSectorIDAtObject) = SEC_CAVE_EXIT
+      {
+         Send(self,@Rumble);
+         Send(what,@HealthRegen);
+
+         Post(self,@SomethingMoved,#what=what,#new_row=BOSS_ROW,#new_col=BOSS_COL);
+      }
+
+      propagate;
+   }
+
+end
+////////////////////////////////////////////////////////////////////////////////

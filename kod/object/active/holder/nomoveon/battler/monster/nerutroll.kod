@@ -1,0 +1,152 @@
+// Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+// All rights reserved.
+//
+// This software is distributed under a license that is described in
+// the LICENSE file that accompanies it.
+//
+// Meridian is a registered trademark.
+
+
+////////////////////////////////////////////////////////////////////////////////
+NeruditeTroll is Monster
+
+constants:
+
+   include blakston.khd
+
+resources:
+
+   include nerutroll.lkod
+
+   NeruditeTroll_name_rsc = "nerudite troll"
+   NeruditeTroll_icon_rsc = NeruTroll.bgf
+   NeruditeTroll_desc_rsc = \
+      "The imposing stature of this troll speaks of raw power and strength.  "
+      "Its body gleams with a green, metallic sheen.  A sound like drawn steel"
+      " accompanies its every movement."
+
+   NeruditeTroll_koc_name_rsc = "neru'humoch"
+
+   NeruditeTroll_dead_icon_rsc = NeruTrollX.bgf
+   NeruditeTroll_dead_name_rsc = "dead nerudite troll"
+
+   NeruditeTroll_sound_hit = trl_atkh.ogg
+   NeruditeTroll_sound_miss = trl_atkm.ogg
+   NeruditeTroll_sound_death = trl_dth.ogg
+   NeruditeTroll_sound_aware = trl_awr.ogg
+
+classvars:
+
+   vrKocName = NeruditeTroll_koc_name_rsc
+   vrName = NeruditeTroll_name_rsc
+   vrDesc = NeruditeTroll_desc_rsc
+   vrIcon = NeruditeTroll_icon_rsc
+   vrDead_icon = NeruditeTroll_dead_icon_rsc
+   vrDead_name = NeruditeTroll_dead_name_rsc
+
+   viTreasure_type = TID_NERU_TROLL
+   viSpeed = SPEED_FAST
+   viAttributes = 0
+   viLevel = 150
+   viDifficulty = 9
+   viVisionDistance = 20
+   // Attack range of 192, or 3 row/col.
+   viMeleeRange = 192
+   viKarma = -100
+   viCashmin = 800
+   viCashmax = 1200
+   vrSound_hit = NeruditeTroll_sound_hit
+   vrSound_miss = NeruditeTroll_sound_miss
+   vrSound_aware = NeruditeTroll_sound_aware
+   vrSound_death = NeruditeTroll_sound_death
+
+   // Some monsters classes may inherently have higher (or lower) stats.
+   viBonusAgility = -40
+   viBonusStamina = 300
+   viBonusIntellect = -40
+
+   vbCanPoison = FALSE
+   vbCanBleed = FALSE
+   vbCanSiphon = FALSE
+   vbCanFatigue = FALSE
+   vbCanBurn = FALSE
+
+   viBleedChance = 30
+   viBleedStrength = 3000
+   viBleedDuration = 4000
+
+properties:
+
+   piAnimation = ANIM_NONE
+
+   piReputationGroup = REP_TROLL
+
+messages:
+
+   Constructed()
+   {
+      plResistances = [ [-SPL_TYPE_HOLY, 80 ],
+                        [-SPL_TYPE_ACID, 80 ],
+                        [ATK_TYPE_NONMAGIC, 80 ]
+                      ];
+
+      plReputationEnemies = [REP_ORC];
+
+      plActions =  [ [SID_LIGHTNING_WALL], [SID_METEOR],
+                     [SID_SLOW,500,0,MAX_KOD_INT,0,1200,99,COMBAT_ACTION_HARM],
+                     [SID_CURSE_WEAPON,200,0,16384,0,600,99,COMBAT_ACTION_HARM],
+                     [SID_KILLING_FIELDS,0,0,MAX_KOD_INT,1000,0,99,COMBAT_ACTION_NEUTRAL] ];
+
+      propagate;
+   }
+
+   SendLookAnimation()
+   {
+      AddPacket(1,ANIMATE_ONCE, 4,400, 2,4, 2,7, 2,1);
+
+      return;
+   }
+
+   SendMoveAnimation()
+   {
+      AddPacket(1,ANIMATE_CYCLE, 4,200, 2,2, 2,3);
+
+      return;
+   }
+
+   SendAnimation()
+   {
+      if piAnimation = ANIM_ATTACK
+      {
+         AddPacket(1,ANIMATE_ONCE, 4,200, 2,4, 2,7, 2,1);
+
+         return;
+      }
+
+      // if no body animation
+     propagate;
+   }
+
+   CanMorphTo()
+   {
+      return FALSE;
+   }
+
+   IsAlliedClass(what=$)
+   {
+      if IsClass(what,&Troll)
+         OR IsClass(what,&StoneTroll)
+      {
+         return TRUE;
+      }
+
+      propagate;
+   }
+
+   DestroyDisposable()
+   {
+      return;
+   }
+
+end
+////////////////////////////////////////////////////////////////////////////////

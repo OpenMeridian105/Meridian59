@@ -10,7 +10,7 @@ OUTDIRSUB = ..\$(OUTDIR)
 
 DIRS = holyblaze martyrsgrace wdshield bleed poison siphon fatigue burn anvil \
        lullaby freeze electrify frostwall flamewave arcticbreath meteor \
-       nimble tough sharp strong cleave nyrphling spinebeast wendigo apple
+       nimble tough sharp strong cleave nyrphling spinebeast wendigo apple flagpole
 
 all:
    @-for %i in (*.bgf) do @$(CP) %i $(OUTDIR) >nul

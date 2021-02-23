@@ -37,6 +37,8 @@ resources:
    flag_rebel_desc_rsc = \
       "This flagpole flies the colors of the rebel forces based "
       "in Jasper.  %r"
+   flag_guild_desc_rsc = \
+      "This flagpole flies the colors of a guild.  %r"
    flag_append_desc = \
       "%s%s is currently attempting to stake a claim to this "
       "territory in the name of %s."
@@ -44,10 +46,11 @@ resources:
    flag_append_desc_player = "This territory has been captured by %q."
    flag_append_desc_guild = "This territory has been captured by %q of %s%q."
 
-   flag_icon_rsc = flagpole.bgf
+   flag_icon_rsc = flagpole2.bgf
    flag_duke_icon_rsc = flagduke.bgf
    flag_princess_icon_rsc = flagprnc.bgf
    flag_rebel_icon_rsc = flagjspr.bgf
+   flag_guild_icon_rsc = flagguild.bgf
 
    flag_claim_attempt = \
       "~B~U~k[###]~n ~B%s%s has bravely staked a claim to %s%s in the name of %s!"
@@ -96,6 +99,11 @@ resources:
       "to a territory which is adjacent to a territory which has already "
       "been claimed for that faction."
 
+   flag_failed_noclaim = "You are unable to claim this territory."
+   flagpole_noitems = "There are no items are available in your guild's storage."
+   flagpole_cannotcarry = "You are unable to carry all the items."
+   flagpole_nocash = "You do not have enough to pay for the withdraw fees."
+
 classvars:
 
    vrName = flag_name_rsc
@@ -103,6 +111,8 @@ classvars:
    vrDesc = flag_desc_rsc
 
    viObject_flags = OF_ACTIVATABLE
+
+   vbGuildFlag_enabled = TRUE
 
 properties:
 
@@ -120,6 +130,9 @@ properties:
 
    piFlagHotspot = HS_FLAG
    ptHalfStaffOff = $
+
+   poGuild = $
+   piColor = 0
 
 messages:
 
@@ -210,7 +223,7 @@ messages:
    CheckClaimConditions(who = $)
    {
       local iClaimerFaction, i, iCountFactionAllies, bHaveAdjacent,
-            oFlagpole, oTerritoryGame;
+            oFlagpole, oTerritoryGame, oGuild, iFaction;
 
       oTerritoryGame = Send(SYS,@GetTerritoryGame);
 
@@ -237,11 +250,38 @@ messages:
          return FALSE;
       }
 
-      // No re-claiming a flag already claimed for your faction
-      if piFaction = Send(who,@GetFaction)
+      iFaction = Send(who,@GetFaction);
+      oGuild = Send(who,@GetGuild);
+
+      // Guild flag can always be captured by another guild, 
+      // regardless of faction. 
+
+      if (piFaction = iFaction) 
+         AND NOT vbGuildFlag_enabled
       {
+         // No re-claiming a flag already claimed for your faction
          // Message: already claimed for your faction
          Send(who,@MsgSendUser,#message_rsc=flag_failed_yours);
+
+         return FALSE;
+      }
+
+      // Own guild members may reclaim flagpole to shift faction powers.
+      if (poGuild = oGuild)
+         AND (piFaction = iFaction)
+      {
+         // Same guild can only reclaim flags with a different faction
+         Send(who,@MsgSendUser,#message_rsc=flag_failed_yours);
+
+         return FALSE;
+      }
+
+      // Unfactioned players may not interfere with guild flags
+      if (iFaction = $)
+         AND (poGuild <> $)
+         AND vbGuildFlag_enabled
+      {
+         Send(who,@MsgSendUser,#message_rsc=flag_failed_noclaim);
 
          return FALSE;
       }
@@ -284,7 +324,8 @@ messages:
                               @FindHoldingActive,#class=&Flagpole);
             
             if (oFlagpole <> $)
-               AND (Send(oFlagpole,@GetFaction)=iClaimerFaction)
+               AND ((Send(oFlagpole,@GetFaction)=iClaimerFaction) 
+                     OR (Send(oFlagpole,@GetGuild)=Send(who,@GetGuild))) 
             {
                bHaveAdjacent = TRUE;
 
@@ -436,6 +477,7 @@ messages:
 
       // Update guild territory counts
       oTerritoryGame = Send(SYS,@GetTerritoryGame);
+
       Send(oTerritoryGame,@AddGuildTerritory,
          #oGuild=Send(poClaimer,@GetGuild),#iFaction=Send(poClaimer,@GetFaction));
 
@@ -457,24 +499,32 @@ messages:
       {
          oClaimingFlag = Send(poClaimer,@FindHolding,#class=&DukeFlag);
       }
-
-      if iClaimerFaction = FACTION_PRINCESS
+      else if iClaimerFaction = FACTION_PRINCESS
       {
          oClaimingFlag = Send(poClaimer,@FindHolding,#class=&PrincessFlag);
       }
-
-      if iClaimerFaction = FACTION_REBEL
+      else if iClaimerFaction = FACTION_REBEL
       {
          oClaimingFlag = Send(poClaimer,@FindHolding,#class=&RebelFlag);
       }
-
-      if oClaimingFlag <> $
+      else if oClaimingFlag <> $
       {
          Send(oClaimingFlag,@Delete);
       }
 
       poCapturer = poClaimer;
       poClaimer = $;
+
+      if Send(poCapturer,@GetFaction) = 0
+      {
+         poGuild = $;
+      }
+      else
+      {
+         poGuild = Send(poCapturer,@GetGuild);
+      }
+
+      Send(self,@UpdateGuildFlag);
 
       // Slow down troop generation again.
       piGen_time = Send(oTerritoryGame,@GetNonclaimTroopGenTime);
@@ -656,23 +706,31 @@ messages:
 
       AddPacket(1,1);      // One overlay.
 
-      if piFaction = FACTION_DUKE
+      if poGuild <> $ AND vbGuildFlag_enabled
+      {
+         AddPacket(4,flag_guild_icon_rsc);
+      }
+      else if piFaction = FACTION_DUKE
       {
          AddPacket(4,flag_duke_icon_rsc);
       }
-
-      if piFaction = FACTION_PRINCESS
+      else if piFaction = FACTION_PRINCESS
       {
          AddPacket(4,flag_princess_icon_rsc);
       }
-
-      if piFaction = FACTION_REBEL
+      else if piFaction = FACTION_REBEL
       {
          AddPacket(4,flag_rebel_icon_rsc);
       }
 
       //AddPacket(1,HS_FLAG);
       AddPacket(1,piFlagHotSpot);
+
+      if (piColor & ITEM_PALETTE_MASK) <> 0
+      {
+         AddPacket(1,ANIMATE_TRANSLATION, 1,piColor&ITEM_PALETTE_MASK);
+      }
+
       AddPacket(1,ANIMATE_CYCLE,4,100,2,FRAME_START,2,FRAME_END);
 
       return;
@@ -680,9 +738,13 @@ messages:
 
    ShowDesc()
    {
-      local oGuild;
 
-      if piFaction = FACTION_DUKE
+      if (poGuild <> $)
+         AND (piFaction <> 0)
+      {
+         AddPacket(4,flag_guild_desc_rsc);
+      }
+      else if piFaction = FACTION_DUKE
       {
          AddPacket(4,flag_duke_desc_rsc);
       }
@@ -710,13 +772,13 @@ messages:
       }
       else if poCapturer
       {
-         oGuild = Send(poCapturer,@GetGuild);
-         if oGuild
+         if poGuild <> $
+            AND piFaction <> 0
          {
             AddPacket(4,flag_append_desc_guild,
                STRING_RESOURCE,Send(poCapturer,@GetName), 
-               4,Send(oGuild,@GetDef),
-               STRING_RESOURCE,Send(oGuild,@GetName));
+               4,Send(poGuild,@GetDef),
+               STRING_RESOURCE,Send(poGuild,@GetName));
          }
          else
          {
@@ -832,14 +894,36 @@ messages:
       return;
    }
 
-   GetObjectFlags()
+   GetObjectFlags(what=$)
    {
+      local iFlags;
+
+      iFlags = viObject_flags;
+
       if pbClaimable
       {
-         return (viObject_flags | OF_ACTIVATABLE);
+         iFlags |= OF_ACTIVATABLE;
+      }
+      else
+      {
+         iFlags &= ~OF_ACTIVATABLE;
       }
 
-      return (viObject_flags & ~OF_ACTIVATABLE);
+      if (what <> $
+         AND poGuild <> $
+         AND IsClass(what,&User)
+         AND poGuild = Send(what,@GetGuild)
+         AND Send(poGuild,@GetGuildHall) <> $
+         AND Send(poGuild,@GetRank,#who=what) > RANK_APPRENTICE)
+      {
+         iFlags |= OF_BUYABLE;
+      }
+      else
+      {
+         iFlags &= ~OF_BUYABLE;
+      }
+
+      return iFlags;
    }
 
    NewOwner(what=$)
@@ -971,7 +1055,7 @@ messages:
          {
             if Send(oTroop,@GetFaction) = Send(poClaimer,@GetFaction)
             {
-               Debug("GenerateTroops:: made a troop of the same faction as the claimer!");
+               //Debug("GenerateTroops:: made a troop of the same faction as the claimer!");
             }
 
             if Random(1,2) = 1
@@ -1043,6 +1127,7 @@ messages:
    Delete()
    {
       poClaimer = $;
+      poGuild = $;
 
       if ptClaimAttempt <> $
       {
@@ -1074,6 +1159,237 @@ messages:
    GetCapturer()
    {
       return poCapturer;
+   }
+
+   ResetGuildFlag()
+   {
+      poGuild = $;
+      Send(self,@UpdateGuildFlag);
+
+      return;
+   }
+
+   UpdateGuildFlag()
+   {
+
+      if (poGuild <> $) AND vbGuildFlag_enabled
+      {
+
+         Send(self,@ChangeGuildFlagColor,#override=TRUE,
+            #color1=Send(poGuild,@GetPrimaryGuildColor),
+            #color2=Send(poGuild,@GetSecondaryGuildColor));
+      }
+
+      return;
+   }
+
+   ChangeGuildFlagColor(color1=XLAT_TO_GRAY,color2=XLAT_TO_GRAY,override=FALSE)
+   {
+      local XLAT;
+
+      // Override means do it no matter what.  Good for testing.
+
+      if NOT override
+      {
+         return FALSE;
+      }
+
+      if color1 > XLAT_HIGH_VALUE
+         AND NOT ((color1 >= PT_REDTODGREEN1 AND color1 <= PT_BLBLK_REDWHT)
+            OR color1 = XLAT_REDTOBLACK
+            OR color1 = XLAT_BLUETOBLACK)
+      {
+         Debug("Incorrect color1 passed to ChangeGuildFlagColor!",
+               "color1 = ",color1," color2 = ",color2);
+         color1 = XLAT_TO_SKIN1;
+      }
+
+      if color2 > XLAT_HIGH_VALUE
+      {
+         Debug("Incorrect color2 passed to ChangeGuildFlagColor!",
+               "color1 = ",color1," color2 = ",color2);
+         if color2 = XLAT_TO_DGREEN
+         {
+            color2 = XLAT_TO_GREEN;
+         }
+
+         if color2 = XLAT_TO_BLACK
+         {
+            color2 = XLAT_TO_GRAY;
+         }
+      }
+
+      XLAT = Send(SYS,@EncodeTwoColorXLAT,#color1=color1,#color2=color2);
+      piColor = (piColor & ~ITEM_PALETTE_MASK) | XLAT;
+
+      /// redraw it if necessary
+      if poOwner <> $
+      {
+         Send(poOwner,@SomethingChanged,#what=self);
+      }
+
+      return;
+   }
+
+   GetGuild()
+   {
+      return poGuild;
+   }
+
+   Buy(what = $,item_list = $,number_list = $)
+   "Withdraw from guild hall chests."
+   {
+      local oItem, oSplit, bStack, iCount, oGuild, oMoney, iCash, iFee;
+
+      iCount = 0;
+
+      if (what = $
+         OR NOT IsClass(what,&User)
+         OR NOT (poOwner = Send(what,@GetOwner)))
+      {
+         return FALSE;
+      }
+
+      // Must have LoS.
+      if (NOT Send(poOwner,@LineOfSight,#obj1=what,#obj2=self))
+      {
+         return FALSE;
+      }
+
+      oGuild = Send(what,@GetGuild);
+
+      if (oGuild <> poGuild)
+      {
+         return FALSE;
+      }
+
+      if (Send(oGuild,@GetGuildHall) = $)
+      {
+         Send(what,@MsgSendUser,#message_rsc=flagpole_noitems);
+         return FALSE;
+      }
+
+      iFee = 0;
+      oMoney = Send(what,@GetMoneyObject);
+      if oMoney = $
+      {
+         // No cash.
+         iCash = 0;
+      }
+      else
+      {
+         iCash = Send(oMoney,@GetValue);
+      }
+
+      foreach oItem in item_list
+      {
+         bStack = Send(oItem,@IsStackable);
+         if bStack
+         {
+            // Check if we have a valid number list. Check is done here
+            // as we don't need a number list for non-number items.
+            if number_list = $
+            {
+               return FALSE;
+            }
+
+            iCount = iCount + 1;
+
+            oSplit = Send(oItem,@Split,#number=Nth(number_list,iCount));
+         }
+
+         if Send(what,@ReqNewHold,#what=oItem)
+         {
+            iFee = iFee + Send(self,@GetVaultRetrievalFee,#what=oItem);
+
+            if bStack
+            {
+               oItem = oSplit;
+            }
+
+            if (iFee <> 0)
+            {
+               if (iCash < iFee)
+               {
+                  Send(what,@MsgSendUser,#message_rsc=flagpole_nocash);
+                  return FALSE;
+               }
+               else 
+               {
+                  Send(oMoney,@SubtractNumber,#number=iFee);
+                  Send(what,@NewHold,#what=oItem);
+               }
+            }
+
+         }
+         else
+         {
+            Send(what,@MsgSendUser,#message_rsc=flagpole_cannotcarry);
+            return FALSE;
+         }
+      }
+
+      return TRUE;
+   }
+
+   GetForSale(who=$)
+   "Collect a list of all items in hall's storage."
+   {
+      local oHall, oBox, oItem, i, lItems;
+
+      if poGuild <> $
+      {
+         oHall = Send(poGuild,@GetGuildHall);
+      }
+
+      if (Send(who,@GetGuild) <> poGuild)
+         OR (oHall = $)
+      {
+         return $;
+      }
+
+      foreach i in Send(oHall,@GetHolderActive)
+      {
+         oBox = First(i);
+         if IsClass(oBox,&StorageBox)
+         {
+            foreach oItem in Send(oBox,@GetHolderPassive)
+            {
+               lItems = Cons(oItem, lItems);
+            }
+         }
+      }
+
+      lItems = Send(SYS,@SortItemsByType,#lItems=lItems);
+
+      if lItems = $
+      {
+         Send(who,@MsgSendUser,#message_rsc=flagpole_noitems);
+         return $;
+      }
+
+      return lItems;
+   }
+
+   MobIsVaultman()
+   {
+      return TRUE;
+   }
+
+   GetVaultRetrievalFee()
+   {
+      local iRetrievalFee, iBonus, oGame;
+
+      oGame = Send(SYS,@GetTerritoryGame);
+
+      if poGuild <> $
+      {
+         iRetrievalFee = Send(oGame,@GetFlagRetrievalFee);
+         iBonus = Send(oGame,@CalcGuildBonus,#oGuild=poGuild);
+         iRetrievalFee = iRetrievalFee - (iBonus * 2);
+      }
+
+      return Bound(iRetrievalFee,1,iRetrievalFee);
    }
 
 end

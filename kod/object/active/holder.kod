@@ -763,6 +763,8 @@ messages:
 
    SayRangeCheck(talker=$,hearer=$,type=$)
    {
+      local iDist;
+
       // Shouldn't really happen
       if talker = $ OR hearer = $
       {
@@ -773,16 +775,29 @@ messages:
       // not range-unlimited, and they are too far apart, return FALSE.
       // For any other case, there is no need to clip, so return TRUE.
 
-      if ((IsClass(talker,&User)
+      if (((IsClass(talker,&User)
             AND IsClass(hearer,&Monster)
             AND NOT Send(hearer,@IsFullTalk))
          OR (IsClass(hearer,&User)
               AND IsClass(talker,&Monster)
               AND (NOT Send(talker,@IsFullTalk))))
-         AND (type <> SAY_YELL
-            AND Send(talker,@SquaredDistanceTo,#what=hearer) > SAY_RADIUS)
+         AND type <> SAY_YELL)
       {
-         return FALSE;
+         iDist = Send(talker,@SquaredDistanceTo,#what=hearer);
+         if (iDist = $)
+         {
+            Debug(Send(talker,@GetTrueName), " tried to check say range for ",
+               Send(hearer,@GetTrueName), " in different rooms.  Talker is in ",
+               Send(Send(talker,@GetOwner),@GetName), " hearer is in ",
+               Send(Send(hearer,@GetOwner),@GetName));
+
+               return FALSE;
+         }
+
+         if (iDist > SAY_RADIUS)
+         {
+            return FALSE;
+         }
       }
 
       return TRUE;

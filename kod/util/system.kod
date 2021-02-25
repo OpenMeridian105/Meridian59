@@ -666,7 +666,7 @@ messages:
 
    RecreateAll()
    {
-      local i, lSavedFlagStates, lSavedSenate;
+      local i, lSavedSenate;
 
       // Reset our level points.
       vlLevelPoints = [1,2,4,6,8,10];
@@ -695,7 +695,6 @@ messages:
       piRecreate_State = RECREATE_PHASE_ONE;
       Debug("Starting: Recreate phase ONE");
 
-      lSavedFlagStates = ListCopy(Send(poTerritoryGame,@SaveFlagStates));
       lSavedSenate = ListCopy(Send(poTokenGame,@GetSenate));
 
       Send(self,@CreateUserTable);
@@ -728,12 +727,6 @@ messages:
       // bug we've since fixed.
       //Send(self,@CreateAllSpellsIfNew);
       //Send(self,@CreateAllRoomsIfNew);
-
-      if lSavedFlagStates <> $
-      {
-         Send(poTerritoryGame,@SetFlagStates,#lFlagStates=lSavedFlagStates);
-         lSavedFlagStates = $;
-      }
 
       if lSavedSenate <> $
       {
@@ -1329,11 +1322,11 @@ messages:
 
       return FALSE;
    }
-   
+
    VerifyUsersLoggedOn()
    {
       local oCheck, oDoubleCheck, iThisPlayerCount;
-      
+
       foreach oCheck in plUsers_logged_on
       {
          iThisPlayerCount = 0;
@@ -1341,10 +1334,11 @@ messages:
          {
             if oCheck = oDoubleCheck
             {
-               iThisPlayerCount = iThisPlayerCount + 1;
+               ++iThisPlayerCount;
             }
             if iThisPlayerCount > 1
             {
+               Debug("Duplicate user ",Send(oCheck,@GetName),"found in VerifyUsersLoggedOn");
                plUsers_logged_on = DelListElem(plUsers_logged_on, oDoubleCheck);
             }
          }
@@ -1356,11 +1350,12 @@ messages:
    SystemUserLogon(what = $)
    {
       local oDoubleCheck;
-      
+
       foreach oDoubleCheck in plUsers_logged_on
       {
          if oDoubleCheck = what
          {
+            Debug("Duplicate user ",Send(what,@GetName),"found in SystemUserLogon");
             plUsers_logged_on = DelListElem(plUsers_logged_on, oDoubleCheck);
          }
       }
@@ -1399,11 +1394,12 @@ messages:
    SystemUserLogoff(what = $)
    {
       local i, j, oNew_room, oDoubleCheck;
-      
+
       foreach oDoubleCheck in plUsers_logged_on
       {
          if oDoubleCheck = what
          {
+            Debug("Duplicate user ",Send(what,@GetName),"found in SystemUserLogoff");
             plUsers_logged_on = DelListElem(plUsers_logged_on, oDoubleCheck);
          }
       }

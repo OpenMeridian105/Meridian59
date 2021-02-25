@@ -846,19 +846,6 @@ messages:
    {
       return poClaimer;
    }
-   
-   SystemSetFaction(faction=FACTION_NEUTRAL)
-   "For when the pole needs to simply be set to a state directly. "
-   "Used during recreates."
-   {
-      piFaction = faction;
-      if poOwner <> $
-      {
-         Send(poOwner,@SomethingChanged,#what=self);
-      }
-
-      return;
-   }
 
    SetFaction(faction=FACTION_NEUTRAL)
    "for admin use."
@@ -879,6 +866,21 @@ messages:
       {
          Send(Send(SYS,@GetTerritoryGame),@FlagClaimed,#flag=self);
       }
+
+      return;
+   }
+
+   SetGuild(what = $)
+   {
+      poGuild = what;
+      Send(self,@UpdateGuildFlag);
+
+      return;
+   }
+
+   SetCapturer(what = $)
+   {
+      poCapturer = what;
 
       return;
    }
@@ -1171,13 +1173,11 @@ messages:
 
    UpdateGuildFlag()
    {
-
       if (poGuild <> $) AND vbGuildFlag_enabled
       {
-
          Send(self,@ChangeGuildFlagColor,#override=TRUE,
-            #color1=Send(poGuild,@GetPrimaryGuildColor),
-            #color2=Send(poGuild,@GetSecondaryGuildColor));
+               #color1=Send(poGuild,@GetPrimaryGuildColor),
+               #color2=Send(poGuild,@GetSecondaryGuildColor));
       }
 
       return;

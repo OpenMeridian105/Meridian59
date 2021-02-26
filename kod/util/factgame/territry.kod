@@ -91,6 +91,8 @@ properties:
 
    plFlagStates = $
 
+   pbRecreating = FALSE
+
 messages: 
 
    Constructor()
@@ -137,6 +139,8 @@ messages:
    Recreate()
    {
       local i;
+
+      pbRecreating = TRUE;
 
       plTosRIDs = [ RID_TOS, RID_H6, RID_I6, RID_H5 ];
       plMarionRIDs = [ RID_MARION, RID_C4, RID_C5 ];
@@ -194,11 +198,12 @@ messages:
          Send(self,@RecountFlagItems);
          Send(self,@GenerateFlagItems);
       }
-
-      if piGameMode = GAME_PART
+      else if piGameMode = GAME_PART
       {
          Send(self,@UpdateFlagsPartialGame);
       }
+
+      pbRecreating = FALSE;
 
       return;
    }
@@ -449,6 +454,8 @@ messages:
             continue;
          }
          Send(oFlag,@SetFaction,#faction=Nth(i,2));
+         Send(oFlag,@SetCapturer,#what=Nth(i,3));
+         Send(oFlag,@SetGuild,#what=Nth(i,4));
       }
 
       return;
@@ -478,55 +485,22 @@ messages:
             continue;
          }
 
-         plFlagStates = Cons([i, Send(oFlag,@GetFaction)],plFlagStates);
+         plFlagStates = Cons([i, Send(oFlag,@GetFaction), Send(oFlag,@GetCapturer),
+                           Send(oFlag,@GetGuild)],plFlagStates);
       }
 
       return plFlagStates;
    }
 
-   SetFlagStates(lFlagStates = $)
-   "Used during recreates to save flag states."
-   {
-      local i, oRoom, oFlag;
-
-      if lFlagStates = $
-         OR NOT IsList(lFlagStates)
-      {
-         Debug("SetFlagStates sent invalid flags list - flags not reloaded.");
-      }
-
-      foreach i in lFlagStates
-      {
-         oRoom = Send(SYS,@FindRoomByNum,#num=First(i));
-         if (oRoom = $)
-         {
-            Debug("SetFlagStates got nil room for RID ",First(i));
-
-            continue;
-         }
-
-         oFlag = Send(oRoom,@FindHoldingActive,#class=&Flagpole);
-         if (oFlag = $)
-         {
-            Debug("SetFlagStates got nil flag in ",Send(oRoom,@GetName));
-
-            continue;
-         }
-         Send(oFlag,@SystemSetFaction,#faction=Nth(i,2));
-      }
-
-      Send(self,@SaveFlagStates);
-      Send(self,@CountFlags);
-
-      return;
-   }
-
    FlagClaimed(flag=$)
    {
-      Send(self,@CountFlags);
+      if (NOT pbRecreating)
+      {
+         Send(self,@CountFlags);
 
-      // do this after, so that bonus town recalcs saved
-      Send(self,@SaveFlagStates);
+         // do this after, so that bonus town recalcs saved
+         Send(self,@SaveFlagStates);
+      }
 
       return;
    }
@@ -1053,6 +1027,23 @@ messages:
       return;
    }
 
+   RecalculateGuildTerritory()
+   "Recalculates guild territory numbers from plFlagStates."
+   {
+      local i;
+
+      plGuildTerritories = $;
+
+      foreach i in plFlagStates
+      {
+         Send(self,@AddGuildTerritory,#oGuild=Nth(i,4),#iFaction=Nth(i,2));
+      }
+
+      Send(self,@UpdateGuildTerritories);
+
+      return;
+   }
+
    CalcGuildBonus(oGuild=$)
    {
       local lGuildScore, iBonus;
@@ -1076,9 +1067,6 @@ messages:
    "Sort plGuildTerritories by overall score"
    {
       local i, j, oGuild, lTemp, lSorted;
-
-      lTemp = $;
-      lSorted = $;
 
       if plGuildTerritories = $
       {
@@ -1115,13 +1103,54 @@ messages:
       return plGuildTerritories;
    }
 
-   
    GetFlagRetrievalFee()
    {
       return piFlag_RetrievalFee;
    }
 
 #endregion Guild Territory Scoring
+
+   UpdateFixFlags()
+   {
+      local i, oRoom, oFlag, oCapturer, oGuild;
+
+      plFlagStates = $;
+
+      foreach i in plFlagRIDs
+      {
+         oRoom = Send(SYS,@FindRoomByNum,#num=i);
+         if (oRoom = $)
+         {
+            Debug("UpdateFixFlags got nil room for RID ",i);
+
+            continue;
+         }
+
+         oFlag = Send(oRoom,@FindHoldingActive,#class=&Flagpole);
+         if oFlag = $
+         {
+            Debug("UpdateFixFlags got nil flag in ",Send(oRoom,@GetName));
+
+            continue;
+         }
+
+         oCapturer = Send(oFlag,@GetCapturer);
+         if (oCapturer <> $)
+         {
+            oGuild = Send(oCapturer,@GetGuild);
+            Send(oFlag,@SetGuild,#what=oGuild);
+         }
+         else
+         {
+            oGuild = $;
+         }
+
+         plFlagStates = Cons([i, Send(oFlag,@GetFaction), oCapturer, oGuild],
+                           plFlagStates);
+      }
+
+      return;
+   }
 
 end
 ////////////////////////////////////////////////////////////////////////////////

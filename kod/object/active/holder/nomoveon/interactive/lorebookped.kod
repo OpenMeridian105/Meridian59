@@ -1,0 +1,119 @@
+// Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+// All rights reserved.
+//
+// This software is distributed under a license that is described in
+// the LICENSE file that accompanies it.
+//
+// Meridian is a registered trademark.
+
+
+////////////////////////////////////////////////////////////////////////////////
+LoreBookPedestal is InteractiveObject
+
+constants:
+
+   include blakston.khd
+
+resources:
+
+   //include lorebookped.lkod
+
+   lorebookped_name_rsc = "Jala's Library"
+   lorebookped_icon_rsc = jbook.bgf
+   lorebookped_desc_rsc = \
+      "Centuries ago at the peak of the great divide, the higher powers took "
+      "control of the temple of Jala, slaughtering hundreds of scholars and "
+      "followers.  Burning the books of Meridian's history, there was nothing "
+      "left to acknowledge anything that happened before the seperation from "
+      "the west.  The true history of Meridian apparently contains secrets so "
+      "dangerous that those who are aware of them, including outlaws, are "
+      "highly reluctant to talk about them.  Now reconnected with the world "
+      "rebuilding what was missing from the past, this library is to serve as "
+      "a memorial of those past bards."
+
+   lorebookped_cant = "You can't offer %s%s."
+
+   lorebookped_snd = "further_quest.ogg"
+
+classvars:
+
+   vrIcon = lorebookped_icon_rsc
+
+   viMoveOn_type = MOVEON_NO
+
+properties:
+
+   vrName = lorebookped_name_rsc
+   vrDesc = lorebookped_desc_rsc
+
+   viObject_flags = OF_DISPLAY_NAME | OF_OFFERABLE
+   piNameColor = NC_NPC
+
+   piReward_Base = 10
+
+messages:
+
+   Constructor(Name=$,Text=$)
+   {
+      if name <> $
+      {
+         vrName = name;
+      }
+
+      propagate;
+   }
+
+   AcceptOffer(who = $)
+   {
+      Send(poOwner,@SomethingWaveRoom,#what=self,#wave_rsc=lorebookped_snd);
+
+      propagate;
+   }
+
+   Offer(what = $, item_list = $)
+   {
+      local i, oItem, lOfferItems;
+
+      i = 0;
+      foreach oItem in item_list
+      {
+         i++;
+      }
+
+      i = piReward_Base * i;
+
+      lOfferItems = [ Create(&EssenceDust,#number=i) ];
+      Send(what,@CounterOffer,#item_list=lOfferItems);
+      plUser_Offers = Cons([ what, lOfferItems, CreateTimer(self,@CancelOfferTimer,
+                                             viCancel_offer_time) ], plUser_Offers);
+
+      return;
+   }
+
+   OfferedWantedItem(who=$, oItem=$)
+   {
+      if IsClass(oItem,&LoreBook)
+      {
+         return TRUE;
+      }
+
+      Send(who,@MsgSendUser,#message_rsc=lorebookped_cant,
+                 #parm1=Send(oItem,@GetIndef),#parm2=Send(oItem,@GetName));
+
+      return FALSE;
+   }
+
+   SendLookAnimation()
+   {
+      AddPacket(1, ANIMATE_NONE, 2, 2);
+      return;
+   }
+
+   ShowDesc()
+   {
+      AddPacket(4, vrDesc);
+      return;
+   }
+
+end
+////////////////////////////////////////////////////////////////////////////////

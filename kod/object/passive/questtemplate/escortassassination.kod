@@ -1,0 +1,174 @@
+// Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+// All rights reserved.
+//
+// This software is distributed under a license that is described in
+// the LICENSE file that accompanies it.
+//
+// Meridian is a registered trademark.
+
+
+/////////////////////////////////////////////////////////////////////////////////
+EscortAssassination is QuestTemplate
+// Quest template QNT_ID_ESCORT_ASSASSINATION = 89.
+// Quest nodes 264, 265.
+// QNT_ID_ESCORT_ASSASSINATION_1, QNT_ID_ESCORT_ASSASSINATION_2
+
+// QuestTemplate is
+// [ quest template index
+//   quest template object
+//   number of players,
+//   type of quest,
+//   eligible player restrictions,
+//   quest nodes,
+//   max number active,
+//   currently active quests,
+//   percent chance of scheduling (on timer firing)
+//   special restrictions ]
+
+constants:
+
+   include blakston.khd
+
+resources:
+
+   include escortassassination.lkod
+
+   // Quest description.
+   EscortAssassination_icon_rsc = ikillfel.bgf
+   EscortAssassination_name_rsc = "Assassination"
+   EscortAssassination_desc_rsc = \
+      "Luisane d'Ile's shop has been struggling from the influx of travellers "
+      "trading with Jixa.  Find a traveller and eliminate them."
+      
+   EscortAssassination_node_two_start_rsc = \
+      "Luisane d'Ile  has asked you to murder %s%s. Return when you "
+      "have completed this task."
+
+   EscortAssassination_node_two_rsc = \
+      "Return to Luisane d'Ile and let her know the task has been "
+      "completed."
+
+   EscortAssassination_completed = \
+      "You have sucessfully murdered a traveller."
+      
+   EscortAssassination1_trigger = "assassination"
+
+   // Quest resources.
+   EscortAssassination2_assign = \
+      "There has been a recent influx of travellers coming in from the west, "
+      "trading with Jixa.  This has been affecting my business.  If you don't "
+      "mind getting your hands a little dirty, I can reward you for eliminating "
+      "the problem. If you understand what I am saying..."
+   EscortAssassination2_success = \
+      "Ah, good work, we will keep this between us..."
+   EscortAssassination2_failure = \
+      "Subject: Coward\n"
+      "It seems someone got cold feet.  I'd be careful to walk these lands alone, "
+      "we don't forget about cowards like you."
+
+classvars:
+
+   vrIcon = EscortAssassination_icon_rsc
+   vrName = EscortAssassination_name_rsc
+   vrDesc = EscortAssassination_desc_rsc
+   
+   vrNodeTwo = EscortAssassination_node_two_rsc
+   vrNodeTwoStart =  EscortAssassination_node_two_start_rsc
+
+   vrCompleted = EscortAssassination_completed
+
+   // The QST_ID constant for this quest.
+   viQuestID = QNT_ID_ESCORT_ASSASSINATION
+
+   viIcon_Animation_start = 1
+
+properties:
+
+   piNumPlayers = 1
+   piPlayerRestrict = Q_PLAYER_NOTTRIED_RECENTLY
+   plSpecialRestrict = $
+   piMaxPlayers = 30
+   piSchedulePct = 100
+   piTimeLimit = 10800 // 3 hours.
+
+messages:
+
+   Constructor()
+   {
+      // Quest node list to send to QuestEngine.
+      plQuestNodes = [QNT_ID_ESCORT_ASSASSINATION_1, QNT_ID_ESCORT_ASSASSINATION_2];
+
+      // Quest nodes with matching descriptions for the player.
+      plQuestNodeDesc = [ [QNT_ID_ESCORT_ASSASSINATION_2, vrNodeTwo] ];
+
+      propagate;
+   }
+
+   SendQuestNodeTemplates()
+   {
+      local oQE, oLib;
+
+      oQE = Send(SYS,@GetQuestEngine);
+      oLib = Send(SYS,@GetLibrary);
+
+      // Template #1 kickoff quest
+      // QNT_ID_ESCORT_ASSASSINATION_1
+      if Send(oQE,@AddQuestNodeTemplate,#questnode_type=QN_TYPE_MESSAGE,
+               #cargolist=[EscortAssassination1_trigger],
+               #quest_node_index=QNT_ID_ESCORT_ASSASSINATION_1)
+      {
+         Send(oQE,@SetQuestNodeNPCList,#index=QNT_ID_ESCORT_ASSASSINATION_1,
+               #new_NPC_list=Send(oLib,@GetOccupationList,
+                                 #cNPC_class=&BergMerchant));
+      }
+      else
+      {
+         Debug("Error building QN: QNT_ID_ESCORT_ASSASSINATION_1");
+      }
+
+      // Template #2 go kill a traveller
+      // QNT_ID_ESCORT_ASSASSINATION_2
+      if Send(oQE,@AddQuestNodeTemplate,#NPC_modifier=QN_NPCMOD_SAME,\
+               #questnode_type=QN_TYPE_MONSTER,#timelimit=piTimeLimit,
+               #monsterlist=[ &Escortee ],
+               #prizelist=[ [ [ QN_PRIZETYPE_TRAINING_POINTS, 120],
+                              [ QN_PRIZETYPE_ITEMCLASS, &Maul, 1 ],
+                              [ QN_PRIZETYPE_ITEMCLASS, &ScaleArmor, 1 ],
+                              [ QN_PRIZETYPE_ITEMCLASS, &IceArrow, 5 ],
+                              [ QN_PRIZETYPE_ITEMCLASS, &Truffle, 3 ] ] ],
+               #quest_node_index=QNT_ID_ESCORT_ASSASSINATION_2)
+      {
+         Send(oQE,@SetQuestNodeAssignHint,#index=QNT_ID_ESCORT_ASSASSINATION_2,
+               #new_hint=EscortAssassination2_assign);
+         Send(oQE,@SetQuestNodeSuccessHint,#index=QNT_ID_ESCORT_ASSASSINATION_2,
+               #new_hint=EscortAssassination2_success);
+         Send(oQE,@SetQuestNodeFailureHint,#index=QNT_ID_ESCORT_ASSASSINATION_2,
+               #new_hint=EscortAssassination2_failure);
+      }
+      else
+      {
+         Debug("Error building QN: QNT_ID_ESCORT_ASSASSINATION_2");
+      }
+
+      return;
+   }
+   
+   MainDesc(who=$,index=$,oQuestNode=$)
+   {
+      local oMob;
+
+      oMob = Send(oQuestNode,@GetQuestMonster);
+      if oMob = $
+      {
+         AddPacket(4,vrNodeTwo);
+      }
+      else
+      {
+         AddPacket(4,vrNodeTwoStart, 4,Send(oMob,@GetIndef), 4,Send(oMob,@GetName));
+      }
+
+      return;
+   }
+
+end
+/////////////////////////////////////////////////////////////////////////////////

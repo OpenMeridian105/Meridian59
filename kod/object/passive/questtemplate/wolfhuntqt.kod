@@ -1,0 +1,162 @@
+// Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+// All rights reserved.
+//
+// This software is distributed under a license that is described in
+// the LICENSE file that accompanies it.
+//
+// Meridian is a registered trademark.
+
+
+/////////////////////////////////////////////////////////////////////////////////
+WolfHuntQuest is QuestTemplate
+// QNT_ID_WOLF_HUNT_1, QNT_ID_WOLF_HUNT_2,
+
+// QuestTemplate is
+// [ quest template index
+//   quest template object
+//   number of players,
+//   type of quest,
+//   eligible player restrictions,
+//   quest nodes,
+//   max number active,
+//   currently active quests,
+//   percent chance of scheduling (on timer firing)
+//   special restrictions ]
+
+constants:
+
+   include blakston.khd
+
+resources:
+
+   //include wolfhuntqt.lkod
+
+   // Quest description.
+   WolfHuntQuest_icon_rsc = wolf.bgf
+   WolfHuntQuest_name_rsc = "Leader of the Pack"
+
+   WolfHuntQuest_desc_rsc = \
+      "Wolves have kept interferring with Liam's business.  He is in the need "
+      "of an adventurer to help get rid of them."
+ 
+   WolfHuntQuest_kill_rsc = \
+      "The wolves have been interferring with Liam's business.  "
+      "He is requesting you to go kill one hundred of them.\n\n"
+      "Currently, you have slain %i out of %i.  "
+      "Complete this task and report back to %s."
+   WolfHuntQuest_return_rsc = \
+      "Return to %s and let %s know the task has been completed."
+
+   WolfHuntQuest_completed = \
+      "You have slain one hundred wolves."
+
+   // Quest resources.
+   WolfHuntQuest_trigger = "cargo"
+   WolfHuntQuest_assign_2 = \
+      "These pesky wolves are interfering with my business!  I'll need you "
+      "to go out and clear them.  In fact lets get rid of them all, go kill "
+      "100 wolves."
+
+   WolfHuntQuest_failure_2 = \
+      "Subject: Leader of the Pack\n"
+      "Ugh!! Is there no way we can stop these pests of a creature."
+
+   WolfHuntQuest_success_2 = \
+      "ha HA, that will show them!  Take this for your hard work. "
+
+classvars:
+
+   vrIcon = WolfHuntQuest_icon_rsc
+   vrName = WolfHuntQuest_name_rsc
+   vrDesc = WolfHuntQuest_desc_rsc
+
+   vrKill = WolfHuntQuest_kill_rsc
+   vrReturn = WolfHuntQuest_return_rsc
+   vrCompleted = WolfHuntQuest_completed
+
+   // The QST_ID constant for this quest.
+   viQuestID = QNT_ID_WOLF_HUNT
+
+properties:
+
+   piNumPlayers = 1
+   piPlayerRestrict = Q_PLAYER_NOTSUCCEEDED | Q_PLAYER_NOTFAILED_RECENTLY
+   plSpecialRestrict = $
+   piMaxPlayers = 30
+   piSchedulePct = 100
+   piTimeLimit = 48 * 3600 // 48 hours.
+
+messages:
+
+   Constructor()
+   {
+      // Quest node list to send to QuestEngine.
+      plQuestNodes = [QNT_ID_WOLF_HUNT_1, QNT_ID_WOLF_HUNT_2];
+
+      propagate;
+   }
+
+   SendQuestNodeTemplates()
+   {
+      local lNPCs, oNPC, oQE, oLib;
+
+      oQE = Send(SYS,@GetQuestEngine);
+      oLib = Send(SYS,@GetLibrary);
+
+      // QNT_ID_WOLF_HUNT_1 - kickoff
+      if Send(oQE,@AddQuestNodeTemplate,#questnode_type=QN_TYPE_MESSAGE,
+               #cargolist=[WolfHuntQuest_trigger],
+               #quest_node_index=QNT_ID_WOLF_HUNT_1)
+      {
+         Send(oQE,@SetQuestNodeNPCList,#index=QNT_ID_WOLF_HUNT_1,
+               #new_NPC_list=Send(oLib,@GetOccupationList,
+                                 #cNPC_class=&BergVaultman));
+      }
+      else
+      {
+         Debug("Error building QN: QNT_ID_WOLF_HUNT_1");
+      }
+
+      // QNT_ID_WOLF_HUNT_2 - Kill 100 wolves
+      if Send(oQE,@AddQuestNodeTemplate,#questnode_type=QN_TYPE_MONSTER_MULTIPLE,
+               #NPC_modifier=QN_NPCMOD_SAME,#monsterlist=[ [&Wolf, 100] ],
+               #timelimit=piTimeLimit,#quest_node_index=QNT_ID_WOLF_HUNT_2,
+               #prizelist=[ [ QN_PRIZETYPE_ITEMCLASS, &WolfMask ] ])
+      {
+               
+         Send(oQE,@SetQuestNodeAssignHint,#index=QNT_ID_WOLF_HUNT_2,
+               #new_hint=WolfHuntQuest_assign_2);
+         Send(oQE,@SetQuestNodeSuccessHint,#index=QNT_ID_WOLF_HUNT_2,
+               #new_hint=WolfHuntQuest_success_2);
+         Send(oQE,@SetQuestNodeFailureHint,#index=QNT_ID_WOLF_HUNT_2,
+               #new_hint=WolfHuntQuest_failure_2);
+      }
+      else
+      {
+         Debug("Error building QN: QNT_ID_WOLF_HUNT_2");
+      }
+
+      return;
+   }
+
+   MainDesc(who=$,index=$,oQuestNode=$)
+   {
+      local oMob, oNPC;
+
+      oMob = Send(oQuestNode,@GetQuestMonster);
+      oNPC = Send(oQuestNode,@GetSourceNPC);
+      if oMob = $
+      {
+         AddPacket(4,vrReturn,4,Send(oNPC,@GetName),4,Send(oNPC,@GetHimHer));
+      }
+      else
+      {
+         AddPacket(4,vrKill,4,Send(oQuestNode,@GetNumberMonstersKilled),
+            4,Send(oQuestNode,@GetMonsterKillTarget),4,Send(oNPC,@GetName));
+      }
+
+      return;
+   }
+
+end
+/////////////////////////////////////////////////////////////////////////////////

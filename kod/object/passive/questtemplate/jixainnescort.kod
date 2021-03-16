@@ -1,0 +1,156 @@
+// Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+// All rights reserved.
+//
+// This software is distributed under a license that is described in
+// the LICENSE file that accompanies it.
+//
+// Meridian is a registered trademark.
+
+
+/////////////////////////////////////////////////////////////////////////////////
+JixaInnEscortQuest is QuestTemplate
+// Quest template QNT_ID_JIXA_ESCORT = 88.
+// Quest nodes 264, 265.
+// QNT_ID_JIXA_ESCORT_ONE, QNT_ID_JIXA_ESCORT_ONE
+
+// QuestTemplate is
+// [ quest template index
+//   quest template object
+//   number of players,
+//   type of quest,
+//   eligible player restrictions,
+//   quest nodes,
+//   max number active,
+//   currently active quests,
+//   percent chance of scheduling (on timer firing)
+//   special restrictions ]
+
+constants:
+
+   include blakston.khd
+
+resources:
+
+   include jixainnescort.lkod
+
+   // Quest description.
+   JixaInnEscortQuest_icon_rsc = irelay.bgf
+   JixaInnEscortQuest_name_rsc = \
+      "Company for the Road"
+   JixaInnEscortQuest_desc_rsc = \
+      "Jorgan has a very special guest arriving at his inn.  "
+      "They may have got lost on their way to the Wandering Fiddler Pub.  "
+      "Locate the guest and help escort them safely."
+   JixaInnEscortQuest_completed_rsc = \
+      "Jorgan's guest has arrived safely at his inn."
+
+   // Quest resources.
+   JixaInnEscortQuest_trigger = "guest"
+   JixaInnEscortQuest_assign = \
+      "I am very excited to have a special guest coming to stay at my inn!  "
+      "It is a long way, though, and the road is perilous.  I fear my guest "
+      "may have took a wrong turn and is currently lost.  I need your hand to "
+      "help find and escort them safely.  They will wait for you, but you'll "
+      "need to locate where they currently are...I eagerly await their arrival!"
+   JixaInnEscortQuest_success = \
+      "Thank you so much!  I am incredibly happy to see that you made it back "
+      "in one piece.  Here, have a little something for your trouble."
+   JixaInnEscortQuest_failure = \
+      "Subject: Where are you?\n"
+      "Did you get lost?  I do not know what happened to my special guest, "
+      "but I hope they are all right.  Next time I will choose a more "
+      "capable escort. "
+
+classvars:
+
+   vrIcon = JixaInnEscortQuest_icon_rsc
+   vrName = JixaInnEscortQuest_name_rsc
+   vrDesc = JixaInnEscortQuest_desc_rsc
+
+   vrCompleted = JixaInnEscortQuest_completed_rsc
+
+   // The QST_ID constant for this quest.
+   viQuestID = QNT_ID_JIXA_ESCORT
+
+   viIcon_Animation_start = 1
+
+properties:
+
+   piNumPlayers = 1
+   piPlayerRestrict = Q_PLAYER_NOTTRIED_RECENTLY
+   plSpecialRestrict = $
+   piMaxPlayers = 1
+   piSchedulePct = 100
+
+   piTimeLimit = 2 * 3600 // 2 hours.
+
+messages:
+
+   Constructor()
+   {
+      // Quest node list to send to QuestEngine.
+      plQuestNodes = [QNT_ID_JIXA_ESCORT_ONE,
+                      QNT_ID_JIXA_ESCORT_TWO ];
+
+      propagate;
+   }
+
+   SendQuestNodeTemplates()
+   {
+      local oQE, oLib, oNPC;
+
+      oQE = Send(SYS,@GetQuestEngine);
+      oLib = Send(SYS,@GetLibrary);
+
+      // Template #264 is escort quest kickoff
+      // QNT_ID_JIXA_ESCORT_ONE
+      if Send(oQE,@AddQuestNodeTemplate,#questnode_type=QN_TYPE_MESSAGE,
+            #cargolist=[JixaInnEscortQuest_trigger],
+            #quest_node_index=QNT_ID_JIXA_ESCORT_ONE,
+            #prizelist=[ [
+               [ QN_PRIZETYPE_SPAWN, &Escortee, RID_RAZA_HALL, 8, 3],
+               [ QN_PRIZETYPE_SPAWN, &Escortee, RID_MAR_HALL, 13, 5],
+               [ QN_PRIZETYPE_SPAWN, &Escortee, RID_JAS_SMITHY, 13, 4],
+               [ QN_PRIZETYPE_SPAWN, &Escortee, RID_TEMPLE, 14, 4],
+               [ QN_PRIZETYPE_SPAWN, &Escortee, RID_TEMPLE_KRAANAN, 18, 16],
+               [ QN_PRIZETYPE_SPAWN, &Escortee, RID_BERG_JALA, 32, 20],
+               [ QN_PRIZETYPE_SPAWN, &Escortee, RID_G6, 46, 5],
+               [ QN_PRIZETYPE_SPAWN, &Escortee, RID_DUKE1, 19, 45] ] ])
+      {
+         Send(oQE,@SetQuestNodeNPCList,#index=QNT_ID_JIXA_ESCORT_ONE,
+               #new_NPC_list=Send(oLib,@GetOccupationList,
+                                 #cNPC_class=&JixaInnKeeper));
+      }
+      else
+      {
+         Debug("Error building QN: QNT_ID_JIXA_ESCORT_ONE");
+      }
+      
+      // Template #265 is escort quest
+      // QNT_ID_JIXA_ESCORT_TWO
+      if Send(oQE,@AddQuestNodeTemplate,#questnode_type=QN_TYPE_MONSTER_BRING,
+            #prizelist=[ [QN_PRIZETYPE_TRAINING_POINTS, 100] ],
+            #monsterlist=[ &Escortee ],
+            #quest_node_index=QNT_ID_JIXA_ESCORT_TWO)
+      {
+         Send(oQE,@SetQuestNodeNPCModifier,#index=QNT_ID_JIXA_ESCORT_TWO,
+               #new_mod=QN_NPCMOD_SAME);
+         Send(oQE,@SetQuestNodeAssignHint,#index=QNT_ID_JIXA_ESCORT_TWO,
+               #new_hint=JixaInnEscortQuest_assign);
+         Send(oQE,@SetQuestNodeSuccessHint,#index=QNT_ID_JIXA_ESCORT_TWO,
+               #new_hint=JixaInnEscortQuest_success);
+         Send(oQE,@SetQuestNodeFailureHint,#index=QNT_ID_JIXA_ESCORT_TWO,
+               #new_hint=JixaInnEscortQuest_failure);
+         Send(oQE,@SetQuestNodeTimeLimit,#index=QNT_ID_JIXA_ESCORT_TWO,
+               #new_limit=10800);
+      }
+      else
+      {
+         Debug("Error building QN: QNT_ID_JIXA_ESCORT_TWO");
+      }
+
+      return;
+   }
+
+end
+/////////////////////////////////////////////////////////////////////////////////

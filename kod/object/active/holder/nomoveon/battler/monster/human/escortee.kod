@@ -1,0 +1,156 @@
+// Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+// All rights reserved.
+//
+// This software is distributed under a license that is described in
+// the LICENSE file that accompanies it.
+//
+// Meridian is a registered trademark.
+
+
+////////////////////////////////////////////////////////////////////////////////
+Escortee is Human
+
+constants:
+
+   include blakston.khd
+
+resources:
+
+   include escortee.lkod
+
+   Escortee_name_rsc = "traveller"
+   Escortee_desc_rsc = \
+     "A random traveller, looks to be in need of an escort."
+   Escortee_dead_name_rsc = "dead traveller"
+   
+   Escortee_join_rsc = \
+      "Looks like I'm a bit lost here...oh hey you're my escort?  "
+      "Excellent!  Lead the way!"
+
+classvars:
+
+   vrMercenaryJoin = Escortee_join_rsc
+   vrDead_name = Escortee_dead_name_rsc
+
+   viTreasure_type = TID_EMPTY
+
+   viSpeed = SPEED_VERY_FAST
+   viAttack_type = ATK_TYPE_PUNCH
+   viAttributes = MOB_RECEIVE | MOB_LISTEN
+   viOccupation = MOB_ROLE_MERCHANT
+   viDefault_behavior = AI_FLEEING | AI_FIGHT_SWITCHALOT
+
+   viColorTranslate1 = XLAT_TO_YELLOW     // Shirt
+   viColorTranslate2 = XLAT_TO_GRAY       // Pants
+
+   viVisionDistance = 15
+
+   viCashMin = 600
+   viCashMax = 800
+
+   viWimpy = 100
+   viSocial = 0
+
+properties:
+
+   piBaseLevel = 50
+   piBaseDifficulty = 1
+
+   //Here so they can be set
+   vrIcon = human_male_icon_rsc
+   vrDead_Icon = human_dead_male_icona_rsc
+   vrDead_Legs = human_dead_male_iconb_rsc
+   viLevel = 100        // piBaseLevel
+   viDifficulty = 1     // piBaseDifficulty
+   viKarma = 0
+
+   vrName = Escortee_name_rsc
+   vrDesc = Escortee_desc_rsc
+
+   pbDontDispose = TRUE
+   ptDeleteTimer = $
+
+   // Have this value be similar to that of JixaInnEscortQuest's time limit.
+   piDeleteTimer = 2 * 3600000 // 2 hours
+
+messages:
+
+   Constructed()
+   {
+      ptDeleteTimer = CreateTimer(self,@Cleanup,piDeleteTimer);
+
+      propagate;
+   }
+
+   Cleanup(timer=$)
+   {
+      if ptDeleteTimer <> $
+      {
+         DeleteTimer(ptDeleteTimer);
+         ptDeleteTimer = $;
+      }
+
+      Send(self,@Delete);
+
+      return;
+   }
+
+   SetClothes()
+   {
+      Send(self,@SetDefaultClothes,#shirt_color=viColorTranslate1);
+      Send(self,@SetTroopLegs,#translation=viColorTranslate2);
+
+      return;
+   }
+   
+   EnterStateMove()
+   {
+      if poLeader = $
+      {
+         Send(self,@SearchQuestPlayer);
+      }
+
+      propagate;
+   }
+   
+   SearchQuestPlayer()
+   {
+      local lActive, lActiveItems, oObj;
+
+      lActiveItems = Send(poOwner,@GetplActive);
+      foreach lActive in lActiveItems
+      {
+         oObj = Send(poOwner,@HolderExtractObject,#data=lActive);
+
+         if IsClass(oObj,&Player)
+         {
+               if Send(self,@SquaredDistanceTo,#what=oObj) < 3
+                  AND (Send(oObj,@GetActiveQuestNode,
+                        #index=QNT_ID_JIXA_ESCORT) <> $)
+                  AND NOT Send(self,@IsOwnedByPlayer)
+               {
+                   Send(self,@SetMaster,#oMaster=oObj);
+                   Send(self,@FaceLeader);
+                   Send(self,@DoWave);
+                   Send(self,@SayToOne,#target=oObj,#message_rsc=vrMercenaryJoin);
+                   return TRUE;
+               }
+         }
+      }
+
+      return;
+   }
+   
+   Killed(what=$)
+   "Killing a traveller will make you a murderer."
+   {
+      if IsClass(what, &Player)
+      {
+         Send(what,@MakePlayerMurderer,#what=self);
+      }
+   
+      propagate;
+   }
+
+end
+////////////////////////////////////////////////////////////////////////////////

@@ -1,0 +1,137 @@
+// Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+// All rights reserved.
+//
+// This software is distributed under a license that is described in
+// the LICENSE file that accompanies it.
+//
+// Meridian is a registered trademark.
+
+
+////////////////////////////////////////////////////////////////////////////////
+SwampTree is JixaTown
+
+constants:
+
+   include blakston.khd
+
+   ANIM_OFFERING = 2
+   
+resources:
+
+   //include swamptree.lkod
+
+   SwampTree_name_rsc = "Xoenta tree"
+   SwampTree_icon_rsc = treant2.bgf
+   SwampTree_desc_rsc = \
+      "Both a spirit and the sentinel of the swamp, there is something puzzling "
+      "about this tree, as she watches faithfully."
+
+   SwampTree_evil_twin = \
+      "This reflection of yourself is the creation of your foul actions "
+      "against what you have done to the frogmen.  The swamp is the ancestral "
+      "home of these creatures and is sworn to protect them."
+
+classvars:
+
+   vrName = SwampTree_name_rsc
+   vrIcon = SwampTree_icon_rsc
+   vrDesc = SwampTree_desc_rsc
+
+   viGender = GENDER_FEMALE
+   viObject_flags = OF_ATTACKABLE | OF_NPC
+
+   viAttributes = \
+      MOB_NOFIGHT | MOB_RANDOM | MOB_LISTEN \
+      | MOB_NOMOVE | MOB_BUYER | MOB_SELLER | MOB_NOQUEST
+   viOccupation = MOB_ROLE_ELDER
+   viMerchant_markup = MERCHANT_EXPENSIVE
+
+properties:
+
+   piEvilTwinChance = 70
+
+messages:
+
+   SetForSale()
+   {
+      plFor_sale = [
+         [
+            Create(&MelancholyScroll),
+            Create(&MirthScroll)
+         ],
+         $,$,$];
+
+      return;
+   }
+
+   DoTreeAnimation()
+   {
+      piAnimation = ANIM_OFFERING;
+      Send(poOwner,@SomethingChanged,#what=self);
+      piAnimation = ANIM_NONE;
+
+      return;
+   }
+
+   SendAnimation()
+   {
+      if piAnimation = ANIM_OFFERING
+      {
+         AddPacket(1,ANIMATE_ONCE, 4,200, 2,1, 2,3, 2,1);
+
+         return;
+      }
+
+      propagate;
+   }
+
+   Offer()
+   {
+      Send(self,@DoTreeAnimation);
+
+      propagate;
+   }
+
+   Buy()
+   {
+      Send(self,@DoTreeAnimation);
+
+      propagate;
+   }
+
+   SomethingEntered(what=$)
+   {
+      local iRep, oSpell;
+
+      if IsClass(what,&Player)
+      {
+         iRep = Send(what,@GetReputation,#faction=REP_FROGMEN);
+         if iRep <> $
+            AND iRep < 0
+         {
+            Send(self,@CreateEvilTwin,#what=what);
+         }
+      }
+
+      propagate;
+   }
+
+   CreateEvilTwin(what=$)
+   {
+      local oSpell;
+
+      if NOT Send(what,@HasEvilTwin)
+         AND (Random(1,100) <= piEvilTwinChance)
+      {
+         Send(self,@DoTreeAnimation);
+         oSpell = Send(SYS,@FindSpellByNum,#num=SID_EVIL_TWIN);
+         Send(oSpell,@CastSpell,#who=self,#lTargets=[what],#iSpellPower=99);
+
+         Send(self,@SayToOne,#target=what,#message_rsc=SwampTree_evil_twin);
+      }
+
+      return;
+   }
+
+end
+////////////////////////////////////////////////////////////////////////////////

@@ -12,7 +12,7 @@ NeruGolemQuest is QuestTemplate
 // QNT_ID_NERU_GOLEM_1, QNT_ID_NERU_GOLEM_2,
 // QNT_ID_NERU_GOLEM_3, QNT_ID_NERU_GOLEM_4
 // QNT_ID_NERU_GOLEM_5, QNT_ID_NERU_GOLEM_6
-// QNT_ID_NERU_GOLEM_7, QNT_ID_NERU_GOLEM_8
+// QNT_ID_NERU_GOLEM_7
 
 // QuestTemplate is
 // [ quest template index
@@ -32,7 +32,7 @@ constants:
 
 resources:
 
-   include nerugolemqt.lkod
+   //include nerugolemqt.lkod
 
    // Quest description.
    NeruGolemQuest_icon_rsc = earthele.bgf
@@ -139,17 +139,9 @@ resources:
       "Begone you sorcerer!  Keep me away from that forbidden magic.  "
       "It almost destroyed us all..."
 
-   NeruGolemQuest_node8_rsc = \
-      "You have sucessfully summoned a golem, but it was far too powerful to control.  "
-      "Let Bastiane d'Ile know of your adventure."
-   nerugolemquest_assign_8 = \
+   nerugolemquest_success = \
       "You have these in your land?  I underestimated the power of the kangi. "
       "For my gratitude take this, it is something special I have been working on."
-
-   nerugolemquest_success = \
-      "Aye, no luck with that golem eh?  Huh, a s-s-scientist?  "
-      "Looks to be I'm not the only one drinking here.  "
-      "Tell me of your adventures!  "
 
 classvars:
 
@@ -168,7 +160,6 @@ classvars:
    vrNode5 = NeruGolemQuest_node5_rsc
    vrNode6 = NeruGolemQuest_node6_rsc
    vrNode7 = NeruGolemQuest_node7_rsc
-   vrNode8 = NeruGolemQuest_node8_rsc
 
 properties:
 
@@ -187,7 +178,7 @@ messages:
       plQuestNodes = [ QNT_ID_NERU_GOLEM_1, QNT_ID_NERU_GOLEM_2,
                        QNT_ID_NERU_GOLEM_3, QNT_ID_NERU_GOLEM_4,
                        QNT_ID_NERU_GOLEM_5, QNT_ID_NERU_GOLEM_6,
-                       QNT_ID_NERU_GOLEM_7, QNT_ID_NERU_GOLEM_8  ];
+                       QNT_ID_NERU_GOLEM_7  ];
 
       //Quest nodes with matching descriptions for the player.
       plQuestNodeDesc = [ 
@@ -196,8 +187,7 @@ messages:
                           [QNT_ID_NERU_GOLEM_4, vrNode4],
                           [QNT_ID_NERU_GOLEM_5, vrNode5],
                           [QNT_ID_NERU_GOLEM_6, vrNode6],
-                          [QNT_ID_NERU_GOLEM_7, vrNode7],
-                          [QNT_ID_NERU_GOLEM_8, vrNode8]
+                          [QNT_ID_NERU_GOLEM_7, vrNode7]
                         ];
 
       propagate;
@@ -313,33 +303,14 @@ messages:
                #timelimit=piTimeLimit,#quest_node_index=QNT_ID_NERU_GOLEM_7,
                #prizelist=[ [ QN_PRIZETYPE_ITEMCLASS,&NeruditeBow, 1] ])
       {
-         Send(oQE,@SetQuestNodeAssignHint,#index=QNT_ID_NERU_GOLEM_7,
-               #new_hint=nerugolemquest_assign_7);
+         Send(oQE,@SetQuestNodeSuccessHint,#index=QNT_ID_NERU_GOLEM_7,
+               #new_hint=nerugolemquest_success);
          Send(oQE,@SetQuestNodeFailureHint,#index=QNT_ID_NERU_GOLEM_7,
                #new_hint=nerugolemquest_failure_7);
       }
       else
       {
          Debug("Error building QN: QNT_ID_NERU_GOLEM_7");
-      }
-
-      // QNT_ID_NERU_GOLEM_8 - report back to the mad scientist
-      if Send(oQE,@AddQuestNodeTemplate,#questnode_type=QN_TYPE_SHOWUP,
-               #NPC_modifier=QN_NPCMOD_DIFFERENT,
-               #timelimit=piTimeLimit,#quest_node_index=QNT_ID_NERU_GOLEM_8,
-               #prizelist=[ [ QN_PRIZETYPE_TRAINING_POINTS, 50 ] ])
-      {
-         Send(oQE,@SetQuestNodeNPCList,#index=QNT_ID_NERU_GOLEM_8,
-               #new_NPC_list=Send(oLib,@GetOccupationList,
-                                 #cNPC_class=&BergInnkeeper));
-         Send(oQE,@SetQuestNodeAssignHint,#index=QNT_ID_NERU_GOLEM_8,
-               #new_hint=nerugolemquest_assign_8);
-         Send(oQE,@SetQuestNodeSuccessHint,#index=QNT_ID_NERU_GOLEM_8,
-               #new_hint=nerugolemquest_success);
-      }
-      else
-      {
-         Debug("Error building QN: QNT_ID_NERU_GOLEM_8");
       }
 
       return;

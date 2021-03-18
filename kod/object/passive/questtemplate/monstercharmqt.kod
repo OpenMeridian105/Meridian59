@@ -1,0 +1,173 @@
+// Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+// All rights reserved.
+//
+// This software is distributed under a license that is described in
+// the LICENSE file that accompanies it.
+//
+// Meridian is a registered trademark.
+
+
+/////////////////////////////////////////////////////////////////////////////////
+MonsterCharmQuest is QuestTemplate
+// Quest template QNT_ID_MONSTER_CHARM = 101.
+// Quest nodes 270, 271.
+// QNT_ID_MONSTER_CHARM_ONE, QNT_ID_MONSTER_CHARM_ONE
+
+// QuestTemplate is
+// [ quest template index
+//   quest template object
+//   number of players,
+//   type of quest,
+//   eligible player restrictions,
+//   quest nodes,
+//   max number active,
+//   currently active quests,
+//   percent chance of scheduling (on timer firing)
+//   special restrictions ]
+
+constants:
+
+   include blakston.khd
+
+resources:
+
+   //include jixainnescort.lkod
+
+   // Quest description.
+   MonsterCharmQuest_icon_rsc = amoeba.bgf
+   MonsterCharmQuest_name_rsc = \
+      "Monster Hunt"
+   MonsterCharmQuest_desc_rsc = \
+       "Osvann Vaendefdall not only does he cage monsters for his arena, he "
+       "also is a collector of them.  Help charm the creature he is looking "
+       "for, and bring it back to his arena."
+   MonsterCharmQuest_start_rsc = \
+       "Osvann Vaendefdall not only does he cage monsters for his arena, he "
+       "also is a collector of them.  Help charm %s%s and bring it back "
+       "to his arena."
+   MonsterCharmQuest_completed_rsc = \
+      "You have sucessfully brought a monster to Osvann Vaendefdall."
+
+   // Quest resources.
+   MonsterCharmQuest_trigger = "beasts"
+   MonsterCharmQuest_assign = \
+      "There are many unique creatures all over Meridian.  Most of them "
+      "are followers of the vile, and are put to the test in my arena. "
+      "Take this wand of charming, and tame a %MONSTER.  Bring it back here."
+   MonsterCharmQuest_success = \
+      "What a fine creature, well done.  This will look great in my collection."
+   MonsterCharmQuest_failure = \
+      "Subject: Monster Hunt\n"
+      "Come back when you've learned how to properly tame a creature."
+
+classvars:
+
+   vrIcon = MonsterCharmQuest_icon_rsc
+   vrName = MonsterCharmQuest_name_rsc
+   vrDesc = MonsterCharmQuest_desc_rsc
+
+   vrStart = MonsterCharmQuest_start_rsc
+   vrReturn = MonsterCharmQuest_desc_rsc
+
+   vrCompleted = MonsterCharmQuest_completed_rsc
+
+   // The QST_ID constant for this quest.
+   viQuestID = QNT_ID_MONSTER_CHARM
+
+   viIcon_Animation_start = 1
+
+properties:
+
+   piNumPlayers = 1
+   piPlayerRestrict = Q_PLAYER_NOTTRIED_RECENTLY
+   plSpecialRestrict = $
+   piMaxPlayers = 30
+   piSchedulePct = 100
+
+   piTimeLimit = 2 * 3600 // 2 hours.
+
+messages:
+
+   Constructor()
+   {
+      // Quest node list to send to QuestEngine.
+      plQuestNodes = [QNT_ID_MONSTER_CHARM_ONE,
+                      QNT_ID_MONSTER_CHARM_TWO ];
+
+      propagate;
+   }
+
+   SendQuestNodeTemplates()
+   {
+      local oQE, oLib, oNPC;
+
+      oQE = Send(SYS,@GetQuestEngine);
+      oLib = Send(SYS,@GetLibrary);
+
+      // Template #264 is escort quest kickoff
+      // QNT_ID_MONSTER_CHARM_ONE
+      if Send(oQE,@AddQuestNodeTemplate,#questnode_type=QN_TYPE_MESSAGE,
+            #cargolist=[MonsterCharmQuest_trigger],
+            #quest_node_index=QNT_ID_MONSTER_CHARM_ONE,
+            #prizelist=[ [ QN_PRIZETYPE_ITEMCLASS, &SeduceWand, 1 ] ])
+      {
+         Send(oQE,@SetQuestNodeNPCList,#index=QNT_ID_MONSTER_CHARM_ONE,
+               #new_NPC_list=Send(oLib,@GetOccupationList,
+                                 #cNPC_class=&SurvivalWatcher));
+      }
+      else
+      {
+         Debug("Error building QN: QNT_ID_MONSTER_CHARM_ONE");
+      }
+      
+      // Template #265 is escort quest
+      // QNT_ID_MONSTER_CHARM_TWO
+      if Send(oQE,@AddQuestNodeTemplate,#questnode_type=QN_TYPE_MONSTER_BRING,
+            #prizelist=[ [ [ QN_PRIZETYPE_ITEMCLASS, &TwinkleCap, 20 ],
+                           [ QN_PRIZETYPE_ITEMCLASS, &Kebab, 10 ],
+                           [ QN_PRIZETYPE_ITEMCLASS, &InkyCap, 5 ],
+                           [ QN_PRIZETYPE_ITEMCLASS, &WindrootLeaf, 25 ] ] ],
+            #monsterlist=[ &Lupogg, &SewerRat, &SpectralMummy, &Frogman, 
+                &Scorpion, &FungusBeast, &RedAnt, &EvilFairy, &Fairy, &SnowRat,
+                &Skeleton, &Troll, &Spider, &Ant, &Slime, &Orc, &CaveOrc,
+                &Centipede, &BatteredSkeleton, &Groundworm ],
+            #quest_node_index=QNT_ID_MONSTER_CHARM_TWO)
+      {
+         Send(oQE,@SetQuestNodeNPCModifier,#index=QNT_ID_MONSTER_CHARM_TWO,
+               #new_mod=QN_NPCMOD_SAME);
+         Send(oQE,@SetQuestNodeAssignHint,#index=QNT_ID_MONSTER_CHARM_TWO,
+               #new_hint=MonsterCharmQuest_assign);
+         Send(oQE,@SetQuestNodeSuccessHint,#index=QNT_ID_MONSTER_CHARM_TWO,
+               #new_hint=MonsterCharmQuest_success);
+         Send(oQE,@SetQuestNodeFailureHint,#index=QNT_ID_MONSTER_CHARM_TWO,
+               #new_hint=MonsterCharmQuest_failure);
+         Send(oQE,@SetQuestNodeTimeLimit,#index=QNT_ID_MONSTER_CHARM_TWO,
+               #new_limit=piTimeLimit);
+      }
+      else
+      {
+         Debug("Error building QN: QNT_ID_MONSTER_CHARM_TWO");
+      }
+
+      return;
+   }
+
+   MainDesc(who=$,index=$,oQuestNode=$)
+   {
+      local oMob, oNPC;
+
+      oMob = Send(oQuestNode,@GetQuestMonster);
+      if oMob <> $
+      {
+         AddPacket(4,vrStart,4,Send(oMob,@GetIndef),4,Send(oMob,@GetName));
+      }
+      else
+      {
+         AddPacket(4,vrCompleted);
+      }
+
+      return;
+   }
+
+end
+/////////////////////////////////////////////////////////////////////////////////

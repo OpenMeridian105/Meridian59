@@ -1,0 +1,149 @@
+// Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+// All rights reserved.
+//
+// This software is distributed under a license that is described in
+// the LICENSE file that accompanies it.
+//
+// Meridian is a registered trademark.
+
+
+/////////////////////////////////////////////////////////////////////////////////
+JixaInnBanditQuest is QuestTemplate
+// Quest template QNT_ID_JIXA_BANDIT = 90.
+// Quest nodes 266, 277.
+// QNT_ID_JIXA_BANDIT_ONE, QNT_ID_JIXA_BANDIT_ONE
+
+// QuestTemplate is
+// [ quest template index
+//   quest template object
+//   number of players,
+//   type of quest,
+//   eligible player restrictions,
+//   quest nodes,
+//   max number active,
+//   currently active quests,
+//   percent chance of scheduling (on timer firing)
+//   special restrictions ]
+
+constants:
+
+   include blakston.khd
+
+resources:
+
+   //include jixainnescort.lkod
+
+   // Quest description.
+   JixaInnBanditQuest_icon_rsc = ianonymo.bgf
+   JixaInnBanditQuest_name_rsc = \
+      "In with the Crowd"
+   JixaInnBanditQuest_desc_rsc = \
+      "Jorgan would to introduce some of his business partners to you.  They "
+      "have set up camp outside of Berg.  You may want to dress appropriately "
+      "if you want to fit in before meeting with their captain."
+   JixaInnBanditQuest_completed_rsc = \
+      "You have met with the bandit captain and brought them back to Jorgan's inn."
+
+   // Quest resources.
+   JixaInnBanditQuest_trigger = "operation"
+   JixaInnBanditQuest_assign = \
+      "I'm quite impressed with your work earlier.  As you probably have noticed, "
+      "a lot of visitors are in and out of here.  You see...I have connections..."
+      "Someone like yourself would be perfect to my operation.  I have some "
+      "friends near Berg that have set up camp.  Go meet up with a captain and let "
+      "them know that I sent you.  Be warned, they don't just let anyone in..."
+      "You may want dress appropriately."
+   JixaInnBanditQuest_success = \
+      "Great job westerner, you're in with the crowd now.  Keep it up and you "
+      "will go far around here."
+   JixaInnBanditQuest_failure = \
+      "Subject: Where are you?\n"
+      "I haven't heard back from you, I get it you're not from around here.  "
+      "Our operation doesn't need you."
+
+classvars:
+
+   vrIcon = JixaInnBanditQuest_icon_rsc
+   vrName = JixaInnBanditQuest_name_rsc
+   vrDesc = JixaInnBanditQuest_desc_rsc
+
+   vrCompleted = JixaInnBanditQuest_completed_rsc
+
+   // The QST_ID constant for this quest.
+   viQuestID = QNT_ID_JIXA_BANDIT
+
+   viIcon_Animation_start = 1
+
+properties:
+
+   piNumPlayers = 1
+   piPlayerRestrict = Q_PLAYER_NOTTRIED_RECENTLY
+   plSpecialRestrict = $
+   piMaxPlayers = 30
+   piSchedulePct = 100
+
+   piTimeLimit = 2 * 3600 // 2 hours.
+
+messages:
+
+   Constructor()
+   {
+      plSpecialRestrict = [ [Q_R2_HAS_COMPLETED_QUEST_ID, QNT_ID_JIXA_ESCORT] ];
+
+      // Quest node list to send to QuestEngine.
+      plQuestNodes = [QNT_ID_JIXA_BANDIT_ONE,
+                      QNT_ID_JIXA_BANDIT_TWO ];
+
+      propagate;
+   }
+
+   SendQuestNodeTemplates()
+   {
+      local oQE, oLib, oNPC;
+
+      oQE = Send(SYS,@GetQuestEngine);
+      oLib = Send(SYS,@GetLibrary);
+
+      // Template #266 is kickoff
+      // QNT_ID_JIXA_BANDIT_ONE
+      if Send(oQE,@AddQuestNodeTemplate,#questnode_type=QN_TYPE_MESSAGE,
+            #cargolist=[JixaInnBanditQuest_trigger],
+            #quest_node_index=QNT_ID_JIXA_BANDIT_ONE)
+      {
+         Send(oQE,@SetQuestNodeNPCList,#index=QNT_ID_JIXA_BANDIT_ONE,
+               #new_NPC_list=Send(oLib,@GetOccupationList,
+                                 #cNPC_class=&JixaInnKeeper));
+      }
+      else
+      {
+         Debug("Error building QN: QNT_ID_JIXA_BANDIT_ONE");
+      }
+      
+      // Template #277 is quest
+      // QNT_ID_JIXA_BANDIT_TWO
+      if Send(oQE,@AddQuestNodeTemplate,#questnode_type=QN_TYPE_MONSTER_BRING,
+            #prizelist=[ [QN_PRIZETYPE_TRAINING_POINTS, 100] ],
+            #monsterlist=[ &Bandit ],
+            #quest_node_index=QNT_ID_JIXA_BANDIT_TWO)
+      {
+         Send(oQE,@SetQuestNodeNPCModifier,#index=QNT_ID_JIXA_BANDIT_TWO,
+               #new_mod=QN_NPCMOD_SAME);
+         Send(oQE,@SetQuestNodeAssignHint,#index=QNT_ID_JIXA_BANDIT_TWO,
+               #new_hint=JixaInnBanditQuest_assign);
+         Send(oQE,@SetQuestNodeSuccessHint,#index=QNT_ID_JIXA_BANDIT_TWO,
+               #new_hint=JixaInnBanditQuest_success);
+         Send(oQE,@SetQuestNodeFailureHint,#index=QNT_ID_JIXA_BANDIT_TWO,
+               #new_hint=JixaInnBanditQuest_failure);
+         Send(oQE,@SetQuestNodeTimeLimit,#index=QNT_ID_JIXA_BANDIT_TWO,
+               #new_limit=10800);
+      }
+      else
+      {
+         Debug("Error building QN: QNT_ID_JIXA_BANDIT_TWO");
+      }
+
+      return;
+   }
+
+end
+/////////////////////////////////////////////////////////////////////////////////

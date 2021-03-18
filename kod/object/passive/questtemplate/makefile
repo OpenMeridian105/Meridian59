@@ -22,6 +22,6 @@ BOFS = shaldiscqt.bof krandiscqt.bof farendiscqt.bof qordiscqt.bof \
        razamumqt.bof ratkingqt.bof nerugolemqt.bof swamphuntqt.bof \
        firegolemqt.bof eastloversqt.bof dangelqt.bof wendigohuntqt.bof \
        bergkingpoliticsqt.bof bergkingspdrqt.bof wolfhuntqt.bof \
-       jixainnescort.bof escortassassination.bof
+       jixainnescort.bof escortassassination.bof jixabanditqt.bof
 
 !include $(KODDIR)\kod.mak

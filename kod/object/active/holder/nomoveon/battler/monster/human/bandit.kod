@@ -45,9 +45,12 @@ resources:
 
    Bandit_sound_aware = DgSwish1.ogg
 
+   Bandit_join_rsc = "Jorgan sent you here?  What are we waiting for, lets go..."
+
 classvars:
 
    vrDead_name = Bandit_dead_name_rsc
+   vrMercenaryJoin = Bandit_join_rsc
 
    viTreasure_type = TID_EMPTY
 
@@ -92,8 +95,8 @@ properties:
    ptLootDelay = $
    ptConveyanceTimer = $
 
-   // Relative chance for each type of bandit to spawn
-
+   pbCaptain = FALSE
+   pbCaughtDisguise = FALSE
 
 messages:
 
@@ -244,6 +247,7 @@ messages:
          viDifficulty = piBaseDifficulty + iBonusModifier;
          iBonusModifier = 40;
          viLevel = piBaseLevel + iBonusModifier;
+         pbCaptain = TRUE;
 
          // Armor
          oArmor = Create(&ScaleArmor);
@@ -329,9 +333,39 @@ messages:
 
    EnterStateMove()
    {
+      Send(self,@SearchQuestPlayer);
       Send(self,@SearchItemsInRange);
 
       propagate;
+   }
+
+   SearchQuestPlayer()
+   {
+      local lActive, lActiveItems, oObj;
+
+      lActiveItems = Send(poOwner,@GetplActive);
+      foreach lActive in lActiveItems
+      {
+         oObj = Send(poOwner,@HolderExtractObject,#data=lActive);
+
+         if IsClass(oObj,&Player)
+         {
+               if pbCaptain
+                  AND Send(oObj,@GetActiveQuestNode,#index=QNT_ID_JIXA_BANDIT) <> $
+                  AND Send(self,@IsAlly,#target=oObj)
+                  AND Send(self,@SquaredDistanceTo,#what=oObj) < 3
+                  AND NOT Send(self,@IsOwnedByPlayer)
+               {
+                   Send(self,@SetMaster,#oMaster=oObj);
+                   Send(self,@FaceLeader);
+                   Send(self,@DoWave);
+                   Send(self,@SayToOne,#target=oObj,#message_rsc=vrMercenaryJoin);
+                   return TRUE;
+               }
+         }
+      }
+
+      return;
    }
    
    SearchItemsInRange()
@@ -426,6 +460,57 @@ messages:
       ptConveyanceTimer = CreateTimer(self,@ConveyItems,CONVEYANCE_TIMER);
 
       return;
+   }
+
+   IsMatchingColors(target=$)
+   {
+      // hardcoded for red shirt and green pants
+      if Send(target,@GetCurrentShirtColor) = 136
+      {
+
+         if Send(target,@GetCurrentPantsColor) = 122
+            OR Send(target,@GetCurrentPantsColor) = 12
+         {
+            return TRUE;
+         }
+      }
+
+      return FALSE;
+   }
+
+   IsAlly(target = $)
+   {
+      if IsClass(target,&Player)
+         AND Send(self,@IsMatchingColors,#target=target)
+         AND NOT pbCaughtDisguise
+      {
+         return TRUE;
+      }
+      else if IsClass(target,&Bandit)
+      {
+         return TRUE;
+      }
+
+      propagate;
+   }
+
+   SomethingAttacked(what = $,victim = $,use_weapon = $)
+   {
+      if IsClass(victim,&Bandit)
+         AND IsClass(what,&Player)
+         AND Send(self,@IsAlly,#target=what)
+      {
+         pbCaughtDisguise = TRUE;
+      }
+
+      propagate;
+   }
+
+   LastUserLeft()
+   {
+      pbCaughtDisguise = FALSE;
+
+      propagate;
    }
 
    IsExpansionMonster()

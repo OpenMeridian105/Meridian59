@@ -1393,13 +1393,19 @@ messages:
 
    SystemUserLogoff(what = $)
    {
-      local i, j, oNew_room, oDoubleCheck;
+      local i, j, oNew_room, oDoubleCheck, bFound;
+
+      bFound = FALSE;
 
       foreach oDoubleCheck in plUsers_logged_on
       {
          if oDoubleCheck = what
          {
-            Debug("Duplicate user ",Send(what,@GetName),"found in SystemUserLogoff");
+            if (bFound)
+            {
+               Debug("Duplicate user ",Send(what,@GetName),"found in SystemUserLogoff");
+            }
+            bFound = TRUE;
             plUsers_logged_on = DelListElem(plUsers_logged_on, oDoubleCheck);
          }
       }

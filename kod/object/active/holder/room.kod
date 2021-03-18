@@ -1646,6 +1646,39 @@ messages:
       return TRUE;
    }
 
+   IsOpenFactionCombatAttack(what = $, victim = $)
+   "Faction combat in contested flagpole zones allows any guilded player "
+   "to attack any other guilded player, except if they are in the same guild "
+   "or allies."
+   {
+      local oFlagPole, oGuild, oVictimGuild;
+
+      if (what = $ OR victim = $)
+      {
+         Debug("IsOpenFactionCombatAttack called with bad data: ", what, victim);
+
+         return FALSE;
+      }
+
+      oFlagPole = Send(self,@FindHoldingActive,#Class=&Flagpole);
+
+      if (oFlagPole <> $
+         AND Send(oFlagPole,@IsClaimAttemptInProgress))
+      {
+         oGuild = Send(what,@GetGuild);
+         oVictimGuild = Send(victim,@GetGuild);
+         if (oGuild <> $
+            AND oVictimGuild <> $
+            AND (oGuild <> oVictimGuild)
+            AND NOT (Send(oGuild,@IsAlly,#otherguild=oVictimGuild)))
+         {
+            return TRUE;
+         }
+      }
+
+      return FALSE;
+   }
+
    AddBaseLight(amount=$)
    {
       if amount <> $

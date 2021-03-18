@@ -94,6 +94,9 @@ messages:
 
    Constructor()
    {
+      // Quest node - restrictions
+      plSpecialRestrict = [ [Q_R2_HAS_COMPLETED_QUEST_ID, QST_ID_RAZA_MUMMY] ];
+
       // Quest node list to send to QuestEngine.
       plQuestNodes = [QNT_ID_WENDIGO_HUNT_1, QNT_ID_WENDIGO_HUNT_2];
 
@@ -129,6 +132,14 @@ messages:
          {
             lNPCs = Cons(oNPC, lNPCs);
          }
+         foreach oNPC in Send(oLib,@GetOccupationList,#cNPC_class=&BergAucM)
+         {
+            lNPCs = Cons(oNPC, lNPCs);
+         }
+         foreach oNPC in Send(oLib,@GetOccupationList,#cNPC_class=&JixaDyeM)
+         {
+            lNPCs = Cons(oNPC, lNPCs);
+         }
          Send(oQE,@SetQuestNodeNPCList,#index=QNT_ID_WENDIGO_HUNT_1,
                #new_NPC_list=lNPCs);
       }
@@ -141,9 +152,11 @@ messages:
       if Send(oQE,@AddQuestNodeTemplate,#questnode_type=QN_TYPE_MONSTER_MULTIPLE,
                #NPC_modifier=QN_NPCMOD_SAME,#monsterlist=[ [&Wendigo, 20] ],
                #timelimit=piTimeLimit,#quest_node_index=QNT_ID_WENDIGO_HUNT_2,
-               #prizelist=[ [ QN_PRIZETYPE_ITEMCLASS, &MendBattery, 1 ] ])
+               #prizelist=[ [ [ QN_PRIZETYPE_ITEMCLASS, &TwinkleCap, 20 ],
+                              [ QN_PRIZETYPE_ITEMCLASS, &BoonBerry, 1 ],
+                              [ QN_PRIZETYPE_ITEMCLASS, &Truffle, 10 ],
+                              [ QN_PRIZETYPE_ITEMCLASS, &TheurgicRemnant, 5 ] ] ])
       {
-               
          Send(oQE,@SetQuestNodeAssignHint,#index=QNT_ID_WENDIGO_HUNT_2,
                #new_hint=WendigoHuntQuest_assign_2);
          Send(oQE,@SetQuestNodeSuccessHint,#index=QNT_ID_WENDIGO_HUNT_2,

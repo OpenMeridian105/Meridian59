@@ -1,0 +1,171 @@
+// Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+// All rights reserved.
+//
+// This software is distributed under a license that is described in
+// the LICENSE file that accompanies it.
+//
+// Meridian is a registered trademark.
+
+
+/////////////////////////////////////////////////////////////////////////////////
+CastleVicQuest is QuestTemplate
+// QNT_ID_CASTLEVIC_1, QNT_ID_CASTLEVIC_2,
+
+// QuestTemplate is
+// [ quest template index
+//   quest template object
+//   number of players,
+//   type of quest,
+//   eligible player restrictions,
+//   quest nodes,
+//   max number active,
+//   currently active quests,
+//   percent chance of scheduling (on timer firing)
+//   special restrictions ]
+
+constants:
+
+   include blakston.khd
+
+resources:
+
+   //include wolfhuntqt.lkod
+
+   // Quest description.
+   CastleVicQuest_icon_rsc = ghost.bgf
+   CastleVicQuest_name_rsc = "Castle Victoria"
+
+   CastleVicQuest_desc_rsc = \
+      "Rumors are circulating about the source of the rising undead in Tos.  "
+      "Valiant warriors beat back the zombies and skeletons at night, but they "
+      "can only hold for so long. "
+   CastleVicQuest_kill_rsc = \
+      "Paddock has asked you to find the seat of the old kingdom.  It lies "
+      "directly south from Tos, through the Cragged Mountains.  The journey "
+      "will be very dangerous, and you should run past any trolls or black "
+      "spiders you encounter if you are too weak to fight them.  You will have "
+      "to trek through Ukgoth, the Holy Land of Trolls, and find Castle "
+      "Victoria in the northwest corner of that area.  This journey is not "
+      "for the faint of heart.  Battle against the tusked skeletons before "
+      "proceeding to the mad king himself.\n\n"
+      "Currently, you have slain %i out of %i tusked skeletons.  "
+      "Complete this task and report back to %s."
+   CastleVicQuest_return_rsc = \
+      "Return to %s and let %s know the task has been completed."
+
+   CastleVicQuest_completed = \
+      "The curse has not been lifted.  Is it possible that Castle Victoria's "
+      "undead infestation is still just a symptom of an even greater evil?  "
+
+   // Quest resources.
+   CastleVicQuest_trigger = "Castle Victoria"
+   CastleVicQuest_assign = \
+      "Castle Victoria was the old seat of the kingdom. Far'Nohl, the King "
+      "in that era, is said to have gone mad after delving too deeply into "
+      "dark magics.  Hmm... yes. That ~Iwould~I be an important place to "
+      "check.  If there are undead walking the halls of Castle Victoria, "
+      "we'll know for sure."
+
+   CastleVicQuest_success = \
+      "The curse has not been lifted.  Is it possible that Castle Victoria's "
+      "undead infestation is still just a symptom of an even greater evil?  "
+
+classvars:
+
+   vrIcon = CastleVicQuest_icon_rsc
+   vrName = CastleVicQuest_name_rsc
+   vrDesc = CastleVicQuest_desc_rsc
+
+   vrKill = CastleVicQuest_kill_rsc
+   vrReturn = CastleVicQuest_return_rsc
+   vrCompleted = CastleVicQuest_completed
+
+   // The QST_ID constant for this quest.
+   viQuestID = QNT_ID_CASTLEVIC
+
+properties:
+
+   piNumPlayers = 1
+   piPlayerRestrict = Q_PLAYER_NOTSUCCEEDED | Q_PLAYER_NOTFAILED_RECENTLY
+   plSpecialRestrict = $
+   piMaxPlayers = 30
+   piSchedulePct = 100
+   piTimeLimit = 48 * 3600 // 48 hours.
+
+messages:
+
+   Constructor()
+   {
+      // Quest node - restrictions
+      plSpecialRestrict = [ [Q_R2_HAS_COMPLETED_QUEST_ID, QNT_ID_TOS_ZOMBIES] ];
+
+      // Quest node list to send to QuestEngine.
+      plQuestNodes = [QNT_ID_CASTLEVIC_1, QNT_ID_CASTLEVIC_2];
+
+      propagate;
+   }
+
+   SendQuestNodeTemplates()
+   {
+      local lNPCs, oNPC, oQE, oLib;
+
+      oQE = Send(SYS,@GetQuestEngine);
+      oLib = Send(SYS,@GetLibrary);
+
+      // QNT_ID_CASTLEVIC_1 - kickoff
+      if Send(oQE,@AddQuestNodeTemplate,#questnode_type=QN_TYPE_MESSAGE,
+               #cargolist=[CastleVicQuest_trigger],
+               #quest_node_index=QNT_ID_CASTLEVIC_1)
+      {
+         Send(oQE,@SetQuestNodeNPCList,#index=QNT_ID_CASTLEVIC_1,
+               #new_NPC_list=Send(oLib,@GetOccupationList,
+                                 #cNPC_class=&TosInnkeeper));
+      }
+      else
+      {
+         Debug("Error building QN: QNT_ID_CASTLEVIC_1");
+      }
+
+      // QNT_ID_CASTLEVIC_2
+      if Send(oQE,@AddQuestNodeTemplate,#questnode_type=QN_TYPE_MONSTER_MULTIPLE,
+               #NPC_modifier=QN_NPCMOD_SAME,#monsterlist=[ [&TuskedSkeleton, 30] ],
+               #timelimit=piTimeLimit,#quest_node_index=QNT_ID_CASTLEVIC_2,
+               #prizelist=[ [ [ QN_PRIZETYPE_ITEMCLASS, &Ruby, 50 ],
+                              [ QN_PRIZETYPE_ITEMCLASS, &PolishedSeraphym, 50 ],
+                              [ QN_PRIZETYPE_ITEMCLASS, &InkyCap, 20 ],
+                              [ QN_PRIZETYPE_ITEMCLASS, &FireSand, 50 ] ] ])
+      {
+         Send(oQE,@SetQuestNodeAssignHint,#index=QNT_ID_CASTLEVIC_2,
+               #new_hint=CastleVicQuest_assign);
+         Send(oQE,@SetQuestNodeSuccessHint,#index=QNT_ID_CASTLEVIC_2,
+               #new_hint=CastleVicQuest_success);
+      }
+      else
+      {
+         Debug("Error building QN: QNT_ID_CASTLEVIC_2");
+      }
+
+      return;
+   }
+
+   MainDesc(who=$,index=$,oQuestNode=$)
+   {
+      local oMob, oNPC;
+
+      oMob = Send(oQuestNode,@GetQuestMonster);
+      oNPC = Send(oQuestNode,@GetSourceNPC);
+      if oMob = $
+      {
+         AddPacket(4,vrReturn,4,Send(oNPC,@GetName),4,Send(oNPC,@GetHimHer));
+      }
+      else
+      {
+         AddPacket(4,vrKill,4,Send(oQuestNode,@GetNumberMonstersKilled),
+            4,Send(oQuestNode,@GetMonsterKillTarget),4,Send(oNPC,@GetName));
+      }
+
+      return;
+   }
+
+end
+/////////////////////////////////////////////////////////////////////////////////

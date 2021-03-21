@@ -1,0 +1,174 @@
+// Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+// All rights reserved.
+//
+// This software is distributed under a license that is described in
+// the LICENSE file that accompanies it.
+//
+// Meridian is a registered trademark.
+
+
+/////////////////////////////////////////////////////////////////////////////////
+MarionCryptStatues is QuestTemplate
+// QNT_ID_MAR_STATUES_1, QNT_ID_MAR_STATUES_2,
+
+// QuestTemplate is
+// [ quest template index
+//   quest template object
+//   number of players,
+//   type of quest,
+//   eligible player restrictions,
+//   quest nodes,
+//   max number active,
+//   currently active quests,
+//   percent chance of scheduling (on timer firing)
+//   special restrictions ]
+
+constants:
+
+   include blakston.khd
+
+resources:
+
+   //include wolfhuntqt.lkod
+
+   // Quest description.
+   MarionCryptStatues_icon_rsc = sword.bgf
+   MarionCryptStatues_name_rsc = "Clear the Statues in Marion Crypt"
+
+   MarionCryptStatues_desc_rsc = \
+      "The second level of the Marion Crypt seems dominated by very old and "
+      "very strong living statues imbued with the spirits of Marionite "
+      "ancestors.  Were they animated long ago to guard the tombs, or to keep "
+      "some deeper evil locked away?  In either case, the undead situation is "
+      "growing worse.  You must train and improve your skills until you can "
+      "clear all the statues and handle the skeletons as well."
+   MarionCryptStatues_kill_rsc = \
+      "The second level of the Marion Crypt seems dominated by very old and "
+      "very strong living statues imbued with the spirits of Marionite "
+      "ancestors.  Were they animated long ago to guard the tombs, "
+      "or to keep some deeper evil locked away?  In either case, the undead "
+      "situation is growing worse.  You must train and improve your skills "
+      "until you can clear all the statues and handle the skeletons as well.\n\n"
+      "Currently, you have slain %i out of %i.  "
+      "Complete this task and report back to %s."
+   MarionCryptStatues_return_rsc = \
+      "Return to %s and let %s know the task has been completed."
+
+   MarionCryptStatues_completed = \
+      "The moment you stepped into the Marion Crypt, you are certain something "
+      "is very wrong here.  Do the citizens of Marion know what their ancestors "
+      "built down there?"
+
+   // Quest resources.
+   MarionCryptStatues_trigger = "crypt"
+   MarionCryptStatues_assign = \
+      "The second level of the Marion Crypt seems dominated by very old and "
+      "very strong living statues imbued with the spirits of Marionite "
+      "ancestors.  Were they animated long ago to guard the tombs, "
+      "or to keep some deeper evil locked away?  In either case, the undead "
+      "situation is growing worse.  You must train and improve your skills "
+      "until you can clear all the statues and handle the skeletons as well."
+
+   MarionCryptStatues_success = \
+      "Nice work if I do say so myself.  Here's a little something for that "
+      "dirty job."
+
+classvars:
+
+   vrIcon = MarionCryptStatues_icon_rsc
+   vrName = MarionCryptStatues_name_rsc
+   vrDesc = MarionCryptStatues_desc_rsc
+
+   vrKill = MarionCryptStatues_kill_rsc
+   vrReturn = MarionCryptStatues_return_rsc
+   vrCompleted = MarionCryptStatues_completed
+
+   // The QST_ID constant for this quest.
+   viQuestID = QNT_ID_MAR_STATUES
+
+properties:
+
+   piNumPlayers = 1
+   piPlayerRestrict = Q_PLAYER_NOTSUCCEEDED | Q_PLAYER_NOTFAILED_RECENTLY
+   plSpecialRestrict = $
+   piMaxPlayers = 30
+   piSchedulePct = 100
+   piTimeLimit = 48 * 3600 // 48 hours.
+
+messages:
+
+   Constructor()
+   {
+      // Quest node - restrictions
+      plSpecialRestrict = [ [Q_R2_HAS_COMPLETED_QUEST_ID, QNT_ID_MAR_MUMMIES] ];
+
+      // Quest node list to send to QuestEngine.
+      plQuestNodes = [QNT_ID_MAR_STATUES_1, QNT_ID_MAR_STATUES_2];
+
+      propagate;
+   }
+
+   SendQuestNodeTemplates()
+   {
+      local lNPCs, oNPC, oQE, oLib;
+
+      oQE = Send(SYS,@GetQuestEngine);
+      oLib = Send(SYS,@GetLibrary);
+
+      // QNT_ID_MAR_STATUES_1 - kickoff
+      if Send(oQE,@AddQuestNodeTemplate,#questnode_type=QN_TYPE_MESSAGE,
+               #cargolist=[MarionCryptStatues_trigger],
+               #quest_node_index=QNT_ID_MAR_STATUES_1)
+      {
+         Send(oQE,@SetQuestNodeNPCList,#index=QNT_ID_MAR_STATUES_1,
+               #new_NPC_list=Send(oLib,@GetOccupationList,
+                                 #cNPC_class=&MarionHealer));
+      }
+      else
+      {
+         Debug("Error building QN: QNT_ID_MAR_STATUES_1");
+      }
+
+      // QNT_ID_MAR_STATUES_2
+      if Send(oQE,@AddQuestNodeTemplate,#questnode_type=QN_TYPE_MONSTER_MULTIPLE,
+               #NPC_modifier=QN_NPCMOD_SAME,#monsterlist=[ [&LivingStatue, 50] ],
+               #timelimit=piTimeLimit,#quest_node_index=QNT_ID_MAR_STATUES_2,
+               #prizelist=[ [ [ QN_PRIZETYPE_ITEMCLASS, &ShamanBlood, 50 ],
+                              [ QN_PRIZETYPE_ITEMCLASS, &BlueDragonScale, 50 ],
+                              [ QN_PRIZETYPE_ITEMCLASS, &DarkAngelFeather, 50 ],
+                              [ QN_PRIZETYPE_ITEMCLASS, &OrcTooth, 50 ] ] ])
+      {
+         Send(oQE,@SetQuestNodeAssignHint,#index=QNT_ID_MAR_STATUES_2,
+               #new_hint=MarionCryptStatues_assign);
+         Send(oQE,@SetQuestNodeSuccessHint,#index=QNT_ID_MAR_STATUES_2,
+               #new_hint=MarionCryptStatues_success);
+      }
+      else
+      {
+         Debug("Error building QN: QNT_ID_MAR_STATUES_2");
+      }
+
+      return;
+   }
+
+   MainDesc(who=$,index=$,oQuestNode=$)
+   {
+      local oMob, oNPC;
+
+      oMob = Send(oQuestNode,@GetQuestMonster);
+      oNPC = Send(oQuestNode,@GetSourceNPC);
+      if oMob = $
+      {
+         AddPacket(4,vrReturn,4,Send(oNPC,@GetName),4,Send(oNPC,@GetHimHer));
+      }
+      else
+      {
+         AddPacket(4,vrKill,4,Send(oQuestNode,@GetNumberMonstersKilled),
+            4,Send(oQuestNode,@GetMonsterKillTarget),4,Send(oNPC,@GetName));
+      }
+
+      return;
+   }
+
+end
+/////////////////////////////////////////////////////////////////////////////////

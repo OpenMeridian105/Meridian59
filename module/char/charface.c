@@ -24,14 +24,11 @@ static list_type face_overlays;                 /* List of overlays to draw on f
 static HWND hFace;
 extern HWND hMakeCharDialog;
 
-static WNDPROC lpfnButtonProc;     // Default window procedure for owner-drawn button
-
 static void CharFaceInitDialog(HWND hDlg);
 static void CharFaceCommand(HWND hwnd, int id, HWND hwndCtl, UINT codeNotify);
 static void CharFaceHScroll(HWND hwnd, HWND hwndCtl, UINT code, int pos);
 static void CharDrawFace(void);
 static void CharRecomputeFace(void);
-static long CALLBACK CharFaceButtonProc(HWND hwnd, UINT message, UINT wParam, LONG lParam);
 /********************************************************************/
 BOOL CALLBACK CharFaceDialogProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 {
@@ -66,13 +63,12 @@ BOOL CALLBACK CharFaceDialogProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM 
 void CharFaceInitDialog(HWND hDlg)
 {
    HWND hSlider;
-   int i;
 
    hFace = GetDlgItem(hDlg, IDC_FACE);
 
    // Make blank overlay list for face
    face_overlays = NULL;
-   for (i=0; i < NUM_FACE_OVERLAYS; i++)
+   for (int i = 0; i < NUM_FACE_OVERLAYS; i++)
    {
       Overlay *overlay = (Overlay *) SafeMalloc(sizeof(Overlay));
 
@@ -95,11 +91,6 @@ void CharFaceInitDialog(HWND hDlg)
    
    Trackbar_SetRange(hSlider, 0, ap->num_face_translations - 1, FALSE);
    Trackbar_SetPos(hSlider, ap->facet_choice);
-   
-   // Subclass button window
-   lpfnButtonProc = SubclassWindow(hFace, CharFaceButtonProc);
-
-   CharDrawFace();
 }
 /********************************************************************/
 /*
@@ -137,9 +128,7 @@ void CharFaceGetChoices(CharAppearance *ap, int *stats, BYTE *gender)
 {
    FaceInfo *info;
 
-   if (ap->gender_choice == 0)
-      *gender = GENDER_MALE;
-   else *gender = GENDER_FEMALE;
+   *gender = (ap->gender_choice == 0) ? GENDER_MALE : GENDER_FEMALE;
 
    info = &ap->parts[ap->gender_choice];
    stats[0] = info->head;
@@ -212,6 +201,10 @@ void CharFaceCommand(HWND hwnd, int id, HWND hwndCtl, UINT codeNotify)
 
    // If gender or color changes, make sure that face selections are still in range
    CharRecomputeFace();
+
+   // Invalidate to remove previous frame.
+   InvalidateRect(hFace, NULL, TRUE);
+
    CharDrawFace();
 }
 /********************************************************************/
@@ -293,20 +286,6 @@ void CharDrawFace(void)
    ReleaseDC(hFace, hdc);
 }
 /************************************************************************/
-/* 
- * CharFaceButtonProc:  Subclass face window to have transparent background.
- */
-long CALLBACK CharFaceButtonProc(HWND hwnd, UINT message, UINT wParam, LONG lParam)
-{
-   switch (message)
-   {
-   case WM_ERASEBKGND:
-      return 1;
-   }
-
-   return CallWindowProc(lpfnButtonProc, hwnd, message, wParam, lParam);
-}
-/************************************************************************/
 /*
  * CharRecomputeFace:  Bring all face part selections into legal ranges
  *   (used when gender or color choice changes).
@@ -328,9 +307,7 @@ void CharRecomputeFace(void)
  */
 CharAppearance *CharAppearanceDestroy(CharAppearance *ap)
 {
-   int i;
-   
-   for (i=0; i < NUM_GENDERS; i++)
+   for (int i = 0; i < NUM_GENDERS; i++)
    {
       FaceInfo *info = &ap->parts[i];
       SafeFree(info->hair);

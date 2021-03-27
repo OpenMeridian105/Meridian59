@@ -58,6 +58,9 @@ classvars:
    // Overwrite to allow monster casts.
    vbCanCastonMonsters = FALSE 
 
+   // Overwrite to disallow recasting this buff while it is active.
+   vbRecastable = TRUE
+
    viPersonal_ench = TRUE
 
    // The effectiveness of purge on the target spell as a percentage.
@@ -133,8 +136,9 @@ messages:
       if Send(oTarget,@IsEnchanted,#what=self)
       {
          // Can you override an existing enchantment on yourself?
-         if who = oTarget AND
-            Send(SETTINGS_OBJECT,@CanRecastSelfEnchantment)
+         if who = oTarget
+            AND vbRecastable
+            AND Send(SETTINGS_OBJECT,@CanRecastSelfEnchantment)
          {
             propagate;
          }

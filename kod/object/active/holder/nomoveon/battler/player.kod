@@ -12270,10 +12270,13 @@ messages:
          oEnch = Nth(i,2);
          if IsClass(oEnch,&Spell) OR IsClass(oEnch,&Trance)
          {
-            state = $;
             if Length(i) >= ENCHANTMENT_LIST_STATE
             {
                state = Nth(i,3);
+            }
+            else
+            {
+               state = $;
             }
 
             Send(oEnch,@BreakTrance,#who=self,#state=state,
@@ -16346,6 +16349,32 @@ messages:
       }
 
       return;
+   }
+
+   CanBreakTrance()
+   "Returns TRUE if player doesn't have a trance active, or if the trance "
+   "can be broken.  Returns FALSE if player has a trance active but the "
+   "trance is unbreakable (e.g. cleave perform trance).  Checks spell trances "
+   "like eavesdrop as well as proper Trance enchantments."
+   {
+      local bCanBreak, lState;
+
+      lState = Send(self,@GetEnchantedState,
+         #what=Send(SYS,@FindSpellByNum,#num=SID_TRANCE));
+      if (lState = $)
+      {
+         bCanBreak = SendListBreak(plEnchantments,2,@CanBreakTrance);
+         if (NOT bCanBreak)
+         {
+            return FALSE;
+         }
+
+         bCanBreak = SendListBreak(plRadiusEnchantments,2,@CanBreakTrance);
+
+         return bCanBreak;
+      }
+
+      return Send(First(lState),@CanBreakTrance);
    }
 
    // Returns the spell that is currently in the process of being cast.

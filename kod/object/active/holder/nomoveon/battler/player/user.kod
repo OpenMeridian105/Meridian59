@@ -7350,6 +7350,11 @@ messages:
 
       if piFlags & PFLAG_TRANCE
       {
+         if (NOT Send(self,@CanBreakTrance))
+         {
+            return;
+         }
+
          Send(self,@BreakTrance,#event=EVENT_USE);
       }
 
@@ -7367,6 +7372,11 @@ messages:
    {
       if piFlags & PFLAG_TRANCE
       {
+         if (NOT Send(self,@CanBreakTrance))
+         {
+            return;
+         }
+
          Send(self,@BreakTrance,#event=EVENT_USE);
       }
 
@@ -7393,6 +7403,11 @@ messages:
 
       if piFlags & PFLAG_TRANCE
       {
+         if (NOT Send(self,@CanBreakTrance))
+         {
+            return FALSE;
+         }
+
          Send(self,@BreakTrance,#event=EVENT_ATTACK);
       }
 
@@ -7513,6 +7528,7 @@ messages:
          // to cast. If we are already preparing to cast the same spell,
          // don't interrupt our cast.
          if Send(self,@GetTranceAbility) = oSpell
+            OR NOT Send(self,@CanBreakTrance)
          {
             return;
          }
@@ -7651,6 +7667,7 @@ messages:
       if piFlags & PFLAG_TRANCE
       {
          if Send(self,@GetTranceAbility) = oSkill
+            OR NOT Send(self,@CanBreakTrance)
          {
             return;
          }

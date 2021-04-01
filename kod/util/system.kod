@@ -570,6 +570,9 @@ properties:
    // be echoed to IRC.
    plGlobeWatchers = $
 
+   // List of plant soils in the game.
+   plPlantSoils = $
+
 messages:
 
    GetName()
@@ -1574,11 +1577,10 @@ messages:
       Send(self,@SysRecalcLightAndDayPhase);
 
       // Change the color of rainbow ferns and twinkle caps.
-      Send(&RainbowFern,@ChangeColor,#iHour=piHour);
-      Send(&TwinkleCap,@ChangeColor,#iHour=piHour);
+      Send(&Reagent,@NewGameHour,#iHour=piHour);
 
       // Update anything that could be growing
-      Send(&PlantSoil,@NewGameHour,#iHour=piHour);
+      SendList(plPlantSoils,0,@NewGameHour,#iHour=piHour);
 
       return;
    }
@@ -8517,6 +8519,39 @@ messages:
       resistance_list = Cons([what,value],resistance_list);
 
       return resistance_list;
+   }
+
+   RegisterPlantSoil(what=$)
+   {
+      if (what = $
+         OR NOT IsClass(what,&PlantSoil))
+      {
+         Debug("RegisterPlantSoil called with bad object ", what);
+
+         return;
+      }
+
+      if (plPlantSoils <> $
+         AND FindListElem(plPlantSoils,what) > 0)
+      {
+         Debug("RegisterPlantSoil tried to add existing soil to list ", what);
+
+         return;
+      }
+
+      plPlantSoils = Cons(what,plPlantSoils);
+
+      return;
+   }
+
+   UnregisterPlantSoil(what=$)
+   {
+      if (plPlantSoils <> $)
+      {
+         plPlantSoils = DelListElem(plPlantSoils,what);
+      }
+
+      return;
    }
 
 #region Print Game Info

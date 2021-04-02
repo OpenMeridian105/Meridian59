@@ -61,6 +61,7 @@ resources:
    guild_name_rsc = "guild"
    guild_icon_rsc = light.bgf
    guild_desc_rsc = "An organization of individuals with similar purposes."
+   guild_rent_sound = god2god.ogg
 
    guild_master = "Guildmaster"
    guild_mistress = "Guildmistress"
@@ -791,11 +792,11 @@ messages:
    "Accrues 'amount' rent if non-nil.  Otherwise, calculates rent that "
    "accrues periodically."
    {
-      local rent, i, hourhours;
+      local rent, i, hourhours, each_obj;
 
       if amount <> $
       {
-         piRentDue = piRentDue + amount;
+         piRentDue += amount;
 
          return;
       }
@@ -821,45 +822,45 @@ messages:
 
       if pbSecret
       {
-         rent = rent + RENT_SECRET;
+         rent += RENT_SECRET;
       }
 
       foreach i in plMembers
       {
-         rent = rent + RENT_PER_MEMBER;
+         rent += RENT_PER_MEMBER;
       }
 
       if piGuild_hall <> $
       {
-         rent = rent + Send(Send(self,@GetGuildHall),@GetRentValue)/10;   
+         rent += Send(Send(self,@GetGuildHall),@GetRentValue) / 10;
          foreach i in plAllies
          {
-            rent = rent + RENT_PER_ALLY;
+            rent += RENT_PER_ALLY;
          }
 
          foreach i in plEnemies
          {
-            rent = rent + RENT_PER_ENEMY;
+            rent += RENT_PER_ENEMY;
          }
 
-         rent = bound(rent,2,$);
+         rent = Bound(rent,2,$);
       }
       else
       {
          foreach i in plAllies
          {
-            rent = rent + RENT_PER_ALLY/2;
+            rent += RENT_PER_ALLY/2;
          }
 
          foreach i in plEnemies
          {
-            rent = rent + RENT_PER_ENEMY/5;
+            rent += RENT_PER_ENEMY/5;
          }
 
-         rent = bound(rent,2,$);
+         rent = Bound(rent,2,$);
       }
 
-      piRentDue = piRentDue + rent;
+      piRentDue += rent;
       if piRentCounter = 0
       {
          if piRentDue > (rent * RENT_MAX_OVERDUE)
@@ -869,7 +870,7 @@ messages:
       }
       else
       {
-         piRentCounter = piRentCounter - 1;
+         --piRentCounter;
       }
 
       if piRentCounter > 0
@@ -885,15 +886,17 @@ messages:
          // Send a message to all logged on members, mail those not logged on.
          foreach i in plMembers
          {
-            if (Send(First(i),@IsLoggedOn))
+            each_obj = First(i);
+            if (Send(each_obj,@IsLoggedOn))
             {
-               Post(First(i),@MsgSendUser,#message_rsc=guild_rent_due,
+               Send(each_obj,@WaveSendUser,#wave_rsc=guild_rent_sound);
+               Post(each_obj,@MsgSendUser,#message_rsc=guild_rent_due,
                      #parm1=piRentDue,#parm2=piRentCounter/10,#parm3=hourhours);
             }
             else
             {
-               Send(First(i),@ReceiveNestedMail,#from=guild_frular,
-                  #dest_list=[First(i)],
+               Send(each_obj,@ReceiveNestedMail,#from=guild_frular,
+                  #dest_list=[each_obj],
                   #nest_list=[4,guild_rent_due_mail,4,piRentDue,
                         4,piRentCounter/10,4,hourhours]);
             }

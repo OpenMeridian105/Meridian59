@@ -23,13 +23,11 @@ resources:
    Transference_desc_rsc = \
       "Transport a stack of items from your inventory to your guildhall.  "
       "Requires that the caster be guilded, and that the guild owns a hall with "
-      "sufficient space in its public chest.  Additional fee is also required "
+      "sufficient space in its chests.  Additional fee is also required "
       "for the transportation of goods."
    Transference_cant = "You cannot cast transference on %s%s."
    Transference_not_enough_cash = \
       "You don't have enough shillings to transfer %s%s."
-   Transference_not_enough_space = \
-      "Your guild does not have enough storage space!"
    Transference_not_holding = \
       "You cannot cast transference on an item you are not holding!"
    Transference_no_guild = "You can only cast transference while guilded."
@@ -53,10 +51,9 @@ classvars:
    viChance_To_Increase = 15
 
    viMeditate_ratio = 60
+   viDeposit_Cost = 100
 
 properties:
-
-   piDeposit_Cost = 150
 
 messages:
 
@@ -74,8 +71,7 @@ messages:
 
    DoSpellEffects(who = $, lTargets = $)
    {
-      local oTarget, oRoom, bDeposited, iFee, oMoney, iCash, oGuild, oHall,
-         oGuildChest, i;
+      local oTarget, oRoom, bDeposited, iFee, oMoney, iCash, oGuild, oHall;
 
       if (lTargets = $)
       {
@@ -120,7 +116,7 @@ messages:
          return FALSE;
       }
 
-      iFee = Send(oTarget,@GetBulk) * (piDeposit_Cost / 100);
+      iFee = Send(oTarget,@GetBulk) * viDeposit_Cost / 100;
       if iFee = $
          OR iFee = 0
          OR NOT Send(who,@ReqLeaveHold,#what=oTarget)
@@ -151,16 +147,15 @@ messages:
          return FALSE;
       }
 
-      oGuildChest = Send(oHall,@GetPublicChest);
-      if NOT Send(oGuildChest,@ReqNewHold,#what=oTarget,#bTransfer=TRUE)
+      if Send(oHall,@SendToGuildChest,#who=who,#what=oTarget)
       {
-         Send(who,@MsgSendUser,#message_rsc=Transference_not_enough_space);
+         Send(who,@MsgSendUser,#message_rsc=Transference_cast,
+               #parm1=Send(oTarget,@GetDef),#parm2=Send(oTarget,@GetName));
+      }
+      else
+      {
          return FALSE;
       }
-
-      Send(oGuildChest,@NewHold,#what=oTarget);
-      Send(who,@MsgSendUser,#message_rsc=Transference_cast,
-            #parm1=Send(oTarget,@GetDef),#parm2=Send(oTarget,@GetName));
 
       if iFee <> 0
       {

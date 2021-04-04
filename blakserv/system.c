@@ -51,10 +51,15 @@ int eventengine_obj_id;
 // in blakod, but can be called by constant (e.g. SYSTEM).
 void CreateBuiltInObjects()
 {
+   // First create the builtin objects.
    SetSystemObjectID(CreateObject(SYSTEM_CLASS, 0, NULL));
    SetSettingsObjectID(CreateObject(SETTINGS_CLASS, 0, NULL));
    SetRealTimeObjectID(CreateObject(REALTIME_CLASS, 0, NULL));
    SetEventEngineObjectID(CreateObject(EVENTENGINE_CLASS, 0, NULL));
+
+   // Then call a message in the System object which will create the
+   // rest of the needed game objects.
+   SendTopLevelBlakodMessage(0,INITIALIZE_SERVER_MSG, 0, NULL);
 }
 
 int GetBuiltInObjectID(int id)

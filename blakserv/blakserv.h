@@ -72,7 +72,8 @@ enum
    EVENTENGINE_CLASS = 29,
    ESCAPED_CONVICT_CLASS = 30,
    TEST_CLASS = 31,
-   MAX_BUILTIN_CLASS = 31
+   MAX_BUILTIN_CLASS = 31,
+   INITIALIZE_SERVER_MSG = 32
 
    // To add other C-accessible KOD identifiers,
    // see the BLAKCOMP's table of BuiltinIds[].

@@ -582,8 +582,13 @@ messages:
 
    Constructor()
    {
+      // Have to delay constructing game items until other builtin objects
+      // are created. No builtin object Constructors should access any game
+      // objects for that reason.
+
       // This shouldn't be changed!
       vlLevelPoints = [1,2,4,6,8,10];
+      psTemp = CreateString();
 
       Send(self,@RecreateDamageTypeLists);
 
@@ -592,39 +597,53 @@ messages:
 
       Send(self,@ResetRetiredNames);
 
-      Send(self,@RecreateNecromancerBalance);
       Send(self,@CreateUserTable);
       Send(self,@CreateRoomTable);
       Send(self,@CreateSpellTable);
       Send(self,@CreateSkillTable);
 
+      Send(self,@RecreateXPTables);
+
+      return;
+   }
+
+   InitializeServer()
+   "Creates all necessary game objects on initial server startup (no savegame)."
+   "Called by blakserv itself after all builtin objects are created."
+   {
+      Send(self,@RecreateNecromancerBalance);
+
       Send(self,@RecreateAllBrains);
       Send(self,@RecreateLibrary);
-      Send(self,@RecreateAllRooms);
-      // Creates the Faction games
-      Send(self,@RecreateParliament);
+      Send(self,@RecreateLore);
+
+      Send(self,@RecreateQuestEngine);
+
 
       Send(self,@RecreateAssassinGame);
-      Send(self,@RecreateQuestEngine);
-      Send(self,@RecreateNodeAttack);
-      Send(self,@RecreateRentableRoomMaintenance);
-      Send(self,@RecreateSurvivalRoomMaintenance);
-
-      Send(self,@RecreateAllSpells,#figure_totals=FALSE);
-      Send(self,@RecreateAllSkills,#figure_totals=FALSE);
-      Send(self,@RecreateAllItemAttributes);
-      Send(self,@RecreateAllGuildCommands);
       Send(self,@RecreateAllBanks);
       Send(self,@RecreateAllVaults);
 
+      Send(self,@RecreateAllItemAttributes);
+      Send(self,@RecreateAllGuildCommands);
+
+      Send(self,@RecreateRentableRoomMaintenance);
+      Send(self,@RecreateSurvivalRoomMaintenance);
+
       Send(self,@RecreateAllTreasureTypes);
       Send(self,@RecreateAllBackgroundObjects);
+
+      Send(self,@RecreateAllRooms);
+      Send(self,@RecreateNodeAttack);
+      Send(self,@RecreateParliament);
+
+      Send(self,@RecreateAllSpells,#figure_totals=FALSE);
+      Send(self,@RecreateAllSkills,#figure_totals=FALSE);
+
       Send(self,@RecreateMonsterTemplates);
       Send(self,@RecreateItemTemplates);
       Send(self,@RecreateMoneyTemplates);
-      Send(self,@RecreateXPTables);
 
-      Send(self,@RecreateLore);
       Send(self,@RecreateArtArchive);
       Post(Send(self,@GetQuestEngine),@RecreateQuestNodes);
 
@@ -644,8 +663,6 @@ messages:
       Send(self,@RefigureAllAbilityTotals);
       Send(self,@RecomputeShrineTotals);
       Send(self,@RecreateLearnAdvice);
-
-      psTemp = CreateString();
 
       Send(self,@RecreateStatistics);  // Must create after anything you want to measure
 

@@ -610,6 +610,8 @@ properties:
    pbIllusion = FALSE
    // Mob has been summoned.
    vbSummoned = FALSE
+   // Mob has been animated
+   vbAnimated = FALSE
    // Mob belongs to a predefined spawn event. (e.g. mummies in trasure room)
    pbEvent = FALSE
 
@@ -9593,6 +9595,19 @@ messages:
       return;
    }
 
+   SetAnimated(value = $)
+   {
+      if value = $
+      {
+         Debug("SetAnimated called without an argument!");
+         value = FALSE;
+      }
+
+      vbAnimated = value;
+
+      return;
+   }
+
    DispelIllusionEnchantments(report = TRUE, iChance = 100)
    {
       local i, oSpell, each_obj;
@@ -11303,7 +11318,12 @@ messages:
 
    IsLegitimateSpawn()
    {
-      return NOT (pbIllusion OR vbSummoned OR pbEvent);
+      return NOT (pbIllusion OR vbSummoned OR pbEvent OR vbAnimated);
+   }
+
+   IsAnimated()
+   {
+      return vbAnimated;
    }
 
    GetTriggerObject()

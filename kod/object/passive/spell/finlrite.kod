@@ -115,7 +115,7 @@ messages:
 
    DoSpellEffects(who=$, lTargets = $, iSpellPower=0)
    {
-      local oUndead, iDamage, oRoom;
+      local oUndead, iDamage, oRoom, bKilled;
 
       oRoom = Send(who,@GetOwner);
       Send(who,@MsgSendUser,#message_rsc=FinalRites_success);
@@ -126,32 +126,45 @@ messages:
 
       foreach oUndead in lTargets
       {
+         bKilled = FALSE;
          if IsClass(oUndead,&Player)
          {
             Send(oUndead,@MsgSendUser,#message_rsc=FinalRites_hurt_necro,
                   #parm1=Send(who,@GetCapDef),#parm2=Send(who,@GetName));
          }
-
-         // Do damage to them.
-         iDamage = Random(1,5) + (iSpellpower/20) + (2*((Send(who,@GetKarma,#detect=TRUE)
-                     - Send(oUndead,@GetKarma,#detect=TRUE))/40));
-
-         // Tell the room first so that we may wipe their memories later.
-         Send(oRoom,@SomethingAttacked,#what=who,#victim=oUndead,#use_weapon=self);
-
-         if Send(oUndead,@AssessDamage,#what=who,#damage=iDamage,#stype=SPL_TYPE_HOLY) = $
+         else if IsClass(oUndead,&Monster)
+            AND Send(oUndead,@IsAnimated)
          {
-            Send(who,@KilledSomething,#what=oUndead,#use_weapon=self);
+            // Destory animated mobs
+            Send(who,@MsgSendUser,#message_rsc=FinalRites_hurt,
+                  #parm1=Send(oUndead,@GetCapDef),#parm2=Send(oUndead,@GetName));
+            Send(oUndead,@Killed);
+            bKilled = TRUE;
          }
-         else if IsClass(who,&Player)
+
+         if bKilled = FALSE
          {
-            Post(oUndead,@MemoryWipe,#who=who,#iMemoryWipe=iSpellPower*2/3);
-            Post(oUndead,@EnterStateWait,#actnow=TRUE);
-         }
-         else
-         {
-            Post(oUndead,@MemoryWipe,#who=who,#iMemoryWipe=100);
-            Post(oUndead,@EnterStateWait,#actnow=TRUE);
+            // Do damage to them.
+            iDamage = Random(1,5) + (iSpellpower/20) + (2*((Send(who,@GetKarma,#detect=TRUE)
+                        - Send(oUndead,@GetKarma,#detect=TRUE))/40));
+
+            // Tell the room first so that we may wipe their memories later.
+            Send(oRoom,@SomethingAttacked,#what=who,#victim=oUndead,#use_weapon=self);
+
+            if Send(oUndead,@AssessDamage,#what=who,#damage=iDamage,#stype=SPL_TYPE_HOLY) = $
+            {
+               Send(who,@KilledSomething,#what=oUndead,#use_weapon=self);
+            }
+            else if IsClass(who,&Player)
+            {
+               Post(oUndead,@MemoryWipe,#who=who,#iMemoryWipe=iSpellPower*2/3);
+               Post(oUndead,@EnterStateWait,#actnow=TRUE);
+            }
+            else
+            {
+               Post(oUndead,@MemoryWipe,#who=who,#iMemoryWipe=100);
+               Post(oUndead,@EnterStateWait,#actnow=TRUE);
+            }
          }
       }
 

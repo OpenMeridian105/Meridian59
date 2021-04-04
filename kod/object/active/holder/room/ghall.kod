@@ -302,7 +302,7 @@ messages:
       return;
    }
 
-   NewHold(what=$)
+   NewHold(what=$,new_row=0,new_col=0)
    "Don't let anyone log in anyplace but the foyer!"
    {
       if IsClass(what,&Player)
@@ -315,6 +315,13 @@ messages:
          {
             Send(what,@MsgSendUser,#message_rsc=guildhall_raided);
          }
+      }
+      // Handle public chest being replaced by recreateall.
+      else if (IsClass(what,&StorageBox)
+         AND new_row = viPublicChest_row
+         AND new_col = viPublicChest_col)
+      {
+         poPublicChest = what;
       }
 
       propagate;

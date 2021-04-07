@@ -1,0 +1,288 @@
+// Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+// All rights reserved.
+//
+// This software is distributed under a license that is described in
+// the LICENSE file that accompanies it.
+//
+// Meridian is a registered trademark.
+
+
+////////////////////////////////////////////////////////////////////////////////
+Touch is Unarmed
+
+constants:
+
+   include blakston.khd
+
+   // Similar to weapon base damage in 0.01 points of damage.
+   TOUCH_BASE_DAMAGE = 2000
+
+resources:
+
+   include touch.lkod
+   Touch_name_rsc = "touch"
+   Touch_icon_rsc = itouch.bgf
+   Touch_desc_rsc = "While a mundane touch is known to be among the least lethal combat techniques known to man, "
+      "a magically enhanced version may cause severe harm to any opponent."
+
+   Touch_skill_intro = "Weaponcraft Lv. 1: The most basic way of applying one's magicks to an unwilling target."
+
+classvars:
+
+   vrName = Touch_name_rsc
+   vrIcon = Touch_icon_rsc
+   vrDesc = Touch_desc_rsc
+
+   vrSkill_intro = Touch_skill_intro
+
+   viSchool = SKS_WEAPONCRAFT
+
+   viSkill_num = SKID_TOUCH
+   vbCheck_exertion = FALSE
+
+   viSkill_level = 1
+
+   viPreperation_time = 350
+   viPostPerform_time = 650
+
+   viSkillExertion = 20
+
+   viAttack_Type = ATK_TYPE_UNARMED
+
+properties:
+
+messages:
+
+   PlayerWasHitMsg(who=$,attacker=$,damage=$)
+   "The stroke may choose it's own damage give or recieve message.  Otherwise"
+   "player.kod will just choose a default."
+   {
+       Send(who,@MsgSendUser,#message_rsc=vrPlayer_was_hit,
+                #parm1=send(attacker,@GetCapDef),#parm2=send(attacker,@GetName));
+       return TRUE;
+   }
+
+   PlayerKilledSomethingMsg(who=$,victim=$,damage=$)
+   "The stroke may choose it's own damage give or recieve message.  Otherwise"
+   "player.kod will offer the default 'You killed the whatever' message."
+   {
+      local oEnchantment;
+
+      oEnchantment = Send(who,@GetEnchantmentsByClass,#EnchClass=&TouchAttackSpell);
+
+      if oEnchantment <> $
+      {
+         // The spell object is the second element of the list. Get that.
+         oEnchantment = Nth(First(oEnchantment),2);
+      }
+
+      if oEnchantment <> $
+      {
+         Send(oEnchantment,@PlayerKilledSomethingMsg,#who=who,#victim=victim,#damage=damage);
+         return FALSE;
+      }
+
+      Send(who,@MsgSendUser,#message_rsc=vrPlayer_killed_something,
+           #parm1=send(victim,@GetCapDef),#parm2=send(victim,@GetName));
+      return TRUE;
+   }
+
+   DoPreTranceEffects(who=$,lTargets=$)
+   {
+      local oEnchantment;
+
+      // Check if we have a touch attack enchantment up.
+      oEnchantment = Send(who,@GetEnchantmentsByClass,#EnchClass=&TouchAttackSpell);
+
+      if oEnchantment <> $
+      {
+         // The spell object is the second element of the list. Get that.
+         oEnchantment = Nth(First(oEnchantment),2);
+      }
+
+      // Do the animation.
+      Post(who,@DoTouchAttack,#what=oEnchantment);
+
+      Send(self,@PlaySwishSound,#who=who);
+
+      return;
+   }
+
+   GetAttackType(who=$)
+   {
+      local oEnchantment;
+
+      // Substitute in case we have a touch attack enchantment up.
+      oEnchantment = Send(who,@GetEnchantmentsByClass,#EnchClass=&TouchAttackSpell);
+
+      if oEnchantment <> $
+      {
+         return Send(Nth(First(oEnchantment),2),@GetAttackType);
+      }
+
+     return viAttack_Type;
+   }
+
+   GetSpellType(who=$)
+   {
+      local oEnchantment;
+
+      // Substitute in case we have a touch attack enchantment up.
+      oEnchantment = Send(who,@GetEnchantmentsByClass,#EnchClass=&TouchAttackSpell);
+
+      if oEnchantment <> $
+      {
+         return Send(Nth(First(oEnchantment),2),@GetSpellType);
+      }
+
+     return 0;
+   }
+
+   GetRange(who=$)
+   {
+      local oEnchantment;
+
+      // Substitute in case we have a touch attack enchantment up.
+      if who <> $
+      {
+         oEnchantment = Send(who,@GetEnchantmentsByClass,#EnchClass=&TouchAttackSpell);
+      }
+
+      if oEnchantment <> $
+      {
+         return Send(Nth(First(oEnchantment),2),@GetRange);
+      }
+
+     propagate;
+   }
+
+   GetHitSound(who=$)
+   {
+      local oEnchantment;
+
+      // Substitute in case we have a touch attack enchantment up.
+      oEnchantment = Send(who,@GetEnchantmentsByClass,#EnchClass=&TouchAttackSpell);
+
+      if oEnchantment <> $
+      {
+         return Send(Nth(First(oEnchantment),2),@GetHitSound);
+      }
+
+     propagate;
+   }
+
+   GetProf(who=$)
+   {
+      local oEnchantment;
+
+      oEnchantment = Send(who,@GetEnchantmentsByClass,#EnchClass=&TouchAttackSpell);
+
+      if oEnchantment <> $
+      {
+         // The spell object is the second element of the list. Get that.
+         oEnchantment = Nth(First(oEnchantment),2);
+      }
+
+      if oEnchantment <> $
+      {
+         return Send(oEnchantment,@GetProf,#who=who);
+      }
+
+     return;
+   }
+
+   GetProfNumber(who=$)
+   {
+      local oEnchantment;
+
+      oEnchantment = Send(who,@GetEnchantmentsByClass,#EnchClass=&TouchAttackSpell);
+
+      if oEnchantment <> $
+      {
+         // The spell object is the second element of the list. Get that.
+         oEnchantment = Nth(First(oEnchantment),2);
+      }
+
+      if oEnchantment <> $
+      {
+         return Send(oEnchantment,@GetSpellNum);
+      }
+
+     return;
+   }
+
+   ImproveStroke(who=$,target=$)
+   {
+      local oEnchantment;
+
+      oEnchantment = Send(who,@GetEnchantmentsByClass,#EnchClass=&TouchAttackSpell);
+
+      if oEnchantment <> $
+      {
+         // The spell object is the second element of the list. Get that.
+         oEnchantment = Nth(First(oEnchantment),2);
+      }
+
+      if Random(0,1)
+      {
+         Send(self,@ImproveAbility,#who=who,#target=target,
+            #bonus=Send(who,@GetWeaponSwingBonus));
+      }
+      else if oEnchantment <> $
+      {
+         Send(oEnchantment,@ImproveAbility,#who=who,#target=target);
+      }
+
+      return;
+   }
+
+   GetAttackName(who=$)
+   {
+      local oEnchantment;
+
+      // Substitute in case we have a touch attack enchantment up.
+      if who <> $
+      {
+         oEnchantment = Send(who,@GetEnchantmentsByClass,#EnchClass=&TouchAttackSpell);
+      }
+
+      if oEnchantment <> $
+      {
+         return Send(Nth(First(oEnchantment),2),@GetName);
+      }
+
+     propagate;
+   }
+
+   FindDamage(weapon_used=$, who=$, victim=$)
+   "Touch gets its damage from a touch attack enchantment or not at all."
+   {
+      local oEnchantment;
+
+      // Substitute in case we have a touch attack enchantment up.
+      if who <> $
+      {
+         oEnchantment = Send(who,@GetEnchantmentsByClass,#EnchClass=&TouchAttackSpell);
+      }
+
+      if oEnchantment <> $
+      {
+         return Send(Nth(First(oEnchantment),2),@FindDamage,#who=who,#victim=victim);
+      }
+
+     return 0;
+   }
+
+   GetRequisiteStat(who=$)
+   "Varies from skill to skill and spell to spell."
+   {
+      return Send(who,@GetMysticism);
+   }
+
+   GetDivisionReq(who=$)
+   {
+      return Send(who,@GetMysticism);
+   }
+
+end
+////////////////////////////////////////////////////////////////////////////////

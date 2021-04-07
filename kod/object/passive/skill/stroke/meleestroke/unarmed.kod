@@ -1,0 +1,178 @@
+// Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+// All rights reserved.
+//
+// This software is distributed under a license that is described in
+// the LICENSE file that accompanies it.
+//
+// Meridian is a registered trademark.
+
+
+////////////////////////////////////////////////////////////////////////////////
+Unarmed is MeleeStroke
+
+constants:
+
+   include blakston.khd
+
+resources:
+
+   include unarmed.lkod
+
+   unarmed_name_rsc = "Unarmed Combat"
+   unarmed_icon_rsc = light.bgf
+   unarmed_desc_rsc = "This is a hand to hand combat move."
+
+classvars:
+
+   vrName = unarmed_name_rsc
+   vrIcon = unarmed_icon_rsc
+   vrDesc = unarmed_desc_rsc
+
+   viIndefinite = ARTICLE_A
+   viDefinite = ARTICLE_THE
+
+   viSkill_num = SKID_DEFAULT
+   viSchool = SKS_DM
+
+   viMin_Damage = 1
+   viMax_Damage = 3
+
+   viRange = 2 * FINENESS
+
+   viAttack_Type = 0
+   viSpell_type = 0
+
+   viProficiency_needed = SKID_BRAWLING
+
+properties:
+
+   // Format of reagents:  Each element of plReagents is a list, describing a single reagent.
+   // First elem of this list is class of reagent; second is # of reagent required for skill.
+   plReagents = $
+   plPrerequisites = $
+
+messages:
+
+   ImproveProficiency(who=$,target=$,bonus=0)
+   {
+      Send(Send(SYS,@FindSkillByNum,#num=viProficiency_needed),@ImproveAbility,
+            #who=who,#target=target,#bonus=bonus);
+
+      return;
+   }
+
+   GetAttackType(weapon_used=$)
+   {
+     return viAttack_Type;
+   }
+
+   GetSpellType(weapon_used=$)
+   {
+     return viSpell_type;
+   }
+
+   CheckWeaponAndDoAnimation(who=$)
+   "Unarmed strokes may be performed even with a weapon in hand."
+   "To be added, different animations for different attack types."
+   {
+      send(who,@DoFistAttack);
+
+      return TRUE;
+   }
+
+   GetRange()
+   "If the person is unarmed, then that person's range is determined solely"
+   "by his stroke.  This may vary from stroke to stroke."
+   {
+      return viRange;
+   }
+
+   // Unarmed strokes also double as weapons and may be querried for stats.
+   GetDamage(who=$,target=$)
+   {
+      return random(viMin_Damage, viMax_Damage);
+   }
+
+   ModifyDamage(iDamage=$,who=$,target=$)
+   {
+      return 0;
+   }
+
+   // Tough question... Is it... me? - Yes, it is!
+   GetStroke(who=$)
+   {
+      local iStroke, iStat;
+
+      iStroke = 0;
+
+      if who <> $
+      {
+         Send(who,@FlipSkillAtrophyFlag,#SKID=viSkill_num);
+         iStroke += (Send(who,@GetSkillAbility,#skill_num=viSkill_num)+1)/2;
+         iStat = Send(self,@GetRequisiteStat,#who=who);
+
+         iStroke += Bound(iStat,0,iStroke+20);
+      }
+
+      return iStroke;
+   }
+
+   GetProf(who=$)
+   {
+      local oProf, iProf, iStat;
+
+      iProf = 0;
+
+      if (who <> $) AND (viProficiency_needed <> $)
+      {
+         Send(who,@FlipSkillAtrophyFlag,#SKID=viProficiency_needed);
+         iProf = (Send(who,@GetSkillAbility,#skill_num=viProficiency_needed)+1)/2;
+
+         oProf = Send(SYS,@FindSkillByNum,#num=viProficiency_needed);
+         iStat = Send(oProf,@GetRequisiteStat,#who=who);
+
+         iProf += Bound(iStat,0,iProf+20);
+      }
+
+      return iProf;
+   }
+
+   GetProfNumber(who=$)
+   {
+     return viProficiency_needed;
+   }
+
+   // Check if we broke a knuckle or sumthin'.
+   WeaponHitTarget()
+   {
+      return;
+   }
+
+   // Dummy.
+   ModifyHitRoll(who=$,what=$,hit_roll=$)
+   {
+      return hit_roll;
+   }
+
+   ModifyHaste()
+   {
+      return 0;
+   }
+
+   GetAttackName()
+   {
+      return Send(self,@GetName);
+   }
+
+   CanAmbush(who=$,what=$)
+   {
+      return FALSE;
+   }
+
+   GetMultiAttack()
+   {
+      return FALSE;
+   }
+
+end
+////////////////////////////////////////////////////////////////////////////////

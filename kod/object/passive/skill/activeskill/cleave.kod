@@ -41,17 +41,16 @@ classvars:
    viChance_to_Increase = 2
    viMeditate_ratio = 50
 
-   viSkillExertion = 4
+   viSkillExertion = 40
    vbCheck_exertion = TRUE
 
    vbAutomatic = FALSE
 
    // 2 cleaves per 3 regular attacks.
-   viPostPerform_time = 1350
-   viPreperation_time = 150
+   viPostPerform_time = 1050
+   viPreperation_time = 450
 
    vbIsMeleeAttack = TRUE
-   vrSucceed_wav = Cleave_sound_rsc
 
    vbReportTrance = FALSE
    vbCanBreakTrance = FALSE
@@ -59,6 +58,8 @@ classvars:
 
    // Percentage of additional damage compared to regular attack.
    viBonus = 20
+
+   vbFixedTrance = TRUE
 
 properties:
 
@@ -183,14 +184,7 @@ messages:
          return;
       }
 
-      Send(who,@EffectSendUserDuration,#effect=EFFECT_CLEAVE,#duration=900);
-
       propagate;
-   }
-
-   GetTranceTime()
-   {
-      return viPreperation_time;
    }
 
    // Cleave is almost an auto attack. Don't spam messages.
@@ -203,6 +197,17 @@ messages:
    SuccessChance(who=$,modifier=0,lTargets=$)
    {
       return TRUE;
+   }
+
+   DoPreTranceEffects(who=$)
+   {
+      // Do the animation.
+      Post(Send(who,@GetWeapon),@WeaponAttack);
+      Send(who,@EffectSendUserDuration,#effect=EFFECT_CLEAVE,#duration=900);
+      Send(Send(who,@GetOwner),@SomethingWaveRoom,#what=who,
+         #wave_rsc=Cleave_sound_rsc);
+
+      propagate;
    }
 
 end

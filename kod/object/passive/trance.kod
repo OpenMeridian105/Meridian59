@@ -61,7 +61,10 @@ messages:
       Send(who,@StartEnchantment,#what=self,#time=time,#addicon=FALSE,
            #state=[what,who,lTargets,TRUE,bFreeCast,100,power]);
 
-      Send(who,@AddMovementSpeedPercent,#iSpeed=-piMovementSpeedReduction);
+      if NOT IsClass(what,&Armed)
+      {
+         Send(who,@AddMovementSpeedPercent,#iSpeed=-piMovementSpeedReduction);
+      }
 
       return;
    }
@@ -84,7 +87,10 @@ messages:
       lTargets = Nth(state,3);
 
       // Let's clear up our trance related effects before proceeding further.
-      Send(who,@AddMovementSpeedPercent,#iSpeed=piMovementSpeedReduction);
+      if NOT IsClass(oAbility,&Armed)
+      {
+         Send(who,@AddMovementSpeedPercent,#iSpeed=piMovementSpeedReduction);
+      }
 
       // Double-check to get valid targets.  Don't report 'cause we've already 
       //  spammed them during the first check.
@@ -166,7 +172,11 @@ messages:
          }
       }
 
-      Send(who,@AddMovementSpeedPercent,#iSpeed=piMovementSpeedReduction);
+      if NOT IsClass(oAbility,&Armed)
+      {
+         Send(who,@AddMovementSpeedPercent,#iSpeed=piMovementSpeedReduction);
+      }
+
       Send(who,@RemoveEnchantment,#what=self);
 
       return;
@@ -222,6 +232,11 @@ messages:
    GetSpellMoveSpeedBonus()
    {
       return -piMovementSpeedReduction;
+   }
+   
+   GetBuffStat()
+   {
+      return FALSE;
    }
 
 end

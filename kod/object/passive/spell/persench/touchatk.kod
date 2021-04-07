@@ -37,7 +37,9 @@ resources:
    TouchAttack_missed2_sound = swswish2.ogg
    TouchAttack_missed3_sound = swswish3.ogg
 
-   TouchAttack_hit_sound = patk.ogg
+   TouchAttack_hit1_sound = touchattackhit1.ogg
+   TouchAttack_hit2_sound = touchattackhit2.ogg
+   TouchAttack_hit3_sound = touchattackhit3.ogg
 
 classvars:
 
@@ -98,6 +100,10 @@ classvars:
    
    // The amount of light added to player's screen.
    viEnchantmentLight = 0
+
+   vrTouchHit1 = TouchAttack_hit1_sound
+   vrTouchHit2 = TouchAttack_hit2_sound
+   vrTouchHit3 = TouchAttack_hit3_sound
 
 properties:
 
@@ -172,7 +178,18 @@ messages:
 
    GetHitsound()
    {
-      return touchattack_hit_sound;
+      local iRandom;
+
+      iRandom = GetTime()%3;
+
+      switch (iRandom)
+      {
+         case 1: return vrTouchHit1;
+         case 2: return vrTouchHit2;
+         default: return vrTouchHit3;
+      }
+
+      return;
    }
 
    //// This section for combat
@@ -281,7 +298,7 @@ messages:
       return bound(damage,0,$);
    }
 
-   FindDamage(weapon_used=$,who=$,victim=$)
+   FindDamage(who=$,victim=$)
    "Damage for attack spells is determined largely by expertise in the spell."
    {
       local damage, iAbility;
@@ -473,7 +490,7 @@ messages:
       return;
    }
 
-   HasSecondAttack()
+   GetMultiAttack()
    {
       return FALSE;
    }

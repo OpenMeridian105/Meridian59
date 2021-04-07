@@ -177,6 +177,35 @@ resources:
    battler_ambush_attacker = "~I~kYou ambush your prey!"
    battler_ambush_victim = "~I~rYou are caught off guard!"
 
+   battler_sound_hit_player_light_1 = sword1.ogg
+   battler_sound_hit_player_light_2 = sword2.ogg
+   battler_sound_hit_player_light_3 = sword3.ogg
+
+   battler_sound_hit_player_hard_1 = swrdmtl1.ogg
+   battler_sound_hit_player_hard_2 = swrdmtl2.ogg
+   battler_sound_hit_player_hard_3 = swrdmtl3.ogg
+
+   battler_sound_hit_light_1 = fhit1b.ogg
+   battler_sound_hit_light_2 = fhit2b.ogg
+   battler_sound_hit_light_3 = fhit3b.ogg
+
+   battler_sound_hit_medium_1 = lhit1b.ogg
+   battler_sound_hit_medium_2 = lhit2b.ogg
+   battler_sound_hit_medium_3 = lhit3b.ogg
+
+   battler_sound_hit_hard_1 = mhit1b.ogg
+   battler_sound_hit_hard_2 = mhit2b.ogg
+   battler_sound_hit_hard_3 = mhit3b.ogg
+
+   battler_sound_killing_blow_1 = kblow1.ogg
+   battler_sound_killing_blow_2 = kblow2.ogg
+   battler_sound_killing_blow_3 = kblow3.ogg
+
+   battler_sound_touch_hit_1 = touchhit1.ogg
+   battler_sound_touch_hit_2 = touchhit2.ogg
+   battler_sound_touch_hit_3 = touchhit3.ogg
+   battler_sound_touch_hit_4 = touchhit4.ogg
+
    battler_parry_sound1 = parry1.ogg
    battler_parry_sound2 = parry2.ogg
    battler_parry_sound3 = parry3.ogg
@@ -1499,7 +1528,7 @@ messages:
       return piVigor/200;
    }
 
-   LoseVigor(amount = 0, precision = FALSE)
+   LoseVigor(amount = 0, bCheck = FALSE, precision = FALSE)
    {
       if Send(self,@IsInCannotInteractMode)
       {
@@ -1520,7 +1549,12 @@ messages:
                         #who=self,#amount=amount);
       }
 
-      if piVigor > 0 AND amount >= piVigor
+      if bCheck AND (amount > piVigor)
+      {
+         return FALSE;
+      }
+
+      if (piVigor > 0) AND (amount >= piVigor)
       {
          amount = piVigor;
          piVigor = 0;
@@ -2489,6 +2523,9 @@ messages:
 
          Send(self,@AssessHit,#what=what,#stroke_obj=stroke_obj,#damage=iDamage);
 
+         Send(what,@PlayHitSound,#what=self,#stroke_obj=stroke_obj,
+            #use_weapon=oWeapon,#damage=iDamage);
+
          if iDamage = $
          {
             Send(self,@KilledSomething,#what=what,#use_weapon=oWeapon,
@@ -3024,7 +3061,10 @@ messages:
    GetDefenseDesc(stroke_obj=$,what=$)
    {
       local iRandom, iParry, iBlock, iDodge, iDefense, rSound, rString,
-         oShield, oWeapon;
+         oShield, oWeapon, bRoom;
+
+      // Should this sound be played to the entire room?
+      bRoom = TRUE;
 
       iParry = Send(self,@GetParryAbility,#stroke_obj=stroke_obj);
       iBlock = Send(self,@GetBlockAbility,#stroke_obj=stroke_obj);
@@ -3120,6 +3160,9 @@ messages:
             rString = battler_misses;
          }
 
+         // Misses can only be heard by the missed target.
+         bRoom = FALSE;
+
          // Pick a fitting miss sound at random even if it's a dodge.
          iRandom = Random(1,3);
 
@@ -3157,7 +3200,14 @@ messages:
          }
       }
 
-      Send(poOwner,@SomethingWaveRoom,#what=self,#wave_rsc=rSound);
+      if bRoom
+      {
+         Send(poOwner,@SomethingWaveRoom,#what=self,#wave_rsc=rSound);
+      }
+      else if IsClass(self,&Player)
+      {
+         Send(self,@WaveSendUser,#wave_rsc=rSound,#source_obj=what);
+      }
 
       return rString;
    }
@@ -3394,6 +3444,200 @@ messages:
                      #parm5=rDamageDesc);
             }
          }
+      }
+
+      return;
+   }
+
+   PlayHitSound(what=$,damage=0,stroke_obj=$,use_weapon=$)
+   {
+      local iRoll, rSound, i, iArmor, oEnchantment;
+
+      // Players tend to be quite whiny. Play an ouch sound in any case.
+      if IsClass(self,&Player)
+      {
+         Send(poOwner,@SomethingWaveRoom,#what=self,
+               #wave_rsc=Send(self,@GetOuchSound));
+      }
+
+      // No stroke object: We were hit by a spell.
+      // Spell probably already created amazing SFX. Skip.
+      if (stroke_obj = $)
+      {
+         return;
+      }
+
+      // If our stroke object is a touch, we have been hit by
+      // a touch attack. Let it contribute to the hit sound.
+      // Also play an appropriate touch sound based on wackiness.
+      if IsClass(stroke_obj,&Touch)
+      {
+         oEnchantment = Send(what,@GetEnchantmentsByClass,#EnchClass=&TouchAttackSpell);
+
+         if oEnchantment <> $
+         {
+            // The spell object is the second element of the list. Get that.
+            oEnchantment = Nth(First(oEnchantment),2);
+
+            if oEnchantment <> $
+            {
+               rSound = Send(oEnchantment,@GetHitSound);
+               Send(poOwner,@SomethingWaveRoom,#what=self,#wave_rsc=rSound);
+            }
+         }
+
+         if damage = $
+         {
+            Send(poOwner,@SomethingWaveRoom,#what=self,#wave_rsc=battler_sound_touch_hit_4);
+         }
+         else if damage < 750
+         {
+            Send(poOwner,@SomethingWaveRoom,#what=self,#wave_rsc=battler_sound_touch_hit_1);
+         }
+         else if damage < 1500
+         {
+            Send(poOwner,@SomethingWaveRoom,#what=self,#wave_rsc=battler_sound_touch_hit_2);
+         }
+         else
+         {
+            Send(poOwner,@SomethingWaveRoom,#what=self,#wave_rsc=battler_sound_touch_hit_3);
+         }
+      }
+      else
+      {
+         // Looks like we got smacked the good old fashioned way. The damage
+         // sound depends on the amount of whack. And randomness...
+
+         iRoll = Random(1,3);
+
+         if (damage = $) OR (damage > 600)
+         {
+            switch(iRoll)
+            {
+               case 1:
+                  rSound = battler_sound_hit_hard_1;
+                  break;
+
+               case 2:
+                  rSound = battler_sound_hit_hard_2;
+                  break;
+
+               case 3:
+                  rSound = battler_sound_hit_hard_3;
+                  break;
+            }
+         }
+         else if damage <= 300
+         {
+            switch(iRoll)
+            {
+               case 1:
+                  rSound = battler_sound_hit_light_1;
+                  break;
+
+               case 2:
+                  rSound = battler_sound_hit_light_2;
+                  break;
+
+               case 3:
+                  rSound = battler_sound_hit_light_3;
+                  break;
+            }
+         }
+         else
+         {
+            switch(iRoll)
+            {
+               case 1:
+                  rSound = battler_sound_hit_medium_1;
+                  break;
+
+               case 2:
+                  rSound = battler_sound_hit_medium_2;
+                  break;
+
+               case 3:
+                  rSound = battler_sound_hit_medium_3;
+                  break;
+            }
+         }
+
+         Send(poOwner,@SomethingWaveRoom,#what=self,#wave_rsc=rSound);
+      }
+
+
+      // A killing blow should have a bit more whack to it.
+      if damage = $
+      {
+         iRoll = Random(1,3);
+
+         switch(iRoll)
+         {
+            case 1:
+               rSound = battler_sound_killing_blow_1;
+               break;
+
+            case 2:
+               rSound = battler_sound_killing_blow_2;
+               break;
+
+            case 3:
+               rSound = battler_sound_killing_blow_3;
+               break;
+         }
+
+         Send(poOwner,@SomethingWaveRoom,#what=self,#wave_rsc=rSound);
+      }
+
+      // If we are a player, our smacking has an added metallic ring
+      // to it cause of armor 'n stuff. Only if the attack has a physical
+      // component though, and only if we're actually wearing such armor.
+      if IsClass(self,&Player) AND (damage <> $)
+      {
+         iRoll = Random(1,3);
+
+         iArmor = Send(self,@SumDamageReduction);
+
+         if (damage * iArmor > 500)
+         {
+            switch(iRoll)
+            {
+               case 1:
+                  rSound = battler_sound_hit_player_hard_1;
+                  break;
+
+               case 2:
+                  rSound = battler_sound_hit_player_hard_2;
+                  break;
+
+               case 3:
+                  rSound = battler_sound_hit_player_hard_3;
+                  break;
+            }
+         }
+         else if (damage * iArmor > 0)
+         {
+            switch(iRoll)
+            {
+               case 1:
+                  rSound = battler_sound_hit_player_light_1;
+                  break;
+
+               case 2:
+                  rSound = battler_sound_hit_player_light_2;
+                  break;
+
+               case 3:
+                  rSound = battler_sound_hit_player_light_3;
+                  break;
+            }
+         }
+         else
+         {
+            return;
+         }
+
+         Send(poOwner,@SomethingWaveRoom,#what=self,#wave_rsc=rSound);
       }
 
       return;

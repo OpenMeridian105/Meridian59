@@ -28,6 +28,10 @@ Bool CompareProjectiles(void *p1, void *p2)
 {
    return (Projectile *) p1 == (Projectile *) p2;
 }
+
+// Offset projectile height by this amount.
+#define PROJECTILE_SOURCE_HEIGHT_OFFSET - FINENESS / 8
+#define PROJECTILE_DEST_HEIGHT_OFFSET - FINENESS / 4
 /********************************************************************/
 /*
  * ProjectileAdd:  Start a new projectile on its way.  Projectile goes
@@ -61,7 +65,7 @@ void ProjectileAdd(Projectile *p, ID source_obj, ID dest_obj, BYTE speed, WORD f
 
    p->motion.source_x = s->motion.x;
    p->motion.source_y = s->motion.y;
-   p->motion.source_z = s->motion.z; //GetPointFloor(s->motion.x, s->motion.y);
+   p->motion.source_z = s->motion.z + PROJECTILE_SOURCE_HEIGHT_OFFSET; //GetPointFloor(s->motion.x, s->motion.y);
 #if 0
    if (source_obj == player.id)
       p->motion.source_z += PlayerGetHeightOffset() / (FINENESS * 2);
@@ -71,7 +75,7 @@ void ProjectileAdd(Projectile *p, ID source_obj, ID dest_obj, BYTE speed, WORD f
 
    p->motion.dest_x = d->motion.x;
    p->motion.dest_y = d->motion.y;
-   p->motion.dest_z = d->motion.z; //GetPointFloor(d->motion.x, d->motion.y);
+   p->motion.dest_z = d->motion.z + PROJECTILE_DEST_HEIGHT_OFFSET;; //GetPointFloor(d->motion.x, d->motion.y);
 #if 0
    if (dest_obj == player.id)
       p->motion.dest_z += PlayerGetHeightOffset() / (FINENESS * 2);

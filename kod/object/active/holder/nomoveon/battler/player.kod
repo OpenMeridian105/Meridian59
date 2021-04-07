@@ -380,6 +380,8 @@ resources:
    player_point = "You point."
 
    player_window_overlay_hand = povhand.bgf
+   player_window_overlay_touch = povtouch.bgf
+   player_window_overlay_punch = povpunch.bgf
    player_window_overlay_glow = povglow.bgf
 
    player_male_icon_rsc = bta.bgf
@@ -716,25 +718,13 @@ resources:
    player_Debug_nokarma = "%s cannot learn %s due to karma restrictions."
    player_Debug_noway = "It is impossible for %s to ever get the %s spell."
 
-   player_sound_sword1 = sword1.ogg
-   player_sound_sword2 = sword2.ogg
-   player_sound_sword3 = sword3.ogg
+   player_sound_weapon_miss1 = weaponmiss1.ogg
+   player_sound_weapon_miss2 = weaponmiss2.ogg
+   player_sound_weapon_miss3 = weaponmiss3.ogg
 
-   player_sound_metal1 = swrdmtl1.ogg
-   player_sound_metal2 = swrdmtl2.ogg
-   player_sound_metal3 = swrdmtl3.ogg
-
-   player_sound_hit_monster_flesh1 = fhit1b.ogg
-   player_sound_hit_monster_flesh2 = fhit2b.ogg
-   player_sound_hit_monster_flesh3 = fhit3b.ogg
-
-   player_sound_hit_monster_leather1 = lhit1b.ogg
-   player_sound_hit_monster_leather2 = lhit2b.ogg
-   player_sound_hit_monster_leather3 = lhit3b.ogg
-
-   player_sound_hit_monster_metal1 = mhit1b.ogg
-   player_sound_hit_monster_metal2 = mhit2b.ogg
-   player_sound_hit_monster_metal3 = mhit3b.ogg
+   player_sound_projectile_miss1 = projectilemiss1.ogg
+   player_sound_projectile_miss2 = projectilemiss2.ogg
+   player_sound_projectile_miss3 = projectilemiss3.ogg
 
    // in increasing order of agony
    player_sound_male_ouch1 = ouchm1.ogg
@@ -5392,7 +5382,7 @@ messages:
    TryAttack(what = $, use_weapon = $, stroke_obj = $, bCheck = TRUE,
              iTargetNum = 1)
    {
-      local i, iRange, oSpell, state;
+      local i, iRange, oEnchantment, state;
 
       // Can't target self.
       if what = self
@@ -5420,13 +5410,6 @@ messages:
          return FALSE;
       }
 
-      // Can pay costs?  Only check for skills, spells have already been cast.
-      if IsClass(stroke_obj,&Skill)
-         AND NOT Send(stroke_obj,@CanPayCosts,#who=self,#lTargets=[what])
-      {
-         return FALSE;
-      }
-
       // Deny attack if no line of sight
       if NOT Send(poOwner,@LineOfSight,#obj1=self,#obj2=what)
       {
@@ -5436,7 +5419,7 @@ messages:
       }
 
       // Send to the STROKE to get the range; unarmed attacks have ranges too
-      iRange = Send(stroke_obj,@GetRange,#weapon_used=use_weapon);
+      iRange = Send(stroke_obj,@GetRange,#weapon_used=use_weapon,#who=self);
 
       // A little fudge factor to account for lag drift, etc.
       //  Don't fudge for ranged weapons.
@@ -5466,10 +5449,16 @@ messages:
 
          // Deliverance touch attack for DMs. Handled here to trigger attack
          // timer and range checks.
-         if (IsClass(use_weapon,&DeliveranceTouch))
+         if IsClass(use_weapon,&Touch)
          {
-            return Send(use_weapon,@TryDeliveranceAttack,#who=self,
-                        #oTarget=what);
+            oEnchantment = Send(self,@GetEnchantmentsByClass,#EnchClass=&DeliveranceTouch);
+
+            if oEnchantment <> $
+            {
+               Send(Nth(First(oEnchantment),2),@TryDeliveranceAttack,#who=self,
+                  #oTarget=what,#stroke_obj=stroke_obj);
+               return FALSE;
+            }
          }
       }
 
@@ -5501,26 +5490,7 @@ messages:
          return FALSE;
       }
 
-      // If this attack initiates pvp, notify victim (combatants maybe?) 
-      // initially, but then not again until PVP_NOTIFY_DECAY has passed
-      if IsClass(what,&User)
-      {
-         // If snowballs are set to do 0 damage, don't PVP notify.
-         if (use_weapon = $
-            OR NOT (IsClass(use_weapon,&Snowball)
-               AND NOT Send(use_weapon,@CanDoDamage)))
-         {
-            Send(what,@DoPvpNotify);
-         }
-      }
-
-      // Okay, checking is done, attack is okay.  Do the animation thing.
-      if NOT Send(stroke_obj,@CheckWeaponAndDoAnimation,#who=self,
-                  #weapon_used=use_weapon,#victim=what)
-      {
-         return FALSE;
-      }
-
+      //// It looks like we are basically allowed to execute the attack.
       // Switching targets?
       // Do this before paying skill costs, otherwise projectiles
       // will try to find our "kill target" and fail.
@@ -5533,30 +5503,24 @@ messages:
          poKill_target = what;
       }
 
-      // Pay costs here. Only check skills, because spells are already cast.
-      if IsClass(stroke_obj,&Skill)
+      // If this attack initiates pvp, notify victim (combatants maybe?) 
+      // initially, but then not again until PVP_NOTIFY_DECAY has passed
+      if IsClass(what,&User)
       {
-         Send(stroke_obj,@PayCosts,#who=self);
+         Send(what,@DoPvpNotify);
       }
 
-      // Special case:  Ranged weapons in windy room.
-      //  Do this after paying the costs so that the arrow is used.
-      if use_weapon <> $
-         AND (IsClass(use_weapon,&RangedWeapon)
-            OR IsClass(use_weapon,&ThrownWeapon))
+      // Time to fire a projectile in case this is a ranged attack.
+      if IsClass(stroke_obj,&RangedStroke)
       {
-         oSpell = Send(SYS,@FindSpellByNum,#num=SID_WINDS);
-         state = Send(poOwner,@GetEnchantedState,#what=oSpell);
-         if (state <> $
-            AND Send(oSpell,@TryRuinShot,#who=self,#state=state))
+         // We might have run out of ammo.
+         if NOT Send(stroke_obj,@LaunchProjectile,#who=self)
          {
             return FALSE;
          }
 
-         oSpell = Send(SYS,@FindSpellByNum,#num=SID_SANDSTORM);
-         state = Send(poOwner,@GetEnchantedState,#what=oSpell);
-         if (state <> $
-            AND Send(oSpell,@TryRuinShot,#who=self,#state=state))
+         // We may still have our arrow intercepted on its way to the target.
+         if NOT Send(stroke_obj,@CheckRoomConditions,#who=self)
          {
             return FALSE;
          }
@@ -5571,9 +5535,12 @@ messages:
             // We got another swing in, so increment that.
             Send(self,@SwingWeapon,#times=1);
          }
+      }
 
-         // Give offensive buffs a small chance to improve each swing!
-         foreach i in plPassiveImprovement
+      // Give offensive buffs a small chance to improve each swing!
+      foreach i in plPassiveImprovement
+      {
+         if Nth(i,3) AND Random(1,50) = 50
          {
             if Nth(i,3) AND Random(1,50) = 50
             {
@@ -5687,25 +5654,16 @@ messages:
          // proficiency (advanced) skills, aim and max hps.
          oWeapon = Send(self,@GetWeapon);
 
-         if oWeapon <> $
-         {
-            // Get weapon's numbers.
-            iStroke = Send(oWeapon,@GetStroke,#who=self);
-            iProficiency = Send(oWeapon,@GetProf,#who=self);
-         }
-         else
-         {
-            // Unarmed
-            iStroke = Send(self,@GetSkillAbility,#skill_num=SKID_PUNCH);
-            iProficiency = Send(self,@GetSkillAbility,#skill_num=SKID_BRAWLING);
-         }
+         // Get weapon's numbers.
+         iStroke = Send(oWeapon,@GetStroke,#who=self);
+         iProficiency = Send(oWeapon,@GetProf,#who=self);
 
          iAim = Send(self,@GetAim);
          iOffense = (iStroke*2) + (iProficiency*2) + (iAim*8) +
                (200 * Send(self,@GetBaseMaxHealth))
                / (100 + Send(self,@GetStamina));
 
-         if oWeapon <> $
+         if IsClass(oWeapon,&Weapon)
          {
             iOffense = Send(oWeapon,@ModifyHitRoll,#target=what,
                   #hit_roll=iOffense);
@@ -5748,7 +5706,7 @@ messages:
    "This returns the battler's ability to avoid being hit. "
    "Ranges from 1 to 2000."
    {
-      local i, oWeapon, oShield, iParry, iDodge, iBlock, iAgility,
+      local i, iParry, iDodge, iBlock, iAgility,
             iDefense, iHealth, oMonster;
 
       // Morphed?
@@ -5809,7 +5767,8 @@ messages:
          return Send(oMonster,@GetParryAbility,#stroke_obj=stroke_obj);
       }
 
-      oWeapon = Send(self,@GetWeapon);
+      oWeapon = Send(self,@LookupPlayerWeapon);
+
       if oWeapon = $
          OR NOT Send(Send(sys,@FindSkillByNum,#num=SKID_PARRY),
                      @CanPayCosts,#who=self)
@@ -5974,7 +5933,7 @@ messages:
          return ATK_TYPE_UNARMED+ATK_TYPE_PUNCH;
       }
 
-      return Send(oWeapon,@GetAttackType);
+      return Send(oWeapon,@GetAttackType,#who=self);
    }
 
    GetSpellType(what = $, use_weapon = $)
@@ -6004,7 +5963,7 @@ messages:
          return 0;
       }
 
-      return Send(oWeapon,@GetSpellType);
+      return Send(oWeapon,@GetSpellType,#who=self);
    }
 
    GetPoisonChance()
@@ -6035,10 +5994,6 @@ messages:
             Send(oMonster,@HitSideEffect,#what=what,#who=self);
          }
       }
-
-      
-      Send(self,@DoHitMessageSound,#what=what,#damage=damage,
-            #stroke_obj=stroke_obj,#use_weapon=use_weapon);
 
       propagate;
    }
@@ -6288,7 +6243,7 @@ messages:
 
       if Send(self,@GetSkillAbility,#Skill_num=SKID_DISARM) > 0
       {
-         if oWeapon <> $ AND IsClass(oWeapon,&Spell)
+         if oWeapon <> $ AND IsClass(oWeapon,&Unarmed)
          {
             oWeapon = $;
          }
@@ -6334,18 +6289,24 @@ messages:
    {
       local oWeapon;
 
+      // Check for a physical weapon.
       oWeapon = Send(self,@LookupPlayerWeapon);
-      // If there is no wielded melee weapon, then see if we
-      // have a touch attack active.
+
+      // None present?
       if oWeapon = $
       {
-         // This will return $ if there's no Touch Attacks enchanting player.
-         oWeapon = Send(self,@GetEnchantmentsByClass,
-               #EnchClass=&TouchAttackSpell);
-         if oWeapon <> $
+         // How about a nifty magic touch attack enchantment?
+         if Send(self,@GetEnchantmentsByClass,#EnchClass=&TouchAttackSpell) <> $
          {
-            // The spell object is the second element of the list. Get that.
-            oWeapon = Nth(First(oWeapon),2);
+            // If so, we have weaponized our touch.
+            return Send(SYS,@FindSkillByNum,#num=SKID_TOUCH);
+         }
+         // Looks like it's just out fist.
+         else
+         {
+            // Good enough. Since we've had martial training, its considered
+            // a lethal weapon by law anyway. Let punch handle it.
+            return Send(SYS,@FindSkillByNum,#num=SKID_PUNCH);
          }
       }
 
@@ -6357,22 +6318,56 @@ messages:
    {
       local oWeapon;
 
-      oWeapon = Send(self,@GetWeapon);
+      // This returns a physical weapon, if we are wielding one.
+      oWeapon = Send(self,@LookupPlayerWeapon);
 
       if oWeapon <> $
       {
-         if IsClass(oWeapon,&Weapon)
-         {
-            return Send(SYS,@FindSkillByNum,#num=Send(oWeapon,@GetDefaultStrokeNumber));
-         }
-         else
-         {
-            // Our weapon is a touch attack and doubles as a stroke object.
-            return oWeapon;
-         }
+         // Ask the weapon how it would like to be wielded.
+         return Send(SYS,@FindSkillByNum,#num=Send(oWeapon,@GetDefaultStrokeNumber));
       }
 
+      // We aren't wielding an actual weapon.
+      // Check if we have a touch attack enchantment up.
+      if Send(self,@GetEnchantmentsByClass,#EnchClass=&TouchAttackSpell) <> $
+      {
+         // Gott apply those magicky energies with a touch.
+         return Send(SYS,@FindSkillByNum,#num=SKID_TOUCH);
+      }
+
+      // No magicks involved. Gotta apply that fist by punching.
       return Send(SYS,@FindSkillByNum,#num=SKID_PUNCH);
+   }
+
+   // Returns proficiency that modifies attacks based on weapon used.
+   GetProf()
+   {
+      return Send(Send(self,@GetWeapon),@GetProf,#who=self);
+   }
+
+   GetAttackTime()
+   {
+      local oWeapon, oStroke, iTime;
+
+      oWeapon = Send(self,@LookupPlayerWeapon);
+
+      if oWeapon <> $
+      {
+         oStroke = Send(SYS,@FindSkillByNum,#num=Send(oWeapon,@GetDefaultStrokeNumber));
+      }
+      else if Send(self,@GetEnchantmentsByClass,#EnchClass=&TouchAttackSpell) <> $
+      {
+         oStroke =  Send(SYS,@FindSkillByNum,#num=SKID_TOUCH);
+      }
+      else
+      {
+         oStroke =  Send(SYS,@FindSkillByNum,#num=SKID_PUNCH);
+      }
+
+      iTime = Send(oStroke,@GetPostPerformDelay,#who=self,#use_weapon=oWeapon);
+      iTime += Send(oStroke,@GetTranceTime,#who=self);
+
+      return iTime;
    }
 
    // The next three functions deal with weapon improvement.
@@ -6382,18 +6377,9 @@ messages:
    {
       local oWeapon, iProfNum;
 
-      oWeapon = Send(self,@LookupPlayerWeapon);
+      oWeapon = Send(self,@GetWeapon);
 
-      if oWeapon <> $
-      {
-         // Get weapon's numbers.
-         iProfNum = Send(oWeapon,@GetProfNumber,#who=self);
-      }
-      else
-      {
-         // Unarmed or touch attacks.
-         iProfNum = SKID_BRAWLING;
-      }
+      iProfNum = Send(oWeapon,@GetProfNumber,#who=self);
 
       if iProfNum <> (piWeaponInfo % 1000)
       {
@@ -6699,6 +6685,60 @@ messages:
       return;
    }
 
+   PlaySomethingMissedYouSound(stroke_obj = $)
+   {
+      local i,iRoll, rSound;
+
+      if stroke_obj <> $
+      {
+         if IsClass(stroke_obj,&RangedStroke)
+         {
+            iRoll = Random(1,3);
+
+            if iRoll = 1
+            {
+               rSound = player_sound_projectile_miss1;
+            }
+
+            if iRoll = 2
+            {
+               rSound = player_sound_projectile_miss2;
+            }
+
+            if iRoll = 3
+            {
+               rSound = player_sound_projectile_miss3;
+            }
+         }
+         else if IsClass(stroke_obj,&Armed) OR IsClass(stroke_obj,&Monster)
+         {
+            iRoll = Random(1,3);
+
+            if iRoll = 1
+            {
+               rSound = player_sound_weapon_miss1;
+            }
+
+            if iRoll = 2
+            {
+               rSound = player_sound_weapon_miss2;
+            }
+
+            if iRoll = 3
+            {
+               rSound = player_sound_weapon_miss3;
+            }
+         }
+      }
+
+      if rSound <> $
+      {
+         Send(self,@WaveSendUser,#wave_rsc=rSound,#source_obj=self);
+      }
+
+      return;
+   }
+
    GetOuchSound()
    {
       local iHealthFraction;
@@ -6848,202 +6888,6 @@ messages:
       return oChance;
    }
 
-   DoHitMessageSound(what = $,damage = 0,stroke_obj = $, use_weapon = $)
-   {
-      local iRoll,rSound;
-
-      if (stroke_obj = $)
-      {
-         // Play a hurt sound for attack spells.
-         if (use_weapon <> $
-            AND IsClass(use_weapon,&AttackSpell)
-            AND IsClass(what,&User))
-         {
-            Send(poOwner,@SomethingWaveRoom,#what=what,
-                  #wave_rsc=Send(what,@GetOuchSound));
-         }
-
-         return;
-      }
-
-      if IsClass(stroke_obj,&Spell)
-      {
-         rSound = Send(stroke_obj,@GetHitSound);
-         Send(poOwner,@SomethingWaveRoom,#what=what,#wave_rsc=rSound);
-         if IsClass(what,&User)
-         {
-            Send(poOwner,@SomethingWaveRoom,#what=what,
-                  #wave_rsc=Send(what,@GetOuchSound));
-         }
-
-         return;
-      }
-
-      if IsClass(what,&Monster)
-      {
-         if damage <> $
-         {
-            if damage <= 300
-            {
-               iRoll = Random(1,3);
-               if iRoll = 1
-               {
-                  rSound = player_sound_hit_monster_flesh1;
-               }
-               else
-               {
-                  if iRoll = 2
-                  {
-                     rSound = player_sound_hit_monster_flesh2;
-                  }
-                  else
-                  {
-                     rSound = player_sound_hit_monster_flesh3;
-                  }
-               }
-
-               Send(poOwner,@SomethingWaveRoom,#what=what,#wave_rsc=rSound);
-
-               return;
-            }
-
-            if damage <= 600
-            {
-               iRoll = Random(1,3);
-               if iRoll = 1
-               {
-                  rSound = player_sound_hit_monster_leather1;
-               }
-               else
-               {
-                  if iRoll = 2
-                  {
-                     rSound = player_sound_hit_monster_leather2;
-                  }
-                  else
-                  {
-                     rSound = player_sound_hit_monster_leather3;
-                  }
-               }
-
-               Send(poOwner,@SomethingWaveRoom,#what=what,#wave_rsc=rSound);
-
-               return;
-            }
-         }
-
-         iRoll = Random(1,3);
-         if iRoll = 1
-         {
-            rSound = player_sound_hit_monster_metal1;
-         }
-         else
-         {
-            if iRoll = 2
-            {
-               rSound = player_sound_hit_monster_metal2;
-            }
-            else
-            {
-               rSound = player_sound_hit_monster_metal3;
-            }
-         }
-
-         Send(poOwner,@SomethingWaveRoom,#what=what,#wave_rsc=rSound);
-
-         return;
-      }
-
-      if damage <> $
-      {
-         if damage <= 300
-         {
-            iRoll = Random(1,3);
-            if iRoll = 1
-            {
-               rSound = player_sound_hit_monster_flesh1;
-            }
-            else
-            {
-               if iRoll = 2
-               {
-                  rSound = player_sound_hit_monster_flesh2;
-               }
-               else
-               {
-                  rSound = player_sound_hit_monster_flesh3;
-               }
-            }
-
-            Send(poOwner,@SomethingWaveRoom,#what=what,#wave_rsc=rSound);
-
-            if IsClass(what,&Player)
-            {
-               Send(poOwner,@SomethingWaveRoom,#what=what,
-                     #wave_rsc=Send(what,@GetOuchSound));
-            }
-
-            return;
-         }
-
-         if damage <= 600
-         {
-            iRoll = Random(1,3);
-            if iRoll = 1
-            {
-               rSound = player_sound_hit_monster_leather1;
-            }
-            else
-            {
-               if iRoll = 2
-               {
-                  rSound = player_sound_hit_monster_leather2;
-               }
-               else
-               {
-                  rSound = player_sound_hit_monster_leather3;
-               }
-            }
-
-            Send(poOwner,@SomethingWaveRoom,#what=what,#wave_rsc=rSound);
-
-            if IsClass(what,&Player)
-            {
-               Send(poOwner,@SomethingWaveRoom,#what=what,
-                     #wave_rsc=Send(what,@GetOuchSound));
-            }
-
-            return;
-         }
-      }
-
-      iRoll = Random(1,3);
-      if iRoll = 1
-      {
-         rSound = player_sound_hit_monster_metal1;
-      }
-      else
-      {
-         if iRoll = 2
-         {
-            rSound = player_sound_hit_monster_metal2;
-         }
-         else
-         {
-            rSound = player_sound_hit_monster_metal3;
-         }
-      }
-
-      Send(poOwner,@SomethingWaveRoom,#what=what,#wave_rsc=rSound);
-
-      if IsClass(what,&Player)
-      {
-         Send(poOwner,@SomethingWaveRoom,#what=what,#wave_rsc=Send(what,@GetOuchSound));
-      }
-
-      return;
-   }
-
    CheckAttackTimer()
    {
       if ptAttackTimer <> $
@@ -7100,6 +6944,7 @@ messages:
       if time
       {
          ptAttackTimer = CreateTimer(self,@AttackTimer,time);
+         piLastTimeAttacked = GetTickCount();
       }
 
       return;
@@ -8361,7 +8206,7 @@ messages:
    ChangeSpellAbility(spell_num = 0, amount = 0, report = FALSE,
                       refigureschools = TRUE)
    {
-      local i, bFound, elemNum, iAbility, bUsed, spellName, iChange,
+      local i, bFound, elemNum, iAbility, spellName, iChange,
             newAbility, oSpell, shrunken;
 
       oSpell = Send(SYS,@FindSpellByNum,#num=spell_num);
@@ -8395,15 +8240,15 @@ messages:
          return FALSE;
       }
 
-      bUsed = Send(self,@WasSpellUsed,#compound=i);
-      if NOT bUsed
-      {
-         bUsed = -1;
-      }
-
       iAbility = Send(self,@DecodeSpellAbility,#compound=i);
       newAbility = Bound(iAbility+amount,1,99);
       iChange = newAbility-iAbility;
+
+      // If we advance a touchattack, reset our stroke count (and bonuses).
+      if IsClass(oSpell,&TouchAttackSpell)
+      {
+         Send(self,@ResetWeaponSwings);
+      }
 
       SetNth(plSpells,elemNum,Send(self,@EncodeSpell,
             #num=spell_num,#iAbility=newAbility));
@@ -8815,10 +8660,8 @@ messages:
 
    ActivateSpellAtrophy()
    {
-      local i, j, iability, lSchoolsUsed, oSpellA, oSpellB,
-            bFound, highmark, iAmount;
+      local i, j, iAbility, oSpellA, oSpellB, iAmount;
 
-      // Must get below highmark for atrophy to activate
       iAmount = -2;
 
       foreach i in plSpells
@@ -8826,16 +8669,17 @@ messages:
          if i < 0
          {
             iAbility = Send(self,@DecodeSpellAbility,#compound=i);
+
             if iAbility > 2
             {
                oSpellA = Send(SYS,@FindSpellByNum,
                      #num=Send(self,@DecodeSpellNum,#compound=i));
-               bFound = FALSE;
 
                foreach j in plSpells
                {
                   oSpellB = Send(SYS,@FindSpellByNum,
                         #num=Send(self,@DecodeSpellNum,#compound=j));
+
                   if j > 0 AND Send(oSpellA,@GetSchool) = Send(oSpellB,@GetSchool)
                   {
                      iAmount = -1;
@@ -8843,6 +8687,7 @@ messages:
                      break;
                   }
                }
+
                Send(self,@ChangeSpellAbility,#spell_num=Send(oSpellA,@GetSpellNum),
                     #amount=iamount);
             }
@@ -10095,7 +9940,7 @@ messages:
       // Okay, we're really dying now.
       // Now we need to determine if it's a 'cheap'
       // death where we don't lose stuff.
-
+      Send(self,@BreakTrance,#event=EVENT_DEATH);
       Send(self,@RemoveAllEnchantments,#report=FALSE);
       Send(self,@DeleteAllOverTimeEffects);
       bNo_drop_death = FALSE;
@@ -10787,6 +10632,18 @@ messages:
       return;
    }
 
+   DoTouchAttack()
+   "Causes the user to do a modified casting arm, 1st & 3rd person"
+   {
+      Send(self,@DoWindowOverlayTouchAttack);
+
+      piAnimation = PANM_CAST;
+      Send(poOwner,@SomethingChanged,#what=self);
+      piAnimation = PANM_NONE;
+
+      return;
+   }
+
    DoCast()
    "Causes the user to do spell casting arm, 1st & 3rd person"
    {
@@ -10813,8 +10670,22 @@ messages:
       if pbLogged_on
       {
          AddPacket(1,BP_PLAYER_OVERLAY, 1,HS_SE, 4,PWO_RIGHT_HAND,
-                   4,player_window_overlay_hand, 4,0, 4,0, 1,0, 4,0, 4,0,
-                   1,0, 1,0, 1,ANIMATE_ONCE, 4,175, 2,1, 2,3, 2,0, 1,0);
+                   4,player_window_overlay_punch, 4,0, 4,0, 1,0, 4,0, 4,0,
+                   1,0, 1,0, 1,ANIMATE_ONCE, 4,100, 2,1, 2,5, 2,0, 1,0);
+
+         SendPacket(poSession);
+      }
+
+      return;
+   }
+
+   DoWindowOverlayTouchAttack()
+   {
+      if pbLogged_on
+      {
+         AddPacket(1,BP_PLAYER_OVERLAY, 1,HS_SE, 4,PWO_RIGHT_HAND,
+                   4,player_window_overlay_touch, 4,0, 4,0, 1,0, 4,0, 4,0,
+                   1,0, 1,0, 1,ANIMATE_ONCE, 4,100, 2,1, 2,7, 2,0, 1,0);
 
          SendPacket(poSession);
       }
@@ -11565,6 +11436,10 @@ messages:
 
    SendAnimation(iAnimation = $)
    {
+      local iDelay;
+
+      iDelay = Bound(Send(self,@GetAttackTime),300,1200);
+
       if iAnimation = $
       {
          if (piFlags2 & PFLAG2_DANCING)
@@ -11592,21 +11467,21 @@ messages:
 
       if iAnimation = PANM_WEAPON_ATTACK
       {
-         AddPacket(1,ANIMATE_ONCE, 4,300, 2,2, 2,4, 2,1);
+         AddPacket(1,ANIMATE_ONCE, 4,300*iDelay/1200, 2,2, 2,4, 2,1);
 
          return;
       }
 
       if iAnimation = PANM_FIST_ATTACK
       {
-         AddPacket(1,ANIMATE_ONCE, 4,600, 2,3, 2,4, 2,1);
+         AddPacket(1,ANIMATE_ONCE, 4,600*iDelay/1200, 2,3, 2,4, 2,1);
 
          return;
       }
 
       if iAnimation = PANM_BOW_FIRE
       {
-         AddPacket(1,ANIMATE_ONCE, 4,1200, 2,5, 2,5, 2,1);
+         AddPacket(1,ANIMATE_ONCE, 4,1200*iDelay/1200, 2,5, 2,5, 2,1);
 
          return;
       }
@@ -11839,7 +11714,9 @@ messages:
    SendOverlays(iAnimation=$)
    {
       local i, iOverlays, hotspot, iLeft_group, iRight_group, iSkin_xlat,
-            iArms_xlat, oRobe, bRobe;
+            iArms_xlat, oRobe, bRobe, oStroke, iDelay;
+
+      iDelay = Bound(Send(self,@GetAttackTime),300,1200);
 
       if iAnimation = $
       {
@@ -11929,15 +11806,15 @@ messages:
       }
       else if iAnimation = PANM_FIST_ATTACK
       {
-         AddPacket(1,ANIMATE_ONCE, 4,600, 2,5, 2,6, 2,iLeft_group);
+         AddPacket(1,ANIMATE_ONCE, 4,600*iDelay/1200, 2,5, 2,6, 2,iLeft_group);
       }
       else if iAnimation = PANM_BOW_FIRE
       {
-         AddPacket(1,ANIMATE_ONCE, 4,1200, 2,9, 2,9, 2,iLeft_group);
+         AddPacket(1,ANIMATE_ONCE, 4,1200*iDelay/1200, 2,9, 2,9, 2,iLeft_group);
       }
       else if iAnimation = PANM_WEAPON_ATTACK
       {
-         AddPacket(1,ANIMATE_ONCE, 4,300, 2,4, 2,6, 2,iLeft_group);
+         AddPacket(1,ANIMATE_ONCE, 4,300*iDelay/1200, 2,4, 2,6, 2,iLeft_group);
       }
       else if iAnimation = PANM_DANCE
       {
@@ -11972,15 +11849,15 @@ messages:
       }
       else if iAnimation = PANM_FIST_ATTACK
       {
-         AddPacket(1,ANIMATE_ONCE, 4,600, 2,13, 2,14, 2,iRight_group);
+         AddPacket(1,ANIMATE_ONCE, 4,600*iDelay/1200, 2,13, 2,14, 2,iRight_group);
       }
       else if iAnimation = PANM_BOW_FIRE
       {
-         AddPacket(1,ANIMATE_ONCE, 4,600, 2,15, 2,16, 2,iRight_group);
+         AddPacket(1,ANIMATE_ONCE, 4,600*iDelay/1200, 2,15, 2,16, 2,iRight_group);
       }
       else if iAnimation = PANM_WEAPON_ATTACK
       {
-         AddPacket(1,ANIMATE_ONCE, 4,300, 2,4, 2,6, 2,17);
+         AddPacket(1,ANIMATE_ONCE, 4,300*iDelay/1200, 2,4, 2,6, 2,17);
       }
       else if iAnimation = PANM_DANCE
       {
@@ -11995,15 +11872,15 @@ messages:
 
       if iAnimation = PANM_WEAPON_ATTACK
       {
-         AddPacket(1,ANIMATE_ONCE, 4,900, 2,6, 2,6, 2,1);
+         AddPacket(1,ANIMATE_ONCE, 4,900*iDelay/1200, 2,6, 2,6, 2,1);
       }
       else if iAnimation = PANM_FIST_ATTACK
       {
-         AddPacket(1,ANIMATE_ONCE, 4,1200, 2,6, 2,6, 2,1);
+         AddPacket(1,ANIMATE_ONCE, 4,1200*iDelay/1200, 2,6, 2,6, 2,1);
       }
       else if iAnimation = PANM_BOW_FIRE
       {
-         AddPacket(1,ANIMATE_ONCE, 4,1200, 2,7, 2,7, 2,1);
+         AddPacket(1,ANIMATE_ONCE, 4,1200*iDelay/1200, 2,7, 2,7, 2,1);
       }
       else if iAnimation = PANM_DANCE
       {
@@ -17016,6 +16893,89 @@ messages:
    GetSetPower(iSet=0)
    {
       return Send(SYS,@GetRankPower,#iSet=iSet,#iRank=Send(self,@GetSetRank,#iSet=iSet));
+   }
+
+   // Not optimized for performance since it's an ultra low frequency call.
+   GrantNewStrokes(bAll=FALSE,bMax=FALSE)
+   "Grants all (eligible) players strike, thrust and touch."
+   {
+      local iAbility, i, iMax, oSpell;
+
+      iAbility = 99;
+
+      // See how far our player has advanced the (old) slash skill
+      // unless we grant max skill.
+      if NOT bMax
+      {
+         iAbility = Send(self,@GetSkillAbility,#skill_num=SKID_SLASH);
+      }
+
+      // Remove old slash.
+      Send(self,@RemoveSkill,#num=SKID_SLASH);
+
+      if iAbility > 0
+      {
+         // If our player originally had the slash skill, he is automatically
+         // entitled to owning the rank 1 stroke: Strike 
+         Send(self,@AddSkill,#num=SKID_STRIKE,#iability=iAbility);
+
+         // If our player knows any rank 2 skills, he is also entitled to
+         // owning the rank 2 stroke: Thrust
+         if Send(self,@CountKnownAtLevel,#school=SKS_WEAPONCRAFT,#level=2) OR bAll
+         {
+            Send(self,@AddSkill,#num=SKID_THRUST,#iability=iAbility);
+         }
+
+         // Finally, if our player knows any rank 2 skills, he is entitled to
+         // owning the rank 3 stroke: Slash
+         if Send(self,@CountKnownAtLevel,#school=SKS_WEAPONCRAFT,#level=3) OR bAll
+         {
+            Send(self,@AddSkill,#num=SKID_SLASH,#iability=iAbility);
+         }
+      }
+
+      // Also grant Stab in case we want to grant all skills.
+      if bAll AND iAbility > 0
+      {
+         Send(self,@AddSkill,#num=SKID_STAB,#iability=iAbility);
+      }
+
+      // Finally, take care of Touch. If our player has any touch attack, grant
+      // the skill Touch at the percentage as the highest touch attack percentage.
+      iMax = 0;
+
+      foreach i in plSpells
+      {
+         oSpell = Send(SYS,@FindSpellByNum,#num=Send(self,@DecodeSpellNum,#compound=i));
+
+         if IsClass(oSpell,&TouchAttackSpell)
+         {
+            iAbility = Send(oSpell,@GetAbility,#who=self);
+
+            if iAbility > iMax
+            {
+               iMax = iAbility;
+            }
+         }
+      }
+
+      // If we grant max skills, we don't grant touch unless we have found
+      // a touch attack. If we grant all skills, we also grant touch at 99
+      // regardless of touch attack percentage since we don't want to disadvantage
+      // people who actually have a touchattack against those who don't.
+      if (iMax > 0) OR bAll
+      {
+         if bMax OR bAll
+         {
+            Send(self,@AddSkill,#num=SKID_TOUCH,#iability=99);
+         }
+         else
+         {
+            Send(self,@AddSkill,#num=SKID_TOUCH,#iability=iMax);
+         }
+      }
+
+      return;
    }
 
 end

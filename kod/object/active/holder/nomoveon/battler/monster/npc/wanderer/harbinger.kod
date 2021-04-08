@@ -21,16 +21,16 @@ resources:
    Harbinger_name_rsc = "Harbinger"
    Harbinger_icon_rsc = qw02i.bgf
    Harbinger_desc_rsc =  \
-      "This floating body is a pure avatar of evil.  His limbless body "
+      "This floating body is an avatar of pure evil.  His limbless body "
       "smells of graverot, and maggots can be seen in the folds of his skin.  "
-      "He drips a foul ichor as he moves, and he gives off an aura of "
+      "The Harbinger drips a foul ichor as he moves, and gives off an aura of "
       "pure, decisive malevolance."
 
    Harbinger_projectile_icon = spblast.bgf
 
    Harbinger_sound_hit = lich_atk.ogg
-   Harbinger_sound_miss = lich_dth.ogg
    Harbinger_sound_aware = lich_awr.ogg
+   Harbinger_sound_death = lich_die.ogg
 
    Harbinger_relic = "...my summoning scepter...thank you mortal..."
 
@@ -41,8 +41,9 @@ classvars:
    vrDesc = Harbinger_desc_rsc
 
    vrSound_hit = Harbinger_sound_hit
-   vrSound_miss = Harbinger_sound_miss
+   vrSound_miss = Harbinger_sound_hit
    vrSound_aware = Harbinger_sound_aware
+   vrSound_death = Harbinger_sound_death
 
    viAttributes = MOB_RECEIVE | MOB_SELLER | MOB_SPASM
    viOccupation = MOB_ROLE_WIZARD
@@ -81,14 +82,12 @@ properties:
    pbDontDispose = TRUE
    piReputationGroup = REP_UNDEAD
 
+   piHealthFactor = 7
+
 messages:
 
    Constructor()
    {
-      piMax_Health = piMax_Health * 7;
-      // piHealth uses high-precision numbers, so multiply by 100.
-      piHealth = piMax_Health * 100;
-
       plResistances = [ [-SPL_TYPE_ALL, 60],
                         [ATK_TYPE_ALL, 60],
                         [ATK_TYPE_NERUDITE, -20 ],
@@ -109,6 +108,18 @@ messages:
                      [SID_DARKNESS,0,0,MAX_KOD_INT,1000,0,99,COMBAT_ACTION_NEUTRAL] ];
 
       plWantedItems = [&Scepter];
+
+      propagate;
+   }
+
+   Constructed()
+   {
+      if (piHealthFactor > 0)
+      {
+         piMax_Health *= piHealthFactor;
+      }
+      // piHealth uses high-precision numbers, so multiply by 100.
+      piHealth = piMax_Health * 100;
 
       propagate;
    }
@@ -141,13 +152,11 @@ messages:
       {
          Send(self,@SetMood,#new_mood=piMood+1);
       }
-
-      if iAction = UA_HAPPY
+      else if iAction = UA_HAPPY
       {
          Send(self,@SetMood,#new_mood=piMood-1);
       }
-
-      if iAction = UA_WRY
+      else if iAction = UA_WRY
       {
          Send(self,@SetMood,#new_mood=piMood+2);
       }
@@ -164,13 +173,12 @@ messages:
 
    CheckWhyWanted(obj=$,who=$)
    {
-      local event;
-
       if IsClass(obj,&Scepter)
       {
          Send(self,@SayToOne,#target=who,#message_rsc=Harbinger_relic);
          Send(self,@EnableEventMode);
          ptLeaveTimer = CreateTimer(self,@TriggerEvent,Random(2500,5000));
+
          return TRUE;
       }
 
@@ -179,12 +187,13 @@ messages:
 
    TriggerEvent(timer = $)
    {
-
-      if (ptLeaveTimer <> $) AND (ptLeaveTimer <> timer)
+      if (ptLeaveTimer <> $
+         AND ptLeaveTimer <> timer)
       {
          DeleteTimer(ptLeaveTimer);
-         ptLeaveTimer = $;
       }
+
+      ptLeaveTimer = $;
 
       piHealth = piMax_Health * 100;
       Send(SYS,@StartEvent,#event_type=&TriggeredInvasion);
@@ -200,17 +209,19 @@ messages:
       {
          piNameColor = NC_EVENTCHAR;
          Send(self,@SetWandering,#value=FALSE);
+         // SomethingChangedFlags goes here because EnableAttackMode also calls it.
+         if poOwner <> $
+         {
+            Send(poOwner,@SomethingChangedFlags,#what=self);
+         }
       }
       else
       {
          piNameColor = NC_NPC;
          Send(self,@SetWandering,#value=TRUE);
          Send(self,@EnableAttackMode,#bEnabled=FALSE);
-      }
-
-      if poOwner <> $
-      {
-         Send(poOwner,@SomethingChanged,#what=self);
+         // Reset harbinger health.
+         piHealth = piMax_Health * 100;
       }
 
       return;
@@ -229,7 +240,7 @@ messages:
 
       if poOwner <> $
       {
-         Send(poOwner,@SomethingChanged,#what=self);
+         Send(poOwner,@SomethingChangedFlags,#what=self);
       }
 
       return;
@@ -241,13 +252,18 @@ messages:
 
       iFlags = viObject_flags | piDrawEffectFlag;
 
-      if pbEventMode
+      if (pbEventMode)
       {
          iFlags &= ~OF_BUYABLE | ~OF_OFFERABLE;
       }
       else
       {
          iFlags |= OF_BUYABLE | OF_OFFERABLE;
+      }
+
+      if (NOT pbAttackMode)
+      {
+         iFlags &= ~OF_ATTACKABLE;
       }
 
       return iFlags;
@@ -313,14 +329,32 @@ messages:
 
    Killed(what=$)
    {
-      local oTreasure, lTreasure;
+      local oTreasure, lTreasure, bComma;
 
+      Debug("Harbinger killed! Reward is: ");
+      ClearTempString();
+      bComma = FALSE;
       foreach lTreasure in [plActive, plPassive]
       {
          foreach oTreasure in lTreasure
          {
             if Send(oTreasure,@DropOnDeath)
             {
+               if (bComma)
+               {
+                  AppendTempString(", ");
+               }
+               else
+               {
+                  bComma = TRUE;
+               }
+               if IsClass(oTreasure,&NumberItem)
+               {
+                  AppendTempString(Send(oTreasure,@GetNumber));
+                  AppendTempString(" ");
+               }
+               AppendTempString(Send(oTreasure,@GetName));
+
                Send(poOwner,@NewHold,#what=oTreasure,
                   #new_row=piRow,#new_col=piCol,
                   #fine_row=piFine_row,#fine_col=piFine_col,
@@ -328,6 +362,7 @@ messages:
             }
          }
       }
+      Debug(GetTempString());
 
       Send(self,@EnableEventMode,#bEnabled=FALSE);
       Send(self,@NextDest);
@@ -358,6 +393,13 @@ messages:
       return;
    }
 
+   ZeroVigor()
+   "Harbinger has endless energy, and doesn't need to rest."
+   {
+      Send(self,@GainVigor,#amount=piVigor_rest_threshold);
+
+      return;
+   }
 
 end
 ////////////////////////////////////////////////////////////////////////////////

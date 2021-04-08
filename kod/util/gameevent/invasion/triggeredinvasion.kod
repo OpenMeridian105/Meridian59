@@ -22,7 +22,9 @@ resources:
       "~B~k[Event]~n ~B~v A Harbinger has appeared at %s, summoning its empowered "
       "minons. Shal'ille warns Meridian citzens of their atypical behaviour."
 
-   TriggeredInvasion_end_msg = "~B~k[Event]~n ~B~v The army of the Harbinger have retreated."
+   TriggeredInvasion_end_msg = \
+      "~B~k[Event]~n ~B~v The army of the Harbinger has been banished, and "
+      "the Harbinger has scurried away in defeat."
 
 classvars:
 
@@ -215,6 +217,7 @@ messages:
       {
          Send(oRoom,@NewHold,#what=poHarbinger,
             #new_row=Send(oRoom,@GetTeleportRow)+1,#new_col=Send(oRoom,@GetTeleportCol)+1);
+         Post(poHarbinger,@UpdateHeight);
       }
 
       Send(poHarbinger,@EnableEventMode,#bEnabled=TRUE);
@@ -261,7 +264,7 @@ messages:
          piPhase++;
       }
       else if piPhase = 1
-       AND Send(oRoom,@CountHoldingHowMany,#class=First(Nth(plEventMonsters,1))) = 0
+       AND Send(oRoom,@CountMonstersWithBattlerFlag,#flag=BFLAG_HARBINGER_MOB) = 0
       {
          Send(oRoom,@Rumble);
          
@@ -271,8 +274,7 @@ messages:
          piPhase++;
       }
       else if piPhase = 2
-         AND Send(oRoom,@CountHoldingHowMany,#class=First(Nth(plEventMonsters,1))) = 0
-         AND Send(oRoom,@CountHoldingHowMany,#class=First(Nth(plEventMonsters,2))) = 0
+         AND Send(oRoom,@CountMonstersWithBattlerFlag,#flag=BFLAG_HARBINGER_MOB) = 0
       {
          Send(oRoom,@Rumble);
 
@@ -283,9 +285,7 @@ messages:
          piPhase++;
       }
       else if piPhase = 3
-         AND Send(oRoom,@CountHoldingHowMany,#class=First(Nth(plEventMonsters,1))) = 0
-         AND Send(oRoom,@CountHoldingHowMany,#class=First(Nth(plEventMonsters,2))) = 0
-         AND Send(oRoom,@CountHoldingHowMany,#class=First(Nth(plEventMonsters,3))) = 0
+         AND Send(oRoom,@CountMonstersWithBattlerFlag,#flag=BFLAG_HARBINGER_MOB) = 0
       {
          Send(oRoom,@Rumble);
 
@@ -295,9 +295,7 @@ messages:
          piPhase++;
       }
       else if piPhase = 4
-         AND Send(oRoom,@CountHoldingHowMany,#class=First(Nth(plEventMonsters,1))) = 0
-         AND Send(oRoom,@CountHoldingHowMany,#class=First(Nth(plEventMonsters,2))) = 0
-         AND Send(oRoom,@CountHoldingHowMany,#class=First(Nth(plEventMonsters,3))) = 0
+         AND Send(oRoom,@CountMonstersWithBattlerFlag,#flag=BFLAG_HARBINGER_MOB) = 0
       {
          Send(oRoom,@Rumble);
 
@@ -308,6 +306,7 @@ messages:
       else if poHarbinger = $
          OR Send(oRoom,@CountHoldingHowMany,#class=&Harbinger) = 0
       {
+         Send(self,@PrintParticipantsToDebug);
          Send(self,@NotifyEngineEndEvent);
       }
 
@@ -333,7 +332,8 @@ messages:
          {
             oMonster = Create(First(Nth(plEventMonsters,iWave)),#bEvent=TRUE);
             Send(oMonster,@SetDontDispose,#bValue=TRUE);
-
+            // Flag used to identify harbinger army mobs.
+            Send(oMonster,@SetBattlerFlag,#flag=BFLAG_HARBINGER_MOB,#value=TRUE);
             lSpawnPoint = Send(self,@MakeSpawnPoint);
 
             Send(Send(SYS,@FindRoomByNum,#num=piActiveRoom),@NewHold,
@@ -455,6 +455,30 @@ messages:
 
          Send(poHarbinger,@NewHold,#what=oReward);
       }
+
+      return;
+   }
+
+   PrintParticipantsToDebug()
+   {
+      local i, bComma;
+
+      Debug("Harbinger killed in room ", piActiveRoom, "by:");
+      ClearTempString();
+      bComma = FALSE;
+      foreach i in plParticipants
+      {
+         if (bComma)
+         {
+            AppendTempString(", ");
+         }
+         else
+         {
+            bComma = TRUE;
+         }
+         AppendTempString(Send(i,@GetTrueName));
+      }
+      Debug(GetTempString());
 
       return;
    }

@@ -17,9 +17,7 @@ constants:
    BOSS_ROW = 18
    BOSS_COL = 25
 
-   SEC_CAVE_EXIT = 10
-
-   HOUR_MILLI = 3600000
+   SEC_CAVE_EXIT = 2
 
 resources:
 
@@ -40,6 +38,8 @@ classvars:
 
    viWeatherZone = WEATHER_ZONE_CV
    viWeatherMask = WEATHER_MASK_MOUNTAINS
+   // 5 minutes in ms
+   viSpawnTime = 300 * 1000
 
 properties:
 
@@ -70,9 +70,6 @@ messages:
    {
       plMonsters = [ [&Troll, 80], [&StoneTroll, 20] ];
 
-      // Delay this on startup.
-      ptBoss_gen = CreateTimer(self,@BossGenTimer,30000);
-
       propagate;
    }
 
@@ -89,11 +86,17 @@ messages:
 
 
    BossGenTimer()
-   "Check if there's a queen spider in room.  If not, make one."
+   "Check if there's a nerudite troll in room.  If not, make one."
    {
       local i, bFound;
 
       ptBoss_gen = $;
+
+      // Skip spawning/timer if no users around to see it.
+      if (NOT pbUser_in_room)
+      {
+         return;
+      }
 
       bFound = FALSE;
       foreach i in plActive
@@ -108,14 +111,25 @@ messages:
 
       if NOT bFound
       {
-         Send(self,@NewHold,#what=Create(&NeruditeTroll),#new_row=BOSS_ROW,#new_col=BOSS_COL);
+         Send(self,@NewHold,#what=Create(&NeruditeTroll),#new_row=BOSS_ROW,
+               #new_col=BOSS_COL);
       }
 
-      ptBoss_gen = CreateTimer(self,@BossGenTimer,1*HOUR_MILLI);
+      ptBoss_gen = CreateTimer(self,@BossGenTimer,viSpawnTime);
 
       return;
    }
 
+   FirstUserEntered()
+   {
+      // Spawn a boss now if there's no timer.
+      if (ptBoss_gen = $)
+      {
+         Post(self,@BossGenTimer);
+      }
+
+      propagate;
+   }
 
    SomethingMoved(what = $,new_row = $, new_col = $)
    {
@@ -141,6 +155,65 @@ messages:
       }
 
       propagate;
+   }
+
+   StartSnow(bOnGround=TRUE)
+   {
+      // Check if we can have weather effects here.
+      if NOT pbWeatherEffects
+      {
+         return;
+      }
+
+      // If there's a sandstorm weather effect here, clear it.
+      if Send(self,@CheckRoomFlag,#flag=ROOM_SANDSTORM)
+      {
+         Send(self,@EndSandstorm);
+      }
+
+      if bOnGround
+      {
+         if pbSnowGroundTexture
+         {
+            // Add snow to floor.
+            Send(self,@ChangeTexture,#id=0,#new_texture=61015,#flags=CTF_FLOOR);
+            Send(self,@ChangeTexture,#id=2,#new_texture=61015,#flags=CTF_FLOOR);
+            Send(self,@ChangeTexture,#id=2,#new_texture=61015,#flags=CTF_FLOOR);
+            // Add darker snow to middle section.
+            Send(self,@ChangeTexture,#id=5,#new_texture=61016,#flags=CTF_FLOOR);
+            // Add darker snow to small vertical ledges.
+            Send(self,@ChangeTexture,#id=15,#new_texture=61016,
+                  #flags=CTF_BELOWWALL);
+         }
+      }
+
+      Send(self,@SetRoomFlag,#flag=ROOM_SNOWING,#value=TRUE);
+      Send(self,@WeatherChanged);
+
+      return;
+   }
+
+   EndSnow(override=FALSE)
+   {
+      if Send(self,@CheckRoomFlag,#flag=ROOM_SNOWING)
+      {
+         Send(self,@SetRoomFlag,#flag=ROOM_SNOWING,#value=FALSE);
+         Send(self,@WeatherChanged);
+      }
+
+      if pbSnowGroundTexture
+         OR override
+      {
+         // Remove snow from floor.
+         Send(self,@RemoveTextureChange,#id=0);
+         Send(self,@RemoveTextureChange,#id=2);
+         Send(self,@RemoveTextureChange,#id=5);
+         // Remove from small vertical ledges.
+         Send(self,@RemoveTextureChange,#id=15);
+
+      }
+
+      return;
    }
 
 end

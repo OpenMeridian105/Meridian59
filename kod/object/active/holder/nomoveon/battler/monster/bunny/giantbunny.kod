@@ -98,6 +98,17 @@ messages:
       propagate;
    }
 
+   NewOwner(what=$)
+   {
+      if (what <> $
+         AND ptSpawnKillerBunny = $)
+      {
+         ptSpawnKillerBunny = CreateTimer(self,@SpawnKillerBunny,piSpawnBunnyTime);
+      }
+
+      propagate;
+   }
+
    SpawnKillerBunny()
    "Try to spawn a killer bunny in the room."
    {
@@ -106,8 +117,13 @@ messages:
 
       ptSpawnKillerBunny = $;
 
-      if poOwner <> $
-         AND Send(poOwner,@IsUserInRoom)
+      // Don't start up a new timer if $ owner.
+      if (poOwner = $)
+      {
+         return;
+      }
+
+      if Send(poOwner,@IsUserInRoom)
          AND Send(poOwner,@CountHoldingHowMany,#class=&KillerBunny)
             < viMaxChildSpawns
       {

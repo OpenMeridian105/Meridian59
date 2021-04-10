@@ -100,9 +100,9 @@ resources:
       "been claimed for that faction."
 
    flag_failed_noclaim = "You are unable to claim this territory."
-   flagpole_noitems = "There are no items are available in your guild's storage."
+   flagpole_noitems = "There are no items available in your guild's storage."
    flagpole_cannotcarry = "You are unable to carry all the items."
-   flagpole_nocash = "You do not have enough to pay for the withdraw fees."
+   flagpole_nocash = "You do not have enough to pay for the withdrawal fees."
 
 classvars:
 
@@ -991,8 +991,6 @@ messages:
 
       ptGenerateTroops = CreateTimer(self,@GenerateTroops,piGen_time);
 
-      oTroop = $;
-
       if piFaction = FACTION_DUKE
       {
          if Random(0,8) = 1
@@ -1055,12 +1053,8 @@ messages:
          Send(poOwner,@NewHold,#what=oTroop,#new_row=iGenRow,#new_col=iGenCol);
          if (ptClaimAttempt <> $) AND (poClaimer <> $)
          {
-            if Send(oTroop,@GetFaction) = Send(poClaimer,@GetFaction)
-            {
-               //Debug("GenerateTroops:: made a troop of the same faction as the claimer!");
-            }
-
             if Random(1,2) = 1
+               AND Send(oTroop,@GetFaction) <> Send(poClaimer,@GetFaction)
             {
                Post(oTroop,@TargetSwitch,#what=poClaimer,#iHatred=30);
                Post(oTroop,@EnterStateEngage,#target=poClaimer,#actnow=TRUE);
@@ -1080,9 +1074,8 @@ messages:
       local iDelete;
 
       iDelete = Send(poOwner,@CountHoldingHowMany,#class=&FactionTroop) - piTroopCap;
-      while iDelete > 0
+      while iDelete-- > 0
       {
-         iDelete = iDelete - 1;
          Send(Send(poOwner,@FindHoldingActive,#class=&FactionTroop),@Delete);
       }
 
@@ -1099,8 +1092,8 @@ messages:
       }
 
       piFlagHotSpot = 4;
-      if (poOwner <> $) 
-      { 
+      if (poOwner <> $)
+      {
          Send(poOwner,@SomethingChanged,#what=self);
       }
       ptHalfStaffOff = CreateTimer(self,@HalfStaffTimer,duration);
@@ -1118,8 +1111,8 @@ messages:
 
       ptHalfStaffOff = $;
       piFlagHotSpot = 1;
-      if (poOwner <> $) 
-      { 
+      if (poOwner <> $)
+      {
          Send(poOwner,@SomethingChanged,#what=self);
       }
 
@@ -1293,14 +1286,14 @@ messages:
                return FALSE;
             }
 
-            iCount = iCount + 1;
+            ++iCount;
 
             oSplit = Send(oItem,@Split,#number=Nth(number_list,iCount));
          }
 
          if Send(what,@ReqNewHold,#what=oItem)
          {
-            iFee = iFee + Send(self,@GetVaultRetrievalFee,#what=oItem);
+            iFee += Send(self,@GetVaultRetrievalFee,#what=oItem);
 
             if bStack
             {
@@ -1314,13 +1307,12 @@ messages:
                   Send(what,@MsgSendUser,#message_rsc=flagpole_nocash);
                   return FALSE;
                }
-               else 
+               else
                {
                   Send(oMoney,@SubtractNumber,#number=iFee);
                   Send(what,@NewHold,#what=oItem);
                }
             }
-
          }
          else
          {
@@ -1342,8 +1334,8 @@ messages:
          oHall = Send(poGuild,@GetGuildHall);
       }
 
-      if (Send(who,@GetGuild) <> poGuild)
-         OR (oHall = $)
+      if (oHall = $
+         OR Send(who,@GetGuild) <> poGuild)
       {
          return $;
       }
@@ -1386,10 +1378,10 @@ messages:
       {
          iRetrievalFee = Send(oGame,@GetFlagRetrievalFee);
          iBonus = Send(oGame,@CalcGuildBonus,#oGuild=poGuild);
-         iRetrievalFee = iRetrievalFee - (iBonus * 2);
+         iRetrievalFee -= iBonus * 2;
       }
 
-      return Bound(iRetrievalFee,1,iRetrievalFee);
+      return Bound(iRetrievalFee,1,$);
    }
 
 end

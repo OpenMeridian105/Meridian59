@@ -138,6 +138,17 @@ messages:
       propagate;
    }
 
+   NewOwner(what=$)
+   {
+      if (what <> $
+         AND ptSpawnSpinebeast = $)
+      {
+         ptSpawnSpinebeast = CreateTimer(self,@SpawnSpinebeast,piSpawnChildTime);
+      }
+
+      propagate;
+   }
+
    SpawnSpinebeast()
    {
       local oBunny, oObject, i, bValid_location, iTries, iRow, iCol,
@@ -145,8 +156,13 @@ messages:
 
       ptSpawnSpinebeast = $;
 
-      if poOwner <> $
-         AND Send(poOwner,@IsUserInRoom)
+      // Don't start up a new timer if $ owner.
+      if (poOwner = $)
+      {
+         return;
+      }
+
+      if Send(poOwner,@IsUserInRoom)
          AND Send(poOwner,@CountHoldingHowMany,#class=&Spinebeast)
             < viMaxChildSpawns
       {

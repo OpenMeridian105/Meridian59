@@ -63,9 +63,6 @@ messages:
    {
       plMonsters = [ [&SpiderBaby, 20], [&Spider, 80] ];
 
-      // Delay this on startup.
-      ptQueen_gen = CreateTimer(self,@QueenGenTimer,30000);
-
       propagate;
    }
 
@@ -92,12 +89,29 @@ messages:
       propagate;
    }
 
+   FirstUserEntered()
+   {
+      // Spawn a queen spider now if there's no timer.
+      if (ptQueen_gen = $)
+      {
+         Post(self,@QueenGenTimer);
+      }
+
+      propagate;
+   }
+
    QueenGenTimer()
    "Check if there's a queen spider in room.  If not, make one."
    {
       local i, bFound;
 
       ptQueen_gen = $;
+
+      // Skip spawning/timer if no users around to see it.
+      if (NOT pbUser_in_room)
+      {
+         return;
+      }
 
       bFound = FALSE;
       foreach i in plActive

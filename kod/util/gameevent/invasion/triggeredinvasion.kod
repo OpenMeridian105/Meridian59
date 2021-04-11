@@ -264,7 +264,7 @@ messages:
          piPhase++;
       }
       else if piPhase = 1
-       AND Send(oRoom,@CountMonstersWithBattlerFlag,#flag=BFLAG_HARBINGER_MOB) = 0
+       AND Send(oRoom,@CountMonstersWithMonsterFlag,#flag=MFLAG_HARBINGER_MOB) = 0
       {
          Send(oRoom,@Rumble);
          
@@ -274,7 +274,7 @@ messages:
          piPhase++;
       }
       else if piPhase = 2
-         AND Send(oRoom,@CountMonstersWithBattlerFlag,#flag=BFLAG_HARBINGER_MOB) = 0
+         AND Send(oRoom,@CountMonstersWithMonsterFlag,#flag=MFLAG_HARBINGER_MOB) = 0
       {
          Send(oRoom,@Rumble);
 
@@ -285,7 +285,7 @@ messages:
          piPhase++;
       }
       else if piPhase = 3
-         AND Send(oRoom,@CountMonstersWithBattlerFlag,#flag=BFLAG_HARBINGER_MOB) = 0
+         AND Send(oRoom,@CountMonstersWithMonsterFlag,#flag=MFLAG_HARBINGER_MOB) = 0
       {
          Send(oRoom,@Rumble);
 
@@ -295,7 +295,7 @@ messages:
          piPhase++;
       }
       else if piPhase = 4
-         AND Send(oRoom,@CountMonstersWithBattlerFlag,#flag=BFLAG_HARBINGER_MOB) = 0
+         AND Send(oRoom,@CountMonstersWithMonsterFlag,#flag=MFLAG_HARBINGER_MOB) = 0
       {
          Send(oRoom,@Rumble);
 
@@ -331,9 +331,9 @@ messages:
          if Random(1,100) >= piSpawn_Chance
          {
             oMonster = Create(First(Nth(plEventMonsters,iWave)),#bEvent=TRUE);
-            Send(oMonster,@SetDontDispose,#bValue=TRUE);
             // Flag used to identify harbinger army mobs.
-            Send(oMonster,@SetBattlerFlag,#flag=BFLAG_HARBINGER_MOB,#value=TRUE);
+            Send(oMonster,@SetMonsterFlag,#flag=MFLAG_HARBINGER_MOB | MFLAG_DONT_DISPOSE,
+                  #value=TRUE);
             lSpawnPoint = Send(self,@MakeSpawnPoint);
 
             Send(Send(SYS,@FindRoomByNum,#num=piActiveRoom),@NewHold,
@@ -354,7 +354,7 @@ messages:
 
       // When each event monster is killed, add common reagents to the Harbinger's treasure drop.
       // Scale this with the number of participants in the room. This is also capped by piMaxParticipants.
-      if Send(dead_monster, @IsEventSpawn)
+      if Send(dead_monster,@CheckMonsterFlag,#flag=MFLAG_HARBINGER_MOB)
       {
          oReward = Create(Nth(plRewards3,Random(1,Length(plRewards3))));
 

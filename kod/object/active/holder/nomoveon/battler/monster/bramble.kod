@@ -93,7 +93,7 @@ properties:
    piAnimation = ANIM_BRAMBLE_GROW
    ptNoGrow = $
 
-   vbSummoned = TRUE
+   piMonsterFlags = MFLAG_SUMMONED
 
    // See wallelem.kod for full documentation and comments.
    ptPeriodic = $
@@ -122,7 +122,14 @@ messages:
       if oCaster <> $
       {
          poCaster = oCaster;
-         vbSummoned = IsClass(oCaster,&Player);
+         if (IsClass(oCaster,&Player))
+         {
+            piMonsterFlags |= MFLAG_SUMMONED;
+         }
+         else
+         {
+            piMonsterFlags &= ~MFLAG_SUMMONED;
+         }
 
          if IsClass(poCaster,&Battler) AND viLimitCount
          {

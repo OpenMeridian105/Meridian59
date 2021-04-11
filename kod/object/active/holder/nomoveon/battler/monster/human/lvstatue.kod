@@ -136,7 +136,7 @@ messages:
          viDifficulty += 2;
 
          // This makes the soliders not have karma
-         pbDontDispose = TRUE;
+         piMonsterFlags |= MFLAG_DONT_DISPOSE;
       }
       else
       {
@@ -393,9 +393,9 @@ messages:
 
             iDelay = DORMANT_DURATION;
             // Created by an admin?  Probably an invasion.  Don't sleep as long.
-            if pbDontDispose
+            if (piMonsterFlags & MFLAG_DONT_DISPOSE)
             {
-               iDelay = iDelay / 5;
+               iDelay /= 5;
             }
 
             ptRemainDormant = CreateTimer(self,@EndDormantTimer,iDelay);
@@ -461,7 +461,7 @@ messages:
       // Soldiers have a small chance to drop a rose as treasure.
       if pbIsSoldier
          AND Random(0,100) = 59
-         AND NOT pbIllusion
+         AND NOT (piMonsterFlags & MFLAG_ILLUSION)
       {
          oItem = Create(&Rose,#corpse=corpse);
 

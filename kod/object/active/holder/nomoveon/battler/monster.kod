@@ -596,30 +596,20 @@ properties:
    piIntellect = 25
    piMysticism = 25
 
-   piEnch_flags = 0
-
    piDrawfx = 0
 
    // A list of quest nodes for which this monster is the destination NPC
    plActiveQuestNodes = $
 
-   //// Monster flags that keep track of irregularities in a mobs existence.
-   //// If a monster has any of the flags below, it won't count towards the
-   //// room's monster count.
-   // Mob is an illusion.
-   pbIllusion = FALSE
-   // Mob has been summoned.
-   vbSummoned = FALSE
-   // Mob has been animated
-   vbAnimated = FALSE
-   // Mob belongs to a predefined spawn event. (e.g. mummies in trasure room)
-   pbEvent = FALSE
+   // Bitfield for monster-specific boolean flags.
+   // Stuff like whether the mob is animated, event, summoned or illusion,
+   // whether it should be disposed of on room dispose, any enchantment flags.
+   // Mobs with some specific flags (e.g. illusion) won't count towards room's
+   // monster count.
+   piMonsterFlags = 0
 
    // Apparition object (caster)
    poApparitionCaster = $
-
-   // Should this monster stick around through a call to DestroyDisposable()?
-   pbDontDispose = FALSE
 
    piMood = 0
 
@@ -721,8 +711,6 @@ messages:
       piState &= ESTATE_ZERO_MASK;
       Send(poBrain,@MobConstructor,#mob=self);
 
-      piEnch_flags = 0;
-
       Send(self,@ClearActiveQuests);
       Send(self,@ResetBehaviorFlags);
 
@@ -733,7 +721,14 @@ messages:
          piColor_translation = color;
       }
 
-      pbEvent = bEvent;
+      if (bEvent)
+      {
+         piMonsterFlags |= MFLAG_EVENT;
+      }
+      else
+      {
+         piMonsterFlags &= ~MFLAG_EVENT;
+      }
 
       // Start timers...
       Send(self,@NewVigor);
@@ -930,6 +925,26 @@ messages:
       }
 
       propagate;
+   }
+
+   CheckMonsterFlag(flag=0)
+   {
+      return piMonsterflags & flag;
+   }
+
+   SetMonsterFlag(flag=0,value=FALSE)
+   "This always requires the POSITIVE flag name.  Default unsets the flag."
+   {
+      if (value)
+      {
+         piMonsterflags |= flag;
+      }
+      else
+      {
+         piMonsterflags &= ~flag;
+      }
+
+      return;
    }
 
    AddDefaultAttacks(bUpdate=FALSE)
@@ -2707,34 +2722,6 @@ messages:
       return;
    }
 
-   StartPalsy()
-   {
-      piEnch_flags |= ENCH_PALSY;
-
-      return;
-   }
-
-   EndPalsy()
-   {
-      piEnch_flags &= ~ENCH_PALSY;
-
-      return;
-   }
-   
-   StartDementia()
-   {
-      piEnch_flags |= ENCH_DEMENTIA;
-
-      return;
-   }
-
-   EndDementia()
-   {
-      piEnch_flags &= ~ENCH_DEMENTIA;
-
-      return;
-   }
-
    AdjustSpellpower(spellpower = 0)
    {
       local oSpell;
@@ -2747,7 +2734,7 @@ messages:
          spellpower -= 33;
       }
 
-      if (piEnch_flags & ENCH_DEMENTIA)
+      if (piMonsterFlags & MFLAG_DEMENTED)
       {
          spellpower -= 50;
       }
@@ -3196,7 +3183,7 @@ messages:
          iAttack = piOffense;
       }
 
-      if piEnch_flags & ENCH_PALSY
+      if (piMonsterFlags & MFLAG_PALSIED)
       {
          iAttack = iAttack * 3 / 4;
       }
@@ -3269,7 +3256,7 @@ messages:
          iDamage = Random(piMinDamage*100,piMaxDamage*100);
       }
 
-      if piEnch_flags & ENCH_PALSY
+      if (piMonsterFlags & MFLAG_PALSIED)
       {
          iDamage = iDamage * 3 / 4 ;
       }
@@ -8802,8 +8789,8 @@ messages:
 
    GetKarma(detect=FALSE)
    {
-      if pbEvent
-         OR (pbDontDispose
+      if (piMonsterFlags & MFLAG_EVENT)
+         OR ((piMonsterFlags & MFLAG_DONT_DISPOSE)
             AND NOT detect)
       {
          // This means that the monster has no Karma.  This is used for event
@@ -8836,7 +8823,7 @@ messages:
       bPlayer = FALSE;
 
       // Apparitions, etc, provide no treasure
-      if pbIllusion
+      if (piMonsterFlags & MFLAG_ILLUSION)
       {
          return;
       }
@@ -9113,7 +9100,7 @@ messages:
       if (viAttributes & MOB_LISTEN)
          OR (piBehavior & AI_NPC)
          OR poMaster <> $
-         OR pbDontDispose
+         OR (piMonsterFlags & MFLAG_DONT_DISPOSE)
       {
          return;
       }
@@ -9121,13 +9108,6 @@ messages:
       Send(self,@Delete);
 
       return;
-   }
-
-   SetDontDispose(bValue=TRUE)
-   {
-      pbDontDispose = bValue;
-
-      return pbDontDispose;
    }
 
    GetObjectFlags(what=$)
@@ -9251,7 +9231,17 @@ messages:
 
    IsIllusion()
    {
-      return pbIllusion;
+      return (piMonsterFlags & MFLAG_ILLUSION);
+   }
+
+   IsSummoned()
+   {
+      return (piMonsterFlags & MFLAG_SUMMONED);
+   }
+
+   CountsTowardsSummonLimit()
+   {
+      return (piMonsterFlags & MFLAG_SUMMONED);
    }
 
    // TRUE if mob can have evil twin cast on it
@@ -9568,45 +9558,6 @@ messages:
    CanPlayerAdvanceOnMe()
    {
       return (NOT Send(self,@IsIllusion));
-   }
-
-   SetIllusion(value = $)
-   {
-      if value = $
-      {
-         Debug("SetIllusion called without an argument!");
-         value = FALSE;
-      }
-
-      pbIllusion = value;
-
-      return;
-   }
-
-   SetSummoned(value = $)
-   {
-      if value = $
-      {
-         Debug("SetSummoned called without an argument!");
-         value = FALSE;
-      }
-
-      vbSummoned = value;
-
-      return;
-   }
-
-   SetAnimated(value = $)
-   {
-      if value = $
-      {
-         Debug("SetAnimated called without an argument!");
-         value = FALSE;
-      }
-
-      vbAnimated = value;
-
-      return;
    }
 
    DispelIllusionEnchantments(report = TRUE, iChance = 100)
@@ -11312,19 +11263,14 @@ messages:
       return FALSE;
    }
 
-   IsEventSpawn()
-   {
-      return pbEvent;
-   }
-
    IsLegitimateSpawn()
    {
-      return NOT (pbIllusion OR vbSummoned OR pbEvent OR vbAnimated);
+      return NOT (piMonsterFlags & MFLAG_ALTERED_SPAWN);
    }
 
    IsAnimated()
    {
-      return vbAnimated;
+      return (piMonsterFlags & MFLAG_ANIMATED);
    }
 
    GetTriggerObject()

@@ -173,7 +173,8 @@ messages:
 
    CheckWhyWanted(obj=$,who=$)
    {
-      if IsClass(obj,&Scepter)
+      if NOT pbEventMode
+         AND IsClass(obj,&Scepter)
       {
          Send(self,@SayToOne,#target=who,#message_rsc=Harbinger_relic);
          Send(self,@EnableEventMode);
@@ -229,13 +230,24 @@ messages:
 
    EnableAttackMode(bEnabled=TRUE)
    {
+      local oTarget;
+
       pbAttackMode = bEnabled;
 
       Send(self,@ResetBehaviorFlags);
 
       if pbAttackMode
       {
-         Send(self,@EnterStateMove,#actnow=TRUE);
+         oTarget = Send(self,@GetClosestEnemy);
+         if (oTarget = $)
+         {
+            Send(self,@EnterStateMove,#actnow=TRUE);
+         }
+         else
+         {
+            Send(self,@TargetSwitch,#what=oTarget,#iHatred=100);
+            Send(self,@EnterStateEngage,#target=oTarget,#actnow=TRUE);
+         }
       }
 
       if poOwner <> $

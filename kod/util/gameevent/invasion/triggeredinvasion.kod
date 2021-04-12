@@ -51,8 +51,6 @@ properties:
    plParticipants = $ 
    piMaxParticipants = 10
 
-   piSpawn_Chance = 50
-
    plScore = $ //[user object, score]
 
 messages:
@@ -82,7 +80,7 @@ messages:
                      &Sapphire, &Diamond, &InkyCap ];
 
       plRewards4 = [ &SpecialGift, &SpecialGiftTwo, &GoldSword, &LongSword, 
-                     &NeruditeSword, &BonkStick, &Scimitar, &Hammer, &Axe,
+                     &NeruditeSword, &Scimitar, &Hammer, &Axe,
                      &ShortSword, &MysticSword, &ThornedCirclet ];
 
       if piActiveRoom = RID_E2
@@ -121,7 +119,7 @@ messages:
          plSpawnRects = [ [[22,34],[31,47]] ];
 
          plEventMonsters = [ [&SnowRat, 30], [&IceElemental, 20], 
-                             [&Yeti, 2], [&XeoWater, 3] ];
+                             [&Yeti, 2], [&EarthElemental, 10] ];
 
       }
       else if piActiveRoom = RID_D5
@@ -152,7 +150,7 @@ messages:
       {
          plSpawnRects = [ [[31,26],[43,26]] ];
 
-         plEventMonsters = [ [&StoneTroll, 10], [&XeoAir, 5], 
+         plEventMonsters = [ [&StoneTroll, 10], [&IceElemental, 10], 
                              [&FireElemental, 10], [&Ghost, 1] ];
 
       }
@@ -328,21 +326,18 @@ messages:
 
       while (i > 0)
       {
-         if Random(1,100) >= piSpawn_Chance
-         {
-            oMonster = Create(First(Nth(plEventMonsters,iWave)),#bEvent=TRUE);
-            // Flag used to identify harbinger army mobs.
-            Send(oMonster,@SetMonsterFlag,#flag=MFLAG_HARBINGER_MOB | MFLAG_DONT_DISPOSE,
-                  #value=TRUE);
-            lSpawnPoint = Send(self,@MakeSpawnPoint);
+         oMonster = Create(First(Nth(plEventMonsters,iWave)),#bEvent=TRUE);
+         // Flag used to identify harbinger army mobs.
+         Send(oMonster,@SetMonsterFlag,#flag=MFLAG_HARBINGER_MOB | MFLAG_DONT_DISPOSE,
+               #value=TRUE);
+         lSpawnPoint = Send(self,@MakeSpawnPoint);
 
-            Send(Send(SYS,@FindRoomByNum,#num=piActiveRoom),@NewHold,
-               #what=oMonster,#new_row=Nth(lSpawnPoint,1),#new_col=Nth(lSpawnPoint,2));
+         Send(Send(SYS,@FindRoomByNum,#num=piActiveRoom),@NewHold,
+            #what=oMonster,#new_row=Nth(lSpawnPoint,1),#new_col=Nth(lSpawnPoint,2));
 
-            Send(oRoom,@SomethingShot,#who=poHarbinger,#target=oMonster,#projectile=poHarbinger);
+         Send(oRoom,@SomethingShot,#who=poHarbinger,#target=oMonster,#projectile=poHarbinger);
 
-            i--;
-         }
+         i--;
       }
 
       return TRUE;
@@ -440,7 +435,7 @@ messages:
             switch(Random(1,8))
             {
                case 1: ItemAtt = WA_BONKER; break;
-               case 2: ItemAtt = WA_TRAINING; break;
+               case 2: ItemAtt = IA_XP_KILL_BONUS; break;
                case 3: ItemAtt = WA_PARALYZER; break;
                case 4: ItemAtt = WA_SIPHON; break;
                case 5: ItemAtt = WA_PURGER; break;

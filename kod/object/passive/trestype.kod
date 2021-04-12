@@ -39,7 +39,18 @@ classvars:
 
 properties:
 
-   plTreasure = $      // list of treasures
+   // list of treasures
+   plTreasure = $
+
+   // Guaranteed treasure drops: [Class, min, max] for stackables
+   // [Class, possible attribute list] for non-stackables, or just [class]
+   // e.g.:
+   //   [ [ &BlueDragonScale, 12, 20],
+   //     [ &WindrootLeaf, 18, 30],
+   //     [ &LongSword, [WA_BLINDER, WA_PARALYZER] ],
+   //     [ &Scimitar]
+   //   ];
+   plGuaranteedTreasure = $
 
    piDiff_seed = 0
    piItem_att_chance = 0
@@ -48,14 +59,23 @@ messages:
 
    Constructed()
    {
-      local iAdjust, iValue, iTotal, lItem;
-
       if viTreasure_num = $
       {
          Debug("Treasure type created with no treasure type id.");
 
          propagate;
       }
+
+      Send(self,@InitTreasureLists);
+
+      Send(SYS,@SystemNewTreasureType,#what=self,#iNum=viTreasure_num);
+
+      propagate;
+   }
+
+   InitTreasureLists()
+   {
+      local iAdjust, iValue, iTotal, lItem;
 
       // Normalize treasure weights to total 100%.
       if plTreasure <> $
@@ -89,9 +109,7 @@ messages:
          }
       }
 
-      Send(SYS,@SystemNewTreasureType,#what=self,#iNum=viTreasure_num);
-
-      propagate;
+      return;
    }
 
    TestAttGenerator(diff_seed=0,who=$)
@@ -283,7 +301,50 @@ messages:
          }
       }
 
+      // Generate any guaranteed loot.
+      lTreasureItems = Send(self,@GenerateGuaranteedTreasure,
+                           #lItems=lTreasureItems);
+
       return lTreasureItems;
+   }
+
+   GenerateGuaranteedTreasure(lItems = $)
+   "Generate guaranteed treasure for a trestype."
+   {
+      local i, oTreasure, lAttributes, iItemAtt, oItemAtt;
+
+      foreach i in plGuaranteedTreasure
+      {
+         // Length 3 is [numberitem, min_amt, max_amt]
+         if (Length(i) = 3)
+         {
+            oTreasure = Create(First(i),#number=Random(Nth(i,2),Nth(i,3)));
+            lItems = Cons(oTreasure,lItems);
+         }
+         else
+         {
+            oTreasure = Create(First(i));
+            lItems = Cons(oTreasure,lItems);
+
+            // Length 2 is [item, [attributes]] - pick one attribute.
+            if (Length(i) = 2)
+            {
+               lAttributes = Nth(i,2);
+               iItemAtt = Nth(lAttributes,Random(1,Length(lAttributes)));
+               oItemAtt = Send(SYS,@FindItemAttByNum,#num=iItemAtt);
+               if (oItemAtt = $)
+               {
+                  Debug("Got $ itematt for num: ", iItemAtt);
+               }
+               else
+               {
+                  Send(oItemAtt,@AddToItem,#oItem=oTreasure);
+               }
+            }
+         }
+      }
+
+      return lItems;
    }
 
    GenerateTreasure(level = 1, who = $, mob = $, tokengen = TRUE, corpse = $,

@@ -380,5 +380,51 @@ messages:
       return TRUE;
    }
 
+   PrintExisting(bIncludeDMs=FALSE,who=$)
+   {
+      local cOwner;
+
+      if (poOwner = $)
+      {
+         return;
+      }
+
+      cOwner = GetClass(poOwner);
+
+      if (who <> $)
+      {
+         // Reports if 'who' is carrying the reagent, if they have it in
+         // vaults, a reagent bag or a personal room chest. Not perfect
+         // (e.g. a lot of regs are stored in halls).
+         if (poOwner = who
+            OR (cOwner = &SafetyDepositBox
+               AND Send(poOwner,@GetSafeBoxOwner) = who)
+            OR (cOwner = &ReagentBag
+               AND Send(poOwner,@GetOwner) = who)
+            OR (cOwner = &Box
+               AND Send(poOwner,@GetRenter) = who))
+         {
+            Send(SYS,@ReportExisting,#sName=vrName,#iNumber=piNumber);
+         }
+         return;
+      }
+
+      if (NOT bIncludeDMs
+         AND (IsClass(poOwner,&DM)
+            OR (cOwner = &SafetyDepositBox
+               AND IsClass(Send(poOwner,@GetSafeBoxOwner),&DM))
+            OR (cOwner = &ReagentBag
+               AND IsClass(Send(poOwner,@GetOwner),&DM))
+            OR (cOwner = &Box
+               AND IsClass(Send(poOwner,@GetRenter),&DM))))
+      {
+         return;
+      }
+
+      Send(SYS,@ReportExisting,#sName=vrName,#iNumber=piNumber);
+
+      return;
+   }
+
 end
 ////////////////////////////////////////////////////////////////////////////////

@@ -2709,6 +2709,48 @@ messages:
       return;
    }
 
+   PrintExisting(bIncludeDMs=FALSE,who=$)
+   {
+      local cOwner;
+
+      if (poOwner = $)
+      {
+         return;
+      }
+
+      cOwner = GetClass(poOwner);
+
+      if (who <> $)
+      {
+         // Reports if 'who' is carrying the object, if they have it in
+         // vaults or a personal room chest. Doesn't assign items in other
+         // chests to 'who'.
+         if (poOwner = who
+            OR (cOwner = &SafetyDepositBox
+               AND Send(poOwner,@GetSafeBoxOwner) = who)
+            OR (cOwner = &Box
+               AND Send(poOwner,@GetRenter) = who))
+         {
+            Send(SYS,@ReportExisting,#sName=vrName,#iNumber=1);
+         }
+         return;
+      }
+
+      if (NOT bIncludeDMs
+         AND (IsClass(poOwner,&DM)
+            OR (cOwner = &SafetyDepositBox
+               AND IsClass(Send(poOwner,@GetSafeBoxOwner),&DM))
+            OR (cOwner = &Box
+               AND IsClass(Send(poOwner,@GetRenter),&DM))))
+      {
+         return;
+      }
+
+      Send(SYS,@ReportExisting,#sName=vrName,#iNumber=1);
+
+      return;
+   }
+
    CheckEnchantments(num=3)
    {
       local i, iNum, oItemAtt;

@@ -1,0 +1,93 @@
+// Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+// All rights reserved.
+//
+// This software is distributed under a license that is described in
+// the LICENSE file that accompanies it.
+//
+// Meridian is a registered trademark.
+
+
+////////////////////////////////////////////////////////////////////////////////
+RazaBank is RazaRoom
+
+constants:
+
+   include blakston.khd
+
+resources:
+
+   //include RazaBank.lkod
+
+   room_name_RazaBank = "Royal Bank of Raza"
+   room_RazaBank = RazaBank.roo
+   RazaBank_music = bank.ogg
+
+   RazaBank_sign_name = "Welcome to the Bank of Raza"
+   RazaBank_sign_desc = \
+      "With thieves and murderers lurking around every corner, it is "
+      "generally a good idea to travel with as little coin as possible.  "
+      "The banks in Raza, Tos, Jasper and Ko'catan allow you to deposit your "
+      "shillings safely and retrieve them at a later point of time at "
+      "no cost whatsoever.  Note, however, that while the banks of Raza, Tos "
+      "and Jasper have a shared account balance, the bank of Ko'catan "
+      "does not.\n\n"
+      "Use the commands 'deposit xxx' to deposit xxx shillings and "
+      "'withdraw xxx' to withdraw the same amount.  In addition, you "
+      "may use the command 'balance' to learn about your current "
+      "account balance."
+
+classvars:
+
+   vrName = room_name_RazaBank
+
+   viTeleport_row = 3
+   viTeleport_col = 6
+
+properties:
+
+   viPermanent_flags = ROOM_NO_COMBAT 
+   viTerrain_type = TERRAIN_CITY | TERRAIN_SHOP
+
+   prRoom = room_RazaBank
+   piRoom_num = RID_RAZA_BANK
+
+   prMusic = RazaBank_music
+
+   piBaseLight = LIGHT_NICE
+   piOutside_factor = 3
+
+   prMusic = RazaBank_music
+
+messages:
+
+   CreateStandardExits()
+   {
+      plExits = $;
+
+      /// TO TOWN
+      plExits = Cons([ 6, 1, RID_RAZA, 15, 49, ROTATE_NONE ],plExits);
+      plExits = Cons([ 5, 1, RID_RAZA, 15, 49, ROTATE_NONE ],plExits);
+
+      propagate;
+   }
+
+   CreateStandardObjects()
+   {
+      Send(self,@NewHold,#what=Create(&RazaBanker),#new_row=6,#new_col=7,
+            #fine_row=0,#fine_col=0);
+
+      Send(self,@NewHold,#what=Create(&Sign,#name=RazaBank_sign_name,
+            #newbie=TRUE,#desc=RazaBank_sign_desc),#new_row=4,#new_col=5);
+
+      Send(self,@NewHold,#what=Create(&Brazier),
+            #new_row=8,#new_col=2,#fine_row=50,#fine_col=40,#new_angle=ANGLE_NORTH);
+
+      Send(self,@NewHold,#what=Create(&Table),
+            #new_row=8,#new_col=4,#fine_row=32,#fine_col=60,#new_angle=ANGLE_NORTH);
+
+       propagate;
+   }
+
+
+end
+////////////////////////////////////////////////////////////////////////////////

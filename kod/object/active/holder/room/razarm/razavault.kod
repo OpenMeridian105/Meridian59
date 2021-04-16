@@ -1,0 +1,103 @@
+// Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+// All rights reserved.
+//
+// This software is distributed under a license that is described in
+// the LICENSE file that accompanies it.
+//
+// Meridian is a registered trademark.
+
+
+////////////////////////////////////////////////////////////////////////////////
+RazaVault is RazaRoom
+
+constants:
+
+   include blakston.khd
+
+resources:
+
+   include RazaVault.lkod
+
+   room_name_RazaVault = "Raza Vaults"
+   room_RazaVault = RazaVault.roo
+   RazaVault_music = smithy.ogg
+
+   RazaVault_sign_name = "Welcome to the Raza Vaults"
+   RazaVault_sign_desc = \
+      "You can deposit and withdraw items from the vaults found in Raza, Barloque, "
+      "Jasper and Ko'catan using the same commands that you would use when "
+      "buying from or offering to any other NPC.\n\n"
+      "Items that you 'offer' to a vault master will be removed from your inventory "
+      "and stored safely within the vault for a fee of 1 shilling per stone of "
+      "weight (2 shillings in Ko'catan).  The required fee will be automatically "
+      "taken from your inventory.  Later, you can 'buy' the items again from the "
+      "vault master at no additional cost.\n\n"
+      "Note that the vault master will not accept shillings (use banks for those) "
+      "as well as certain items that are too precious or dangerous to store in a "
+      "vault.  Additionally, items that are deposited in Jasper or Raza may "
+      "be accessed from either location, while items deposited in Ko'catan are "
+      "inaccessible from any other location.\n\n"
+      "Finally, you may use the spell 'conveyance' to directly send any item or "
+      "stack of items to the regional vault at the same fee as a regular deposit.  "
+      "To do so, simply cast the spell, then click on the item or stack of items "
+      "that you wish to send to the vault.  This feature is incredibly convenient "
+      "for adventurers who would otherwise be forced to head to town, weighed "
+      "down by the massive amounts of loot they have collected on their journeys."
+
+classvars:
+
+   vrName = room_name_RazaVault
+
+   viTeleport_row = 3
+   viTeleport_col = 6
+
+properties:
+
+   viPermanent_flags = ROOM_NO_COMBAT 
+   viTerrain_type = TERRAIN_CITY | TERRAIN_SHOP
+
+   prRoom = room_RazaVault
+   piRoom_num = RID_RAZA_VAULT
+
+   prMusic = RazaVault_music
+
+   piBaseLight = LIGHT_NICE
+   piOutside_factor = 3
+
+   prMusic = RazaVault_music
+
+messages:
+
+   CreateStandardExits()
+   {
+      plExits = $;
+
+      plExits = Cons([ 4, 8, RID_RAZA, 12, 12, ROTATE_NONE ],plExits);
+      plExits = Cons([ 5, 8, RID_RAZA, 12, 12, ROTATE_NONE ],plExits);
+
+      propagate;
+   }
+
+   CreateStandardObjects()
+   {
+      local oSign;
+
+      Send(self,@NewHold,#what=Create(&RazaVaultman),#new_row=6,#new_col=3,
+           #fine_row=20,#fine_col=20,#new_angle=ANGLE_SOUTH_WEST);
+      
+      oSign = Create(&Sign,#newbie=TRUE,#desc=RazaVault_sign_desc,#name=RazaVault_sign_name);
+      Send(self,@NewHold,#what=oSign,#new_row=4,#new_col=3);
+
+      // Lighting
+      Send(self,@NewHold,#what=Create(&DynamicLight,#iColor=LIGHT_FIRE,#iIntensity=30),
+           #new_row=8,#new_col=5,#fine_row=56,#fine_col=33);
+      Send(self,@NewHold,#what=Create(&DynamicLight,#iColor=LIGHT_FIRE,#iIntensity=30),
+           #new_row=2,#new_col=7,#fine_row=18,#fine_col=56);
+      Send(self,@NewHold,#what=Create(&DynamicLight,#iColor=LIGHT_FIRE,#iIntensity=30),
+           #new_row=2,#new_col=3,#fine_row=17,#fine_col=40);
+
+      propagate;
+   }
+
+end
+////////////////////////////////////////////////////////////////////////////////

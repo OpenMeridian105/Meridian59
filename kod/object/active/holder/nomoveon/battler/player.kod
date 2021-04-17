@@ -1400,7 +1400,7 @@ messages:
       return (piPreferences & flag);
    }
 
-   ResetPlayerFlagList()
+   ResetPlayerFlagList(bFlagsOnly=FALSE)
    {
       local i;
 
@@ -1436,7 +1436,14 @@ messages:
 
       if poOwner <> $
       {
-         Send(poOwner,@SomethingChanged,#what=self);
+         if bFlagsOnly
+         {
+            Send(poOwner,@SomethingChangedFlags,#what=self);
+         }
+         else
+         {
+            Send(poOwner,@SomethingChanged,#what=self);
+         }
       }
 
       if (pbLogged_on)
@@ -3363,7 +3370,7 @@ messages:
 
    EnchantmentTimer(timer = $)
    {
-      local i, j, oEnchanter, oSpell;
+      local i, j, oEnchanter, oSpell, bFlagsOnly;
 
       foreach i in plEnchantments
       {
@@ -3414,8 +3421,19 @@ messages:
                Send(self,@RecalcFlickerFlag);
             }
 
+            bFlagsOnly = FALSE;
+
+            // If this is a trance that is about to execute a stroke, don't
+            // interrupt the animation with SomethingChanged.
+            // Use SomethingChangedFlags instead.
+            if (IsClass(oSpell,&Trance))
+               AND IsClass(First(Nth(i,3)),&Stroke)
+            {
+               bFlagsOnly = TRUE;
+            }
+
             // Calls SomethingChanged.
-            Send(self,@ResetPlayerFlagList,#who=self);
+            Send(self,@ResetPlayerFlagList,#who=self,#bFlagsOnly=bFlagsOnly);
 
             return;
          }

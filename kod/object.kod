@@ -1480,5 +1480,32 @@ messages:
       return viInfo_time;
    }
 
+   PrintExisting(bIncludeDMs=FALSE,who=$)
+   {
+      if (poOwner = $)
+      {
+         return;
+      }
+
+      if (who <> $)
+      {
+         if (poOwner = who)
+         {
+            Send(SYS,@ReportExisting,#sName=vrName,#iNumber=1);
+         }
+         return;
+      }
+
+      if (NOT bIncludeDMs
+         AND IsClass(poOwner,&DM))
+      {
+         return;
+      }
+
+      Send(SYS,@ReportExisting,#sName=vrName,#iNumber=1);
+
+      return;
+   }
+
 end
 ////////////////////////////////////////////////////////////////////////////////

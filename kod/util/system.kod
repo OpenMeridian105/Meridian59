@@ -573,7 +573,47 @@ properties:
    // List of plant soils in the game.
    plPlantSoils = $
 
+   // Scratchpad list.
+   plTempList = $
+
 messages:
+
+   PrintNumberExisting(classtype=&Reagent,bIncludeDMs=FALSE,who=$)
+   {
+      local i;
+
+      plTempList = $;
+
+      Send(classtype,@PrintExisting,#bIncludeDMs=bIncludeDMs,#who=who);
+
+      if (who <> $)
+      {
+         GodLog(Send(who,@GetTrueName)," owns: ");
+      }
+      else if (bIncludeDMs)
+      {
+         GodLog("Total number including DMs:");
+      }
+      else
+      {
+         GodLog("Total number NOT including DMs:");
+      }
+
+      foreach i in plTempList
+      {
+         GodLog(First(i),": ",Nth(i,2));
+      }
+
+      return;
+   }
+
+   ReportExisting(sName=$,iNumber=0)
+   {
+      plTempList = Send(self,@AddToSortedList,#what=sName,#lList=plTempList,
+                        #number=iNumber);
+
+      return;
+   }
 
    GetName()
    {

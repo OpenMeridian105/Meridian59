@@ -393,6 +393,9 @@ resources:
    follower_brief_leader_end_d = ".  Sounds like fun...~n~M\""
    follower_brief_leader_end_e = ".  What could possibly go wrong?~n~M\""
 
+   follower_cant_accept_item = \
+      "I couldn't possibly bear the responsibility of carrying %s%s!"
+
    // Triggers for MercenaryCommand()
    follower_commands_trigger = "command"
    follower_commands_advanced_trigger = "adv"
@@ -709,10 +712,28 @@ messages:
       return (who = poLeader) OR IsClass(who,&DM);
    }
 
-   ReqOffer(what = $)
+   ReqOffer(what = $,item_list = $)
    {
+      local i;
+
       if (what = poLeader) OR IsClass(what,&DM)
       {
+         // Followers can't carry some important items.
+         foreach i in item_list
+         {
+            if (IsClass(i,&Token)
+               OR IsClass(i,&Totem)
+               OR IsClass(i,&NecromancerAmulet)
+               OR IsClass(i,&HunterSword))
+            {
+               Send(self,@MercenarySayToOne,#target=what,
+                     #message_rsc=follower_cant_accept_item,
+                     #parm1=Send(i,@GetDef),#parm2=Send(i,@GetName));
+
+               return FALSE;
+            }
+         }
+
          return TRUE;
       }
 

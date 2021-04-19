@@ -26,10 +26,16 @@ resources:
       "~B~k[Event]~n ~B~v The army of the Harbinger has been banished, and "
       "the Harbinger has scurried away in defeat."
 
+   // Same as shrine qor dedication sound.
+   TriggeredInvasion_Qor_sound = qor.ogg
+   TriggeredInvasion_Shalille_sound = shalille.ogg
+
 classvars:
 
    vrStartMessage = TriggeredInvasion_start_msg
    vrEndMessage = TriggeredInvasion_end_msg
+   vrStartSound = TriggeredInvasion_Qor_sound
+   vrEndSound = TriggeredInvasion_Shalille_sound
 
    vbAnnounce = TRUE
 
@@ -40,10 +46,11 @@ properties:
 
    poHarbinger = $
 
-   plRewards1 = $
-   plRewards2 = $
-   plRewards3 = $
-   plRewards4 = $
+   plRewards_High = $
+   plRewards_Medium = $
+   plRewards_Common = $
+   plRewards_Super = $
+   plRewards_Special = $
 
    piActiveRoom = 0
    piPhase = 0
@@ -69,19 +76,20 @@ messages:
          piActiveRoom = iActiveRoom;
       }
 
-      plRewards1 = [ &ShamanBlood, &YrxlSap, &PolishedSeraphym, &UncutSeraphym,
-                     &KriipaClaw, &Ruby, &BlueDragonScale, &DarkAngelFeather,
-                     &WindrootLeaf, &SpessartineRock, &TwinkleCap, &TheurgicRemnant ];
+      plRewards_Super = [ &WindrootLeaf, &SpessartineRock, &TwinkleCap, &TheurgicRemnant ];
 
-      plRewards2 = [ &PurpleMushroom, &BlueMushroom, &RedMushroom, &RainbowFern, 
-                     &DragonflyEye, &WebMoss, &Fairywing, &OrcTooth, &Solagh ];
+      plRewards_High = [ &ShamanBlood, &YrxlSap, &PolishedSeraphym, &UncutSeraphym,
+                         &KriipaClaw, &Ruby, &BlueDragonScale, &DarkAngelFeather ];
 
-      plRewards3 = [ &Mushroom, &EntrootBerry, &Elderberry, &Herbs, &Emerald, 
-                     &Sapphire, &Diamond, &InkyCap ];
+      plRewards_Medium = [ &PurpleMushroom, &BlueMushroom, &RainbowFern, &InkyCap,
+                           &DragonflyEye, &WebMoss, &Fairywing, &OrcTooth, &Solagh ];
 
-      plRewards4 = [ &SpecialGift, &SpecialGiftTwo, &GoldSword, &LongSword, 
-                     &NeruditeSword, &Scimitar, &Hammer, &Axe,
-                     &ShortSword, &MysticSword, &ThornedCirclet ];
+      plRewards_Common = [ &Mushroom, &EntrootBerry, &Elderberry, &Herbs, &Emerald, 
+                           &Sapphire, &Diamond, &InkyCap, &RedMushroom ];
+
+      plRewards_Special = [ &SpecialGift, &SpecialGiftTwo, &GoldSword, &LongSword, 
+                            &NeruditeSword, &Scimitar, &Hammer, &Axe,
+                            &ShortSword, &MysticSword, &ThornedCirclet ];
 
       if piActiveRoom = RID_E2
       {
@@ -204,7 +212,7 @@ messages:
       if vbAnnounce
       {
          Send(SYS,@SystemBroadcast,#type=SAY_MESSAGE,#string=vrStartMessage,
-            #parm1=Send(oRoom,@GetName));
+            #parm1=Send(oRoom,@GetName),#rSound=vrStartSound);
       }
 
       poHarbinger = First(Send(Send(SYS,@GetLibrary),@GetOccupationList,
@@ -239,7 +247,7 @@ messages:
       if vbAnnounce
       {
          Send(SYS,@SystemBroadcast,#type=SAY_MESSAGE,#string=vrEndMessage,
-            #parm1=Send(oRoom,@GetName));
+            #parm1=Send(oRoom,@GetName),#rSound=vrEndSound);
       }
 
       return;
@@ -345,13 +353,22 @@ messages:
 
    MonsterKilled(dead_monster=$,killing_player=$,corpse=$)
    {
-      local oRoom, oReward, iAmount;
+      local oRoom, oReward, iAmount, lRewards;
 
       // When each event monster is killed, add common reagents to the Harbinger's treasure drop.
       // Scale this with the number of participants in the room. This is also capped by piMaxParticipants.
       if Send(dead_monster,@CheckMonsterFlag,#flag=MFLAG_HARBINGER_MOB)
       {
-         oReward = Create(Nth(plRewards3,Random(1,Length(plRewards3))));
+         if piPhase = 1
+         {
+            lRewards = plRewards_Common;
+         }
+         else
+         {
+            lRewards = plRewards_Medium;
+         }
+
+         oReward = Create(Nth(lRewards,Random(1,Length(lRewards))));
 
          if Send(oReward,@IsStackable)
          {
@@ -388,7 +405,7 @@ messages:
 
    AddToHarbingerTreasure()
    {
-      local oRoom, oParticipant, oReward, iAmount, ItemAtt;
+      local oRoom, oParticipant, oReward, lRewards, iAmount, ItemAtt;
 
       if plParticipants = $
       {
@@ -406,14 +423,20 @@ messages:
             continue;
          }
 
-         if piPhase < 2
+         if piPhase = 1
          {
-            oReward = Create(Nth(plRewards2,Random(1,Length(plRewards2))));
+            lRewards = plRewards_Medium;
+         }
+         else if piPhase = 2
+         {
+            lRewards = plRewards_High;
          }
          else
          {
-            oReward = Create(Nth(plRewards1,Random(1,Length(plRewards1))));
+            lRewards = plRewards_Super;
          }
+
+         oReward = Create(Nth(lRewards,Random(1,Length(lRewards))));
 
          if Send(oReward,@IsStackable)
          {
@@ -428,20 +451,22 @@ messages:
 
       if piPhase > 4
       {
-         oReward = Create(Nth(plRewards4,Random(1,Length(plRewards4))));
+         oReward = Create(Nth(plRewards_Special,Random(1,Length(plRewards_Special))));
 
          if IsClass(oReward,&Weapon)
          {
-            switch(Random(1,8))
+            switch(Random(1,10))
             {
-               case 1: ItemAtt = WA_BONKER; break;
-               case 2: ItemAtt = IA_XP_KILL_BONUS; break;
+               case 1: ItemAtt = WA_SLOW; break;
+               case 2: ItemAtt = WA_BLINDER; break;
                case 3: ItemAtt = WA_PARALYZER; break;
-               case 4: ItemAtt = WA_SIPHON; break;
-               case 5: ItemAtt = WA_PURGER; break;
-               case 6: ItemAtt = WA_BURN; break;
-               case 7: ItemAtt = WA_SLOW; break;
-               case 8: ItemAtt = WA_TWISTER; break;
+               case 4: ItemAtt = WA_VAMPER; break;
+               case 5: ItemAtt = WA_SPELLCASTER; break;
+               case 6: ItemAtt = WA_PURGER; break;
+               case 7: ItemAtt = WA_SIPHON; break;
+               case 8: ItemAtt = WA_BURN; break;
+               case 9: ItemAtt = WA_BLEED; break;
+               case 10: ItemAtt = WA_FATIGUE; break;
                default: ItemAtt = WA_CURSED;
             }
 

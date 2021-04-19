@@ -204,5 +204,29 @@ messages:
       return;
    }
 
+   DisableWanderer()
+   {
+      local oRoom;
+
+      if (ptTeleport <> $)
+      {
+         DeleteTimer(ptTeleport);
+         ptTeleport = $;
+      }
+      oRoom = Send(SYS,@FindRoomByNum,#num=RID_GODROOM);
+      Send(oRoom,@Teleport,#what=self);
+      pbWandering = FALSE;
+
+      return;
+   }
+
+   EnableWanderer()
+   {
+      pbWandering = TRUE;
+      Send(self,@TeleportTimerTrigger);
+
+      return;
+   }
+
 end
 ////////////////////////////////////////////////////////////////////////////////

@@ -77,6 +77,7 @@ properties:
    piDrawEffectFlag = OF_BOUNCING
    pbEventMode = FALSE
    pbAttackMode = FALSE
+   poInvasionEvent = $
 
    ptLeaveTimer = $
 
@@ -206,12 +207,13 @@ messages:
       return;
    }
 
-   EnableEventMode(bEnabled=TRUE)
+   EnableEventMode(bEnabled=TRUE,what=$)
    {
       pbEventMode = bEnabled;
 
       if pbEventMode
       {
+         poInvasionEvent = what;
          piNameColor = NC_EVENTCHAR;
          Send(self,@SetWandering,#value=FALSE);
          // SomethingChangedFlags goes here because EnableAttackMode also calls it.
@@ -258,6 +260,13 @@ messages:
       {
          Send(poOwner,@SomethingChangedFlags,#what=self);
       }
+
+      return;
+   }
+
+   SetInvasionEventObject(what=$)
+   {
+      poInvasionEvent = what;
 
       return;
    }
@@ -345,7 +354,9 @@ messages:
 
    Killed(what=$)
    {
-      local oTreasure, lTreasure, bComma;
+      local oTreasure, lTreasure, bComma, oItemAtt;
+
+      oItemAtt = Send(SYS,@FindItemAttByNum,#num=IA_RESTRICTED_LOOT);
 
       Debug("Harbinger killed! Reward is: ");
       ClearTempString();
@@ -370,6 +381,10 @@ messages:
                   AppendTempString(" ");
                }
                AppendTempString(Send(oTreasure,@GetName));
+
+               // Only allow event participants to grab loot for the 1st minute.
+               Send(oItemAtt,@AddToItem,#oItem=oTreasure,#timer_duration=60000,
+                     #state1=Send(poInvasionEvent,@GetParticipants));
 
                Send(poOwner,@NewHold,#what=oTreasure,
                   #new_row=piRow,#new_col=piCol,

@@ -248,11 +248,12 @@ messages:
          #new_row=Send(oRoom,@GetTeleportRow),#new_col=Send(oRoom,@GetTeleportCol))
       {
          Send(oRoom,@NewHold,#what=poHarbinger,
-            #new_row=Send(oRoom,@GetTeleportRow)+1,#new_col=Send(oRoom,@GetTeleportCol)+1);
+               #new_row=Send(oRoom,@GetTeleportRow)+1,
+               #new_col=Send(oRoom,@GetTeleportCol)+1);
          Post(poHarbinger,@UpdateHeight);
       }
 
-      Send(poHarbinger,@EnableEventMode,#bEnabled=TRUE);
+      Send(poHarbinger,@EnableEventMode,#bEnabled=TRUE,#what=self);
 
       Debug("Harbinger event started at ", Send(oRoom,@GetName));
 
@@ -275,6 +276,9 @@ messages:
          Send(SYS,@SystemBroadcast,#type=SAY_MESSAGE,#string=vrEndMessage,
             #parm1=Send(oRoom,@GetName),#rSound=vrEndSound);
       }
+
+      // Sets harbinger's event object to $.
+      Post(poHarbinger,@SetInvasionEventObject);
 
       return;
    }
@@ -503,6 +507,11 @@ messages:
       }
 
       return;
+   }
+
+   GetParticipants()
+   {
+      return plParticipants;
    }
 
    PrintParticipantsToDebug()

@@ -1,0 +1,133 @@
+// Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+// All rights reserved.
+//
+// This software is distributed under a license that is described in
+// the LICENSE file that accompanies it.
+//
+// Meridian is a registered trademark.
+
+
+////////////////////////////////////////////////////////////////////////////////
+ItemAttRestrictedLoot is ItemAttribute
+
+///////////////////////////////////////////////////////////////////////
+//
+//   Mark loot as only obtainable by the specified object IDs.
+//
+//   Form is:
+//
+//      [IA_RESTRICTED_LOOT, tTimer, [ valid looter object IDs ]
+//
+//
+//
+///////////////////////////////////////////////////////////////////////
+
+constants:
+
+   include blakston.khd
+
+resources:
+
+   include iarestrictedloot.lkod
+
+   restricted_no_loot = "You are prevented from picking up this item."
+
+classvars:
+
+   viItem_Att_Num = IA_RESTRICTED_LOOT
+   vrDesc = system_blank_resource
+
+properties:
+
+messages:
+
+////////////////////////////////////////////////
+///
+///  Effect Functions
+///
+////////////////////////////////////////////////
+
+   /// A player can only pick up an item from a monster he has 
+   /// recently killed himself, or that has sat around for a bit.
+
+   CanGetAffectedItem(lData=$,who=$)
+   {
+      if (FindListElem(Nth(lData,3),who) > 0)
+      {
+         return TRUE;
+      }
+
+      Send(who,@MsgSendUser,#message_rsc=restricted_no_loot);
+
+      return FALSE;
+   }
+
+////////////////////////////////////////////////////
+///
+///  Infrastructure
+///  (Adding and removing a ItemAtt from an item.)
+///
+////////////////////////////////////////////////////
+
+   SetPrimaryState(state1=$)
+   "State1 contains the corpse that used to own us."
+   {
+      if state1 = $
+      {
+         Debug("SetPrimaryState called with nil state!");
+
+         return FALSE;
+      }
+
+      return state1;
+   }
+
+   AddToTreasureTable()
+   {
+      /// do nothing
+      return FALSE;
+   }
+
+   SetItemsToAttribute()
+   {
+      /// plItems_to_attribute should never be used by this itematt
+      plItems_to_Attribute = $;
+
+      return;
+   }
+
+   InitiallyIdentified()
+   {
+      return TRUE;
+   }
+
+   CanBeSpoofed()
+   {
+      return FALSE;
+   }
+
+   ItemCanBeUsedInQuests()
+   {
+      return TRUE;
+   }
+
+   GetNamePriority()
+   {
+      return -1;
+   }
+
+   HasTimer(lData=$)
+   {
+      return TRUE;
+   }
+
+   TimerExpired(oItem=$,lData=$)
+   {
+      SetNth(lData,2,$);
+      Send(self,@RemoveFromItem,#oItem=oItem,#lData=lData);
+
+      return;
+   }
+
+end
+////////////////////////////////////////////////////////////////////////////////

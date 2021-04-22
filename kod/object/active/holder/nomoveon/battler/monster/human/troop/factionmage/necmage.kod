@@ -1,0 +1,80 @@
+// Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+// All rights reserved.
+//
+// This software is distributed under a license that is described in
+// the LICENSE file that accompanies it.
+//
+// Meridian is a registered trademark.
+
+
+////////////////////////////////////////////////////////////////////////////////
+NecromancerMage is FactionMage
+
+constants:
+
+include blakston.khd
+
+resources:
+
+   include necmage.lkod
+
+   NecromancerMage_name_rsc = "necromancer mage"
+   NecromancerMage_desc_rsc = \
+      "Transfixed under the unearthly stare of this foul being, your "
+      "mind skitters fearfully around the thought of the dark rituals "
+      "which must have transformed it into what it is.  Indeed, the "
+      "necromancer is an unliving testimonial to the terrible price "
+      "of magical power."
+   NecromancerMage_dead_name_rsc = "dead necromancer mage"
+   NecromancerMage_sound_aware = skl2_awr.ogg
+
+classvars:
+
+   vrName = NecromancerMage_name_rsc
+   vrDesc = NecromancerMage_desc_rsc
+   vrDead_name = NecromancerMage_dead_name_rsc
+   viColorTranslate1 = XLAT_TO_GRAY     // Shirt
+   viColorTranslate2 = XLAT_TO_BLACK   // Pants
+   vcShieldClass = &NecromancerShield
+   viFaction = FACTION_NECROMANCER
+
+   viPowerLevel = 100
+
+properties:
+
+   piBaseLevel = 60
+   piBaseDifficulty = 4
+
+   // Here so they can be set
+   viLevel = 60         // piBaseLevel
+   viDifficulty = 4     // piBaseDifficulty
+
+   piBody_translations = 0
+   vrSound_aware = NecromancerTroop_sound_aware
+
+   piSkin_color_override = PT_BLUE_TO_ASHEN
+
+   viBleedChance = 15
+   viBleedStrength = 1500
+   viBleedDuration = 8000
+
+messages:
+
+   Constructor()
+   {
+      plActions = [ [SID_SPLASH_OF_ACID], [SID_BLIND], [SID_HOLD], 
+                    [SID_CURSE_WEAPON] ];
+
+      propagate;
+   }
+
+   // Overwrites base class
+   SetKarma()
+   {
+      viKarma = -40;
+
+      return;
+   }
+
+end
+////////////////////////////////////////////////////////////////////////////////

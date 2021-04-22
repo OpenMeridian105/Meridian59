@@ -32,6 +32,7 @@ resources:
    Harbinger_sound_aware = lich_awr.ogg
    Harbinger_sound_death = lich_die.ogg
 
+   Harbinger_entry_welcome = "...I seek it...Do you have it?... A relic of qor..."
    Harbinger_relic = "...my summoning scepter...thank you mortal..."
 
 classvars:
@@ -76,6 +77,7 @@ properties:
    piDrawEffectFlag = OF_BOUNCING
    pbEventMode = FALSE
    pbAttackMode = FALSE
+   poInvasionEvent = $
 
    ptLeaveTimer = $
 
@@ -161,6 +163,9 @@ messages:
          Send(self,@SetMood,#new_mood=piMood+2);
       }
 
+      Post(who,@SomeoneSaid,#what=self,
+            #string=Harbinger_entry_welcome,#type=SAY_RESOURCE);
+
       propagate;
    }
 
@@ -202,12 +207,13 @@ messages:
       return;
    }
 
-   EnableEventMode(bEnabled=TRUE)
+   EnableEventMode(bEnabled=TRUE,what=$)
    {
       pbEventMode = bEnabled;
 
       if pbEventMode
       {
+         poInvasionEvent = what;
          piNameColor = NC_EVENTCHAR;
          Send(self,@SetWandering,#value=FALSE);
          // SomethingChangedFlags goes here because EnableAttackMode also calls it.
@@ -254,6 +260,13 @@ messages:
       {
          Send(poOwner,@SomethingChangedFlags,#what=self);
       }
+
+      return;
+   }
+
+   SetInvasionEventObject(what=$)
+   {
+      poInvasionEvent = what;
 
       return;
    }
@@ -341,7 +354,9 @@ messages:
 
    Killed(what=$)
    {
-      local oTreasure, lTreasure, bComma;
+      local oTreasure, lTreasure, bComma, oItemAtt;
+
+      oItemAtt = Send(SYS,@FindItemAttByNum,#num=IA_RESTRICTED_LOOT);
 
       Debug("Harbinger killed! Reward is: ");
       ClearTempString();
@@ -366,6 +381,10 @@ messages:
                   AppendTempString(" ");
                }
                AppendTempString(Send(oTreasure,@GetName));
+
+               // Only allow event participants to grab loot for the 1st minute.
+               Send(oItemAtt,@AddToItem,#oItem=oTreasure,#timer_duration=60000,
+                     #state1=Send(poInvasionEvent,@GetParticipants));
 
                Send(poOwner,@NewHold,#what=oTreasure,
                   #new_row=piRow,#new_col=piCol,

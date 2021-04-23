@@ -420,7 +420,7 @@ messages:
    SkillFailed(who=$)
    "Active skills will delay actions by their post perform time if they fail."
    {
-      Send(who,@SetAttackTime,#time=Send(self,@GetPostPerformDelay));
+      Send(who,@SetAttackTime,#time=Send(self,@GetPostPerformDelay,#who=who));
 
       propagate;
    }
@@ -447,6 +447,12 @@ messages:
       // check what weapon is currently being wielded.
       if use_weapon = $
       {
+         // If no wielder is provided, return the standard delay.
+         if who = $
+         {
+            return viPostPerform_time;
+         }
+
          use_weapon = Send(who,@GetWeapon);
       }
 

@@ -145,6 +145,7 @@ properties:
 
    plPrerequisites = $
    piMeditate_ratio = 100
+   piTranceMovementSpeedReduction = 0
 
 messages:
 
@@ -829,7 +830,7 @@ messages:
       if NOT bSuccess
          AND Send(SETTINGS_OBJECT,@NoFizzles)
       {
-         iPreperationTime += Send(self,@GetPostPerformDelay);
+         iPreperationTime += Send(self,@GetPostPerformDelay,#who=who);
 
          Send(who,@MsgSendUser,#message_rsc=skill_trance_fumble,
             #parm1=Send(self,@GetName));
@@ -1020,7 +1021,7 @@ messages:
       }
       else
       {
-         Send(who,@SetAttackTime,#time=Send(self,@GetPostPerformDelay),#bAdd=TRUE);
+         Send(who,@SetAttackTime,#time=Send(self,@GetPostPerformDelay,#who=who),#bAdd=TRUE);
       }
 
       Send(who,@MsgSendUser,#message_rsc=skill_trance_break,
@@ -1226,6 +1227,11 @@ messages:
    {
       // 100 points of exertion represent 1 point of vigor.
       return viSkillExertion;
+   }
+
+   GetMovementSpeedReduction()
+   {
+      return piTranceMovementSpeedReduction;
    }
 
 end

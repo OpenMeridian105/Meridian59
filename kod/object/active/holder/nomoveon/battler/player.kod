@@ -11456,8 +11456,6 @@ messages:
    {
       local iDelay;
 
-      iDelay = Bound(Send(self,@GetAttackTime),300,1200);
-
       if iAnimation = $
       {
          if (piFlags2 & PFLAG2_DANCING)
@@ -11468,6 +11466,12 @@ messages:
          {
             iAnimation = piAnimation;
          }
+      }
+
+      // Get our attack delay, but only if we are attacking, punching of firing.
+      if iAnimation >= PANM_FIST_ATTACK
+      {
+         iDelay = Bound(Send(self,@GetAttackTime),300,1200);
       }
 
       if poIllusion_set <> $
@@ -11734,8 +11738,6 @@ messages:
       local i, iOverlays, hotspot, iLeft_group, iRight_group, iSkin_xlat,
             iArms_xlat, oRobe, bRobe, oStroke, iDelay;
 
-      iDelay = Bound(Send(self,@GetAttackTime),300,1200);
-
       if iAnimation = $
       {
          if (piFlags2 & PFLAG2_DANCING)
@@ -11746,6 +11748,12 @@ messages:
          {
             iAnimation = piAnimation;
          }
+      }
+
+      // Get our attack delay, but only if we are attacking, punching of firing.
+      if iAnimation >= PANM_FIST_ATTACK
+      {
+         iDelay = Bound(Send(self,@GetAttackTime),300,1200);
       }
 
       if poIllusion_set <> $ and iAnimation <> $
@@ -15304,7 +15312,7 @@ messages:
    "if the values disagree. Set bAdjust to TRUE to change the property to "
    "the calculated value."
    {
-      local i, iSpeed, oSpell;
+      local i, iSpeed, oSpell, lState;
 
       iSpeed = 100;
 
@@ -15316,9 +15324,19 @@ messages:
       foreach i in plEnchantments
       {
          oSpell = Nth(i,2);
+
          if (Send(oSpell,@IsMoveSpeedModifier))
          {
-            iSpeed += Send(oSpell,@GetSpellMoveSpeedBonus,#state=Nth(i,3));
+            if IsClass(oSpell,&Trance)
+            {
+               lState = Nth(i,3);
+               oSpell = First(lState);
+               iSpeed -= Send(oSpell,@GetMovementSpeedReduction);
+            }
+            else
+            {
+               iSpeed += Send(oSpell,@GetSpellMoveSpeedBonus,#state=Nth(i,3));
+            }
          }
       }
 

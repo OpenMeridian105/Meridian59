@@ -7533,9 +7533,11 @@ messages:
          }
       }
 
-      if Send(self,@IsInCannotInteractMode)
+      // Check for conditions that could keep us from attacking.
+      if (piFlags & PFLAG_NO_FIGHT)
+         OR Send(self,@IsInCannotInteractMode)
       {
-         Send(self,@MsgSendUser,#message_rsc=user_no_perform);
+         Send(self,@MsgSendUser,#message_rsc=user_no_fight);
 
          return;
       }
@@ -7729,9 +7731,7 @@ messages:
       }
 
       if (piFlags & PFLAG_NO_FIGHT)
-         OR (piFlags & PFLAG_NO_MOVE)
          OR Send(self,@IsInCannotInteractMode)
-
       {
          Send(self,@MsgSendUser,#message_rsc=user_no_perform);
 

@@ -30,7 +30,6 @@ classvars:
 
 properties:
 
-   piMovementSpeedReduction = 50
    vbIsLightSource = FALSE
 
 messages:
@@ -61,10 +60,7 @@ messages:
       Send(who,@StartEnchantment,#what=self,#time=time,#addicon=FALSE,
            #state=[what,who,lTargets,TRUE,bFreeCast,100,power]);
 
-      if NOT IsClass(what,&Armed)
-      {
-         Send(who,@AddMovementSpeedPercent,#iSpeed=-piMovementSpeedReduction);
-      }
+      Send(who,@AddMovementSpeedPercent,#iSpeed=-Send(what,@GetMovementSpeedReduction));
 
       return;
    }
@@ -87,10 +83,7 @@ messages:
       lTargets = Nth(state,3);
 
       // Let's clear up our trance related effects before proceeding further.
-      if NOT IsClass(oAbility,&Armed)
-      {
-         Send(who,@AddMovementSpeedPercent,#iSpeed=piMovementSpeedReduction);
-      }
+      Send(who,@AddMovementSpeedPercent,#iSpeed=Send(oAbility,@GetMovementSpeedReduction));
 
       // Double-check to get valid targets.  Don't report 'cause we've already 
       //  spammed them during the first check.
@@ -172,10 +165,7 @@ messages:
          }
       }
 
-      if NOT IsClass(oAbility,&Armed)
-      {
-         Send(who,@AddMovementSpeedPercent,#iSpeed=piMovementSpeedReduction);
-      }
+      Send(who,@AddMovementSpeedPercent,#iSpeed=Send(oAbility,@GetMovementSpeedReduction));
 
       Send(who,@RemoveEnchantment,#what=self);
 
@@ -229,11 +219,6 @@ messages:
       return 100;
    }
 
-   GetSpellMoveSpeedBonus()
-   {
-      return -piMovementSpeedReduction;
-   }
-   
    GetBuffStat()
    {
       return FALSE;

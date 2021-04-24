@@ -289,6 +289,7 @@ resources:
    player_attack_out_of_punch_range = "You can't reach %s%s with your %s."
    player_attack_out_of_spell_range = "%s%s is out of range."
    player_attack_not_in_view = "You can't see your selected target."
+   player_attack_victim_taking_cover = "Your target has taken cover."
 
    player_no_target_self = "You cannot attack yourself."
    player_no_target_self_spell = "You cannot cast this spell on yourself."
@@ -5398,7 +5399,7 @@ messages:
    // attack. Used for cleave when hitting 2+ targets, to avoid performing
    // specific things more than once.
    TryAttack(what = $, use_weapon = $, stroke_obj = $, bCheck = TRUE,
-             iTargetNum = 1)
+             iTargetNum = 1, bCheckAngle = TRUE)
    {
       local i, iRange, oEnchantment, state;
 
@@ -5428,14 +5429,6 @@ messages:
          return FALSE;
       }
 
-      // Deny attack if no line of sight
-      if NOT Send(poOwner,@LineOfSight,#obj1=self,#obj2=what)
-      {
-         Send(self,@MsgSendUser,#message_rsc=player_attack_not_in_view);
-
-         return FALSE;
-      }
-
       // Send to the STROKE to get the range; unarmed attacks have ranges too
       iRange = Send(stroke_obj,@GetRange,#weapon_used=use_weapon,#who=self);
 
@@ -5448,7 +5441,8 @@ messages:
       }
 
       if NOT Send(self,@TargetWithinSightAndRange,#oTarget=what,#iRange=iRange,
-                  #use_weapon=use_weapon,#stroke_obj=stroke_obj)
+                  #use_weapon=use_weapon,#stroke_obj=stroke_obj,
+                  #bCheckAngle=bCheckAngle)
       {
          return FALSE;
       }
@@ -5577,7 +5571,7 @@ messages:
 
    // Determines if target is within attacking range, and within sight.
    // iRange=$ means there's no range check.
-   TargetWithinSightAndRange(oTarget=$,iRange=$,use_weapon=$,stroke_obj=$)
+   TargetWithinSightAndRange(oTarget=$,iRange=$,use_weapon=$,stroke_obj=$,bCheckAngle=TRUE)
    {
       local iDist, oTargetOwner, oFinalTarget, iAngle, iRow, iCol,
             iTargetRow, iTargetCol;
@@ -5629,25 +5623,39 @@ messages:
             OR (IsClass(stroke_obj,&Spell)
                AND (Send(stroke_obj,@GetNumSpellTargets) = 1)))
       {
-         if iDist > 1
-            AND NOT LineOfSightView(Send(self,@GetAngle), piRow, piCol, piFine_row,
-                        piFine_col, Send(oTarget,@GetRow), Send(oTarget,@GetCol),
-                        Send(oTarget,@GetFineRow), Send(oTarget,@GetFineCol))
+         if bCheckAngle
          {
-            if iDist > 2
-               AND IsClass(oFinalTarget,&Player)
-               AND Send(self,@CheckLog)
+            if iDist > 1
+               AND NOT LineOfSightView(Send(self,@GetAngle), piRow, piCol, piFine_row,
+                           piFine_col, Send(oTarget,@GetRow), Send(oTarget,@GetCol),
+                           Send(oTarget,@GetFineRow), Send(oTarget,@GetFineCol))
             {
-               Debug("ALERT! ",Send(self,@GetTrueName),self," at "
-                     "[",piRow,piCol,"] and angle ",Send(self,@GetAngle),
-                     " tried to hit ", Send(oFinalTarget,@GetTrueName),
-                     oFinalTarget," at [",Send(oTarget,@GetRow),
-                     Send(oTarget,@GetCol),"] that was behind them.");
+               if iDist > 2
+                  AND IsClass(oFinalTarget,&Player)
+                  AND Send(self,@CheckLog)
+               {
+                  Debug("ALERT! ",Send(self,@GetTrueName),self," at "
+                        "[",piRow,piCol,"] and angle ",Send(self,@GetAngle),
+                        " tried to hit ", Send(oFinalTarget,@GetTrueName),
+                        oFinalTarget," at [",Send(oTarget,@GetRow),
+                        Send(oTarget,@GetCol),"] that was behind them.");
+               }
+
+               Send(self,@MsgSendUser,#message_rsc=player_attack_not_in_view);
+
+               return FALSE;
             }
+         }
+         else
+         {
+            if NOT LineOfSightBSP(Send(poOwner,@GetRoomData),piRow,piCol,piFine_row,
+               piFine_col,Send(self,@GetHeight),Send(oTarget,@GetRow),Send(oTarget,@GetCol),
+               Send(oTarget,@GetFineRow),Send(oTarget,@GetFineCol),Send(oTarget,@GetHeight))
+            {
+               Send(self,@MsgSendUser,#message_rsc=player_attack_victim_taking_cover);
 
-            Send(self,@MsgSendUser,#message_rsc=player_attack_not_in_view);
-
-            return FALSE;
+               return FALSE;
+            }
          }
       }
 

@@ -61,6 +61,8 @@ classvars:
 
    vbFixedTrance = TRUE
 
+   vbCheckTargetsPreTrance = FALSE
+
 properties:
 
    plPrerequisites = $
@@ -73,7 +75,13 @@ messages:
    }
 
    GetTargets(who=$,lTargets=$)
-   "This returns an altered list of targets for the skill if appropriate."
+   "Returns nil. We don't check targets till impact."
+   {
+      return;
+   }
+
+   GetTargetsInRange(who=$,lTargets=$)
+   "Returns targets in range of cleave."
    {
       local i,use_weapon, stroke_obj, iDist, iRange, iRow, iCol, iFineRow,
          iFineCol, oRoom, each_obj, lFinalTargets;
@@ -110,11 +118,6 @@ messages:
 
             // See if target is within range, if we provided a range.
             if (iDist > iRange * iRange)
-               OR ((iDist > 1)
-                  AND NOT LineOfSightView(Send(who,@GetAngle),
-                     iRow,iCol,iFineRow, iFineCol,Send(each_obj,@GetRow),
-                     Send(each_obj,@GetCol),Send(each_obj,@GetFineRow),
-                     Send(each_obj,@GetFineCol)))
             {
                continue;
             }
@@ -137,8 +140,8 @@ messages:
       local lGoodTargets;
 
       // This gets all targets within range.  Most skills just return the
-      //  list back.
-      lGoodTargets = Send(self,@GetTargets,#who=who,#lTargets=lTargets);
+      // list back.
+      lGoodTargets = Send(self,@GetTargetsInRange,#who=who,#lTargets=lTargets);
 
       // This gets all valid targets, checking for bad targets, safeties, etc.
       lGoodTargets = Send(self,@GetAttackTargets,#who=who,
@@ -170,7 +173,7 @@ messages:
          // Pass bCheck=FALSE so that our attacks don't check the timer.
          Send(who,@TryAttack,#what=i,#stroke_obj=stroke_obj,
                #use_weapon=use_weapon,#factor=iPower,#bCheck=FALSE,
-               #iTargetNum=iTargetNum);
+               #iTargetNum=iTargetNum,#bCheckAngle=FALSE);
 
          bTarget = TRUE;
          ++iTargetNum;

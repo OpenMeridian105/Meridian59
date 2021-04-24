@@ -31,7 +31,7 @@ resources:
    stroke_hit_attacker = "%sYour %s hits %s%s."
    stroke_hit_defender = "%s%s hits you."
 
-   stroke_swing_too_far = "You swing your %s, hoping to reach %s%s."
+   stroke_swing_too_far = "You take aim, hoping to reach %s%s."
 
    stroke_hit_sound = patk.ogg
 
@@ -468,15 +468,15 @@ messages:
 
    BeginPerformPreparation(who=$,lTargets=$,bSuccess=TRUE)
    {
+      // Inform attacker if their target is not yet in range.
+      Send(self,@SwingMessage,#who=who,#oTarget=First(lTargets));
+
       // Strokes pay their costs here.
       if NOT IsClass(self,&RangedStroke)
          AND NOT Send(self,@PayCosts,#who=who)
       {
          return;
       }
-
-      // Inform attacker if their target is not yet in range.
-      Send(self,@SwingMessage,#who=who,#oTarget=First(lTargets));
 
       // Set our attack delay. Since attack build up is not a traditional
       // trance that can be interrupted or cancelled, we immediately start
@@ -488,7 +488,7 @@ messages:
       propagate;
    }
 
-   // Give feedback about target being in range at the time of swinging.
+   // Give feedback about target being in range at the time of starting the attack.
    SwingMessage(who=$,oTarget=$)
    {
       local iRange, oWeapon, iDist;
@@ -502,8 +502,8 @@ messages:
          AND iDist > iRange * iRange
       {
          Send(who,@MsgSendUser,#message_rsc=stroke_swing_too_far,
-               #parm1=Send(oWeapon,@GetName),#parm2=Send(oTarget,@GetDef),
-               #parm3=Send(oTarget,@GetName));
+               #parm1=Send(oTarget,@GetDef),
+               #parm2=Send(oTarget,@GetName));
       }
 
       return;

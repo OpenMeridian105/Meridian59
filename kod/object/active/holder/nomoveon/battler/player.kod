@@ -6076,7 +6076,7 @@ messages:
       scalefactor=1000,report=TRUE,report_resistance=TRUE,absolute=FALSE,
       precision=FALSE)
    {
-      local i, j, iResistance, oSoldierShield, gainchance, color_rsc,
+      local i, j, iResistance, oSoldierShield, gainchance, color_rsc, rWeapon,
             iDuration, oSpell, iLimit, origdamage, oWeapon, shrunken;
 
       if NOT precision
@@ -6194,26 +6194,26 @@ messages:
 
       if IsClass(what,&Monster)
       {
-         RecordStat(STAT_ASSESS_DAM,Send(self,@GetTrueName),
-            Send(what,@GetTrueName),stype,atype,damage/100,origdamage,
-            player_monster_attack_string);
+         RecordStat(STAT_ASSESS_DAM, TAG_RESOURCE, Send(self,@GetTrueName),
+               TAG_RESOURCE, Send(what,@GetTrueName), TAG_INT, stype, TAG_INT,
+               atype, TAG_INT, damage/100, TAG_INT, origdamage, TAG_RESOURCE,
+               player_monster_attack_string);
       }
-
-      if IsClass(what,&Player)
+      else if IsClass(what,&Player)
       {
          oWeapon = Send(what,@GetWeapon);
          if oWeapon <> $
          {
-            RecordStat(STAT_ASSESS_DAM,Send(self,@GetTrueName),
-               Send(what,@GetTrueName),stype,atype,damage/100,origdamage,
-               Send(Send(what,@GetWeapon),@GetTrueName));
+            rWeapon = Send(Send(what,@GetWeapon),@GetTrueName);
          }
          else
          {
-            RecordStat(STAT_ASSESS_DAM,Send(self,@GetTrueName),
-               Send(what,@GetTrueName),stype,atype,damage/100,origdamage,
-               player_no_weapon_string);
+            rWeapon = player_no_weapon_string;
          }
+         RecordStat(STAT_ASSESS_DAM, TAG_RESOURCE, Send(self,@GetTrueName),
+               TAG_RESOURCE, Send(what,@GetTrueName), TAG_INT, stype, TAG_INT,
+               atype, TAG_INT, damage/100, TAG_INT, origdamage, TAG_RESOURCE,
+               rWeapon);
       }
 
       if (piFlags2 & PFLAG2_WINGS_ABSORB)

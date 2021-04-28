@@ -49,7 +49,8 @@ void MainServer()
 	if (ConfigBool(MYSQL_ENABLED))
 	{
 		lprintf("Starting MySQL writer");
-		MySQLInit(ConfigStr(MYSQL_HOST), ConfigStr(MYSQL_USERNAME), ConfigStr(MYSQL_PASSWORD), ConfigStr(MYSQL_DB));
+		MySQLInit(ConfigStr(MYSQL_HOST), ConfigInt(MYSQL_CPORT), ConfigStr(MYSQL_USERNAME),
+			ConfigStr(MYSQL_PASSWORD), ConfigStr(MYSQL_DB));
 	}
 
 	lprintf("Starting %s\n",BlakServLongVersionString());

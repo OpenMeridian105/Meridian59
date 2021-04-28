@@ -613,7 +613,17 @@ void GameStartUser(session_node *s,user_node *u)
 
 #ifdef BLAK_PLATFORM_WINDOWS
    if (r && r->resource_val[0])
-     MySQLRecordPlayerLogin(s->account->name,r->resource_val[0],s->conn.name);
+   {
+      // Strings and sql_data_node freed in database.c.
+      sql_data_node *data = (sql_data_node *)AllocateMemory(MALLOC_ID_SQL, sizeof(sql_data_node) * 3);
+      data[0].type = TAG_STRING;
+      data[0].value.str = MySQLDuplicateString(s->account->name);
+      data[1].type = TAG_STRING;
+      data[1].value.str = MySQLDuplicateString(r->resource_val[0]);
+      data[2].type = TAG_STRING;
+      data[2].value.str = MySQLDuplicateString(s->conn.name);
+      MySQLRecordGeneric(STAT_PLAYERLOGIN, 3, data);
+   }
 #endif
 
    SetSessionTimer(s, SESSION_POLL_TIME);

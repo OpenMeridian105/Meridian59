@@ -50,15 +50,6 @@ properties:
 
 messages:
 
-   PlayerWasHitMsg(who=$,attacker=$,damage=$)
-   "The stroke may choose it's own damage give or recieve message.  Otherwise"
-   "player.kod will just choose a default."
-   {
-       Send(who,@MsgSendUser,#message_rsc=vrPlayer_was_hit,
-                #parm1=send(attacker,@GetCapDef),#parm2=send(attacker,@GetName));
-       return TRUE;
-   }
-
    PlayerKilledSomethingMsg(who=$,victim=$,damage=$)
    "The stroke may choose it's own damage give or recieve message.  Otherwise"
    "player.kod will offer the default 'You killed the whatever' message."
@@ -153,19 +144,25 @@ messages:
      propagate;
    }
 
-   GetHitSound(who=$)
+   // We substitute our touch attack enchantment here until touch is a proper skill.
+   GetStroke(who=$)
    {
       local oEnchantment;
 
-      // Substitute in case we have a touch attack enchantment up.
       oEnchantment = Send(who,@GetEnchantmentsByClass,#EnchClass=&TouchAttackSpell);
 
       if oEnchantment <> $
       {
-         return Send(Nth(First(oEnchantment),2),@GetHitSound);
+         // The spell object is the second element of the list. Get that.
+         oEnchantment = Nth(First(oEnchantment),2);
       }
 
-     propagate;
+      if oEnchantment <> $
+      {
+         return Send(oEnchantment,@GetStroke,#who=who);
+      }
+
+     return 0;
    }
 
    GetProf(who=$)
@@ -185,7 +182,7 @@ messages:
          return Send(oEnchantment,@GetProf,#who=who);
       }
 
-     return;
+     return 0;
    }
 
    GetProfNumber(who=$)

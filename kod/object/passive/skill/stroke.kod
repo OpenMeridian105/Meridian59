@@ -25,19 +25,13 @@ resources:
 
    stroke_need_weapon_rsc = "You need a weapon to perform this stroke!"
 
-   stroke_miss_attacker = "%sYour %s misses %s%s."
-   stroke_miss_defender = "%s%s misses you."
-
-   stroke_hit_attacker = "%sYour %s hits %s%s."
-   stroke_hit_defender = "%s%s hits you."
-
    stroke_swing_too_far = "You take aim, hoping to reach %s%s."
-
-   stroke_hit_sound = patk.ogg
 
    stroke_swish1 = SwSwish1.ogg
    stroke_swish2 = SwSwish2.ogg
    stroke_swish3 = SwSwish3.ogg
+   stroke_swish4 = SwSwish4.ogg
+   stroke_swish5 = SwSwish5.ogg
 
 classvars:
 
@@ -45,13 +39,8 @@ classvars:
    vrIcon = stroke_icon_rsc
    vrDesc = stroke_desc_rsc
 
-   vrPlayer_Hit_something = stroke_hit_attacker
-   vrPlayer_was_hit = stroke_hit_defender
    vrPlayer_killed_something = $
    vrPlayer_was_killed = $
-
-   vrMissed_Message_attacker = stroke_miss_attacker
-   vrMissed_Message_defender = stroke_miss_defender
 
    viIndefinite = ARTICLE_NONE
    viDefinite = ARTICLE_NONE
@@ -74,6 +63,8 @@ classvars:
    vrSwish1 = stroke_swish1
    vrSwish2 = stroke_swish2
    vrSwish3 = stroke_swish3
+   vrSwish4 = stroke_swish4
+   vrSwish5 = stroke_swish5
 
    vbFixedTrance = TRUE
 
@@ -199,63 +190,33 @@ messages:
 
    PlaySwishSound(who=$)
    {
-      local iRoll;
+      local iRoll, rSwish;
 
-      /// 'swish' sound
-         iRoll = Random(1,3);
+      iRoll = Random(1,5);
 
-         if iRoll = 1
-         {
-            Send(Send(who,@GetOwner),@SomethingWaveRoom,#what=who,
-               #wave_rsc=vrSwish1,#flags=SOUND_RANDOM_PITCH);
-         }
-         else if iRoll = 2
-         {
-            Send(Send(who,@GetOwner),@SomethingWaveRoom,#what=who,
-               #wave_rsc=vrSwish2,#flags=SOUND_RANDOM_PITCH);
-         }
-         else
-         {
-            Send(Send(who,@GetOwner),@SomethingWaveRoom,#what=who,
-               #wave_rsc=vrSwish3,#flags=SOUND_RANDOM_PITCH);
-         }
-
-      return;
-   }
-
-   SendMissMessageToAttacker(who=$,victim=$,color_rsc = $,bText = TRUE)
-   {
-      if bText
+      switch(iRoll)
       {
-         Send(who,@msgsenduser,#message_rsc=vrMissed_Message_Attacker,#parm1=color_rsc,
-              #parm2=vrName,#parm3=Send(victim,@GetDef),#parm4=Send(victim,@GetName));
+         case 1:
+            rSwish = vrSwish1;
+            break;
+         case 2:
+            rSwish = vrSwish2;
+            break;
+         case 3:
+            rSwish = vrSwish3;
+            break;
+         case 4:
+            rSwish = vrSwish4;
+            break;
+         default:
+            rSwish = vrSwish5;
+            break;
       }
 
-      return;
-   }
-
-   SendMissMessageToDefender(who=$,attacker=$)
-   {
-      Send(who,@MsgSendUser,#message_rsc=vrMissed_Message_Defender,
-            #parm1=Send(attacker,@GetCapDef),#parm2=Send(attacker,@GetName));
+      Send(Send(who,@GetOwner),@SomethingWaveRoom,#what=who,
+         #wave_rsc=rSwish,#flags=SOUND_RANDOM_PITCH);
 
       return;
-   }
-
-   PlayerHitSomethingMsg(who=$,victim=$,damage=$,color_rsc=$)
-   {
-      Send(who,@msgsenduser,#message_rsc=vrPlayer_hit_something,#parm1=color_rsc,
-            #parm2=vrName,#parm3=Send(victim,@GetDef),#parm4=Send(victim,@GetName));
-
-      return;
-   }
-
-   PlayerWasHitMsg(who=$,attacker=$,damage=$,color_rsc=$)
-   {
-       Send(who,@msgsenduser,#message_rsc=vrPlayer_was_hit,#parm1=color_rsc,
-            #parm2=Send(attacker,@GetCapDef),#parm3=Send(attacker,@GetName));
-
-       return;
    }
 
    PlayerKilledSomethingMsg(who=$,victim=$,damage=$)
@@ -277,7 +238,7 @@ messages:
    "The stroke may choose it's own damage give or recieve message.  Otherwise"
    "player.kod will just choose a default - as it does for most strokes."
    {
-      if vrPlayer_was_hit = $
+      if vrPlayer_was_killed = $
       {
          return FALSE;
       }
@@ -286,11 +247,6 @@ messages:
             #parm1=Send(attacker,@GetDef),#parm2=Send(attacker,@GetName));
 
       return TRUE;
-   }
-
-   GetHitSound()
-   {
-      return stroke_hit_sound;
    }
 
    IsActiveSkill()

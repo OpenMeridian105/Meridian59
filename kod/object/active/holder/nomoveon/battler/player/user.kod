@@ -856,7 +856,7 @@ messages:
 
    UserLogon(session_id = $)
    {
-      local i, sGuild, oBRoom, oHRoom;
+      local i, tagGuild, sGuild, oBRoom, oHRoom, rHallName;
 
       poSession = session_id;
       plIPAddress = GetSessionIP(poSession);
@@ -957,17 +957,30 @@ messages:
       sGuild = $;
 
       if poGuild <> $
-      {  
+      {
          sGuild = Send(poGuild,@GetName);
+         tagGuild = TAG_STRING;
 
+         // Rent -ve in RecordStat because GetRentDue returns +ve for rent
+         // owed and -ve for credited rent.
          if Send(poGuild,@GetGuildHall) <> $
          {
-            RecordStat(STAT_GUILD, sGuild, Send(Send(poGuild,@GetGuildMaster),@GetName), Send(Send(poGuild,@GetGuildHall),@GetName) );
+            rHallName = Send(Send(poGuild,@GetGuildHall),@GetName);
+            RecordStat(STAT_GUILD, TAG_STRING, sGuild, TAG_RESOURCE,
+                  Send(Send(poGuild,@GetGuildMaster),@GetName),
+                  TAG_RESOURCE, Send(Send(poGuild,@GetGuildHall),@GetName),
+                  TAG_INT, -Send(poGuild,@GetRentDue));
          }
          else
          {
-            RecordStat(STAT_GUILD, sGuild, Send(Send(poGuild,@GetGuildMaster),@GetName), system_blank_resource );
+            RecordStat(STAT_GUILD, TAG_STRING, sGuild, TAG_RESOURCE,
+                  Send(Send(poGuild,@GetGuildMaster),@GetName),
+                  TAG_NIL, $, TAG_INT, -Send(poGuild,@GetRentDue));
          }
+      }
+      else
+      {
+         tagGuild = TAG_NIL;
       }
 
       // Finally, give a new user a proper introduction and possibly a friend.
@@ -976,10 +989,14 @@ messages:
          Post(self,@PlayIntro);
       }
 
-      RecordStat(STAT_PLAYER, poSession, Send(self,@GetTrueName), Send(oHRoom,@GetName), Send(oBRoom,@GetName), 
-                  sGuild, Send(self,@GetBaseMaxHealth), piMax_mana, Send(self,@GetRawMight), 
-                  Send(self,@GetRawIntellect), Send(self,@GetRawMysticism), Send(self,@GetRawStamina), Send(self,@GetRawAgility), 
-                  Send(self,@GetRawAim));
+      RecordStat(STAT_PLAYER, TAG_SESSION, poSession, TAG_RESOURCE,
+            Send(self,@GetTrueName), TAG_RESOURCE, Send(oHRoom,@GetName),
+            TAG_RESOURCE, Send(oBRoom,@GetName), tagGuild, sGuild, TAG_INT,
+            Send(self,@GetBaseMaxHealth), TAG_INT, piMax_mana, TAG_INT,
+            Send(self,@GetRawMight), TAG_INT, Send(self,@GetRawIntellect),
+            TAG_INT, Send(self,@GetRawMysticism), TAG_INT,
+            Send(self,@GetRawStamina), TAG_INT, Send(self,@GetRawAgility),
+            TAG_INT, Send(self,@GetRawAim));
 
       return;
    }
@@ -2455,7 +2472,8 @@ messages:
       piXP_total = 0;
       piTraining_points = 0;
 
-      RecordStat(STAT_PLAYERSUICIDE, poSession, Send(self,@GetTrueName));
+      RecordStat(STAT_PLAYERSUICIDE, TAG_SESSION, poSession, TAG_RESOURCE,
+            Send(self,@GetTrueName));
 
       // Change the name to a unique placeholder one.
       ClearTempString();

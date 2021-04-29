@@ -3525,21 +3525,26 @@ messages:
    "This does the fallout of a hit, gives appropriate message, etc.  "
    "Called on self when hit opponent."
    {
+      local rSound;
+
       if poOwner = $
       {
          // No owner to send this to, so propagate.
          propagate;
       }
 
-      if vrSound_miss <> $
+      rSound = Send(self,@GetHitSound);
+
+      if rSound <> $
       {
-         Send(poOwner,@SomethingWaveRoom,#what=what,#wave_rsc=vrSound_miss,
+         Send(poOwner,@SomethingWaveRoom,#what=self,#wave_rsc=rSound,
                #flags=SOUND_RANDOM_PITCH);
-         if (IsClass(what,&Player))
-         {
-            Send(poOwner,@SomethingWaveRoom,#what=what,
-                  #wave_rsc=Send(what,@GetOuchSound),#flags=SOUND_RANDOM_PITCH);
-         }
+      }
+
+      if (IsClass(what,&Player))
+      {
+         Send(poOwner,@SomethingWaveRoom,#what=what,
+               #wave_rsc=Send(what,@GetOuchSound),#flags=SOUND_RANDOM_PITCH);
       }
 
       propagate;
@@ -3547,17 +3552,21 @@ messages:
 
    AssessMiss(what = $, stroke_obj = $)
    "This does the fallout of a miss, gives appropriate message, etc.  "
-   "Called on target when missing."
+   "Called on self when missing."
    {
+      local rSound;
+
       if poOwner = $
       {
          // No owner to send this to, so propagate.
          propagate;
       }
 
-      if vrSound_miss <> $
+      rSound = Send(self,@GetMissSound);
+
+      if rSound <> $
       {
-         Send(poOwner,@SomethingWaveRoom,#what=what,#wave_rsc=vrSound_miss,
+         Send(poOwner,@SomethingWaveRoom,#what=self,#wave_rsc=rSound,
                #flags=SOUND_RANDOM_PITCH);
       }
 
@@ -11442,6 +11451,16 @@ messages:
       }
 
       propagate;
+   }
+
+   GetHitSound()
+   {
+      return vrSound_miss;
+   }
+
+   GetMissSound()
+   {
+      return vrSound_miss;
    }
 
 end

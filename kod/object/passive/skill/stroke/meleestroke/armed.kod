@@ -16,8 +16,6 @@ constants:
 
 resources:
 
-   armed_swing_too_far = "You swing your %s, hoping to reach %s%s."
-
 classvars:
 
    viIndefinite = ARTICLE_NONE
@@ -35,27 +33,6 @@ properties:
    plPrerequisites = $
 
 messages:
-
-   // Give feedback about target being in range at the time of swinging.
-   SwingMessage(who=$,oTarget=$)
-   {
-      local iRange, oWeapon, iDist;
-
-      oWeapon = Send(who,@GetWeapon);
-      iRange = Send(self,@GetRange,#weapon_used=oWeapon,#who=who);
-      iDist = Send(who,@SquaredFineDistanceTo3D,#what=oTarget);
-
-      // See if target is within range, if we provided a range.
-      if iRange <> $
-         AND iDist > iRange * iRange
-      {
-         Send(who,@MsgSendUser,#message_rsc=armed_swing_too_far,
-               #parm1=Send(oWeapon,@GetName),#parm2=Send(oTarget,@GetDef),
-               #parm3=Send(oTarget,@GetName));
-      }
-
-      return;
-   }
 
 end
 ////////////////////////////////////////////////////////////////////////////////

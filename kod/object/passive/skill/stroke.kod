@@ -23,7 +23,7 @@ resources:
 
    stroke_need_weapon_rsc = "You need a weapon to perform this stroke!"
 
-   stroke_swing_too_far = "You take aim, hoping to reach %s%s."
+   stroke_swing_too_far = "You take aim, hoping to reach your target."
 
    stroke_swish1 = SwSwish1.ogg
    stroke_swish2 = SwSwish2.ogg
@@ -455,12 +455,21 @@ messages:
       if iRange <> $
          AND iDist > iRange * iRange
       {
-         Send(who,@MsgSendUser,#message_rsc=stroke_swing_too_far,
-               #parm1=Send(oTarget,@GetDef),
-               #parm2=Send(oTarget,@GetName));
+         Send(who,@MsgSendUser,#message_rsc=stroke_swing_too_far);
       }
 
       return;
+   }
+
+   DoubleCheckAfterTrance(who=$, lTargets = $)
+   {
+      // If we don't have a valid target, quit silently.
+      if lTargets = $
+      {
+         return FALSE;
+      }
+
+      propagate;
    }
 
 end

@@ -5328,6 +5328,9 @@ int C_StringToNumber(int object_id, local_var_type *local_vars,
    return ret_val.int_val;
 }
 
+// This is a hack to display a german TAG_RESOURCE in RecordStat.
+#define RESOURCE_GER 16
+
 int C_RecordStat(int object_id,local_var_type *local_vars,
 				int num_normal_parms,parm_node normal_parm_array[],
 				int num_name_parms,parm_node name_parm_array[])
@@ -5355,25 +5358,39 @@ int C_RecordStat(int object_id,local_var_type *local_vars,
       return NIL;
    }
 
+   // Must be a valid statistic type.
+   if (stat_type.v.data <= 0 || stat_type.v.data > STAT_MAX)
+   {
+      bprintf("C_RecordStat received unknown statistic type %i", stat_type.v.data);
+      return NIL;
+   }
+
    // Have to allocate it on the heap because this data structure gets placed
    // on a queue in database.c. Memory free handled in database.c unless
    // something goes wrong parsing the values from kod here.
    num_expected = (num_normal_parms - 1) / 2;
-   data = (sql_data_node *) AllocateMemory(MALLOC_ID_SQL, sizeof(sql_data_node) * num_expected);
 
-   // Check parameter types here
-   for (int i = 1; i < num_normal_parms - 1; ++count, i += 2) {
+   data = (sql_data_node *) AllocateMemory(MALLOC_ID_SQL, sizeof(sql_data_node) * num_expected);
+ 
+   for (int i = 1; i < num_normal_parms - 1; ++count, i += 2)
+   {
+      // Check parameter types here.
       val_check = RetrieveValue(object_id, local_vars, normal_parm_array[i].type, normal_parm_array[i].value);
       val = RetrieveValue(object_id, local_vars, normal_parm_array[i + 1].type, normal_parm_array[i + 1].value);
       if (val_check.v.data != val.v.tag)
       {
-         bprintf("Wrong Type of Parameter in C_RecordStat() %i", val.v.data);
-         FreeDataNodeMemory(num_expected, i - 1, data);
-         return NIL;
+         if (!(val_check.v.data == RESOURCE_GER && val.v.tag == TAG_RESOURCE))
+         {
+            bprintf("Wrong Type of Parameter in C_RecordStat(), expected %s found %s",
+               ((val_check.v.data == RESOURCE_GER) ? "RESOURCE_GER" : GetTagName(val_check)),
+                  GetTagName(val));
+            FreeDataNodeMemory(num_expected, count, data);
+            return NIL;
+         }
       }
 
-      data[count].type = val.v.tag;
-      switch (val.v.tag)
+      data[count].type = (val_check.v.data == RESOURCE_GER) ? RESOURCE_GER : val.v.tag;
+      switch (data[count].type)
       {
       case TAG_NIL:
       case TAG_INT:
@@ -5384,17 +5401,35 @@ int C_RecordStat(int object_id,local_var_type *local_vars,
          if (!rsc_node || !rsc_node->resource_val[0])
          {
             bprintf("Couldn't lookup resource node %i in C_RecordStat()", val.v.data);
-            FreeDataNodeMemory(num_expected, i - 1, data);
+            FreeDataNodeMemory(num_expected, count, data);
             return NIL;
          }
          data[count].value.str = MySQLDuplicateString(rsc_node->resource_val[0]);
+         break;
+      case RESOURCE_GER:
+         // Switch data type to TAG_RESOURCE, and retrieve the German resource if present.
+         data[count].type = TAG_RESOURCE;
+         rsc_node = GetResourceByID(val.v.data);
+         if (!rsc_node || !rsc_node->resource_val[0])
+         {
+            bprintf("Couldn't lookup resource node %i in C_RecordStat()", val.v.data);
+            FreeDataNodeMemory(num_expected, count, data);
+            return NIL;
+         }
+         if (!rsc_node->resource_val[1])
+         {
+            bprintf("Missing German rsc %i in C_RecordStat(), using English rsc", val.v.data);
+            data[count].value.str = MySQLDuplicateString(rsc_node->resource_val[0]);
+         }
+         else
+            data[count].value.str = MySQLDuplicateString(rsc_node->resource_val[1]);
          break;
       case TAG_STRING:
          snod = GetStringByID(val.v.data);
          if (!snod || !snod->data)
          {
             bprintf("C_RecordStat got null string for ID %i", val.v.data);
-            FreeDataNodeMemory(num_expected, i - 1, data);
+            FreeDataNodeMemory(num_expected, count, data);
             return NIL;
          }
          data[count].value.str = MySQLDuplicateString(snod->data);
@@ -5404,7 +5439,7 @@ int C_RecordStat(int object_id,local_var_type *local_vars,
          if (!session || !session->account)
          {
             bprintf("C_RecordStat got null session or account for session ID %i", val.v.data);
-            FreeDataNodeMemory(num_expected, i - 1, data);
+            FreeDataNodeMemory(num_expected, count, data);
             return NIL;
          }
          data[count].type = TAG_INT;
@@ -5413,7 +5448,7 @@ int C_RecordStat(int object_id,local_var_type *local_vars,
       default:
          bprintf("C_RecordStat got type %s which cannot be handled, aborting call",
             GetTagName(val));
-         FreeDataNodeMemory(num_expected, i - 1, data);
+         FreeDataNodeMemory(num_expected, count, data);
          return NIL;
       }
    }

@@ -870,7 +870,7 @@ char *BlakodDebugInfo()
    static char s[100];
    class_node *c;
 
-   if (kod_stat.interpreting_class == INVALID_CLASS)
+   if (kod_stat.interpreting_class == INVALID_CLASS || !IsInterpreting())
    {
       sprintf(s,"Server");
    }

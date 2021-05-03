@@ -20,6 +20,9 @@
 #define MAX_ITEMS_UNTIL_LOOP   10
 #define SLEEPINIT              100
 
+// Max number of parameters to an SQL call. Based on max kod params.
+#define MAX_SQL_PARAMS 45
+
 sql_queue queue         = {0, 0, 0, 0};
 HANDLE hMySQLWorker     = 0;
 sql_worker_state state	= STOPPED;
@@ -29,6 +32,15 @@ char* user     = 0;
 char* password = 0;
 char* db       = 0;
 int   port     = 3306;
+
+// Calls mysql_query with query 'b' and logs an error if query fails.
+// Doesn't log 'table already exists' error.
+#define MYSQL_QUERY_CHECKED(a, b, c) \
+   c = mysql_query(a, b); \
+   if (c != 0) { \
+      const char *_err = mysql_error(a); \
+      if (!(strstr(_err, "Table") && strstr(_err, "already exists"))) { \
+         bprintf("MySQL error %i: %s", c, _err); } }
 
 #pragma region SQL
 #define SQLQUERY_CREATETABLE_MONEYTOTAL										"\
@@ -312,6 +324,10 @@ int   port     = 3306;
 	END"
 #pragma endregion
 
+/*
+ * MySQLGenerateDrop: Assembles a string in the passed buffer which specifies
+ *   a SQL procedure to drop based on the sql record type passed.
+ */
 void MySQLGenerateDrop(sql_recordtype type, char *buffer)
 {
    int num_chars = sprintf(buffer, "DROP PROCEDURE IF EXISTS %s;",
@@ -319,6 +335,10 @@ void MySQLGenerateDrop(sql_recordtype type, char *buffer)
    buffer[num_chars] = 0;
 }
 
+/*
+ * MySQLGenerateCall: Assembles a string in the passed buffer which specifies
+ *   a call for a SQL procedure based on the sql record type passed.
+ */
 void MySQLGenerateCall(sql_recordtype type, char *buffer)
 {
    if (Statistics_Table[type].num_fields == 0)
@@ -335,6 +355,10 @@ void MySQLGenerateCall(sql_recordtype type, char *buffer)
 }
 
 #pragma region Public
+/*
+ * MySQLDuplicateString: Takes a string and returns a copy allocated with
+ *   SQL's memory ID for tracking. Returns NULL if passed NULL.
+ */
 char *MySQLDuplicateString(char *str)
 {
    if (!str)
@@ -381,6 +405,10 @@ void MySQLEnd()
 };
 
 
+/*
+ * MySQLTypeNumArgs: Return the number of expected arguments for a given
+ *   SQL statistic type.
+ */
 int MySQLTypeNumArgs(int type)
 {
    if (type >= STAT_NONE && type <= STAT_MAX)
@@ -391,6 +419,13 @@ int MySQLTypeNumArgs(int type)
    return 0;
 }
 
+/*
+ * FreeDataNodeMemory: Frees the memory associated with sql_data_node structure.
+ *   Handles freeing strings and then frees the structure itself.
+ *   total_fields: size of the array
+ *   fields_entered: number of valid array elements (for partially processed data)
+ *   data: the data array
+ */
 void FreeDataNodeMemory(int total_fields, int fields_entered, sql_data_node data[])
 {
    for (int i = 0; i < fields_entered; ++i)
@@ -407,16 +442,33 @@ void FreeDataNodeMemory(int total_fields, int fields_entered, sql_data_node data
    FreeMemory(MALLOC_ID_SQL, data, sizeof(sql_data_node) * total_fields);
 }
 
+/*
+ * MySQLRecordGeneric: Enqueues the data for a SQL procedure call.
+ *   Frees the memory associated with data if any checks fail.
+ *      type: the SQL statistic to enqueue
+ *      num_fields: the length of the data array passed in
+ *      data: an array of data to log to SQL
+ */
 BOOL MySQLRecordGeneric(int type, int num_fields, sql_data_node data[])
 {
 
-   // Check number of args - do this in C_RecordStat instead?
-   int num_args = MySQLTypeNumArgs(type);
-   if (num_args != num_fields)
+   // Check number of args - not done in C_RecordStat because blakserv
+   // can call MySQLRecordGeneric directly.
+   if (MySQLTypeNumArgs(type) != num_fields)
    {
-      bprintf("Invalid number of items %i received in MySQLRecordGeneric, expected %i.",
-         num_fields, num_args);
+      bprintf("Invalid number of items received in MySQLRecordGeneric for statistic %i, found %i expected %i.",
+         type, num_fields, MySQLTypeNumArgs(type));
 
+      FreeDataNodeMemory(num_fields, num_fields, data);
+      return FALSE;
+   }
+
+   if (num_fields > MAX_SQL_PARAMS)
+   {
+      bprintf("Too many params received in MySQLRecordGeneric for statistic %i, found %i max %i.",
+         type, num_fields, MAX_SQL_PARAMS);
+
+      FreeDataNodeMemory(num_fields, num_fields, data);
       return FALSE;
    }
 
@@ -424,6 +476,8 @@ BOOL MySQLRecordGeneric(int type, int num_fields, sql_data_node data[])
    if (!node)
    {
       bprintf("Could not allocate memory for sql queue node in MySQLRecordGeneric.");
+      FreeDataNodeMemory(num_fields, num_fields, data);
+
       return FALSE;
    }
    node->type = (sql_recordtype)type;
@@ -576,59 +630,42 @@ void __cdecl _MySQLWorker(void* parameters)
 
 void _MySQLVerifySchema()
 {
-	if (!mysql || !state)
-		return;
+   if (!mysql || !state)
+      return;
 
-	// create table (won't do it if exist)
-	mysql_query(mysql, SQLQUERY_CREATETABLE_MONEYTOTAL);
-	mysql_query(mysql, SQLQUERY_CREATETABLE_MONEYCREATED);
-	mysql_query(mysql, SQLQUERY_CREATETABLE_PLAYERLOGINS);
-	mysql_query(mysql, SQLQUERY_CREATETABLE_PLAYERDAMAGED);
-   mysql_query(mysql, SQLQUERY_CREATETABLE_PLAYERDEATH);
-   mysql_query(mysql, SQLQUERY_CREATETABLE_PLAYER);
-   mysql_query(mysql, SQLQUERY_CREATETABLE_GUILD);
+   // Used to check errors.
+   int status;
+
+   // create table (won't do it if exist)
+   MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATETABLE_MONEYTOTAL, status);
+   MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATETABLE_MONEYCREATED, status);
+   MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATETABLE_PLAYERLOGINS, status);
+   MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATETABLE_PLAYERDAMAGED, status);
+   MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATETABLE_PLAYERDEATH, status);
+   MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATETABLE_PLAYER, status);
+   MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATETABLE_GUILD, status);
 
    char buffer[128];
-   int status;
    // Drop existing procedures if present.
    for (int i = 1; i <= STAT_MAX; ++i)
    {
       MySQLGenerateDrop(Statistics_Table[i].stat_type, buffer);
-      status = mysql_query(mysql, buffer);
-      if (status != 0)
-         bprintf("MySQL drop error %i: %s", status, mysql_error(mysql));
+      MYSQL_QUERY_CHECKED(mysql, buffer, status);
    }
-   // recreate them
-   status = mysql_query(mysql, SQLQUERY_CREATEPROC_MONEYTOTAL);
-   if (status != 0)
-      bprintf("MySQL call error %i: %s", status, mysql_error(mysql));
-   status = mysql_query(mysql, SQLQUERY_CREATEPROC_MONEYCREATED);
-   if (status != 0)
-      bprintf("MySQL call error %i: %s", status, mysql_error(mysql));
-   status = mysql_query(mysql, SQLQUERY_CREATEPROC_PLAYERLOGIN);
-   if (status != 0)
-      bprintf("MySQL call error %i: %s", status, mysql_error(mysql));
-   status = mysql_query(mysql, SQLQUERY_CREATEPROC_PLAYERASSESSDAMAGE);
-   if (status != 0)
-      bprintf("MySQL call error %i: %s", status, mysql_error(mysql));
-   status = mysql_query(mysql, SQLQUERY_CREATEPROC_PLAYERDEATH);
-   if (status != 0)
-      bprintf("MySQL call error %i: %s", status, mysql_error(mysql));
-   status = mysql_query(mysql, SQLQUERY_CREATEPROC_PLAYER);
-   if (status != 0)
-      bprintf("MySQL call error %i: %s", status, mysql_error(mysql));
-   status = mysql_query(mysql, SQLQUERY_CREATEPROC_PLAYERSUICIDE);
-   if (status != 0)
-      bprintf("MySQL call error %i: %s", status, mysql_error(mysql));
-   status = mysql_query(mysql, SQLQUERY_CREATEPROC_GUILD);
-   if (status != 0)
-      bprintf("MySQL call error %i: %s", status, mysql_error(mysql));
-   status = mysql_query(mysql, SQLQUERY_CREATEPROC_GUILDDISBAND);
-   if (status != 0)
-      bprintf("MySQL call error %i: %s", status, mysql_error(mysql));
 
-	// set state to schema verified
-	state = SCHEMAVERIFIED;
+   // Recreate procedures.
+   MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATEPROC_MONEYTOTAL, status);
+   MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATEPROC_MONEYCREATED, status);
+   MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATEPROC_PLAYERLOGIN, status);
+   MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATEPROC_PLAYERASSESSDAMAGE, status);
+   MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATEPROC_PLAYERDEATH, status);
+   MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATEPROC_PLAYER, status);
+   MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATEPROC_PLAYERSUICIDE, status);
+   MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATEPROC_GUILD, status);
+   MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATEPROC_GUILDDISBAND, status);
+
+   // set state to schema verified
+   state = SCHEMAVERIFIED;
 };
 
 BOOL _MySQLEnqueue(sql_queue_node* Node)
@@ -762,11 +799,11 @@ void _MySQLCallProc(char* ProcName, MYSQL_BIND Parameters[])
 
 void _MySQLWriteNode(sql_queue_node* Node, BOOL ProcessNode)
 {
-	if (!Node || !Node->data)
-		return;
+   if (!Node || !Node->data)
+      return;
 
-   MYSQL_BIND params[45];
-   unsigned long str_lens[45];
+   MYSQL_BIND params[MAX_SQL_PARAMS];
+   unsigned long str_lens[MAX_SQL_PARAMS];
    my_bool is_null = 1;
 
    // really write it, or just free mem at end?

@@ -2167,5 +2167,9 @@ class_type make_class(class_type c, list_type resources, list_type classvars,
    st.maxproperties = 0;  // Property #0 is reserved for SELF
    st.maxclassvars  = -1;
 
-   return c;   
+   // If there was an error in this class, mark it as not new so
+   // no code is generated for it.
+   c->is_new = generate_code;
+
+   return c;
 }

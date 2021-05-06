@@ -12,7 +12,8 @@
 #ifndef _RSCLOAD_H
 #define _RSCLOAD_H
 
-#define MAX_LANGUAGE_ID 184 /* Max number of languages */
+// NOTE: Change this if we ever use more than English + German
+#define MAX_LANGUAGE_ID 2 /* Max number of languages */
 /*
  * This callback function is called once per resource.  If it returns true, the next resource
  * is loaded; if it returns false, loading of the file immediately stops and RscFileLoad

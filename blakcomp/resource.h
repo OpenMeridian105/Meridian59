@@ -12,7 +12,8 @@
 #ifndef _RESOURCE_H
 #define _RESOURCE_H
 
-#define MAX_LANGUAGE_ID 184
+// NOTE: Change this if we ever use more than English + German
+#define MAX_LANGUAGE_ID 2
 
 Bool check_for_class_resource_string(id_type id);
 void write_resources(char *fname);

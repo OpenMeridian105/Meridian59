@@ -3457,14 +3457,30 @@ messages:
       return;
    }
 
-   PlayHitSound(what=$,damage=0,stroke_obj=$,use_weapon=$)
+   PlayHitSound(what=$,damage=0,stroke_obj=$,oBody=$)
    {
-      local iRoll, rSound, i, iArmor, oEnchantment;
+      local iRoll, rSound, i, iArmor, oEnchantment, oSource;
+
+      // Usually, we are the source of the hit sound.
+      oSource = self;
+
+      // If we are dealing with a killing blow. We need a body.
+      if (damage = $)
+      {
+         if oBody = $
+         {
+            return;
+         }
+         else
+         {
+            oSource = oBody;
+         }
+      }
 
       // Players tend to be quite whiny. Play an ouch sound in any case.
       if IsClass(self,&Player)
       {
-         Send(poOwner,@SomethingWaveRoom,#what=self,
+         Send(poOwner,@SomethingWaveRoom,#what=oSource,
                #wave_rsc=Send(self,@GetOuchSound));
       }
 
@@ -3490,7 +3506,7 @@ messages:
             if oEnchantment <> $
             {
                rSound = Send(oEnchantment,@GetHitSound);
-               Send(poOwner,@SomethingWaveRoom,#what=self,#wave_rsc=rSound);
+               Send(poOwner,@SomethingWaveRoom,#what=oSource,#wave_rsc=rSound);
             }
          }
 
@@ -3565,7 +3581,7 @@ messages:
             }
          }
 
-         Send(poOwner,@SomethingWaveRoom,#what=self,#wave_rsc=rSound);
+         Send(poOwner,@SomethingWaveRoom,#what=oSource,#wave_rsc=rSound);
       }
       else
       {
@@ -3626,7 +3642,7 @@ messages:
             }
          }
 
-         Send(poOwner,@SomethingWaveRoom,#what=self,#wave_rsc=rSound);
+         Send(poOwner,@SomethingWaveRoom,#what=oSource,#wave_rsc=rSound);
       }
 
 
@@ -3650,7 +3666,7 @@ messages:
                break;
          }
 
-         Send(poOwner,@SomethingWaveRoom,#what=self,#wave_rsc=rSound);
+         Send(poOwner,@SomethingWaveRoom,#what=oSource,#wave_rsc=rSound);
       }
 
       // If we are a player, our smacking has an added metallic ring
@@ -3701,7 +3717,7 @@ messages:
             return;
          }
 
-         Send(poOwner,@SomethingWaveRoom,#what=self,#wave_rsc=rSound);
+         Send(poOwner,@SomethingWaveRoom,#what=oSource,#wave_rsc=rSound);
       }
 
       return;

@@ -3461,16 +3461,19 @@ messages:
    {
       local iRoll, rSound, i, iArmor, oEnchantment, oSource;
 
-      // Usually, we are the source of the hit sound.
+      // Regular hit sounds originate from the victim.
       oSource = self;
 
-      // If we are dealing with a killing blow. We need a body.
+      // It's a killing blow. Since the victim leaves the room upon
+      // being killed, we play the sound at the victim's body instead.
       if (damage = $)
       {
+         // TryAttack doesn't provide a body. Skip.
          if oBody = $
          {
             return;
          }
+         // Killed calls the message again and provides a body.
          else
          {
             oSource = oBody;

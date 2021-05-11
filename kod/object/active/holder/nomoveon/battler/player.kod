@@ -85,7 +85,11 @@ constants:
    // How long since the last honor point change until a player is considered
    // inactive for the system? Measured in seconds, currently 60 days.
    USER_HONOR_INACTIVE_TIME = 60 * 60 * 24 * 60
-   
+
+   // How frequently should players get feedback for earning karma?
+   // Rate is 1 in KARMA_GAIN_REPORT_RATE
+   KARMA_GAIN_REPORT_RATE = 10
+
 resources:
 
    include player.lkod
@@ -237,6 +241,17 @@ resources:
       "Your guardian angel whispers to you, \"I cannot protect you here.\""
    player_angel_rejoins = "Your guardian angel rejoins you."
    player_lose_node = "You lose your connection to the mana node in %s."
+
+   player_lose_karma_evil_sound = karmalossevil.ogg
+   player_lose_karma_good_sound = karmalossgood.ogg
+   player_lose_karma_evil = \
+      "~I~BQor frowns upon your random act of kindness!  Your evil powers wane."
+   player_lose_karma_good = \
+      "~I~BShal'ille frowns upon your callous act of cruelty!  Your holy powers wane."
+   player_gain_karma_evil = \
+      "~IQor smiles at your wicked deeds.  Your evil powers grow."
+   player_gain_karma_good = \
+      "~IShal'ille smiles at your heroic deeds.  Your holy powers grow."
 
    player_hit_immunity =  "%s%s%s laughs off your pitiful blow."
    player_hit_resisted = "%s%s%s shrugs off your attack."
@@ -2792,12 +2807,12 @@ messages:
       piKarma = 0;
       if bQor AND NOT bShalille
       {
-         piKarma = -2000;
+         piKarma = -2500;
       }
 
       if bShalille AND NOT bQor
       {
-         piKarma = 2000;
+         piKarma = 2500;
       }
 
       Send(self,@SetInitialHomeroom);
@@ -6594,8 +6609,8 @@ messages:
       {
          Send(self,@AddKarma,#amount=Send(self,@CalculateKarmaChangeFromKill,
                #karma_victim=Send(what,@GetKarma),
-               #karma_killer=Send(self,@GetKarma)),
-               #bIsMob=IsClass(what,&Monster));
+               #karma_killer=Send(self,@GetKarma),
+               #bIsMob=IsClass(what,&Monster)),#bReport=TRUE);
       }
 
       Send(what,@Killed,#what=self,#stroke_obj=stroke_obj);
@@ -7972,11 +7987,65 @@ messages:
       return piKarma/100;
    }
 
-   AddKarma(amount = 0)
+   AddKarma(amount = 0, bReport = FALSE)
    "Adds argument (which must be in hundredths of karma units) to karma"
    {
+      local iKarma;
+
+      // Take a snapshot in case we report.
+      iKarma = Abs(piKarma);
+
       piKarma = piKarma + amount;
       Send(self,@NewKarma);
+
+      if bReport
+      {
+         if (Abs(piKarma) < iKarma)
+         {
+            if piKarma < 0
+            {
+               if Nth(plSchools,SS_QOR)
+               {
+                  Send(self,@MsgSendUser,#message_rsc=player_lose_karma_evil);
+
+                  if NOT (piFlags & PFLAG_TUTORIAL)
+                  {
+                     Send(self,@WaveSendUser,#wave_rsc=player_lose_karma_evil_sound);
+                  }
+               }
+            }
+            else if piKarma > 0
+            {
+               if Nth(plSchools,SS_SHALILLE)
+               {
+                  Send(self,@MsgSendUser,#message_rsc=player_lose_karma_good);
+
+                  if NOT (piFlags & PFLAG_TUTORIAL)
+                  {
+                     Send(self,@WaveSendUser,#wave_rsc=player_lose_karma_good_sound);
+                  }
+               }
+            }
+         }
+         else if (Abs(piKarma) > iKarma)
+            AND NOT Random(0,KARMA_GAIN_REPORT_RATE)
+         {
+            if piKarma < 0
+            {
+               if Nth(plSchools,SS_QOR)
+               {
+                  Send(self,@MsgSendUser,#message_rsc=player_gain_karma_evil);
+               }
+            }
+            else if piKarma > 0
+            {
+               if Nth(plSchools,SS_SHALILLE)
+               {
+                  Send(self,@MsgSendUser,#message_rsc=player_gain_karma_good);
+               }
+            }
+         }
+      }
 
       return;
    }
@@ -8221,6 +8290,37 @@ messages:
    }
 
    ////  Spells Stuff
+
+   HasSchool(iSchool=0)
+   "Returns TRUE if a player has access to at least one spell/skill from"
+   "the specified school, FALSE else."
+   {
+      if (iSchool < SCHOOL_MIN
+         OR iSchool > SCHOOL_MAX)
+      {
+         Debug("Bad school constant sent to HasSchool");
+         return FALSE;
+      }
+
+      switch(iSchool)
+      {
+         case SS_RIIJA:
+            return Nth(plSchools,iSchool)
+               > Send(self,@GetSpellAbility,#spell_num=SID_BLINK)
+                  + Send(self,@GetSpellAbility,#spell_num=SID_TRANSFERENCE)
+                  + Send(self,@GetSpellAbility,#spell_num=SID_PHASE);
+         case SS_FAREN:
+            return Nth(plSchools,iSchool)
+               > Send(self,@GetSpellAbility,#spell_num=SID_MEDITATE);
+         case SS_KRAANAN:
+            return Nth(plSchools,iSchool)
+               > Send(self,@GetSpellAbility,#spell_num=SID_CONVEYANCE);
+         default:
+            return Nth(plSchools,iSchool) > 0;
+      }
+
+      return FALSE;
+   }
 
    HasSpell(num = 0)
    "Returns TRUE if a spell is in a player's spell list,"

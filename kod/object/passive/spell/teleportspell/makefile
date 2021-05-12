@@ -5,6 +5,6 @@
 !include $(TOPDIR)\common.mak
 
 DEPEND = ..\teleportspell.bof
-BOFS = rescue.bof blink.bof elusion.bof deathrift.bof
+BOFS = rescue.bof blink.bof elusion.bof deathrift.bof shadrift.bof
 
 !include $(KODDIR)\kod.mak

@@ -1,0 +1,307 @@
+// Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+// All rights reserved.
+//
+// This software is distributed under a license that is described in
+// the LICENSE file that accompanies it.
+//
+// Meridian is a registered trademark.
+
+
+////////////////////////////////////////////////////////////////////////////////
+Hunt is PersonalEnchantment
+
+constants:
+
+   include blakston.khd
+
+resources:
+
+   include hunt.lkod
+
+   Hunt_name_rsc = "hunt"
+   Hunt_icon_rsc = ihunt.bgf
+   Hunt_desc_rsc = \
+      "Allows the casters to use their Swords of the Hunt to focus on a "
+      "player's trail and track him for a limited time.  The hunted player's "
+      "name must be spoken during the initial trance.  When the enchantment "
+      "is completed, for the duration of the spell the hunters will receive "
+      "periodic notification of the hunted player's whereabouts."
+
+   Hunt_sound = khunt.ogg
+
+   hunt_cold_trail = "Your trail for %s%s seems to have gone cold."
+   hunt_no_target = \
+      "You try to find a trail, but since you aren't looking for "
+      "anyone in particular, you find nothing."
+   hunt_target_is_dm = \
+      "~IImmortals leave no trail that can be followed by this spell.  "
+      "Try another target."
+   hunt_is_on = "~BThe hunt is on!"
+
+   hunt_lost_trackers = "You seem to have managed to lose your trackers!"
+   hunt_gain_trackers = "~BYou sense that someone knows where you are..."
+
+   hunt_must_be_murderer = \
+      "Sensing that the target's soul is unmarred, the spell fails."
+
+   hunt_hunters_only = \
+      "First you must wield a Sword of the Hunt to focus on your target's trail."
+
+classvars:
+
+   vrName = Hunt_name_rsc
+   vrIcon = Hunt_icon_rsc
+   vrDesc = Hunt_desc_rsc
+   vrDesc2 = hunt_gain_trackers
+
+   vrEnchantment_On = hunt_is_on
+
+   vrSucceed_wav = Hunt_sound
+
+   viMana = 15
+
+   viSpell_num = SID_HUNT
+   viSchool = SS_KRAANAN
+   viSpell_level = 5
+
+   viSpellExertion = 10
+   viCast_time = 10000
+   viChance_To_Increase = 50
+
+   vbRecastable = TRUE
+
+   // 15 mins
+   viHuntTime = 900000
+
+properties:
+
+messages:
+
+   ResetReagents()
+   {
+      plReagents = $;
+      plReagents = Cons([&KriipaClaw,2],plReagents);
+
+      return;
+   }
+
+   CanPayCosts(who = $, lTargets = $, bItemCast = FALSE)
+   {
+      local oRoom;
+
+      oRoom = Send(who,@GetOwner);
+
+      if oRoom = $
+      {
+         return FALSE;
+      }
+
+      if NOT IsClass(who,&DM)
+         AND Send(who,@FindHoldingActive,#class=&HunterSword) = $
+      {
+         Send(who,@MsgSendUser,#message_rsc=hunt_hunters_only);
+         return FALSE;
+      }
+
+      propagate;
+   }
+
+   DoSpellEffects(who = $,lTargets=$,iSpellPower=0)
+   {
+      local i, oTarget, lCasters, state;
+
+      if lTargets <> $
+      {
+         oTarget = First(lTargets);
+      }
+
+      if oTarget = $
+         OR oTarget = who
+      {
+         return FALSE;
+      }
+
+      lCasters = [who];
+
+      if Send(oTarget,@IsEnchanted,#what=self)
+      {
+         state = Send(oTarget,@GetEnchantedState,#what=self);
+         if state <> $
+         {
+            if NOT FindListElem(state,who)
+            {
+               // Target already being tracked, add to list of hunters
+               lCasters = Cons(who,state);
+            }
+         }
+      }
+
+      state = $;
+      if Send(who,@IsEnchanted,#what=self)
+      {
+         // Hunter is being tracked by other hunters
+         state = Send(who,@GetEnchantedState,#what=self);
+
+         // Remove the previous hunt
+         Send(who,@RemoveEnchantment,#what=self,#report=FALSE);
+      }
+
+      Send(who,@MsgSendUser,#message_rsc=hunt_is_on);
+      Send(who,@StartEnchantment,#what=self,
+            #state=state,#time=viHuntTime,#addicon=TRUE,
+            #iSpellPower=iSpellPower,#lastcall=TRUE);
+
+      Send(oTarget,@WaveSendUser,#wave_rsc=vrSucceed_wav);
+      Send(oTarget,@MsgSendUser,#message_rsc=hunt_gain_trackers);
+      Send(oTarget,@StartEnchantment,#what=self,
+            #state=lCasters,#time=viHuntTime,#addicon=FALSE,
+            #iSpellPower=iSpellPower,#lastcall=TRUE);
+
+      Send(self,@InformHunters,#lCasters=lCasters,#oTarget=oTarget);
+
+      return TRUE;
+   }
+
+   InformHunters(lCasters = $, oTarget = $)
+   {
+      local oSpell, oRoom, rLocation, i;
+
+      if oTarget = $
+      {
+         return;
+      }
+
+      oSpell = Send(SYS,@FindSpellByNum,#Num=SID_CLOAK);
+
+      oRoom = Send(oTarget,@GetOwner);
+      rLocation = Send(oRoom,@GetName);
+
+      if Send(oTarget,@IsEnchanted,#what=oSpell)
+         AND (Random(1,100) < Send(oTarget,@GetEnchantedState,#what=oSpell))
+      {
+         // Will mislead hunters with random room if Cloak is on
+         // and passes state check.
+         oRoom = Send(oSpell,@GetWrongRoom);
+         rLocation = Send(oRoom,@GetName);
+      }
+
+      foreach i in lCasters
+      {
+         Send(i,@MsgSendUser,#message_rsc=player_to_hunters,
+            #parm1=Send(oTarget,@GetDef),#parm2=Send(oTarget,@GetTrueName),
+            #parm3=rLocation);
+      }
+
+      return;
+   }
+
+   GetNumSpellTargets()
+   {
+      return 0;
+   }
+
+   TranceBlocksSay()
+   {
+      return TRUE;
+   }
+
+   GetTranceTime(iSpellpower=0,who=$)
+   {
+      return viCast_time;
+   }
+
+   SomethingSaidDuringTrance(who=$,string=$)
+   {
+      local oPrey, lTargets;
+
+      oPrey = Send(SYS,@FindUserByString,#string=string);
+
+      if (oPrey = $)
+      {
+         return;
+      }
+
+      if NOT IsClass(who,&DM)
+         AND IsClass(oPrey,&DM) 
+         AND NOT Send(oPrey,@IsHuntable)
+      {
+         Send(who,@MsgSendUser,#message_rsc=hunt_target_is_dm);
+
+         return;
+      }
+
+      lTargets = $;
+
+      if oPrey <> $
+      {
+         // Use EVENT_STEER so we don't print message
+         Send(who,@BreakTrance,#event=EVENT_STEER);
+         lTargets = Cons(oPrey,lTargets);
+         Send(self,@CastSpell,#who=who,#lTargets=lTargets,
+              #ispellpower=Send(self,@GetSpellPower,#who=who));
+      }
+
+      return;
+   }
+
+   EndEnchantment(who=$,state=0)
+   {
+      local i;
+
+      if state = $
+      {
+         return;
+      }
+
+      foreach i in state
+      {
+         Send(i,@RemoveEnchantment,#what=self,#report=FALSE);
+         Send(i,@MsgSendUser,#message_rsc=hunt_cold_trail,
+               #parm1=Send(who,@GetDef),#parm2=Send(who,@GetUserName));
+      }
+
+      Post(who,@ResetPlayerFlagList);
+
+      return;
+   }
+
+   SetSpellPlayerFlag(who=$)
+   {
+      local state;
+
+      state = Send(who,@GetEnchantedState,#what=self);
+      if state <> $
+      {
+         Send(who,@SetPlayerFlag,#flag=PFLAG2_HUNTED,#value=TRUE,#flagset=2);
+      }
+
+      return;
+   }
+
+   CanBeRemovedByPlayer()
+   {
+      return FALSE;
+   }
+
+   ShowDesc(who=$)
+   {
+      local rSchool;
+
+      // Show player on login that they are being hunted
+      if Send(who,@GetEnchantedState,#what=self) <> $
+      {
+         rSchool = Send(self,@GetSchoolStr);
+
+         AddPacket(4,spell_desc_school, 4, rSchool,
+            4,spell_desc_level, 4, viSpell_Level,
+            4,spell_desc_mana, 4,viMana,4,spell_desc_vigor,
+            4,viSpellExertion,4,vrDesc2);
+
+         return;
+      }
+
+      propagate;
+   }
+
+end
+////////////////////////////////////////////////////////////////////////////////

@@ -1,0 +1,304 @@
+// Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+// All rights reserved.
+//
+// This software is distributed under a license that is described in
+// the LICENSE file that accompanies it.
+//
+// Meridian is a registered trademark.
+
+
+////////////////////////////////////////////////////////////////////////////////
+DeathsDoor is TeleportationSpell
+
+constants:
+
+   include blakston.khd
+
+resources:
+
+   include shadrift.lkod
+
+   DeathsDoor_name_rsc = "shadow rift"
+   DeathsDoor_icon_rsc = ideadoor.bgf
+   DeathsDoor_desc_rsc = \
+      "One of the most guarded secrets in Meridian’s history, this ancient "
+      "ritual allowed the necromancers of old to summon the darkest of magics "
+      "to tear a rift into the fabric of space itself, thus granting safe "
+      "passage to their armies in case the need for an expeditious retreat "
+      "was to arise.  "
+      "The ritual asks for the blood of a sentient creature to be sprinkled on "
+      "the ground before the caster may speak the name of the destination to "
+      "which they intend to retreat.  "
+      "A note of caution:  Only a caster in possession of one of the fabled "
+      "Amulets of the Three may hope to channel the spell without being rent "
+      "asunder by the chaotic forces of the void."
+
+   DeathsDoor_sound = qdthdoor.ogg
+
+   DeathsDoor_no_angeled = \
+      "Your guardian angel would never stand for you engaging in an act so vile!"
+
+   DeathsDoor_necros_only = \
+      "Realizing your folly, you abandon your suicidal attempt to channel a "
+      "shadow rift without the protection of an Amulet of the Three."
+
+   DeathsDoor_already = \
+      "A tear in space begins to form in front of you, but quickly collapses in "
+      "on itself as the violent distortions of another nearby rift interfere "
+      "with your magics."
+
+   DeathsDoor_target_has_portal = \
+      "The chaotic energies already present at your chosen destination "
+      "interfere with your ritual, rendering any attempt at creating a stable "
+      "rift hopeless."
+
+   DeathsDoor_warning = \
+      "~BYou sense the violent distortions of a rift tearing itself into existence "
+      "nearby!"
+
+   DeathsDoor_trance = \
+      "You leave a smattering of blood at the ground beneath your feet "
+      "and speak the name of the destination to which you intend to "
+      "retreat."
+
+   DeathsDoor_no_dest = \
+      "Failing to latch onto a cross-dimensional destination, the emerging shadow "
+      "rift sputters, then collapses with a frizzling hiss and a final, distinct "
+      ">pop<."
+
+   DeathsDoor_pick = \
+      "The fabric of space around you shimmers, twists and warps as you begin "
+      "your ritual to summon a shadow rift that will grant you safe "
+      "passage to %s."
+
+   DeathsDoor_succeeded = \
+      "The fabric of space is torn asunder, and a dimensional rift appears!"
+
+   DeathsDoor_generic_fail = \
+      "The space around you begins to ripple and quiver, then quiets down again.  "
+      "Perhaps, the ritual is missing something?"
+
+classvars:
+
+   vrName = DeathsDoor_name_rsc
+   vrIcon = DeathsDoor_icon_rsc
+   vrDesc = DeathsDoor_desc_rsc
+
+   vrSucceed_wav = DeathsDoor_sound
+
+   viMana = 30
+
+   viSpell_num = SID_SHADOW_RIFT
+   viSchool = SS_QOR
+   viSpell_level = 4
+
+   viSpellExertion = 50
+   viCast_time = 60000 * 3
+   viChance_To_Increase = 25
+
+   vbAngeledCast = FALSE
+
+properties:
+
+   plTeleportLocations = $ // [player object, destination room]
+
+messages:
+
+   Delete()
+   {
+      plTeleportLocations = $;
+
+      propagate;
+   }
+
+   ResetReagents()
+   {
+      plReagents = $;
+      plReagents = Cons([&DarkAngelFeather,4],plReagents);
+
+      return;
+   }
+
+   CanPayCosts(who = $, lTargets = $, bItemCast = FALSE)
+   {
+      local oRoom;
+
+      oRoom = Send(who,@GetOwner);
+
+      if oRoom = $
+      {
+         return FALSE;
+      }
+
+      if NOT IsClass(who,&DM)
+         AND NOT Send(who,@IsUsingA,#Class=&NecromancerAmulet)
+      {
+         Send(who,@MsgSendUser,#message_rsc=deathsDoor_necros_only);
+         return FALSE;
+      }
+
+      if NOT Send(oRoom,@CanHavePlayerPortal)
+         OR Send(oRoom,@CheckRoomFlag,#flag=ROOM_NO_COMBAT)
+         OR Send(oRoom,@CheckRoomFlag,#flag=ROOM_SAFELOGOFF)
+      {
+         Send(who,@MsgSendUser,#message_rsc=DeathsDoor_generic_fail);
+         return FALSE;
+      }
+
+      // Can't cast just after attacking someone
+      if Send(who,@GetLastPlayerAttackTime)
+         + Send(SETTINGS_OBJECT,@TeleportAttackDelaySec)
+         > GetTime()
+      {
+         Send(who,@MsgSendUser,#message_rsc=spell_too_soon_since_attacking);
+         return FALSE;
+      }
+
+      if (NOT vbAngeledCast
+         AND NOT Send(who,@CheckPlayerFlag,#flag=PFLAG_PKILL_ENABLE))
+      {
+         Send(who,@MsgSendUser,#message_rsc=DeathsDoor_no_angeled);
+
+         return FALSE;
+      }
+
+      propagate;
+   }
+
+   GetTranceTime(iSpellpower=0,who=$)
+   {
+      return viCast_time;
+   }
+
+   DoSpellEffects(who = $, lTargets = $)
+   {
+      local oNecroPortal, oTeleportLocation, i, each_obj;
+
+      if who = $
+      {
+         return FALSE;
+      }
+
+      oTeleportLocation = Send(self,@GetTeleportLocation,#who=who);
+       if oTeleportLocation <> $
+       {
+            foreach i in Send(oTeleportLocation,@GetHolderActive)
+            {
+               each_obj = First(i);
+               if IsClass(each_obj,&User)
+               {
+                  Send(each_obj,@MsgSendUser,#message_rsc=DeathsDoor_warning);
+                  Send(each_obj,@WaveSendUser,#wave_rsc=DeathsDoor_sound);
+               }
+            }
+
+            // Where the portal leads
+            oNecroPortal = Create(&NecropolisPortal,#oRoom=oTeleportLocation);
+            Send(oNecroPortal,@SetTarget,#oRoom=oTeleportLocation);
+
+            Send(SYS,@UtilGoRandomNear,#what=oNecroPortal,#where=Send(who,@GetOwner),
+               #new_row=Send(who,@GetRow),#new_col=Send(who,@GetCol));
+
+            Send(who,@MsgSendUser,#message_rsc=DeathsDoor_succeeded);
+
+            Send(self,@RemoveTeleportLocation,#who=who);
+       }
+       else
+       {
+          Send(who,@MsgSendUser,#message_rsc=DeathsDoor_no_dest);
+          return FALSE;
+       }
+
+      return TRUE;
+   }
+
+   SuccessChance(who=$)
+   {
+      return TRUE;
+   }
+
+   TranceBlocksSay()
+   {
+      return TRUE;
+   }
+
+   BeginCastingTrance(who=$,lTargets=$,iSpellpower=$)
+   {
+      Post(who,@MsgSendUser,#message_rsc=DeathsDoor_trance);
+
+      propagate;
+   }
+
+   SomethingSaidDuringTrance(who=$,string=$,lTargets = $)
+   {
+      local oRoom;
+
+      oRoom = Send(SYS,@FindRoomByString,#string=string);
+
+      // Ask room if we're allowed to teleport there.
+      // For example, portals into guild halls are a bad idea.
+      if oRoom <> $
+         AND NOT (oRoom = Send(who,@GetOwner))
+         AND Send(oRoom,@CanHavePlayerPortal)
+         AND Send(oRoom,@SeanceCheck)
+         AND NOT (Send(oRoom,@CheckRoomFlag,#flag=ROOM_NO_COMBAT)
+            OR Send(oRoom,@CheckRoomFlag,#flag=ROOM_SAFELOGOFF))
+      {
+         Send(self,@AddTeleportLocation,#who=who,#oRoom=oRoom);
+
+         Send(who,@MsgSendUser,#message_rsc=DeathsDoor_pick,
+            #parm1=Send(oRoom,@GetName));
+      }
+
+      propagate;
+   }
+
+   GetTeleportLocation(who=$)
+   {
+      local i;
+
+      foreach i in plTeleportLocations
+      {
+         if who = First(i)
+         {
+            return Nth(i,2);
+         }
+      }
+
+      return $;
+   }
+
+   AddTeleportLocation(who=$,oRoom=$)
+   {
+      local index;
+
+      index = FindListElem(plTeleportLocations,who);
+      if index
+      {
+         SetNth(plTeleportLocations,index,oRoom);
+      }
+      else
+      {
+         plTeleportLocations = Cons([who, oRoom],plTeleportLocations);
+      }
+
+      return;
+   }
+
+   RemoveTeleportLocation(who=$)
+   {
+      local i;
+
+      foreach i in plTeleportLocations
+      {
+         if who = First(i)
+         {
+            plTeleportLocations = DelListElem(plTeleportLocations,i);
+         }
+      }
+
+      return;
+   }
+
+end
+////////////////////////////////////////////////////////////////////////////////

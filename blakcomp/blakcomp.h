@@ -79,7 +79,8 @@
 
 #define TABLESIZE       3037    /* Size of symbol tables */
 
-#define MAX_LANGUAGE_ID 184
+// NOTE: Change this if we ever use more than English + German
+#define MAX_LANGUAGE_ID 2
 
 typedef int Bool;
 enum {False = 0, True = 1};

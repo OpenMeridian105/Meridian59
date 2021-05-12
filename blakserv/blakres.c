@@ -49,12 +49,10 @@ char * GetRsbMD5(void)
 
 void InitResource(void)
 {
-	int i;
-
 	resources_table_size = ConfigInt(MEMORY_SIZE_RESOURCE_HASH);
 	resources = (resource_node **)AllocateMemory(MALLOC_ID_RESOURCE,
 																resources_table_size*sizeof(resource_node *));
-	for (i=0;i<resources_table_size;i++)
+	for (int i=0;i<resources_table_size;i++)
 		resources[i] = NULL;
 
 	next_dynamic_rsc = MIN_DYNAMIC_RSC;
@@ -65,9 +63,8 @@ void InitResource(void)
 void ResetResource(void)
 {
    resource_node *r,*temp;
-   int i;
 
-   for (i=0;i<resources_table_size;i++)
+   for (int i=0;i<resources_table_size;i++)
    {
       r = resources[i];
       while (r != NULL)
@@ -77,10 +74,8 @@ void ResetResource(void)
          for (int j = 0; j < MAX_LANGUAGE_ID; j++)
          {
             if (r->resource_val[j])
-            {
                FreeMemory(MALLOC_ID_RESOURCE, r->resource_val[j],
                   strlen(r->resource_val[j])+1);
-            }
          }
          if (r->resource_name)
             FreeMemory(MALLOC_ID_KODBASE, r->resource_name, strlen(r->resource_name) + 1);
@@ -210,17 +205,14 @@ void DynamicResourceChangeNotify(session_node *s)
 
 resource_node * GetResourceByID(int id)
 {
-	resource_node *r;
+   for (resource_node *r = resources[id % resources_table_size];
+      r != NULL; r = r->next)
+   {
+      if (r->resource_id == id)
+         return r;
+   }
 
-	r = resources[id % resources_table_size];
-	while (r != NULL)
-	{
-		if (r->resource_id == id)
-			return r;
-		r = r->next;
-	}
-
-	return NULL;
+   return NULL;
 }
 
 // Returns language string 'lang_id' of resource 'id'.
@@ -249,10 +241,7 @@ char * GetResourceStrByLanguageID(int id, int lang_id)
 
 Bool IsResourceByID(int id)
 {
-	resource_node *r = GetResourceByID(id);
-	if (r == NULL)
-		return False;
-	return True;
+	return GetResourceByID(id) != NULL;
 }
 
 resource_node * GetResourceByName(const char *resource_name)
@@ -270,9 +259,8 @@ resource_node * GetResourceByName(const char *resource_name)
 void ForEachResource(void (*callback_func)(resource_node *r))
 {
 	resource_node *r;
-	int i;
 	
-	for (i=0;i<resources_table_size;i++)
+	for (int i=0;i<resources_table_size;i++)
 	{
       r = resources[i];
 		while (r != NULL)
@@ -288,9 +276,8 @@ void ForEachResource(void (*callback_func)(resource_node *r))
 void ForEachDynamicRsc(void (*callback_func)(resource_node *r))
 {
 	resource_node *r;
-	int i;
 	
-	for (i=0;i<resources_table_size;i++)
+	for (int i=0;i<resources_table_size;i++)
 	{
       r = resources[i];
 		while (r != NULL)

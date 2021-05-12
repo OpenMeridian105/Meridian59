@@ -1572,7 +1572,7 @@ messages:
 
    NewOwner(what = $)
    {
-      local iBasePhaseTime, iMaxHealth;
+      local iBasePhaseTime, iMaxHealth, oSpell, state;
 
       Send(self,@ResetGainFlags);
 
@@ -1598,9 +1598,18 @@ messages:
 
       Send(self,@BreakTrance,#event=EVENT_NEWOWNER);
 
+      // Special Case: Inform hunters
       if (piFlags2 & PFLAG2_HUNTED)
       {
-         Send(self,@InformHunters);
+         oSpell = Send(SYS,@FindSpellByNum,#Num=SID_HUNT);
+         if Send(self,@IsEnchanted,#what=oSpell)
+         {
+            state = Send(self,@GetEnchantedState,#what=oSpell);
+            if state <> $
+            {
+               Send(oSpell,@InformHunters,#oTarget=self,#lCasters=state);
+            }
+         }
       }
 
       if Send(poOwner,@CheckRoomFlag,#flag=ROOM_NO_COMBAT)
@@ -1665,44 +1674,6 @@ messages:
       }
 
       return;
-   }
-
-   InformHunters()
-   {
-      local i, j, oSpell, state, oSpellCloak, rLocation, lRoomlist, oRoom;
-
-      oSpell = Send(SYS,@FindSpellByNum,#Num=SID_HUNT);
-      oSpellCloak = Send(SYS,@FindSpellByNum,#Num=SID_CLOAK);
-      rLocation = Send(poOwner,@GetName);
-
-      if Send(self,@IsEnchanted,#what=oSpellCloak)
-         AND (Random(1,100) < Send(self,@GetEnchantedState,#what=oSpellCloak))
-      {
-         // Will mislead hunters with random room if Cloak is on
-         // and passes state check.
-         oRoom = Send(oSpellCloak,@GetWrongRoom);
-         rLocation = Send(oRoom,@GetName);
-      }
-
-      foreach i in plEnchantments
-      {
-         if Nth(i,2) = oSpell
-         {
-            state = Nth(i,3);
-            if NOT IsClass(First(state),&Prism)
-            {
-               foreach j in state
-               {
-                  Send(j,@MsgSendUser,#message_rsc=player_to_hunters,
-                        #parm1=Send(self,@GetDef),
-                        #parm2=Send(self,@GetTrueName),
-                        #parm3=rLocation);
-               }
-            }
-         }
-      }
-
-      return $;
    }
 
    ShowDesc()

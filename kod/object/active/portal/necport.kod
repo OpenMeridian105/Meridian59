@@ -14,9 +14,6 @@ constants:
 
    include blakston.khd
 
-   // 30 seconds (in ms)
-   NECROPORTAL_CLOSE_TIME = 30 * 1000
-
 resources:
 
    include necport.lkod
@@ -30,6 +27,9 @@ classvars:
    viMoveOn_type = MOVEON_TELEPORTER
    viMaxDistance = 0
 
+   // 60 seconds (in ms)
+   viNecroPortal_CloseTime = 60 * 1000
+
 properties:
 
    vrIcon = portal_hellportal_icon_rsc
@@ -38,27 +38,25 @@ properties:
 
 messages:
 
-   Constructor(lLocation=$)
+   Constructed(oRoom=$)
    {
-      Send(self,@SetTarget,#lTarget=lLocation);
+      Send(self,@SetTarget,#oRoom=oRoom);
 
       propagate;
    }
 
-   SetTarget(lTarget = $)
+   SetTarget(oRoom = $)
    {
-      if lTarget = $
+      if oRoom = $
       {
-         Debug("Necropolis portal got empty target");
-
          return;
       }
 
-      piDest_room = First(lTarget);
-      piDest_row = Nth(lTarget,2);
-      piDest_col = Nth(lTarget,3);
-      piDest_fine_row = Nth(lTarget,4);
-      piDest_fine_col = Nth(lTarget,5);
+      piDest_room = Send(oRoom,@GetRoomNum);
+      piDest_row = Send(oRoom,@GetTeleportRow);
+      piDest_col = Send(oRoom,@GetTeleportCol);
+      piDest_fine_row = 32;
+      piDest_fine_col = 32;
 
       return;
    }
@@ -74,23 +72,13 @@ messages:
       propagate;
    }
 
-   SomethingLeft(what=$)
+   NewOwner(what=$)
    {
       local oPlayer;
 
-      if IsClass(what,&Player)
+      if IsClass(what,&Room)
       {
-         // A player just left, so check if there are any left in the room
-         foreach oPlayer in Send(poOwner,@GetHolderActive)
-         {
-            if IsClass(First(oPlayer),&Player)
-            {
-               propagate;
-            }
-         }
-
-         // No players left, start closing it!
-         foreach oPlayer in Send(poOwner,@GetHolderActive)
+         foreach oPlayer in Send(what,@GetHolderActive)
          {
             if IsClass(First(oPlayer),&Player)
             {
@@ -105,7 +93,7 @@ messages:
             ptClosePortal = $;
          }
 
-         ptClosePortal = CreateTimer(self,@ClosePortal,NECROPORTAL_CLOSE_TIME);
+         ptClosePortal = CreateTimer(self,@ClosePortal,viNecroPortal_CloseTime);
       }
 
       propagate;
@@ -121,7 +109,7 @@ messages:
       {
          if IsClass(First(oPlayer),&Player)
          {
-            Send(First(oPlayer),@MsgSendUser,#message_rsc=NecropolisPortal_closed);
+            Post(First(oPlayer),@MsgSendUser,#message_rsc=NecropolisPortal_closed);
          }
       }
 

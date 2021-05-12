@@ -31,7 +31,7 @@ resources:
    Elusion_Success = "The world folds in on itself."
    Elusion_Location_list = \
       "The world shimmers and secret paths are revealed, leading "
-      "to %s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s."
+      "to %s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s."
    elusion_loc_list_comma = ", "
    elusion_loc_list_and = "and "
    elusion_loc_list_blank = ""
@@ -272,6 +272,13 @@ messages:
          {
             lAvailable = Cons(oHall,lAvailable);
          }
+
+         // Necromancers also can elude to their base
+         if Send(target,@IsUsingA,#class=&NecromancerAmulet)
+         {
+            lAvailable = Cons(Send(SYS,@FindRoomByNum,
+               #num=RID_GUILDH15),lAvailable);
+         }
       }
 
       if Send(Send(target,@GetOwner),@GetRegion) = RID_KOCATAN
@@ -341,7 +348,7 @@ messages:
 
       // If we didn't add enough location resources, make up for it
       // with blank ones.
-      while iNumRsc++ < 16
+      while iNumRsc++ < 18
       {
          AddPacket(4,elusion_loc_list_blank);
       }

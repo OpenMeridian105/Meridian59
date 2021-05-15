@@ -103,11 +103,18 @@ messages:
       propagate;
    }
 
-   SetGuildUpgrades()
+   SetGuildUpgrades(lList=$)
    {
+
       if (plUpgrades <> $)
       {
          SendList(plUpgrades,1,@Delete);
+      }
+
+      if lList <> $
+      {
+         plUpgrades = lList;
+         return;
       }
 
       plUpgrades = [
@@ -173,7 +180,12 @@ messages:
          OR (Send(poOwner,@GetGuildOwner) <> oGuild)
          OR Send(oGuild,@GetRank,#who=what) < RANK_LIEUTENANT
       {
-         return;
+         // Necromancer hall doesn't require player to be guilded
+         if NOT (Send(poOwner,@GetRoomNum) = RID_GUILDH15
+               AND Send(what,@IsUsingA,#Class=&NecromancerAmulet))
+         {
+            return;
+         }
       }
 
       // Respond to special commands.
@@ -453,6 +465,23 @@ messages:
    SetCreditBalance(num=0)
    {
       piGuild_Credit = num;
+
+      return;
+   }
+
+   SendAnimation()
+   {
+      local iGroup;
+
+      iGroup = 1;
+
+      if poOwner <> $
+         AND Send(poOwner,@GetRoomNum) = RID_GUILDH15
+      {
+         iGroup = 2;
+      }
+
+      AddPacket(1, ANIMATE_NONE, 2, iGroup);
 
       return;
    }

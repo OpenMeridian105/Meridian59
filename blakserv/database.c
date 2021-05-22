@@ -14,7 +14,7 @@
 
 #define SLEEPTIME              10
 #define SLEEPTIMENOCON         1000
-#define MAX_RECORD_QUEUE       1000
+#define MAX_RECORD_QUEUE       5000
 #define RECORD_ENQUEUE_TIMEOUT 60
 #define RECORD_DEQUEUE_TIMEOUT 60
 #define MAX_ITEMS_UNTIL_LOOP   10
@@ -117,17 +117,431 @@ int   port     = 3306;
    )                                                         \
    ENGINE=InnoDB DEFAULT CHARSET=latin1;"
 
-#define SQLQUERY_CREATETABLE_GUILD                       "\
-   CREATE TABLE guild (                                   \
-      guild_name            VARCHAR(100) NOT NULL,        \
-      guild_leader          VARCHAR(45) NOT NULL,         \
-      guild_hall            VARCHAR(100) DEFAULT NULL,    \
-      guild_rent_paid       INT(11) NOT NULL,             \
-      guild_disbanded       INT(1) NOT NULL DEFAULT '0',  \
-      guild_disbanded_time  DATETIME DEFAULT NULL,        \
-      PRIMARY KEY(guild_name)                             \
-   )                                                      \
+#define SQLQUERY_CREATETABLE_GUILD                          "\
+   CREATE TABLE guild (                                      \
+      guild_name            VARCHAR(100) NOT NULL,           \
+      guild_leader          VARCHAR(45) NOT NULL,            \
+      guild_hall            VARCHAR(100) DEFAULT NULL,       \
+      guild_rent_paid       INT(11) NOT NULL,                \
+      guild_disbanded       INT(1) NOT NULL DEFAULT '0',     \
+      guild_disbanded_time  DATETIME DEFAULT NULL,           \
+      PRIMARY KEY(guild_name)                                \
+   )                                                         \
    ENGINE = InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET = latin1;"
+
+#define SQLQUERY_CREATETABLE_SPELLS                     "\
+   CREATE TABLE wiki_spells                              \
+   (                                                     \
+     spell_id             INT(4) NOT NULL,               \
+     spell_name           VARCHAR(63) NOT NULL,          \
+     spell_name_ger       VARCHAR(63) NOT NULL,          \
+     spell_icon           VARCHAR(63) NOT NULL,          \
+     spell_desc           TEXT DEFAULT NULL,             \
+     spell_desc_ger       TEXT DEFAULT NULL,             \
+     spell_school         INT(4) DEFAULT NULL,           \
+     spell_level          INT(4) DEFAULT NULL,           \
+     spell_mana           INT(4) DEFAULT NULL,           \
+     spell_chance         INT(4) DEFAULT NULL,           \
+     spell_mediate_ratio  INT(4) DEFAULT NULL,           \
+     spell_exertion       INT(4) DEFAULT NULL,           \
+     spell_casttime       INT(4) DEFAULT NULL,           \
+     PRIMARY KEY(spell_id)                               \
+   )                                                     \
+   ENGINE=InnoDB DEFAULT CHARSET=latin1;"
+
+#define SQLQUERY_CREATETABLE_SKILLS                     "\
+   CREATE TABLE wiki_skills                              \
+   (                                                     \
+     skill_id             INT(4) NOT NULL,               \
+     skill_name           VARCHAR(63) NOT NULL,          \
+     skill_name_ger       VARCHAR(63) NOT NULL,          \
+     skill_icon           VARCHAR(63) NOT NULL,          \
+     skill_desc           TEXT DEFAULT NULL,             \
+     skill_desc_ger       TEXT DEFAULT NULL,             \
+     skill_school         INT(4) DEFAULT NULL,           \
+     skill_level          INT(4) DEFAULT NULL,           \
+     skill_chance         INT(4) DEFAULT NULL,           \
+     skill_mediate_ratio  INT(4) DEFAULT NULL,           \
+     skill_exertion       INT(4) DEFAULT NULL,           \
+     PRIMARY KEY(skill_id)                               \
+   )                                                     \
+   ENGINE=InnoDB DEFAULT CHARSET=latin1;"
+
+#define SQLQUERY_CREATETABLE_SPELL_REAGENT              "\
+   CREATE TABLE wiki_spell_reagent                       \
+   (                                                     \
+     spell_id              INT(4) NOT NULL,              \
+     spell_reagent         VARCHAR(63) NOT NULL,         \
+     spell_reagent_amount  INT(4) DEFAULT NULL,          \
+     PRIMARY KEY(spell_id, spell_reagent)                \
+   )                                                     \
+   ENGINE=InnoDB DEFAULT CHARSET=latin1;"
+
+#define SQLQUERY_CREATETABLE_MONSTER_LOOT               "\
+   CREATE TABLE wiki_monster_loot                        \
+   (                                                     \
+     monster_name         VARCHAR(63) NOT NULL,          \
+     monster_drop_item    VARCHAR(63) NOT NULL,          \
+     monster_loot_chance  INT(4) DEFAULT NULL,           \
+     PRIMARY KEY(monster_name, monster_drop_item)        \
+   )                                                     \
+   ENGINE=InnoDB DEFAULT CHARSET=latin1;"
+
+#define SQLQUERY_CREATETABLE_MONSTER                    "\
+   CREATE TABLE wiki_monster                             \
+   (                                                     \
+     monster_name            VARCHAR(63) NOT NULL,       \
+     monster_name_ger        VARCHAR(63) NOT NULL,       \
+     monster_icon            VARCHAR(63) NOT NULL,       \
+     monster_desc            TEXT DEFAULT NULL,          \
+     monster_desc_ger        TEXT DEFAULT NULL,          \
+     monster_level           INT(4) DEFAULT NULL,        \
+     monster_karma           INT(4) DEFAULT NULL,        \
+     monster_treasure        INT(4) DEFAULT NULL,        \
+     monster_speed           INT(4) DEFAULT NULL,        \
+     monster_behavior        INT(4) DEFAULT NULL,        \
+     monster_difficulty      INT(4) DEFAULT NULL,        \
+     monster_visiondistance  INT(4) DEFAULT NULL,        \
+     PRIMARY KEY(monster_name)                           \
+   )                                                     \
+   ENGINE=InnoDB DEFAULT CHARSET=latin1;"
+
+#define SQLQUERY_CREATETABLE_MONSTER_ZONE               "\
+   CREATE TABLE wiki_monster_zone                        \
+   (                                                     \
+     monster_rid          INT(4) NOT NULL,               \
+     monster_name         VARCHAR(63) NOT NULL,          \
+     monster_spawnchance  INT(4) DEFAULT NULL,           \
+     PRIMARY KEY(monster_rid, monster_name)              \
+   )                                                     \
+   ENGINE=InnoDB DEFAULT CHARSET=latin1;"
+
+#define SQLQUERY_CREATETABLE_NPCS                       "\
+   CREATE TABLE wiki_npcs                                \
+   (                                                     \
+     npc_name            VARCHAR(63) NOT NULL,           \
+     npc_name_ger        VARCHAR(63) NOT NULL,           \
+     npc_icon            VARCHAR(63) NOT NULL,           \
+     npc_desc            TEXT DEFAULT NULL,              \
+     npc_desc_ger        TEXT DEFAULT NULL,              \
+     npc_merchantmarkup  INT(4) DEFAULT NULL,            \
+     PRIMARY KEY(npc_name)                               \
+   )                                                     \
+   ENGINE=InnoDB DEFAULT CHARSET=latin1;"
+
+#define SQLQUERY_CREATETABLE_WEAPONS                    "\
+   CREATE TABLE wiki_weapons                             \
+   (                                                     \
+     weapon_name      VARCHAR(63) NOT NULL,              \
+     weapon_name_ger  VARCHAR(63) NOT NULL,              \
+     weapon_icon      VARCHAR(63) NOT NULL,              \
+     weapon_desc      TEXT DEFAULT NULL,                 \
+     weapon_desc_ger  TEXT DEFAULT NULL,                 \
+     weapon_value     INT(4) DEFAULT NULL,               \
+     weapon_weight    INT(4) DEFAULT NULL,               \
+     weapon_bulk      INT(4) DEFAULT NULL,               \
+     weapon_iflag     INT(4) DEFAULT NULL,               \
+     PRIMARY KEY(weapon_name)                            \
+   )                                                     \
+   ENGINE=InnoDB DEFAULT CHARSET=latin1;"
+
+#define SQLQUERY_CREATETABLE_ROOMS                      "\
+   CREATE TABLE wiki_rooms                               \
+   (                                                     \
+     room_name      VARCHAR(63) NOT NULL,                \
+     room_name_ger  VARCHAR(63) NOT NULL,                \
+     room_roo       VARCHAR(63) NOT NULL,                \
+     room_number    INT(4) NOT NULL,                     \
+     PRIMARY KEY(room_number)                            \
+   )                                                     \
+   ENGINE=InnoDB DEFAULT CHARSET=latin1;"
+
+#define SQLQUERY_CREATETABLE_NPC_ZONE                   "\
+   CREATE TABLE wiki_npc_zone                            \
+   (                                                     \
+     npc_name      VARCHAR(63) NOT NULL,                 \
+     npc_name_ger  VARCHAR(63) NOT NULL,                 \
+     npc_roomid    INT(4) NOT NULL,                      \
+     PRIMARY KEY(npc_name, npc_roomid)                   \
+   )                                                     \
+   ENGINE=InnoDB DEFAULT CHARSET=latin1;"
+
+#define SQLQUERY_CREATETABLE_NPC_SELLITEM               "\
+   CREATE TABLE wiki_npc_sellitem                        \
+   (                                                     \
+     npc_name       VARCHAR(63) NOT NULL,                \
+     npc_item_sold  VARCHAR(63) NOT NULL,                \
+     PRIMARY KEY(npc_name,npc_item_sold)                 \
+   )                                                     \
+   ENGINE=InnoDB DEFAULT CHARSET=latin1;"
+
+#define SQLQUERY_CREATETABLE_NPC_SELLSKILL              "\
+   CREATE TABLE wiki_npc_sellskill                       \
+   (                                                     \
+     npc_name        VARCHAR(63) NOT NULL,               \
+     npc_skill_id    INT(4) NOT NULL,                    \
+     PRIMARY KEY(npc_name,npc_skill_id)                  \
+   )                                                     \
+   ENGINE=InnoDB DEFAULT CHARSET=latin1;"
+
+#define SQLQUERY_CREATETABLE_NPC_SELLSPELL              "\
+   CREATE TABLE wiki_npc_sellspell                       \
+   (                                                     \
+     npc_name          VARCHAR(63) NOT NULL,             \
+     npc_spell_id      INT(4) NOT NULL,                  \
+     PRIMARY KEY(npc_name,npc_spell_id)                  \
+   )                                                     \
+   ENGINE=InnoDB DEFAULT CHARSET=latin1;"
+
+#define SQLQUERY_CREATETABLE_REAGENTS                   "\
+   CREATE TABLE wiki_reagents                            \
+   (                                                     \
+     reagent_name      VARCHAR(63) NOT NULL,             \
+     reagent_name_ger  VARCHAR(63) NOT NULL,             \
+     reagent_icon      VARCHAR(63) NOT NULL,             \
+     reagent_desc      TEXT DEFAULT NULL,                \
+     reagent_desc_ger  TEXT DEFAULT NULL,                \
+     reagent_value     INT(4) DEFAULT NULL,              \
+     reagent_weight    INT(4) DEFAULT NULL,              \
+     reagent_bulk      INT(4) DEFAULT NULL,              \
+     reagent_iflag     INT(4) DEFAULT NULL,              \
+     PRIMARY KEY(reagent_name)                           \
+   )                                                     \
+   ENGINE=InnoDB DEFAULT CHARSET=latin1;"
+
+#define SQLQUERY_CREATETABLE_FOOD                       "\
+   CREATE TABLE wiki_food                                \
+   (                                                     \
+     food_name      VARCHAR(63) NOT NULL,                \
+     food_name_ger  VARCHAR(63) NOT NULL,                \
+     food_icon      VARCHAR(63) NOT NULL,                \
+     food_desc      TEXT DEFAULT NULL,                   \
+     food_desc_ger  TEXT DEFAULT NULL,                   \
+     food_value     INT(4) DEFAULT NULL,                 \
+     food_weight    INT(4) DEFAULT NULL,                 \
+     food_bulk      INT(4) DEFAULT NULL,                 \
+     food_iflag     INT(4) DEFAULT NULL,                 \
+     PRIMARY KEY(food_name)                              \
+   )                                                     \
+   ENGINE=InnoDB DEFAULT CHARSET=latin1;"
+
+#define SQLQUERY_CREATETABLE_AMMO                       "\
+   CREATE TABLE wiki_ammo                                \
+   (                                                     \
+     ammo_name      VARCHAR(63) NOT NULL,                \
+     ammo_name_ger  VARCHAR(63) NOT NULL,                \
+     ammo_icon      VARCHAR(63) NOT NULL,                \
+     ammo_desc      TEXT DEFAULT NULL,                   \
+     ammo_desc_ger  TEXT DEFAULT NULL,                   \
+     ammo_value     INT(4) DEFAULT NULL,                 \
+     ammo_weight    INT(4) DEFAULT NULL,                 \
+     ammo_bulk      INT(4) DEFAULT NULL,                 \
+     ammo_iflag     INT(4) DEFAULT NULL,                 \
+     PRIMARY KEY(ammo_name)                              \
+   )                                                     \
+   ENGINE=InnoDB DEFAULT CHARSET=latin1;"
+
+#define SQLQUERY_CREATETABLE_ARMOR                      "\
+   CREATE TABLE wiki_armor                               \
+   (                                                     \
+     armor_name      VARCHAR(63) NOT NULL,               \
+     armor_name_ger  VARCHAR(63) NOT NULL,               \
+     armor_icon      VARCHAR(63) NOT NULL,               \
+     armor_desc      TEXT DEFAULT NULL,                  \
+     armor_desc_ger  TEXT DEFAULT NULL,                  \
+     armor_value     INT(4) DEFAULT NULL,                \
+     armor_weight    INT(4) DEFAULT NULL,                \
+     armor_bulk      INT(4) DEFAULT NULL,                \
+     armor_iflag     INT(4) DEFAULT NULL,                \
+     PRIMARY KEY(armor_name)                             \
+   )                                                     \
+   ENGINE=InnoDB DEFAULT CHARSET=latin1;"
+
+#define SQLQUERY_CREATETABLE_MISCITEMS                  "\
+   CREATE TABLE wiki_miscitems                           \
+   (                                                     \
+     misc_name      VARCHAR(63) NOT NULL,                \
+     misc_name_ger  VARCHAR(63) NOT NULL,                \
+     misc_icon      VARCHAR(63) NOT NULL,                \
+     misc_desc      TEXT DEFAULT NULL,                   \
+     misc_desc_ger  TEXT DEFAULT NULL,                   \
+     misc_value     INT(4) DEFAULT NULL,                 \
+     misc_weight    INT(4) DEFAULT NULL,                 \
+     misc_bulk      INT(4) DEFAULT NULL,                 \
+     misc_iflag     INT(4) DEFAULT NULL,                 \
+     PRIMARY KEY(misc_name)                              \
+   )                                                     \
+   ENGINE=InnoDB DEFAULT CHARSET=latin1;"
+
+#define SQLQUERY_CREATETABLE_RINGS                      "\
+   CREATE TABLE wiki_rings                               \
+   (                                                     \
+     rings_name      VARCHAR(63) NOT NULL,               \
+     rings_name_ger  VARCHAR(63) NOT NULL,               \
+     rings_icon      VARCHAR(63) NOT NULL,               \
+     rings_desc      TEXT DEFAULT NULL,                  \
+     rings_desc_ger  TEXT DEFAULT NULL,                  \
+     rings_value     INT(4) DEFAULT NULL,                \
+     rings_weight    INT(4) DEFAULT NULL,                \
+     rings_bulk      INT(4) DEFAULT NULL,                \
+     rings_iflag     INT(4) DEFAULT NULL,                \
+     PRIMARY KEY(rings_name)                             \
+   )                                                     \
+   ENGINE=InnoDB DEFAULT CHARSET=latin1;"
+
+#define SQLQUERY_CREATETABLE_RODS                       "\
+   CREATE TABLE wiki_rods                                \
+   (                                                     \
+     rods_name      VARCHAR(63) NOT NULL,                \
+     rods_name_ger  VARCHAR(63) NOT NULL,                \
+     rods_icon      VARCHAR(63) NOT NULL,                \
+     rods_desc      TEXT DEFAULT NULL,                   \
+     rods_desc_ger  TEXT DEFAULT NULL,                   \
+     rods_value     INT(4) DEFAULT NULL,                 \
+     rods_weight    INT(4) DEFAULT NULL,                 \
+     rods_bulk      INT(4) DEFAULT NULL,                 \
+     rods_iflag     INT(4) DEFAULT NULL,                 \
+     PRIMARY KEY(rods_name)                              \
+   )                                                     \
+   ENGINE=InnoDB DEFAULT CHARSET=latin1;"
+
+#define SQLQUERY_CREATETABLE_POTIONS                    "\
+   CREATE TABLE wiki_potions                             \
+   (                                                     \
+     potion_name      VARCHAR(63) NOT NULL,              \
+     potion_name_ger  VARCHAR(63) NOT NULL,              \
+     potion_icon      VARCHAR(63) NOT NULL,              \
+     potion_desc      TEXT DEFAULT NULL,                 \
+     potion_desc_ger  TEXT DEFAULT NULL,                 \
+     potion_value     INT(4) DEFAULT NULL,               \
+     potion_weight    INT(4) DEFAULT NULL,               \
+     potion_bulk      INT(4) DEFAULT NULL,               \
+     potion_iflag     INT(4) DEFAULT NULL,               \
+     PRIMARY KEY(potion_name)                            \
+   )                                                     \
+   ENGINE=InnoDB DEFAULT CHARSET=latin1;"
+
+#define SQLQUERY_CREATETABLE_SCROLLS                    "\
+   CREATE TABLE wiki_scrolls                             \
+   (                                                     \
+     scrolls_name      VARCHAR(63) NOT NULL,             \
+     scrolls_name_ger  VARCHAR(63) NOT NULL,             \
+     scrolls_icon      VARCHAR(63) NOT NULL,             \
+     scrolls_desc      TEXT DEFAULT NULL,                \
+     scrolls_desc_ger  TEXT DEFAULT NULL,                \
+     scrolls_value     INT(4) DEFAULT NULL,              \
+     scrolls_weight    INT(4) DEFAULT NULL,              \
+     scrolls_bulk      INT(4) DEFAULT NULL,              \
+     scrolls_iflag     INT(4) DEFAULT NULL,              \
+     PRIMARY KEY(scrolls_name)                           \
+   )                                                     \
+   ENGINE=InnoDB DEFAULT CHARSET=latin1;"
+
+#define SQLQUERY_CREATETABLE_WANDS                      "\
+   CREATE TABLE wiki_wands                               \
+   (                                                     \
+     wands_name      VARCHAR(63) NOT NULL,               \
+     wands_name_ger  VARCHAR(63) NOT NULL,               \
+     wands_icon      VARCHAR(63) NOT NULL,               \
+     wands_desc      TEXT DEFAULT NULL,                  \
+     wands_desc_ger  TEXT DEFAULT NULL,                  \
+     wands_iflag     INT(4) DEFAULT NULL,                \
+     PRIMARY KEY(wands_name)                             \
+   )                                                     \
+   ENGINE=InnoDB DEFAULT CHARSET=latin1;"
+
+#define SQLQUERY_CREATETABLE_QUESTITEMS                 "\
+   CREATE TABLE wiki_questitems                          \
+   (                                                     \
+     questitem_name      VARCHAR(63) NOT NULL,           \
+     questitem_name_ger  VARCHAR(63) NOT NULL,           \
+     questitem_icon      VARCHAR(63) NOT NULL,           \
+     questitem_desc      TEXT DEFAULT NULL,              \
+     questitem_desc_ger  TEXT DEFAULT NULL,              \
+     questitem_value     INT(4) DEFAULT NULL,            \
+     questitem_weight    INT(4) DEFAULT NULL,            \
+     questitem_bulk      INT(4) DEFAULT NULL,            \
+     questitem_iflag     INT(4) DEFAULT NULL,            \
+     PRIMARY KEY(questitem_name)                         \
+   )                                                     \
+   ENGINE=InnoDB DEFAULT CHARSET=latin1;"
+
+#define SQLQUERY_CREATETABLE_NECKLACE                   "\
+   CREATE TABLE wiki_necklace                            \
+   (                                                     \
+     necklace_name      VARCHAR(63) NOT NULL,            \
+     necklace_name_ger  VARCHAR(63) NOT NULL,            \
+     necklace_icon      VARCHAR(63) NOT NULL,            \
+     necklace_desc      TEXT DEFAULT NULL,               \
+     necklace_desc_ger  TEXT DEFAULT NULL,               \
+     necklace_value     INT(4) DEFAULT NULL,             \
+     necklace_weight    INT(4) DEFAULT NULL,             \
+     necklace_bulk      INT(4) DEFAULT NULL,             \
+     necklace_iflag     INT(4) DEFAULT NULL,             \
+     PRIMARY KEY(necklace_name)                          \
+   )                                                     \
+   ENGINE=InnoDB DEFAULT CHARSET=latin1;"
+
+#define SQLQUERY_CREATETABLE_INSTRUMENTS                "\
+   CREATE TABLE wiki_instruments                         \
+   (                                                     \
+     instrument_name      VARCHAR(63) NOT NULL,          \
+     instrument_name_ger  VARCHAR(63) NOT NULL,          \
+     instrument_icon      VARCHAR(63) NOT NULL,          \
+     instrument_desc      TEXT DEFAULT NULL,             \
+     instrument_desc_ger  TEXT DEFAULT NULL,             \
+     instrument_value     INT(4) DEFAULT NULL,           \
+     instrument_weight    INT(4) DEFAULT NULL,           \
+     instrument_bulk      INT(4) DEFAULT NULL,           \
+     instrument_iflag     INT(4) DEFAULT NULL,           \
+     PRIMARY KEY(instrument_name)                        \
+   )                                                     \
+   ENGINE=InnoDB DEFAULT CHARSET=latin1;"
+
+#define SQLQUERY_CREATETABLE_GEMS                       "\
+   CREATE TABLE wiki_gems                                \
+   (                                                     \
+     gem_name      VARCHAR(63) NOT NULL,                 \
+     gem_name_ger  VARCHAR(63) NOT NULL,                 \
+     gem_icon      VARCHAR(63) NOT NULL,                 \
+     gem_desc      TEXT DEFAULT NULL,                    \
+     gem_desc_ger  TEXT DEFAULT NULL,                    \
+     gem_value     INT(4) DEFAULT NULL,                  \
+     gem_weight    INT(4) DEFAULT NULL,                  \
+     gem_bulk      INT(4) DEFAULT NULL,                  \
+     gem_iflag     INT(4) DEFAULT NULL,                  \
+     PRIMARY KEY(gem_name)                               \
+   )                                                     \
+   ENGINE=InnoDB DEFAULT CHARSET=latin1;"
+
+#define SQLQUERY_CREATETABLE_OFFERINGS                  "\
+   CREATE TABLE wiki_offerings                           \
+   (                                                     \
+     offering_name      VARCHAR(63) NOT NULL,            \
+     offering_name_ger  VARCHAR(63) NOT NULL,            \
+     offering_icon      VARCHAR(63) NOT NULL,            \
+     offering_desc      TEXT DEFAULT NULL,               \
+     offering_desc_ger  TEXT DEFAULT NULL,               \
+     offering_value     INT(4) DEFAULT NULL,             \
+     offering_weight    INT(4) DEFAULT NULL,             \
+     offering_bulk      INT(4) DEFAULT NULL,             \
+     offering_iflag     INT(4) DEFAULT NULL,             \
+     PRIMARY KEY(offering_name)                          \
+   )                                                     \
+   ENGINE=InnoDB DEFAULT CHARSET=latin1;"
+
+#define SQLQUERY_CREATETABLE_QUESTS                     "\
+   CREATE TABLE wiki_quests                              \
+   (                                                     \
+     quest_name      VARCHAR(63) NOT NULL,               \
+     quest_name_ger  VARCHAR(63) NOT NULL,               \
+     quest_icon      VARCHAR(63) NOT NULL,               \
+     quest_desc      TEXT DEFAULT NULL,                  \
+     quest_desc_ger  TEXT DEFAULT NULL,                  \
+     quest_id        INT(4) DEFAULT NULL,                \
+     PRIMARY KEY(quest_name)                             \
+   )                                                     \
+   ENGINE=InnoDB DEFAULT CHARSET=latin1;"
 
 #define SQLQUERY_CREATEPROC_MONEYTOTAL      "\
    CREATE PROCEDURE WriteTotalMoney(       \n\
@@ -308,6 +722,968 @@ int   port     = 3306;
       guild_disbanded_time = now()       \n\
       WHERE guild_name = name;           \n\
    END"
+
+#define SQLQUERY_CREATEPROC_SPELLS                "\
+   CREATE PROCEDURE WriteSpells(                   \
+     IN spell_id             INT(4),               \
+     IN spell_name           VARCHAR(63),          \
+     IN spell_name_ger       VARCHAR(63),          \
+     IN spell_icon           VARCHAR(63),          \
+     IN spell_desc           TEXT,                 \
+     IN spell_desc_ger       TEXT,                 \
+     IN spell_school         INT(4),               \
+     IN spell_level          INT(4),               \
+     IN spell_mana           INT(4),               \
+     IN spell_chance         INT(4),               \
+     IN spell_mediate_ratio  INT(4),               \
+     IN spell_exertion       INT(4),               \
+     IN spell_casttime       INT(4))               \
+   BEGIN                                           \
+     INSERT INTO wiki_spells                       \
+      (  spell_id,                                 \
+         spell_name,                               \
+         spell_name_ger,                           \
+         spell_icon,                               \
+         spell_desc,                               \
+         spell_desc_ger,                           \
+         spell_school,                             \
+         spell_level,                              \
+         spell_mana,                               \
+         spell_chance,                             \
+         spell_mediate_ratio,                      \
+         spell_exertion,                           \
+         spell_casttime)                           \
+         VALUES (spell_id,                         \
+            spell_name,                            \
+            spell_name_ger,                        \
+            spell_icon,                            \
+            spell_desc,                            \
+            spell_desc_ger,                        \
+            spell_school,                          \
+            spell_level,                           \
+            spell_mana,                            \
+            spell_chance,                          \
+            spell_mediate_ratio,                   \
+            spell_exertion,                        \
+            spell_casttime)                        \
+      ON DUPLICATE KEY UPDATE                      \
+      spell_name = spell_name,                     \
+      spell_name_ger = spell_name_ger,             \
+      spell_desc = spell_desc,                     \
+      spell_desc_ger = spell_desc_ger,             \
+      spell_school = spell_school,                 \
+      spell_level = spell_level,                   \
+      spell_mana = spell_mana,                     \
+      spell_chance = spell_chance,                 \
+      spell_mediate_ratio = spell_mediate_ratio,   \
+      spell_exertion = spell_exertion,             \
+      spell_mediate_ratio = spell_mediate_ratio,   \
+      spell_casttime = spell_casttime;             \
+   END"
+
+#define SQLQUERY_CREATEPROC_SKILLS              "\
+   CREATE PROCEDURE WriteSkills(                 \
+     IN skill_id             INT(4),             \
+     IN skill_name           VARCHAR(63),        \
+     IN skill_name_ger       VARCHAR(63),        \
+     IN skill_icon           VARCHAR(63),        \
+     IN skill_desc           TEXT,               \
+     IN skill_desc_ger       TEXT,               \
+     IN skill_school         INT(4),             \
+     IN skill_level          INT(4),             \
+     IN skill_chance         INT(4),             \
+     IN skill_mediate_ratio  INT(4),             \
+     IN skill_exertion       INT(4))             \
+   BEGIN                                         \
+     INSERT INTO wiki_skills                     \
+      (  skill_id,                               \
+         skill_name,                             \
+         skill_name_ger,                         \
+         skill_icon,                             \
+         skill_desc,                             \
+         skill_desc_ger,                         \
+         skill_school,                           \
+         skill_level,                            \
+         skill_chance,                           \
+         skill_mediate_ratio,                    \
+         skill_exertion)                         \
+         VALUES (skill_id,                       \
+            skill_name,                          \
+            skill_name_ger,                      \
+            skill_icon,                          \
+            skill_desc,                          \
+            skill_desc_ger,                      \
+            skill_school,                        \
+            skill_level,                         \
+            skill_chance,                        \
+            skill_mediate_ratio,                 \
+            skill_exertion)                      \
+      ON DUPLICATE KEY UPDATE                    \
+      skill_name = skill_name,                   \
+      skill_name_ger = skill_name_ger,           \
+      skill_desc = skill_desc,                   \
+      skill_desc_ger = skill_desc_ger,           \
+      skill_school = skill_school,               \
+      skill_level = skill_level,                 \
+      skill_chance = skill_chance,               \
+      skill_mediate_ratio = skill_mediate_ratio, \
+      skill_exertion = skill_exertion;           \
+   END"
+
+#define SQLQUERY_CREATEPROC_SPELL_REAGENT  "\
+   CREATE PROCEDURE WriteSpellReagent(      \
+     IN spell_id              INT(4),       \
+     IN spell_reagent         VARCHAR(63),  \
+     IN spell_reagent_amount  INT(4))       \
+   BEGIN                                    \
+   INSERT INTO wiki_spell_reagent           \
+      (  spell_id,                          \
+         spell_reagent,                     \
+         spell_reagent_amount)              \
+         VALUES (spell_id,                  \
+            spell_reagent,                  \
+            spell_reagent_amount);          \
+   END"
+
+#define SQLQUERY_CREATEPROC_MONSTER_LOOT  "\
+   CREATE PROCEDURE WriteMonsterLoot(      \
+     IN monster_name         VARCHAR(63),  \
+     IN monster_drop_item    VARCHAR(63),  \
+     IN monster_loot_chance  INT(4))       \
+   BEGIN                                   \
+   INSERT INTO wiki_monster_loot           \
+      (  monster_name,                     \
+         monster_drop_item,                \
+         monster_loot_chance)              \
+         VALUES (monster_name,             \
+            monster_drop_item,             \
+            monster_loot_chance);          \
+   END"
+
+#define SQLQUERY_CREATEPROC_MONSTER                    "\
+   CREATE PROCEDURE WriteMonster(                       \
+     IN monster_name            VARCHAR(63),            \
+     IN monster_name_ger        VARCHAR(63),            \
+     IN monster_icon            VARCHAR(63),            \
+     IN monster_desc            TEXT,                   \
+     IN monster_desc_ger        TEXT,                   \
+     IN monster_level           INT(4),                 \
+     IN monster_karma           INT(4),                 \
+     IN monster_treasure        INT(4),                 \
+     IN monster_speed           INT(4),                 \
+     IN monster_behavior        INT(4),                 \
+     IN monster_difficulty      INT(4),                 \
+     IN monster_visiondistance  INT(4))                 \
+   BEGIN                                                \
+   INSERT INTO wiki_monster                             \
+      (  monster_name,                                  \
+         monster_name_ger,                              \
+         monster_icon,                                  \
+         monster_desc,                                  \
+         monster_desc_ger,                              \
+         monster_level,                                 \
+         monster_karma,                                 \
+         monster_treasure,                              \
+         monster_speed,                                 \
+         monster_behavior,                              \
+         monster_difficulty,                            \
+         monster_visiondistance)                        \
+         VALUES (monster_name,                          \
+            monster_name_ger,                           \
+            monster_icon,                               \
+            monster_desc,                               \
+            monster_desc_ger,                           \
+            monster_level,                              \
+            monster_karma,                              \
+            monster_treasure,                           \
+            monster_speed,                              \
+            monster_behavior,                           \
+            monster_difficulty,                         \
+            monster_visiondistance)                     \
+      ON DUPLICATE KEY UPDATE                           \
+      monster_desc = monster_desc,                      \
+      monster_desc_ger = monster_desc_ger,              \
+      monster_level = monster_level,                    \
+      monster_karma = monster_karma,                    \
+      monster_treasure = monster_treasure,              \
+      monster_speed = monster_speed,                    \
+      monster_behavior = monster_behavior,              \
+      monster_difficulty = monster_difficulty,          \
+      monster_visiondistance = monster_visiondistance;  \
+   END"
+
+#define SQLQUERY_CREATEPROC_MONSTER_ZONE    "\
+   CREATE PROCEDURE WriteMonsterZone(        \
+     IN monster_rid          INT(4),         \
+     IN monster_name         VARCHAR(63),    \
+     IN monster_spawnchance  INT(4))         \
+   BEGIN                                     \
+   INSERT INTO wiki_monster_zone             \
+      (  monster_rid,                        \
+         monster_name,                       \
+         monster_spawnchance)                \
+         VALUES (monster_rid,                \
+            monster_name,                    \
+            monster_spawnchance);            \
+   END"
+
+#define SQLQUERY_CREATEPROC_NPCS               "\
+   CREATE PROCEDURE WriteNpcs(                  \
+      IN npc_name            VARCHAR(63),       \
+      IN npc_name_ger        VARCHAR(63),       \
+      IN npc_icon            VARCHAR(63),       \
+      IN npc_desc            TEXT,              \
+      IN npc_desc_ger        TEXT,              \
+      IN npc_merchantmarkup  INT(4))            \
+   BEGIN                                        \
+   INSERT INTO wiki_npcs                        \
+      (  npc_name,                              \
+         npc_name_ger,                          \
+         npc_icon,                              \
+         npc_desc,                              \
+         npc_desc_ger,                          \
+         npc_merchantmarkup)                    \
+         VALUES (npc_name,                      \
+            npc_name_ger,                       \
+            npc_icon,                           \
+            npc_desc,                           \
+            npc_desc_ger,                       \
+            npc_merchantmarkup)                 \
+      ON DUPLICATE KEY UPDATE                   \
+      npc_name_ger = npc_name_ger,              \
+      npc_desc = npc_desc,                      \
+      npc_desc_ger = npc_desc_ger,              \
+      npc_merchantmarkup = npc_merchantmarkup;  \
+   END"
+
+#define SQLQUERY_CREATEPROC_WEAPONS      "\
+   CREATE PROCEDURE WriteWeapons(         \
+     IN weapon_name      VARCHAR(63),     \
+     IN weapon_name_ger  VARCHAR(63),     \
+     IN weapon_icon      VARCHAR(63),     \
+     IN weapon_desc      TEXT,            \
+     IN weapon_desc_ger  TEXT,            \
+     IN weapon_value     INT(4),          \
+     IN weapon_weight    INT(4),          \
+     IN weapon_bulk      INT(4),          \
+     IN weapon_iflag     INT(4))          \
+   BEGIN                                  \
+   INSERT INTO wiki_weapons               \
+      (  weapon_name,                     \
+         weapon_name_ger,                 \
+         weapon_icon,                     \
+         weapon_desc,                     \
+         weapon_desc_ger,                 \
+         weapon_value,                    \
+         weapon_weight,                   \
+         weapon_bulk,                     \
+         weapon_iflag)                    \
+         VALUES (weapon_name,             \
+            weapon_name_ger,              \
+            weapon_icon,                  \
+            weapon_desc,                  \
+            weapon_desc_ger,              \
+            weapon_value,                 \
+            weapon_weight,                \
+            weapon_bulk,                  \
+            weapon_iflag)                 \
+      ON DUPLICATE KEY UPDATE             \
+      weapon_desc = weapon_desc,          \
+      weapon_desc_ger = weapon_desc_ger,  \
+      weapon_value = weapon_value,        \
+      weapon_weight = weapon_weight,      \
+      weapon_bulk = weapon_bulk,          \
+      weapon_iflag = weapon_iflag;        \
+   END"
+
+#define SQLQUERY_CREATEPROC_ROOMS        "\
+   CREATE PROCEDURE WriteRooms(           \
+     IN room_name      VARCHAR(63),       \
+     IN room_name_ger  VARCHAR(63),       \
+     IN room_roo       VARCHAR(63),       \
+     IN room_number    INT(4))            \
+   BEGIN                                  \
+   INSERT INTO wiki_rooms                 \
+      (  room_name,                       \
+         room_name_ger,                   \
+         room_roo,                        \
+         room_number)                     \
+         VALUES (room_name,               \
+            room_name_ger,                \
+            room_roo,                     \
+            room_number)                  \
+      ON DUPLICATE KEY UPDATE             \
+      room_name = room_name,              \
+      room_name_ger = room_name_ger,      \
+      room_roo = room_roo;                \
+   END"
+
+#define SQLQUERY_CREATEPROC_NPC_ZONE     "\
+   CREATE PROCEDURE WriteNpcZone(         \
+     IN npc_name      VARCHAR(63),        \
+     IN npc_name_ger  VARCHAR(63),        \
+     IN npc_roomid    INT(4))             \
+   BEGIN                                  \
+   INSERT INTO wiki_npc_zone              \
+      (  npc_name,                        \
+         npc_name_ger,                    \
+         npc_roomid)                      \
+         VALUES (npc_name,                \
+            npc_name_ger,                 \
+            npc_roomid);                  \
+   END"
+
+#define SQLQUERY_CREATEPROC_NPC_SELLITEM "\
+   CREATE PROCEDURE WriteNpcSellItem(     \
+     IN npc_name       VARCHAR(63),       \
+     IN npc_item_sold  VARCHAR(63))       \
+   BEGIN                                  \
+   INSERT INTO wiki_npc_sellitem          \
+      (  npc_name,                        \
+         npc_item_sold)                   \
+         VALUES (npc_name,                \
+            npc_item_sold);               \
+   END"
+
+#define SQLQUERY_CREATEPROC_NPC_SELLSKILL   "\
+   CREATE PROCEDURE WriteNpcSellSkill(       \
+     IN npc_name        VARCHAR(63),         \
+     IN npc_skill_id    INT(4))              \
+   BEGIN                                     \
+   INSERT INTO wiki_npc_sellskill            \
+      (  npc_name,                           \
+         npc_skill_id)                       \
+         VALUES (npc_name,                   \
+            npc_skill_id);                   \
+   END"
+
+#define SQLQUERY_CREATEPROC_NPC_SELLSPELL   "\
+   CREATE PROCEDURE WriteNpcSellSpell(       \
+     IN npc_name        VARCHAR(63),         \
+     IN npc_spell_id    INT(4))              \
+   BEGIN                                     \
+   INSERT INTO wiki_npc_sellspell            \
+      (  npc_name,                           \
+         npc_spell_id)                       \
+         VALUES (npc_name,                   \
+            npc_spell_id);                   \
+   END"
+
+#define SQLQUERY_CREATEPROC_REAGENTS          "\
+   CREATE PROCEDURE WriteReagents(             \
+     IN reagent_name      VARCHAR(63),         \
+     IN reagent_name_ger  VARCHAR(63),         \
+     IN reagent_icon      TEXT,                \
+     IN reagent_desc      TEXT,                \
+     IN reagent_desc_ger  TEXT,                \
+     IN reagent_value     INT(4),              \
+     IN reagent_weight    INT(4),              \
+     IN reagent_bulk      INT(4),              \
+     IN reagent_iflag     INT(4))              \
+   BEGIN                                       \
+   INSERT INTO wiki_reagents                   \
+      (  reagent_name,                         \
+         reagent_name_ger,                     \
+         reagent_icon,                         \
+         reagent_desc,                         \
+         reagent_desc_ger,                     \
+         reagent_value,                        \
+         reagent_weight,                       \
+         reagent_bulk,                         \
+         reagent_iflag)                        \
+         VALUES (reagent_name,                 \
+            reagent_name_ger,                  \
+            reagent_icon,                      \
+            reagent_desc,                      \
+            reagent_desc_ger,                  \
+            reagent_value,                     \
+            reagent_weight,                    \
+            reagent_bulk,                      \
+            reagent_iflag)                     \
+         ON DUPLICATE KEY UPDATE               \
+         reagent_desc = reagent_desc,          \
+         reagent_desc_ger = reagent_desc_ger,  \
+         reagent_value = reagent_value,        \
+         reagent_weight = reagent_weight,      \
+         reagent_bulk = reagent_bulk,          \
+         reagent_iflag = reagent_iflag;        \
+   END"
+
+#define SQLQUERY_CREATEPROC_FOOD         "\
+   CREATE PROCEDURE WriteFood(            \
+     IN food_name      VARCHAR(63),       \
+     IN food_name_ger  VARCHAR(63),       \
+     IN food_icon      TEXT,              \
+     IN food_desc      TEXT,              \
+     IN food_desc_ger  TEXT,              \
+     IN food_value     INT(4),            \
+     IN food_weight    INT(4),            \
+     IN food_bulk      INT(4),            \
+     IN food_iflag     INT(4))            \
+   BEGIN                                  \
+   INSERT INTO wiki_food                  \
+      (  food_name,                       \
+         food_name_ger,                   \
+         food_icon,                       \
+         food_desc,                       \
+         food_desc_ger,                   \
+         food_value,                      \
+         food_weight,                     \
+         food_bulk,                       \
+         food_iflag)                      \
+         VALUES (food_name,               \
+            food_name_ger,                \
+            food_icon,                    \
+            food_desc,                    \
+            food_desc_ger,                \
+            food_value,                   \
+            food_weight,                  \
+            food_bulk,                    \
+            food_iflag)                   \
+         ON DUPLICATE KEY UPDATE          \
+         food_desc = food_desc,           \
+         food_desc_ger = food_desc_ger,   \
+         food_value = food_value,         \
+         food_weight = food_weight,       \
+         food_bulk = food_bulk,           \
+         food_iflag = food_iflag;         \
+   END"
+
+#define SQLQUERY_CREATEPROC_AMMO         "\
+   CREATE PROCEDURE WriteAmmo(            \
+     IN ammo_name      VARCHAR(63),       \
+     IN ammo_name_ger  VARCHAR(63),       \
+     IN ammo_icon      TEXT,              \
+     IN ammo_desc      TEXT,              \
+     IN ammo_desc_ger  TEXT,              \
+     IN ammo_value     INT(4),            \
+     IN ammo_weight    INT(4),            \
+     IN ammo_bulk      INT(4),            \
+     IN ammo_iflag     INT(4))            \
+   BEGIN                                  \
+   INSERT INTO wiki_ammo                  \
+      (  ammo_name,                       \
+         ammo_name_ger,                   \
+         ammo_icon,                       \
+         ammo_desc,                       \
+         ammo_desc_ger,                   \
+         ammo_value,                      \
+         ammo_weight,                     \
+         ammo_bulk,                       \
+         ammo_iflag)                      \
+         VALUES (ammo_name,               \
+            ammo_name_ger,                \
+            ammo_icon,                    \
+            ammo_desc,                    \
+            ammo_desc_ger,                \
+            ammo_value,                   \
+            ammo_weight,                  \
+            ammo_bulk,                    \
+            ammo_iflag)                   \
+         ON DUPLICATE KEY UPDATE          \
+         ammo_desc = ammo_desc,           \
+         ammo_desc_ger = ammo_desc_ger,   \
+         ammo_value = ammo_value,         \
+         ammo_weight = ammo_weight,       \
+         ammo_bulk = ammo_bulk,           \
+         ammo_iflag = ammo_iflag;         \
+   END"
+
+#define SQLQUERY_CREATEPROC_ARMOR        "\
+   CREATE PROCEDURE WriteArmor(           \
+     IN armor_name      VARCHAR(63),      \
+     IN armor_name_ger  VARCHAR(63),      \
+     IN armor_icon      TEXT,             \
+     IN armor_desc      TEXT,             \
+     IN armor_desc_ger  TEXT,             \
+     IN armor_value     INT(4),           \
+     IN armor_weight    INT(4),           \
+     IN armor_bulk      INT(4),           \
+     IN armor_iflag     INT(4))           \
+   BEGIN                                  \
+   INSERT INTO wiki_armor                 \
+      (  armor_name,                      \
+         armor_name_ger,                  \
+         armor_icon,                      \
+         armor_desc,                      \
+         armor_desc_ger,                  \
+         armor_value,                     \
+         armor_weight,                    \
+         armor_bulk,                      \
+         armor_iflag)                     \
+         VALUES (armor_name,              \
+            armor_name_ger,               \
+            armor_icon,                   \
+            armor_desc,                   \
+            armor_desc_ger,               \
+            armor_value,                  \
+            armor_weight,                 \
+            armor_bulk,                   \
+            armor_iflag)                  \
+         ON DUPLICATE KEY UPDATE          \
+         armor_desc = armor_desc,         \
+         armor_desc_ger = armor_desc_ger, \
+         armor_value = armor_value,       \
+         armor_weight = armor_weight,     \
+         armor_bulk = armor_bulk,         \
+         armor_iflag = armor_iflag;       \
+   END"
+
+#define SQLQUERY_CREATEPROC_MISCITEMS    "\
+   CREATE PROCEDURE WriteMiscItems(       \
+     IN misc_name      VARCHAR(63),       \
+     IN misc_name_ger  VARCHAR(63),       \
+     IN misc_icon      TEXT,              \
+     IN misc_desc      TEXT,              \
+     IN misc_desc_ger  TEXT,              \
+     IN misc_value     INT(4),            \
+     IN misc_weight    INT(4),            \
+     IN misc_bulk      INT(4),            \
+     IN misc_iflag     INT(4))            \
+   BEGIN                                  \
+   INSERT INTO wiki_miscitems             \
+      (  misc_name,                       \
+         misc_name_ger,                   \
+         misc_icon,                       \
+         misc_desc,                       \
+         misc_desc_ger,                   \
+         misc_value,                      \
+         misc_weight,                     \
+         misc_bulk,                       \
+         misc_iflag)                      \
+         VALUES (misc_name,               \
+            misc_name_ger,                \
+            misc_icon,                    \
+            misc_desc,                    \
+            misc_desc_ger,                \
+            misc_value,                   \
+            misc_weight,                  \
+            misc_bulk,                    \
+            misc_iflag)                   \
+         ON DUPLICATE KEY UPDATE          \
+         misc_desc = misc_desc,           \
+         misc_desc_ger = misc_desc_ger,   \
+         misc_value = misc_value,         \
+         misc_weight = misc_weight,       \
+         misc_bulk = misc_bulk,           \
+         misc_iflag = misc_iflag;         \
+   END"
+
+#define SQLQUERY_CREATEPROC_RINGS        "\
+   CREATE PROCEDURE WriteRings(           \
+     IN rings_name      VARCHAR(63),      \
+     IN rings_name_ger  VARCHAR(63),      \
+     IN rings_icon      TEXT,             \
+     IN rings_desc      TEXT,             \
+     IN rings_desc_ger  TEXT,             \
+     IN rings_value     INT(4),           \
+     IN rings_weight    INT(4),           \
+     IN rings_bulk      INT(4),           \
+     IN rings_iflag     INT(4))           \
+   BEGIN                                  \
+   INSERT INTO wiki_rings                 \
+      (  rings_name,                      \
+         rings_name_ger,                  \
+         rings_icon,                      \
+         rings_desc,                      \
+         rings_desc_ger,                  \
+         rings_value,                     \
+         rings_weight,                    \
+         rings_bulk,                      \
+         rings_iflag)                     \
+         VALUES (rings_name,              \
+            rings_name_ger,               \
+            rings_icon,                   \
+            rings_desc,                   \
+            rings_desc_ger,               \
+            rings_value,                  \
+            rings_weight,                 \
+            rings_bulk,                   \
+            rings_iflag)                  \
+         ON DUPLICATE KEY UPDATE          \
+         rings_desc = rings_desc,         \
+         rings_desc_ger = rings_desc_ger, \
+         rings_value = rings_value,       \
+         rings_weight = rings_weight,     \
+         rings_bulk = rings_bulk,         \
+         rings_iflag = rings_iflag;       \
+   END"
+
+#define SQLQUERY_CREATEPROC_RODS         "\
+   CREATE PROCEDURE WriteRods(            \
+     IN rods_name      VARCHAR(63),       \
+     IN rods_name_ger  VARCHAR(63),       \
+     IN rods_icon      TEXT,              \
+     IN rods_desc      TEXT,              \
+     IN rods_desc_ger  TEXT,              \
+     IN rods_value     INT(4),            \
+     IN rods_weight    INT(4),            \
+     IN rods_bulk      INT(4),            \
+     IN rods_iflag     INT(4))            \
+   BEGIN                                  \
+   INSERT INTO wiki_rods                  \
+      (  rods_name,                       \
+         rods_name_ger,                   \
+         rods_icon,                       \
+         rods_desc,                       \
+         rods_desc_ger,                   \
+         rods_value,                      \
+         rods_weight,                     \
+         rods_bulk,                       \
+         rods_iflag)                      \
+         VALUES (rods_name,               \
+            rods_name_ger,                \
+            rods_icon,                    \
+            rods_desc,                    \
+            rods_desc_ger,                \
+            rods_value,                   \
+            rods_weight,                  \
+            rods_bulk,                    \
+            rods_iflag)                   \
+         ON DUPLICATE KEY UPDATE          \
+         rods_desc = rods_desc,           \
+         rods_desc_ger = rods_desc_ger,   \
+         rods_value = rods_value,         \
+         rods_weight = rods_weight,       \
+         rods_bulk = rods_bulk,           \
+         rods_iflag = rods_iflag;         \
+   END"
+
+#define SQLQUERY_CREATEPROC_POTIONS         "\
+   CREATE PROCEDURE WritePotions(            \
+     IN potion_name      VARCHAR(63),        \
+     IN potion_name_ger  VARCHAR(63),        \
+     IN potion_icon      TEXT,               \
+     IN potion_desc      TEXT,               \
+     IN potion_desc_ger  TEXT,               \
+     IN potion_value     INT(4),             \
+     IN potion_weight    INT(4),             \
+     IN potion_bulk      INT(4),             \
+     IN potion_iflag     INT(4))             \
+   BEGIN                                     \
+   INSERT INTO wiki_potions                  \
+      (  potion_name,                        \
+         potion_name_ger,                    \
+         potion_icon,                        \
+         potion_desc,                        \
+         potion_desc_ger,                    \
+         potion_value,                       \
+         potion_weight,                      \
+         potion_bulk,                        \
+         potion_iflag)                       \
+         VALUES (potion_name,                \
+            potion_name_ger,                 \
+            potion_icon,                     \
+            potion_desc,                     \
+            potion_desc_ger,                 \
+            potion_value,                    \
+            potion_weight,                   \
+            potion_bulk,                     \
+            potion_iflag)                    \
+         ON DUPLICATE KEY UPDATE             \
+         potion_desc = potion_desc,          \
+         potion_desc_ger = potion_desc_ger,  \
+         potion_value = potion_value,        \
+         potion_weight = potion_weight,      \
+         potion_bulk = potion_bulk,          \
+         potion_iflag = potion_iflag;        \
+   END"
+
+#define SQLQUERY_CREATEPROC_SCROLLS           "\
+   CREATE PROCEDURE WriteScrolls(              \
+    IN scrolls_name      VARCHAR(63),          \
+    IN scrolls_name_ger  VARCHAR(63),          \
+    IN scrolls_icon      TEXT,                 \
+    IN scrolls_desc      TEXT,                 \
+    IN scrolls_desc_ger  TEXT,                 \
+    IN scrolls_value     INT(4),               \
+    IN scrolls_weight    INT(4),               \
+    IN scrolls_bulk      INT(4),               \
+    IN scrolls_iflag     INT(4))               \
+   BEGIN                                       \
+   INSERT INTO wiki_scrolls                    \
+      (  scrolls_name,                         \
+         scrolls_name_ger,                     \
+         scrolls_icon,                         \
+         scrolls_desc,                         \
+         scrolls_desc_ger,                     \
+         scrolls_value,                        \
+         scrolls_weight,                       \
+         scrolls_bulk,                         \
+         scrolls_iflag)                        \
+         VALUES (scrolls_name,                 \
+            scrolls_name_ger,                  \
+            scrolls_icon,                      \
+            scrolls_desc,                      \
+            scrolls_desc_ger,                  \
+            scrolls_value,                     \
+            scrolls_weight,                    \
+            scrolls_bulk,                      \
+            scrolls_iflag)                     \
+         ON DUPLICATE KEY UPDATE               \
+         scrolls_desc = scrolls_desc,          \
+         scrolls_desc_ger = scrolls_desc_ger,  \
+         scrolls_value = scrolls_value,        \
+         scrolls_weight = scrolls_weight,      \
+         scrolls_bulk = scrolls_bulk,          \
+         scrolls_iflag = scrolls_iflag;        \
+   END"
+
+#define SQLQUERY_CREATEPROC_WANDS         "\
+   CREATE PROCEDURE WriteWands(            \
+    IN wands_name      VARCHAR(63),        \
+    IN wands_name_ger  VARCHAR(63),        \
+    IN wands_icon      TEXT,               \
+    IN wands_desc      TEXT,               \
+    IN wands_desc_ger  TEXT,               \
+    IN wands_iflag     INT(4))             \
+   BEGIN                                   \
+   INSERT INTO wiki_wands                  \
+      (  wands_name,                       \
+         wands_name_ger,                   \
+         wands_icon,                       \
+         wands_desc,                       \
+         wands_desc_ger,                   \
+         wands_iflag)                      \
+         VALUES (wands_name,               \
+            wands_name_ger,                \
+            wands_icon,                    \
+            wands_desc,                    \
+            wands_desc_ger,                \
+            wands_iflag)                   \
+         ON DUPLICATE KEY UPDATE           \
+         wands_desc = wands_desc,          \
+         wands_desc_ger = wands_desc_ger,  \
+         wands_iflag = wands_iflag;        \
+   END"
+
+#define SQLQUERY_CREATEPROC_QUESTITEMS            "\
+   CREATE PROCEDURE WriteQuestItems(               \
+    IN questitem_name      VARCHAR(63),            \
+    IN questitem_name_ger  VARCHAR(63),            \
+    IN questitem_icon      TEXT,                   \
+    IN questitem_desc      TEXT,                   \
+    IN questitem_desc_ger  TEXT,                   \
+    IN questitem_value     INT(4),                 \
+    IN questitem_weight    INT(4),                 \
+    IN questitem_bulk      INT(4),                 \
+    IN questitem_iflag     INT(4))                 \
+   BEGIN                                           \
+   INSERT INTO wiki_questitems                     \
+      (  questitem_name,                           \
+         questitem_name_ger,                       \
+         questitem_icon,                           \
+         questitem_desc,                           \
+         questitem_desc_ger,                       \
+         questitem_value,                          \
+         questitem_weight,                         \
+         questitem_bulk,                           \
+         questitem_iflag)                          \
+         VALUES (questitem_name,                   \
+            questitem_name_ger,                    \
+            questitem_icon,                        \
+            questitem_desc,                        \
+            questitem_desc_ger,                    \
+            questitem_value,                       \
+            questitem_weight,                      \
+            questitem_bulk,                        \
+            questitem_iflag)                       \
+         ON DUPLICATE KEY UPDATE                   \
+         questitem_desc = questitem_desc,          \
+         questitem_desc_ger = questitem_desc_ger,  \
+         questitem_value = questitem_value,        \
+         questitem_weight = questitem_weight,      \
+         questitem_bulk = questitem_bulk,          \
+         questitem_iflag = questitem_iflag;        \
+   END"
+
+#define SQLQUERY_CREATEPROC_NECKLACE            "\
+   CREATE PROCEDURE WriteNecklace(               \
+    IN necklace_name      VARCHAR(63),           \
+    IN necklace_name_ger  VARCHAR(63),           \
+    IN necklace_icon      TEXT,                  \
+    IN necklace_desc      TEXT,                  \
+    IN necklace_desc_ger  TEXT,                  \
+    IN necklace_value     INT(4),                \
+    IN necklace_weight    INT(4),                \
+    IN necklace_bulk      INT(4),                \
+    IN necklace_iflag     INT(4))                \
+   BEGIN                                         \
+   INSERT INTO wiki_necklace                     \
+      (  necklace_name,                          \
+         necklace_name_ger,                      \
+         necklace_icon,                          \
+         necklace_desc,                          \
+         necklace_desc_ger,                      \
+         necklace_value,                         \
+         necklace_weight,                        \
+         necklace_bulk,                          \
+         necklace_iflag)                         \
+         VALUES (necklace_name,                  \
+            necklace_name_ger,                   \
+            necklace_icon,                       \
+            necklace_desc,                       \
+            necklace_desc_ger,                   \
+            necklace_value,                      \
+            necklace_weight,                     \
+            necklace_bulk,                       \
+            necklace_iflag)                      \
+         ON DUPLICATE KEY UPDATE                 \
+         necklace_desc = necklace_desc,          \
+         necklace_desc_ger = necklace_desc_ger,  \
+         necklace_value = necklace_value,        \
+         necklace_weight = necklace_weight,      \
+         necklace_bulk = necklace_bulk,          \
+         necklace_iflag = necklace_iflag;        \
+   END"
+
+#define SQLQUERY_CREATEPROC_INSTRUMENTS              "\
+   CREATE PROCEDURE WriteInstruments(                 \
+    IN instrument_name      VARCHAR(63),              \
+    IN instrument_name_ger  VARCHAR(63),              \
+    IN instrument_icon      TEXT,                     \
+    IN instrument_desc      TEXT,                     \
+    IN instrument_desc_ger  TEXT,                     \
+    IN instrument_value     INT(4),                   \
+    IN instrument_weight    INT(4),                   \
+    IN instrument_bulk      INT(4),                   \
+    IN instrument_iflag     INT(4))                   \
+   BEGIN                                              \
+   INSERT INTO wiki_instruments                       \
+      (  instrument_name,                             \
+         instrument_name_ger,                         \
+         instrument_icon,                             \
+         instrument_desc,                             \
+         instrument_desc_ger,                         \
+         instrument_value,                            \
+         instrument_weight,                           \
+         instrument_bulk,                             \
+         instrument_iflag)                            \
+         VALUES (instrument_name,                     \
+            instrument_name_ger,                      \
+            instrument_icon,                          \
+            instrument_desc,                          \
+            instrument_desc_ger,                      \
+            instrument_value,                         \
+            instrument_weight,                        \
+            instrument_bulk,                          \
+            instrument_iflag)                         \
+         ON DUPLICATE KEY UPDATE                      \
+         instrument_desc = instrument_desc,           \
+         instrument_desc_ger = instrument_desc_ger,   \
+         instrument_value = instrument_value,         \
+         instrument_weight = instrument_weight,       \
+         instrument_bulk = instrument_bulk,           \
+         instrument_iflag = instrument_iflag;         \
+   END"
+
+#define SQLQUERY_CREATEPROC_GEMS      "\
+   CREATE PROCEDURE WriteGems(         \
+    IN gem_name      VARCHAR(63),      \
+    IN gem_name_ger  VARCHAR(63),      \
+    IN gem_icon      TEXT,             \
+    IN gem_desc      TEXT,             \
+    IN gem_desc_ger  TEXT,             \
+    IN gem_value     INT(4),           \
+    IN gem_weight    INT(4),           \
+    IN gem_bulk      INT(4),           \
+    IN gem_iflag     INT(4))           \
+   BEGIN                               \
+   INSERT INTO wiki_gems               \
+      (  gem_name,                     \
+         gem_name_ger,                 \
+         gem_icon,                     \
+         gem_desc,                     \
+         gem_desc_ger,                 \
+         gem_value,                    \
+         gem_weight,                   \
+         gem_bulk,                     \
+         gem_iflag)                    \
+         VALUES (gem_name,             \
+            gem_name_ger,              \
+            gem_icon,                  \
+            gem_desc,                  \
+            gem_desc_ger,              \
+            gem_value,                 \
+            gem_weight,                \
+            gem_bulk,                  \
+            gem_iflag)                 \
+         ON DUPLICATE KEY UPDATE       \
+         gem_desc = gem_desc,          \
+         gem_desc_ger = gem_desc_ger,  \
+         gem_value = gem_value,        \
+         gem_weight = gem_weight,      \
+         gem_bulk = gem_bulk,          \
+         gem_iflag = gem_iflag;        \
+   END"
+
+#define SQLQUERY_CREATEPROC_OFFERINGS          "\
+   CREATE PROCEDURE WriteOfferings(             \
+    IN offering_name      VARCHAR(63),          \
+    IN offering_name_ger  VARCHAR(63),          \
+    IN offering_icon      TEXT,                 \
+    IN offering_desc      TEXT,                 \
+    IN offering_desc_ger  TEXT,                 \
+    IN offering_value     INT(4),               \
+    IN offering_weight    INT(4),               \
+    IN offering_bulk      INT(4),               \
+    IN offering_iflag     INT(4))               \
+   BEGIN                                        \
+   INSERT INTO wiki_offerings                   \
+      (  offering_name,                         \
+         offering_name_ger,                     \
+         offering_icon,                         \
+         offering_desc,                         \
+         offering_desc_ger,                     \
+         offering_value,                        \
+         offering_weight,                       \
+         offering_bulk,                         \
+         offering_iflag)                        \
+         VALUES (offering_name,                 \
+            offering_name_ger,                  \
+            offering_icon,                      \
+            offering_desc,                      \
+            offering_desc_ger,                  \
+            offering_value,                     \
+            offering_weight,                    \
+            offering_bulk,                      \
+            offering_iflag)                     \
+         ON DUPLICATE KEY UPDATE                \
+         offering_desc = offering_desc,         \
+         offering_desc_ger = offering_desc_ger, \
+         offering_value = offering_value,       \
+         offering_weight = offering_weight,     \
+         offering_bulk = offering_bulk,         \
+         offering_iflag = offering_iflag;       \
+   END"
+
+#define SQLQUERY_CREATEPROC_QUESTS          "\
+   CREATE PROCEDURE WriteQuests(             \
+    IN quest_name      VARCHAR(63),          \
+    IN quest_name_ger  VARCHAR(63),          \
+    IN quest_icon      TEXT,                 \
+    IN quest_desc      TEXT,                 \
+    IN quest_desc_ger  TEXT,                 \
+    IN quest_id        INT(4))               \
+   BEGIN                                     \
+   INSERT INTO wiki_quests                   \
+      (  quest_name,                         \
+         quest_name_ger,                     \
+         quest_icon,                         \
+         quest_desc,                         \
+         quest_desc_ger,                     \
+         quest_id)                           \
+         VALUES (quest_name,                 \
+            quest_name_ger,                  \
+            quest_icon,                      \
+            quest_desc,                      \
+            quest_desc_ger,                  \
+            quest_id)                        \
+         ON DUPLICATE KEY UPDATE             \
+         quest_desc = quest_desc,            \
+         quest_desc_ger = quest_desc_ger;    \
+   END"
+
 #pragma endregion
 
 /*
@@ -630,6 +2006,35 @@ void _MySQLVerifySchema()
    MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATETABLE_PLAYERDEATH, status);
    MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATETABLE_PLAYER, status);
    MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATETABLE_GUILD, status);
+   MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATETABLE_SPELLS, status);
+   MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATETABLE_SKILLS, status);
+   MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATETABLE_SPELL_REAGENT, status);
+   MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATETABLE_MONSTER_LOOT, status);
+   MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATETABLE_MONSTER, status);
+   MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATETABLE_MONSTER_ZONE, status);
+   MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATETABLE_NPCS, status);
+   MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATETABLE_WEAPONS, status);
+   MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATETABLE_ROOMS, status);
+   MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATETABLE_NPC_ZONE, status);
+   MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATETABLE_NPC_SELLITEM, status);
+   MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATETABLE_NPC_SELLSKILL, status);
+   MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATETABLE_NPC_SELLSPELL, status);
+   MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATETABLE_REAGENTS, status);
+   MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATETABLE_FOOD, status);
+   MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATETABLE_AMMO, status);
+   MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATETABLE_ARMOR, status);
+   MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATETABLE_MISCITEMS, status);
+   MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATETABLE_RINGS, status);
+   MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATETABLE_RODS, status);
+   MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATETABLE_POTIONS, status);
+   MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATETABLE_SCROLLS, status);
+   MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATETABLE_WANDS, status);
+   MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATETABLE_QUESTITEMS, status);
+   MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATETABLE_NECKLACE, status);
+   MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATETABLE_INSTRUMENTS, status);
+   MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATETABLE_GEMS, status);
+   MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATETABLE_OFFERINGS, status);
+   MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATETABLE_QUESTS, status);
 
    char buffer[128];
    // Drop existing procedures if present.
@@ -649,6 +2054,35 @@ void _MySQLVerifySchema()
    MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATEPROC_PLAYERSUICIDE, status);
    MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATEPROC_GUILD, status);
    MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATEPROC_GUILDDISBAND, status);
+   MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATEPROC_SPELLS, status);
+   MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATEPROC_SKILLS, status);
+   MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATEPROC_SPELL_REAGENT, status);
+   MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATEPROC_MONSTER_LOOT, status);
+   MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATEPROC_MONSTER, status);
+   MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATEPROC_MONSTER_ZONE, status);
+   MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATEPROC_NPCS, status);
+   MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATEPROC_WEAPONS, status);
+   MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATEPROC_ROOMS, status);
+   MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATEPROC_NPC_ZONE, status);
+   MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATEPROC_NPC_SELLITEM, status);
+   MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATEPROC_NPC_SELLSKILL, status);
+   MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATEPROC_NPC_SELLSPELL, status);
+   MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATEPROC_REAGENTS, status);
+   MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATEPROC_FOOD, status);
+   MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATEPROC_AMMO, status);
+   MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATEPROC_ARMOR, status);
+   MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATEPROC_MISCITEMS, status);
+   MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATEPROC_RINGS, status);
+   MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATEPROC_RODS, status);
+   MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATEPROC_POTIONS, status);
+   MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATEPROC_SCROLLS, status);
+   MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATEPROC_WANDS, status);
+   MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATEPROC_QUESTITEMS, status);
+   MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATEPROC_NECKLACE, status);
+   MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATEPROC_INSTRUMENTS, status);
+   MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATEPROC_GEMS, status);
+   MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATEPROC_OFFERINGS, status);
+   MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATEPROC_QUESTS, status);
 
    // set state to schema verified
    state = SCHEMAVERIFIED;

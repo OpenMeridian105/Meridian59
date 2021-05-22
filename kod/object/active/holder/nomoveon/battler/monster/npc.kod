@@ -29,6 +29,45 @@ properties:
 
 messages:
 
+   UpdateDatabase()
+   {
+      // Wiki Export: Sold items, skills and spells by each NPC
+      // List of all NPC's and a list of rooms where the NPC is in
+
+      local i, oSkill, oSpell;
+
+      if (plFor_Sale <> $) 
+      {
+         foreach i in First(plFor_sale) //items
+      {
+         RecordStat(STAT_NPC_SELLITEM, TAG_RESOURCE, vrName, TAG_RESOURCE, 
+               Send(i,@GetName));
+      }
+      foreach i in Nth(plFor_sale,2) //skills
+      {
+         oSkill = Send(SYS,@FindSkillByNum,#num=i);
+         RecordStat(STAT_NPC_SELLSKILL, TAG_RESOURCE, vrName, TAG_INT, i);
+      }
+      foreach i in Nth(plFor_sale,3) //spells
+      {
+         oSpell = Send(SYS,@FindSpellByNum,#num=i);
+         RecordStat(STAT_NPC_SELLSPELL, TAG_RESOURCE, vrName, TAG_INT, i);
+      }
+      }
+
+      RecordStat(STAT_NPCS, TAG_RESOURCE, vrName, RESOURCE_GER, vrName, 
+            TAG_RESOURCE, vrIcon, TAG_RESOURCE, vrDesc, RESOURCE_GER, vrDesc, 
+            TAG_INT, viMerchant_markup);
+
+      if(poOwner <> $)
+      {
+         RecordStat(STAT_NPC_ZONE, TAG_RESOURCE, vrName, RESOURCE_GER, vrName, 
+               TAG_INT, Send(poOwner,@GetRoomNum));
+      }
+
+      return;
+   }
+
    CanMorphTo()
    {
       return FALSE;

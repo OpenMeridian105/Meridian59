@@ -289,7 +289,45 @@ properties:
    // How much threat do our non damage spells cause?
    piSpellThreatPercentage = 100
 
-messages:      
+messages:
+
+   UpdateDatabase()
+   {
+      // Wiki Exports: Information for each spell and reagents needed by each spell
+      local i, oItem, bDelete;
+
+      RecordStat(STAT_SPELLS, TAG_INT, viSpell_num, TAG_RESOURCE, vrName, RESOURCE_GER, vrName,
+            TAG_RESOURCE, vrIcon, TAG_RESOURCE, vrDesc, RESOURCE_GER, vrDesc,
+            TAG_INT, viSchool, TAG_INT, viSpell_level, TAG_INT, viMana,
+            TAG_INT, viChance_To_Increase, TAG_INT, viMeditate_ratio,
+            TAG_INT, viSpellExertion, TAG_INT, viCast_time);
+
+      foreach i in plReagents
+      {
+         bDelete = FALSE;
+         if (First(i) = &Heartstone)
+         {
+            // Create heartstone because 'abstract' class Heartstone isn't in
+            // item template list. Must delete it afterwards.
+            oItem = Create(&Heartstone);
+            bDelete = TRUE;
+         }
+         else
+         {
+            oItem = Send(SYS,@FindTemplateItemByClass,#cClass=First(i));
+         }
+
+         RecordStat(STAT_SPELL_REAGENT, TAG_INT, viSpell_num, TAG_RESOURCE,
+               Send(oItem,@GetName), TAG_INT, Nth(i,2));
+
+         if (bDelete)
+         {
+            Send(oItem,@Delete);
+         }
+      }
+
+      return;
+   }
 
    Constructed()
    {

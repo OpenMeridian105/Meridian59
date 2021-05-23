@@ -1004,7 +1004,7 @@ messages:
    CompletionCriteriaMet()
    {
       local lQuesters, oQuester, oQuestEngine, lPrize, lPenalty, sSay,
-         oMercenary, oReward, bCompleted;
+         oMercenary, oReward, bCompleted, index, oTemplate;
 
       lQuesters = Send(poQuest,@GetQuesters);
 
@@ -1060,9 +1060,12 @@ messages:
       {
          foreach oQuester in lQuesters
          {
-            Send(oQuester,@AddQuestHistory,
-                 #index=Send(poQuest,@GetQuestTemplateIndex),
-                 #success=TRUE);
+            index = Send(poQuest,@GetQuestTemplateIndex);
+            Send(oQuester,@AddQuestHistory,#index=index,#success=TRUE);
+
+            // Award XP and TP to offer comparable reward to grinding.
+            oTemplate = Send(Send(SYS,@GetQuestEngine),@GetQuestTemplateObject,#index=index);
+            Send(oQuester,@AddQuestXTPReward,#template=oTemplate);
 
             oMercenary = Send(oQuester,@GetMercenary);
 

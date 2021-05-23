@@ -9709,6 +9709,64 @@ messages:
       return;
    }
 
+   AddQuestXTPReward(template=$)
+   "Provide XP and TP for quests about equal to what you'd get from grinding."
+   {
+      local i, iQuestRewardFactor, iDuration, iDifficulty, iXP, iTP, 
+         iItemBonus, iWeight;
+
+      // Let's ask our settings object for our quest XP factor.
+      // Default: We assume that we kill about 5 mobs a minute grinding.
+      iQuestRewardFactor = Send(SETTINGS_OBJECT,@GetQuestRewardFactor);
+
+      // We ask the quest for how long it thinks it will take to be completed.
+      iDuration = Send(template,@GetQuestDuration);
+
+      // We ask the quest how difficult it considers itself to be.
+      iDifficulty = Send(template,@GetQuestDifficulty);
+
+      // We assume the mobs to be killed to exceed the player's level by a third.
+      // Mobs grant a base of 1 point of XP per level per kill.
+      // We emulate bonuses from all sources that also factor into kill XP.
+      iXP = iQuestRewardFactor * piBase_max_health*4/3 * iDuration * (5+iDifficulty) / 100;
+
+      iXP += iXP * Send(self,@GetStamina) / 100;
+
+      if piBase_max_health < Send(SETTINGS_OBJECT,@GetPKillEnableHP)
+      {
+         iXP = iXP * 11 / 10;
+      }
+
+      iXP = iXP * Bound(Send(SETTINGS_OBJECT,@GetXPPercent),50,500) / 100;
+
+      // Mobs grant between 1 TP and 4 TP per killed based on level.
+      // Let's tone that down a bit, since 4 TP mobs are pretty damn hard.
+      iTP = iQuestRewardFactor * piBase_max_health/50 * iDuration * (5+iDifficulty) / 100;
+      Debug(iQuestRewardFactor,piBase_max_health,iDuration,iDifficulty,iTP);
+
+      // Randomize our rewards a bit.
+      iWeight = Random(80,120);
+
+      iXP = iXP*iWeight/100;
+      iTP = iTP*(200-iWeight)/100;
+
+      iItemBonus = 0;
+
+      foreach i in plUsing
+      {
+         iItemBonus += Send(i,@GetItemXPBonus);
+      }
+
+      // Finally, add the item bonus for each assumed kill.
+      iXP += iQuestRewardFactor * iDuration * iItemBonus / 10;
+
+      // Time to actually reward those points!
+      Send(self,@AddXP,#iAmount=iXP);
+      Send(self,@AddTrainingPoints,#points=iTP);
+
+      return;
+   }
+
    AddUnboundEnergy(iAmount=0,report=TRUE)
    {
       // Add to total. Check reasonable limits first. You can't lose

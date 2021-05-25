@@ -41,6 +41,7 @@ resources:
    disciplerobe_jala_male = emblm-jm.bgf
    disciplerobe_kraanan_female = emblm-kf.bgf
    disciplerobe_kraanan_male = emblm-km.bgf
+   disciplerobe_mastery_band = masteryband.bgf
 
 classvars:
 
@@ -169,13 +170,6 @@ messages:
          return;
       }
 
-      if (IsClass(poOwner,&DM) AND pbImmortalColor)
-      {
-         Send(self,@SetXLATTranslation,#translation=viXLAT_immortal);
-
-         return;
-      }
-
       foreach i in Send(poOwner,@GetSpellList)
       {
          oSpell = Send(SYS,@FindSpellByNum,#num=Send(poOwner,@DecodespellNum,#compound=i));
@@ -189,6 +183,13 @@ messages:
       }
 
       piLevel = iHigh_level;
+
+      if (IsClass(poOwner,&DM) AND pbImmortalColor)
+      {
+         Send(self,@SetXLATTranslation,#translation=viXLAT_immortal);
+
+         return;
+      }
 
       bFound = FALSE;
 
@@ -395,6 +396,49 @@ messages:
       if poOwner <> $
       {
          Send(poOwner,@SomethingChanged,#what=self);
+      }
+
+      return;
+   }
+
+   GetLevel()
+   {
+      return piLevel;
+   }
+
+   SendMasteryOverlay()
+   {
+      local iTranslation;
+
+      if piLevel = 6
+      {
+         switch (piSchool)
+         {
+         case SS_JALA:
+            iTranslation = viXLAT_jala_master;
+            break;
+         case SS_FAREN:
+            iTranslation = viXLAT_faren_master;
+            break;
+         case SS_KRAANAN:
+            iTranslation = viXLAT_kraanan_master;
+            break;
+         case SS_SHALILLE:
+            iTranslation = viXLAT_shalille_master;
+            break;
+         case SS_QOR:
+            iTranslation = viXLAT_qor_master;
+            break;
+         case SS_RIIJA:
+            iTranslation = viXLAT_riija_master;
+            break;
+         }
+
+         iTranslation = Send(SYS,@EncodeTwoColorXLAT,#color1=iTranslation,#color2=XLAT_TO_SKIN2);
+
+         AddPacket(4, disciplerobe_mastery_band, 1 , HS_TOUPEE,
+            1, ANIMATE_TRANSLATION, 1, iTranslation,
+            1, ANIMATE_NONE, 2, 1);
       }
 
       return;

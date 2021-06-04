@@ -339,6 +339,9 @@ properties:
    // Keeps track of the summoning magic the player is currently maintaining.
    piActiveSummons = 0
 
+   // Keeps track of the marker floating above our head if marked.
+   poMarker = $
+
 messages:
 
    // The first lump of code here deals with resistances and immunities/etc.
@@ -651,28 +654,34 @@ messages:
       return;
    }
 
-   IsEnchanted(what=$,byClass=&Spell,state=$)
+   IsEnchanted(what=$,byClass=&Spell,state=$,bEffect=TRUE,bSpell=TRUE)
    "Returns whether or not currently enchanted by <what>."
    {
       local i, oEnchantment;
 
       if what = $
       {
-         foreach i in plEnchantments
+         if bSpell
          {
-            if IsClass(Nth(i,2),byClass)
+            foreach i in plEnchantments
             {
-               return TRUE;
+               if IsClass(Nth(i,2),byClass)
+               {
+                  return TRUE;
+               }
             }
          }
 
-         foreach i in plOverTimeEffects
+         if bEffect
          {
-            oEnchantment = Nth(i,5);
-            if oEnchantment <> 0
-               AND IsClass(oEnchantment,byClass)
+            foreach i in plOverTimeEffects
             {
-               return TRUE;
+               oEnchantment = Nth(i,5);
+               if oEnchantment <> 0
+                  AND IsClass(oEnchantment,byClass)
+               {
+                  return TRUE;
+               }
             }
          }
       }
@@ -683,9 +692,13 @@ messages:
             return Send(self,@IsEnchantedRadius,#what=what,#state=state);
          }
 
-         oEnchantment = GetListNode(plEnchantments, 2, what);
+         if bSpell
+         {
+            oEnchantment = GetListNode(plEnchantments, 2, what);
+         }
 
-         if oEnchantment = $
+         if bEffect
+            AND (oEnchantment = $)
          {
             oEnchantment = GetListNode(plOverTimeEffects, 5, what);
          }
@@ -5002,26 +5015,32 @@ messages:
    {
       return;
    }
+
    CheckAttackers()
    {
       return;
    }
+
    SwingHasEnded()
    {
       return;
    }
+
    ClearAttacker()
    {
       return;
    }
+
    ClearAllAttackers()
    {
       return;
    }
+
    ActiveDefense()
    {
       return;
    }
+
    IsBlocked(who=$)
    {
       return FALSE;
@@ -5030,6 +5049,20 @@ messages:
    CaughtOffGuard()
    {
       return;
+   }
+   
+   CreateMarker(who=$)
+   {
+      poMarker = Create(&Marker,#who=who,#what=self);
+      Send(poOwner,@NewHold,#what=poMarker,#new_row=piRow,#new_col=piCol,
+         #fine_row=piFine_row,#fine_col=piFine_col);
+
+      return;
+   }
+
+   GetMarker()
+   {
+      return poMarker;
    }
 
 end

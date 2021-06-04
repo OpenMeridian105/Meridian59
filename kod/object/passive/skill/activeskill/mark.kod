@@ -1,0 +1,293 @@
+// Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+// All rights reserved.
+//
+// This software is distributed under a license that is described in
+// the LICENSE file that accompanies it.
+//
+// Meridian is a registered tradeCommand.
+
+
+////////////////////////////////////////////////////////////////////////////////
+Mark is ActiveSkill
+
+constants:
+
+   include blakston.khd
+
+   MARK_DURATION = 300000
+   MARK_BLEED_DURATION = 5000
+
+resources:
+
+   include mark.lkod
+
+   Mark_name_rsc = "mark"
+   Mark_icon_rsc = imark.bgf
+   Mark_desc_rsc = \
+      "Allows a natural leader to mark a target for their allies to attack, increasing  "
+      "any damage suffered by the victim.  This will also command your follower to "
+      "attack the target and summon them to your side in case they are absent."
+      "\n\nNOTE: This is an 'active' skill, which must be performed manually "
+      "using the 'perform Command' command, or using a hotkey."
+   Mark_skill_intro = "Weaponcraft Lv. 2: Mark a target for your allies and follower!"
+   Mark_follower_call = "Your follower rushes to your aid!"
+   Mark_no_targets = "You need to have a proper target to mark for your allies!"
+   Mark_bad_target = "You have a funny feeling that this is not going to work."
+   Mark_success = "You mark %s%s for your allies!"
+   Mark_follower_feedback = "Engaging %s%s!"
+   Mark_trance = "You carefully select your target..."
+   Mark_call_sound_rsc = markcall.ogg
+   Mark_sound_rsc = mark.ogg
+
+classvars:
+
+   vrName = Mark_name_rsc
+   vrIcon = Mark_icon_rsc
+   vrDesc = Mark_desc_rsc
+
+   vrSkill_intro = Mark_skill_intro
+
+   viIndefinite = ARTICLE_NONE
+   viDefinite = ARTICLE_NONE
+
+   viSkill_num = SKID_MARK
+   viSchool = SKS_WEAPONCRAFT
+   viSkill_level = 2
+   viChance_to_Increase = 15
+   viMeditate_ratio = 20
+
+   viSkillExertion = 0
+   vbCheck_exertion = FALSE
+
+   vbAutomatic = FALSE
+   vbReportTrance = FALSE
+
+   viPreperation_time = 1000
+   viPostPerform_time = 0
+
+   vrSucceed_wav = Mark_sound_rsc
+
+properties:
+
+   plPrerequisites = $
+   piDamagePercent = 50
+
+messages:
+
+   GetNumSkillTargets(who=$)
+   {
+      return 1;
+   }
+
+   GetTargets(who=$,lTargets=$)
+   "This returns an altered list of targets for the skill if appropriate."
+   {
+      local i;
+
+      foreach i in lTargets
+      {
+         if NOT IsClass(i,&Monster)
+            OR IsClass(i,&Follower)
+         {
+            lTargets = DelListElem(lTargets,i);
+         }
+      }
+
+      return lTargets;
+   }
+
+   GetGoodTargets(who=$, lTargets=$, report=TRUE)
+   {
+      local lGoodTargets;
+
+      // This gets all targets within range.  Most skills just return the
+      //  list back.
+      lGoodTargets = Send(self,@GetTargets,#who=who,#lTargets=lTargets);
+
+      // This gets all valid targets, checking for bad targets, safeties, etc.
+      lGoodTargets = Send(self,@GetAttackTargets,#who=who,
+                          #lTargets=lGoodTargets,#report=report);
+
+      return lGoodTargets;
+   }
+
+   GetRequisiteStat(who=$)
+   {
+      return Send(who,@GetAim);
+   }
+
+   DoPreTranceEffects(who=$,lTargets=$)
+   {
+      local oFollower;
+
+      Send(who,@MsgSendUser,#message_rsc=Mark_trance);      
+
+      if NOT Send(who,@HasActiveFollower)
+      {
+         propagate;
+      }
+
+      oFollower = Send(who,@GetMercenary);
+
+      if Send(oFollower,@IsAbsent)
+         AND (Send(oFollower,@GetCorpse) = $)
+      {
+         Send(who,@MsgSendUser,#message_rsc=Mark_follower_call);
+         Send(Send(who,@GetOwner),@SomethingWaveRoom,#what=who,#wave_rsc=Mark_call_sound_rsc);
+         Send(oFollower,@FollowerReturn,#bSummoned=TRUE);
+      }
+
+      propagate;
+   }
+
+   PerformSkill(who=$,lTargets=$)
+   {
+      local oFollower, oTarget, iPower, oState;
+
+      oTarget = First(lTargets);
+      oFollower = Send(who,@GetMercenary);
+      iPower = Send(self,@GetSkillPower,#who=who);
+
+      // First off, remove any marks that may have been put by others.
+      // This will only remove the enchantment, not any overtime effects
+      // it may have caused.
+      Send(oTarget,@RemoveEnchantmentClass,#class=&Mark,#report=FALSE);
+
+      // Also remove our current target's enchantment, in case we have one.
+      oState = Send(who,@GetEnchantedState,#what=self);
+      if oState <> $
+      {
+         Send(First(oState),@RemoveEnchantmentClass,#class=&Mark,#report=FALSE);
+      }
+
+      // Set our kill target to the marked target.
+      Send(who,@SetKillTarget,#target=oTarget);
+
+      // Inform the player about successfully having marked their target.
+      Send(who,@MsgSendUser,#message_rsc=Mark_success,
+         #parm1=Send(oTarget,@GetDef),#parm2=Send(oTarget,@GetName));
+
+      // Keep an unlimited duration enchantment on the marker
+      // and a limited duration enchantment on the marked target.
+      // The marker's enchantment will be lifted once the enchantment
+      // ends on the target.
+      Send(who,@StartEnchantment,#what=self,#state=[oTarget]);
+      Send(oTarget,@StartEnchantment,#what=self,#time=MARK_DURATION,
+         #state=[who,iPower]);
+
+      // Next, put a marker on the target.
+      Send(oTarget,@CreateMarker,#who=who);
+
+      // Also send in our follower to join the fight.
+      if (oFollower <> $)
+         AND (Send(oFollower,@GetCorpse) = $)
+         AND NOT Send(oFollower,@CheckMonsterFlag,#flag=MFLAG_STAYING)
+      {
+         // In case the follower switches targets, let their leader know.
+         if Send(oFollower,@GetTarget) <> oTarget
+         {
+            Post(oFollower,@MercenarySayToOne,#target=who,#message_rsc=Mark_follower_feedback,
+               #parm1=Send(oTarget,@GetDef),#parm2=Send(oTarget,@GetName));
+         }
+
+         Send(oFollower,@TargetSwitch,#what=oTarget,#iHatred=1000);
+         Send(oFollower,@EnterStateEngage,#target=oTarget,#actnow=TRUE);
+      }
+      
+      propagate;
+   }
+
+   MarkEffect(victim=$,attacker=$,damage=0,state=$)
+   {
+      local iStrength;
+
+      // Don't grant a bonus to the marker.
+      if attacker <> First(state)
+      {
+         // Damage is handled with .01 precision. 1 (P)oint (o)f (D)amage = 100 iStrength.
+         // Power multiplies by up to 100. 1 PoD = 10.000 iStrength.
+         iStrength = damage*Nth(state,2);
+         // If piDamagepercent is set to 100, 1 PoD = 10.000 iStrength.
+         iStrength = (iStrength/100)*piDamagePercent;
+         // Bleed duration is provided in ms. For a 5.000 ms duration, we need to divide our 
+         // strength by 5 so that the totals match when strength is the amount deducted
+         // every second. If bleed duration is 1 second,  1 PoD = 1000 iStrength.
+         iStrength = iStrength/(MARK_BLEED_DURATION/100);
+         // At this point, 1 PoD equals 1000 iStrength divided by the duration x of the DoT
+         // in seconds. Since the rate of health decay is handled with .001 precision,
+         // that is exactly what we want, if we want 1 point of health to decay per 1 point
+         // of damage over n seconds.
+
+         Send(victim,@StartOverTimeEffect,#what=self,#strength=-iStrength,
+            #who=attacker,#state=100,#duration=MARK_BLEED_DURATION,
+            #type=TYPE_HEALTH,#removable=REMOVE_INTERNAL);
+
+         // We have to divide damage by 1.000 and duration by 1.000 to get the total
+         // amount of damage dealt. To maintain accuracy without hitting MAX_KOD, we
+         // split our division up. We also pass the result on in precision mode,
+         // so we divide by 10.000 instead of 1.000.000 in total.
+         Send(Send(victim,@GetMarker),@AddDamage,
+            #damage=(iStrength/100)*(MARK_BLEED_DURATION/100));
+      }
+
+      return;
+   }
+
+   EndEnchantment(who=$, state=$)
+   {
+      // If who's enchantment's state is [oCaster,iPower], who is the victim.
+      if Length(state) > 1
+      {
+         // Remove the caster's enchantment.
+         Send(First(state),@RemoveEnchantment,#what=self,#report=FALSE);
+
+         // Get rid of our marker.
+         Send(Send(who,@GetMarker),@Delete);
+      }
+
+      return;
+   }
+
+   SuccessChance(who=$,modifier=0,lTargets=$)
+   {
+      return TRUE;
+   }
+
+   CanPayCosts(who=$,lTargets=$)
+   {
+      local oState, oTarget, oFollower;
+
+      // Check attack timer without setting a timer.
+      // Setting the timer is done in PerformSkill().
+      if NOT Send(who,@CheckAttackTimer)
+      {
+         return FALSE;
+      }
+
+      if (lTargets = $)
+      {
+         Send(who,@MsgSendUser,#message_rsc=Mark_no_targets);
+
+         return FALSE;
+      }
+
+      oTarget = First(lTargets);
+      oState = Send(who,@GetEnchantedState,#what=self);
+
+      if Send(who,@GetOwner) <> Send(oTarget,@GetOwner)
+      {
+         Send(who,@MsgSendUser,#message_rsc=Mark_bad_target);
+
+         return FALSE;
+      }
+
+      return TRUE;
+   }
+
+   GetTranceTime()
+   {
+      return viPreperation_time;
+   }
+
+end
+////////////////////////////////////////////////////////////////////////////////

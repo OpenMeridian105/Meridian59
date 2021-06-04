@@ -7707,7 +7707,9 @@ messages:
 
    UserAttack(what=$)
    {
-      local lFinalTargets, oAbility;
+      local i, oTarget, lFinalTargets, oAbility;
+
+      Send(self,@CancelLift);
 
       // Before we do anything else, let's check if our target is still around.
       // It might have died since we queued our action.
@@ -7736,7 +7738,15 @@ messages:
       {
          Send(self,@MsgSendUser,#message_rsc=user_no_fight);
 
-         return;
+      // If we happen to be attacking a follower, assist them if possible.
+      if IsClass(what,&Follower)
+      {
+         oTarget = Send(what,@GetTarget);
+
+         if oTarget <> $
+         {
+            what = oTarget;
+         }
       }
       else if IsClass(what,&User)
          AND Send(what,@IsOfflineOrCannotInteract)

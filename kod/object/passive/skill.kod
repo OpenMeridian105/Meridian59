@@ -13,6 +13,7 @@ Skill is PassiveObject
 constants:
 
    include blakston.khd
+   include protocol.khd
 
    SKILL_MURMUR_SQUARED = 64
    BASE_HASTE = 1000
@@ -156,6 +157,7 @@ classvars:
    viIcon_animation_end = 2
 
    vbIsAreaEffect = FALSE
+   vbIsLightSource = FALSE
 
    vbReportTrance = TRUE
    vbCanBreakTrance = TRUE
@@ -166,6 +168,8 @@ classvars:
    viAttack_delay = 1000
 
    vbKey_hold = FALSE
+
+   viShow_enchantment_icon = ENCHANTMENT_SHOW_ALL
 
 properties:
 
@@ -364,6 +368,7 @@ messages:
          OR (viSkill_Num = SKID_BRAWLING)
          OR (viSkill_Num = SKID_PROFICIENCY_MACE)
          OR (viSkill_Num = SKID_PROFICIENCY_HAMMER)
+         OR (viSkill_Num = SKID_CLEAVE)
       {
          return STAT_ID_MIGHT;
       }
@@ -400,6 +405,7 @@ messages:
          OR (viSkill_Num = SKID_PROFICIENCY_SHORTSWORD)
          OR (viSkill_Num = SKID_THROW)
          OR (viSkill_Num = SKID_PROFICIENCY_THROW_WEAPON)
+         OR (viSkill_Num = SKID_MARK)
       {
          return STAT_ID_AIM;
       }
@@ -762,6 +768,112 @@ messages:
    GetIntro()
    {
       return vrSkill_intro;
+   }
+
+   GetSpellMoveSpeedBonus()
+   {
+      return 0;
+   }
+
+   SetSpellPlayerFlag(who=$)
+   {
+      return;
+   }
+
+   ShowEnchantmentIcon(type = $)
+   {
+      if type = ENCHANTMENT_ROOM
+      {
+         return viShow_enchantment_icon & 0x01;
+      }
+      
+      if type = ENCHANTMENT_PLAYER
+      {
+         return viShow_enchantment_icon & 0x02;
+      }
+      
+      debug(self,"got invalid show enchantment icon type",type);
+      
+      return TRUE;
+   }
+
+   RemoveEnchantmentEffects(who = $, state = $, report = TRUE, recheck = FALSE)
+   {
+      Send(self,@EndEnchantment,#who=who,#state=state,#report=report,
+            #recheck=recheck);
+
+      return;
+   }
+
+   EndEnchantment(who=$)
+   "Called by EnchantmentTimer when an enchantment ends, or by "
+   "RemoveEnchantmentEffects when an enchantment is forcefully/prematurely "
+   "removed.  Handles mana drain - spells with drain effects should propagate "
+   "here."
+   {
+      return;
+   }
+
+   IsPeriodic()
+   "This is used by the logon/logoff enchantment keeping function.  "
+   "Returns false for most enchantments."
+   {
+      return FALSE;
+   }
+
+   RestartEnchantmentEffect()
+   "If a spell activates an effect that is run on the client-side only "
+   "(such as blind or hold), reinstate that effect."
+   {
+      return;
+   }
+
+   IsPersonalEnchantment()
+   {
+      return FALSE;
+   }
+
+   AffectsMaxMana()
+   {
+      return FALSE;
+   }
+
+   CanBeRemovedByPlayer()
+   "Skills don't interact with Purge/Purify"
+   {
+      return FALSE;
+   }
+
+   SendEffectData()
+   {
+      return;
+   }
+
+   ModifyMonsterBehavior()
+   {
+      return;
+   }
+
+   ModifyResistance(resistance_list=$)
+   {
+      return resistance_list;
+   }
+
+   ModifySpellPower(who=$,state=$,oSpell=$,iSpellPower=SPELLPOWER_MINIMUM)
+   {
+      return iSpellPower;
+   }
+
+   OverTimeEffectWearingOff(who=$,overtimeeffect=$,bReport=TRUE)
+   "Just a dummy catching over time effects without message."
+   {
+      return;
+   }
+
+   OverTimeEffectStarting(who=$,overtimeeffect=$,bReport=TRUE)
+   "Just a dummy catching over time effects without message."
+   {
+      return;
    }
 
    SendAnimation()
@@ -1404,6 +1516,11 @@ messages:
    IsHeld()
    {
       return vbKey_hold;
+   }
+
+   IsLightSource()
+   {
+      return vbIsLightSource;
    }
 
 end

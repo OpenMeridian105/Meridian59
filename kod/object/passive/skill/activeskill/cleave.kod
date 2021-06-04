@@ -199,7 +199,16 @@ messages:
       local oWeapon, stroke_obj, iPower, i, bTarget, iDefended;
 
       oWeapon = Send(who,@GetWeapon);
-      stroke_obj = Send(who,@GetStrokeObject);
+
+      // We might be morphed, if so, the monster is our stroke object.
+      if Send(who,@IsEnchanted,#byClass=&Morph)
+      {
+         stroke_obj = Send(who,@GetIllusionForm);
+      }
+      else
+      {
+         stroke_obj = Send(who,@GetStrokeObject);
+      }
 
       iPower = viBonus + Send(self,@GetSkillPower,#who=who);
 

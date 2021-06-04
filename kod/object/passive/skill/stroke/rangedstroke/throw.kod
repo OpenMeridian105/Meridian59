@@ -120,7 +120,7 @@ messages:
    // General combat messages.
    PerformSkill(who=$,lTargets=$)
    {
-      local oTarget, oWeapon, iMultiAttack;
+      local oTarget, oWeapon, iMultiAttack, stroke_obj;
 
       oTarget = First(lTargets);
 
@@ -128,9 +128,19 @@ messages:
 
       iMultiAttack = Send(oWeapon,@GetMultiAttack);
 
+      // We might be morphed, if so, the monster is our stroke object.
+      if Send(who,@IsEnchanted,#byClass=&Morph)
+      {
+         stroke_obj = Send(who,@GetIllusionForm);
+      }
+      else
+      {
+         stroke_obj = Send(who,@GetStrokeObject);
+      }
+
       while (iMultiAttack-- >= 0)
       {
-         Send(who,@TryAttack,#what=oTarget,#stroke_obj=self,
+         Send(who,@TryAttack,#what=oTarget,#stroke_obj=stroke_obj,
             #use_weapon=oWeapon,#bCheck=FALSE);
       }
 

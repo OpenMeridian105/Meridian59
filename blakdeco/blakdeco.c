@@ -602,6 +602,7 @@ char * name_function(int fnum)
 
    case RANDOM  : return "Random";
    case RECORDSTAT : return "RecordStat";
+   case EMPTYSTATTABLE : return "EmptyStatTable";
    case GETSESSIONIP : return "GetSessionIP";
    default : sprintf(s,"Unknown function %i",fnum); return s;
    }

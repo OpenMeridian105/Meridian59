@@ -2680,6 +2680,7 @@ void AdminShowCalls(int session_id,admin_parm_type parms[],
 		case RECYCLEUSER : strcpy(c_name, "RecycleUser"); break;
 		case RANDOM : strcpy(c_name, "Random"); break;
 		case RECORDSTAT : strcpy(c_name, "RecordStat"); break;
+		case EMPTYSTATTABLE : strcpy(c_name, "EmptyStatTable"); break;
 		case GETSESSIONIP : strcpy(c_name, "GetSessionIP"); break;
 		case SETCLASSVAR : strcpy(c_name, "SetClassVar"); break;
 			

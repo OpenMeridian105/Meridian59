@@ -68,8 +68,9 @@ struct sql_queue
 
 typedef struct {
    sql_recordtype  stat_type;
-   char   *procedure_name;
    int num_fields;
+   char *procedure_name;
+   char *table_name;
 } sql_statistic_type;
 
 enum sql_recordtype
@@ -116,51 +117,51 @@ enum sql_recordtype
    STAT_MAX = 38 // Equal to highest defined stat.
 };
 
-// e.g. STAT_TOTALMONEY is the constant required to determine which stat
-// is being recorded when calling RecordStat() from kod. WriteTotalMoney
-// is the SQL procedure called when writing a record to the database. The
-// 3rd field here (1 for the STAT_TOTALMONEY example) is the number of
-// columns in the record.
+// Statistics_Table entries have the format:
+//  - STAT_TYPE: the constant for this statistic used in RecordStat()
+//  - int: the number of columns in the table
+//  - string: SQL write procedure name, called when writing a record to DB
+//  - string: SQL table name
 static sql_statistic_type Statistics_Table[] = {
-   {STAT_NONE, NULL, 0},
-   {STAT_TOTALMONEY, "WriteTotalMoney", 1},
-   {STAT_MONEYCREATED, "WriteMoneyCreated", 1},
-   {STAT_PLAYERLOGIN, "WritePlayerLogin", 3},
-   {STAT_ASSESS_DAM, "WritePlayerAssessDamage", 7},
-   {STAT_PLAYERDEATH, "WritePlayerDeath", 5},
-   {STAT_PLAYER, "WritePlayer", 13},
-   {STAT_PLAYERSUICIDE, "WritePlayerSuicide", 2},
-   {STAT_GUILD, "WriteGuild", 4},
-   {STAT_GUILDDISBAND, "WriteGuildDisband", 1},
-   {STAT_SPELLS, "WriteSpells", 13},
-   {STAT_SPELL_REAGENT, "WriteSpellReagent", 3},
-   {STAT_MONSTER_LOOT, "WriteMonsterLoot", 3},
-   {STAT_MONSTER, "WriteMonster", 12},
-   {STAT_MONSTER_ZONE, "WriteMonsterZone", 3},
-   {STAT_NPCS, "WriteNpcs", 6},
-   {STAT_WEAPONS, "WriteWeapons", 9},
-   {STAT_ROOMS, "WriteRooms", 4},
-   {STAT_NPC_ZONE, "WriteNpcZone", 3},
-   {STAT_NPC_SELLITEM, "WriteNpcSellItem", 2},
-   {STAT_NPC_SELLSKILL, "WriteNpcSellSkill", 2},
-   {STAT_NPC_SELLSPELL, "WriteNpcSellSpell", 2},
-   {STAT_REAGENTS, "WriteReagents", 9},
-   {STAT_FOOD, "WriteFood", 9},
-   {STAT_AMMO, "WriteAmmo", 9},
-   {STAT_ARMOR, "WriteArmor", 9},
-   {STAT_MISCITEMS, "WriteMiscItems", 9},
-   {STAT_RINGS, "WriteRings", 9},
-   {STAT_RODS, "WriteRods", 9},
-   {STAT_POTIONS, "WritePotions", 9},
-   {STAT_SCROLLS, "WriteScrolls", 9},
-   {STAT_WANDS, "WriteWands", 6},
-   {STAT_QUESTITEMS, "WriteQuestItems", 9},
-   {STAT_SKILLS, "WriteSkills", 11},
-   {STAT_NECKLACE, "WriteNecklace", 9},
-   {STAT_INSTRUMENTS, "WriteInstruments", 9},
-   {STAT_GEMS, "WriteGems", 9},
-   {STAT_OFFERINGS, "WriteOfferings", 9},
-   {STAT_QUESTS, "WriteQuests", 6}
+   {STAT_NONE,          0, NULL, NULL},
+   {STAT_TOTALMONEY,    1, "WriteTotalMoney", "money_total"},
+   {STAT_MONEYCREATED,  1, "WriteMoneyCreated", "money_created"},
+   {STAT_PLAYERLOGIN,   3, "WritePlayerLogin", "player_logins"},
+   {STAT_ASSESS_DAM,    7, "WritePlayerAssessDamage", "player_damaged"},
+   {STAT_PLAYERDEATH,   5, "WritePlayerDeath", "player_death"},
+   {STAT_PLAYER,       13, "WritePlayer", "player"},
+   {STAT_PLAYERSUICIDE, 2, "WritePlayerSuicide", "player"},
+   {STAT_GUILD,         4, "WriteGuild", "guild"},
+   {STAT_GUILDDISBAND,  1, "WriteGuildDisband", "guild"},
+   {STAT_SPELLS,       13, "WriteSpells", "wiki_spells"},
+   {STAT_SPELL_REAGENT, 3, "WriteSpellReagent", "wiki_spell_reagent"},
+   {STAT_MONSTER_LOOT,  3, "WriteMonsterLoot", "wiki_monster_loot"},
+   {STAT_MONSTER,      12, "WriteMonster", "wiki_monster"},
+   {STAT_MONSTER_ZONE,  3, "WriteMonsterZone", "wiki_monster_zone"},
+   {STAT_NPCS,          6, "WriteNpcs", "wiki_npcs"},
+   {STAT_WEAPONS,       9, "WriteWeapons", "wiki_weapons"},
+   {STAT_ROOMS,         4, "WriteRooms", "wiki_rooms"},
+   {STAT_NPC_ZONE,      3, "WriteNpcZone", "wiki_npc_zone"},
+   {STAT_NPC_SELLITEM,  2, "WriteNpcSellItem", "wiki_npc_sellitem"},
+   {STAT_NPC_SELLSKILL, 2, "WriteNpcSellSkill", "wiki_npc_sellskill"},
+   {STAT_NPC_SELLSPELL, 2, "WriteNpcSellSpell", "wiki_npc_sellspell"},
+   {STAT_REAGENTS,      9, "WriteReagents", "wiki_reagents"},
+   {STAT_FOOD,          9, "WriteFood", "wiki_food"},
+   {STAT_AMMO,          9, "WriteAmmo", "wiki_ammo"},
+   {STAT_ARMOR,         9, "WriteArmor", "wiki_armor"},
+   {STAT_MISCITEMS,     9, "WriteMiscItems", "wiki_miscitems"},
+   {STAT_RINGS,         9, "WriteRings", "wiki_rings"},
+   {STAT_RODS,          9, "WriteRods", "wiki_rods"},
+   {STAT_POTIONS,       9, "WritePotions", "wiki_potions"},
+   {STAT_SCROLLS,       9, "WriteScrolls", "wiki_scrolls"},
+   {STAT_WANDS,         6, "WriteWands", "wiki_wands"},
+   {STAT_QUESTITEMS,    9, "WriteQuestItems", "wiki_questitems"},
+   {STAT_SKILLS,       11, "WriteSkills", "wiki_skills"},
+   {STAT_NECKLACE,      9, "WriteNecklace", "wiki_necklace"},
+   {STAT_INSTRUMENTS,   9, "WriteInstruments", "wiki_instruments"},
+   {STAT_GEMS,          9, "WriteGems", "wiki_gems"},
+   {STAT_OFFERINGS,     9, "WriteOfferings", "wiki_offerings"},
+   {STAT_QUESTS,        6, "WriteQuests", "wiki_quests"}
 };
 
 enum sql_worker_state
@@ -179,10 +180,12 @@ void FreeDataNodeMemory(int total_fields, int fields_entered, sql_data_node data
 void MySQLInit(char* Host, int Port, char* User, char* Password, char* DB);
 void MySQLEnd();
 BOOL MySQLRecordGeneric(int type, int num_fields, sql_data_node data[]);
+BOOL MySQLEmptyTable(int type);
 void __cdecl _MySQLWorker(void* Parameters);
 void _MySQLVerifySchema();
 BOOL _MySQLEnqueue(sql_queue_node* Node);
 BOOL _MySQLDequeue(BOOL processNode);
-void _MySQLCallProc(char* Name, MYSQL_BIND Parameters[]);
+void _MySQLCallProc(char* Name, MYSQL_BIND Parameters[], BOOL nullParams);
 void _MySQLWriteNode(sql_queue_node* Node, BOOL ProcessNode);
+void _MySQLTruncate(sql_queue_node* Node, BOOL ProcessNode);
 #endif

@@ -1698,6 +1698,17 @@ void MySQLGenerateDrop(sql_recordtype type, char *buffer)
 }
 
 /*
+ * MySQLGenerateTruncate: Assembles a string in the passed buffer which specifies
+ *   a SQL table to truncate (empty) based on the sql record type passed.
+ */
+void MySQLGenerateTruncate(sql_recordtype type, char *buffer)
+{
+   int num_chars = sprintf(buffer, "TRUNCATE TABLE %s;",
+      Statistics_Table[type].table_name);
+   buffer[num_chars] = 0;
+}
+
+/*
  * MySQLGenerateCall: Assembles a string in the passed buffer which specifies
  *   a call for a SQL procedure based on the sql record type passed.
  */
@@ -1856,6 +1867,36 @@ BOOL MySQLRecordGeneric(int type, int num_fields, sql_data_node data[])
       node->data = NULL;
       FreeMemory(MALLOC_ID_SQL, node, sizeof(sql_queue_node));
    }
+
+   return enqueued;
+}
+
+/*
+ * MySQLEmptyTable: Enqueues the data for a SQL truncate table call.
+ *      type: the SQL statistic to lookup the table
+                truncate proc to enqueue
+ */
+BOOL MySQLEmptyTable(int type)
+{
+   sql_queue_node* node = (sql_queue_node*)AllocateMemory(MALLOC_ID_SQL, sizeof(sql_queue_node));
+   if (!node)
+   {
+      bprintf("Could not allocate memory for sql queue node in MySQLEmptyTable.");
+
+      return FALSE;
+   }
+
+   node->type = (sql_recordtype)type;
+   // Set num_fields to negative value to mark it as a table truncate.
+   node->num_fields = -1;
+   node->data = NULL;
+
+   // try to enqueue
+   BOOL enqueued = _MySQLEnqueue(node);
+
+   // cleanup in case of fail
+   if (!enqueued)
+      FreeMemory(MALLOC_ID_SQL, node, sizeof(sql_queue_node));
 
    return enqueued;
 }
@@ -2161,24 +2202,54 @@ BOOL _MySQLDequeue(BOOL processNode)
 	// if we dequeued one, process it
 	if (node)
 	{
-		// process node
-		_MySQLWriteNode(node, processNode);
+      // process node
+      if (node->num_fields < 0)
+      {
+         _MySQLTruncate(node, processNode);
+      }
+      else
+      {
+         _MySQLWriteNode(node, processNode);
 
-		// free memory of processed record and node
-      FreeDataNodeMemory(node->num_fields, node->num_fields, (sql_data_node *)node->data);
+         // free memory of processed record and node
+         FreeDataNodeMemory(node->num_fields, node->num_fields, (sql_data_node *)node->data);
+      }
       FreeMemory(MALLOC_ID_SQL, node, sizeof(sql_queue_node));
-
 	}
 
 	return dequeued;
 }
 
-void _MySQLCallProc(char* ProcName, MYSQL_BIND Parameters[])
+/*
+ * _MySQLTruncate: Obtain the correct truncate string for given node type
+ *   and pass it on to _MySQLCallProc.
+ */
+void _MySQLTruncate(sql_queue_node* Node, BOOL ProcessNode)
+{
+   if (!Node)
+      return;
+
+   // really write it, or just free mem at end?
+   if (ProcessNode)
+   {
+      // call stored procedure
+      char buffer[128];
+      MySQLGenerateTruncate(Node->type, buffer);
+      _MySQLCallProc(buffer, NULL, TRUE);
+   }
+}
+
+/*
+ * _MySQLCallProc: Call a MySQL procedure on the database. Parameters can be NULL
+ *   if calling a TRUNCATE procedure instead of a WRITE, but nullParams must be
+ *   passed as TRUE to allow error-checking NULL Paremeters on WRITE statements.
+ */
+void _MySQLCallProc(char* ProcName, MYSQL_BIND Parameters[], BOOL nullParams = FALSE)
 {
    MYSQL_STMT*	stmt;
    int status;
 
-   if (!ProcName || !Parameters)
+   if (!ProcName || (!Parameters && !nullParams))
       return;
 
    // init statement
@@ -2197,13 +2268,16 @@ void _MySQLCallProc(char* ProcName, MYSQL_BIND Parameters[])
       return;
    }
 
-   status = mysql_stmt_bind_param(stmt, Parameters);
-   if (status != 0 && mysql)
+   if (!nullParams)
    {
-      bprintf("MySQL error in mysql_stmt_bind_param with procedure %s, status code %i: %s",
-         ProcName, status, mysql_error(mysql));
-      mysql_stmt_close(stmt);
-      return;
+      status = mysql_stmt_bind_param(stmt, Parameters);
+      if (status != 0 && mysql)
+      {
+         bprintf("MySQL error in mysql_stmt_bind_param with procedure %s, status code %i: %s",
+            ProcName, status, mysql_error(mysql));
+         mysql_stmt_close(stmt);
+         return;
+      }
    }
 
    status = mysql_stmt_execute(stmt);

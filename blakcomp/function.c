@@ -136,6 +136,7 @@ function_type Functions[] = {
 {"RecycleUser",         RECYCLEUSER,     STORE_OPTIONAL, AEXPRESSION,   ANONE},
 {"StringToNumber",      STRINGTONUMBER,  STORE_REQUIRED, AEXPRESSION,   ANONE},
 {"RecordStat",          RECORDSTAT,      STORE_OPTIONAL, AEXPRESSIONS,  ANONE},
+{"EmptyStatTable",      EMPTYSTATTABLE,  STORE_OPTIONAL, AEXPRESSION,   ANONE},
 {"GetSessionIP",        GETSESSIONIP,    STORE_REQUIRED, AEXPRESSION,   ANONE},
 };
 

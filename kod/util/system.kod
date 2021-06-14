@@ -8635,6 +8635,20 @@ messages:
       return;
    }
 
+#region Export into SQL (Wiki)
+   UpdateDatabase()
+   {
+      SendList(plSpells,0,@UpdateDatabase); // Spells and Spell Reagent Export
+      SendList(plSkills,0,@UpdateDatabase); // Skill Export
+      SendList(plMonsterTemplates,0,@UpdateDatabase); // Monster Export
+      SendList(plRooms,0,@UpdateDatabase); // Rooms and Monster Spawn Exports
+      SendList(plItemTemplates,0,@UpdateDatabase); // Item Exports
+      Send(&TreasureType,@UpdateDatabase); // Monster Loot Export
+      SendList(Send(poLibrary,@GetNPCs), 0, @UpdateDatabase); // NPC, NPC Zone and NPC Sell List Export
+
+      return;
+   }
+
 #region Print Game Info
 
    PrintSpellsBySchool()
@@ -8992,6 +9006,14 @@ messages:
       }
 
       foreach i in plMoneyTemplates
+      {
+         if GetClass(i) = cClass
+         {
+            return i;
+         }
+      }
+
+      foreach i in plMonsterTemplates
       {
          if GetClass(i) = cClass
          {

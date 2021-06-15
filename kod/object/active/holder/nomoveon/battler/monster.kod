@@ -1797,8 +1797,10 @@ messages:
       return;
    }
 
-   EnterStateMove(actnow=FALSE)
+   EnterStateMove(actnow=FALSE,delay=$)
    {
+      local iDelay;
+
       // SetTarget without a 'what' passed sets target to nil.
       if (poTarget <> $)
       {
@@ -1818,7 +1820,16 @@ messages:
       }
       else
       {
-         ptBehavior = CreateTimer(self,@MoveTimer,Send(self,@GetMoveTime));
+         if delay = $
+         {
+            iDelay = Send(self,@GetMoveTime);
+         }
+         else
+         {
+            iDelay = delay;
+         }
+
+         ptBehavior = CreateTimer(self,@MoveTimer,iDelay);
       }
 
       return;
@@ -8571,16 +8582,16 @@ messages:
          {
             // Adjust speed based on distance to leader.
             iDistance = Send(self, @SquaredFineDistanceTo3D, #what=poLeader);
-            iRadius = (Send(self,@HowCloseToCommander)+2) * FINENESS;
 
-            if iDistance > iRadius*iRadius
-            {
-               piSpeed = USER_RUNNING_SPEED*4/3;
-            }
-            else
-            {
-               piSpeed = USER_RUNNING_SPEED/2;
-            }
+            // Need to bound here to avoid exceeding MAX_KOD_INT later.
+            iDistance = Bound(iDistance,$,MAX_KOD_INT/USER_RUNNING_SPEED);
+
+            // Increase the desired commander distance to soften those last steps some more.
+            iRadius = (Send(self,@HowCloseToCommander) + 1) * 3 * FINENESS / 2;
+            iRadius *= iRadius;
+
+            // Be sure to stay within reasonable limits.
+            piSpeed = Bound(USER_RUNNING_SPEED*iDistance/iRadius,SPEED_AVERAGE,3*USER_RUNNING_SPEED/2);
          }
          else
          {
@@ -11908,6 +11919,11 @@ messages:
    GetMissSound()
    {
       return vrSound_miss;
+   }
+
+   GetPostFightDelay()
+   {
+      return Bound((70-piAgility)*(70-piIntellect),500,5000);
    }
 
    //// Morph related messages.

@@ -60,15 +60,43 @@ messages:
    UpdateDatabase()
    {
       //Wiki Exports: Loot by each Monster
-      local i, oItem;
-      foreach i in plTreasure 
+      local i, j, oItem;
+
+      foreach i in plTreasure
       {
          oItem = Send(SYS,@FindTemplateItemByClass,#cClass=First(i));
-         RecordStat(STAT_MONSTER_LOOT, TAG_INT, viTreasure_num, TAG_RESOURCE,
-            Send(oItem,@GetName,#number=1), TAG_INT, Nth(i,2));
+
+         RecordStat(STAT_TREASURE_GEN, TAG_INT, viTreasure_num, TAG_RESOURCE,
+            Send(oItem,@GetName,#number=3), TAG_INT, Nth(i,2));
       }
 
-   return;
+      foreach i in plGuaranteedTreasure
+      {
+         oItem = Send(SYS,@FindTemplateItemByClass,#cClass=First(i));
+
+         // Length 3 is [numberitem, min_amt, max_amt]
+         if (Length(i) = 3)
+         {
+            RecordStat(STAT_TREASURE_EXTRA, TAG_INT, viTreasure_num, TAG_RESOURCE,
+               Send(oItem,@GetName,#number=3), TAG_INT, Nth(i,2), TAG_INT, Nth(i,3));
+         }
+         else if (Length(i) = 1)
+         {
+            // Record it as 'extra' with 1 min/max.
+            RecordStat(STAT_TREASURE_EXTRA, TAG_INT, viTreasure_num, TAG_RESOURCE,
+               Send(oItem,@GetName,#number=3), TAG_INT, 1, TAG_INT, 1);
+         }
+         else
+         {
+            foreach j in Nth(i,2)
+            {
+               RecordStat(STAT_TREASURE_MAGIC, TAG_INT, viTreasure_num, TAG_RESOURCE,
+                  Send(oItem,@GetName,#number=3), TAG_INT, j);
+            }
+         }
+      }
+
+      return;
    }
 
    Constructed()

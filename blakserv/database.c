@@ -177,14 +177,35 @@ int   port     = 3306;
    )                                                     \
    ENGINE=InnoDB DEFAULT CHARSET=latin1;"
 
-#define SQLQUERY_CREATETABLE_MONSTER_LOOT               "\
-   CREATE TABLE wiki_monster_loot                        \
+#define SQLQUERY_CREATETABLE_TREASURE_GEN               "\
+   CREATE TABLE wiki_treasure_gen                        \
    (                                                     \
-     monster_name         VARCHAR(63) NOT NULL,          \
-     monster_drop_item    VARCHAR(63) NOT NULL,          \
-     monster_loot_chance  INT(4) DEFAULT NULL,           \
-     PRIMARY KEY(monster_name, monster_drop_item)        \
+     treasure_id          INT(4) NOT NULL,               \
+     item_name            VARCHAR(63) NOT NULL,          \
+     item_chance          INT(4) DEFAULT NULL,           \
+     PRIMARY KEY(treasure_id, item_name)                 \
    )                                                     \
+   ENGINE=InnoDB DEFAULT CHARSET=latin1;"
+
+#define SQLQUERY_CREATETABLE_TREASURE_EXTRA             "\
+   CREATE TABLE wiki_treasure_extra                      \
+   (                                                     \
+     treasure_id          INT(4) NOT NULL,               \
+     item_name            VARCHAR(63) NOT NULL,          \
+     item_min_amount      INT(4) DEFAULT NULL,           \
+     item_max_amount      INT(4) DEFAULT NULL,           \
+     PRIMARY KEY(treasure_id, item_name)                 \
+   )                                                     \
+   ENGINE=InnoDB DEFAULT CHARSET=latin1;"
+
+#define SQLQUERY_CREATETABLE_TREASURE_MAGIC                "\
+   CREATE TABLE wiki_treasure_magic                         \
+   (                                                        \
+     treasure_id          INT(4) NOT NULL,                  \
+     item_name            VARCHAR(63) NOT NULL,             \
+     item_attribute_id    INT(4) NOT NULL,                  \
+     PRIMARY KEY(treasure_id, item_name, item_attribute_id) \
+   )                                                        \
    ENGINE=InnoDB DEFAULT CHARSET=latin1;"
 
 #define SQLQUERY_CREATETABLE_MONSTER                    "\
@@ -845,19 +866,52 @@ int   port     = 3306;
             spell_reagent_amount);          \
    END"
 
-#define SQLQUERY_CREATEPROC_MONSTER_LOOT  "\
-   CREATE PROCEDURE WriteMonsterLoot(      \
-     IN monster_name         VARCHAR(63),  \
-     IN monster_drop_item    VARCHAR(63),  \
-     IN monster_loot_chance  INT(4))       \
+#define SQLQUERY_CREATEPROC_TREASURE_GEN  "\
+   CREATE PROCEDURE WriteTreasureGen(      \
+     IN treasure_id          INT(4),       \
+     IN item_name            VARCHAR(63),  \
+     IN item_chance          INT(4))       \
    BEGIN                                   \
-   INSERT INTO wiki_monster_loot           \
-      (  monster_name,                     \
-         monster_drop_item,                \
-         monster_loot_chance)              \
-         VALUES (monster_name,             \
-            monster_drop_item,             \
-            monster_loot_chance);          \
+   INSERT INTO wiki_treasure_gen           \
+      (  treasure_id,                      \
+         item_name,                        \
+         item_chance)                      \
+         VALUES (treasure_id,              \
+            item_name,                     \
+            item_chance);                  \
+   END"
+
+#define SQLQUERY_CREATEPROC_TREASURE_EXTRA  "\
+   CREATE PROCEDURE WriteTreasureExtra(      \
+     IN treasure_id          INT(4),         \
+     IN item_name            VARCHAR(63),    \
+     IN item_min_amount      INT(4),         \
+     IN item_max_amount      INT(4))         \
+   BEGIN                                     \
+   INSERT INTO wiki_treasure_extra           \
+      (  treasure_id,                        \
+         item_name,                          \
+         item_min_amount,                    \
+         item_max_amount)                    \
+         VALUES (treasure_id,                \
+            item_name,                       \
+            item_min_amount,                 \
+            item_max_amount);                \
+   END"
+
+#define SQLQUERY_CREATEPROC_TREASURE_MAGIC  "\
+   CREATE PROCEDURE WriteTreasureMagic(      \
+     IN treasure_id          INT(4),         \
+     IN item_name            VARCHAR(63),    \
+     IN item_attribute_id    INT(4))         \
+   BEGIN                                     \
+   INSERT INTO wiki_treasure_magic           \
+      (  treasure_id,                        \
+         item_name,                          \
+         item_attribute_id)                  \
+         VALUES (treasure_id,                \
+            item_name,                       \
+            item_attribute_id);              \
    END"
 
 #define SQLQUERY_CREATEPROC_MONSTER                    "\
@@ -1784,7 +1838,7 @@ void MySQLEnd()
  */
 int MySQLTypeNumArgs(int type)
 {
-   if (type >= STAT_NONE && type <= STAT_MAX)
+   if (type >= STAT_NONE && type <= STAT_MAXSTAT)
       return Statistics_Table[type].num_fields;
 
    bprintf("Unknown type received in MySQLTypeNumArgs: %i", type);
@@ -2050,7 +2104,9 @@ void _MySQLVerifySchema()
    MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATETABLE_SPELLS, status);
    MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATETABLE_SKILLS, status);
    MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATETABLE_SPELL_REAGENT, status);
-   MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATETABLE_MONSTER_LOOT, status);
+   MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATETABLE_TREASURE_GEN, status);
+   MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATETABLE_TREASURE_EXTRA, status);
+   MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATETABLE_TREASURE_MAGIC, status);
    MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATETABLE_MONSTER, status);
    MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATETABLE_MONSTER_ZONE, status);
    MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATETABLE_NPCS, status);
@@ -2079,7 +2135,7 @@ void _MySQLVerifySchema()
 
    char buffer[128];
    // Drop existing procedures if present.
-   for (int i = 1; i <= STAT_MAX; ++i)
+   for (int i = 1; i <= STAT_MAXSTAT; ++i)
    {
       MySQLGenerateDrop(Statistics_Table[i].stat_type, buffer);
       MYSQL_QUERY_CHECKED(mysql, buffer, status);
@@ -2098,7 +2154,9 @@ void _MySQLVerifySchema()
    MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATEPROC_SPELLS, status);
    MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATEPROC_SKILLS, status);
    MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATEPROC_SPELL_REAGENT, status);
-   MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATEPROC_MONSTER_LOOT, status);
+   MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATEPROC_TREASURE_GEN, status);
+   MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATEPROC_TREASURE_EXTRA, status);
+   MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATEPROC_TREASURE_MAGIC, status);
    MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATEPROC_MONSTER, status);
    MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATEPROC_MONSTER_ZONE, status);
    MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATEPROC_NPCS, status);

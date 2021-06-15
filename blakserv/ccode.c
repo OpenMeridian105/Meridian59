@@ -5359,7 +5359,7 @@ int C_RecordStat(int object_id,local_var_type *local_vars,
    }
 
    // Must be a valid statistic type.
-   if (stat_type.v.data <= 0 || stat_type.v.data > STAT_MAX)
+   if (stat_type.v.data <= 0 || stat_type.v.data > STAT_MAXSTAT)
    {
       bprintf("C_RecordStat received unknown statistic type %i", stat_type.v.data);
       return NIL;
@@ -5484,7 +5484,7 @@ int C_EmptyStatTable(int object_id, local_var_type *local_vars,
    }
 
    // Must be a valid statistic type.
-   if (stat_type.v.data <= 0 || stat_type.v.data > STAT_MAX)
+   if (stat_type.v.data <= 0 || stat_type.v.data > STAT_MAXSTAT)
    {
       bprintf("C_EmptyStatTable received unknown statistic type %i",
          stat_type.v.data);

@@ -5359,7 +5359,7 @@ int C_RecordStat(int object_id,local_var_type *local_vars,
    }
 
    // Must be a valid statistic type.
-   if (stat_type.v.data <= 0 || stat_type.v.data > STAT_MAX)
+   if (stat_type.v.data <= 0 || stat_type.v.data > STAT_MAXSTAT)
    {
       bprintf("C_RecordStat received unknown statistic type %i", stat_type.v.data);
       return NIL;
@@ -5457,6 +5457,41 @@ int C_RecordStat(int object_id,local_var_type *local_vars,
 
    // All types okay, try insert it.
    MySQLRecordGeneric(stat_type.v.data, count, data);
+#endif
+   return NIL;
+}
+
+int C_EmptyStatTable(int object_id, local_var_type *local_vars,
+   int num_normal_parms, parm_node normal_parm_array[],
+   int num_name_parms, parm_node name_parm_array[])
+{
+#ifdef BLAK_PLATFORM_WINDOWS
+   val_type stat_type;
+
+   // Don't do anything if SQL isn't enabled.
+   static bool bEnabled = ConfigBool(MYSQL_ENABLED);
+   if (!bEnabled)
+      return NIL;
+
+   // STAT_TYPE enum located in database.h, Also defined in blakston.khd
+   // to match between C code and Kod code.
+   stat_type = RetrieveValue(object_id, local_vars, normal_parm_array[0].type, normal_parm_array[0].value);
+   if (stat_type.v.tag != TAG_INT)
+   {
+      bprintf("STAT_TYPE expected in C_EmptyStatTable(), got %s %i",
+         GetTagName(stat_type), stat_type.v.data);
+      return NIL;
+   }
+
+   // Must be a valid statistic type.
+   if (stat_type.v.data <= 0 || stat_type.v.data > STAT_MAXSTAT)
+   {
+      bprintf("C_EmptyStatTable received unknown statistic type %i",
+         stat_type.v.data);
+      return NIL;
+   }
+
+   MySQLEmptyTable(stat_type.v.data);
 #endif
    return NIL;
 }

@@ -238,9 +238,10 @@ enum
    ISOBJECT = 161,
 
    RANDOM = 201,
-   
+
    RECORDSTAT = 210,
-   
+   EMPTYSTATTABLE = 211,
+
    GETSESSIONIP = 220,
 };
 

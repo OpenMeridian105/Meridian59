@@ -8638,6 +8638,19 @@ messages:
 #region Export into SQL (Wiki)
    UpdateDatabase()
    {
+      // Empty (truncate) the appropriate tables before updating the database.
+      // This is done because some of the tables contain data that may be
+      // deleted from kod during an update (e.g. spell reagents, mob loot tables).
+      EmptyStatTable(STAT_SPELL_REAGENT);
+      EmptyStatTable(STAT_MONSTER_ZONE);
+      EmptyStatTable(STAT_TREASURE_GEN);
+      EmptyStatTable(STAT_TREASURE_EXTRA);
+      EmptyStatTable(STAT_TREASURE_MAGIC);
+      EmptyStatTable(STAT_NPC_SELLITEM);
+      EmptyStatTable(STAT_NPC_SELLSKILL);
+      EmptyStatTable(STAT_NPC_SELLSPELL);
+      EmptyStatTable(STAT_NPC_ZONE);
+
       SendList(plSpells,0,@UpdateDatabase); // Spells and Spell Reagent Export
       SendList(plSkills,0,@UpdateDatabase); // Skill Export
       SendList(plMonsterTemplates,0,@UpdateDatabase); // Monster Export

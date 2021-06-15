@@ -268,6 +268,7 @@ void InitBkodInterpret(void)
    ccall_table[RANDOM] = C_Random;
    
    ccall_table[RECORDSTAT] = C_RecordStat;
+   ccall_table[EMPTYSTATTABLE] = C_EmptyStatTable;
    
    ccall_table[GETSESSIONIP] = C_GetSessionIP;
    

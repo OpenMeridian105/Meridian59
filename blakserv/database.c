@@ -177,14 +177,35 @@ int   port     = 3306;
    )                                                     \
    ENGINE=InnoDB DEFAULT CHARSET=latin1;"
 
-#define SQLQUERY_CREATETABLE_MONSTER_LOOT               "\
-   CREATE TABLE wiki_monster_loot                        \
+#define SQLQUERY_CREATETABLE_TREASURE_GEN               "\
+   CREATE TABLE wiki_treasure_gen                        \
    (                                                     \
-     monster_name         VARCHAR(63) NOT NULL,          \
-     monster_drop_item    VARCHAR(63) NOT NULL,          \
-     monster_loot_chance  INT(4) DEFAULT NULL,           \
-     PRIMARY KEY(monster_name, monster_drop_item)        \
+     treasure_id          INT(4) NOT NULL,               \
+     item_name            VARCHAR(63) NOT NULL,          \
+     item_chance          INT(4) DEFAULT NULL,           \
+     PRIMARY KEY(treasure_id, item_name)                 \
    )                                                     \
+   ENGINE=InnoDB DEFAULT CHARSET=latin1;"
+
+#define SQLQUERY_CREATETABLE_TREASURE_EXTRA             "\
+   CREATE TABLE wiki_treasure_extra                      \
+   (                                                     \
+     treasure_id          INT(4) NOT NULL,               \
+     item_name            VARCHAR(63) NOT NULL,          \
+     item_min_amount      INT(4) DEFAULT NULL,           \
+     item_max_amount      INT(4) DEFAULT NULL,           \
+     PRIMARY KEY(treasure_id, item_name)                 \
+   )                                                     \
+   ENGINE=InnoDB DEFAULT CHARSET=latin1;"
+
+#define SQLQUERY_CREATETABLE_TREASURE_MAGIC                "\
+   CREATE TABLE wiki_treasure_magic                         \
+   (                                                        \
+     treasure_id          INT(4) NOT NULL,                  \
+     item_name            VARCHAR(63) NOT NULL,             \
+     item_attribute_id    INT(4) NOT NULL,                  \
+     PRIMARY KEY(treasure_id, item_name, item_attribute_id) \
+   )                                                        \
    ENGINE=InnoDB DEFAULT CHARSET=latin1;"
 
 #define SQLQUERY_CREATETABLE_MONSTER                    "\
@@ -845,19 +866,52 @@ int   port     = 3306;
             spell_reagent_amount);          \
    END"
 
-#define SQLQUERY_CREATEPROC_MONSTER_LOOT  "\
-   CREATE PROCEDURE WriteMonsterLoot(      \
-     IN monster_name         VARCHAR(63),  \
-     IN monster_drop_item    VARCHAR(63),  \
-     IN monster_loot_chance  INT(4))       \
+#define SQLQUERY_CREATEPROC_TREASURE_GEN  "\
+   CREATE PROCEDURE WriteTreasureGen(      \
+     IN treasure_id          INT(4),       \
+     IN item_name            VARCHAR(63),  \
+     IN item_chance          INT(4))       \
    BEGIN                                   \
-   INSERT INTO wiki_monster_loot           \
-      (  monster_name,                     \
-         monster_drop_item,                \
-         monster_loot_chance)              \
-         VALUES (monster_name,             \
-            monster_drop_item,             \
-            monster_loot_chance);          \
+   INSERT INTO wiki_treasure_gen           \
+      (  treasure_id,                      \
+         item_name,                        \
+         item_chance)                      \
+         VALUES (treasure_id,              \
+            item_name,                     \
+            item_chance);                  \
+   END"
+
+#define SQLQUERY_CREATEPROC_TREASURE_EXTRA  "\
+   CREATE PROCEDURE WriteTreasureExtra(      \
+     IN treasure_id          INT(4),         \
+     IN item_name            VARCHAR(63),    \
+     IN item_min_amount      INT(4),         \
+     IN item_max_amount      INT(4))         \
+   BEGIN                                     \
+   INSERT INTO wiki_treasure_extra           \
+      (  treasure_id,                        \
+         item_name,                          \
+         item_min_amount,                    \
+         item_max_amount)                    \
+         VALUES (treasure_id,                \
+            item_name,                       \
+            item_min_amount,                 \
+            item_max_amount);                \
+   END"
+
+#define SQLQUERY_CREATEPROC_TREASURE_MAGIC  "\
+   CREATE PROCEDURE WriteTreasureMagic(      \
+     IN treasure_id          INT(4),         \
+     IN item_name            VARCHAR(63),    \
+     IN item_attribute_id    INT(4))         \
+   BEGIN                                     \
+   INSERT INTO wiki_treasure_magic           \
+      (  treasure_id,                        \
+         item_name,                          \
+         item_attribute_id)                  \
+         VALUES (treasure_id,                \
+            item_name,                       \
+            item_attribute_id);              \
    END"
 
 #define SQLQUERY_CREATEPROC_MONSTER                    "\
@@ -1698,6 +1752,17 @@ void MySQLGenerateDrop(sql_recordtype type, char *buffer)
 }
 
 /*
+ * MySQLGenerateTruncate: Assembles a string in the passed buffer which specifies
+ *   a SQL table to truncate (empty) based on the sql record type passed.
+ */
+void MySQLGenerateTruncate(sql_recordtype type, char *buffer)
+{
+   int num_chars = sprintf(buffer, "TRUNCATE TABLE %s;",
+      Statistics_Table[type].table_name);
+   buffer[num_chars] = 0;
+}
+
+/*
  * MySQLGenerateCall: Assembles a string in the passed buffer which specifies
  *   a call for a SQL procedure based on the sql record type passed.
  */
@@ -1773,7 +1838,7 @@ void MySQLEnd()
  */
 int MySQLTypeNumArgs(int type)
 {
-   if (type >= STAT_NONE && type <= STAT_MAX)
+   if (type >= STAT_NONE && type <= STAT_MAXSTAT)
       return Statistics_Table[type].num_fields;
 
    bprintf("Unknown type received in MySQLTypeNumArgs: %i", type);
@@ -1856,6 +1921,36 @@ BOOL MySQLRecordGeneric(int type, int num_fields, sql_data_node data[])
       node->data = NULL;
       FreeMemory(MALLOC_ID_SQL, node, sizeof(sql_queue_node));
    }
+
+   return enqueued;
+}
+
+/*
+ * MySQLEmptyTable: Enqueues the data for a SQL truncate table call.
+ *      type: the SQL statistic to lookup the table
+                truncate proc to enqueue
+ */
+BOOL MySQLEmptyTable(int type)
+{
+   sql_queue_node* node = (sql_queue_node*)AllocateMemory(MALLOC_ID_SQL, sizeof(sql_queue_node));
+   if (!node)
+   {
+      bprintf("Could not allocate memory for sql queue node in MySQLEmptyTable.");
+
+      return FALSE;
+   }
+
+   node->type = (sql_recordtype)type;
+   // Set num_fields to negative value to mark it as a table truncate.
+   node->num_fields = -1;
+   node->data = NULL;
+
+   // try to enqueue
+   BOOL enqueued = _MySQLEnqueue(node);
+
+   // cleanup in case of fail
+   if (!enqueued)
+      FreeMemory(MALLOC_ID_SQL, node, sizeof(sql_queue_node));
 
    return enqueued;
 }
@@ -2009,7 +2104,9 @@ void _MySQLVerifySchema()
    MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATETABLE_SPELLS, status);
    MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATETABLE_SKILLS, status);
    MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATETABLE_SPELL_REAGENT, status);
-   MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATETABLE_MONSTER_LOOT, status);
+   MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATETABLE_TREASURE_GEN, status);
+   MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATETABLE_TREASURE_EXTRA, status);
+   MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATETABLE_TREASURE_MAGIC, status);
    MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATETABLE_MONSTER, status);
    MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATETABLE_MONSTER_ZONE, status);
    MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATETABLE_NPCS, status);
@@ -2038,7 +2135,7 @@ void _MySQLVerifySchema()
 
    char buffer[128];
    // Drop existing procedures if present.
-   for (int i = 1; i <= STAT_MAX; ++i)
+   for (int i = 1; i <= STAT_MAXSTAT; ++i)
    {
       MySQLGenerateDrop(Statistics_Table[i].stat_type, buffer);
       MYSQL_QUERY_CHECKED(mysql, buffer, status);
@@ -2057,7 +2154,9 @@ void _MySQLVerifySchema()
    MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATEPROC_SPELLS, status);
    MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATEPROC_SKILLS, status);
    MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATEPROC_SPELL_REAGENT, status);
-   MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATEPROC_MONSTER_LOOT, status);
+   MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATEPROC_TREASURE_GEN, status);
+   MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATEPROC_TREASURE_EXTRA, status);
+   MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATEPROC_TREASURE_MAGIC, status);
    MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATEPROC_MONSTER, status);
    MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATEPROC_MONSTER_ZONE, status);
    MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATEPROC_NPCS, status);
@@ -2161,24 +2260,54 @@ BOOL _MySQLDequeue(BOOL processNode)
 	// if we dequeued one, process it
 	if (node)
 	{
-		// process node
-		_MySQLWriteNode(node, processNode);
+      // process node
+      if (node->num_fields < 0)
+      {
+         _MySQLTruncate(node, processNode);
+      }
+      else
+      {
+         _MySQLWriteNode(node, processNode);
 
-		// free memory of processed record and node
-      FreeDataNodeMemory(node->num_fields, node->num_fields, (sql_data_node *)node->data);
+         // free memory of processed record and node
+         FreeDataNodeMemory(node->num_fields, node->num_fields, (sql_data_node *)node->data);
+      }
       FreeMemory(MALLOC_ID_SQL, node, sizeof(sql_queue_node));
-
 	}
 
 	return dequeued;
 }
 
-void _MySQLCallProc(char* ProcName, MYSQL_BIND Parameters[])
+/*
+ * _MySQLTruncate: Obtain the correct truncate string for given node type
+ *   and pass it on to _MySQLCallProc.
+ */
+void _MySQLTruncate(sql_queue_node* Node, BOOL ProcessNode)
+{
+   if (!Node)
+      return;
+
+   // really write it, or just free mem at end?
+   if (ProcessNode)
+   {
+      // call stored procedure
+      char buffer[128];
+      MySQLGenerateTruncate(Node->type, buffer);
+      _MySQLCallProc(buffer, NULL, TRUE);
+   }
+}
+
+/*
+ * _MySQLCallProc: Call a MySQL procedure on the database. Parameters can be NULL
+ *   if calling a TRUNCATE procedure instead of a WRITE, but nullParams must be
+ *   passed as TRUE to allow error-checking NULL Paremeters on WRITE statements.
+ */
+void _MySQLCallProc(char* ProcName, MYSQL_BIND Parameters[], BOOL nullParams = FALSE)
 {
    MYSQL_STMT*	stmt;
    int status;
 
-   if (!ProcName || !Parameters)
+   if (!ProcName || (!Parameters && !nullParams))
       return;
 
    // init statement
@@ -2197,13 +2326,16 @@ void _MySQLCallProc(char* ProcName, MYSQL_BIND Parameters[])
       return;
    }
 
-   status = mysql_stmt_bind_param(stmt, Parameters);
-   if (status != 0 && mysql)
+   if (!nullParams)
    {
-      bprintf("MySQL error in mysql_stmt_bind_param with procedure %s, status code %i: %s",
-         ProcName, status, mysql_error(mysql));
-      mysql_stmt_close(stmt);
-      return;
+      status = mysql_stmt_bind_param(stmt, Parameters);
+      if (status != 0 && mysql)
+      {
+         bprintf("MySQL error in mysql_stmt_bind_param with procedure %s, status code %i: %s",
+            ProcName, status, mysql_error(mysql));
+         mysql_stmt_close(stmt);
+         return;
+      }
    }
 
    status = mysql_stmt_execute(stmt);

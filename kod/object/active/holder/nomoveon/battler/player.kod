@@ -218,7 +218,7 @@ resources:
    player_unbound_energy_wiped = "The volatile energy surrounding you "
       "dissipates in the violently twisting aether."
    player_unbound_energy_gained = "You gather ~B~s%i~v~B unbound energy "
-      "from your fallen enemy (~B~i%i ~v~Btotal)."
+      "from your fallen enemy (~B~i%i~v~B total)."
    player_unbound_energy_lost = "You channel ~B~q%i~v~B unbound energy "
       "to shape your spell (~B~i%i~v~B left)."
    player_unbound_energy_wasted = "Your mind is too preoccupied with your "
@@ -6094,7 +6094,7 @@ messages:
             damage = Send(i,@ModifyDefenseDamage,#who=self,#what=what,
                            #damage=damage,#atype=atype,#stype=stype,
                            #report_resistance=report_resistance);
-            Send(i,@DefendingHit,#who=self,#what=what);
+            Send(i,@DamageItem,#who=self,#what=what);
          }
 
          iResistance = Send(self,@ResistanceCheck,#atype=atype,#stype=stype);
@@ -6275,7 +6275,7 @@ messages:
    }
 
    // This message kicks in when damage has been dealt to the opponent.
-   DidDamage(what = $, amount = 0)
+   DidDamage(what=$, amount=0, use_weapon=$, stroke_obj=$)
    {
       local oWeapon, i, shrunken;
 
@@ -6283,12 +6283,12 @@ messages:
 
       if oWeapon <> $
       {
-         Send(oWeapon,@WeaponHitTarget);
+         Send(oWeapon,@DamageItem);
       }
 
       foreach i in plAttack_modifiers
       {
-         Send(i,@WeaponHitTarget);
+         Send(i,@DamageItem);
       }
 
       if Send(self,@GetSkillAbility,#Skill_num=SKID_DISARM) > 0
@@ -6314,7 +6314,24 @@ messages:
          }
       }
 
-      return;
+      propagate;
+   }
+
+   // A player's attack may cause side effects.
+   HitSideEffect(what=$,who=$,amount=0,iNum=$,use_weapon=$,stroke_obj=$)
+   "Called after every non-fatal player hit."
+   {
+      // Currently, we only check for weapon effects.
+      // Could expand for passive abilities.
+
+      if use_weapon <> $
+         AND IsClass(use_weapon,&Weapon)
+      {
+         Send(use_weapon,@HitSideEffect,#what=what,#who=who,
+            #amount=amount,#stroke_obj=stroke_obj);
+      }
+
+      propagate;
    }
 
    // Returns weapon used.
@@ -6444,7 +6461,7 @@ messages:
       if (use_weapon <> $)
          AND IsClass(use_weapon,&Weapon)
       {
-         Send(use_weapon,@WeaponHitTarget);
+         Send(use_weapon,@DamageItem);
       }
 
       // Killed something by holding down the attack key. Damage
@@ -6453,7 +6470,7 @@ messages:
          AND (IsClass(stroke_obj,&Skill)
             OR IsClass(stroke_obj,&TouchAttackSpell))
       {
-         SendList(plAttack_modifiers,0,@WeaponHitTarget);
+         SendList(plAttack_modifiers,0,@DamageItem);
       }
 
       // If we killed someone or something, we did damage.

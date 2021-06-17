@@ -20,6 +20,7 @@ constants:
    PARRYING = 4
 
    WEAPON_TAKE_DAMAGE_PCT = 75  //chance to be damaged
+   WEAPON_WARN_DURABILITY_HITS = 10  // warn user when piHits reaches this
 
    // Weapon tuning factors
    //  Edit these constants to tune weapon power
@@ -131,7 +132,7 @@ classvars:
    // if it's set to a number, it's always used
    viBroken_group = $
    // Message when the weapon breaks.
-   vrWeaponBroke = weapon_broken
+   vrItem_broken = weapon_broken
 
    viWeaponType = WEAPON_TYPE_THRUST
    viWeaponQuality = WEAPON_QUALITY_NORMAL
@@ -657,18 +658,25 @@ messages:
       propagate;
    }
 
-   WeaponHitTarget()
+   DamageItem()
    {
       if Random(1,100) < WEAPON_TAKE_DAMAGE_PCT
       {
          piHits--;
+
+         if piHits = WEAPON_WARN_DURABILITY_HITS
+         {
+            Send(self,@DurabilityWarning);
+         }
+
+         propagate;
       }
 
-      if piHits <= 0
-      {
-         Send(self,@WeaponBroke);
-      }
+      return;
+   }
 
+   HitSideEffect(what=$,who=$,amount=0,stroke_obj=$)
+   {
       return;
    }
 
@@ -698,7 +706,7 @@ messages:
       return TRUE;
    }
 
-   WeaponBroke()
+   ItemBrokenInBattle()
    {
       local i, oItemAtt;
 
@@ -715,7 +723,7 @@ messages:
 
       if (poOwner <> $) AND IsClass(poOwner,&Battler)
       {
-         Send(poOwner,@MsgSendUser,#message_rsc=vrWeaponBroke,
+         Send(poOwner,@MsgSendUser,#message_rsc=vrItem_broken,
                #parm1=Send(self,@GetCapDef),#parm2=vrName);
          Send(poOwner,@TryUnuseItem,#what=self);
       }

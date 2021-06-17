@@ -15,8 +15,6 @@ constants:
    include blakston.khd
    include protocol.khd
 
-   ARMOR_TAKE_DAMAGE_PCT = 75
-   
 resources:
 
    include item.lkod
@@ -75,6 +73,9 @@ resources:
    item_stats_resistance = "%i%% %s\n"
    item_stats_dmg_type = "Deals %s damage\n"
 
+   item_durability_warning = "~B%s%s is about to break!"
+   item_durability_warning_sound = durabilitywarning.ogg
+
 classvars:
 
    vrItem_broken = item_broken_battle
@@ -127,6 +128,7 @@ classvars:
    // If this item is a light source, what is its color and intensity? Max intensity: 255
    viLightColor = LIGHT_FIRE
    viBaseLightIntensity = 0
+   vrDurabilityWarning = item_durability_warning
 
 properties:
 
@@ -1305,19 +1307,13 @@ messages:
       return defense_power;
    }
 
-   DefendingHit(who = $,what = $)
+   DamageItem(who = $,what = $)
    {
-      // Set to 75% currently
-      if Random(1,100) < ARMOR_TAKE_DAMAGE_PCT
-      {
-         --piHits;
-      }
-
       if piHits <= 0
       {
          Send(self,@ItemBrokenInBattle);
       }
-      
+
       return;
    }
 
@@ -1334,11 +1330,25 @@ messages:
          Send(oItemAtt,@RemoveFromItem,#oItem=self);
       }
    
-      Send(poOwner,@SomethingChanged,#what=self);        
+      Send(poOwner,@SomethingChanged,#what=self);
       Send(poOwner,@MsgSendUser,#message_rsc=vrItem_broken,
            #parm1=Send(self,@GetName));
       Send(poOwner,@TryUnuseItem,#what=self);
-      
+
+      return;
+   }
+
+   DurabilityWarning()
+   {
+      if (poOwner <> $)
+         AND IsClass(poOwner,&User)
+      {
+         Send(poOwner,@MsgSendUser,#message_rsc=vrDurabilityWarning,
+                 #parm1=Send(self,@GetCapDef),#parm2=Send(self,@GetName));
+         Send(poOwner,@WaveSendUser,#what=poOwner,
+                  #wave_rsc=item_durability_warning_sound);
+      }
+
       return;
    }
 

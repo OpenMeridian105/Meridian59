@@ -53,7 +53,7 @@ classvars:
    viUse_Amount = 1
 
    vrDesc = thrownweapon_desc_rsc
-   vrWeaponBroke = thrownweapon_run_out
+   vrItem_broken = thrownweapon_run_out
    viRange = 100 * FINENESS
 
    // Allow setting defaults for all weapons live.
@@ -149,19 +149,19 @@ messages:
       if (bConsumeAmmo
          AND piNumber <= 1)
       {
-         Send(self,@WeaponBroke);
+         Send(self,@ItemBrokenInBattle);
       }
 
       propagate;
    }
 
-   WeaponHitTarget()
+   DamageItem()
    {
       // Handles damage to weapon (piHits). Don't take damage.
       return;
    }
 
-   WeaponBroke()
+   ItemBrokenInBattle()
    {
       local i, oItemAtt, rName;
 
@@ -175,7 +175,7 @@ messages:
       }
 
       Send(poOwner,@SomethingChanged,#what=self);
-      Post(poOwner,@MsgSendUser,#message_rsc=vrWeaponBroke,
+      Post(poOwner,@MsgSendUser,#message_rsc=vrItem_broken,
             #parm1=Send(self,@GetPluralName));
 
       return;

@@ -2496,7 +2496,8 @@ messages:
          }
          else
          {
-            Send(self,@DidDamage,#amount=iDamage,#what=what,#iNum=iNum);
+            Send(self,@DidDamage,#amount=iDamage,#what=what,#iNum=iNum,
+               #use_weapon=oWeapon,#stroke_obj=stroke_obj);
          }
       }
       else
@@ -3478,7 +3479,16 @@ messages:
    }
 
    // This function handles when damage is done by attacker.
-   DidDamage(what=$, amount=0)
+   DidDamage(what=$, amount=0, iNum=$, use_weapon=$, stroke_obj=$)
+   {
+      // Let's see if our hit caused any additional effects...
+      Send(self,@HitSideEffect,#what=what,#who=self,#amount=amount,#iNum=iNum,
+         #use_weapon=use_weapon,#stroke_obj=stroke_obj);
+
+      return;
+   }
+
+   HitSideEffect(what=$,who=$,amount=0,iNum=$,use_weapon=$,stroke_obj=$)
    {
       return;
    }

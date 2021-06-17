@@ -14,15 +14,15 @@ constants:
 
    include blakston.khd
 
-   // Percent chance that an item gets damaged when defending.
-   DAMAGE_CHANCE = 50
+   ARMOR_TAKE_DAMAGE_PCT = 35  //chance to be damaged
+   ARMOR_WARN_DURABILITY_HITS = 15  // warn user when piHits reaches this
 
 resources:
 
    include defmod.lkod
 
-   defmod_broken = "Your %s falls to pieces."   
-   defmod_broken_plural = "Your %s fall to pieces."   
+   defmod_broken = "Your %s falls to pieces."
+   defmod_broken_plural = "Your %s fall to pieces."
    defmod_broken_plural_clothes = "Your %s collapse into unwearable tatters."
 
 classvars:
@@ -158,14 +158,17 @@ messages:
       return damage - iDamageReduce;
    }
 
-   // This assumes that none of the superclasses define a message for
-   // "defending hit" to do anything special.
-   // This will reduce the damage that armor is taking in battle currently.
-   DefendingHit(who = $,what = $)
+   DamageItem()
    {
-      // 50% chance to get damaged.
-      if (Random(1,100) < DAMAGE_CHANCE)
+      if Random(1,100) < ARMOR_TAKE_DAMAGE_PCT
       {
+         piHits--;
+
+         if piHits = ARMOR_WARN_DURABILITY_HITS
+         {
+            Send(self,@DurabilityWarning);
+         }
+
          propagate;
       }
 

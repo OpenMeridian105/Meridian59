@@ -407,7 +407,7 @@ resources:
    player_intro = \
       "~I~kYou feel a bit wobbly on your legs and you just can't seem to recall what...  "
       "what... ...that ominous dull pain in the back of your head...  ...might have "
-      "something to do with...  It doesn't matter.  At least you can remember your name – "
+      "something to do with...  It doesn't matter.  At least you can remember your name - "
       "%r.  Hmm, even that sounds pretty strange right now.  Who would possibly come up with "
       "a name like that?!  As you struggle to come to terms with these fairly basic facts of "
       "your existence, you notice a worried face looking over you, one eye brow raised.~I"
@@ -437,7 +437,7 @@ resources:
 
    player_follower_join_newbie = \
       "Are you alright, friend?  Man, you had me worried there for a moment!  "
-      "Told ya – you should've worn the helmet we found on that dead guy, gross "
+      "Told ya - you should've worn the helmet we found on that dead guy, gross "
       "or not...  and just for once in your life, would it have killed you to "
       "READ A SIGN?  Seriously...  "
       "Was kinda hilarious watching you tumble down that ledge like a lemming "
@@ -11660,7 +11660,7 @@ messages:
    SendMoveOverlays(iAnimation = $)
    {
       local i, iOverlays, hotspot, iLeft_group, iRight_group, iSkin_xlat,
-            iArms_xlat;
+            iArms_xlat, oRobe, bRobe;
 
       if iAnimation = $
       {
@@ -11688,6 +11688,26 @@ messages:
       if poHair_remove = $
       {
          iOverlays = iOverlays + 1;
+      }
+
+
+      // Special case: Level 6 disciple robes add a mastery headband.
+      foreach i in plUsing
+      {
+         if IsClass(i,&DiscipleRobe)
+         {
+            oRobe = i;
+
+            if Send(oRobe,@GetLevel) > 5
+            {
+               bRobe = TRUE;
+            }
+         }
+      }
+
+      if bRobe
+      {
+         ++iOverlays;
       }
 
       // Which group of arm images do we use?
@@ -11791,6 +11811,12 @@ messages:
                 1,ANIMATE_NONE, 2,1);
 //      }
 
+      // The mastery headband should sit below whatever hair we have.
+      if bRobe
+      {
+         Send(oRobe,@SendMasteryOverlay);
+      }
+
       if poHair_remove = $
       {  
          AddPacket(4,prToupee, 1,HS_TOUPEE, 1,ANIMATE_TRANSLATION,
@@ -11810,7 +11836,7 @@ messages:
    SendOverlays(iAnimation=$)
    {
       local i, iOverlays, hotspot, iLeft_group, iRight_group, iSkin_xlat,
-            iArms_xlat;
+            iArms_xlat, oRobe, bRobe;
 
       if iAnimation = $
       {
@@ -11842,6 +11868,25 @@ messages:
       if poHair_remove = $
       {
          iOverlays = iOverlays + 1;
+      }
+
+      // Special case: Level 6 disciple robes add a mastery headband.
+      foreach i in plUsing
+      {
+         if IsClass(i,&DiscipleRobe)
+         {
+            oRobe = i;
+
+            if Send(oRobe,@GetLevel) > 5
+            {
+               bRobe = TRUE;
+            }
+         }
+      }
+
+      if bRobe
+      {
+         ++iOverlays;
       }
 
       // Overlay info -- display correct group for animation & action
@@ -11982,6 +12027,12 @@ messages:
                 4,prNose, 1,HS_NOSE, 1,ANIMATE_TRANSLATION, 1,iSkin_xlat,
                 1,ANIMATE_NONE, 2,1);
 //      }
+
+      // The mastery headband should sit below whatever hair we have.
+      if bRobe
+      {
+         Send(oRobe,@SendMasteryOverlay);
+      }
 
       if poHair_remove = $
       {

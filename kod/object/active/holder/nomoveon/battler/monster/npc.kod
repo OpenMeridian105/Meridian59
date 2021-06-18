@@ -38,31 +38,43 @@ messages:
 
       if (plFor_Sale <> $) 
       {
-         foreach i in First(plFor_sale) //items
-      {
-         RecordStat(STAT_NPC_SELLITEM, TAG_RESOURCE, vrName, TAG_RESOURCE, 
-               Send(i,@GetName));
-      }
-      foreach i in Nth(plFor_sale,2) //skills
-      {
-         oSkill = Send(SYS,@FindSkillByNum,#num=i);
-         RecordStat(STAT_NPC_SELLSKILL, TAG_RESOURCE, vrName, TAG_INT, i);
-      }
-      foreach i in Nth(plFor_sale,3) //spells
-      {
-         oSpell = Send(SYS,@FindSpellByNum,#num=i);
-         RecordStat(STAT_NPC_SELLSPELL, TAG_RESOURCE, vrName, TAG_INT, i);
-      }
+         // Exclude NPCs who sell items from players, because their sell list
+         // is variable and shouldn't be in the database.
+         if (NOT vbSellFromInventory)
+         {
+            foreach i in First(plFor_sale) //items
+            {
+               // Hacky - skip Bonji if not in the first guildhall.
+               // Sell items are duplicates and won't be inserted into DB anyway.
+               if (GetClass(self) = &GuildDecorator
+                  AND Send(poOwner,@GetRoomNum) <> RID_GUILDH1)
+               {
+                  break;
+               }
+               RecordStat(STAT_NPC_SELLITEM, TAG_RESOURCE, vrName, TAG_RESOURCE,
+                     Send(i,@GetName), TAG_INT, Send(i,@GetPaletteTranslation));
+            }
+         }
+         foreach i in Nth(plFor_sale,2) //skills
+         {
+            oSkill = Send(SYS,@FindSkillByNum,#num=i);
+            RecordStat(STAT_NPC_SELLSKILL, TAG_RESOURCE, vrName, TAG_INT, i);
+         }
+         foreach i in Nth(plFor_sale,3) //spells
+         {
+            oSpell = Send(SYS,@FindSpellByNum,#num=i);
+            RecordStat(STAT_NPC_SELLSPELL, TAG_RESOURCE, vrName, TAG_INT, i);
+         }
       }
 
       RecordStat(STAT_NPCS, TAG_RESOURCE, vrName, RESOURCE_GER, vrName, 
             TAG_RESOURCE, vrIcon, TAG_RESOURCE, vrDesc, RESOURCE_GER, vrDesc, 
             TAG_INT, viMerchant_markup);
 
-      if(poOwner <> $)
+      if (poOwner <> $)
       {
-         RecordStat(STAT_NPC_ZONE, TAG_RESOURCE, vrName, RESOURCE_GER, vrName, 
-               TAG_INT, Send(poOwner,@GetRoomNum));
+         RecordStat(STAT_NPC_ZONE, TAG_RESOURCE, vrName, TAG_INT,
+            Send(poOwner,@GetRoomNum), TAG_INT, piRow, TAG_INT, piCol);
       }
 
       return;

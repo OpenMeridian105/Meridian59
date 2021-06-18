@@ -281,19 +281,21 @@ int   port     = 3306;
    CREATE TABLE wiki_npc_zone                            \
    (                                                     \
      npc_name      VARCHAR(63) NOT NULL,                 \
-     npc_name_ger  VARCHAR(63) NOT NULL,                 \
      npc_roomid    INT(4) NOT NULL,                      \
-     PRIMARY KEY(npc_name, npc_roomid)                   \
+     npc_row       INT(4) NOT NULL,                      \
+     npc_col       INT(4) NOT NULL,                      \
+     PRIMARY KEY(npc_name, npc_roomid, npc_row, npc_col) \
    )                                                     \
    ENGINE=InnoDB DEFAULT CHARSET=latin1;"
 
-#define SQLQUERY_CREATETABLE_NPC_SELLITEM               "\
-   CREATE TABLE wiki_npc_sellitem                        \
-   (                                                     \
-     npc_name       VARCHAR(63) NOT NULL,                \
-     npc_item_sold  VARCHAR(63) NOT NULL,                \
-     PRIMARY KEY(npc_name,npc_item_sold)                 \
-   )                                                     \
+#define SQLQUERY_CREATETABLE_NPC_SELLITEM             "\
+   CREATE TABLE wiki_npc_sellitem                      \
+   (                                                   \
+     npc_name        VARCHAR(63) NOT NULL,             \
+     npc_item_sold   VARCHAR(63) NOT NULL,             \
+     item_color      INT(4) NOT NULL,                  \
+     PRIMARY KEY(npc_name,npc_item_sold, item_color)   \
+   )                                                   \
    ENGINE=InnoDB DEFAULT CHARSET=latin1;"
 
 #define SQLQUERY_CREATETABLE_NPC_SELLSKILL              "\
@@ -1075,28 +1077,34 @@ int   port     = 3306;
 #define SQLQUERY_CREATEPROC_NPC_ZONE     "\
    CREATE PROCEDURE WriteNpcZone(         \
      IN npc_name      VARCHAR(63),        \
-     IN npc_name_ger  VARCHAR(63),        \
-     IN npc_roomid    INT(4))             \
+     IN npc_roomid    INT(4),             \
+     IN npc_row       INT(4),             \
+     IN npc_col       INT(4))             \
    BEGIN                                  \
    INSERT INTO wiki_npc_zone              \
       (  npc_name,                        \
-         npc_name_ger,                    \
-         npc_roomid)                      \
+         npc_roomid,                      \
+         npc_row,                         \
+         npc_col)                         \
          VALUES (npc_name,                \
-            npc_name_ger,                 \
-            npc_roomid);                  \
+            npc_roomid,                   \
+            npc_row,                      \
+            npc_col);                     \
    END"
 
 #define SQLQUERY_CREATEPROC_NPC_SELLITEM "\
    CREATE PROCEDURE WriteNpcSellItem(     \
      IN npc_name       VARCHAR(63),       \
-     IN npc_item_sold  VARCHAR(63))       \
+     IN npc_item_sold  VARCHAR(63),       \
+     IN item_color     INT(4))            \
    BEGIN                                  \
    INSERT INTO wiki_npc_sellitem          \
       (  npc_name,                        \
-         npc_item_sold)                   \
+         npc_item_sold,                   \
+         item_color)                      \
          VALUES (npc_name,                \
-            npc_item_sold);               \
+            npc_item_sold,                \
+            item_color);                  \
    END"
 
 #define SQLQUERY_CREATEPROC_NPC_SELLSKILL   "\

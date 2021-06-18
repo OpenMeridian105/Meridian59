@@ -44,6 +44,13 @@ messages:
          {
             foreach i in First(plFor_sale) //items
             {
+               // Hacky - skip Bonji if not in the first guildhall.
+               // Sell items are duplicates and won't be inserted into DB anyway.
+               if (GetClass(self) = &GuildDecorator
+                  AND Send(poOwner,@GetRoomNum) <> RID_GUILDH1)
+               {
+                  break;
+               }
                RecordStat(STAT_NPC_SELLITEM, TAG_RESOURCE, vrName, TAG_RESOURCE,
                      Send(i,@GetName), TAG_INT, Send(i,@GetPaletteTranslation));
             }

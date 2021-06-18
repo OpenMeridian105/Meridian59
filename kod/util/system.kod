@@ -8638,6 +8638,8 @@ messages:
 #region Export into SQL (Wiki)
    UpdateDatabase()
    {
+      local i, oTresType;
+
       // Empty (truncate) the appropriate tables before updating the database.
       // This is done because some of the tables contain data that may be
       // deleted from kod during an update (e.g. spell reagents, mob loot tables).
@@ -8656,7 +8658,17 @@ messages:
       SendList(plMonsterTemplates,0,@UpdateDatabase); // Monster Export
       SendList(plRooms,0,@UpdateDatabase); // Rooms and Monster Spawn Exports
       SendList(plItemTemplates,0,@UpdateDatabase); // Item Exports
-      Send(&TreasureType,@UpdateDatabase); // Monster Loot Export
+
+      // Monster Loot / TreasureType Export
+      for (i = TID_MIN; i <= TID_MAX; ++i)
+      {
+         oTresType = Send(self,@FindTreasureByNum,#num=i);
+         if (oTresType <> $)
+         {
+            Send(oTresType,@UpdateDatabase);
+         }
+      }
+
       SendList(Send(poLibrary,@GetNPCs), 0, @UpdateDatabase); // NPC, NPC Zone and NPC Sell List Export
 
       return;

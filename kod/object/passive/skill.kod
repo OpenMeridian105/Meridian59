@@ -35,7 +35,7 @@ resources:
 
    skill_desc_school = "SCHOOL : %s"
    skill_desc_level = "LEVEL : %i"
-   skill_desc_rsc = "%s%r%r"
+   skill_desc_rsc = "%s%r%r%r"
    skill_school_weaponcraft = "Weaponcraft"
    skill_school_rogue = "Roguery"
    skill_school_dm = "DM"
@@ -65,6 +65,12 @@ resources:
 
    skill_trance_cancel = \
       "You abandon your attempt to perform the %s skill."
+
+   skill_rank_enough_rsc = "\n\nYou have earned enough points in this rank to advance "
+      "to the next one!"
+
+   skill_rank_needed_rsc = "\n\nYou need %i more point(s) in this rank to "
+      "advance to the next one."
 
    skill_fail_wav = doorlck.ogg
 
@@ -219,12 +225,37 @@ messages:
          AddPacket(4,skill_meditate_ratio_rsc,4,piMeditate_ratio);
       }
 
+      // Tell players how much more they need to progress to reach the next rank.
+      Send(self,@SendRankUpInfo,#who=who);
+
       return;
    }
 
    SendTimeDesc()
    {
       AddPacket(4,skill_nothing);
+
+      return;
+   }
+
+   SendRankUpInfo(who = $)
+   {
+      local iNeed;
+
+      iNeed = Send(who,@PlayerNewRank,#skill_num=viskill_Num,#bAlert=FALSE);
+
+      if iNeed = $
+      {
+         AddPacket(4,system_blank_resource);
+      }
+      else if iNeed = 0
+      {
+         AddPacket(4,skill_rank_enough_rsc);
+      }
+      else
+      {
+         AddPacket(4,skill_rank_needed_rsc,4,iNeed);
+      }
 
       return;
    }

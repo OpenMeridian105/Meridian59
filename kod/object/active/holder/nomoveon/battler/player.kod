@@ -831,6 +831,9 @@ resources:
    player_honor_title_off = "Your honor rank is no longer being displayed."
    player_honor_title_alt = "You're now displaying your alternate honor rank."
 
+   player_rank_up = "~BYou feel ready to take your studies of %s to the next level!"
+   player_rank_up_sound = rankup.ogg
+
 classvars:
 
    viHand_space = 2
@@ -8431,6 +8434,9 @@ messages:
          }
       }
 
+      Send(self,@PlayerNewRank,#spell_num=spell_num,
+         #old_value=iAbility,#new_value=newAbility);
+
       Send(self,@PlayerIsIntriguing);
 
       if refigureschools
@@ -8675,8 +8681,9 @@ messages:
       if NOT bDM
          AND NOT initial
       {
-          Send(self,@AddToSchools,#school=Send(oSpell,@GetSchool),
+         Send(self,@AddToSchools,#school=Send(oSpell,@GetSchool),
                #change=iBoundAbility);
+         Send(self,@PlayerNewRank,#spell_num=num,#new_value=iBoundAbility);
       }
 
       if poOwner <> $
@@ -8975,6 +8982,9 @@ messages:
          }
       }
 
+      Send(self,@PlayerNewRank,#skill_num=skill_num,
+         #old_value=iability,#new_value=newAbility);
+
       Send(self,@PlayerIsIntriguing);
 
       if refigureschools
@@ -9118,6 +9128,7 @@ messages:
       {
          Send(self,@AddToSchools,#school=Send(oSkill,@GetSchool),
                #change=iBoundAbility);
+         Send(self,@PlayerNewRank,#skill_num=num,#new_value=iBoundAbility);
       }
 
       return TRUE;
@@ -13198,6 +13209,364 @@ messages:
       // of spell or skill points they need, and y is the reason why they
       // failed.  Only condition is "not enough points".
       return ((10*(iNeed-iHave))+PLAYER_LEARN_BASE);
+   }
+
+   PlayerNewRank(spell_num=0,skill_num=0,old_value=0,new_value=0,bAlert=TRUE)
+   {
+      local obj, level, school, iNum, aHigh, bHigh, cHigh, i, temp, nObj, nSID,
+            index, iTopTwo, iNeed, nSchool, nLevel, iWeapon, iKraanan, iShalille,
+            iQor, iFaren, iRiija, iJala, iRogue, iPoints;
+
+      if spell_num = 0
+      {
+         if skill_num = 0
+         {
+            return;
+         }
+         else
+         {
+            if NOT Send(self,@HasSkill,#num=skill_num)
+            {
+               return;
+            }
+
+            iNum = skill_num;
+            obj = Send(SYS,@FindSkillByNum,#num=skill_num);
+         }
+      }
+      else
+      {
+         if skill_num <> 0
+         {
+            return;
+         }
+         else
+         {
+            if NOT Send(self,@HasSpell,#num=spell_num)
+            {
+               return;
+            }
+
+            iNum = spell_num;
+            obj = Send(SYS,@FindSpellByNum,#num=spell_num);
+         }
+      }
+      if obj = $
+      {
+         return;
+      }
+
+      level = Send(obj,@GetLevel);
+
+      // Can't rank up at level 6.
+      if level > 5
+      {
+         return;
+      }
+
+      school = Send(obj,@GetSchool);
+
+      aHigh = 0; bHigh = 0; cHigh = 0;
+
+      iWeapon = 0;
+      iRogue = 0;
+      iKraanan = 0;
+      iShalille = 0;
+      iQor = 0;
+      iFaren = 0;
+      iRiija = 0;
+      iJala = 0;
+
+      foreach i in plSkills
+      {
+         nSID=Send(self,@DecodeSkillNum,#compound=i);
+         nobj=Send(SYS,@FindSkillByNum,#num=nSID);
+
+         nLevel = Send(nobj,@GetLevel);
+         nSchool = Send(nobj,@GetSchool);
+
+         switch (nSchool)
+         {
+         case SKS_WEAPONCRAFT:
+            if nLevel > iWeapon
+            {
+               iWeapon = nLevel;
+            }
+            break;
+         case SKS_ROGUE:
+            if nLevel > iRogue
+            {
+               iRogue = nLevel;
+            }
+            break;
+         }
+
+         // Skipping the actual ability for assembling our top three
+         // contributing skills.
+         // We did count it towards our total school levels though.
+         if iNum = nSID
+         {
+            continue;
+         }
+
+         if (school = nSchool) AND (level = nLevel)
+         {
+            index = Send(self,@DecodeSkillAbility,#compound=i);
+            if index > aHigh
+            {
+               temp = aHigh;
+               aHigh = index;
+               index = temp;
+            }
+
+            if index > bHigh
+            {
+               temp = bHigh;
+               bHigh = index;
+               index = temp;
+            }
+
+            if index > cHigh
+            {
+               cHigh = index;
+            }
+         }
+      }
+
+      foreach i in plSpells
+      {
+         nSID=Send(self,@DecodeSpellNum,#compound=i);
+         nobj=Send(SYS,@FindSpellByNum,#num=nSID);
+
+         nLevel = Send(nobj,@GetLevel);
+         nSchool = Send(nobj,@GetSchool);
+
+         if NOT IsClass(nobj,&Blink)  // DON'T COUNT BLINK!
+            AND NOT IsClass(nobj,&UtilitySpell) // Don't count utility spells
+         {
+            switch (nSchool)
+            {
+            case SS_KRAANAN:
+               if nLevel > iKraanan
+               {
+                  iKraanan = nLevel;
+               }
+               break;
+            case SS_SHALILLE:
+               if nLevel > iShalille
+               {
+                  iShalille = nLevel;
+               }
+               break;
+            case SS_QOR:
+               if nLevel > iQor
+               {
+                  iQor = nLevel;
+               }
+               break;
+            case SS_FAREN:
+               if nLevel > iFaren
+               {
+                  iFaren = nLevel;
+               }
+               break;
+            case SS_RIIJA:
+               if nLevel > iRiija
+               {
+                  iRiija = nLevel;
+               }
+               break;
+            case SS_JALA:
+               if nLevel > iJala
+               {
+                  iJala = nLevel;
+               }
+               break;
+            }
+         }
+
+         // Skipping the actual ability for assembling our top three
+         // contributing spells.
+         // We did count it towards our total school levels though.
+         if iNum = nSID
+         {
+            continue;
+         }
+
+         if (school = nSchool) AND (level = nLevel)
+         {
+            index = Send(self,@DecodeSkillAbility,#compound=i);
+            if index > aHigh
+            {
+               temp = aHigh;
+               aHigh = index;
+               index = temp;
+            }
+
+            if index > bHigh
+            {
+               temp = bHigh;
+               bHigh = index;
+               index = temp;
+            }
+
+            if index > cHigh
+            {
+               cHigh = index;
+            }
+         }
+      }
+
+      iPoints =  Send(SYS,@GetLevelLearnPoints,#level=iWeapon)
+               + Send(SYS,@GetLevelLearnPoints,#level=iRogue)
+               + Send(SYS,@GetLevelLearnPoints,#level=iKraanan)
+               + Send(SYS,@GetLevelLearnPoints,#level=iShalille)
+               + Send(SYS,@GetLevelLearnPoints,#level=iQor)
+               + Send(SYS,@GetLevelLearnPoints,#level=iFaren)
+               + Send(SYS,@GetLevelLearnPoints,#level=iRiija)
+               + Send(SYS,@GetLevelLearnPoints,#level=iJala);
+
+      // Since we are checking towards the next rank, we have calculate how
+      // many total learn points we would have with the next rank included.
+      iPoints = iPoints + Send(SYS,@GetLevelLearnPoints,#level=level+1)
+                        - Send(SYS,@GetLevelLearnPoints,#level=level);
+
+      iNeed = (iPoints * POINTS_SLOPE)
+              + (297 - (Send(SETTINGS_OBJECT, @GetMaxLearnPoints) * POINTS_SLOPE))
+              - ((Send(self,@GetRawIntellect) * 2 * POINTS_SLOPE) / 5);
+
+      iNeed = Bound(iNeed,MIN_NEEDED_TO_ADVANCE,$);
+
+      // Reusing variable now that we don't need the abilities ID anymore.
+      iNum = Send(SYS,@GetNumAtLevel,#school=school,#level=level);
+
+      if iNeed > 99*(Bound(iNum,1,3))
+      {
+         return;
+      }
+
+      if iNum = 1
+      {
+         iNeed = iNeed / 3;
+      }
+      else if iNum = 2
+      {
+         iNeed = (iNeed*2)/3;
+      }
+
+      //// In the checks below, we determine whether the improved ability
+      //// has pushed us to a new rank. If so, we want to alert the user.
+      //// Even if we don't alert, we should still return information
+      //// about our status in case we are called by ShowDesc().
+
+      // These are our top two abilities taken from a pool that excluded
+      // the passed ability.
+      iTopTwo = aHigh + bHigh;
+
+      // If we were already able to reach the next rank before, don't alert.
+      // We can also safely assume that we don't need any more points.
+      if (iTopTwo + cHigh >= iNeed)
+         OR (iTopTwo + old_value >= iNeed)
+      {
+         bAlert = FALSE;
+         iNeed = 0;
+      }
+      else
+      {
+         // We didn't have enough points before. Time to check if the
+         // added points have made the difference. Get our new value
+         // if it hasn't been passed.
+         if new_value = 0
+         {
+            new_value = Send(obj,@GetAbility,#who=self);
+         }
+
+         // Subtract what we have from what we need to see what's missing.
+         iNeed -= iTopTwo + new_value;
+
+         // Still not enough. Don't aleart.
+         if iNeed > 0
+         {
+            bAlert = FALSE;
+         }
+      }
+
+      // If our ability gain has pushed us past what we need, alert.
+      if bAlert
+      {
+         Send(self,@WaveSendUser,#wave_rsc=player_rank_up_sound);
+         Send(self,@MsgSendUser,#message_rsc=player_rank_up,
+                 #parm1=Send(obj,@GetSchoolStr));
+      }
+
+      //// It's time to return a meaningful value:
+      //// n: We need n more points.
+      //// 0: We have enough points to buy the next rank but haven't done so yet.
+      //// $: We have enough points to buy the next rank but have already done so.
+
+      // We have enough points. Let's check if that information is relevant.
+      if iNeed <= 0
+      {
+         // If we already possess a higher rank ability in the same school,
+         // we don't need to inform anyone. Return $.
+         switch (school)
+         {
+         case SS_KRAANAN:
+            if level < iKraanan
+            {
+               return;
+            }
+            break;
+         case SS_SHALILLE:
+            if level < iShalille
+            {
+               return;
+            }
+            break;
+         case SS_QOR:
+            if level < iQor
+            {
+               return;
+            }
+            break;
+         case SS_FAREN:
+            if level < iFaren
+            {
+               return;
+            }
+            break;
+         case SS_RIIJA:
+            if level < iRiija
+            {
+               return;
+            }
+            break;
+         case SS_JALA:
+            if level < iJala
+            {
+               return;
+            }
+            break;
+         case SKS_WEAPONCRAFT:
+            if level < iWeapon
+            {
+               return;
+            }
+            break;
+         case SKS_ROGUE:
+            if level < iRogue
+            {
+               return;
+            }
+            break;
+         }
+
+         // We don't have a higher rank ability. Return 0.
+         return 0;
+      }
+
+      // We still need some points. Return how many.
+      return iNeed;
    }
 
    GetTotalLearnPoints(except = $)

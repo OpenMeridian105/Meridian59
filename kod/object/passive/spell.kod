@@ -90,9 +90,13 @@ resources:
    spell_desc_level = "LEVEL : %i"
    spell_desc_mana = "MANA : %i"
    spell_desc_vigor = "VIGOR : %i"
-   spell_desc_rsc = "%s%s%s%r%r%r%r"
+   spell_desc_rsc = "%s%s%s%r%r%r%r%r"
    spell_reg_desc = "\n\nRequired reagents:%r"
    spell_reg_one = "\n   %i %s"
+   spell_rank_enough_rsc = "\n\nYou have earned enough points in this rank to advance "
+      "to the next one!"
+   spell_rank_needed_rsc = "\n\nYou need %i more point(s) in this rank to "
+      "advance to the next one."
    spell_school_riija = "Riija"
    spell_school_shalille = "Shal'ille"
    spell_school_qor = "Qor"
@@ -438,6 +442,7 @@ messages:
          Send(self,@SendReagentCost,#who=who);
          Send(self,@SendStatsDesc,#who=who);
          Send(self,@SendTimeDesc,#who=who);
+         Send(self,@SendRankUpInfo,#who=who);
 
          return;
       }
@@ -498,6 +503,28 @@ messages:
    {
       // Adds a blank time resource.
       Send(self,@SendTimeRemaining,#iTime=0,#parm1=self);
+
+      return;
+   }
+
+   SendRankUpInfo(who = $)
+   {
+      local iNeed;
+
+      iNeed = Send(who,@PlayerNewRank,#spell_num=vispell_Num,#bAlert=FALSE);
+
+      if iNeed = $
+      {
+         AddPacket(4,system_blank_resource);
+      }
+      else if iNeed = 0
+      {
+         AddPacket(4,spell_rank_enough_rsc);
+      }
+      else
+      {
+         AddPacket(4,spell_rank_needed_rsc,4,iNeed);
+      }
 
       return;
    }

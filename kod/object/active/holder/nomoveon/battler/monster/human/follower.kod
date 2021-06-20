@@ -370,6 +370,7 @@ resources:
    follower_brief_leader_requested_start_d = "From what I remember, we are expected to..."
    follower_brief_leader_requested_start_e = "Where's my travel log?  Ah, there we go!  We need to..."
    follower_brief_leader_requested_kill = "~MThe follower tells you, \"...kill "
+   follower_brief_leader_requested_tame = "~MThe follower tells you, \"...tame "
    follower_brief_leader_requested_visit = "~MThe follower tells you, \"...visit "
    follower_brief_leader_requested_obtain = "~MThe follower tells you, \"... obtain "
    follower_brief_leader_requested_deliver = " and deliver "
@@ -399,7 +400,8 @@ resources:
    follower_brief_leader_we_b = "you and I "
    follower_brief_leader_we_c = "the two of us "
    follower_brief_leader_we_d = "the local heroes "
-   follower_brief_leader_monster_start = "have to kill "
+   follower_brief_leader_monsterkill_start = "have to kill "
+   follower_brief_leader_monstertame_start = "have to tame "
    follower_brief_leader_npc_start = "should visit "
    follower_brief_leader_cargo_start = "have to get "
    follower_brief_leader_end_a = ".  Sounds easy enough.~n~M\""
@@ -2529,7 +2531,7 @@ messages:
 
    BriefLeader(template=$,node=$)
    {
-      local lQuests, i, oMonster, oNPC, oCargo, rQuest, iCount;
+      local lQuests, i, oMonster, oNPC, oCargo, rQuest, iCount, rQType;
 
       // This only happens when we request a briefing.
       if (template = $ OR node = $)
@@ -2559,9 +2561,18 @@ messages:
                // Monster kills don't really involve anything else.
                if oMonster <> $
                {
+                  switch (Send(node,@GetQuestNodeType))
+                  {
+                     case QN_TYPE_MONSTER_BRING:
+                        rQType = follower_brief_leader_requested_tame;
+                        break;
+                     default:
+                        rQType = follower_brief_leader_requested_kill;
+                        break;
+                  }
                   Send(poLeader,@MsgSendUser,
                      #message_rsc=follower_brief_leader_requested_template,
-                     #parm1=follower_brief_leader_requested_kill,
+                     #parm1=rQType,
                      #parm2=Send(oMonster,@GetIndef),#parm3=Send(oMonster,@GetName),
                      #parm4=follower_brief_leader_requested_period);
                }
@@ -2662,11 +2673,21 @@ messages:
       oMonster = Send(node,@GetQuestMonster);
       if oMonster <> $
       {
+         switch (Send(node,@GetQuestNodeType))
+         {
+            case QN_TYPE_MONSTER_BRING:
+               rQType = follower_brief_leader_monstertame_start;
+               break;
+            default:
+               rQType = follower_brief_leader_monsterkill_start;
+               break;
+         }
+
          Send(poLeader,@MsgSendUser,
             #message_rsc=follower_brief_leader_template,
             #parm1=Send(self,@GetBriefingStarter),
             #parm2=Send(self,@GetBriefingWe),
-            #parm3=follower_brief_leader_monster_start,
+            #parm3=rQType,
             #parm4=Send(oMonster,@GetIndef),#parm5=Send(oMonster,@GetName),
             #parm6=Send(self,@GetBriefingEnd));
 

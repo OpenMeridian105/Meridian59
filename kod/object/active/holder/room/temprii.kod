@@ -60,6 +60,13 @@ classvars:
    viWeatherZone = WEATHER_ZONE_KOC_OUTP
    viWeatherMask = WEATHER_MASK_JUNGLE
 
+   // Coords for item drop location when falling off bridge.
+   viDropItemRow = 47
+   viDropItemCol = 31
+   viDropItemFineRow = 25
+   viDropItemFineCol = 2
+   viDropDisposeDelay = 1200000 // 20 min
+
 properties:
 
    prRoom = room_RiijaTemple
@@ -355,24 +362,29 @@ messages:
          AND NOT (IsClass(what,&DM) AND Send(what,@PlayerIsImmortal))
       {
          /// on the bridge.  Do they have a sword of riija?
-         if isClass(what,&Monster)  
+         if IsClass(what,&Monster)
          {
+            if (Send(what,@IsOwnedByPlayer))
+            {
+               propagate;
+            }
+
             Send(what,@Killed);
-            
+
             return;
          }
-                  
+
          foreach i in Send(what,@GetPlayerUsing)
          {
             /// checking item to see if it's a riija sword.
-            if isClass(i,&RiijaSword) AND (Send(i,@GetQuester) = what)
+            if IsClass(i,&RiijaSword) AND (Send(i,@GetQuester) = what)
             {
                propagate;
             }
          } 
 
          // No sword.  Kill 'em
-         Send(self,@PlayerHurledSelfOffCliffs,#what=what);   
+         Send(self,@PlayerHurledSelfOffCliffs,#what=what);
       }
       
       propagate;
@@ -380,38 +392,50 @@ messages:
 
    PlayerHurledSelfOffCliffs(what=$)
    {
-      local i, dropped, row, col;
+      local i, iRow, iCol, oObj, rWav;
 
-      row = Send(what,@GetRow);
-      col = Send(what,@GetCol);
+      iRow = Send(what,@GetRow);
+      iCol = Send(what,@GetCol);
 
-      debug(Send(what,@GetName),"Hurled self off cliffs");
-      
-      dropped = FALSE;
+      Debug(Send(what,@GetName),"Hurled self off cliffs");
+
       foreach i in Send(what,@GetPlayerUsing)
       {
          if Send(i,@ReqLeaveOwner)
-            AND random(1,3) = 1
+            AND Random(1,3) = 1
          {
-            Send(self,@NewHold,#what=i,#new_row=Send(what,@GetRow),#new_col=Send(what,@GetCol));
-            dropped = TRUE;
-            
+            oObj = i;
+
             break;
-         } 
+         }
       }
-      
-      if NOT dropped
+
+      if (oObj = $)
       {
          foreach i in Send(what,@GetHolderPassive)
          {
             if Send(i,@ReqLeaveOwner)
-            AND random(1,3) = 1
+            AND Random(1,3) = 1
             {
-               Send(self,@NewHold,#what=i,#new_row=Send(what,@GetRow),#new_col=Send(what,@GetCol));
-               
+               oObj = i;
+
                break;
-            } 
+            }
          }
+      }
+
+      if (oObj <> $)
+      {
+         Send(self,@NewHold,#what=oObj,#new_row=viDropItemRow,
+               #new_col=viDropItemCol,#fine_row=viDropItemFineRow,
+               #fine_col=viDropItemFineCol);
+         // Set the room's dispose timer fairly high so they can get
+         // their item back.
+         if (ptDispose <> $)
+         {
+            DeleteTimer(ptDispose);
+         }
+         ptDispose = CreateTimer(self,@DisposeTimer,viDropDisposeDelay);
       }
 
       Send(what,@EffectSendUserXLat,#xlat=PT_ALLRED);
@@ -434,7 +458,7 @@ messages:
       {
          poDead = what;
          Send(poDead,@MsgSendUser,#message_rsc=riijadeadmessage0b);
-   
+
          Send(SYS,@UtilGotoSquare,#what=what,
               #where=Send(SYS,@FindRoomByNum,#num=RID_KOC_INN),
               #new_row=8,#new_col=6,#new_angle=ANGLE_NORTH);
@@ -442,21 +466,22 @@ messages:
          Send(Send(SYS,@FindSpellByNum,#num=SID_HOLD),@DoSpellEffects,
                #who=self,#lTargets=[what],#iDuration=10000,#report=FALSE,
                #bAllowFreeAction=FALSE);
-         
+
          ptDeathMessageTimer = CreateTimer(self,@TimerMessage1,5000);
       }
-      
+
       if Send(what,@GetGender) = GENDER_MALE
       {
-         Send(self,@SomethingWaveRoom,#row=row,#col=col,#wave_rsc=riijaplayer_death_male_wav);
-         Send(what,@WaveSendUser,#what=what,#wave_rsc=riijaplayer_death_male_wav);
+         rWav = riijaplayer_death_male_wav;
       }
       else
       {
-         Send(self,@SomethingWaveRoom,#row=row,#col=col,#wave_rsc=riijaplayer_death_female_wav);
-         Send(what,@WaveSendUser,#what=what,#wave_rsc=riijaplayer_death_female_wav);
+         rWav = riijaplayer_death_female_wav;
       }
-      
+
+      Send(self,@SomethingWaveRoom,#row=iRow,#col=iCol,#wave_rsc=rWav);
+      Send(what,@WaveSendUser,#what=what,#wave_rsc=rWav);
+
       return;
    }
 
@@ -465,7 +490,7 @@ messages:
       ptDeathMessageTimer = $;
       Send(poDead,@MsgSendUser, #message_rsc=riijadeadmessage1);
       ptDeathMessageTimer=createtimer(self,@TimerMessage2,5000);
-      
+
       return;
    }
 
@@ -474,7 +499,7 @@ messages:
       ptDeathMessageTimer = $;
       Send(poDead,@MsgSendUser,#message_rsc=riijadeadmessage2);
       ptDeathMessageTimer = createtimer(self,@TimerMessage3,5000);
-      
+
       return;
    }
 
@@ -483,7 +508,7 @@ messages:
       ptDeathMessageTimer = $;
       Send(poDead,@MsgSendUser,#message_rsc=riijadeadmessage3);
       ptDeathMessageTimer = createtimer(self,@TimerMessage4,5000);
-      
+
       return;
    }
 
@@ -492,7 +517,7 @@ messages:
       ptDeathMessageTimer = $;
       Send(poDead,@MsgSendUser, #message_rsc=riijadeadmessage4);
       ptDeathMessageTimer = createtimer(self,@TimerMessage5,5000);
-      
+
       return;
    }
 
@@ -504,8 +529,8 @@ messages:
       Send(poDead,@EffectSendUserXLat,#xlat=0);
       Send(poDead,@EffectSendUser,#what=poDead,#effect=EFFECT_PARALYZE_OFF);
       poDead = $;
-      
-      return;  
+
+      return;
    }
 
    CreateStandardObjects()

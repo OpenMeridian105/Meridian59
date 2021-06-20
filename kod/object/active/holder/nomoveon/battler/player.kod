@@ -3019,41 +3019,33 @@ messages:
       local oItem;
 
       // Give the poor newbie a weapon, a bit of cash and some clothes.
-      Send(self,@NewHold,#what=Create(&Money,#number=500));
-      Send(Send(SYS,@GetStatistics),@MoneyCreated,#amount=500);
+      Send(self,@NewHold,#what=Create(&Money,#number=2000));
+      Send(Send(SYS,@GetStatistics),@MoneyCreated,#amount=2000);
       Send(self,@AddDefaultClothes);
       Send(self,@NewHold,#what=Create(&Mace));
 
-      // If player hasn't suicided in last 5 hours, give them a little extra.
-      if (GetTime() - piLast_restart_time) > (5*60*60)
-      {
-         // A bit of extra cash cause shopping's fun.
-         Send(self,@NewHold,#what=Create(&Money,#number=1500));
-         Send(Send(SYS,@GetStatistics),@MoneyCreated,#amount=1500);
+      // A few more equippable items. Helmet also ties into intro text.
+      Send(self,@NewHold,#what=Create(&ShortSword));
+      Send(self,@NewHold,#what=Create(&MetalShield));
+      Send(self,@NewHold,#what=Create(&SimpleHelm));
 
-         // A few more equippable items. Helmet also ties into intro text.
-         Send(self,@NewHold,#what=Create(&ShortSword));
-         Send(self,@NewHold,#what=Create(&MetalShield));
-         Send(self,@NewHold,#what=Create(&SimpleHelm));
+      // Equip armor by default.
+      oItem = Create(&LeatherArmor);
+      Send(self,@NewHold,#what=oItem);
+      Send(self,@TryUseItem,#what=oItem);
 
-         // Equip armor by default.
-         oItem = Create(&LeatherArmor);
-         Send(self,@NewHold,#what=oItem);
-         Send(self,@TryUseItem,#what=oItem);
+      // A few consumables. Both educational and tasty!
+      Send(self,@NewHold,#what=Create(&Bread,#number=2));
+      Send(self,@NewHold,#what=Create(&Apple,#number=3));
+      Send(self,@NewHold,#what=Create(&Cookie,#number=1));
+      Send(self,@NewHold,#what=Create(&TurkeyLeg,#number=1));
 
-         // A few consumables. Both educational and tasty!
-         Send(self,@NewHold,#what=Create(&Bread,#number=2));
-         Send(self,@NewHold,#what=Create(&Apple,#number=3));
-         Send(self,@NewHold,#what=Create(&Cookie,#number=1));
-         Send(self,@NewHold,#what=Create(&TurkeyLeg,#number=1));
+      // Some magical stuff...
+      Send(self,@NewHold,#what=Create(&StrengthPotion));
+      Send(self,@NewHold,#what=Create(&LightScroll));
 
-         // Some magical stuff...
-         Send(self,@NewHold,#what=Create(&StrengthPotion));
-         Send(self,@NewHold,#what=Create(&LightScroll));
-
-         // A decent stash of ragents to get started with those spells.
-         Send(self,@AddReagentsForSpells,#iNumCasts=20);
-      }
+      // A decent stash of ragents to get started with those spells.
+      Send(self,@AddReagentsForSpells,#iNumCasts=20);
 
       return;
    }

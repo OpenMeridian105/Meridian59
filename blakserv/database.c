@@ -256,6 +256,8 @@ int   port     = 3306;
      weapon_name      VARCHAR(63) NOT NULL,              \
      weapon_name_ger  VARCHAR(63) NOT NULL,              \
      weapon_icon      VARCHAR(63) NOT NULL,              \
+     weapon_group     INT(4) NOT NULL,                   \
+     weapon_color     INT(4) NOT NULL,                   \
      weapon_desc      TEXT DEFAULT NULL,                 \
      weapon_desc_ger  TEXT DEFAULT NULL,                 \
      weapon_value     INT(4) DEFAULT NULL,               \
@@ -322,6 +324,8 @@ int   port     = 3306;
      reagent_name      VARCHAR(63) NOT NULL,             \
      reagent_name_ger  VARCHAR(63) NOT NULL,             \
      reagent_icon      VARCHAR(63) NOT NULL,             \
+     reagent_group     INT(4) NOT NULL,                  \
+     reagent_color     INT(4) NOT NULL,                  \
      reagent_desc      TEXT DEFAULT NULL,                \
      reagent_desc_ger  TEXT DEFAULT NULL,                \
      reagent_value     INT(4) DEFAULT NULL,              \
@@ -338,6 +342,8 @@ int   port     = 3306;
      food_name      VARCHAR(63) NOT NULL,                \
      food_name_ger  VARCHAR(63) NOT NULL,                \
      food_icon      VARCHAR(63) NOT NULL,                \
+     food_group     INT(4) NOT NULL,                     \
+     food_color     INT(4) NOT NULL,                     \
      food_desc      TEXT DEFAULT NULL,                   \
      food_desc_ger  TEXT DEFAULT NULL,                   \
      food_value     INT(4) DEFAULT NULL,                 \
@@ -354,6 +360,8 @@ int   port     = 3306;
      ammo_name      VARCHAR(63) NOT NULL,                \
      ammo_name_ger  VARCHAR(63) NOT NULL,                \
      ammo_icon      VARCHAR(63) NOT NULL,                \
+     ammo_group     INT(4) NOT NULL,                     \
+     ammo_color     INT(4) NOT NULL,                     \
      ammo_desc      TEXT DEFAULT NULL,                   \
      ammo_desc_ger  TEXT DEFAULT NULL,                   \
      ammo_value     INT(4) DEFAULT NULL,                 \
@@ -370,6 +378,8 @@ int   port     = 3306;
      armor_name      VARCHAR(63) NOT NULL,               \
      armor_name_ger  VARCHAR(63) NOT NULL,               \
      armor_icon      VARCHAR(63) NOT NULL,               \
+     armor_group     INT(4) NOT NULL,                    \
+     armor_color     INT(4) NOT NULL,                    \
      armor_desc      TEXT DEFAULT NULL,                  \
      armor_desc_ger  TEXT DEFAULT NULL,                  \
      armor_value     INT(4) DEFAULT NULL,                \
@@ -386,6 +396,8 @@ int   port     = 3306;
      misc_name      VARCHAR(63) NOT NULL,                \
      misc_name_ger  VARCHAR(63) NOT NULL,                \
      misc_icon      VARCHAR(63) NOT NULL,                \
+     misc_group     INT(4) NOT NULL,                     \
+     misc_color     INT(4) NOT NULL,                     \
      misc_desc      TEXT DEFAULT NULL,                   \
      misc_desc_ger  TEXT DEFAULT NULL,                   \
      misc_value     INT(4) DEFAULT NULL,                 \
@@ -402,6 +414,8 @@ int   port     = 3306;
      rings_name      VARCHAR(63) NOT NULL,               \
      rings_name_ger  VARCHAR(63) NOT NULL,               \
      rings_icon      VARCHAR(63) NOT NULL,               \
+     rings_group     INT(4) NOT NULL,                    \
+     rings_color     INT(4) NOT NULL,                    \
      rings_desc      TEXT DEFAULT NULL,                  \
      rings_desc_ger  TEXT DEFAULT NULL,                  \
      rings_value     INT(4) DEFAULT NULL,                \
@@ -418,6 +432,8 @@ int   port     = 3306;
      rods_name      VARCHAR(63) NOT NULL,                \
      rods_name_ger  VARCHAR(63) NOT NULL,                \
      rods_icon      VARCHAR(63) NOT NULL,                \
+     rods_group     INT(4) NOT NULL,                     \
+     rods_color     INT(4) NOT NULL,                     \
      rods_desc      TEXT DEFAULT NULL,                   \
      rods_desc_ger  TEXT DEFAULT NULL,                   \
      rods_value     INT(4) DEFAULT NULL,                 \
@@ -434,6 +450,8 @@ int   port     = 3306;
      potion_name      VARCHAR(63) NOT NULL,              \
      potion_name_ger  VARCHAR(63) NOT NULL,              \
      potion_icon      VARCHAR(63) NOT NULL,              \
+     potion_group     INT(4) NOT NULL,                   \
+     potion_color     INT(4) NOT NULL,                   \
      potion_desc      TEXT DEFAULT NULL,                 \
      potion_desc_ger  TEXT DEFAULT NULL,                 \
      potion_value     INT(4) DEFAULT NULL,               \
@@ -450,6 +468,8 @@ int   port     = 3306;
      scrolls_name      VARCHAR(63) NOT NULL,             \
      scrolls_name_ger  VARCHAR(63) NOT NULL,             \
      scrolls_icon      VARCHAR(63) NOT NULL,             \
+     scrolls_group     INT(4) NOT NULL,                  \
+     scrolls_color     INT(4) NOT NULL,                  \
      scrolls_desc      TEXT DEFAULT NULL,                \
      scrolls_desc_ger  TEXT DEFAULT NULL,                \
      scrolls_value     INT(4) DEFAULT NULL,              \
@@ -466,8 +486,13 @@ int   port     = 3306;
      wands_name      VARCHAR(63) NOT NULL,               \
      wands_name_ger  VARCHAR(63) NOT NULL,               \
      wands_icon      VARCHAR(63) NOT NULL,               \
+     wands_group     INT(4) NOT NULL,                    \
+     wands_color     INT(4) NOT NULL,                    \
      wands_desc      TEXT DEFAULT NULL,                  \
      wands_desc_ger  TEXT DEFAULT NULL,                  \
+     wands_value     INT(4) DEFAULT NULL,                \
+     wands_weight    INT(4) DEFAULT NULL,                \
+     wands_bulk      INT(4) DEFAULT NULL,                \
      wands_iflag     INT(4) DEFAULT NULL,                \
      PRIMARY KEY(wands_name)                             \
    )                                                     \
@@ -479,6 +504,8 @@ int   port     = 3306;
      questitem_name      VARCHAR(63) NOT NULL,           \
      questitem_name_ger  VARCHAR(63) NOT NULL,           \
      questitem_icon      VARCHAR(63) NOT NULL,           \
+     questitem_group     INT(4) NOT NULL,                \
+     questitem_color     INT(4) NOT NULL,                \
      questitem_desc      TEXT DEFAULT NULL,              \
      questitem_desc_ger  TEXT DEFAULT NULL,              \
      questitem_value     INT(4) DEFAULT NULL,            \
@@ -495,6 +522,8 @@ int   port     = 3306;
      necklace_name      VARCHAR(63) NOT NULL,            \
      necklace_name_ger  VARCHAR(63) NOT NULL,            \
      necklace_icon      VARCHAR(63) NOT NULL,            \
+     necklace_group     INT(4) NOT NULL,                 \
+     necklace_color     INT(4) NOT NULL,                 \
      necklace_desc      TEXT DEFAULT NULL,               \
      necklace_desc_ger  TEXT DEFAULT NULL,               \
      necklace_value     INT(4) DEFAULT NULL,             \
@@ -511,6 +540,8 @@ int   port     = 3306;
      instrument_name      VARCHAR(63) NOT NULL,          \
      instrument_name_ger  VARCHAR(63) NOT NULL,          \
      instrument_icon      VARCHAR(63) NOT NULL,          \
+     instrument_group     INT(4) NOT NULL,               \
+     instrument_color     INT(4) NOT NULL,               \
      instrument_desc      TEXT DEFAULT NULL,             \
      instrument_desc_ger  TEXT DEFAULT NULL,             \
      instrument_value     INT(4) DEFAULT NULL,           \
@@ -527,6 +558,8 @@ int   port     = 3306;
      gem_name      VARCHAR(63) NOT NULL,                 \
      gem_name_ger  VARCHAR(63) NOT NULL,                 \
      gem_icon      VARCHAR(63) NOT NULL,                 \
+     gem_group     INT(4) NOT NULL,                      \
+     gem_color     INT(4) NOT NULL,                      \
      gem_desc      TEXT DEFAULT NULL,                    \
      gem_desc_ger  TEXT DEFAULT NULL,                    \
      gem_value     INT(4) DEFAULT NULL,                  \
@@ -543,6 +576,8 @@ int   port     = 3306;
      offering_name      VARCHAR(63) NOT NULL,            \
      offering_name_ger  VARCHAR(63) NOT NULL,            \
      offering_icon      VARCHAR(63) NOT NULL,            \
+     offering_group     INT(4) NOT NULL,                 \
+     offering_color     INT(4) NOT NULL,                 \
      offering_desc      TEXT DEFAULT NULL,               \
      offering_desc_ger  TEXT DEFAULT NULL,               \
      offering_value     INT(4) DEFAULT NULL,             \
@@ -1017,6 +1052,8 @@ int   port     = 3306;
      IN weapon_name      VARCHAR(63),     \
      IN weapon_name_ger  VARCHAR(63),     \
      IN weapon_icon      VARCHAR(63),     \
+     IN weapon_group     INT(4),          \
+     IN weapon_color     INT(4),          \
      IN weapon_desc      TEXT,            \
      IN weapon_desc_ger  TEXT,            \
      IN weapon_value     INT(4),          \
@@ -1028,6 +1065,8 @@ int   port     = 3306;
       (  weapon_name,                     \
          weapon_name_ger,                 \
          weapon_icon,                     \
+         weapon_group,                    \
+         weapon_color,                    \
          weapon_desc,                     \
          weapon_desc_ger,                 \
          weapon_value,                    \
@@ -1037,6 +1076,8 @@ int   port     = 3306;
          VALUES (weapon_name,             \
             weapon_name_ger,              \
             weapon_icon,                  \
+            weapon_group,                 \
+            weapon_color,                 \
             weapon_desc,                  \
             weapon_desc_ger,              \
             weapon_value,                 \
@@ -1044,6 +1085,8 @@ int   port     = 3306;
             weapon_bulk,                  \
             weapon_iflag)                 \
       ON DUPLICATE KEY UPDATE             \
+      weapon_group = weapon_group,        \
+      weapon_color = weapon_color,        \
       weapon_desc = weapon_desc,          \
       weapon_desc_ger = weapon_desc_ger,  \
       weapon_value = weapon_value,        \
@@ -1136,6 +1179,8 @@ int   port     = 3306;
      IN reagent_name      VARCHAR(63),         \
      IN reagent_name_ger  VARCHAR(63),         \
      IN reagent_icon      TEXT,                \
+     IN reagent_group     INT(4),              \
+     IN reagent_color     INT(4),              \
      IN reagent_desc      TEXT,                \
      IN reagent_desc_ger  TEXT,                \
      IN reagent_value     INT(4),              \
@@ -1147,6 +1192,8 @@ int   port     = 3306;
       (  reagent_name,                         \
          reagent_name_ger,                     \
          reagent_icon,                         \
+         reagent_group,                        \
+         reagent_color,                        \
          reagent_desc,                         \
          reagent_desc_ger,                     \
          reagent_value,                        \
@@ -1156,6 +1203,8 @@ int   port     = 3306;
          VALUES (reagent_name,                 \
             reagent_name_ger,                  \
             reagent_icon,                      \
+            reagent_group,                     \
+            reagent_color,                     \
             reagent_desc,                      \
             reagent_desc_ger,                  \
             reagent_value,                     \
@@ -1163,6 +1212,9 @@ int   port     = 3306;
             reagent_bulk,                      \
             reagent_iflag)                     \
          ON DUPLICATE KEY UPDATE               \
+         reagent_icon = reagent_icon,          \
+         reagent_group = reagent_group,        \
+         reagent_color = reagent_color,        \
          reagent_desc = reagent_desc,          \
          reagent_desc_ger = reagent_desc_ger,  \
          reagent_value = reagent_value,        \
@@ -1176,6 +1228,8 @@ int   port     = 3306;
      IN food_name      VARCHAR(63),       \
      IN food_name_ger  VARCHAR(63),       \
      IN food_icon      TEXT,              \
+     IN food_group     INT(4),            \
+     IN food_color     INT(4),            \
      IN food_desc      TEXT,              \
      IN food_desc_ger  TEXT,              \
      IN food_value     INT(4),            \
@@ -1187,6 +1241,8 @@ int   port     = 3306;
       (  food_name,                       \
          food_name_ger,                   \
          food_icon,                       \
+         food_group,                      \
+         food_color,                      \
          food_desc,                       \
          food_desc_ger,                   \
          food_value,                      \
@@ -1196,6 +1252,8 @@ int   port     = 3306;
          VALUES (food_name,               \
             food_name_ger,                \
             food_icon,                    \
+            food_group,                   \
+            food_color,                   \
             food_desc,                    \
             food_desc_ger,                \
             food_value,                   \
@@ -1203,6 +1261,8 @@ int   port     = 3306;
             food_bulk,                    \
             food_iflag)                   \
          ON DUPLICATE KEY UPDATE          \
+         food_group = food_group,         \
+         food_color = food_color,         \
          food_desc = food_desc,           \
          food_desc_ger = food_desc_ger,   \
          food_value = food_value,         \
@@ -1216,6 +1276,8 @@ int   port     = 3306;
      IN ammo_name      VARCHAR(63),       \
      IN ammo_name_ger  VARCHAR(63),       \
      IN ammo_icon      TEXT,              \
+     IN ammo_group     INT(4),            \
+     IN ammo_color     INT(4),            \
      IN ammo_desc      TEXT,              \
      IN ammo_desc_ger  TEXT,              \
      IN ammo_value     INT(4),            \
@@ -1227,6 +1289,8 @@ int   port     = 3306;
       (  ammo_name,                       \
          ammo_name_ger,                   \
          ammo_icon,                       \
+         ammo_group,                      \
+         ammo_color,                      \
          ammo_desc,                       \
          ammo_desc_ger,                   \
          ammo_value,                      \
@@ -1236,6 +1300,8 @@ int   port     = 3306;
          VALUES (ammo_name,               \
             ammo_name_ger,                \
             ammo_icon,                    \
+            ammo_group,                   \
+            ammo_color,                   \
             ammo_desc,                    \
             ammo_desc_ger,                \
             ammo_value,                   \
@@ -1243,6 +1309,8 @@ int   port     = 3306;
             ammo_bulk,                    \
             ammo_iflag)                   \
          ON DUPLICATE KEY UPDATE          \
+         ammo_group = ammo_group,         \
+         ammo_color = ammo_color,         \
          ammo_desc = ammo_desc,           \
          ammo_desc_ger = ammo_desc_ger,   \
          ammo_value = ammo_value,         \
@@ -1256,6 +1324,8 @@ int   port     = 3306;
      IN armor_name      VARCHAR(63),      \
      IN armor_name_ger  VARCHAR(63),      \
      IN armor_icon      TEXT,             \
+     IN armor_group     INT(4),           \
+     IN armor_color     INT(4),           \
      IN armor_desc      TEXT,             \
      IN armor_desc_ger  TEXT,             \
      IN armor_value     INT(4),           \
@@ -1267,6 +1337,8 @@ int   port     = 3306;
       (  armor_name,                      \
          armor_name_ger,                  \
          armor_icon,                      \
+         armor_group,                     \
+         armor_color,                     \
          armor_desc,                      \
          armor_desc_ger,                  \
          armor_value,                     \
@@ -1276,6 +1348,8 @@ int   port     = 3306;
          VALUES (armor_name,              \
             armor_name_ger,               \
             armor_icon,                   \
+            armor_group,                  \
+            armor_color,                  \
             armor_desc,                   \
             armor_desc_ger,               \
             armor_value,                  \
@@ -1283,6 +1357,8 @@ int   port     = 3306;
             armor_bulk,                   \
             armor_iflag)                  \
          ON DUPLICATE KEY UPDATE          \
+         armor_group = armor_group,       \
+         armor_color = armor_color,       \
          armor_desc = armor_desc,         \
          armor_desc_ger = armor_desc_ger, \
          armor_value = armor_value,       \
@@ -1296,6 +1372,8 @@ int   port     = 3306;
      IN misc_name      VARCHAR(63),       \
      IN misc_name_ger  VARCHAR(63),       \
      IN misc_icon      TEXT,              \
+     IN misc_group     INT(4),            \
+     IN misc_color     INT(4),            \
      IN misc_desc      TEXT,              \
      IN misc_desc_ger  TEXT,              \
      IN misc_value     INT(4),            \
@@ -1307,6 +1385,8 @@ int   port     = 3306;
       (  misc_name,                       \
          misc_name_ger,                   \
          misc_icon,                       \
+         misc_group,                      \
+         misc_color,                      \
          misc_desc,                       \
          misc_desc_ger,                   \
          misc_value,                      \
@@ -1316,6 +1396,8 @@ int   port     = 3306;
          VALUES (misc_name,               \
             misc_name_ger,                \
             misc_icon,                    \
+            misc_group,                   \
+            misc_color,                   \
             misc_desc,                    \
             misc_desc_ger,                \
             misc_value,                   \
@@ -1323,6 +1405,8 @@ int   port     = 3306;
             misc_bulk,                    \
             misc_iflag)                   \
          ON DUPLICATE KEY UPDATE          \
+         misc_group = misc_group,         \
+         misc_color = misc_color,         \
          misc_desc = misc_desc,           \
          misc_desc_ger = misc_desc_ger,   \
          misc_value = misc_value,         \
@@ -1336,6 +1420,8 @@ int   port     = 3306;
      IN rings_name      VARCHAR(63),      \
      IN rings_name_ger  VARCHAR(63),      \
      IN rings_icon      TEXT,             \
+     IN rings_group     INT(4),           \
+     IN rings_color     INT(4),           \
      IN rings_desc      TEXT,             \
      IN rings_desc_ger  TEXT,             \
      IN rings_value     INT(4),           \
@@ -1347,6 +1433,8 @@ int   port     = 3306;
       (  rings_name,                      \
          rings_name_ger,                  \
          rings_icon,                      \
+         rings_group,                     \
+         rings_color,                     \
          rings_desc,                      \
          rings_desc_ger,                  \
          rings_value,                     \
@@ -1356,6 +1444,8 @@ int   port     = 3306;
          VALUES (rings_name,              \
             rings_name_ger,               \
             rings_icon,                   \
+            rings_group,                  \
+            rings_color,                  \
             rings_desc,                   \
             rings_desc_ger,               \
             rings_value,                  \
@@ -1363,6 +1453,8 @@ int   port     = 3306;
             rings_bulk,                   \
             rings_iflag)                  \
          ON DUPLICATE KEY UPDATE          \
+         rings_group = rings_group,       \
+         rings_color = rings_color,       \
          rings_desc = rings_desc,         \
          rings_desc_ger = rings_desc_ger, \
          rings_value = rings_value,       \
@@ -1376,6 +1468,8 @@ int   port     = 3306;
      IN rods_name      VARCHAR(63),       \
      IN rods_name_ger  VARCHAR(63),       \
      IN rods_icon      TEXT,              \
+     IN rods_group     INT(4),            \
+     IN rods_color     INT(4),            \
      IN rods_desc      TEXT,              \
      IN rods_desc_ger  TEXT,              \
      IN rods_value     INT(4),            \
@@ -1387,6 +1481,8 @@ int   port     = 3306;
       (  rods_name,                       \
          rods_name_ger,                   \
          rods_icon,                       \
+         rods_group,                      \
+         rods_color,                      \
          rods_desc,                       \
          rods_desc_ger,                   \
          rods_value,                      \
@@ -1396,6 +1492,8 @@ int   port     = 3306;
          VALUES (rods_name,               \
             rods_name_ger,                \
             rods_icon,                    \
+            rods_group,                   \
+            rods_color,                   \
             rods_desc,                    \
             rods_desc_ger,                \
             rods_value,                   \
@@ -1403,6 +1501,8 @@ int   port     = 3306;
             rods_bulk,                    \
             rods_iflag)                   \
          ON DUPLICATE KEY UPDATE          \
+         rods_group = rods_group,         \
+         rods_color = rods_color,         \
          rods_desc = rods_desc,           \
          rods_desc_ger = rods_desc_ger,   \
          rods_value = rods_value,         \
@@ -1416,6 +1516,8 @@ int   port     = 3306;
      IN potion_name      VARCHAR(63),        \
      IN potion_name_ger  VARCHAR(63),        \
      IN potion_icon      TEXT,               \
+     IN potion_group     INT(4),             \
+     IN potion_color     INT(4),             \
      IN potion_desc      TEXT,               \
      IN potion_desc_ger  TEXT,               \
      IN potion_value     INT(4),             \
@@ -1427,6 +1529,8 @@ int   port     = 3306;
       (  potion_name,                        \
          potion_name_ger,                    \
          potion_icon,                        \
+         potion_group,                       \
+         potion_color,                       \
          potion_desc,                        \
          potion_desc_ger,                    \
          potion_value,                       \
@@ -1436,6 +1540,8 @@ int   port     = 3306;
          VALUES (potion_name,                \
             potion_name_ger,                 \
             potion_icon,                     \
+            potion_group,                    \
+            potion_color,                    \
             potion_desc,                     \
             potion_desc_ger,                 \
             potion_value,                    \
@@ -1443,6 +1549,8 @@ int   port     = 3306;
             potion_bulk,                     \
             potion_iflag)                    \
          ON DUPLICATE KEY UPDATE             \
+         potion_group = potion_group,        \
+         potion_color = potion_color,        \
          potion_desc = potion_desc,          \
          potion_desc_ger = potion_desc_ger,  \
          potion_value = potion_value,        \
@@ -1456,6 +1564,8 @@ int   port     = 3306;
     IN scrolls_name      VARCHAR(63),          \
     IN scrolls_name_ger  VARCHAR(63),          \
     IN scrolls_icon      TEXT,                 \
+    IN scrolls_group     INT(4),               \
+    IN scrolls_color     INT(4),               \
     IN scrolls_desc      TEXT,                 \
     IN scrolls_desc_ger  TEXT,                 \
     IN scrolls_value     INT(4),               \
@@ -1467,6 +1577,8 @@ int   port     = 3306;
       (  scrolls_name,                         \
          scrolls_name_ger,                     \
          scrolls_icon,                         \
+         scrolls_group,                        \
+         scrolls_color,                        \
          scrolls_desc,                         \
          scrolls_desc_ger,                     \
          scrolls_value,                        \
@@ -1476,6 +1588,8 @@ int   port     = 3306;
          VALUES (scrolls_name,                 \
             scrolls_name_ger,                  \
             scrolls_icon,                      \
+            scrolls_group,                     \
+            scrolls_color,                     \
             scrolls_desc,                      \
             scrolls_desc_ger,                  \
             scrolls_value,                     \
@@ -1483,6 +1597,8 @@ int   port     = 3306;
             scrolls_bulk,                      \
             scrolls_iflag)                     \
          ON DUPLICATE KEY UPDATE               \
+         scrolls_group = scrolls_group,        \
+         scrolls_color = scrolls_color,        \
          scrolls_desc = scrolls_desc,          \
          scrolls_desc_ger = scrolls_desc_ger,  \
          scrolls_value = scrolls_value,        \
@@ -1496,26 +1612,46 @@ int   port     = 3306;
     IN wands_name      VARCHAR(63),        \
     IN wands_name_ger  VARCHAR(63),        \
     IN wands_icon      TEXT,               \
+    IN wands_group     INT(4),             \
+    IN wands_color     INT(4),             \
     IN wands_desc      TEXT,               \
     IN wands_desc_ger  TEXT,               \
+    IN wands_value     INT(4),             \
+    IN wands_weight    INT(4),             \
+    IN wands_bulk      INT(4),             \
     IN wands_iflag     INT(4))             \
    BEGIN                                   \
    INSERT INTO wiki_wands                  \
       (  wands_name,                       \
          wands_name_ger,                   \
          wands_icon,                       \
+         wands_group,                      \
+         wands_color,                      \
          wands_desc,                       \
          wands_desc_ger,                   \
+         wands_value,                      \
+         wands_weight,                     \
+         wands_bulk,                       \
          wands_iflag)                      \
          VALUES (wands_name,               \
             wands_name_ger,                \
             wands_icon,                    \
+            wands_group,                   \
+            wands_color,                   \
             wands_desc,                    \
             wands_desc_ger,                \
+            wands_value,                   \
+            wands_weight,                  \
+            wands_bulk,                    \
             wands_iflag)                   \
          ON DUPLICATE KEY UPDATE           \
+         wands_group = wands_group,        \
+         wands_color = wands_color,        \
          wands_desc = wands_desc,          \
          wands_desc_ger = wands_desc_ger,  \
+         wands_value = wands_value,        \
+         wands_weight = wands_weight,      \
+         wands_bulk = wands_bulk,          \
          wands_iflag = wands_iflag;        \
    END"
 
@@ -1524,6 +1660,8 @@ int   port     = 3306;
     IN questitem_name      VARCHAR(63),            \
     IN questitem_name_ger  VARCHAR(63),            \
     IN questitem_icon      TEXT,                   \
+    IN questitem_group     INT(4),                 \
+    IN questitem_color     INT(4),                 \
     IN questitem_desc      TEXT,                   \
     IN questitem_desc_ger  TEXT,                   \
     IN questitem_value     INT(4),                 \
@@ -1535,6 +1673,8 @@ int   port     = 3306;
       (  questitem_name,                           \
          questitem_name_ger,                       \
          questitem_icon,                           \
+         questitem_group,                          \
+         questitem_color,                          \
          questitem_desc,                           \
          questitem_desc_ger,                       \
          questitem_value,                          \
@@ -1544,6 +1684,8 @@ int   port     = 3306;
          VALUES (questitem_name,                   \
             questitem_name_ger,                    \
             questitem_icon,                        \
+            questitem_group,                       \
+            questitem_color,                       \
             questitem_desc,                        \
             questitem_desc_ger,                    \
             questitem_value,                       \
@@ -1551,6 +1693,8 @@ int   port     = 3306;
             questitem_bulk,                        \
             questitem_iflag)                       \
          ON DUPLICATE KEY UPDATE                   \
+         questitem_group = questitem_group,        \
+         questitem_color = questitem_color,        \
          questitem_desc = questitem_desc,          \
          questitem_desc_ger = questitem_desc_ger,  \
          questitem_value = questitem_value,        \
@@ -1564,6 +1708,8 @@ int   port     = 3306;
     IN necklace_name      VARCHAR(63),           \
     IN necklace_name_ger  VARCHAR(63),           \
     IN necklace_icon      TEXT,                  \
+    IN necklace_group     INT(4),                \
+    IN necklace_color     INT(4),                \
     IN necklace_desc      TEXT,                  \
     IN necklace_desc_ger  TEXT,                  \
     IN necklace_value     INT(4),                \
@@ -1575,6 +1721,8 @@ int   port     = 3306;
       (  necklace_name,                          \
          necklace_name_ger,                      \
          necklace_icon,                          \
+         necklace_group,                         \
+         necklace_color,                         \
          necklace_desc,                          \
          necklace_desc_ger,                      \
          necklace_value,                         \
@@ -1584,6 +1732,8 @@ int   port     = 3306;
          VALUES (necklace_name,                  \
             necklace_name_ger,                   \
             necklace_icon,                       \
+            necklace_group,                      \
+            necklace_color,                      \
             necklace_desc,                       \
             necklace_desc_ger,                   \
             necklace_value,                      \
@@ -1591,6 +1741,8 @@ int   port     = 3306;
             necklace_bulk,                       \
             necklace_iflag)                      \
          ON DUPLICATE KEY UPDATE                 \
+         necklace_group = necklace_group,        \
+         necklace_color = necklace_color,        \
          necklace_desc = necklace_desc,          \
          necklace_desc_ger = necklace_desc_ger,  \
          necklace_value = necklace_value,        \
@@ -1604,6 +1756,8 @@ int   port     = 3306;
     IN instrument_name      VARCHAR(63),              \
     IN instrument_name_ger  VARCHAR(63),              \
     IN instrument_icon      TEXT,                     \
+    IN instrument_group     INT(4),                   \
+    IN instrument_color     INT(4),                   \
     IN instrument_desc      TEXT,                     \
     IN instrument_desc_ger  TEXT,                     \
     IN instrument_value     INT(4),                   \
@@ -1615,6 +1769,8 @@ int   port     = 3306;
       (  instrument_name,                             \
          instrument_name_ger,                         \
          instrument_icon,                             \
+         instrument_group,                            \
+         instrument_color,                            \
          instrument_desc,                             \
          instrument_desc_ger,                         \
          instrument_value,                            \
@@ -1624,6 +1780,8 @@ int   port     = 3306;
          VALUES (instrument_name,                     \
             instrument_name_ger,                      \
             instrument_icon,                          \
+            instrument_group,                         \
+            instrument_color,                         \
             instrument_desc,                          \
             instrument_desc_ger,                      \
             instrument_value,                         \
@@ -1631,6 +1789,8 @@ int   port     = 3306;
             instrument_bulk,                          \
             instrument_iflag)                         \
          ON DUPLICATE KEY UPDATE                      \
+         instrument_group = instrument_group,         \
+         instrument_color = instrument_color,         \
          instrument_desc = instrument_desc,           \
          instrument_desc_ger = instrument_desc_ger,   \
          instrument_value = instrument_value,         \
@@ -1644,6 +1804,8 @@ int   port     = 3306;
     IN gem_name      VARCHAR(63),      \
     IN gem_name_ger  VARCHAR(63),      \
     IN gem_icon      TEXT,             \
+    IN gem_group     INT(4),           \
+    IN gem_color     INT(4),           \
     IN gem_desc      TEXT,             \
     IN gem_desc_ger  TEXT,             \
     IN gem_value     INT(4),           \
@@ -1655,6 +1817,8 @@ int   port     = 3306;
       (  gem_name,                     \
          gem_name_ger,                 \
          gem_icon,                     \
+         gem_group,                    \
+         gem_color,                    \
          gem_desc,                     \
          gem_desc_ger,                 \
          gem_value,                    \
@@ -1664,6 +1828,8 @@ int   port     = 3306;
          VALUES (gem_name,             \
             gem_name_ger,              \
             gem_icon,                  \
+            gem_group,                 \
+            gem_color,                 \
             gem_desc,                  \
             gem_desc_ger,              \
             gem_value,                 \
@@ -1671,6 +1837,8 @@ int   port     = 3306;
             gem_bulk,                  \
             gem_iflag)                 \
          ON DUPLICATE KEY UPDATE       \
+         gem_group = gem_group,        \
+         gem_color = gem_color,        \
          gem_desc = gem_desc,          \
          gem_desc_ger = gem_desc_ger,  \
          gem_value = gem_value,        \
@@ -1684,6 +1852,8 @@ int   port     = 3306;
     IN offering_name      VARCHAR(63),          \
     IN offering_name_ger  VARCHAR(63),          \
     IN offering_icon      TEXT,                 \
+    IN offering_group     INT(4),               \
+    IN offering_color     INT(4),               \
     IN offering_desc      TEXT,                 \
     IN offering_desc_ger  TEXT,                 \
     IN offering_value     INT(4),               \
@@ -1695,6 +1865,8 @@ int   port     = 3306;
       (  offering_name,                         \
          offering_name_ger,                     \
          offering_icon,                         \
+         offering_group,                        \
+         offering_color,                        \
          offering_desc,                         \
          offering_desc_ger,                     \
          offering_value,                        \
@@ -1704,6 +1876,8 @@ int   port     = 3306;
          VALUES (offering_name,                 \
             offering_name_ger,                  \
             offering_icon,                      \
+            offering_group,                     \
+            offering_color,                     \
             offering_desc,                      \
             offering_desc_ger,                  \
             offering_value,                     \
@@ -1711,6 +1885,8 @@ int   port     = 3306;
             offering_bulk,                      \
             offering_iflag)                     \
          ON DUPLICATE KEY UPDATE                \
+         offering_group = offering_group,       \
+         offering_color = offering_color,       \
          offering_desc = offering_desc,         \
          offering_desc_ger = offering_desc_ger, \
          offering_value = offering_value,       \

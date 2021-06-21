@@ -17,29 +17,30 @@ constants:
 resources:
 
 classvars:
-   
+
    viValue_average = 1000
    viWeight = 25
    viBulk = 30
-   
+
    vrAllegiance = SS_DM_COMMAND
 
-properties:  
+properties:
 
-messages:   
+messages:
 
    UpdateDatabase()
    {
-      // Wiki Export: all offerings into a table
-      local iFlags, rName;
-      rName = Send(self,@GetName,#number=3);
-      iFlags = Send(self,@GetDatabaseFlags);
-      RecordStat(STAT_OFFERINGS, TAG_RESOURCE, rName, RESOURCE_GER, rName, 
-            TAG_RESOURCE, vrIcon, TAG_RESOURCE, vrDesc, RESOURCE_GER, vrDesc, 
-            TAG_INT, viValue_average, TAG_INT, viWeight, TAG_INT, viBulk, 
-            TAG_INT, iFlags);
+      local rName;
 
-   return;
+      // Wiki Export: all offerings into a table
+      rName = Send(self,@GetName,#number=3);
+      RecordStat(STAT_OFFERINGS, TAG_RESOURCE, rName, RESOURCE_GER, rName, 
+            TAG_RESOURCE, vrIcon, TAG_INT, viInventory_group, TAG_INT,
+            Send(self,@GetPaletteTranslation),TAG_RESOURCE, vrDesc,
+            RESOURCE_GER, vrDesc, TAG_INT, viValue_average, TAG_INT, viWeight,
+            TAG_INT, viBulk, TAG_INT, Send(self,@GetDatabaseFlags));
+
+      return;
    }
 
    GetAllegiance()
@@ -49,4 +50,3 @@ messages:
 
 end
 ////////////////////////////////////////////////////////////////////////////////
-

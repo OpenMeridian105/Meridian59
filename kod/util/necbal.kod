@@ -122,30 +122,40 @@ messages:
    Constructor()
    {
       ptMaintain = CreateTimer(self,@Maintain,MS_PER_DAY);
-      plAmuletLocations = [[RID_GUILDH15,13,14,29,22], [RID_LICH_MAZE,19,30,32,32],
-                           [RID_NECROAREA3a,02,08,59,55], [RID_NECROAREA3b,08,02,24,04],
-                           [RID_NECROAREA2,19,08,32,32], [RID_G8,34,37,32,32]];
-      plSwordLocations = [[RID_LICH_MAZE,24,19,62,20],[RID_LICH_MAZE,28,42,07,06],[RID_LICH_MAZE,17,42,12,10]];
-      plArchivedPKCounts = [ 20 ];
-      plArchivedNKCounts = [ 8 ];
-      plArchivedHKCounts = [ 8 ];
-      plArchivedPkPercents = [ 80 ];
-      plNecromancerTreasure = $;
+
+      Send(self,@Recreate);
 
       return;
    }
 
    Recreate()
    {
-      /// called only by recreateall in updates.
-      if plArchivedPKCounts = $ { plArchivedPKCounts = [ 20 ]; }
-      if plArchivedNKCounts = $ { plArchivedNKCounts = [ 8 ]; }
-      if plArchivedHKCounts = $ { plArchivedHKCounts = [ 8 ]; }
-      if plArchivedPkPercents = $ { plArchivedPkPercents = [ 80 ]; }
+      if plArchivedPKCounts = $
+      { 
+         plArchivedPKCounts = [ 20 ];
+      }
+
+      if plArchivedNKCounts = $
+      { 
+         plArchivedNKCounts = [ 8 ];
+      }
+
+      if plArchivedHKCounts = $
+      { 
+         plArchivedHKCounts = [ 8 ];
+      }
+
+      if plArchivedPkPercents = $
+      {
+         plArchivedPkPercents = [ 80 ];
+      }
+
       plAmuletLocations = [[RID_GUILDH15,13,14,29,22], [RID_LICH_MAZE,19,30,32,32],
                            [RID_NECROAREA3a,02,08,59,55], [RID_NECROAREA3b,08,02,24,04],
                            [RID_NECROAREA2,19,08,32,32], [RID_G8,34,37,32,32]];
+
       plSwordLocations = [[RID_LICH_MAZE,24,19,62,20],[RID_LICH_MAZE,28,42,07,06],[RID_LICH_MAZE,17,42,12,10]];
+
       plNecromancerTreasure = $;
 
       // Check if we have an active necro guild that isn't being tracked here.
@@ -169,18 +179,22 @@ messages:
       }
 
       pbScenarioActivated = TRUE;
+
       if ptTriggerAmuletGeneration <> $
       {
          DeleteTimer(ptTriggerAmuletGeneration);
          ptTriggerAmuletGeneration = $;
       }
+
       if ptTriggerSwordGeneration <> $
       {
          DeleteTimer(ptTriggerSwordGeneration);
          ptTriggerSwordGeneration = $;
       }
+
       //piNumAmuletsGenerated = 0;
       //piNumSwordsGenerated = 0;
+
       Send(self,@TriggerAmuletGeneration);
       Send(self,@TriggerSwordGeneration);
 
@@ -198,11 +212,13 @@ messages:
       }
 
       pbScenarioActivated = FALSE;
+
       if ptTriggerAmuletGeneration <> $
       {
          DeleteTimer(ptTriggerAmuletGeneration);
          ptTriggerAmuletGeneration = $;
       }
+
       if ptTriggerSwordGeneration <> $
       {
          DeleteTimer(ptTriggerSwordGeneration);
@@ -510,23 +526,30 @@ messages:
          piDays = 0;
          plArchivedPKCounts = Cons(piPKcountPerDay,plArchivedPKCounts);
          piPKcountPerDay = 0;
+
          if Length(plArchivedPKCounts) > 12
          {
             plArchivedPKCounts = DelLastListElem(plArchivedPKCounts);
          }
+
          plArchivedNKCounts = Cons(piNKcountPerDay,plArchivedNKCounts);
          piNKcountPerDay = 0;
+
          if Length(plArchivedNKCounts) > 12
          {
             plArchivedNKCounts = DelLastListElem(plArchivedNKCounts);
          }
+         
          plArchivedHKCounts = Cons(piHKcountPerDay,plArchivedHKCounts);
          piHKcountPerDay = 0;
+
          if Length(plArchivedHKCounts) > 12
          {
             plArchivedHKCounts = DelLastListElem(plArchivedHKCounts);
          }
+
          plArchivedPkPercents = Cons(piPkPercentDueToScenario,plArchivedPkPercents);
+
          if Length(plArchivedPkPercents) > 12
          {
             plArchivedPkPercents = DelLastListElem(plArchivedPkPercents);
@@ -712,7 +735,7 @@ messages:
       piNumAmuletsGenerated = piNumAmuletsGenerated - 1;
       if piNumAmuletsGenerated < 0
       {
-         Debug("Miscounted amulets somehow;  count less than zero.");
+         Debug("Miscounted amulets somehow, count less than zero.");
          piNumAmuletsGenerated = 0;
       }
 
@@ -731,7 +754,7 @@ messages:
       piNumSwordsGenerated = piNumSwordsGenerated - 1;
       if piNumSwordsGenerated < 0
       {
-         Debug("Miscounted swords somehow;  count less than zero.");
+         Debug("Miscounted swords somehow,  count less than zero.");
          piNumSwordsGenerated = 0;
       }
 

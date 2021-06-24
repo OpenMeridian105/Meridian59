@@ -12756,7 +12756,7 @@ messages:
    {
       local obj, level, school, division, iHave, prev_level, iSamediv,
             iOtherdiv, aHigh, bHigh, cHigh, iBase, i, temp, nObj, nSID,
-            index, iNeed, nSchool, nLevel, msg, bKnowOne, iWeapon, iKraanan,
+            index, iNeed, nSchool, nLevel, msg, iWeapon, iKraanan,
             iShalille, iQor, iFaren, iRiija, iJala, iRogue, iPoints;
 
       // Phase one. Assert our data. Be sure we have been fed a valid spell
@@ -12823,32 +12823,12 @@ messages:
       // skill list, count the spells/skills that count towards our total. Note
       // that we only want the top three spells/skills at that school and level.
 
-      bKnowOne = FALSE;
-
-      // Check to see if they have any spells of the next level.
-      //  If so, let them buy any spells they want.
-      iHave = Send(self,@CountKnownAtLevel,#school=school,#level=level+1);
-      if iHave > 0
-      {
-         return PLAYER_LEARN_SUCCESS;
-      }
-
-      // See how many spells they have at this level.
+      // Check to see if they have any spells of this level already.
+      // If so, let them buy any spells they want.
       iHave = Send(self,@CountKnownAtLevel,#school=school,#level=level);
       if iHave > 0
       {
-         // For level 3 or higher, they can learn if they have another spell
-         // in that school and level. If they have two spells at a lower level,
-         // they need 2 or more spells in that school or level. This prevents
-         // people getting all level 2 spells fresh out of character creation.
-         if level > 2
-            OR iHave >= 2
-         {
-            return PLAYER_LEARN_SUCCESS;
-         }
-
-         // Flag it so we know that they already have a spell in that level.
-         bKnowOne = TRUE;
+         return PLAYER_LEARN_SUCCESS;
       }
 
       if level > 1
@@ -13072,14 +13052,11 @@ messages:
                + Send(SYS,@GetLevelLearnPoints,#level=iRiija)
                + Send(SYS,@GetLevelLearnPoints,#level=iJala);
 
-      // Okay, we're going into new territory if we don't already know one
-      //  spell in the school, so we're increasing the level of our
-      //  knowledge.  Add points.
-      if not bKnowOne
-      {
-         iPoints = iPoints + Send(SYS,@GetLevelLearnPoints,#level=level)
-                           - Send(SYS,@GetLevelLearnPoints,#level=(level-1));
-      }
+      // Okay, we're going into new territory since we we we're increasing 
+      // the level of our knowledge.  Add points.
+
+      iPoints = iPoints + Send(SYS,@GetLevelLearnPoints,#level=level)
+                        - Send(SYS,@GetLevelLearnPoints,#level=(level-1));
 
       // How this oddball equation works: You have a POINTS_SLOPE that determines
       //  how steep the advancement slope is.  A higher slope results in lower
@@ -13136,11 +13113,8 @@ messages:
          }
 
          // Bring the points back down to the original total, before learning.
-         if NOT bKnowOne
-         {
-            iPoints = iPoints - Send(SYS,@GetLevelLearnPoints,#level=level)
-                              + Send(SYS,@GetLevelLearnPoints,#level=(level-1));
-         }
+         iPoints = iPoints - Send(SYS,@GetLevelLearnPoints,#level=level)
+                           + Send(SYS,@GetLevelLearnPoints,#level=(level-1));
 
          Send(scryer,@MsgSendUser,#message_rsc=player_Debug_playercanlearn,
               #parm1=Send(self,@GetName),#parm2=Send(obj,@GetLevel),
@@ -13257,6 +13231,13 @@ messages:
       }
 
       school = Send(obj,@GetSchool);
+
+      // Check to see if they have any abilities of the next level already.
+      // If so we are eligible to buy the remaining ones.
+      if Send(self,@CountKnownAtLevel,#school=school,#level=level+1)
+      {
+         return;
+      }
 
       aHigh = 0; bHigh = 0; cHigh = 0;
 
@@ -13429,7 +13410,7 @@ messages:
 
       iNeed = Bound(iNeed,MIN_NEEDED_TO_ADVANCE,$);
 
-      // Reusing variable now that we don't need the abilities ID anymore.
+      // Reusing variable now that we don't need the ability's ID anymore.
       iNum = Send(SYS,@GetNumAtLevel,#school=school,#level=level);
 
       if iNeed > 99*(Bound(iNum,1,3))
@@ -13491,73 +13472,23 @@ messages:
                  #parm1=Send(obj,@GetSchoolStr));
       }
 
-      //// It's time to return a meaningful value:
-      //// n: We need n more points.
-      //// 0: We have enough points to buy the next rank but haven't done so yet.
-      //// $: We have enough points to buy the next rank but have already done so.
-
-      // We have enough points. Let's check if that information is relevant.
+      // It's time to return a meaningful value:
+      // We have enough points to buy the next rank but haven't done so yet.
+      // (We already checked that earlier.) Return 0.
       if iNeed <= 0
       {
-         // If we already possess a higher rank ability in the same school,
-         // we don't need to inform anyone. Return $.
-         switch (school)
-         {
-         case SS_KRAANAN:
-            if level < iKraanan
-            {
-               return;
-            }
-            break;
-         case SS_SHALILLE:
-            if level < iShalille
-            {
-               return;
-            }
-            break;
-         case SS_QOR:
-            if level < iQor
-            {
-               return;
-            }
-            break;
-         case SS_FAREN:
-            if level < iFaren
-            {
-               return;
-            }
-            break;
-         case SS_RIIJA:
-            if level < iRiija
-            {
-               return;
-            }
-            break;
-         case SS_JALA:
-            if level < iJala
-            {
-               return;
-            }
-            break;
-         case SKS_WEAPONCRAFT:
-            if level < iWeapon
-            {
-               return;
-            }
-            break;
-         case SKS_ROGUE:
-            if level < iRogue
-            {
-               return;
-            }
-            break;
-         }
-
-         // We don't have a higher rank ability. Return 0.
          return 0;
       }
 
-      // We still need some points. Return how many.
+      // -n: With this ability, we need n more points, but this is not our
+      // highest ability. Return the negative value for further processing.
+      // This is only of concern if we have more than 3 abilities at that rank.
+      if new_value < cHigh
+      {
+         return -iNeed;
+      }
+
+      // We need some more points, return how many.
       return iNeed;
    }
 

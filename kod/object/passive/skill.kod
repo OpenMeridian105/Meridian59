@@ -66,15 +66,15 @@ resources:
    skill_trance_cancel = \
       "You abandon your attempt to perform the %s skill."
 
-   skill_rank_enough_rsc = "\n\nYou have earned enough points in this rank to advance "
+   skill_level_enough_rsc = "\n\nYou have earned enough points in this level to advance "
       "to the next one!"
 
-   skill_rank_needed_rsc = "\n\nYou need %i more point(s) in this rank to "
+   skill_level_needed_rsc = "\n\nYou need %i more point(s) in this level to "
       "advance to the next one."
 
-   skill_rank_other_needed_rsc = \
-      "\n\nThis is not one of your top three skills at this rank!"
-      "\nYou would need %i more point(s) in this rank to advance to the next one "
+   skill_level_other_needed_rsc = \
+      "\n\nThis is not one of your top three skills at this level!"
+      "\nYou would need %i more point(s) in this level to advance to the next one "
       "using this skill."
 
    skill_fail_wav = doorlck.ogg
@@ -230,8 +230,8 @@ messages:
          AddPacket(4,skill_meditate_ratio_rsc,4,piMeditate_ratio);
       }
 
-      // Tell players how much more they need to progress to reach the next rank.
-      Send(self,@SendRankUpInfo,#who=who);
+      // Tell players how much more they need to progress to reach the next level.
+      Send(self,@SendAbilityLevelUpInfo,#who=who);
 
       return;
    }
@@ -243,11 +243,11 @@ messages:
       return;
    }
 
-   SendRankUpInfo(who = $)
+   SendAbilityLevelUpInfo(who = $)
    {
       local iNeed;
 
-      iNeed = Send(who,@PlayerNewRank,#skill_num=viskill_Num,#bAlert=FALSE);
+      iNeed = Send(who,@PlayerNewAbilityLevel,#skill_num=viskill_Num,#bAlert=FALSE);
 
       if iNeed = $
       {
@@ -255,15 +255,15 @@ messages:
       }
       else if iNeed = 0
       {
-         AddPacket(4,skill_rank_enough_rsc);
+         AddPacket(4,skill_level_enough_rsc);
       }
       else if iNeed < 0
       {
-         AddPacket(4,skill_rank_other_needed_rsc,4,-iNeed);
+         AddPacket(4,skill_level_other_needed_rsc,4,-iNeed);
       }
       else
       {
-         AddPacket(4,skill_rank_needed_rsc,4,iNeed);
+         AddPacket(4,skill_level_needed_rsc,4,iNeed);
       }
 
       return;

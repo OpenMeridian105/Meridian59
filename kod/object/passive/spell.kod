@@ -93,13 +93,13 @@ resources:
    spell_desc_rsc = "%s%s%s%r%r%r%r%r"
    spell_reg_desc = "\n\nRequired reagents:%r"
    spell_reg_one = "\n   %i %s"
-   spell_rank_enough_rsc = "\n\nYou have earned enough points in this rank to advance "
+   spell_level_enough_rsc = "\n\nYou have earned enough points in this level to advance "
       "to the next one!"
-   spell_rank_needed_rsc = "\n\nYou need %i more point(s) in this rank to "
+   spell_level_needed_rsc = "\n\nYou need %i more percentage point(s) in this level to "
       "advance to the next one."
-   spell_rank_other_needed_rsc = \
-      "\n\nThis is not one of your top three spells at this rank!"
-      "\nYou would need %i more point(s) in this rank to advance to the next one "
+   spell_level_other_needed_rsc = \
+      "\n\nThis is not one of your top three spells at this level!"
+      "\nYou would need %i more percentage point(s) in this level to advance to the next one "
       "using this spell."
 
    spell_school_riija = "Riija"
@@ -447,7 +447,7 @@ messages:
          Send(self,@SendReagentCost,#who=who);
          Send(self,@SendStatsDesc,#who=who);
          Send(self,@SendTimeDesc,#who=who);
-         Send(self,@SendRankUpInfo,#who=who);
+         Send(self,@SendAbilityLevelUpInfo,#who=who);
 
          return;
       }
@@ -512,11 +512,11 @@ messages:
       return;
    }
 
-   SendRankUpInfo(who = $)
+   SendAbilityLevelUpInfo(who = $)
    {
       local iNeed;
 
-      iNeed = Send(who,@PlayerNewRank,#spell_num=vispell_Num,#bAlert=FALSE);
+      iNeed = Send(who,@PlayerNewAbilityLevel,#spell_num=vispell_Num,#bAlert=FALSE);
 
       if iNeed = $
       {
@@ -524,15 +524,15 @@ messages:
       }
       else if iNeed = 0
       {
-         AddPacket(4,spell_rank_enough_rsc);
+         AddPacket(4,spell_level_enough_rsc);
       }
       else if iNeed < 0
       {
-         AddPacket(4,spell_rank_other_needed_rsc,4,-iNeed);
+         AddPacket(4,spell_level_other_needed_rsc,4,-iNeed);
       }
       else
       {
-         AddPacket(4,spell_rank_needed_rsc,4,iNeed);
+         AddPacket(4,spell_level_needed_rsc,4,iNeed);
       }
 
       return;

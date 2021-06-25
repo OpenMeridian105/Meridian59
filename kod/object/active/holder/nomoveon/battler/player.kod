@@ -831,8 +831,8 @@ resources:
    player_honor_title_off = "Your honor rank is no longer being displayed."
    player_honor_title_alt = "You're now displaying your alternate honor rank."
 
-   player_rank_up = "~BYou feel ready to take your studies of %s to the next level!"
-   player_rank_up_sound = rankup.ogg
+   player_ability_level_up = "~BYou feel ready to take your studies of %s to the next level!"
+   player_ability_level_up_sound = abilitylevelup.ogg
 
 classvars:
 
@@ -8426,7 +8426,7 @@ messages:
          }
       }
 
-      Send(self,@PlayerNewRank,#spell_num=spell_num,
+      Send(self,@PlayerNewAbilityLevel,#spell_num=spell_num,
          #old_value=iAbility,#new_value=newAbility);
 
       Send(self,@PlayerIsIntriguing);
@@ -8675,7 +8675,7 @@ messages:
       {
          Send(self,@AddToSchools,#school=Send(oSpell,@GetSchool),
                #change=iBoundAbility);
-         Send(self,@PlayerNewRank,#spell_num=num,#new_value=iBoundAbility);
+         Send(self,@PlayerNewAbilityLevel,#spell_num=num,#new_value=iBoundAbility);
       }
 
       if poOwner <> $
@@ -8974,7 +8974,7 @@ messages:
          }
       }
 
-      Send(self,@PlayerNewRank,#skill_num=skill_num,
+      Send(self,@PlayerNewAbilityLevel,#skill_num=skill_num,
          #old_value=iability,#new_value=newAbility);
 
       Send(self,@PlayerIsIntriguing);
@@ -9120,7 +9120,7 @@ messages:
       {
          Send(self,@AddToSchools,#school=Send(oSkill,@GetSchool),
                #change=iBoundAbility);
-         Send(self,@PlayerNewRank,#skill_num=num,#new_value=iBoundAbility);
+         Send(self,@PlayerNewAbilityLevel,#skill_num=num,#new_value=iBoundAbility);
       }
 
       return TRUE;
@@ -13177,7 +13177,7 @@ messages:
       return ((10*(iNeed-iHave))+PLAYER_LEARN_BASE);
    }
 
-   PlayerNewRank(spell_num=0,skill_num=0,old_value=0,new_value=0,bAlert=TRUE)
+   PlayerNewAbilityLevel(spell_num=0,skill_num=0,old_value=0,new_value=0,bAlert=TRUE)
    {
       local obj, level, school, iNum, aHigh, bHigh, cHigh, i, temp, nObj, nSID,
             index, iTopTwo, iNeed, nSchool, nLevel, iWeapon, iKraanan, iShalille,
@@ -13224,7 +13224,7 @@ messages:
 
       level = Send(obj,@GetLevel);
 
-      // Can't rank up at level 6.
+      // Can't level up at level 6.
       if level > 5
       {
          return;
@@ -13399,8 +13399,8 @@ messages:
                + Send(SYS,@GetLevelLearnPoints,#level=iRiija)
                + Send(SYS,@GetLevelLearnPoints,#level=iJala);
 
-      // Since we are checking towards the next rank, we have calculate how
-      // many total learn points we would have with the next rank included.
+      // Since we are checking towards the next level, we have calculate how
+      // many total learn points we would have with the next level included.
       iPoints = iPoints + Send(SYS,@GetLevelLearnPoints,#level=level+1)
                         - Send(SYS,@GetLevelLearnPoints,#level=level);
 
@@ -13428,7 +13428,7 @@ messages:
       }
 
       //// In the checks below, we determine whether the improved ability
-      //// has pushed us to a new rank. If so, we want to alert the user.
+      //// has pushed us to a new level. If so, we want to alert the user.
       //// Even if we don't alert, we should still return information
       //// about our status in case we are called by ShowDesc().
 
@@ -13436,7 +13436,7 @@ messages:
       // the passed ability.
       iTopTwo = aHigh + bHigh;
 
-      // If we were already able to reach the next rank before, don't alert.
+      // If we were already able to reach the next level before, don't alert.
       // We can also safely assume that we don't need any more points.
       if (iTopTwo + cHigh >= iNeed)
          OR (iTopTwo + old_value >= iNeed)
@@ -13467,13 +13467,13 @@ messages:
       // If our ability gain has pushed us past what we need, alert.
       if bAlert
       {
-         Send(self,@WaveSendUser,#wave_rsc=player_rank_up_sound);
-         Send(self,@MsgSendUser,#message_rsc=player_rank_up,
+         Send(self,@WaveSendUser,#wave_rsc=player_ability_level_up_sound);
+         Send(self,@MsgSendUser,#message_rsc=player_ability_level_up,
                  #parm1=Send(obj,@GetSchoolStr));
       }
 
       // It's time to return a meaningful value:
-      // We have enough points to buy the next rank but haven't done so yet.
+      // We have enough points to buy the next level but haven't done so yet.
       // (We already checked that earlier.) Return 0.
       if iNeed <= 0
       {
@@ -13482,7 +13482,7 @@ messages:
 
       // -n: With this ability, we need n more points, but this is not our
       // highest ability. Return the negative value for further processing.
-      // This is only of concern if we have more than 3 abilities at that rank.
+      // This is only of concern if we have more than 3 abilities at that level.
       if new_value < cHigh
       {
          return -iNeed;

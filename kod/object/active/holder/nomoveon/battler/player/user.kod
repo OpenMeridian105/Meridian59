@@ -253,7 +253,7 @@ resources:
       "shield in %i %s."
    user_guild_shield_error_disabled = \
       "Your guild is unable to claim a different heraldic design at this "
-      "time – you have already claimed one."
+      "time ï¿½ you have already claimed one."
    user_time_days = "days"
    user_time_hours = "hours"
    user_time_minutes = "minutes"
@@ -1840,7 +1840,7 @@ messages:
    "It is dynamically allocated each time (wasting list nodes)."
    {
       local liClient_cmd, oWhat, oRoom, iRow, iCol, lUsers, iAngle, sBody,
-            iSpeed, i, sStr_said, bCancel, iTimeLeft;
+            iSpeed, i, sStr_said, bCancel, iTimeLeft, oAbility;
 
       // This checks to see if the user is trying to Send too many packets
       //  per second.  If they are, then we mark them as a spammer and
@@ -2295,9 +2295,26 @@ messages:
 
       if liClient_cmd = BP_REQ_CAST
       {
+         oAbility = Nth(client_msg,2);
+
          if ptAttackTimer = $
          {
-            Send(self,@UserCast,#oSpell=Nth(client_msg,2),
+            Send(self,@UserCast,#oSpell=oAbility,
+               #lTargets=Nth(client_msg,3));
+         }
+         else if IsClass(oAbility,&Phase)
+            AND Send(self,@CanPhaseAgain)
+         {
+            if ptQueuedAction <> $
+            {
+               DeleteTimer(ptQueuedAction);
+               ptQueuedAction = $;
+               plLastReceived = $;
+            }
+
+            Send(self,@BreakTrance);
+            Send(self,@SetAttackTime);
+            Send(self,@UserCast,#oSpell=oAbility,
                #lTargets=Nth(client_msg,3));
          }
          else
@@ -2309,7 +2326,7 @@ messages:
                if ptQueuedAction <> $ AND (First(plLastReceived) <> BP_REQ_CAST)
                {
                   DeleteTimer(ptQueuedAction);
-                  plLastReceived = [BP_REQ_CAST,Nth(client_msg,2),Nth(client_msg,3)];
+                  plLastReceived = [BP_REQ_CAST,oAbility,Nth(client_msg,3)];
                   ptQueuedAction = CreateTimer(self,@UserQueuedAction,iTimeLeft);
                }
             }
@@ -7244,12 +7261,12 @@ messages:
          string = psPlayerDescription;
       }
 
-      if StringContain(psPlayerDescription,"¶")
+      if StringContain(psPlayerDescription,"ï¿½")
       {
          iCount = 0;
-         while StringContain(psPlayerDescription,"¶")
+         while StringContain(psPlayerDescription,"ï¿½")
          {
-            StringSubstitute(psPlayerDescription,"¶","");
+            StringSubstitute(psPlayerDescription,"ï¿½","");
             if ++iCount > 10
             {
                // At this point, it's malicious.
@@ -7470,7 +7487,7 @@ messages:
 
       if piFlags & PFLAG_TRANCE
       {
-         if (NOT Send(self,@CanBreakTrance))
+         if (NOT Send(self,@CanBreakTrance,#event=EVENT_USE))
          {
             return;
          }
@@ -7492,7 +7509,7 @@ messages:
    {
       if piFlags & PFLAG_TRANCE
       {
-         if (NOT Send(self,@CanBreakTrance))
+         if (NOT Send(self,@CanBreakTrance,#event=EVENT_USE))
          {
             return;
          }
@@ -7588,7 +7605,7 @@ messages:
          // to cast. If we are already preparing to cast the same spell,
          // don't interrupt our cast.
          if Send(self,@GetTranceAbility) = oSpell
-            OR NOT Send(self,@CanBreakTrance)
+            OR NOT Send(self,@CanBreakTrance,#event=EVENT_ABILITY)
          {
             return;
          }
@@ -7596,7 +7613,7 @@ messages:
          // Either way, our cast may disrupt &Trance or a maintained spell.
          else
          {
-            Send(self,@BreakTrance,#event=EVENT_CAST,#what=oSpell);
+            Send(self,@BreakTrance,#event=EVENT_ABILITY,#what=oSpell);
          }
       }
 
@@ -7727,13 +7744,13 @@ messages:
       if piFlags & PFLAG_TRANCE
       {
          if Send(self,@GetTranceAbility) = oSkill
-            OR NOT Send(self,@CanBreakTrance)
+            OR NOT Send(self,@CanBreakTrance,#event=EVENT_ABILITY)
          {
             return;
          }
          else
          {
-            Send(self,@BreakTrance,#event=EVENT_ATTACK,#what=oSkill);
+            Send(self,@BreakTrance,#event=EVENT_ABILITY,#what=oSkill);
          }
       }
 
@@ -7811,7 +7828,7 @@ messages:
          AND (Command_num = GCID_RENOUNCE
             OR Command_num = GCID_DISBAND)
       {
-         Send(self,@BreakTrance,#event=EVENT_CAST,#what=oCommand);
+         Send(self,@BreakTrance,#event=EVENT_DISRUPT,#what=oCommand);
       }
 
       // Be sure player has guild command.

@@ -55,7 +55,7 @@ resources:
 
    skill_no_targets = "There are no proper targets for %s."
 
-   skill_trance_break = "Your preparations to perform %s are interrupted."
+   skill_trance_break = "Your attempt to perform a %s is interrupted."
 
    skill_no_rest = "You can't perform a skill while resting!"
 
@@ -64,7 +64,7 @@ resources:
    skill_trance_fumble = "You struggle to perform your %s skill!"
 
    skill_trance_cancel = \
-      "You abandon your attempt to perform the %s skill."
+      "You abandon your attempt to perform a %s."
 
    skill_level_enough_rsc = "\n\nYou have earned enough points in this level to advance "
       "to the next one!"
@@ -80,8 +80,8 @@ resources:
    skill_fail_wav = doorlck.ogg
 
    skill_trance_begin_sound = spell_trance_begin.ogg
-   skill_trance_break_sound = spell_trance_break.ogg
-   skill_trance_cancel_sound = spell_trance_cancel.ogg
+   skill_trance_break_sound = skill_trance_break.ogg
+   skill_trance_cancel_sound = skill_trance_cancel.ogg
 
 classvars:
 
@@ -1014,7 +1014,7 @@ messages:
 
    TranceBroken(who=$,state=$,event=$)
    {
-      if (event = EVENT_CAST) OR (event = EVENT_ATTACK)
+      if (event = EVENT_ABILITY) OR (event = EVENT_ATTACK)
       {
          // Reset attack timer to allow instant switching without recast.
          Send(who,@SetAttackTime);
@@ -1070,16 +1070,25 @@ messages:
       return TRUE;
    }
 
-   // Determines if the preparation trance (&Trance) can be disrupted.
-   CanBreakTrance(who=$,state=$,event=1,disruption=0)
+   // Determines if the casting trance (&Trance) can be disrupted.
+   CanBreakTrance(who=$,state=$,event=EVENT_NONE,disruption=0)
    {
-      // Death tends to end most things.
-      if event = EVENT_DEATH
+      // Some events can cancel any trance. Not the ones below though.
+      // These events can only break trance, if vbCanBreakTrance = TRUE.
+      if NOT vbCanBreakTrance
       {
-         return TRUE;
+         if (event = EVENT_CANCEL)
+            OR (event = EVENT_ABILITY)
+            OR (event = EVENT_ATTACK)         
+            OR (event = EVENT_DAMAGE)
+            OR (event = EVENT_DISRUPT)
+            OR (event = EVENT_USE)
+         {
+            return FALSE;
+         }
       }
 
-      return vbCanBreakTrance;
+      return TRUE;
    }
 
    TranceEnding()

@@ -16021,7 +16021,7 @@ messages:
       return piRemainingPhaseTime = Send(self,@GetBasePhaseTime);
    }
 
-   CanPhaseAgain(time=$)
+   CanPhaseAgain(time=0)
    {
       if ptCanPhaseTimer <> $
       {
@@ -16652,7 +16652,7 @@ messages:
       return;
    }
 
-   CanBreakTrance()
+   CanBreakTrance(event=EVENT_NONE,disruption=0)
    "Returns TRUE if player doesn't have a trance active, or if the trance "
    "can be broken.  Returns FALSE if player has a trance active but the "
    "trance is unbreakable (e.g. cleave perform trance).  Checks spell trances "
@@ -16675,7 +16675,8 @@ messages:
          return bCanBreak;
       }
 
-      return Send(First(lState),@CanBreakTrance);
+      return Send(First(lState),@CanBreakTrance,#who=self,#state=lState,
+         #event=event,#disruption=disruption);
    }
 
    // Returns the spell that is currently in the process of being cast.

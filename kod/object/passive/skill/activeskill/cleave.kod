@@ -116,8 +116,13 @@ messages:
 
             iDist = Send(who,@SquaredFineDistanceTo3D,#what=each_obj);
 
-            // See if target is within range, if we provided a range.
+            // See if target is within range and sight.
             if (iDist > iRange * iRange)
+               OR ((iDist > 1)
+                  AND NOT LineOfSightView(Send(who,@GetAngle),
+                     iRow,iCol,iFineRow, iFineCol,Send(each_obj,@GetRow),
+                     Send(each_obj,@GetCol),Send(each_obj,@GetFineRow),
+                     Send(each_obj,@GetFineCol)))
             {
                continue;
             }

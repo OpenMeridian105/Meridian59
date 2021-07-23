@@ -2631,7 +2631,7 @@ messages:
       angle = angle % MAX_ANGLE;
 
       // Since cosine(x) = cosine(2pi-x), let's only deal with angles between 0 and 2048.
-      // Equivalent to transforming angles beyond 180° to their corresponding negative values,
+      // Equivalent to transforming angles beyond 180ï¿½ to their corresponding negative values,
       // then treating them the same as positive angles for cosine considerations.
       if angle > MAX_ANGLE/2
       {
@@ -4424,17 +4424,27 @@ messages:
       return vrDoor_sound;
    }
 
-   SomethingWaveRoom(wave_rsc=$,what=0,flags=0,row=0,col=0,cutoff_radius=0,max_volume=0)
+   SomethingWaveRoom(wave_rsc=$,what=0,where=0,flags=0,row=0,col=0,cutoff_radius=0,
+                     max_volume=0)
    "Don't send <what> if not from any particular object"
    {
       // Don't play sounds made by stealthed DMs.
       // Handled here because a lot of things might accidentally cause
       // stealthed DMs to give themselves away by sound.
-      if (what <> 0
-         AND IsClass(what,&DM)
-         AND Send(what,@IsDMStealthed))
+      if what <> 0
       {
-         return;
+         if IsClass(what,&DM)
+            AND Send(what,@IsDMStealthed)
+         {
+            return;
+         }
+
+         if where <> 0
+         {
+            row = (Send(what,@GetRow)+Send(where,@GetRow))/2;
+            col = (Send(what,@GetCol)+Send(where,@GetCol))/2;
+            what = 0;
+         }
       }
 
       SendListByClass(plActive,1,&User,@WaveSendUser,

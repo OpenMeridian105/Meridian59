@@ -61,6 +61,9 @@ constants:
    STAT_GROUP_SKILLS = 4
    STAT_GROUP_QUESTS = 5
 
+   // Amount of ms an action can be queued for before we are ready to execute.
+   ACTION_QUEUE_TIME = 250
+
 resources:
 
    include user.lkod
@@ -253,7 +256,7 @@ resources:
       "shield in %i %s."
    user_guild_shield_error_disabled = \
       "Your guild is unable to claim a different heraldic design at this "
-      "time ï¿½ you have already claimed one."
+      "time – you have already claimed one."
    user_time_days = "days"
    user_time_hours = "hours"
    user_time_minutes = "minutes"
@@ -600,8 +603,6 @@ properties:
    plLastReceived = $
    // Timer keeping track of the currently queued action.
    ptQueuedAction = $
-
-   piActionQueueTime = 350
 
 messages:
 
@@ -2102,7 +2103,7 @@ messages:
             iTimeLeft = GetTimeRemaining(ptAttackTimer);
 
             // But maybe we are going to be ready soon enough to queue the next attack?
-            if iTimeLeft < piActionQueueTime
+            if iTimeLeft < ACTION_QUEUE_TIME
             {
                // We are and we have no other action queued yet. Let's queue our action.
                if ptQueuedAction = $
@@ -2321,7 +2322,7 @@ messages:
          {
             iTimeLeft = GetTimeRemaining(ptAttackTimer);
 
-            if iTimeLeft < piActionQueueTime
+            if iTimeLeft < ACTION_QUEUE_TIME
             {
                if ptQueuedAction <> $ AND (First(plLastReceived) <> BP_REQ_CAST)
                {
@@ -2346,7 +2347,7 @@ messages:
          {
             iTimeLeft = GetTimeRemaining(ptAttackTimer);
 
-            if iTimeLeft < piActionQueueTime
+            if iTimeLeft < ACTION_QUEUE_TIME
             {
                if ptQueuedAction <> $ AND (First(plLastReceived) <> BP_REQ_PERFORM)
                {
@@ -2511,6 +2512,10 @@ messages:
 
    UserQueuedAction()
    {
+      local iAction;
+
+      iAction = First(plLastReceived);
+
       ptQueuedAction = $;
 
       if plLastReceived <> $
@@ -2518,19 +2523,17 @@ messages:
          // Just a precaution. Attack timer should have expired by now.
          Send(self,@SetAttackTime);
 
-         if First(plLastReceived) = BP_REQ_ATTACK
+         if iAction = BP_REQ_ATTACK
          {
             Send(self,@UserAttack,#type=Nth(plLastReceived,2),
                #what=Nth(plLastReceived,3));
          }
-
-         if First(plLastReceived) = BP_REQ_CAST
+         else if iAction = BP_REQ_CAST
          {
             Send(self,@UserCast,#type=Nth(plLastReceived,2),
                #what=Nth(plLastReceived,3));
          }
-
-         if First(plLastReceived) = BP_REQ_PERFORM
+         else if iAction = BP_REQ_PERFORM
          {
             Send(self,@UserPerform,#type=Nth(plLastReceived,2),
                #what=Nth(plLastReceived,3));
@@ -7261,12 +7264,12 @@ messages:
          string = psPlayerDescription;
       }
 
-      if StringContain(psPlayerDescription,"ï¿½")
+      if StringContain(psPlayerDescription,"¶")
       {
          iCount = 0;
-         while StringContain(psPlayerDescription,"ï¿½")
+         while StringContain(psPlayerDescription,"¶")
          {
-            StringSubstitute(psPlayerDescription,"ï¿½","");
+            StringSubstitute(psPlayerDescription,"¶","");
             if ++iCount > 10
             {
                // At this point, it's malicious.

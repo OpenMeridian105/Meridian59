@@ -90,6 +90,11 @@ constants:
    // Rate is 1 in KARMA_GAIN_REPORT_RATE
    KARMA_GAIN_REPORT_RATE = 10
 
+   // One in n chance to trigger ImproveAbility for offensive buffs on attack.
+   ONATTACK_IMPROVE_CHANCE = 50
+   ONATTACKED_IMPROVE_CHANCE = 10
+   ONKILL_IMPROVE_CHANCE = 5
+
 resources:
 
    include player.lkod
@@ -5511,14 +5516,20 @@ messages:
       // initially, but then not again until PVP_NOTIFY_DECAY has passed
       if IsClass(what,&User)
       {
-         Send(what,@DoPvpNotify);
+         // If snowballs are set to do 0 damage, don't PVP notify.
+         if (use_weapon = $
+            OR NOT (IsClass(use_weapon,&Snowball)
+               AND NOT Send(use_weapon,@CanDoDamage)))
+         {
+            Send(what,@DoPvpNotify);
+         }
       }
 
       // Time to fire a projectile in case this is a ranged attack.
       if IsClass(stroke_obj,&RangedStroke)
       {
          // We might have run out of ammo.
-         if NOT Send(stroke_obj,@LaunchProjectile,#who=self)
+         if NOT Send(stroke_obj,@LaunchProjectile,#who=self,#what=what)
          {
             return FALSE;
          }
@@ -5544,12 +5555,9 @@ messages:
       // Give offensive buffs a small chance to improve each swing!
       foreach i in plPassiveImprovement
       {
-         if Nth(i,3) AND Random(1,50) = 50
+         if Nth(i,3) AND Random(1,50) = ONATTACK_IMPROVE_CHANCE
          {
-            if Nth(i,3) AND Random(1,50) = 50
-            {
-               Send(First(i),@ImproveAbility,#who=self,#target=what);
-            }
+            Send(First(i),@ImproveAbility,#who=self,#target=what);
          }
       }
 
@@ -6074,7 +6082,7 @@ messages:
          // Allow protective spells a chance to improve when they take effect!
          foreach i in plPassiveImprovement
          {
-            if (stype & -Nth(i,4)) AND Random(1,10) = 10
+            if (stype & -Nth(i,4)) AND Random(1,10) = ONATTACKED_IMPROVE_CHANCE
             {
                Send(First(i),@ImproveAbility,#who=self,#target=what);
             }
@@ -8169,7 +8177,7 @@ messages:
    }
 
    ChangeSpellAbility(spell_num = 0, amount = 0, report = FALSE,
-                      refigureschools = TRUE)
+                      refigureschools = TRUE, bMeditated = FALSE)
    {
       local i, bFound, elemNum, iAbility, spellName, iChange,
             newAbility, oSpell, shrunken;
@@ -8211,6 +8219,7 @@ messages:
 
       // If we advance a touchattack, reset our stroke count (and bonuses).
       if IsClass(oSpell,&TouchAttackSpell)
+         AND NOT bMeditated
       {
          Send(self,@ResetWeaponSwings);
       }
@@ -8717,7 +8726,8 @@ messages:
       return 0;
    }
 
-   ChangeSkillAbility(Skill_num=0,amount=0,report=FALSE,refigureschools=TRUE,bDM=FALSE)
+   ChangeSkillAbility(Skill_num=0,amount=0,report=FALSE,refigureschools=TRUE,
+                     bDM=FALSE,bMeditated=FALSE)
    {
       local i, bFound, elemnum, iability, bUsed, iChange, skillname, 
             newability, oSkill;
@@ -8765,7 +8775,8 @@ messages:
 
       // If we advance a stroke or a proficiency, then
       // reset our stroke count (and bonuses)
-      if IsClass(oSkill,&Stroke) OR IsClass(oSkill,&Proficiency)
+      if (IsClass(oSkill,&Stroke) OR IsClass(oSkill,&Proficiency))
+         AND NOT bMeditated
       {
          Send(self,@ResetWeaponSwings);
       }
@@ -9244,7 +9255,7 @@ messages:
          {
             foreach i in plPassiveImprovement
             {
-               if Nth(i,2) AND Random(1,5) = 5
+               if Nth(i,2) AND Random(1,5) = ONKILL_IMPROVE_CHANCE
                {
                   Send(First(i),@ImproveAbility,#who=self,#target=what);
                }
@@ -16887,17 +16898,20 @@ messages:
    {
       local iAbility, i, iMax, oSpell;
 
-      iAbility = 99;
+      // See how far our player has advanced the (old) slash skill.
+      iAbility = Send(self,@GetSkillAbility,#skill_num=SKID_SLASH);
 
-      // See how far our player has advanced the (old) slash skill
-      // unless we grant max skill.
-      if NOT bMax
+      if iAbility
       {
-         iAbility = Send(self,@GetSkillAbility,#skill_num=SKID_SLASH);
+         // Remove old slash, but only if we actually had it.
+         Send(self,@RemoveSkill,#num=SKID_SLASH);
       }
 
-      // Remove old slash.
-      Send(self,@RemoveSkill,#num=SKID_SLASH);
+      if bMax
+      {
+         // Override ability in case we want to set to max.
+         iAbility = 99;
+      }
 
       if iAbility > 0
       {
@@ -16912,7 +16926,7 @@ messages:
             Send(self,@AddSkill,#num=SKID_THRUST,#iability=iAbility);
          }
 
-         // Finally, if our player knows any rank 2 skills, he is entitled to
+         // Finally, if our player knows any rank 3 skills, he is entitled to
          // owning the rank 3 stroke: Slash
          if Send(self,@CountKnownAtLevel,#school=SKS_WEAPONCRAFT,#level=3) OR bAll
          {

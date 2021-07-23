@@ -39,6 +39,10 @@ resources:
    fire_draw2 = firedraw2.ogg
    fire_draw3 = firedraw3.ogg
 
+   arrowswish1 = ArrowSwish1.ogg
+   arrowswish2 = ArrowSwish2.ogg
+   arrowswish3 = ArrowSwish3.ogg   
+
 classvars:
 
    vrName = fire_name_rsc
@@ -94,28 +98,48 @@ messages:
       return;
    }
 
-   PlaySwishSound(who=$)
+   PlaySwishSound(who=$,what=$)
    {
-      local iRoll;
+      local iRoll, oOwner;
 
-      /// 'swish' sound
-         iRoll = Random(1,3);
+      /// 'swish' sound of arrow leaving bow played at source
+      iRoll = Random(1,3);
+      oOwner = Send(who,@GetOwner);
 
-         if iRoll = 1
-         {
-            Send(Send(who,@GetOwner),@SomethingWaveRoom,#what=who,
-               #wave_rsc=fire_swish1,#flags=SOUND_RANDOM_PITCH);
-         }
-         else if iRoll = 2
-         {
-            Send(Send(who,@GetOwner),@SomethingWaveRoom,#what=who,
-               #wave_rsc=fire_swish2,#flags=SOUND_RANDOM_PITCH);
-         }
-         else
-         {
-            Send(Send(who,@GetOwner),@SomethingWaveRoom,#what=who,
-               #wave_rsc=fire_swish3,#flags=SOUND_RANDOM_PITCH);
-         }
+      if iRoll = 1
+      {
+         Send(oOwner,@SomethingWaveRoom,#what=who,#where=what,
+            #wave_rsc=fire_swish1,#flags=SOUND_RANDOM_PITCH);
+      }
+      else if iRoll = 2
+      {
+         Send(oOwner,@SomethingWaveRoom,#what=who,#where=what,
+            #wave_rsc=fire_swish2,#flags=SOUND_RANDOM_PITCH);
+      }
+      else
+      {
+         Send(oOwner,@SomethingWaveRoom,#what=who,#where=what,
+            #wave_rsc=fire_swish3,#flags=SOUND_RANDOM_PITCH);
+      }
+
+      /// 'swish' sound of airborne arrow mid flight
+      iRoll = Random(1,3);
+
+      if iRoll = 1
+      {
+         Send(oOwner,@SomethingWaveRoom,#what=who,#where=what,
+            #wave_rsc=arrowswish1,#flags=SOUND_RANDOM_PITCH);
+      }
+      else if iRoll = 2
+      {
+         Send(oOwner,@SomethingWaveRoom,#what=who,#where=what,
+            #wave_rsc=arrowswish2,#flags=SOUND_RANDOM_PITCH);
+      }
+      else
+      {
+         Send(oOwner,@SomethingWaveRoom,#what=who,#where=what,
+            #wave_rsc=arrowswish3,#flags=SOUND_RANDOM_PITCH);
+      }
 
       return;
    }

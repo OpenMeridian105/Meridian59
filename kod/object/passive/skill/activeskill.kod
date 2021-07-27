@@ -27,6 +27,7 @@ classvars:
    vbIsRangedAttack = FALSE
    vbIsMeleeAttack = FALSE
    vbIsUnarmedAttack = FALSE
+   vbCheckTargetsPreTrance = TRUE
 
 properties:
 
@@ -43,8 +44,6 @@ messages:
    {
       // Check for advancement conditions.
       Send(self,@ImproveAbility,#who=who);
-
-      Send(who,@SetAttackTime,#time=viPostPerform_time);
 
       Send(self,@PlaySkillSound,#room_obj=Send(who,@GetOwner),#what=who);
 
@@ -105,6 +104,7 @@ messages:
 
       // If the skill is an attack, it needs some targets.
       if (vbIsMeleeAttack OR vbIsRangedAttack OR vbIsUnarmedAttack)
+         AND vbCheckTargetsPreTrance
          AND (lTargets = $)
       {
          Send(who,@MsgSendUser,#message_rsc=ActiveSkill_no_targets_rsc);
@@ -131,7 +131,7 @@ messages:
    SkillFailed(who=$)
    "Active skills will delay actions by their post perform time if they fail."
    {
-      Send(who,@SetAttackTime,#time=viPostPerform_time);
+      Send(who,@SetAttackTime,#time=Send(self,@GetPostPerformDelay,#who=who));
 
       propagate;
    }

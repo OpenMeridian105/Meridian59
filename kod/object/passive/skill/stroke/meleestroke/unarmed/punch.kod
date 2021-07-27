@@ -1,0 +1,154 @@
+// Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+// All rights reserved.
+//
+// This software is distributed under a license that is described in
+// the LICENSE file that accompanies it.
+//
+// Meridian is a registered trademark.
+
+
+////////////////////////////////////////////////////////////////////////////////
+Punch is Unarmed
+
+constants:
+
+   include blakston.khd
+
+resources:
+
+   include punch.lkod
+   punch_name_rsc = "punch"
+   punch_icon_rsc = punchico.bgf
+   punch_desc_rsc = "This is the most basic hand-to-hand combat move.  Can be very strong for a powerful warrior, but is extremely tiring."
+
+   punch_player_killed_something = "%s%s crumples to the ground, never to rise again."
+   punch_player_was_killed = "The last thing you see is %s%s's fist speeding towards your nose."
+
+   punch_skill_intro = "Weaponcraft Lv. 1: The most basic of fighting skills, used by fighters and mages alike."
+
+   punch_attack_name_one = "punch"
+   punch_attack_name_two = "jab"
+   punch_attack_name_three = "uppercut"
+   punch_attack_name_four = "right hook"
+   punch_attack_name_five = "right straight"
+
+   punch_swish1 = PunchSwish1.ogg
+   punch_swish2 = PunchSwish2.ogg
+   punch_swish3 = PunchSwish3.ogg
+   punch_swish4 = PunchSwish4.ogg
+   punch_swish5 = PunchSwish5.ogg
+
+classvars:
+
+   vrName = punch_name_rsc
+   vrIcon = punch_icon_rsc
+   vrDesc = punch_desc_rsc
+
+   vrPlayer_was_killed = punch_player_was_killed
+   vrPlayer_killed_something = punch_player_killed_something
+
+   vrSkill_intro = punch_skill_intro
+
+   viSchool = SKS_WEAPONCRAFT
+
+   viSkill_num = SKID_PUNCH
+   viSkillExertion = 30
+   vbCheck_exertion = FALSE
+
+   viChance_to_increase = 60
+   viMeditate_ratio = 30
+
+   viSkill_level = 1
+
+   viPreperation_time = 200
+   viPostPerform_time = 800
+
+   viMin_Damage = 2     // Damage_min here replaces a weapon
+   viMax_Damage = 6     // Damage_max replaces the weapon's stats.
+
+   VbAutomatic = FALSE  //  If this is set to TRUE, then the effects of this
+                        //  skill happen automatically, and are not accessible
+                        //  via menu.
+
+   vrSwish1 = punch_swish1
+   vrSwish2 = punch_swish2
+   vrSwish3 = punch_swish3
+   vrSwish4 = punch_swish4
+   vrSwish5 = punch_swish5
+
+   viAttack_Type = ATK_TYPE_UNARMED+ATK_TYPE_PUNCH
+   viProficiency_needed = SKID_BRAWLING
+
+properties:
+
+messages:
+
+   PlayerKilledSomethingMsg(who=$,victim=$,damage=$)
+   "The stroke may choose it's own damage give or recieve message.  Otherwise"
+   "player.kod will offer the default 'You killed the whatever' message."
+   {
+      Send(who,@MsgSendUser,#message_rsc=vrPlayer_killed_something,
+           #parm1=send(victim,@GetCapDef),#parm2=send(victim,@GetName));
+
+      return TRUE;
+   }
+
+   DoPreTranceEffects(who=$,lTargets=$)
+   {
+      local oEnchantment;
+
+      // Check if we have a touch attack enchantment up.
+      oEnchantment = Send(who,@GetEnchantmentsByClass,#EnchClass=&TouchAttackSpell);
+
+      if oEnchantment <> $
+      {
+         // The spell object is the second element of the list. Get that.
+         oEnchantment = Nth(First(oEnchantment),2);
+      }
+
+      // Do the animation.
+      if oEnchantment = $
+      {
+         Post(who,@DoFistAttack);
+      }
+      else
+      {
+         Post(who,@DoCast,#what=oEnchantment);
+      }
+
+      Send(self,@PlaySwishSound,#who=who);
+
+      return;
+   }
+
+   GetAttackName()
+   {
+      local iRandom;
+
+      iRandom = Random(1,5);
+
+      if iRandom = 1
+      {
+         return punch_attack_name_one;
+      }
+
+      if iRandom = 2
+      {
+         return punch_attack_name_two;
+      }
+
+      if iRandom = 3
+      {
+         return punch_attack_name_three;
+      }
+
+      if iRandom = 4
+      {
+         return punch_attack_name_four;
+      }
+
+      return punch_attack_name_five;
+   }
+
+end
+////////////////////////////////////////////////////////////////////////////////

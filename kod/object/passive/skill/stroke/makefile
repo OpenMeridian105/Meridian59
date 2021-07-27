@@ -5,6 +5,6 @@
 !include $(TOPDIR)\common.mak
 
 DEPEND = ..\stroke.bof
-BOFS = slash.bof unarmed.bof thrust.bof fire.bof throw.bof
+BOFS = meleestroke.bof rangedstroke.bof
 
 !include $(KODDIR)\kod.mak

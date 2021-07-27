@@ -1,0 +1,240 @@
+// Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+// All rights reserved.
+//
+// This software is distributed under a license that is described in
+// the LICENSE file that accompanies it.
+//
+// Meridian is a registered trademark.
+
+
+////////////////////////////////////////////////////////////////////////////////
+Throw is RangedStroke
+
+constants:
+
+   include blakston.khd
+
+resources:
+
+   include throw.lkod
+
+   Throw_name_rsc = "throw"
+   Throw_icon_rsc = thweapico.bgf
+   Throw_desc_rsc = \
+      "Throw is a basic technique used for launching an object.  Those with "
+      "a mightly arm have a natural advantage, but only those with excellent "
+      "aim will be able to master this skill."
+   Throw_only_missile_weapon = \
+      "You may only use the 'Throw' skill with a throwable weapon in hand."
+   Throw_need_weapon = \
+      "You must have a throwable weapon in hand to 'Throw' at anyone."
+   Throw_new_throw_many = "You launch one of your %s with all your might."
+   Throw_new_throw_one = "You launch your %s with all your might."
+
+   throw_swish1 = throwswish1.ogg
+   throw_swish2 = throwswish2.ogg
+   throw_swish3 = throwswish3.ogg
+   throw_draw1 = throwdraw1.ogg
+   throw_draw2 = throwdraw2.ogg
+   throw_draw3 = throwdraw3.ogg
+
+classvars:
+
+   vrName = Throw_name_rsc
+   vrIcon = Throw_icon_rsc
+   vrDesc = Throw_desc_rsc
+
+   viIndefinite = ARTICLE_NONE
+   viDefinite = ARTICLE_NONE
+
+   viSchool = SKS_WEAPONCRAFT
+   viSkill_Num = SKID_THROW
+   viSkill_level = 4
+   viChance_to_increase = 50
+   viMeditate_ratio = 30
+
+   viSkillExertion = 50
+   vbCheck_exertion = TRUE
+
+   viPreperation_time = 700
+   viPostPerform_time = 300
+
+properties:
+
+   plPrerequisites = $
+
+messages:
+
+   PlayDrawSound(who=$)
+   {
+      local iRoll;
+
+      /// 'draw' sound
+         iRoll = Random(1,3);
+
+         if iRoll = 1
+         {
+            Send(Send(who,@GetOwner),@SomethingWaveRoom,#what=who,
+               #wave_rsc=throw_draw1,#flags=SOUND_RANDOM_PITCH);
+         }
+         else if iRoll = 2
+         {
+            Send(Send(who,@GetOwner),@SomethingWaveRoom,#what=who,
+               #wave_rsc=throw_draw2,#flags=SOUND_RANDOM_PITCH);
+         }
+         else
+         {
+            Send(Send(who,@GetOwner),@SomethingWaveRoom,#what=who,
+               #wave_rsc=throw_draw3,#flags=SOUND_RANDOM_PITCH);
+         }
+
+      return;
+   }
+
+   PlaySwishSound(who=$)
+   {
+      local iRoll;
+
+      /// 'swish' sound
+         iRoll = Random(1,3);
+
+         if iRoll = 1
+         {
+            Send(Send(who,@GetOwner),@SomethingWaveRoom,#what=who,
+               #wave_rsc=throw_swish1,#flags=SOUND_RANDOM_PITCH);
+         }
+         else if iRoll = 2
+         {
+            Send(Send(who,@GetOwner),@SomethingWaveRoom,#what=who,
+               #wave_rsc=throw_swish2,#flags=SOUND_RANDOM_PITCH);
+         }
+         else
+         {
+            Send(Send(who,@GetOwner),@SomethingWaveRoom,#what=who,
+               #wave_rsc=throw_swish3,#flags=SOUND_RANDOM_PITCH);
+         }
+
+      return;
+   }
+
+   // General combat messages.
+   PerformSkill(who=$,lTargets=$)
+   {
+      local oTarget, oWeapon, iMultiAttack;
+
+      oTarget = First(lTargets);
+
+      oWeapon = Send(who,@GetWeapon);
+
+      iMultiAttack = Send(oWeapon,@GetMultiAttack);
+
+      while (iMultiAttack-- >= 0)
+      {
+         Send(who,@TryAttack,#what=oTarget,#stroke_obj=self,
+            #use_weapon=oWeapon,#bCheck=FALSE);
+      }
+
+      // Record the swing for potential advancement.
+      if Send(oTarget,@CanPlayerAdvanceOnMe)
+      {
+         // We got another swing in, so increment that.
+         Send(who,@SwingWeapon,#times=1);
+      }
+
+      // Set our attack delay.
+      Send(who,@SetAttackTime,#time=Send(self,@GetPostPerformDelay,#who=who));
+
+      return;
+   }
+
+   FindDamage(weapon_used = $)
+   {
+      if (weapon_used <> $
+         AND IsClass(weapon_used,&Snowball)
+         AND NOT Send(weapon_used,@CanDoDamage))
+      {
+         return 0;
+      }
+
+      propagate;
+   }
+
+   // Finds ammo and uses it if not used.
+   FindLikelyAmmo(who=$,report=FALSE)
+   {
+      local oWeapon;
+
+      oWeapon = Send(who,@LookupPlayerWeapon);
+      if oWeapon = $
+      {
+         if report
+         {
+            Send(who,@MsgSendUser,#message_rsc=Throw_need_weapon);
+         }
+
+         return;
+      }
+
+      if (IsClass(oWeapon,&ThrownWeapon)
+         AND Send(oWeapon,@GetAmmoType) = AMMO_WEAPON)
+      {
+         // Weapon itself is the ammo.
+         // Return it here.
+         return oWeapon;
+      }
+
+      if report
+      {
+         Send(who,@MsgSendUser,#message_rsc=Throw_only_missile_weapon);
+      }
+
+      return;
+   }
+
+   GetRequisiteStat(who=$)
+   {
+      return Send(who,@GetAim);
+   }
+
+   PayCosts(who=$)
+   {
+      local oAmmo, oRoom;
+
+      oRoom = Send(who,@GetOwner);
+      oAmmo = Send(self,@FindLikelyAmmo,#who=who);
+      if oAmmo = $
+      {
+         Send(who,@MsgSendUser,#message_rsc=Throw_need_weapon);
+
+         return;
+      }
+
+      if (Send(oAmmo,@GetNumber) > 1)
+      {
+         Send(who,@MsgSendUser,#message_rsc=Throw_new_throw_many,
+               #parm1=Send(oAmmo,@GetName));
+      }
+      else
+      {
+         Send(who,@MsgSendUser,#message_rsc=Throw_new_throw_one,
+               #parm1=Send(oAmmo,@GetName));
+      }
+
+      Send(oRoom,@SomethingShot,#who=who,#target=Send(who,@GetKillTarget),
+            #projectile=oAmmo,#flags=PROJ_FLAG_LIGHT_SOURCE);
+
+      if (NOT Send(oRoom,@NoReagents))
+      {
+         Post(oAmmo,@SubtractNumber,#number=1);
+      }
+
+      propagate;
+   }
+
+   IsRangedAttack()
+   {
+      return TRUE;
+   }
+
+end
+////////////////////////////////////////////////////////////////////////////////

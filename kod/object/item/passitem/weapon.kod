@@ -22,6 +22,9 @@ constants:
    WEAPON_TAKE_DAMAGE_PCT = 75  //chance to be damaged
    WEAPON_WARN_DURABILITY_HITS = 10  // warn user when piHits reaches this
 
+   // Weapon base delay in ms.
+   WEAPON_BASE_DELAY = 1000
+
    // Weapon tuning factors
    //  Edit these constants to tune weapon power
 
@@ -936,7 +939,7 @@ messages:
 
    SendOverlayAnimation(iAnimation=$)
    {
-      local iFlags;
+      local iFlags, iDelay;
 
       iFlags = piItem_flags & ITEM_PALETTE_MASK;
       if iFlags <> 0
@@ -946,7 +949,8 @@ messages:
 
       if iAnimation = PANM_WEAPON_ATTACK 
       {
-         AddPacket(1,ANIMATE_ONCE, 4,300, 2,1, 2,3, 2,4);
+         iDelay = Bound(Send(poOwner,@GetAttackTime),300,1200);
+         AddPacket(1,ANIMATE_ONCE, 4,300*iDelay/1200, 2,1, 2,3, 2,4);
       }
       else
       {
@@ -1229,7 +1233,17 @@ messages:
       return TRUE;
    }
 
-   HasSecondAttack()
+   GetMultiAttack()
+   {
+      return FALSE;
+   }
+
+   GetDelay()
+   {
+      return WEAPON_BASE_DELAY;
+   }
+
+   CanAmbush(who=$,what=$)
    {
       return FALSE;
    }

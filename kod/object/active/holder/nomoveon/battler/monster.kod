@@ -3525,21 +3525,26 @@ messages:
    "This does the fallout of a hit, gives appropriate message, etc.  "
    "Called on self when hit opponent."
    {
+      local rSound;
+
       if poOwner = $
       {
          // No owner to send this to, so propagate.
          propagate;
       }
 
-      if vrSound_miss <> $
+      rSound = Send(self,@GetHitSound);
+
+      if rSound <> $
       {
-         Send(poOwner,@SomethingWaveRoom,#what=what,#wave_rsc=vrSound_miss,
+         Send(poOwner,@SomethingWaveRoom,#what=self,#wave_rsc=rSound,
                #flags=SOUND_RANDOM_PITCH);
-         if (IsClass(what,&Player))
-         {
-            Send(poOwner,@SomethingWaveRoom,#what=what,
-                  #wave_rsc=Send(what,@GetOuchSound),#flags=SOUND_RANDOM_PITCH);
-         }
+      }
+
+      if (IsClass(what,&Player))
+      {
+         Send(poOwner,@SomethingWaveRoom,#what=what,
+               #wave_rsc=Send(what,@GetOuchSound),#flags=SOUND_RANDOM_PITCH);
       }
 
       propagate;
@@ -3547,17 +3552,21 @@ messages:
 
    AssessMiss(what = $, stroke_obj = $)
    "This does the fallout of a miss, gives appropriate message, etc.  "
-   "Called on target when missing."
+   "Called on self when missing."
    {
+      local rSound;
+
       if poOwner = $
       {
          // No owner to send this to, so propagate.
          propagate;
       }
 
-      if vrSound_miss <> $
+      rSound = Send(self,@GetMissSound);
+
+      if rSound <> $
       {
-         Send(poOwner,@SomethingWaveRoom,#what=what,#wave_rsc=vrSound_miss,
+         Send(poOwner,@SomethingWaveRoom,#what=self,#wave_rsc=rSound,
                #flags=SOUND_RANDOM_PITCH);
       }
 
@@ -5461,7 +5470,7 @@ messages:
       return 10000;
    }
 
-   KilledSomething(what=$,use_weapon=$)
+   KilledSomething(what=$,use_weapon=$,stroke_obj=$)
    {
       local oOwner;
 
@@ -5496,7 +5505,7 @@ messages:
          // Our master handles the kill from here, since they
          // made us do it.
          return Send(poMaster,@KilledSomething,#what=what,
-                     #use_weapon=use_weapon);
+                     #use_weapon=use_weapon,#stroke_obj=stroke_obj);
       }
 
       // If this is an apparition, and it has no master,
@@ -5506,7 +5515,7 @@ messages:
       if poApparitionCaster <> $
       {
          return Send(poApparitionCaster,@KilledSomething,#what=what,
-                     #use_weapon=use_weapon);
+                     #use_weapon=use_weapon,#stroke_obj=stroke_obj);
       }
 
       // If we don't have a master, proceed as normal.
@@ -5519,11 +5528,11 @@ messages:
 
       if what = self
       {
-         Post(what,@Killed,#what=self);
+         Post(what,@Killed,#what=self,#stroke_obj=stroke_obj);
       }
       else
       {
-         Send(what,@Killed,#what=self);
+         Send(what,@Killed,#what=self,#stroke_obj=stroke_obj);
       }
 
       return;
@@ -5552,7 +5561,7 @@ messages:
       return vrDead_Icon;
    }
 
-   Killed(what=$)
+   Killed(what=$,stroke_obj=$)
    "The mob was just killed."
    {
       local i,val,oBody,hReputation, oQuester;
@@ -5588,6 +5597,9 @@ messages:
                   #fine_row=piFine_row,#fine_col=piFine_col,
                   #new_angle=Send(self,@GetAngle));
          }
+
+         Send(self,@PlayHitSound,#what=what,#damage=$,#stroke_obj=stroke_obj,
+            #oBody=oBody);
 
          if vrSound_death <> $
          {
@@ -11442,6 +11454,16 @@ messages:
       }
 
       propagate;
+   }
+
+   GetHitSound()
+   {
+      return vrSound_miss;
+   }
+
+   GetMissSound()
+   {
+      return vrSound_miss;
    }
 
 end

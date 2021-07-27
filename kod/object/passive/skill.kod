@@ -55,7 +55,7 @@ resources:
 
    skill_no_targets = "There are no proper targets for %s."
 
-   skill_trance_break = "Your preparations to perform %s are interrupted."
+   skill_trance_break = "Your attempt to perform a %s is interrupted."
 
    skill_no_rest = "You can't perform a skill while resting!"
 
@@ -64,7 +64,7 @@ resources:
    skill_trance_fumble = "You struggle to perform your %s skill!"
 
    skill_trance_cancel = \
-      "You abandon your attempt to perform the %s skill."
+      "You abandon your attempt to perform a %s."
 
    skill_level_enough_rsc = "\n\nYou have earned enough points in this level to advance "
       "to the next one!"
@@ -80,8 +80,8 @@ resources:
    skill_fail_wav = doorlck.ogg
 
    skill_trance_begin_sound = spell_trance_begin.ogg
-   skill_trance_break_sound = spell_trance_break.ogg
-   skill_trance_cancel_sound = spell_trance_cancel.ogg
+   skill_trance_break_sound = skill_trance_break.ogg
+   skill_trance_cancel_sound = skill_trance_cancel.ogg
 
 classvars:
 
@@ -109,6 +109,7 @@ classvars:
    // not x improvements in 100 attempts, but 1 improvement per X points.
    viMeditate_ratio = 100
 
+   // 100 points of exertion represent 1 point of vigor.
    viskillExertion = 2
    vbCheck_Exertion = TRUE
 
@@ -135,10 +136,16 @@ classvars:
    vbReportTrance = TRUE
    vbCanBreakTrance = TRUE
 
+   // Some skills require a fixed trance duration.
+   vbFixedTrance = FALSE
+
+   viAttack_delay = 1000
+
 properties:
 
    plPrerequisites = $
    piMeditate_ratio = 100
+   piTranceMovementSpeedReduction = 0
 
 messages:
 
@@ -332,6 +339,11 @@ messages:
          return STAT_ID_STAMINA;
       }
 
+      if (viSkill_Num = SKID_TOUCH)
+      {
+         return STAT_ID_MYSTICISM;
+      }
+
       if (viSkill_Num = SKID_DODGE)
          OR (viSkill_Num = SKID_PARRY)
          OR (viSkill_Num = SKID_ASSESS)
@@ -357,7 +369,7 @@ messages:
       {
          return STAT_ID_AIM;
       }
-      
+
       return;
    }
 
@@ -420,7 +432,7 @@ messages:
          return FALSE;
       }
 
-      if NOT Send(who,@HasVigor,#precision=TRUE,#amount=viSkillExertion*10)
+      if NOT Send(who,@HasVigor,#precision=TRUE,#amount=viSkillExertion)
          AND vbCheck_Exertion
       {
          Send(who,@MsgSendUser,#message_rsc=skill_too_tired,#parm1=vrName);
@@ -452,7 +464,7 @@ messages:
    SkillCanceled(who=$)
    "Canceling a skill will refund half of the skills cost."
    {
-      Send(who,@GainVigor,#precision=TRUE,#amount=(10*viSkillExertion)/2);
+      Send(who,@GainVigor,#precision=TRUE,#amount=viSkillExertion/2);
 
       return;
    }
@@ -489,16 +501,15 @@ messages:
       }
 
       // Unlike spell exertion exertion, which represents whole points of vigor,
-      // 1 point of skill exertion translates to 0.1 points of vigor.
-      Send(who,@LoseVigor,#precision=TRUE,#amount=10*viSkillExertion);
-
-      return TRUE;
+      // 1 point of skill exertion translates to 0.01 points of vigor.
+      return Send(who,@LoseVigor,#precision=TRUE,#bCheck=TRUE,
+         #amount=viSkillExertion);
    }
 
    SkillFailed(who=$)
    "A potent skill could have disastrous side effects if failed."
    {
-      Send(who,@LoseVigor,#precision=TRUE,#amount=(10*viSkillExertion)/2);
+      Send(who,@LoseVigor,#precision=TRUE,#amount=viSkillExertion/2);
       Send(who,@MsgSendUser,#message_rsc=vrfailed,#parm1=vrName);
       Send(who,@WaveSendUser,#wave_rsc=skill_fail_wav);
 
@@ -819,7 +830,7 @@ messages:
       if NOT bSuccess
          AND Send(SETTINGS_OBJECT,@NoFizzles)
       {
-         iPreperationTime += viPostPerform_time;
+         iPreperationTime += Send(self,@GetPostPerformDelay,#who=who);
 
          Send(who,@MsgSendUser,#message_rsc=skill_trance_fumble,
             #parm1=Send(self,@GetName));
@@ -853,6 +864,8 @@ messages:
 
          Send(self,@PerformSkill,#who=who,#lTargets=lFinalTargets);
 
+         Send(who,@SetAttackTime,#time=Send(self,@GetPostPerformDelay,#who=who));
+
          return;
       }
 
@@ -872,6 +885,9 @@ messages:
       Send(oTrance,@BeginTrance,#what=self,#who=who,#lTargets=lTargets,
            #time=iPreperationTime,#power=iSkillPower);
 
+      Send(who,@SetAttackTime,#time=Send(self,@GetPostPerformDelay,#who=who) +
+         iPreperationTime);
+
       return;
    }
 
@@ -882,6 +898,8 @@ messages:
 
    DoubleCheckAfterTrance(who=$, lTargets = $)
    {
+      local bHarmful;
+
       if IsClass(who,&User) AND Send(who,@IsResting)  
       {
          Send(who,@MsgSendUser,#message_rsc=skill_no_rest);
@@ -889,14 +907,16 @@ messages:
          return FALSE;
       }
 
-      if (Send(self,@IsHarmful)
-            AND IsClass(who,&User)
-            AND NOT Send(self,@CheckPlayerPerformAttack,#who=who,#lTargets=lTargets))
+      bHarmful = Send(self,@IsHarmful);
+
+      if bHarmful
+         AND IsClass(who,&User)
+         AND NOT Send(self,@CheckPlayerPerformAttack,#who=who,#lTargets=lTargets)
       {
          return FALSE;
       }
 
-      if NOT Send(self,@IsHarmful)
+      if NOT bHarmful
          AND NOT Send(self,@CheckPlayerHelp,#who=who,#lTargets=lTargets)
       {
          return FALSE;
@@ -994,14 +1014,14 @@ messages:
 
    TranceBroken(who=$,state=$,event=$)
    {
-      if (event = EVENT_CAST) OR (event = EVENT_ATTACK)
+      if (event = EVENT_ABILITY) OR (event = EVENT_ATTACK)
       {
          // Reset attack timer to allow instant switching without recast.
          Send(who,@SetAttackTime);
       }
       else
       {
-         Send(who,@SetAttackTime,#time=viPostPerform_time,#bAdd=TRUE);
+         Send(who,@SetAttackTime,#time=Send(self,@GetPostPerformDelay,#who=who),#bAdd=TRUE);
       }
 
       Send(who,@MsgSendUser,#message_rsc=skill_trance_break,
@@ -1050,10 +1070,25 @@ messages:
       return TRUE;
    }
 
-   // Determines if the preparation trance (&Trance) can be disrupted.
-   CanBreakTrance(who=$,state=$,event=1,disruption=0)
+   // Determines if the casting trance (&Trance) can be disrupted.
+   CanBreakTrance(who=$,state=$,event=EVENT_NONE,disruption=0)
    {
-      return vbCanBreakTrance;
+      // Some events can cancel any trance. Not the ones below though.
+      // These events can only break trance, if vbCanBreakTrance = TRUE.
+      if NOT vbCanBreakTrance
+      {
+         if (event = EVENT_CANCEL)
+            OR (event = EVENT_ABILITY)
+            OR (event = EVENT_ATTACK)         
+            OR (event = EVENT_DAMAGE)
+            OR (event = EVENT_DISRUPT)
+            OR (event = EVENT_USE)
+         {
+            return FALSE;
+         }
+      }
+
+      return TRUE;
    }
 
    TranceEnding()
@@ -1068,7 +1103,10 @@ messages:
 
    GetTranceTime(who=$,iSkillPower=0)
    {
-      local iPercent;
+      if vbFixedTrance OR (who = $)
+      {
+         return viPreperation_time;
+      }
 
       if viPreperation_time = 0
          OR (IsClass(who,&DM) AND Send(who,@PlayerIsImmortal))
@@ -1076,13 +1114,33 @@ messages:
          return 0;
       }
 
-      iPercent = Bound(150 - iSkillPower,50,150);
-
-      return (viPreperation_time*iPercent)/100;
+      return viPreperation_time*Bound(150 - iSkillPower,50,150)/100;
    }
 
-   GetPostPerformDelay()
+   GetPostPerformDelay(who=$)
    {
+      local iHaste, iDelay;
+
+      if who <> $
+      {
+         iHaste = 1000 + Send(who,@GetAgility) * 2
+                       + Send(self,@GetRequisiteStat,#who=who) * 2;
+
+         if vbFixedTrance
+         {
+            // Total delay is the sum of wind up and wind down time.
+            iDelay = viPreperation_time + viPostPerform_time;
+
+            iDelay = iDelay * 1000 / iHaste;
+
+            // The windup time factored into our total calculated delay, but
+            // needs to be subtracted again to get the correct wind down time.
+            return Bound(iDelay - viPreperation_time,0,$);
+         }
+
+         return viPostPerform_time * 1000 / iHaste;
+      }
+
       return viPostPerform_time;
    }
 
@@ -1133,7 +1191,7 @@ messages:
    GetGoodTargets(who=$, lTargets=$, report=TRUE)
    {
       local lGoodTargets;
-      
+
       // This gets all targets within range.  Most skills just return the
       //  list back.
       lGoodTargets = Send(self,@GetTargets,#who=who,#lTargets=lTargets);
@@ -1165,6 +1223,24 @@ messages:
    GetSkillSound()
    {
       return vrSucceed_wav;
+   }
+
+   // Certain skills may serve as a weapon and be asked about
+   // their contribution to the attacker's post attack delay.
+   GetDelay()
+   {
+      return viAttack_delay;
+   }
+
+   GetExertion()
+   {
+      // 100 points of exertion represent 1 point of vigor.
+      return viSkillExertion;
+   }
+
+   GetMovementSpeedReduction()
+   {
+      return piTranceMovementSpeedReduction;
    }
 
 end

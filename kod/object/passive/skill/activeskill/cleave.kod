@@ -41,17 +41,16 @@ classvars:
    viChance_to_Increase = 2
    viMeditate_ratio = 50
 
-   viSkillExertion = 4
+   viSkillExertion = 40
    vbCheck_exertion = TRUE
 
    vbAutomatic = FALSE
 
    // 2 cleaves per 3 regular attacks.
-   viPostPerform_time = 1350
-   viPreperation_time = 150
+   viPostPerform_time = 1050
+   viPreperation_time = 450
 
    vbIsMeleeAttack = TRUE
-   vrSucceed_wav = Cleave_sound_rsc
 
    vbReportTrance = FALSE
    vbCanBreakTrance = FALSE
@@ -59,6 +58,10 @@ classvars:
 
    // Percentage of additional damage compared to regular attack.
    viBonus = 20
+
+   vbFixedTrance = TRUE
+
+   vbCheckTargetsPreTrance = FALSE
 
 properties:
 
@@ -72,7 +75,13 @@ messages:
    }
 
    GetTargets(who=$,lTargets=$)
-   "This returns an altered list of targets for the skill if appropriate."
+   "Returns nil. We don't check targets till impact."
+   {
+      return;
+   }
+
+   GetTargetsInRange(who=$,lTargets=$)
+   "Returns targets in range of cleave."
    {
       local i,use_weapon, stroke_obj, iDist, iRange, iRow, iCol, iFineRow,
          iFineCol, oRoom, each_obj, lFinalTargets;
@@ -107,7 +116,7 @@ messages:
 
             iDist = Send(who,@SquaredFineDistanceTo3D,#what=each_obj);
 
-            // See if target is within range, if we provided a range.
+            // See if target is within range and sight.
             if (iDist > iRange * iRange)
                OR ((iDist > 1)
                   AND NOT LineOfSightView(Send(who,@GetAngle),
@@ -136,8 +145,8 @@ messages:
       local lGoodTargets;
 
       // This gets all targets within range.  Most skills just return the
-      //  list back.
-      lGoodTargets = Send(self,@GetTargets,#who=who,#lTargets=lTargets);
+      // list back.
+      lGoodTargets = Send(self,@GetTargetsInRange,#who=who,#lTargets=lTargets);
 
       // This gets all valid targets, checking for bad targets, safeties, etc.
       lGoodTargets = Send(self,@GetAttackTargets,#who=who,
@@ -169,7 +178,7 @@ messages:
          // Pass bCheck=FALSE so that our attacks don't check the timer.
          Send(who,@TryAttack,#what=i,#stroke_obj=stroke_obj,
                #use_weapon=use_weapon,#factor=iPower,#bCheck=FALSE,
-               #iTargetNum=iTargetNum);
+               #iTargetNum=iTargetNum,#bCheckAngle=FALSE);
 
          bTarget = TRUE;
          ++iTargetNum;
@@ -183,14 +192,7 @@ messages:
          return;
       }
 
-      Send(who,@EffectSendUserDuration,#effect=EFFECT_CLEAVE,#duration=900);
-
       propagate;
-   }
-
-   GetTranceTime()
-   {
-      return viPreperation_time;
    }
 
    // Cleave is almost an auto attack. Don't spam messages.
@@ -203,6 +205,17 @@ messages:
    SuccessChance(who=$,modifier=0,lTargets=$)
    {
       return TRUE;
+   }
+
+   DoPreTranceEffects(who=$)
+   {
+      // Do the animation.
+      Post(Send(who,@GetWeapon),@WeaponAttack);
+      Send(who,@EffectSendUserDuration,#effect=EFFECT_CLEAVE,#duration=900);
+      Send(Send(who,@GetOwner),@SomethingWaveRoom,#what=who,
+         #wave_rsc=Cleave_sound_rsc);
+
+      propagate;
    }
 
 end

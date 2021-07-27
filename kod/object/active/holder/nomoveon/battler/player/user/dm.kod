@@ -533,7 +533,7 @@ messages:
       propagate;
    }
 
-   ResetPlayerFlagList()
+   ResetPlayerFlagList(bFlagsOnly=FALSE)
    {
       local i;
 
@@ -578,7 +578,14 @@ messages:
 
       if poOwner <> $
       {
-         Send(poOwner,@SomethingChanged,#what=self);
+         if bFlagsOnly
+         {
+            Send(poOwner,@SomethingChangedFlags,#what=self);
+         }
+         else
+         {
+            Send(poOwner,@SomethingChanged,#what=self);
+         }
       }
 
       Post(self,@DrawOffense);
@@ -671,11 +678,6 @@ messages:
    {
       if pbImmortal
       {
-         if stroke_obj <> $
-         {
-            Send(stroke_obj,@SendMissMessageToDefender,#who=self,#attacker=what);
-         }
-
          return 0;
       }
 
@@ -736,11 +738,11 @@ messages:
       propagate;
    }
 
-   LoseVigor()
+   LoseVigor(bCheck=FALSE)
    {
       if pbImmortal
       {
-         return 0;
+         return bCheck;
       }
 
       propagate;
@@ -1001,13 +1003,13 @@ messages:
          return FALSE;
       }
 
-      if IsClass(victim,&Follower)
-      {
-         return FALSE;
-      }
-
       if pbImmortal OR Send(self,@IsEventCharacter)
       {
+         if IsClass(victim,&Follower)
+         {
+            propagate;
+         }
+
          return TRUE;
       }
 

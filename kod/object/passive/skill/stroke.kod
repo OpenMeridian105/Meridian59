@@ -14,8 +14,6 @@ constants:
 
    include blakston.khd
 
-   HITVALUE_MAX = 100
-
 resources:
 
    include stroke.lkod
@@ -25,14 +23,13 @@ resources:
 
    stroke_need_weapon_rsc = "You need a weapon to perform this stroke!"
 
-   stroke_miss_attacker = "%sYour %s misses %s%s."
-   stroke_miss_defender = "%s%s misses you."
-   stroke_miss_sound = swordmis.ogg
+   stroke_swing_too_far = "You take aim, hoping to reach your target."
 
-   stroke_hit_attacker = "%sYour %s hits %s%s."
-   stroke_hit_defender = "%s%s hits you."
-
-   stroke_hit_sound = patk.ogg
+   stroke_swish1 = SwSwish1.ogg
+   stroke_swish2 = SwSwish2.ogg
+   stroke_swish3 = SwSwish3.ogg
+   stroke_swish4 = SwSwish4.ogg
+   stroke_swish5 = SwSwish5.ogg
 
 classvars:
 
@@ -40,26 +37,37 @@ classvars:
    vrIcon = stroke_icon_rsc
    vrDesc = stroke_desc_rsc
 
-   vrPlayer_Hit_something = stroke_hit_attacker
-   vrPlayer_was_hit = stroke_hit_defender
    vrPlayer_killed_something = $
    vrPlayer_was_killed = $
-
-   vrMissed_Message_attacker = stroke_miss_attacker
-   vrMissed_Message_defender = stroke_miss_defender
-   vrMiss_Sound = stroke_miss_sound
 
    viIndefinite = ARTICLE_NONE
    viDefinite = ARTICLE_NONE
 
    viSchool = SKS_WEAPONCRAFT
    viSkill_num = SKID_DEFAULT
-   viSkill_Exertion = 2
+   viSkillExertion = 20
 
    vbAutomatic = FALSE
 
    // What's the max damage the proficiency can add for this stroke?
    viMaxProficiencyDamage = 5
+
+   viPreperation_time = 450
+   viPostPerform_time = 550
+
+   vbReportTrance = FALSE
+   vbCanBreakTrance = FALSE
+
+   vrSwish1 = stroke_swish1
+   vrSwish2 = stroke_swish2
+   vrSwish3 = stroke_swish3
+   vrSwish4 = stroke_swish4
+   vrSwish5 = stroke_swish5
+
+   vbFixedTrance = TRUE
+
+   // In case our stroke becomes a weapon, use this as our base damage.
+   viBaseDamage = 0
 
 properties:
 
@@ -94,83 +102,36 @@ messages:
       local prof, target_level;
 
       target_level = Send(target,@GetLevel);
-      prof=Send(use_weapon,@GetProfNumber);
+      prof = Send(use_weapon,@GetProfNumber);
 
       if Random(1,100) > 60
          OR NOT Send(who,@HasSkill,#num=prof)
       {
-         if Send(who,@GetSkillAbility,#skill_num=viSkill_num) < 100
-         {
-            // checking for stroke advancement
-            Send(self,@ImproveAbility,#who=who,#target=target,
-                  #bonus=Send(who,@GetWeaponSwingBonus));
-         }
+         // checking for stroke advancement
+         Send(self,@ImproveAbility,#who=who,#target=target,
+               #bonus=Send(who,@GetWeaponSwingBonus));
       }
       else
       {
-         if Send(use_weapon,@getprof,#who=who) < 100
-         {
-            // checking for weapon proficiency advancement
-            Send(use_weapon,@ImproveProficiency,#who=who,#target=target,
-                  #bonus=Send(who,@GetWeaponSwingBonus));
-         }
+         // checking for weapon proficiency advancement
+         Send(use_weapon,@ImproveProficiency,#who=who,#target=target,
+               #bonus=Send(who,@GetWeaponSwingBonus));
       }
 
      return;
    }
 
    SuccessChance()
-   "Always returns TRUE for combat strokes.  COmbat strokes are figured"
-   "differently than other skills - are figured in player.kod."
+   "Always returns TRUE for combat strokes.  Combat strokes are figured"
+   "elsewhere than other skills - in player.kod."
    {
       return TRUE;
-   }
-
-   GetAttackType(weapon_used=$)
-   {
-     return Send(weapon_used,@getAttackType);
-   }
-
-   GetSpellType(weapon_used=$)
-   {
-     return Send(weapon_used,@GetSpellType);
-   }
-
-   GetExertion()
-   "Sword strokes vary in their vigor cost."
-   {
-      // Return amount of vigor (hundreths) to cast skill
-      return viSkill_Exertion;
-   }
-
-   CheckWeaponAndDoAnimation(who=$,weapon_used=$,victim=$)
-   "Can the user's weapon be used with this weapon stroke?  \n"
-   "Default is TRUE unless the player is unarmed."
-   "Animation was also put here, for backwards compatibility."
-   {
-      if weapon_used = $
-      {
-         Send(who,@msgsenduser,#message_rsc=stroke_need_weapon_rsc);
-
-         return FALSE;
-      }
-
-      // while you're here, be sure weapon is undamaged.
-      return Send(weapon_used,@ReqWeaponAttack,#what=victim);
-   }
-
-   ToHitImprovers(raw_hitroll=0)
-   "A weapon stroke may have IMPROVERS, which may boost the performance of  \n"
-   "the stroke.  Example, if a player has renweed, that may boost his thrust"
-   "Default, return the hitroll raw."
-   {
-      return Raw_hitroll;
    }
 
    GetRange(weapon_used = $)
    "May be tuned later on if we expand on the stroke system."
    {
-      return Send(weapon_used,@getrange);
+      return Send(weapon_used,@GetRange);
    }
 
    FindDamage(weapon_used=$, who=$, victim=$)
@@ -187,74 +148,6 @@ messages:
       damage = Send(self,@DamageFactors,#damage=damage,#who=who,#weapon_used=weapon_used);
 
       return Bound(damage,0,$);
-   }
-
-   SendMissMessageToAttacker(who=$,victim=$,weapon_used = $,color_rsc = $,bText = TRUE)
-   {
-      local iRoll;
-
-      /// Text messages
-      if bText
-      {
-         Send(who,@msgsenduser,#message_rsc=vrMissed_Message_Attacker,#parm1=color_rsc,
-              #parm2=vrName,#parm3=Send(victim,@GetDef),#parm4=Send(victim,@GetName));
-      }
-
-      return;
-   }
-
-   SendMissMessageToDefender(who=$,attacker=$)
-   {
-      Send(who,@MsgSendUser,#message_rsc=vrMissed_Message_Defender,
-            #parm1=Send(attacker,@GetCapDef),#parm2=Send(attacker,@GetName));
-
-      return;
-   }
-
-   PlayerHitSomethingMsg(who=$,victim=$,damage=$,color_rsc=$)
-   {
-      Send(who,@msgsenduser,#message_rsc=vrPlayer_hit_something,#parm1=color_rsc,
-            #parm2=vrName,#parm3=Send(victim,@GetDef),#parm4=Send(victim,@GetName));
-
-      return;
-   }
-
-   PlayerWasHitMsg(who=$,attacker=$,damage=$,color_rsc=$)
-   {
-       Send(who,@msgsenduser,#message_rsc=vrPlayer_was_hit,#parm1=color_rsc,
-            #parm2=Send(attacker,@GetCapDef),#parm3=Send(attacker,@GetName));
-
-       return;
-   }
-
-   PlayerKilledSomethingMsg(who=$,victim=$,damage=$)
-   "The stroke may choose it's own damage give or recieve message.  Otherwise"
-   "player.kod will offer the default 'You killed the whatever' message."
-   {
-      if vrPlayer_killed_Something = $
-      {
-         return FALSE;
-      }
-
-      Send(who,@msgsenduser,#message_rsc=vrPlayer_killed_something,
-            #parm1=Send(victim,@GetCapDef),#parm2=Send(victim,@GetName));
-
-      return TRUE;
-   }
-
-   PlayerWasKilledMsg(who=$,attacker=$,damage=$)
-   "The stroke may choose it's own damage give or recieve message.  Otherwise"
-   "player.kod will just choose a default - as it does for most strokes."
-   {
-      if vrPlayer_was_hit = $
-      {
-         return FALSE;
-      }
-
-      Send(who,@MsgSendUser,#message_rsc=vrPlayer_was_killed,
-            #parm1=Send(attacker,@GetDef),#parm2=Send(attacker,@GetName));
-
-      return TRUE;
    }
 
    DamageFactors(damage=0, who=$, weapon_used = $)
@@ -293,9 +186,276 @@ messages:
       return iDamage;
    }
 
-   GetHitSound()
+   PlaySwishSound(who=$)
    {
-      return stroke_hit_sound;
+      local iRoll, rSwish;
+
+      iRoll = Random(1,5);
+
+      switch(iRoll)
+      {
+         case 1:
+            rSwish = vrSwish1;
+            break;
+         case 2:
+            rSwish = vrSwish2;
+            break;
+         case 3:
+            rSwish = vrSwish3;
+            break;
+         case 4:
+            rSwish = vrSwish4;
+            break;
+         default:
+            rSwish = vrSwish5;
+            break;
+      }
+
+      Send(Send(who,@GetOwner),@SomethingWaveRoom,#what=who,
+         #wave_rsc=rSwish,#flags=SOUND_RANDOM_PITCH);
+
+      return;
+   }
+
+   PlayerKilledSomethingMsg(who=$,victim=$,damage=$)
+   "The stroke may choose it's own damage give or recieve message.  Otherwise"
+   "player.kod will offer the default 'You killed the whatever' message."
+   {
+      if vrPlayer_killed_Something = $
+      {
+         return FALSE;
+      }
+
+      Send(who,@msgsenduser,#message_rsc=vrPlayer_killed_something,
+            #parm1=Send(victim,@GetCapDef),#parm2=Send(victim,@GetName));
+
+      return TRUE;
+   }
+
+   PlayerWasKilledMsg(who=$,attacker=$,damage=$)
+   "The stroke may choose it's own damage give or recieve message.  Otherwise"
+   "player.kod will just choose a default - as it does for most strokes."
+   {
+      if vrPlayer_was_killed = $
+      {
+         return FALSE;
+      }
+
+      Send(who,@MsgSendUser,#message_rsc=vrPlayer_was_killed,
+            #parm1=Send(attacker,@GetDef),#parm2=Send(attacker,@GetName));
+
+      return TRUE;
+   }
+
+   PerformSkill(who=$,lTargets=$)
+   {
+      local oTarget, oWeapon, iMultiAttack, bAmbush;
+
+      oTarget = First(lTargets);
+
+      oWeapon = Send(who,@GetWeapon);
+
+      iMultiAttack = Send(oWeapon,@GetMultiAttack);
+
+      bAmbush = Send(oWeapon,@CanAmbush,#who=who,#what=oTarget);
+
+      while (iMultiAttack >= 0)
+      {
+         Send(who,@TryAttack,#what=oTarget,#stroke_obj=self,
+            #use_weapon=oWeapon,#ambush=bAmbush,#bCheck=FALSE,
+            #iTargetNum=iMultiAttack+1);
+
+         --iMultiAttack;
+      }
+
+      // Record the swing for potential advancement.
+      if Send(oTarget,@CanPlayerAdvanceOnMe)
+      {
+         // We got another swing in, so increment that.
+         Send(who,@SwingWeapon,#times=1);
+      }
+
+      return;
+   }
+
+   DoPreTranceEffects(who=$,lTargets=$)
+   {
+      // Do the animation.
+      Post(Send(who,@GetWeapon),@WeaponAttack,#what=First(lTargets));
+
+      // Play fancy 'swish' sound.
+      Send(self,@PlaySwishSound,#who=who);
+
+      return;
+   }
+
+   CanPayCosts(who=$,lTargets=$)
+   "If a skill requires a special cost or requirement of some sort, that"
+   "cost goes here.  Example: picking locks may require thieves tools."
+   {
+      local iDelay, oWeapon, oTarget, oOwner, i, oSpell;
+
+      oWeapon = Send(who,@GetWeapon);
+
+      iDelay = Send(oWeapon,@GetDelay,#who=who);
+
+      if (oWeapon <> $)
+         AND IsClass(oWeapon,&Weapon)
+         AND NOT Send(oWeapon,@ReqWeaponAttack)
+      {
+         return FALSE;
+      }
+
+      oSpell = Send(SYS,@FindSpellByNum,#num=SID_FORGET);
+      if Send(oSpell,@HasForgetEnchantment,#who=who,#what=self)
+      {
+         return FALSE;
+      }
+
+      if NOT Send(who,@HasVigor,#precision=TRUE,#amount=viSkillExertion*iDelay/1000)
+         AND vbCheck_Exertion
+      {
+         Send(who,@MsgSendUser,#message_rsc=skill_too_tired,#parm1=vrName);
+
+         return FALSE;
+      }
+
+      oOwner = Send(who,@GetOwner);
+
+      if lTargets <> $
+      {
+         oTarget = First(lTargets);
+      }
+
+      if oTarget <> $ AND oOwner <> Send(oTarget,@GetOwner)
+      {
+         Send(who,@MsgSendUser,#message_rsc=skill_out_of_range, 
+               #parm1=Send(oTarget,@GetCapDef),#parm2=Send(oTarget,@GetName));
+
+         return FALSE;
+      }
+
+      // Used skill flips atrophy flag
+      Send(who,@FlipSkillAtrophyFlag,#SKID=viSkill_num);
+
+      return TRUE;
+   }
+
+   PayCosts(who=$,modifier=0,bSuccess=TRUE)
+   "Some skills may require certain stats to be depleted."
+   "return TRUE if they were successfully depleted."
+   {
+      local iDelay;
+
+      // Slower weapons attack less frequently but cost more vigor per swing.
+      // We do not factor in changes to delay from other sources such as haste.
+      iDelay = Send(Send(who,@GetWeapon),@GetDelay,#who=who);
+
+      if NOT (bSuccess OR Send(SETTINGS_OBJECT,@NoFizzles))
+      {
+         Send(self,@SkillFailed,#who=who);
+
+         return FALSE;
+      }
+
+      // Unlike spell exertion exertion, which represents whole points of vigor,
+      // 1 point of skill exertion translates to 0.01 points of vigor.
+      return Send(who,@LoseVigor,#precision=TRUE,#bCheck=TRUE,
+         #amount=viSkillExertion*iDelay/1000);
+   }
+
+   SkillFailed(who=$)
+   "Active skills will delay actions by their post perform time if they fail."
+   {
+      Send(who,@SetAttackTime,#time=Send(self,@GetPostPerformDelay,#who=who));
+
+      propagate;
+   }
+
+   GetNumSkillTargets()
+   {
+      return 1;
+   }
+
+   // No spamming messages for default strokes.
+   SkillPreparationMessage(who=$,target=$,hearer=$)
+   {
+      return;
+   }
+
+   // Stroke wind up is a fixed 450ms. Any attack speed modification
+   // is handled as post attack delay. The delay depends on agility,
+   // skill proficiency and the weapon used.
+   GetPostPerformDelay(who=$,use_weapon=$)
+   {
+      local iDelay;
+
+      // A weapon may be provided to this message. If none is provided,
+      // check what weapon is currently being wielded.
+      if use_weapon = $
+      {
+         // If no wielder is provided, return the standard delay.
+         if who = $
+         {
+            return viPostPerform_time;
+         }
+
+         use_weapon = Send(who,@GetWeapon);
+      }
+
+      // Total delay is the sum of wind up and wind down time.
+      // Each weapon may modify that total by a percentage.
+      iDelay = (viPreperation_time + viPostPerform_time)
+               * Send(use_weapon,@GetDelay,#who=who) / 1000;
+
+      // The windup time factored into our total calculated delay, but
+      // needs to be subtracted again to get the correct wind down time.
+      return Bound(iDelay - viPreperation_time,0,$);
+   }
+
+   BeginPerformPreparation(who=$,lTargets=$,bSuccess=TRUE)
+   {
+      // Inform attacker if their target is not yet in range.
+      Send(self,@SwingMessage,#who=who,#oTarget=First(lTargets));
+
+      // Strokes pay their costs here.
+      if NOT IsClass(self,&RangedStroke)
+         AND NOT Send(self,@PayCosts,#who=who)
+      {
+         return;
+      }
+
+      propagate;
+   }
+
+   // Give feedback about target being in range at the time of starting the attack.
+   SwingMessage(who=$,oTarget=$)
+   {
+      local iRange, oWeapon, iDist;
+
+      oWeapon = Send(who,@GetWeapon);
+      iRange = Send(self,@GetRange,#weapon_used=oWeapon,#who=who);
+      iDist = Send(who,@SquaredFineDistanceTo3D,#what=oTarget);
+
+      // See if target is within range, if we provided a range.
+      if iRange <> $
+         AND iDist > iRange * iRange
+      {
+         Send(who,@MsgSendUser,#message_rsc=stroke_swing_too_far);
+      }
+
+      return;
+   }
+
+   DoubleCheckAfterTrance(who=$, lTargets = $)
+   {
+      // If we don't have a valid target, quit silently.
+      if lTargets = $
+      {
+         return FALSE;
+      }
+
+      propagate;
    }
 
 end

@@ -61,6 +61,9 @@ constants:
    STAT_GROUP_SKILLS = 4
    STAT_GROUP_QUESTS = 5
 
+   // Amount of ms an action can be queued for before we are ready to execute.
+   ACTION_QUEUE_TIME = 250
+
 resources:
 
    include user.lkod
@@ -595,6 +598,11 @@ properties:
    // Uses GetTickCount, must be reset after detection period ends.
    piLastAutologTest = -1
    piLastAutologHP = 0
+
+   // Keeps track of the last received, but yet to be processed action.
+   plLastReceived = $
+   // Timer keeping track of the currently queued action.
+   ptQueuedAction = $
 
 messages:
 
@@ -1833,7 +1841,7 @@ messages:
    "It is dynamically allocated each time (wasting list nodes)."
    {
       local liClient_cmd, oWhat, oRoom, iRow, iCol, lUsers, iAngle, sBody,
-            iSpeed, i, sStr_said, bCancel;
+            iSpeed, i, sStr_said, bCancel, iTimeLeft, oAbility;
 
       // This checks to see if the user is trying to Send too many packets
       //  per second.  If they are, then we mark them as a spammer and
@@ -2084,7 +2092,35 @@ messages:
 
       if liClient_cmd = BP_REQ_ATTACK
       {
-         Send(self,@UserAttack,#type=Nth(client_msg,2),#what=Nth(client_msg,3));
+         // We are ready to act. Let's do just that.
+         if ptAttackTimer = $
+         {
+            Send(self,@UserAttack,#type=Nth(client_msg,2),#what=Nth(client_msg,3));
+         }
+         // We are not ready yet.
+         else
+         {
+            iTimeLeft = GetTimeRemaining(ptAttackTimer);
+
+            // But maybe we are going to be ready soon enough to queue the next attack?
+            if iTimeLeft < ACTION_QUEUE_TIME
+            {
+               // We are and we have no other action queued yet. Let's queue our action.
+               if ptQueuedAction = $
+               {
+                  plLastReceived = [BP_REQ_ATTACK,Nth(client_msg,2),Nth(client_msg,3)];
+                  ptQueuedAction = CreateTimer(self,@UserQueuedAction,iTimeLeft);
+               }
+               // We are already queueing an action. If it's already an attack, we can
+               // safely ignore the new attack request. If it isn't queue an attack instead.
+               else if First(plLastReceived) <> BP_REQ_ATTACK
+               {
+                  DeleteTimer(ptQueuedAction);
+                  plLastReceived = [BP_REQ_ATTACK,Nth(client_msg,2),Nth(client_msg,3)];
+                  ptQueuedAction = CreateTimer(self,@UserQueuedAction,iTimeLeft);
+               }
+            }
+         }
 
          return;
       }
@@ -2260,16 +2296,67 @@ messages:
 
       if liClient_cmd = BP_REQ_CAST
       {
-         Send(self,@UserCast,#oSpell=Nth(client_msg,2),
+         oAbility = Nth(client_msg,2);
+
+         if ptAttackTimer = $
+         {
+            Send(self,@UserCast,#oSpell=oAbility,
                #lTargets=Nth(client_msg,3));
+         }
+         else if IsClass(oAbility,&Phase)
+            AND Send(self,@CanPhaseAgain)
+         {
+            if ptQueuedAction <> $
+            {
+               DeleteTimer(ptQueuedAction);
+               ptQueuedAction = $;
+               plLastReceived = $;
+            }
+
+            Send(self,@BreakTrance);
+            Send(self,@SetAttackTime);
+            Send(self,@UserCast,#oSpell=oAbility,
+               #lTargets=Nth(client_msg,3));
+         }
+         else
+         {
+            iTimeLeft = GetTimeRemaining(ptAttackTimer);
+
+            if iTimeLeft < ACTION_QUEUE_TIME
+            {
+               if ptQueuedAction <> $ AND (First(plLastReceived) <> BP_REQ_CAST)
+               {
+                  DeleteTimer(ptQueuedAction);
+                  plLastReceived = [BP_REQ_CAST,oAbility,Nth(client_msg,3)];
+                  ptQueuedAction = CreateTimer(self,@UserQueuedAction,iTimeLeft);
+               }
+            }
+         }
 
          return;
       }
 
       if liClient_cmd = BP_REQ_PERFORM
       {
-         Send(self,@UserPerform,#oSkill=Nth(client_msg,2),
+         if ptAttackTimer = $
+         {
+            Send(self,@UserPerform,#oSkill=Nth(client_msg,2),
                #lTargets=Nth(client_msg,3));
+         }
+         else
+         {
+            iTimeLeft = GetTimeRemaining(ptAttackTimer);
+
+            if iTimeLeft < ACTION_QUEUE_TIME
+            {
+               if ptQueuedAction <> $ AND (First(plLastReceived) <> BP_REQ_PERFORM)
+               {
+                  DeleteTimer(ptQueuedAction);
+                  plLastReceived = [BP_REQ_PERFORM,Nth(client_msg,2),Nth(client_msg,3)];
+                  ptQueuedAction = CreateTimer(self,@UserQueuedAction,iTimeLeft);
+               }
+            }
+         }
 
          return;
       }
@@ -2419,6 +2506,41 @@ messages:
 
       Debug(Send(self,@GetTrueName),
             self,"sent unknown command from client",liClient_cmd);
+
+      return;
+   }
+
+   UserQueuedAction()
+   {
+      local iAction;
+
+      iAction = First(plLastReceived);
+
+      ptQueuedAction = $;
+
+      if plLastReceived <> $
+      {
+         // Just a precaution. Attack timer should have expired by now.
+         Send(self,@SetAttackTime);
+
+         if iAction = BP_REQ_ATTACK
+         {
+            Send(self,@UserAttack,#type=Nth(plLastReceived,2),
+               #what=Nth(plLastReceived,3));
+         }
+         else if iAction = BP_REQ_CAST
+         {
+            Send(self,@UserCast,#type=Nth(plLastReceived,2),
+               #what=Nth(plLastReceived,3));
+         }
+         else if iAction = BP_REQ_PERFORM
+         {
+            Send(self,@UserPerform,#type=Nth(plLastReceived,2),
+               #what=Nth(plLastReceived,3));
+         }
+
+         plLastReceived = $;
+      }
 
       return;
    }
@@ -7368,7 +7490,7 @@ messages:
 
       if piFlags & PFLAG_TRANCE
       {
-         if (NOT Send(self,@CanBreakTrance))
+         if (NOT Send(self,@CanBreakTrance,#event=EVENT_USE))
          {
             return;
          }
@@ -7390,7 +7512,7 @@ messages:
    {
       if piFlags & PFLAG_TRANCE
       {
-         if (NOT Send(self,@CanBreakTrance))
+         if (NOT Send(self,@CanBreakTrance,#event=EVENT_USE))
          {
             return;
          }
@@ -7413,108 +7535,48 @@ messages:
       return;
    }
 
-   UserAttack(type=STROKE_NORMAL,what=$)
+   UserAttack(what=$)
    {
-      local i, use_weapon, stroke_id, stroke_obj, is_spell;
+      local lFinalTargets, oAbility;
 
-      Send(self,@CancelLift);
+      // Before we do anything else, let's check if our target is still around.
+      // It might have died since we queued our action.
+      if Send(what,@GetOwner) = $
+      {
+         return;
+      }
+
+      oAbility = Send(self,@GetStrokeObject);
 
       if piFlags & PFLAG_TRANCE
       {
-         if (NOT Send(self,@CanBreakTrance))
+         if IsClass(Send(self,@GetTranceAbility),&Skill)
          {
-            return FALSE;
-         }
-
-         Send(self,@BreakTrance,#event=EVENT_ATTACK);
-      }
-
-      if (piFlags & PFLAG_NO_FIGHT)
-      {
-         Send(self,@MsgSendUser,#message_rsc=user_no_fight);
-
-         return FALSE;
-      }
-
-      // Get use_weapon
-      use_weapon = Send(self,@GetWeapon);
-
-      // Convert type over to a stroke here.
-      if type = STROKE_NORMAL
-      {
-         // Kludgeish (at least sloppy code): If we have a spell-weapon,
-         //  we just use punch to pass the checks below.
-         if (use_weapon = $) OR IsClass(use_weapon,&Spell)
-         {
-            stroke_id = SKID_PUNCH;
+            return;
          }
          else
          {
-            stroke_id = Send(use_weapon,@GetDefaultStrokeNumber);
-         }
-      }
-      else
-      {
-         Debug("Non-normal stroke received.");
-
-         return FALSE;
-      }
-
-      // except for punch and slash, a player cannot use an attack type he
-      // doesn't have.  This in to prevent hacking.
-      if stroke_id <> SKID_PUNCH
-         AND stroke_ID <> SKID_SLASH
-         AND stroke_ID <> SKID_FIRE 
-         AND stroke_ID <> SKID_THROW 
-      {
-         if NOT Send(self,@HasSkill,#num=stroke_id)
-         {
-            stroke_obj = Send(SYS,@FindSkillByNum,#num=stroke_ID);
-            Send(self,@MsgSendUser,#message_rsc=user_doesnt_know_stroke,
-                 #parm1=Send(stroke_obj,@GetName));
-
-            return FALSE;
+            Send(self,@BreakTrance,#event=EVENT_ATTACK,#what=oAbility);
          }
       }
 
-      // Get what's possible
-      if NOT IsClass(what,&Battler)
+      // Check for conditions that could keep us from attacking.
+      if (piFlags & PFLAG_NO_FIGHT)
+         OR Send(self,@IsInCannotInteractMode)
       {
-         // tell 'em
-         Send(self,@MsgSendUser,#message_rsc=user_cant_attack_non_battler,
-              #parm1=Send(what,@GetDef),#parm2=Send(what,@GetName));
+         Send(self,@MsgSendUser,#message_rsc=user_no_fight);
 
-         return FALSE;
-      }
-
-      // kludgish: If morphed, use punch as our stroke object, we use the
-      //  monster's stats for combat.
-      if Send(self,@IsEnchanted,#byClass=&Morph)
-      {
-         stroke_id = SKID_PUNCH;
-         use_weapon = $;
+         return;
       }
 
-      if use_weapon = $ OR NOT IsClass(use_weapon,&Spell)
-      {
-         stroke_obj = Send(SYS,@FindSkillByNum,#num=stroke_id);
-      }
-      else
-      {
-         // Use the "weapon" (spell) as the stroke object.
-         stroke_obj = use_weapon;
-      }
+      // Do we need a specific set of targets?
+      lFinalTargets = Send(oAbility,@GetTargets,#who=self,#lTargets=[what]);
 
       // Set flag so that wall elements can affect us.
       Send(self,@SetPlayerFlag,#flag=PFLAG_MOVED_SINCE_ENTRY,#value=TRUE);
 
-      if (Send(self,@TryAttack,#what=what,#use_weapon=use_weapon,
-                  #stroke_obj=stroke_obj)
-         AND (use_weapon <> $ AND Send(use_weapon,@HasSecondAttack)))
-      {
-         Send(self,@TryAttack,#what=what,#use_weapon=use_weapon,
-                  #stroke_obj=stroke_obj,#iTargetNum=2,#bCheck=FALSE);
-      }
+      // Alright, perform that skill already.
+      Send(oAbility,@BeginPerformPreparation,#who=self,#lTargets=lFinalTargets);
 
       return;
    }
@@ -7546,7 +7608,7 @@ messages:
          // to cast. If we are already preparing to cast the same spell,
          // don't interrupt our cast.
          if Send(self,@GetTranceAbility) = oSpell
-            OR NOT Send(self,@CanBreakTrance)
+            OR NOT Send(self,@CanBreakTrance,#event=EVENT_ABILITY)
          {
             return;
          }
@@ -7554,7 +7616,7 @@ messages:
          // Either way, our cast may disrupt &Trance or a maintained spell.
          else
          {
-            Send(self,@BreakTrance,#event=EVENT_CAST,#what=oSpell);
+            Send(self,@BreakTrance,#event=EVENT_ABILITY,#what=oSpell);
          }
       }
 
@@ -7685,20 +7747,18 @@ messages:
       if piFlags & PFLAG_TRANCE
       {
          if Send(self,@GetTranceAbility) = oSkill
-            OR NOT Send(self,@CanBreakTrance)
+            OR NOT Send(self,@CanBreakTrance,#event=EVENT_ABILITY)
          {
             return;
          }
          else
          {
-            Send(self,@BreakTrance,#event=EVENT_ATTACK,#what=oSkill);
+            Send(self,@BreakTrance,#event=EVENT_ABILITY,#what=oSkill);
          }
       }
 
       if (piFlags & PFLAG_NO_FIGHT)
-         OR (piFlags & PFLAG_NO_MOVE)
          OR Send(self,@IsInCannotInteractMode)
-
       {
          Send(self,@MsgSendUser,#message_rsc=user_no_perform);
 
@@ -7771,7 +7831,7 @@ messages:
          AND (Command_num = GCID_RENOUNCE
             OR Command_num = GCID_DISBAND)
       {
-         Send(self,@BreakTrance,#event=EVENT_CAST,#what=oCommand);
+         Send(self,@BreakTrance,#event=EVENT_DISRUPT,#what=oCommand);
       }
 
       // Be sure player has guild command.

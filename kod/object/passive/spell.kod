@@ -298,6 +298,9 @@ properties:
    // How much threat do our non damage spells cause?
    piSpellThreatPercentage = 100
 
+   // How much does this spell's trance slow us down?
+   piTranceMovementSpeedReduction = 50
+
 messages:
 
    UpdateDatabase()
@@ -2590,10 +2593,25 @@ messages:
       return TRUE;
    }
 
-   CanBreakTrance(who=$,state=$,event=1,disruption=0)
-   "Determines if the casting trance (&Trance) can be disrupted."
+   // Determines if the casting trance (&Trance) can be disrupted.
+   CanBreakTrance(who=$,state=$,event=EVENT_NONE,disruption=0)
    {
-      return vbCanBreakTrance;
+      // Some events can cancel any trance. Not the ones below though.
+      // These events can only break trance, if vbCanBreakTrance = TRUE.
+      if NOT vbCanBreakTrance
+      {
+         if (event = EVENT_CANCEL)
+            OR (event = EVENT_ABILITY)
+            OR (event = EVENT_ATTACK)         
+            OR (event = EVENT_DAMAGE)
+            OR (event = EVENT_DISRUPT)
+            OR (event = EVENT_USE)
+         {
+            return FALSE;
+         }
+      }
+
+      return TRUE;
    }
 
    TranceEnding()
@@ -2979,7 +2997,7 @@ messages:
 
    TranceBroken(who=$,state=$,event=$)
    {
-      if (event = EVENT_CAST) OR (event = EVENT_ATTACK)
+      if (event = EVENT_ABILITY) OR (event = EVENT_ATTACK)
       {
       // Reset attack timer to allow instant switching without recast.
          Send(who,@SetAttackTime);
@@ -3317,6 +3335,11 @@ messages:
       }
 
       return TRUE;
+   }
+
+   GetMovementSpeedReduction()
+   {
+      return piTranceMovementSpeedReduction;
    }
 
 end

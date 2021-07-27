@@ -1,0 +1,81 @@
+// Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+// All rights reserved.
+//
+// This software is distributed under a license that is described in
+// the LICENSE file that accompanies it.
+//
+// Meridian is a registered trademark.
+
+
+////////////////////////////////////////////////////////////////////////////////
+RangedStroke is Stroke
+
+constants:
+
+   include blakston.khd
+
+resources:
+
+classvars:
+
+properties:
+
+   piTranceMovementSpeedReduction = 20
+
+messages:
+
+   // Sound effects.
+   DoPreTranceEffects(who=$,lTargets=$)
+   {
+      // Do the animation.
+      Post(Send(who,@GetWeapon),@WeaponAttack,#what=First(lTargets));
+
+      // Play fancy 'draw' sound.
+      Send(self,@PlayDrawSound,#who=who);
+
+      return;
+   }
+
+   CheckRoomConditions(who=$)
+   {
+      local oSpell, state, oRoom;
+
+      oRoom = Send(who,@GetOwner);
+
+      oSpell = Send(SYS,@FindSpellByNum,#num=SID_WINDS);
+      state = Send(oRoom,@GetEnchantedState,#what=oSpell);
+      if (state <> $
+         AND Send(oSpell,@TryRuinShot,#who=who,#state=state))
+      {
+         return FALSE;
+      }
+
+      oSpell = Send(SYS,@FindSpellByNum,#num=SID_SANDSTORM);
+      state = Send(oRoom,@GetEnchantedState,#what=oSpell);
+      if (state <> $
+         AND Send(oSpell,@TryRuinShot,#who=who,#state=state))
+      {
+         return FALSE;
+      }
+
+      return TRUE;
+   }
+
+   LaunchProjectile(who=$,what=$)
+   {
+      local oTarget;
+
+      // Uses up an appropriate arrow and launches it.
+      if NOT Send(self,@PayCosts,#who=who)
+      {
+         return FALSE;
+      }
+
+      // Plays fancy 'twangswish' sound and arrow midflight sound.
+      Send(self,@PlaySwishSound,#who=who,#what=what);
+
+      return TRUE;
+   }
+
+end
+////////////////////////////////////////////////////////////////////////////////

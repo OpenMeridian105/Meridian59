@@ -250,8 +250,9 @@ messages:
             #parm1=Send(poOwner,@GetCapDef),#parm2=Send(poOwner,@GetName),
             #parm3=Send(poOwner,@GetHisHer));
 
-      Send(poOwner,@DoHitMessageSound,#what=target,
-            #damage=10,#stroke_obj=Send(SYS,@FindSkillByNum,#num=SKID_SLASH));
+      Send(target,@PlayHitSound,#what=poOwner,
+            #damage=$,#use_weapon=self,
+            #stroke_obj=Send(SYS,@FindSkillByNum,#num=SKID_STAB));
       Send(oDagger,@AssassinTakesHit,#attacker=poOwner);
 
       // Does the animations and overlays.
@@ -274,8 +275,9 @@ messages:
       Send(target,@MsgSendUser,#message_rsc=BlackDagger_hit_target,
             #parm1=Send(poOwner,@GetCapDef),#parm2=Send(poOwner,@GetName));
 
-      Send(poOwner,@DoHitMessageSound,#what=target,
-            #damage=1,#stroke_obj=Send(SYS,@FindSkillByNum,#num=SKID_SLASH));
+      Send(target,@PlayHitSound,#what=poOwner,
+         #stroke_obj=Send(SYS,@FindSkillByNum,#num=SKID_STAB),
+         #use_weapon=self,#damage=$);
 
       // Does the animations and overlays
       Send(self,@WeaponAttack);
@@ -314,8 +316,6 @@ messages:
 
       // Does the animations and overlays
       Send(self,@WeaponAttack);
-      Send(Send(SYS,@findskillbynum,#num=SKID_SLASH),@SendMissMessageToAttacker,
-            #who=poOwner,#victim=target,#weapon_used=self,#bText=FALSE);
 
       return;
    }

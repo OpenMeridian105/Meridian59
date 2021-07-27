@@ -20,6 +20,7 @@ resources:
 
    delivtouch_icon_rsc = light.bgf
    delivtouch_name_rsc = "divine touch"
+   delivtouch_attack_name_rsc = "divine touch"
    delivtouch_desc_rsc = \
       "Hitting a target with this touch spell sends them to their hometown.  "
       "By default has a 25% chance to hit."
@@ -30,6 +31,7 @@ resources:
 classvars:
 
    vrName = delivtouch_name_rsc
+   vrAttackName = delivtouch_attack_name_rsc
    vrIcon = delivtouch_icon_rsc
    vrDesc = delivtouch_desc_rsc
 
@@ -71,9 +73,9 @@ messages:
       return;
    }
 
-   TryDeliveranceAttack(who=$,oTarget=$)
+   TryDeliveranceAttack(who=$,oTarget=$,stroke_obj=$)
    {
-      local oSpell;
+      local oSpell, rSound;
 
       // Can only attack users with this.
       if (who = $
@@ -85,18 +87,18 @@ messages:
 
       if (Random(1,100) <= piHitPercent)
       {
+         rSound = Send(self,@GetHitSound);
+         Send(Send(oTarget,@GetOwner),@SomethingWaveRoom,#what=oTarget,#wave_rsc=rSound);
+
          // Do deliverance on victim. Deliverance spell handles animation
          // and sound effect.
          oSpell = Send(SYS,@FindSpellByNum,#num=SID_DELIVERANCE);
-         Send(oSpell,@CastSpell,#who=who,#lTargets=[oTarget],#iSpellPower=99);
+         Send(oSpell,@DoSpellEffects,#who=who,#lTargets=[oTarget]);
       }
       else
       {
-         // Touch spell animation.
-         Send(self,@CheckWeaponAndDoAnimation,#who=who,
-               #weapon_used=self,#victim=oTarget);
          // Provide a generic miss message and sound.
-         Send(who,@AssessMiss,#what=oTarget,#stroke_obj=self);
+         Send(who,@AssessMiss,#what=oTarget,#stroke_obj=stroke_obj);
       }
 
       return TRUE;

@@ -5392,11 +5392,7 @@ messages:
       return;
    }
 
-   // iTargetNum is set higher than 1 if more than one target is hit by the
-   // attack. Used for cleave when hitting 2+ targets, to avoid performing
-   // specific things more than once.
-   TryAttack(what = $, use_weapon = $, stroke_obj = $, bCheck = TRUE,
-             iTargetNum = 1, bCheckAngle = TRUE)
+   TryAttack(what=$,use_weapon=$,stroke_obj=$,bCheck=TRUE,bCheckAngle=TRUE)
    {
       local i, iRange, oEnchantment, state;
 
@@ -5538,17 +5534,6 @@ messages:
          if NOT Send(stroke_obj,@CheckRoomConditions,#who=self)
          {
             return FALSE;
-         }
-      }
-
-      // These things are done only on the first target hit.
-      if (iTargetNum = 1)
-      {
-         // Record the swing for potential advancement.
-         if Send(what,@CanPlayerAdvanceOnMe)
-         {
-            // We got another swing in, so increment that.
-            Send(self,@SwingWeapon,#times=1);
          }
       }
 
@@ -6270,11 +6255,6 @@ messages:
 
       if Send(self,@GetSkillAbility,#Skill_num=SKID_DISARM) > 0
       {
-         if oWeapon <> $ AND IsClass(oWeapon,&Unarmed)
-         {
-            oWeapon = $;
-         }
-
          Send(Send(SYS,@FindSkillByNum,#num=SKID_DISARM),@DoSkill,#who=self,
                #oTarget=what,#oWeapon=oWeapon);
       }
@@ -6314,10 +6294,21 @@ messages:
    // Returns weapon used.
    GetWeapon()
    {
-      local oWeapon;
+      local oWeapon, oMonster;
 
-      // Check for a physical weapon.
-      oWeapon = Send(self,@LookupPlayerWeapon);
+      // Morphed?
+      oMonster = Send(self,@GetIllusionForm);
+
+      if (oMonster <> $)
+         AND (piFlags & PFLAG_MORPHED)
+      {
+         oWeapon = Send(oMonster,@GetWeapon);
+      }
+      else
+      {
+         // Check for a physical weapon.
+         oWeapon = Send(self,@LookupPlayerWeapon);
+      }
 
       // None present?
       if oWeapon = $
@@ -6352,6 +6343,13 @@ messages:
       {
          // Ask the weapon how it would like to be wielded.
          return Send(SYS,@FindSkillByNum,#num=Send(oWeapon,@GetDefaultStrokeNumber));
+      }
+
+      // Morphed? Use punch regardless of any touch enchantments we might have up.
+      if Send(self,@GetIllusionForm) <> $
+         AND (piFlags & PFLAG_MORPHED)
+      {
+         return Send(SYS,@FindSkillByNum,#num=SKID_PUNCH);
       }
 
       // We aren't wielding an actual weapon.
@@ -6403,6 +6401,12 @@ messages:
    SwingWeapon(times=1)
    {
       local oWeapon, iProfNum;
+      
+      // The following is only relevant if we aren't morphed.
+      if piFlags & PFLAG_MORPHED
+      {
+         return;
+      }
 
       oWeapon = Send(self,@GetWeapon);
 

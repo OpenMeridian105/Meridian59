@@ -162,7 +162,7 @@ messages:
 
    PerformSkill(who=$,lTargets=$)
    {
-      local use_weapon, stroke_obj, iPower, i, bTarget, iTargetNum;
+      local use_weapon, stroke_obj, iPower, i, bTarget;
 
       use_weapon = Send(who,@GetWeapon);
       stroke_obj = Send(who,@GetStrokeObject);
@@ -172,16 +172,17 @@ messages:
       Send(who,@StartAOEAttack);
 
       bTarget = FALSE;
-      iTargetNum = 1;
+
       foreach i in lTargets
       {
          // Pass bCheck=FALSE so that our attacks don't check the timer.
+         // Since we already checked LoS when picking our targets, don't
+         // check if the targets are in view again.
          Send(who,@TryAttack,#what=i,#stroke_obj=stroke_obj,
                #use_weapon=use_weapon,#factor=iPower,#bCheck=FALSE,
-               #iTargetNum=iTargetNum,#bCheckAngle=FALSE);
+               #bCheckAngle=FALSE);
 
          bTarget = TRUE;
-         ++iTargetNum;
       }
 
       Send(who,@EndAOEAttack,#lTargets=lTargets);

@@ -5987,24 +5987,12 @@ messages:
 
    AssessHit(what = $, stroke_obj = $, damage = $, use_weapon = $)
    {
-      local oMonster;
-
       if stroke_obj <> $
          AND Send(self,@GetWeaponSwingBonus) > 0
+         AND NOT (piFlags & PFLAG_MORPHED)
       {
          Send(stroke_obj,@ImproveStroke,#who=self,#target=what,
                #use_weapon=Send(self,@GetWeapon));
-      }
-
-      if damage <> $
-      {
-         // Morphed? As a bonus, people in illusionary form
-         // get the hit side effect.  :)
-         oMonster = Send(self,@GetIllusionForm);
-         if (oMonster <> $)
-         {
-            Send(oMonster,@HitSideEffect,#what=what,#who=self);
-         }
       }
 
       propagate;
@@ -6278,11 +6266,22 @@ messages:
    HitSideEffect(what=$,who=$,amount=0,iNum=$,use_weapon=$,stroke_obj=$)
    "Called after every non-fatal player hit."
    {
-      // Currently, we only check for weapon effects.
-      // Could expand for passive abilities.
+      local oMonster;
 
-      if use_weapon <> $
+      // Morphed or in illusionary form? As a bonus, you
+      // get the hit side effect. :)
+      oMonster = Send(self,@GetIllusionForm);
+
+      if oMonster <> $
+      {
+         Send(oMonster,@HitSideEffect,#what=what,#who=who);
+      }
+
+      // Clones can only proc our weapons if that setting is enabled.
+      if (use_weapon <> $)
          AND IsClass(use_weapon,&Weapon)
+         AND ((who = self)
+            OR Send(SETTINGS_OBJECT,@CanClonesProcWeapons))
       {
          Send(use_weapon,@HitSideEffect,#what=what,#who=who,
             #amount=amount,#stroke_obj=stroke_obj);

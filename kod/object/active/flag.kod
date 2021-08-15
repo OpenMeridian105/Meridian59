@@ -47,6 +47,7 @@ resources:
    flag_append_desc_guild = "This territory has been captured by %q of %s%q."
 
    flag_icon_rsc = flagpole2.bgf
+   flag_icon_old_rsc = flagpole.bgf
    flag_duke_icon_rsc = flagduke.bgf
    flag_princess_icon_rsc = flagprnc.bgf
    flag_rebel_icon_rsc = flagjspr.bgf
@@ -107,12 +108,13 @@ resources:
 classvars:
 
    vrName = flag_name_rsc
-   vrIcon = flag_icon_rsc
+   vrIcon = flag_icon_old_rsc
    vrDesc = flag_desc_rsc
 
    viObject_flags = OF_ACTIVATABLE
 
    vbGuildFlag_enabled = TRUE
+   vbGuildBuy_enabled = FALSE
 
 properties:
 
@@ -913,7 +915,8 @@ messages:
          iFlags &= ~OF_ACTIVATABLE;
       }
 
-      if (what <> $
+      if (vbGuildBuy_enabled
+         AND what <> $
          AND poGuild <> $
          AND IsClass(what,&User)
          AND poGuild = Send(what,@GetGuild)
@@ -1236,6 +1239,11 @@ messages:
    {
       local oItem, oSplit, bStack, iCount, oGuild, oMoney, iCash, iFee;
 
+      if (NOT vbGuildBuy_enabled)
+      {
+         return FALSE;
+      }
+
       iCount = 0;
 
       if (what = $
@@ -1318,6 +1326,7 @@ messages:
          }
          else
          {
+            // TODO: Need to do something here if the user can't hold the item.
             Send(what,@MsgSendUser,#message_rsc=flagpole_cannotcarry);
             return FALSE;
          }
@@ -1330,6 +1339,11 @@ messages:
    "Collect a list of all items in hall's storage."
    {
       local oHall, oBox, oItem, i, lItems;
+
+      if (NOT vbGuildBuy_enabled)
+      {
+         return $;
+      }
 
       if poGuild <> $
       {
@@ -1367,7 +1381,7 @@ messages:
 
    MobIsVaultman()
    {
-      return TRUE;
+      return vbGuildBuy_enabled;
    }
 
    GetVaultRetrievalFee()

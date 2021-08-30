@@ -130,7 +130,8 @@ messages:
    DoSpellEffects(who = $, lTargets = $)
    {
       local i, n, class, number, bFound, lLoadout_list, lInventory, school,
-            oItem, lDRobes, lLRobes, oGuild, oGuildHall, lSpellItems, iLeftover;
+            oItem, lDRobes, lLRobes, oGuild, oGuildHall, lSpellItems, iLeftover,
+            lRegBag;
 
       Send(who,@MsgSendUser,#message_rsc=loadout_cast);
 
@@ -143,6 +144,13 @@ messages:
       lLoadout_list = Send(who,@GetLoadoutList);
       // Copy inventory since we're going to modify the list.
       lInventory = ListCopy(Send(who,@GetHolderPassive));
+
+      // Add reagent bag items to this list.
+      lRegBag = Send(who,@GetReagentBagContents);
+      foreach i in lRegBag
+      {
+         lInventory = Cons(i, lInventory);
+      }
 
       foreach i in lLoadout_list
       {

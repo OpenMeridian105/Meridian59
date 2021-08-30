@@ -73,43 +73,56 @@ messages:
 
    DoSpellEffects(who = $, lTargets = $)
    {
-      local cClass, oItem, lLocal_list;
+      local cClass, oItem, lItems, lLocal_list, lRegBag, lInventoryContents;
 
       if (who = $)
       {
          return FALSE;
       }
 
-      foreach oItem in Send(who,@GetHolderPassive)
+      lRegBag = Send(who,@GetReagentBagContents);
+      if lRegBag <> $
       {
-         cClass = GetClass(oItem);
+         lInventoryContents = [Send(who,@GetHolderPassive),lRegBag];
+      }
+      else
+      {
+         lInventoryContents = [Send(who,@GetHolderPassive)];
+      }
 
-         // Ignore scrolls of set and money.
-         if (cClass = &SetScroll
-            OR cClass = &Money)
+      foreach lItems in lInventoryContents
+      {
+         foreach oItem in lItems
          {
-            continue;
-         }
+            cClass = GetClass(oItem);
 
-         // It's important to get disciple robes of the correct school.
-         if IsClass(oItem,&DiscipleRobe)
-         {
-            lLocal_list = Cons([GetClass(oItem),Send(oItem,@GetSchool)],
-                                 lLocal_list);
-         }
-         else if IsClass(oItem,&SpellItem)
-         {
-            lLocal_list = Cons([GetClass(oItem),Send(oItem,@GetHits)],
-                                 lLocal_list);
-         }
-         else if Send(oItem,@IsStackable)
-         {
-            lLocal_list = Cons([GetClass(oItem),Send(oItem,@GetNumber)],
-                                 lLocal_list);
-         }
-         else
-         {
-            lLocal_list = Cons([GetClass(oItem),-1],lLocal_list);
+            // Ignore scrolls of set and money.
+            if (cClass = &SetScroll
+               OR cClass = &Money)
+            {
+               continue;
+            }
+
+            // It's important to get disciple robes of the correct school.
+            if IsClass(oItem,&DiscipleRobe)
+            {
+               lLocal_list = Cons([GetClass(oItem),Send(oItem,@GetSchool)],
+                                    lLocal_list);
+            }
+            else if IsClass(oItem,&SpellItem)
+            {
+               lLocal_list = Cons([GetClass(oItem),Send(oItem,@GetHits)],
+                                    lLocal_list);
+            }
+            else if Send(oItem,@IsStackable)
+            {
+               lLocal_list = Cons([GetClass(oItem),Send(oItem,@GetNumber)],
+                                    lLocal_list);
+            }
+            else
+            {
+               lLocal_list = Cons([GetClass(oItem),-1],lLocal_list);
+            }
          }
       }
 

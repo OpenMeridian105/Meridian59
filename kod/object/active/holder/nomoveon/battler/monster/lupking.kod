@@ -104,10 +104,14 @@ classvars:
    viBonusXP = 500
    viBonusTP = 30
 
+   viSecondsBetweenQuakes = 15
+
 properties:
 
    piAnimation = ANIM_NONE
    plAttackers = $  // [player,player....]
+
+   piLastEQTime = 0
 
 messages:
 
@@ -809,11 +813,19 @@ messages:
    {
       return FALSE;
    }
-   
+
    AngeredByWallElement(what=$)
    {
-      local i, oSpell, lFinalTargets;
-      
+      local i, oSpell, lFinalTargets, iTime;
+
+      iTime = GetTickCount();
+      if (iTime - piLastEQTime < viSecondsBetweenQuakes * 1000)
+      {
+         return;
+      }
+
+      piLastEQTime = iTime;
+
       foreach i in plAttackers
       {
          Send(i,@MsgSendUser,#message_rsc=angered_by_wall_element_msg,

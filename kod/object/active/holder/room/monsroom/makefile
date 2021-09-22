@@ -26,7 +26,8 @@ BOFS =  badland1.bof a5.bof a6.bof c4.bof c6.bof castle1b.bof d4.bof d5.bof \
         dvalley2.bof dvalley3.bof dvalley4.bof dvalley5.bof jixa1.bof \
         jixa2.bof jixa3.bof jixa4.bof toseast_mg.bof survivalarena.bof \
         golem_dungeon.bof swamp1.bof swamp2.bof emgtoswamp.bof swamptojixa.bof \
-        banditcamp.bof banditcave.bof bergmine.bof berg_grave.bof trollcave.bof
+        banditcamp.bof banditcave.bof bergmine.bof berg_grave.bof trollcave.bof \
+        dvalley_temple.bof
 
 
 #       g7.bof h8.bof i2.bof i4.bof i5.bof \

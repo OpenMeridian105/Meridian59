@@ -1,0 +1,424 @@
+// Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+// All rights reserved.
+//
+// This software is distributed under a license that is described in
+// the LICENSE file that accompanies it.
+//
+// Meridian is a registered trademark.
+
+
+////////////////////////////////////////////////////////////////////////////////
+Auctioneer is Towns
+
+constants:
+
+   include blakston.khd
+
+resources:
+
+   Auctioneer_item_add = \
+      "~B%s%s is up for auction! Don't hesitate, participate! Place your bids now."
+   Auctioneer_item_bid = \
+      "~BI like that %s, so should you!  %s has placed a bid for %i!  "
+      "Do we have an offer of %i?"
+   Auctioneer_item_nobid = \
+      "You do not have enough money in your account to place a bid..."
+      "Go see my boy, I've put him in charge of Berg's treasury."
+   Auctioneer_none = \
+      "I'm afraid I have nothing up for auction at the moment."
+   Auctioneer_toomany = \
+      "Slow down rabbit, only one item at a time."
+   Auctioneer_cant_accept_item = \
+      "I am sorry but I cannot put %s%s for auction."
+   Auctioneer_sold = \
+      "~BSOLD! %s to %s for %i shills. The item has been deposited to the vault."
+
+   Auctioneer_recordsale_1 = "Sold "
+   Auctioneer_recordsale_2 = \
+      "! Put up by auction by "
+   Auctioneer_recordsale_3 = \
+      " for the amount of "
+   Auctioneer_recordsale_4 = \
+      " to the highest bidder, "
+   Auctioneer_recordsale_5 = \
+      ".\n\n-- Harold d'Adue"
+   Auctioneer_recordsale_title = " sold!"
+
+classvars:
+
+   viOccupation = MOB_ROLE_AUCTIONEER
+   viBank = BID_TOS
+   viVault = VID_BARLOQUE
+
+properties:
+
+   ptAuctionTimer = $
+
+   // Min bid on an item (percent)
+   piBidFactor = 75
+
+   // Items that are currently up for auction
+   // [oItem, oSeller, oBuyer, iBid, iTimeLeft]
+   plAuctionItems = $
+
+messages:
+
+   Constructor()
+   {
+      ptAuctionTimer = CreateTimer(self,@AuctionTimer,60000);
+
+      propagate;
+   }
+
+   Delete()
+   {
+      plAuctionItems = $;
+
+      if ptAuctionTimer <> $
+      {
+         DeleteTimer(ptAuctionTimer);
+         ptAuctionTimer = $;
+      }
+
+      propagate;
+   }
+
+   GetForSale()
+   {
+      local i, lForSale;
+
+      foreach i in plAuctionItems
+      {
+         lForSale = Cons(First(i),lForSale);
+      }
+
+      return lForSale;
+   }
+
+   GetPrice(what = $, who = $)
+   {
+      local lAuctionItem, iPrice;
+
+      foreach lAuctionItem in plAuctionItems
+      {
+         if what = First(lAuctionItem)
+         {
+            iPrice = Nth(lAuctionItem,4);
+            iPrice = iPrice * piBidFactor / 100 + iPrice;
+            return iPrice;
+         }
+      }
+
+      return 0;
+   }
+
+   Buy(what = $,item_list = $,number_list = $)
+   {
+      local i, j, oAuctionItem, oMoney, iOfferPrice;
+
+      // Ensure that buyer and seller are in the same room
+      if Send(what,@GetOwner) <> poOwner
+      {
+         Debug("ALERT! ",Send(what,@GetTrueName),what," tried to buy items "
+               "from ",Send(self,@GetTrueName)," while in distant RID ",
+               Send(Send(what,@GetOwner),@GetRoomNum));
+
+         return FALSE;
+      }
+
+      if NOT Send(self,@IsCustomerOkay,#who=what)
+      {
+         return;
+      }
+
+      if Send(self,@GetForSale) = $
+      {
+         Send(self,@SayToOne,#target=what,#message_rsc=Auctioneer_none);
+         return;
+      }
+
+      if Length(item_list) > 1
+      {
+         Send(self,@SayToOne,#target=what,#message_rsc=Auctioneer_toomany);
+         return;
+      }
+
+      foreach j in plAuctionItems
+      {
+         if First(item_list) = First(j)
+         {
+            i = FindListElem(plAuctionItems,j);
+            break;
+         }
+      }
+
+      if NOT Send(self,@TryPlaceBid,#who=what,#lAuctionItem=j)
+      {
+         Send(self,@SayToOne,#target=what,#message_rsc=Auctioneer_item_nobid);
+
+         return FALSE;
+      }
+
+      // Bid sucessful - set new current price and buyer
+      SetNth(j,4,Send(self,@GetPrice,#what=First(j),#who=what));
+      SetNth(j,3,what);
+
+      // Showcase the auction item to the room
+      oAuctionItem = Send(poOwner,@UpdateItemsOnDisplay,#index=i);
+
+      iOfferPrice = piBidFactor * Nth(j,4) / 100 + Nth(j,4);
+
+      Send(self,@Say,#message_rsc=Auctioneer_item_bid,
+         #parm1=Send(oAuctionItem,@GetName),#parm2=Send(what,@GetName),
+         #parm3=Nth(j,4),#parm4=iOfferPrice);
+
+      return;
+   }
+
+   TryPlaceBid(who=$,lAuctionItem=$,bCashOffer=FALSE)
+   {
+      local i, iPrice, iBid, oBank, iBalance, oMoney;
+
+      iPrice = Nth(lAuctionItem,4);
+      iBid = piBidFactor * iPrice / 100 + iPrice;
+
+      oBank = Send(SYS,@FindBankByNum,#num=viBank);
+      iBalance = Send(oBank,@GetAccount,#what=who);
+
+      if bCashOffer
+      {
+         oMoney = Send(who,@GetMoneyObject);
+         if oMoney <> $
+         {
+            iBalance = iBalance + Send(oMoney,@GetValue);
+         }
+      }
+
+      // Also check any other potential bids by this buyer
+      foreach i in plAuctionItems
+      {
+         if Nth(i,3) = who
+         {
+            iBalance -= Nth(i,4);
+         }
+      }
+
+      if iBalance > iBid
+      {
+         return TRUE;
+      }
+
+      return FALSE;
+   }
+
+   SetBid(index=0,iAmount=0)
+   {
+      SetNth(Nth(plAuctionItems,index),4,iAmount);
+
+      return;
+   }
+
+   ReqOffer(what = $, item_list = $)
+   {
+      local i;
+
+      if Length(item_list) > 1
+      {
+         Send(self,@SayToOne,#target=what,#message_rsc=Auctioneer_toomany);
+         return FALSE;
+      }
+
+      foreach i in item_list
+      {
+         if (IsClass(i,&Token)
+            OR IsClass(i,&Totem)
+            OR IsClass(i,&NecromancerAmulet)
+            OR IsClass(i,&HunterSword)
+            OR Send(i,@IsStackable))
+         {
+            Send(self,@SayToOne,#target=what,
+                  #message_rsc=Auctioneer_cant_accept_item,
+                  #parm1=Send(i,@GetDef),#parm2=Send(i,@GetName));
+
+            return FALSE;
+         }
+      }
+
+      propagate;
+   }
+
+   AcceptOffer(who=$)
+   "Override to handle auction items"
+   {
+      local i,oHolder,lTake_items;
+
+      // set the stuff where the user can get to it
+      oHolder = Send(SYS,@GetSystemHolder2);
+      foreach i in plOffer_items
+      {
+         Send(oHolder,@NewHold,#what=i);
+         if IsClass(i,&Money)
+         {
+            Send(Send(SYS,@GetStatistics),@MoneyCreated,#amount=Send(i,@GetNumber));
+         }
+      }
+
+      // take stuff the user put there
+      oHolder = Send(SYS,@GetSystemHolder1);
+      foreach lTake_items in [ Send(oHolder,@GetHolderActive),
+                           Send(oHolder,@GetHolderPassive) ]
+      {
+         foreach i in lTake_items
+         {
+            Send(self,@NewHold,#what=i);
+            Send(self,@AddAuctionItem,#oObj=i,#who=who);
+         }
+      }
+
+      // kill the cancel offer timer
+      Send(self,@OfferCanceled);
+
+      return TRUE;
+   }
+
+   AddAuctionItem(oObj=$,who=$)
+   {
+      local iTime;
+
+      iTime = Send(SETTINGS_OBJECT,@GetBidDuration);
+      plAuctionItems = Cons([oObj,who,$,Send(oObj,@GetValue),iTime] ,plAuctionItems);
+
+      // Display new items at the auction house.
+      if poOwner <> $
+         AND Send(poOwner,@GetRoomNum) = RID_BERG_AUC
+      {
+         // Display the latest item in the list
+         Send(poOwner,@UpdateItemsOnDisplay,#index=1);
+      }
+
+      Send(self,@Say,#message_rsc=Auctioneer_item_add,
+         #parm1=Send(oObj,@GetCapIndef),#parm2=Send(oObj,@GetName));
+
+      return;
+   }
+
+   AuctionTimer(timer=0)
+   {
+      local iTime, lAuctionItem;
+
+      foreach lAuctionItem in plAuctionItems
+      {
+         iTime = Nth(lAuctionItem,5);
+         SetNth(lAuctionItem,5,iTime-1);
+
+         if iTime = 0
+         {
+            Send(self,@AuctionItemExpired,#lAuctionItem=lAuctionItem);
+         }
+      }
+
+      ptAuctionTimer = CreateTimer(self,@AuctionTimer,60000);
+
+      return;
+   }
+
+   AuctionItemExpired(lAuctionItem=$)
+   {
+      local iPrice, oBuyer, oSeller, oAuctionItem, oSystem, i, j;
+
+      iPrice = Nth(lAuctionItem,4);
+      oBuyer = Nth(lAuctionItem,3);
+      oSeller = Nth(lAuctionItem,2);
+      oAuctionItem = First(lAuctionItem);
+
+      // Transfer funds
+      oSystem = Send(SYS,@FindBankByNum,#num=viBank);
+      i = Send(oSystem,@WithdrawAccount,#what=oBuyer,#amount=iPrice);
+      j = Send(oSystem,@DepositAccount,#what=oSeller,#amount=iPrice);
+
+      // Didn't have enough to pay, void transaction
+      if i < iPrice
+      {
+         Send(oSystem,@DepositAccount,#what=oBuyer,#amount=i);
+         Send(oSystem,@WithdrawAccount,#what=oSeller,#amount=j);
+
+         // Return to seller
+         oBuyer = oSeller;
+      }
+
+      // No one bid on this, return to seller
+      if oBuyer = $
+      {
+         oBuyer = oSeller;
+      }
+
+      // Send auction item to vault
+      oSystem = Send(SYS,@FindVaultByNum,#num=viVault);
+      if Send(oSystem,@CanDepositItems,#lItems=[oAuctionItem],#who=oBuyer)
+      {
+         Send(oSystem,@DepositItems,#lItems=[oAuctionItem],#who=oBuyer);
+      }
+      
+      i = FindListElem(plAuctionItems,lAuctionItem);
+      Send(poOwner,@UpdateItemsOnDisplay,#index=i,#bExpired=TRUE);
+
+      Send(self,@Say,#message_rsc=Auctioneer_sold,
+         #parm1=Send(oAuctionItem,@GetName),#parm2=Send(oBuyer,@GetName),
+         #parm3=iPrice);
+
+      if oBuyer <> oSeller
+      {
+         Send(self,@RecordAuctionSale,#lAuctionItem=lAuctionItem);
+      }
+
+      plAuctionItems = DelListElem(plAuctionItems,lAuctionItem);
+
+      return;
+   }
+
+   RecordAuctionSale(lAuctionItem=$)
+   {
+      local sString, sString2, oBook;
+
+      ClearTempString();
+      AppendTempString(Auctioneer_recordsale_1);
+      AppendTempString(Send(First(lAuctionItem),@GetName));
+
+      AppendTempString(Auctioneer_recordsale_2);
+      AppendTempString(Send(Nth(lAuctionItem,2),@GetName));
+      
+      AppendTempString(Auctioneer_recordsale_3);
+      AppendTempString(Nth(lAuctionItem,4));
+      AppendTempString(Auctioneer_recordsale_4);
+      AppendTempString(Send(Nth(lAuctionItem,3),@GetName));
+      AppendTempString(Auctioneer_recordsale_5);
+      sString = SetString($,GetTempString());
+
+      ClearTempString();
+      AppendTempString(Send(First(lAuctionItem),@GetName));
+      AppendTempString(Auctioneer_recordsale_title);
+      sString2 = SetString($,GetTempString());
+
+      oBook = Send(poOwner,@GetBook);
+      Send(oBook,@PostNews,#what=self,#title=sString2,#body=sString);
+
+      return;
+   }
+
+   GetAuctionTimer()
+   {
+      return ptAuctionTimer;
+   }
+
+   GetAuctionItems()
+   {
+      return plAuctionItems;
+   }
+
+   MobIsCondSeller()
+   {
+      return FALSE;
+   }
+
+end
+////////////////////////////////////////////////////////////////////////////////

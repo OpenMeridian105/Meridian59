@@ -1,0 +1,283 @@
+// Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+// All rights reserved.
+//
+// This software is distributed under a license that is described in
+// the LICENSE file that accompanies it.
+//
+// Meridian is a registered trademark.
+
+
+////////////////////////////////////////////////////////////////////////////////
+AuctionItem is InteractiveObject
+
+constants:
+
+   include blakston.khd
+
+resources:
+
+   //include AuctionItem.lkod
+
+   AuctionItem_name_default_rsc = ""
+   AuctionItem_icon_default_rsc = "blank.bgf"
+   AuctionItem_desc_rsc = \
+    "%s%s is up for auction by %s%s."
+    "\n\nCurrent Bid: %i shillings\n%r"
+
+   AuctionItem_header_rsc = \
+      "Time Remaining: %r%r%r%r%r%r%r."
+
+   AuctionItem_cant_offer = "You can only offer money to the auction house."
+
+   AuctionItem_bid = \
+      "~BCash offer! %s has placed a bid on %s for %i!  Please ensure funds "
+      "are available in your bank account for the transfer."
+   AuctionItem_nobid = \
+      "I'll need a bigger offer than that."
+
+classvars:
+
+  viObject_Flags = OF_OFFERABLE
+
+properties:
+
+   vrName = AuctionItem_name_default_rsc
+   vrIcon = AuctionItem_icon_default_rsc
+   vrDesc = AuctionItem_desc_rsc
+
+   poAuctioneer = $
+   piAuction_Item = 0
+
+   piBidOffer = 0
+
+messages:
+
+   Constructor(oAuctioneer=$)
+   {
+      Send(self,@ViewForSale);
+
+      if oAuctioneer <> $
+         AND Send(oAuctioneer,@GetOccupation) = MOB_ROLE_AUCTIONEER
+      {
+         poAuctioneer = oAuctioneer;
+      }
+      else
+      {
+         Debug("Invalid poAuctioneer in AuctionItem");
+         Send(self,@Delete);
+      }
+
+      propagate;
+   }
+
+   OfferedWantedItem(who=$, oItem=$)
+   {
+      local lAuctionItem, lAuctionItem2, lAuctionItems;
+
+      if IsClass(oItem,&Money)
+      {
+         lAuctionItems = Send(poAuctioneer,@GetAuctionItems);
+         lAuctionItem = Nth(lAuctionItems,piAuction_Item);
+         piBidOffer = Send(oItem,@GetValue);
+
+         if piBidOffer < Send(poAuctioneer,@GetPrice,#what=First(lAuctionItem))
+         {
+            Send(poAuctioneer,@SayToOne,#target=who,#message_rsc=AuctionItem_nobid);
+
+            return FALSE;
+         }
+         else
+         {
+            // Place cash bid
+            SetNth(lAuctionItem,3,who);
+
+            lAuctionItem2 = [First(lAuctionItem),Nth(lAuctionItem,2),who,piBidOffer];
+
+            if NOT Send(poAuctioneer,@TryPlaceBid,
+                  #who=who,#lAuctionItem=lAuctionItem2,#bCashOffer=TRUE)
+            {
+               Send(poAuctioneer,@SetBid,#index=piAuction_Item,#iAmount=piBidOffer);
+
+               Send(poAuctioneer,@Say,#message_rsc=AuctionItem_bid,
+                  #parm1=Send(who,@GetName),#parm2=Send(self,@GetName),
+                  #parm3=piBidOffer);
+
+               return FALSE;
+            }
+         }
+      }
+
+      Send(who,@MsgSendUser,#message_rsc=AuctionItem_cant_offer);
+
+      return FALSE;
+   }
+
+   ShowDesc(who=$)
+   {
+      local lAuctionItems, lAuctionItem, lTemplates, lItems, i, iNumber, 
+         oItem, cItemClass;
+
+      if piAuction_Item = 0
+      {
+         AddPacket(4,system_blank_resource);
+
+         return;
+      }
+
+      if poOwner <> $
+      {
+         lAuctionItems = Send(poAuctioneer,@GetAuctionItems);
+      }
+
+      if (lAuctionItems = $)
+      {
+         AddPacket(4,system_blank_resource);
+
+         return;
+      }
+
+      lTemplates = Send(SYS,@GetItemTemplates);
+      if (lTemplates = $)
+      {
+         AddPacket(4,system_blank_resource);
+
+         return;
+      }
+
+      lAuctionItem = Nth(lAuctionItems,piAuction_Item);
+      cItemClass = GetClass(First(lAuctionItem));
+      oItem = GetListElemByClass(lTemplates,cItemClass);
+
+      AddPacket(4,vrDesc,4,Send(oItem,@GetCapInDef), 4,Send(oItem,@GetName),
+                4,Send(SYS,@AddResourceTemplate,#iNum=Length(lItems)),
+                4,Send(Nth(lAuctionItem,2),@GetName),
+                4,Nth(lAuctionItem,4) );
+
+      Send(self,@SendTimeDesc,#who=who);
+
+      return;
+   }
+
+   SendTimeRemainingHeader(parm1=$, parm2=$)
+   {
+
+      AddPacket(4,AuctionItem_header_rsc);
+
+      return;
+   }
+
+   SendTimeDesc(who=$)
+   {
+      local iTime, iDuration, lAuctionItems, lAuctionItem;
+
+      iDuration = 0;
+
+      if poOwner <> $
+      {
+         lAuctionItems = Send(poAuctioneer,@GetAuctionItems);
+         lAuctionItem = Nth(lAuctionItems,piAuction_Item);
+      }
+
+      iTime = Send(poAuctioneer,@GetAuctionTimer);
+      if IsTimer(iTime)
+      {
+         iDuration = GetTimeRemaining(iTime);
+      }
+      else
+      {
+         iDuration = iTime;
+      }
+
+      if iDuration = $
+      {
+         iDuration = 0;
+      }
+
+      iDuration += Nth(lAuctionItem,5) * 60000;
+      Send(self,@SendTimeRemaining,#iTime=iDuration / 1000);
+
+      return;
+   }
+
+   ViewForSale(index=0)
+   {
+      local oAuctioneer, lAuctionItems, cItemClass, oItem;
+
+      if poOwner <> $
+      {
+         lAuctionItems = Send(poAuctioneer,@GetAuctionItems);
+      }
+
+      if lAuctionItems <> $
+      {
+         if index <> 0
+         {
+            piAuction_Item = FindListElem(lAuctionItems,Nth(lAuctionItems,index));
+            cItemClass = GetClass(First(Nth(lAuctionItems,piAuction_Item)));
+            oItem = Send(SYS,@FindTemplateItemByClass,#cClass=cItemClass);
+         }
+         else
+         {
+            piAuction_Item = 0;
+         }
+      }
+
+      if poOwner <> $
+      {
+         if piAuction_Item <> 0
+         {
+            vrName = Send(oItem,@GetName);
+            vrIcon = Send(oItem,@GetIcon);
+         }
+         else
+         {
+            vrIcon = AuctionItem_icon_default_rsc;
+         }
+
+         Send(poOwner,@SomethingChanged,#what=self);
+      }
+
+      return;
+   }
+
+   SendLightingInformation()
+   {
+      AddPacket(2,(LIGHT_FLAG_ON | LIGHT_FLAG_DYNAMIC | LIGHT_FLAG_HIGHLIGHT));
+      AddPacket(1,255);
+      AddPacket(2,LIGHT_BWHITE);
+
+      return;
+   }
+
+   GetObjectFlags(what=$)
+   {
+      local iFlags;
+
+      iFlags = viObject_flags;
+
+      if piAuction_Item > 0
+      {
+         iFlags |= OF_OFFERABLE;
+      }
+      else
+      {
+         iFlags &= ~OF_OFFERABLE;
+      }
+
+      return iFlags;
+   }
+
+   GetAuctionItem()
+   {
+      return piAuction_Item;
+   }
+
+   SetAuctionItem(index=0)
+   {
+      piAuction_Item = index;
+
+      return;
+   }
+
+end
+////////////////////////////////////////////////////////////////////////////////

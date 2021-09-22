@@ -6,6 +6,6 @@
 
 DEPEND = ..\interactive.bof
 BOFS = cookpot.bof plantsoil.bof guilddevice.bof forge.bof psychostatue.bof \
-       swordrock.bof lorebookped.bof
+       swordrock.bof lorebookped.bof auctionitm.bof
 
 !include $(KODDIR)\kod.mak

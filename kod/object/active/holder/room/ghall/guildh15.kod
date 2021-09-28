@@ -6,7 +6,7 @@
 //
 // Meridian is a registered trademark.
 
-
+// Lich Hall
 //////////////////////////////////////////////////////////////////////////////////////
 GuildHall15 is GuildHall
 
@@ -22,11 +22,6 @@ constants:
    LIFT_DELAY = 13000
 
    LEVER_REACTIVATE_DELAY = 2000    // 2 seconds
-
-   TREASURE_ROW_MIN = 6
-   TREASURE_ROW_MAX = 9
-   TREASURE_COL_MIN = 40
-   TREASURE_COL_MAX = 43
        
    include blakston.khd
 
@@ -46,7 +41,52 @@ resources:
    Guildhall15_music = nec03.ogg
 
    guildh15_guildwarning = \
-      "Your amulet vibrates vigorously for a moment.  Something is amiss."
+      "~BYour amulet vibrates vigorously for a moment.  Something is amiss."
+
+   guildh15_lore_book = "Order of Necromancers"
+   guildh15_lore_text = \
+      "My continued presence on this plane of reality requires that "
+      "the Order provide me with a steady flow of life essence.  "
+      "My hunger grows at a regular rate, and the rate of increase is affected "
+      "by many factors, including the number of necromancers.  "
+      "Remember, much of your power originates from me - should you let me go "
+      "hungry, the members of the Order will all suffer greatly!\n\n"
+      "Anyone in the Order may supply me with a portion of the life essence "
+      "they have stored in their own bodies, by simply approaching me and "
+      "saying that they wish to pay TRIBUTE.  However, to avoid confusion, "
+      "it is recommended that you assign one person to decide whose turn it "
+      "is to slake my thirst.  To find out how urgent is my HUNGER, simply "
+      "ask me.\n\n"
+      "¶"
+      "My fortress is for the Order to inhabit and call home.  "
+      "Though much of it was destroyed when Brax was swallowed by the earth, "
+      "some of my magicks have remained intact.  You may rest here in "
+      "relative safety from the outside world, and will heal from being close "
+      "to my power.  The newsglobe here allows members to keep each other "
+      "apprised of current news, and there is a secret door outside that may "
+      "only be opened with an amulet.\n\n"
+      "Beware those who wield the Sword of the Hunt, my pet!  This weapon is "
+      "truly to be feared, and must be guarded well - thanks to the accursed "
+      "mage Tendrath, it periodically appears here in my fortress.  "
+      "Luckily, the maze which I constructed to torment my prisoners is still "
+      "functional, and is the only route to gain access to my inner sanctum "
+      "or to the chambers where the sword appears.  "
+      "¶"
+      "There are a number of levers in the secret room beyond the secret door which "
+      "control the configuration of the maze.  Each lever, when pulled, will "
+      "raise or lower a few sections of the maze's walls.  I also enchanted "
+      "a number of crystal balls with which you may spy on the maze from a "
+      "four different vantage points, so that you may be able to spot "
+      "intruders and thwart their progress through the labyrinth.  You would "
+      "do well to master the manipulation of the maze, for it is vital that "
+      "you keep me safe from harm.  Your continued existence is now "
+      "inextricably intertwined with my own;  should a band of pesky mortals "
+      "break through to my inner sanctum and destroy my current physical "
+      "manifestation, all members of the Order shall perish along with me.\n\n"
+      "¶"
+      "Serve me well and my power is yours to share, my dark minion!  "
+      "Together, we shall sow the seeds of destruction and devour the world!"
+      "\n\n  -- Venya'cyr, Eternal Queen of Brax"
 
 classvars:
 
@@ -85,7 +125,7 @@ properties:
    prMusic = Guildhall15_music
 
    prRoom = room_guildh15
-   piRoom_num = RID_guildh15
+   piRoom_num = RID_GUILDH15
 
    piBaseLight = LIGHT_NICE
 
@@ -97,6 +137,8 @@ properties:
 
    plChestArea1 = $
    plChestArea2 = $
+
+   poNecromancerChest = $
 
 messages:
 
@@ -135,16 +177,19 @@ messages:
 
    Delete()
    {
-      if ptSecret <> $ {
+      if ptSecret <> $
+      {
          DeleteTimer(ptSecret);
          ptSecret=$;
       }
-      if ptEntrance <> $ {
+      if ptEntrance <> $
+      {
          DeleteTimer(ptEntrance);
          ptEntrance = $;
       }
       plLevers = $;
-      if ptReactivateLevers <> $ {
+      if ptReactivateLevers <> $
+      {
          DeleteTimer(ptReactivateLevers);
          ptReactivateLevers = $;
       }
@@ -197,7 +242,7 @@ messages:
       if ((row = 12) OR (row = 13) OR (row = 14) )
          AND ((col = 31) OR (col = 32) OR (col = 33))
       {
-         Send(self,@OpenEntranceDoor);
+         Send(self,@OpenEntranceDoor,#who=what);
 
          return TRUE;
       }
@@ -206,16 +251,18 @@ messages:
          AND (row=19)
          AND ((col=13) OR (col=14) OR (col=15))
       {
-         Send(self,@OpenSecretDoor);
+         Send(self,@OpenSecretDoor,#who=what);
       }
 
       propagate;
    }
 
-   OpenEntranceDoor()
+   OpenEntranceDoor(who=$)
    {
       if ptEntrance = $
       {
+         Debug("Door to the lich was opened");
+
          Send(self,@TimeStampDoor);
          Send(self,@SetSector,#sector=ENTRANCE_SECTOR,
                #animation=ANIMATE_FLOOR_LIFT,
@@ -240,9 +287,10 @@ messages:
    }
 
 
-   OpenSecretDoor()
+   OpenSecretDoor(who=$)
    {
       if ptSecret = $
+         AND Send(who,@IsUsingA,#class=&NecromancerAmulet)
       {
          Send(self,@SetSector,#sector=SECRET_SECTOR,
                #animation=ANIMATE_CEILING_LIFT,
@@ -319,25 +367,18 @@ messages:
             #fine_row=16,#fine_col=24,
             #new_angle=ANGLE_SOUTH_EAST);
 
-      // Create either lich body or lich herself.
-      if poGuild_owner = $
-      {
-         Send(self,@NewHold,#what=Create(&DeadLich),
-               #new_row=13,#new_col=49,
-               #fine_row=16,#fine_col=00,
-               #new_angle=ANGLE_WEST);
-      }
-      else
-      {
-         Send(self,@NewHold,#what=Create(&Lich),
-               #new_row=13,#new_col=49,
-               #fine_row=16,#fine_col=00,
-               #new_angle=ANGLE_WEST);
-      }
+      oObj = Create(&BookPedestal,#name=guildh15_lore_book,#text=guildh15_lore_text);
+      Send(self,@NewHold,#what=oObj,#new_row=9,#new_col=50,#new_angle=ANGLE_SOUTH_WEST);
 
-      // Create the chest.
+      // Create chests
+
       Send(self,@NewHold,#what=Create(&Chest),
-            #new_row=23,#new_col=14,#new_angle=ANGLE_NORTH);
+            #new_row=7,#new_col=42,#new_angle=ANGLE_SOUTH);
+
+      poNecromancerChest = Create(&Chest);
+      Send(poNecromancerChest,@LockChest,#bLocked=TRUE);
+      Send(self,@NewHold,#what=poNecromancerChest,
+            #new_row=19,#new_col=42,#new_angle=ANGLE_NORTH);
 
       // Create the levers.
       oLever = Create(&Lever,#description=Guildh15_lever_desc,
@@ -470,15 +511,6 @@ messages:
       return;
    }
 
-   GetTreasureRow()
-   {
-      return Random(TREASURE_ROW_MIN,TREASURE_ROW_MAX);
-   }
-   GetTreasureCol()
-   {
-      return Random(TREASURE_COL_MIN,TREASURE_COL_MAX);
-   }
-
    GetPurchaseValue(who=$)
    "This returns the value that the GuildCreator will sell the guild to."
    "When the guild has been conquered, he will only sell the guild hall to "
@@ -490,31 +522,22 @@ messages:
 
    NewHold(what=$)
    {
-      local oNecroGuild,lMembers,oNecro,iChance;
+      local lNecromancers, oNecromancer;
 
+      // Warn Necromancers when hunters are in their base
       if IsClass(what,&User)
          AND NOT IsClass(what,&DM)
+         AND Send(what,@FindHoldingActive,#class=&HunterSword) <> $
       {
-         oNecroGuild = Send(Send(SYS,@FindRoomByNum,
-                           #num=RID_GUILDH15),@GetGuildOwner);
-         if oNecroGuild <> $
+         lNecromancers = Send(Send(SYS,@GetNecromancerBalance),@GetNecromancers);
+
+         if lNecromancers <> $
          {
-            if NOT Send(what,@IsUsingA,#Class=&NecromancerAmulet)
+            foreach oNecromancer in lNecromancers
             {
-               iChance = 2;
-               if (Send(what,@FindHoldingActive,#class=&HunterSword)<>$)
+               if Send(oNecromancer,@IsLoggedOn)
                {
-                  iChance = iChance/2;
-               }
-               if Random(1,iChance)=1
-               {
-                  lMembers = Send(oNecroGuild,@GetMemberList);
-                  oNecro = First(Nth(lMembers,Random(1,length(lMembers))));
-                  if Send(oNecro,@isLoggedOn)
-                  {
-                     Send(oNecro,@MsgSendUser,
-                           #message_rsc=guildh15_guildwarning);
-                  }
+                  Send(oNecromancer,@MsgSendUser,#message_rsc=guildh15_guildwarning);
                }
             }
          }
@@ -563,6 +586,22 @@ messages:
    GetRegion()
    {
       return RID_BRAX;
+   }
+
+   CanEnter(who=$)
+   "This call allows necromancers to be able to log off safely here"
+   {
+      if Send(who,@IsUsingA,#Class=&NecromancerAmulet)
+      {
+         return TRUE;
+      }
+
+      propagate;
+   }
+
+   GetNecromancersChest()
+   {
+      return poNecromancerChest;
    }
 
 end

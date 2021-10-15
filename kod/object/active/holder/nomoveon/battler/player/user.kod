@@ -1816,7 +1816,7 @@ messages:
    "It is dynamically allocated each time (wasting list nodes)."
    {
       local liClient_cmd, oWhat, oRoom, iRow, iCol, lUsers, iAngle, sBody,
-            iSpeed, i, sStr_said, bCancel;
+            iSpeed, i, sStr_said, bCancel, oOldOwner;
 
       // This checks to see if the user is trying to Send too many packets
       //  per second.  If they are, then we mark them as a spammer and
@@ -1881,11 +1881,17 @@ messages:
             return;
          }
 
+         oOldOwner = poOwner;
+
          Send(self,@UserMove,#new_row=iRow/FINENESS,#new_col=iCol/FINENESS,
               #fine_row=(iRow % FINENESS),#fine_col=(iCol % FINENESS),
               #speed=iSpeed);
 
-         Send(self,@UserTurn,#what=self,#new_angle=iAngle);
+        // Only use the sent angle if we stayed in the same room.
+         if (poOwner = oOldOwner)
+         {
+            Send(self,@UserTurn,#what=self,#new_angle=iAngle);
+         }
 
          return;
       }

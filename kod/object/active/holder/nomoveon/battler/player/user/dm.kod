@@ -667,6 +667,28 @@ messages:
       propagate;
    }
 
+   TeleportTo(RID = RID_TOS)
+   "Override to temporarily check for expansion rooms and block the teleport. "
+   "Prevents DMs accidentally teleporting to otherwise inaccessible rooms."
+   {
+      local oRoom;
+
+      oRoom = Send(SYS,@FindRoombyNum,#num=RID);
+      if oRoom = $
+      {
+         // If FindRoomByNum returns nothing - bad RID
+         return FALSE;
+      }
+
+      if (NOT Send(SETTINGS_OBJECT,@CanDMsTPToExpRooms)
+         AND Send(oRoom,@IsExpansionRoom))
+      {
+         return FALSE;
+      }
+
+      propagate;
+   }
+
    AssessDamage(what=$,damage=$,stroke_obj=$)
    {
       if pbImmortal

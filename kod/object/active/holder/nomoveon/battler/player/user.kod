@@ -1841,7 +1841,7 @@ messages:
    "It is dynamically allocated each time (wasting list nodes)."
    {
       local liClient_cmd, oWhat, oRoom, iRow, iCol, lUsers, iAngle, sBody,
-            iSpeed, i, sStr_said, bCancel, iTimeLeft, oAbility;
+            iSpeed, i, sStr_said, bCancel, iTimeLeft, oAbility, oOldOwner;
 
       // This checks to see if the user is trying to Send too many packets
       //  per second.  If they are, then we mark them as a spammer and
@@ -1906,11 +1906,17 @@ messages:
             return;
          }
 
+         oOldOwner = poOwner;
+
          Send(self,@UserMove,#new_row=iRow/FINENESS,#new_col=iCol/FINENESS,
               #fine_row=(iRow % FINENESS),#fine_col=(iCol % FINENESS),
               #speed=iSpeed);
 
-         Send(self,@UserTurn,#what=self,#new_angle=iAngle);
+        // Only use the sent angle if we stayed in the same room.
+         if (poOwner = oOldOwner)
+         {
+            Send(self,@UserTurn,#what=self,#new_angle=iAngle);
+         }
 
          return;
       }
@@ -6097,6 +6103,12 @@ messages:
             AND Send(poOwner,@ReqNewHold,#what=oNumber,
                      #new_row=piRow,#new_col=piCol)
          {
+            // Report stackables (non-stackables handled in DM.LeaveHold).
+            if IsClass(self,&DM)
+            {
+               Send(self,@ReportDroppedStackable,#what=oNumber,
+                     #number=Send(oNumber,@GetNumber));
+            }
             Send(poOwner,@NewHold,#what=oNumber,#new_row=piRow,#new_col=piCol,
                  #fine_row=piFine_row,#fine_col=piFine_col);
          }
@@ -6249,6 +6261,13 @@ messages:
          if Send(oNumber,@ReqNewOwner,#what=where)
             AND Send(where,@ReqNewHold,#what=oNumber,#who=self)
          {
+            // Report stackables (non-stackables handled in DM.LeaveHold).
+            if IsClass(self,&DM)
+            {
+               Send(self,@ReportPutStackable,#where=where,#what=oNumber,
+                     #number=Send(oNumber,@GetNumber));
+            }
+
             Send(where,@NewHold,#what=oNumber);
          }
          else
@@ -7568,6 +7587,11 @@ messages:
 
          return;
       }
+      else if IsClass(what,&User)
+         AND Send(what,@IsOfflineOrCannotInteract)
+      {
+         return FALSE;
+      }
 
       // Do we need a specific set of targets?
       lFinalTargets = Send(oAbility,@GetTargets,#who=self,#lTargets=[what]);
@@ -8563,7 +8587,7 @@ messages:
       oHolder = Send(SYS,@GetSystemHolder1);
       foreach i in plOffer_items
       {
-         Send(oHolder,@NewHold,#what=i);
+         Send(oHolder,@NewHold,#what=i,#bOffer=TRUE);
       }
 
       Send(poOffer_who,@AcceptOffer,#who=self);
@@ -8586,7 +8610,7 @@ messages:
          {
             if Send(self,@ReqNewHold,#what=i)
             {
-               Send(self,@NewHold,#what=i);
+               Send(self,@NewHold,#what=i,#bOffer=TRUE);
             }
             else
             {
@@ -8618,7 +8642,7 @@ messages:
       oHolder = Send(SYS,@GetSystemHolder2);
       foreach i in plOffer_items
       {
-         Send(oHolder,@NewHold,#what=i);
+         Send(oHolder,@NewHold,#what=i,#bOffer=TRUE);
       }
 
       // take his stuff
@@ -8641,7 +8665,7 @@ messages:
          {
             if Send(self,@ReqNewHold,#what=i)
             {
-               Send(self,@NewHold,#what=i);
+               Send(self,@NewHold,#what=i,#bOffer=TRUE);
             }
             else
             {

@@ -500,6 +500,9 @@ properties:
 
    plPortalData
 
+   // Property to track where DM/admins buy items from (bit hacky).
+   poLastBuyNPC = $
+
 messages:
 
    GetIcon(trueicon=FALSE)
@@ -641,6 +644,8 @@ messages:
          Send(SYS,@SetInvestigator,#who=$);
       }
 
+      poLastBuyNPC = $;
+
       propagate;
    }
 
@@ -662,6 +667,205 @@ messages:
       if pbImmortal
       {
          return Send(what,@ReqNewOwner,#what=self);
+      }
+
+      propagate;
+   }
+
+   NewHold(what=$, bFromReagentBag=FALSE, dmSpawned=FALSE, bOffer=FALSE)
+   {
+      local iNumber, oObj, oOwner;
+
+      if (bFromReagentBag OR dmSpawned OR what = $)
+      {
+         propagate;
+      }
+
+      if (poOwner = $)
+      {
+         oOwner = Send(SYS,@FindRoomByNum,#num=piSave_Room);
+      }
+      else
+      {
+         oOwner = poOwner;
+      }
+
+      if (bOffer)
+      {
+         if (poOffer_who <> $)
+         {
+            oObj = poOffer_who;
+         }
+         else
+         {
+            oObj = poLastBuyNPC;
+         }
+
+         if Send(what,@IsStackable)
+         {
+            iNumber = Send(what,@GetNumber);
+            GodLog("DM ", Send(self,@GetTrueName), " received ", iNumber, " ",
+                  Send(what,@GetName), " from ", Send(oObj,@GetTrueName));
+         }
+         else
+         {
+            GodLog("DM ", Send(self,@GetTrueName), " received ", what, ": ",
+                  Send(what,@GetName), " from ", Send(oObj,@GetTrueName));
+         }
+      }
+      else
+      {
+         // Object still has old owner, check if it is a chest.
+         oObj = Send(what,@GetOwner);
+         if (oObj <> $ AND IsClass(oObj,&StorageBox))
+         {
+            if Send(what,@IsStackable)
+            {
+               iNumber = Send(what,@GetNumber);
+               GodLog("DM ", Send(self,@GetTrueName), " removed ", iNumber,
+                     " ", Send(what,@GetName), " from ", Send(oObj,@GetName),
+                     " in ", Send(oOwner,@GetName));
+            }
+            else
+            {
+               GodLog("DM ", Send(self,@GetTrueName), " removed ", what, ": ",
+                     Send(what,@GetName), " from ", Send(oObj,@GetName),
+                     " in ", Send(oOwner,@GetName));
+            }
+         }
+         else
+         {
+            if Send(what,@IsStackable)
+            {
+               iNumber = Send(what,@GetNumber);
+               GodLog("DM ", Send(self,@GetTrueName), " picked up ", iNumber,
+                     " ", Send(what,@GetName), " in ", Send(oOwner,@GetName));
+            }
+            else
+            {
+               GodLog("DM ", Send(self,@GetTrueName), " picked up ", what, ": ",
+                     Send(what,@GetName), " in ", Send(oOwner,@GetName));
+            }
+         }
+      }
+
+      propagate;
+   }
+
+   UserBuyItems(what = $)
+   {
+      poLastBuyNPC = what;
+
+      propagate;
+   }
+
+   UserWithdrawalItems(what = $)
+   {
+      poLastBuyNPC = what;
+
+      propagate;
+   }
+
+   OfferSubtractNumberItems()
+   "Override to handle trading number items."
+   {
+      local i;
+
+      foreach i in plOffer_items
+      {
+         if Send(i,@IsStackable)
+         {
+            GodLog("DM ", Send(self,@GetTrueName), " gave ", Send(i,@GetNumber),
+               " ", Send(i,@GetName), " to ", Send(poOffer_who,@GetTrueName));
+         }
+      }
+
+      propagate;
+   }
+
+   ReportPutStackable(what = $, where = $, number = 0)
+   {
+      if (where <> $
+         AND IsClass(where,&ReagentBag))
+      {
+         return;
+      }
+
+      GodLog("DM ", Send(self,@GetTrueName), " put ", number, " ",
+            Send(what,@GetName), " into ", Send(where,@GetName), " in ",
+            Send(poOwner,@GetName));
+
+      return;
+   }
+
+   ReportDroppedStackable(what = $, number = 0)
+   {
+      GodLog("DM ", Send(self,@GetTrueName), " dropped ", number,
+         " ", Send(what,@GetName), " in ", Send(poOwner,@GetName));
+
+      return;
+   }
+
+   LeaveHold(what=$,where=$,bOffer=FALSE)
+   {
+      // Stackables are awful edge cases.
+      if (what = $ OR Send(what,@IsStackable))
+      {
+         propagate;
+      }
+
+      if (poOffer_who <> $
+         AND FindListElem(plOffer_items, what))
+      {
+         GodLog("DM ", Send(self,@GetTrueName), " gave ", what, ": ",
+               Send(what,@GetName), " to ", Send(poOffer_who,@GetTrueName));
+      }
+      else
+      {
+         if (where <> $ AND IsClass(where,&StorageBox))
+         {
+            GodLog("DM ", Send(self,@GetTrueName), " put ", what, ": ",
+                  Send(what,@GetName), " into ", Send(where,@GetName),
+                  " in ", Send(poOwner,@GetName));
+         }
+         else
+         {
+            GodLog("DM ", Send(self,@GetTrueName), " dropped ", what, ": ",
+                  Send(what,@GetName), " in ", Send(poOwner,@GetName));
+         }
+      }
+
+      propagate;
+   }
+
+   TeleportTo(RID = RID_TOS)
+   "Override to temporarily check for expansion rooms and block the teleport. "
+   "Prevents DMs accidentally teleporting to otherwise inaccessible rooms."
+   {
+      local oRoom;
+
+      oRoom = Send(SYS,@FindRoombyNum,#num=RID);
+      if oRoom = $
+      {
+         // If FindRoomByNum returns nothing - bad RID
+         return FALSE;
+      }
+
+      if (NOT Send(SETTINGS_OBJECT,@CanDMsTPToExpRooms)
+         AND Send(oRoom,@IsExpansionRoom))
+      {
+         return FALSE;
+      }
+
+      propagate;
+   }
+
+   KilledSomething(what=$)
+   {
+      if (what <> $)
+      {
+         GodLog("DM ", Send(self,@GetTrueName), " killed ", what, ": ",
+               Send(what,@GetTrueName), " in ", Send(poOwner,@GetName));
       }
 
       propagate;
@@ -1203,7 +1407,7 @@ messages:
       // Summon totem; all DMs can use.
       if StringContain(string,dm_gettotem)
       {
-         Send(self,@NewHold,#what=Send(SYS,@GetTotem));
+         Send(self,@NewHold,#what=Send(SYS,@GetTotem),#dmSpawned=TRUE);
 
          return;
       }
@@ -3415,7 +3619,8 @@ messages:
          if StringContain(string,Send(i,@GetTrueName))
                AND NOT Send(i,@IsItemType,#type=ITEMTYPE_SPECIAL)
          {
-            Send(self,@NewHold,#what=Create(GetClass(i),#oDMCreator=self));
+            Send(self,@NewHold,#what=Create(GetClass(i),#oDMCreator=self),
+                  #dmSpawned=TRUE);
             if NOT pbStealth
             {
                Send(poOwner,@SomeoneSaid,#what=self,#type=SAY_MESSAGE,
@@ -3822,8 +4027,8 @@ messages:
          if Send(i,@IsItemType,#type=type)
             AND NOT Send(i,@IsItemType,#type=ITEMTYPE_SPECIAL)
          {
-            Send(self,@NewHold,#what=Create(GetClass(i),#number=iNumber,
-                                          #oDMCreator=self));
+            Send(self,@NewHold,#dmSpawned=TRUE,
+                  #what=Create(GetClass(i),#number=iNumber,#oDMCreator=self));
          }
       }
 

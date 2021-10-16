@@ -5957,6 +5957,12 @@ messages:
             AND Send(poOwner,@ReqNewHold,#what=oNumber,
                      #new_row=piRow,#new_col=piCol)
          {
+            // Report stackables (non-stackables handled in DM.LeaveHold).
+            if IsClass(self,&DM)
+            {
+               Send(self,@ReportDroppedStackable,#what=oNumber,
+                     #number=Send(oNumber,@GetNumber));
+            }
             Send(poOwner,@NewHold,#what=oNumber,#new_row=piRow,#new_col=piCol,
                  #fine_row=piFine_row,#fine_col=piFine_col);
          }
@@ -6109,6 +6115,13 @@ messages:
          if Send(oNumber,@ReqNewOwner,#what=where)
             AND Send(where,@ReqNewHold,#what=oNumber,#who=self)
          {
+            // Report stackables (non-stackables handled in DM.LeaveHold).
+            if IsClass(self,&DM)
+            {
+               Send(self,@ReportPutStackable,#where=where,#what=oNumber,
+                     #number=Send(oNumber,@GetNumber));
+            }
+
             Send(where,@NewHold,#what=oNumber);
          }
          else
@@ -8485,7 +8498,7 @@ messages:
       oHolder = Send(SYS,@GetSystemHolder1);
       foreach i in plOffer_items
       {
-         Send(oHolder,@NewHold,#what=i);
+         Send(oHolder,@NewHold,#what=i,#bOffer=TRUE);
       }
 
       Send(poOffer_who,@AcceptOffer,#who=self);
@@ -8508,7 +8521,7 @@ messages:
          {
             if Send(self,@ReqNewHold,#what=i)
             {
-               Send(self,@NewHold,#what=i);
+               Send(self,@NewHold,#what=i,#bOffer=TRUE);
             }
             else
             {
@@ -8540,7 +8553,7 @@ messages:
       oHolder = Send(SYS,@GetSystemHolder2);
       foreach i in plOffer_items
       {
-         Send(oHolder,@NewHold,#what=i);
+         Send(oHolder,@NewHold,#what=i,#bOffer=TRUE);
       }
 
       // take his stuff
@@ -8563,7 +8576,7 @@ messages:
          {
             if Send(self,@ReqNewHold,#what=i)
             {
-               Send(self,@NewHold,#what=i);
+               Send(self,@NewHold,#what=i,#bOffer=TRUE);
             }
             else
             {

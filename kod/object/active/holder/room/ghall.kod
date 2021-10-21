@@ -188,6 +188,8 @@ properties:
    ptConquer = $
 
    plGuild_doors = $
+   plInternal_Guild_doors = $
+
    prNewsball = $
 
    piLastDoorOpen = 0
@@ -1018,13 +1020,6 @@ messages:
          propagate;
       }
 
-      if IsClass(what,&Admin) AND stringEqual(string,"shatterlock")
-      {
-         Send(self,@OpenEntranceDoor);
-
-         propagate;
-      }
-
       if type = SAY_YELL OR NOT IsClass(what,&Player)
       {
          propagate;
@@ -1079,6 +1074,25 @@ messages:
    {
       local i;
 
+      // Can block DMs from being able to use any hall entry doors,
+      // from either side.
+      if (IsClass(what,&DM) AND NOT Send(what,@CanUseHallDoors))
+      {
+         propagate;
+      }
+
+      // Inside hall trying to open door.
+      foreach i in plInternal_Guild_doors
+      {
+         if row = First(i) AND col = Nth(i,2)
+         {
+            Send(self,@OpenEntrancedoor,#doorNum=Nth(i,3));
+
+            return TRUE;
+         }
+      }
+
+      // Outside hall trying to open door.
       foreach i in plGuild_doors
       {
          if row = First(i) AND col = Nth(i,2)
@@ -1200,6 +1214,7 @@ messages:
       poOld_guild = $;
       poShield_lever = $;
       plGuild_doors = $;
+      plInternal_Guild_doors = $;
       poDecorator = $;
       poPublicChest = $;
 

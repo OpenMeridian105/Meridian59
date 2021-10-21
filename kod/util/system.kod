@@ -8985,9 +8985,15 @@ messages:
       return $;
    }
 
-   ResetGlobalHonor()
+   ResetGlobalHonor(bAreYouSure = 0)
    {
       local i;
+
+      // For safety.
+      if (bAreYouSure <> 11523)
+      {
+         return system_failure_rsc;
+      }
 
       foreach i in plUsers
       {
@@ -9002,20 +9008,23 @@ messages:
 
    CreateHonorList()
    {
-      local i;
+      local i, iDefault, iHonor;
 
       plHonorList = $;
 
+      iDefault = Send(SETTINGS_OBJECT,@GetDefaultHonor);
+
       foreach i in plUsers
       {
-         // Don't include DMs, event characters, ineligible characters
-         // or empty character slots.
-         if Send(i,@CanParticipateInHonorSystem)
+         iHonor = Send(i,@GetHonorPoints);
+         // Don't include DMs, event characters, ineligible characters or empty
+         // character slots. User must be active and have non-default points.
+         if (Send(i,@CanParticipateInHonorSystem)
+            AND NOT Send(i,@IsUserHonorInactive)
+            AND iHonor <> iDefault)
          {
-            if (NOT Send(i,@IsUserHonorInactive))
-            {
-               plHonorList = Cons([i, Send(i,@GetHonorPoints)], plHonorList);
-            }
+            plHonorList = Send(self,@AddToSortedList,#what=i,#lList=plHonorList,
+                      #number=iHonor,#bIgnoreDuplicate=FALSE,#bReverse=FALSE);
          }
          else
          {
@@ -9026,7 +9035,7 @@ messages:
       }
 
       Debug("Honor list created.");
-      Send(self,@UpdateHonorList);
+      Send(self,@CalculateHonorRanks);
 
       return;
    }

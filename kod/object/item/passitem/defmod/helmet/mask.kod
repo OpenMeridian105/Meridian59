@@ -23,6 +23,8 @@ resources:
    FaceMask_icon_female_rsc = mfskl.bgf
    FaceMask_desc_rsc = "This mask can be used as a disguise."
 
+   FaceMask_halloween_rsc = "  Happy Halloween %i!"
+
 classvars:
 
    vrName = FaceMask_name_rsc
@@ -39,9 +41,48 @@ classvars:
    vrMaleIcon = FaceMask_icon_male_rsc
    vrFemaleIcon = FaceMask_icon_female_rsc
 
+   vbIsHalloweenMask = FALSE
+
 properties:
 
+   // If this is not set to $ or 0, then the mask displays a
+   // 'happy halloween' msg in the description.
+   piHalloweenYear = $
+
 messages:
+
+   Constructed()
+   {
+      local iMonth, iDay;
+
+      if (vbIsHalloweenMask)
+      {
+         // Is it close enough to halloween?
+         iMonth = Send(REALTIME_OBJECT,@GetMonth);
+         iDay = Send(REALTIME_OBJECT, @GetDay);
+         if (iMonth = 10
+            OR (iMonth = 11 AND iDay = 1))
+         {
+            piHalloweenYear = Send(REALTIME_OBJECT,@GetYear);
+         }
+      }
+
+      propagate;
+   }
+
+   DoBaseDesc()
+   "Items can override this to provide a more detailed base description."
+   {
+      if (piHalloweenYear <> $ AND piHalloweenYear > 0)
+      {
+         AddPacket(4,Send(SYS,@AddResourceTemplate,#num=2), 4,vrDesc,
+                   4,FaceMask_halloween_rsc, 4, piHalloweenYear);
+
+         return;
+      }
+
+      propagate;
+   }
 
    DamageItem(who = $,what = $)
    {
@@ -63,6 +104,13 @@ messages:
    {
       // Special item, add minimap dot.
       return MM_RARE_ITEM;
+   }
+
+   SetHalloweenYear(value=$)
+   {
+      piHalloweenYear = value;
+
+      return;
    }
 
 end

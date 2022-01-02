@@ -23,11 +23,8 @@ BOFS = shaldiscqt.bof krandiscqt.bof farendiscqt.bof qordiscqt.bof \
        firegolemqt.bof eastloversqt.bof dangelqt.bof wendigohuntqt.bof \
        bergkingpoliticsqt.bof bergkingspdrqt.bof wolfhuntqt.bof \
        jixainnescort.bof escortassassination.bof jixabanditqt.bof \
-<<<<<<< HEAD
-       spinebeastbossqt.bof monstercharmqt.bof resignqt.bof
-=======
-       spinebeastbossqt.bof monstercharmqt.bof findjasbank.bof findcornoth.bof \
-       tosgraveqt.bof marmummiesqt.bof marstatuesqt.bof castlevicqt.bof
->>>>>>> 2819d4b2d (Quest Exploration)
+       spinebeastbossqt.bof monstercharmqt.bof resignqt.bof \
+       findjasbank.bof findcornoth.bof tosgraveqt.bof marmummiesqt.bof marstatuesqt.bof \
+       castlevicqt.bof
 
 !include $(KODDIR)\kod.mak

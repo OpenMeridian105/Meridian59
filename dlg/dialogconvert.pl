@@ -1,7 +1,7 @@
 use strict;
 use warnings;
 
-my $infile = @ARGV[0];
+my $infile = $ARGV[0];
 my $outfile = 'npcdlg.txt';
 
 open my $info, $infile or die "Could not open $infile: $!";

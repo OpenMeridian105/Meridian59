@@ -1,0 +1,169 @@
+// Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+// All rights reserved.
+//
+// This software is distributed under a license that is described in
+// the LICENSE file that accompanies it.
+//
+// Meridian is a registered trademark.
+
+
+/////////////////////////////////////////////////////////////////////////////////
+MarionCryptMummies is QuestTemplate
+// QNT_ID_MAR_MUMMIES_1, QNT_ID_MAR_MUMMIES_2,
+
+// QuestTemplate is
+// [ quest template index
+//   quest template object
+//   number of players,
+//   type of quest,
+//   eligible player restrictions,
+//   quest nodes,
+//   max number active,
+//   currently active quests,
+//   percent chance of scheduling (on timer firing)
+//   special restrictions ]
+
+constants:
+
+   include blakston.khd
+
+resources:
+
+   //include wolfhuntqt.lkod
+
+   // Quest description.
+   MarionCryptMummies_icon_rsc = mummy.bgf
+   MarionCryptMummies_name_rsc = "Investigate the Marion Crypt"
+
+   MarionCryptMummies_desc_rsc = \
+      "Ran er'Hoth, the elder in the southwest corner of Marion, has beckoned "
+      "you over to him with urgency. Ask him if you can help him."
+   MarionCryptMummies_kill_rsc = \
+      "Ran er'Hoth has requested you investigate the Crypt in the southwest "
+      "corner of Marion on the behalf of the town's citizens.  The people of "
+      "Raza are descended from Marion folk, so you should recognize the "
+      "layout of their burial site.  However, these mummies are much stronger "
+      "than the ones you fought before.  What could possibly be the source of "
+      "the mummies' restlessness?\n\n"
+      "Currently, you have slain %i out of %i.  "
+      "Complete this task and report back to %s."
+   MarionCryptMummies_return_rsc = \
+      "Return to %s and let %s know the task has been completed."
+
+   MarionCryptMummies_completed = \
+      "The moment you stepped into the Marion Crypt, you are certain something "
+      "is very wrong here.  Do the citizens of Marion know what their ancestors "
+      "built down there?"
+
+   // Quest resources.
+   MarionCryptMummies_trigger = "help"
+   MarionCryptMummies_assign = \
+      "Now listen here, adventurer! The crypt right behind my hut has gone "
+      "from a nuisance to an outright danger. Would you please go in there and "
+      "see if you can figure out what is causing the dead to rise? My cousin "
+      "Rodric d'Stane says you are highly recommended for the job of mummy slaying!"
+
+   MarionCryptMummies_success = \
+      "Nice work if I do say so myself.  Here's a little something for that "
+      "dirty job."
+
+classvars:
+
+   vrIcon = MarionCryptMummies_icon_rsc
+   vrName = MarionCryptMummies_name_rsc
+   vrDesc = MarionCryptMummies_desc_rsc
+
+   vrKill = MarionCryptMummies_kill_rsc
+   vrReturn = MarionCryptMummies_return_rsc
+   vrCompleted = MarionCryptMummies_completed
+
+   // The QST_ID constant for this quest.
+   viQuestID = QNT_ID_MAR_MUMMIES
+
+properties:
+
+   piNumPlayers = 1
+   piPlayerRestrict = Q_PLAYER_NOTSUCCEEDED | Q_PLAYER_NOTFAILED_RECENTLY
+   plSpecialRestrict = $
+   piMaxPlayers = 30
+   piSchedulePct = 100
+   piTimeLimit = 48 * 3600 // 48 hours.
+
+messages:
+
+   Constructor()
+   {
+      // Quest node - restrictions
+      plSpecialRestrict = [ [Q_R2_HAS_COMPLETED_QUEST_ID, QST_ID_RAZA_MUMMY] ];
+
+      // Quest node list to send to QuestEngine.
+      plQuestNodes = [QNT_ID_MAR_MUMMIES_1, QNT_ID_MAR_MUMMIES_2];
+
+      propagate;
+   }
+
+   SendQuestNodeTemplates()
+   {
+      local lNPCs, oNPC, oQE, oLib;
+
+      oQE = Send(SYS,@GetQuestEngine);
+      oLib = Send(SYS,@GetLibrary);
+
+      // QNT_ID_MAR_MUMMIES_1 - kickoff
+      if Send(oQE,@AddQuestNodeTemplate,#questnode_type=QN_TYPE_MESSAGE,
+               #cargolist=[MarionCryptMummies_trigger],
+               #quest_node_index=QNT_ID_MAR_MUMMIES_1)
+      {
+         Send(oQE,@SetQuestNodeNPCList,#index=QNT_ID_MAR_MUMMIES_1,
+               #new_NPC_list=Send(oLib,@GetOccupationList,
+                                 #cNPC_class=&MarionElder));
+      }
+      else
+      {
+         Debug("Error building QN: QNT_ID_MAR_MUMMIES_1");
+      }
+
+      // QNT_ID_MAR_MUMMIES_2
+      if Send(oQE,@AddQuestNodeTemplate,#questnode_type=QN_TYPE_MONSTER_MULTIPLE,
+               #NPC_modifier=QN_NPCMOD_SAME,#monsterlist=[ [&SpectralMummy, 50] ],
+               #timelimit=piTimeLimit,#quest_node_index=QNT_ID_MAR_MUMMIES_2,
+               #prizelist=[ [ [ QN_PRIZETYPE_ITEMCLASS, &EntrootBerry, 50 ],
+                              [ QN_PRIZETYPE_ITEMCLASS, &Fairywing, 50 ],
+                              [ QN_PRIZETYPE_ITEMCLASS, &PurpleMushroom, 50 ],
+                              [ QN_PRIZETYPE_ITEMCLASS, &Diamond, 50 ] ] ])
+      {
+               
+         Send(oQE,@SetQuestNodeAssignHint,#index=QNT_ID_MAR_MUMMIES_2,
+               #new_hint=MarionCryptMummies_assign);
+         Send(oQE,@SetQuestNodeSuccessHint,#index=QNT_ID_MAR_MUMMIES_2,
+               #new_hint=MarionCryptMummies_success);
+      }
+      else
+      {
+         Debug("Error building QN: QNT_ID_MAR_MUMMIES_2");
+      }
+
+      return;
+   }
+
+   MainDesc(who=$,index=$,oQuestNode=$)
+   {
+      local oMob, oNPC;
+
+      oMob = Send(oQuestNode,@GetQuestMonster);
+      oNPC = Send(oQuestNode,@GetSourceNPC);
+      if oMob = $
+      {
+         AddPacket(4,vrReturn,4,Send(oNPC,@GetName),4,Send(oNPC,@GetHimHer));
+      }
+      else
+      {
+         AddPacket(4,vrKill,4,Send(oQuestNode,@GetNumberMonstersKilled),
+            4,Send(oQuestNode,@GetMonsterKillTarget),4,Send(oNPC,@GetName));
+      }
+
+      return;
+   }
+
+end
+/////////////////////////////////////////////////////////////////////////////////

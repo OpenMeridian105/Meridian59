@@ -1,0 +1,164 @@
+// Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+// All rights reserved.
+//
+// This software is distributed under a license that is described in
+// the LICENSE file that accompanies it.
+//
+// Meridian is a registered trademark.
+
+
+/////////////////////////////////////////////////////////////////////////////////
+TosGraveQuest is QuestTemplate
+// QNT_ID_TOS_ZOMBIES_1, QNT_ID_TOS_ZOMBIES_2,
+
+// QuestTemplate is
+// [ quest template index
+//   quest template object
+//   number of players,
+//   type of quest,
+//   eligible player restrictions,
+//   quest nodes,
+//   max number active,
+//   currently active quests,
+//   percent chance of scheduling (on timer firing)
+//   special restrictions ]
+
+constants:
+
+   include blakston.khd
+
+resources:
+
+   //include wolfhuntqt.lkod
+
+   // Quest description.
+   TosGraveQuest_icon_rsc = zombie.bgf
+   TosGraveQuest_name_rsc = "Cleanse the Graveyard"
+
+   TosGraveQuest_desc_rsc = \
+      "During the night, the undead rise up in the Tos Graveyard on the west "
+      "side of the city.  Beware the powerful skeletons.  If you can manage to "
+      "defeat the zombies, Paddock will reward you handsomely."
+ 
+   TosGraveQuest_kill_rsc = \
+      "During the night, the undead rise up in the Tos Graveyard on the west "
+      "side of the city.  Beware the powerful skeletons.  If you can manage to "
+      "defeat a zombie, Paddock will reward you handsomely.\n\n"
+      "Currently, you have slain %i out of %i.  "
+      "Complete this task and report back to %s."
+   TosGraveQuest_return_rsc = \
+      "Return to %s and let %s know the task has been completed."
+
+   TosGraveQuest_completed = \
+      "You have slain the zombies at Tos' graveyard."
+
+   // Quest resources.
+   TosGraveQuest_trigger = "zombies"
+   TosGraveQuest_assign = \
+      "Ah, yes, quite the racket at night. Zombies rise in the Tos Graveyard "
+      "to the west during the dark hours.  We could certainly do with some "
+      "sword-born salvation over there.  There might even be a little bit of "
+      "a reward in it for you, since the undead won't be scaring away "
+      "customers anymore."
+
+   TosGraveQuest_success = \
+      "Nice work if I do say so myself.  Here's a little something for that "
+      "dirty job."
+
+classvars:
+
+   vrIcon = TosGraveQuest_icon_rsc
+   vrName = TosGraveQuest_name_rsc
+   vrDesc = TosGraveQuest_desc_rsc
+
+   vrKill = TosGraveQuest_kill_rsc
+   vrReturn = TosGraveQuest_return_rsc
+   vrCompleted = TosGraveQuest_completed
+
+   // The QST_ID constant for this quest.
+   viQuestID = QNT_ID_TOS_ZOMBIES
+
+properties:
+
+   piNumPlayers = 1
+   piPlayerRestrict = Q_PLAYER_NOTSUCCEEDED | Q_PLAYER_NOTFAILED_RECENTLY
+   plSpecialRestrict = $
+   piMaxPlayers = 30
+   piSchedulePct = 100
+   piTimeLimit = 6 * 3600 // 6 hours.
+
+messages:
+
+   Constructor()
+   {
+      // Quest node list to send to QuestEngine.
+      plQuestNodes = [QNT_ID_TOS_ZOMBIES_1, QNT_ID_TOS_ZOMBIES_2];
+
+      propagate;
+   }
+
+   SendQuestNodeTemplates()
+   {
+      local lNPCs, oNPC, oQE, oLib;
+
+      oQE = Send(SYS,@GetQuestEngine);
+      oLib = Send(SYS,@GetLibrary);
+
+      // QNT_ID_TOS_ZOMBIES_1 - kickoff
+      if Send(oQE,@AddQuestNodeTemplate,#questnode_type=QN_TYPE_MESSAGE,
+               #cargolist=[TosGraveQuest_trigger],
+               #quest_node_index=QNT_ID_TOS_ZOMBIES_1)
+      {
+         Send(oQE,@SetQuestNodeNPCList,#index=QNT_ID_TOS_ZOMBIES_1,
+               #new_NPC_list=Send(oLib,@GetOccupationList,
+                                 #cNPC_class=&TosInnKeeper));
+      }
+      else
+      {
+         Debug("Error building QN: QNT_ID_TOS_ZOMBIES_1");
+      }
+
+      // QNT_ID_TOS_ZOMBIES_2
+      if Send(oQE,@AddQuestNodeTemplate,#questnode_type=QN_TYPE_MONSTER_MULTIPLE,
+               #NPC_modifier=QN_NPCMOD_SAME,#monsterlist=[ [&Zombie, 50] ],
+               #timelimit=piTimeLimit,#quest_node_index=QNT_ID_TOS_ZOMBIES_2,
+               #prizelist=[ [ [ QN_PRIZETYPE_ITEMCLASS, &Emerald, 50 ],
+                              [ QN_PRIZETYPE_ITEMCLASS, &EntrootBerry, 50 ],
+                              [ QN_PRIZETYPE_ITEMCLASS, &InkyCap, 30 ],
+                              [ QN_PRIZETYPE_ITEMCLASS, &Elderberry, 50 ] ] ])
+      {
+               
+         Send(oQE,@SetQuestNodeAssignHint,#index=QNT_ID_TOS_ZOMBIES_2,
+               #new_hint=TosGraveQuest_assign);
+         Send(oQE,@SetQuestNodeSuccessHint,#index=QNT_ID_TOS_ZOMBIES_2,
+               #new_hint=TosGraveQuest_success);
+      }
+      else
+      {
+         Debug("Error building QN: QNT_ID_TOS_ZOMBIES_2");
+      }
+
+      return;
+   }
+
+   MainDesc(who=$,index=$,oQuestNode=$)
+   {
+      local oMob, oNPC;
+
+      oMob = Send(oQuestNode,@GetQuestMonster);
+      oNPC = Send(oQuestNode,@GetSourceNPC);
+      if oMob = $
+      {
+         AddPacket(4,vrReturn,4,Send(oNPC,@GetName),4,Send(oNPC,@GetHimHer));
+      }
+      else
+      {
+         AddPacket(4,vrKill,4,Send(oQuestNode,@GetNumberMonstersKilled),
+            4,Send(oQuestNode,@GetMonsterKillTarget),4,Send(oNPC,@GetName));
+      }
+
+      return;
+   }
+
+end
+/////////////////////////////////////////////////////////////////////////////////

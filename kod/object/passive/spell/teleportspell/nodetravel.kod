@@ -1,0 +1,355 @@
+// Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+// All rights reserved.
+//
+// This software is distributed under a license that is described in
+// the LICENSE file that accompanies it.
+//
+// Meridian is a registered trademark.
+
+
+////////////////////////////////////////////////////////////////////////////////
+NodeTravel is TeleportationSpell
+
+constants:
+
+   include blakston.khd
+
+   TRANCE_TIME = 30000
+
+resources:
+
+   //include NodeTravel.lkod
+
+   NodeTravel_name_rsc = "node travel"
+   NodeTravel_icon_rsc = intravel.bgf
+   NodeTravel_desc_rsc = \
+      "Allows a bard to whisk through a mystical node.  Destinations of bonded "
+      "mana nodes will be available, and the caster must call out the name of the "
+      "location they wish to travel."
+   NodeTravel_No_Location_Given = \
+      "With no location specified your node travel attempt fails."
+   NodeTravel_Success = \
+      "Arcanic energies surround you as get rippled by the node."
+   NodeTravel_Location_list = \
+      "The world shimmers and secret paths are revealed, leading "
+      "to %s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s."
+   NodeTravel_loc_list_comma = "; "
+   NodeTravel_loc_list_and = "and "
+   NodeTravel_loc_list_blank = ""
+   NodeTravel_fail = "That is not a valid destination."
+   NodeTravel_depart_to_destination = \
+      "%s vanishes in an instant, leaving behind a fading shimmer of "
+      "warped space."
+
+   NodeTravel_no_node = \
+      "There is no mana node available."
+   NodeTravel_too_far = \
+      "You sense mystical the energies in this room, "
+      "you must get closer to a mana node."
+   NodeTravel_no_location = \
+      "No bonded nodes are available, your attempt at node travel fails."
+
+   NodeTravel_sound = Intrigue.ogg
+
+classvars:
+
+   vrName = NodeTravel_name_rsc
+   vrIcon = NodeTravel_icon_rsc
+   vrDesc = NodeTravel_desc_rsc
+
+   viSpell_num = SID_NODE_TRAVEL
+   viSchool = SS_JALA
+   viSpell_level = 6
+   viMana = 20
+   viSpellExertion = 15
+
+   viChance_To_Increase = 10
+   viMeditate_ratio = 50
+
+   vrSucceed_wav = NodeTravel_sound
+   viFlash = FLASH_GOOD
+
+properties:
+   pbCanCastFromAnywhere = FALSE
+
+messages:
+
+   ResetReagents()
+   {
+      plReagents = $;
+      plReagents = Cons([&Ruby,2],plReagents);
+
+      return;
+   }
+
+   CanPayCosts(who = $,lTargets = $,bItemCast = FALSE)
+   {
+      local oRoom, oNode;
+
+      // Can't cast just after attacking someone
+      if Send(who,@GetLastPlayerAttackTime)
+         + Send(SETTINGS_OBJECT,@TeleportAttackDelaySec)
+         > GetTime()
+      {
+         Send(who,@MsgSendUser,#message_rsc=spell_too_soon_since_attacking);
+
+         return FALSE;
+      }
+
+      // Can only cast if near a mana node
+      oRoom = Send(who, @GetOwner);
+      oNode = Send(oRoom, @FindHolding,#class=&ManaNode);
+
+      if oNode = $
+      {
+         Send(who,@MsgSendUser,#message_rsc=NodeTravel_no_node);
+            return FALSE;
+      }
+
+      if (Send(who,@SquaredDistanceTo,#what=oNode) > 3)
+      {
+         Send(who,@MsgSendUser,#message_rsc=NodeTravel_too_far);
+         return FALSE;
+      }
+
+      if Send(self,@GetLocations,#target=who) = $
+      {
+         Send(who,@MsgSendUser,#message_rsc=NodeTravel_no_location);
+         return FALSE;
+      }
+
+      propagate;
+   }
+
+   SuccessChance(who=$)
+   "Steered spell, will always work."
+   {
+      return TRUE;
+   }
+
+   GetTranceTime(iSpellpower=0,who=$)
+   {
+      // Since this spell uses the trance, don't
+      // scale it down depending on iSpellpower
+      return viCast_time;
+   }
+
+   BeginCastingTrance(who=$,lTargets=$,iSpellpower=$)
+   {
+      local oTrance, oObject, oOwner, i, oTarget, lFinalTargets,
+         lLocations, sLocations;
+
+      // Get rid of the regular casting trance, we
+      // need a special one put on below.
+      Send(who,@BreakTrance,#event=EVENT_STEER);
+
+      oTrance = Send(SYS,@FindSpellByNum,#num=SID_TRANCE);
+
+      // Have to modify spellpower again here because NodeTravel works differently
+      // than most spells.
+      iSpellPower = Send(self,@CheckCastPowerModifiers,#who=who,
+                        #report=FALSE,#iSpellPower=iSpellPower);
+
+      lLocations = Send(self,@GetLocations,#target=who);
+
+      // User will add the protocol packet and callback SendNodeTravelLocations
+      // to send the appropriate resources.
+      Send(who,@MsgSendUserCallback,#what=self,
+            #sCallback=SetString($,@SendNodeTravelLocations),
+            #parm1=lLocations);
+
+      // lTargets is of the form = [location1, location2,...]
+      Send(oTrance,@BeginTrance,#what=self,#who=who,
+            #lTargets=lLocations,#time=TRANCE_TIME);
+
+      oOwner = Send(who,@GetOwner);
+
+      // Give casting message to people nearby.
+      foreach i in Send(oOwner,@GetHolderActive)
+      {
+         oObject = Send(oOwner,@HolderExtractObject,#data=i);
+         if IsClass(oObject,&Player)
+            AND (Send(who,@SquaredDistanceTo,#what=oObject)
+                < FINENESS)
+            AND (who <> oObject)
+         {
+            oTarget = $;
+            if length(lTargets) > 0
+            {
+               oTarget = First(lTargets);
+            }
+         
+            Send(self,@SpellMurmurMessage,#caster=who,#target=oTarget,
+                 #hearer=oObject);
+         }
+      }
+
+      Send(who,@WaveSendUser,#wave_rsc=spell_trance_begin_sound);
+
+      return;
+   }
+
+   TranceBlocksSay()
+   {
+      return TRUE;
+   }
+
+   SomethingSaidDuringTrance(who=$,string=$,lTargets = $)
+   {
+      local sRoomName, bFound, oRoom, i, each_obj, oDeparture, oNode;
+
+      // Check if string is a location.  If it is, and the caster has
+      // sufficient spellpower make it the target.
+
+      bFound = FALSE;
+
+      oDeparture = Send(who,@GetOwner);
+
+      foreach oRoom in lTargets
+      {
+         sRoomName = Send(oRoom,@GetName);
+         if StringContain(string,sRoomName)
+         {
+            bFound = TRUE;
+
+            Post(oRoom,@Teleport,#what=who);
+
+            oNode = Send(oRoom,@FindHolding,#class=&ManaNode);
+            // It is possible for a node to disappear, 
+            // move player to location if it still exists
+            if oNode <> $
+            {
+               Post(oRoom,@SomethingMoved,#what=who,
+                  #new_row=Send(oNode,@GetRow)-1,#new_col=Send(oNode,@GetCol)-1);
+            }
+
+            foreach i in Send(Send(who,@GetOwner),@GetHolderActive)
+            {
+               each_obj = First(i);
+               if IsClass(each_obj,&User)
+                  AND each_obj <> who
+               {
+                  Send(each_obj,@MsgSendUser,
+                        #message_rsc=NodeTravel_depart_to_destination,
+                        #parm1=Send(who,@GetName));
+               }
+            }
+
+            break;
+         }
+      }
+
+      if bFound
+      {
+         // Don't print fizzle message
+         Send(who,@BreakTrance,#event=EVENT_STEER);
+         Send(who,@MsgSendUser,#message_rsc=NodeTravel_success);
+         Send(self,@PlaySpellSound,#room_obj=oDeparture,#what=who);
+         Send(self,@ImproveAbility,#who=who);
+      }
+      else
+      {
+         Send(who,@MsgSendUser,#message_rsc=NodeTravel_fail);
+      }
+
+      return;
+   }
+
+   GetLocations(target=$)
+   {
+      local count, oNode, iNodeList, lLocations, iNumLocations, oRoom;
+
+      iNodeList = Send(target, @GetNodeList);
+      count = 1;
+
+      while iNodeList >= 1
+      {
+         if ((iNodeList/2)*2) <> iNodeList
+         {
+            oNode = Send(SYS,@FindNodeByNum,#num=count);
+            if oNode <> $
+            {
+               oRoom = Send(oNode,@GetOwner);
+
+               // Don't display same node as the one you're using
+               if oRoom <> Send(target, @GetOwner)
+               {
+                  lLocations = Cons(oRoom,lLocations);
+               }
+            }
+         }
+         count = count * 2;
+         iNodeList = iNodeList / 2;
+      }
+
+      return lLocations;
+   }
+
+   SendNodeTravelLocations(parm1=$)
+   {
+      local i, iNumRooms, iNumRsc, iCounter, lLocations;
+
+      if parm1 = $
+      {
+         return FALSE;
+      }
+
+      // Add master resource.
+      AddPacket(4,NodeTravel_Location_list);
+      lLocations = parm1;
+
+      iCounter = 0;
+      iNumRsc = 0;
+
+      iNumRooms = Length(lLocations);
+
+      foreach i in lLocations
+      {
+         ++iCounter;
+
+         if iNumRooms > 1
+         {
+            if iCounter = iNumRooms
+            {
+               iNumRsc += 2;
+               AddPacket(4,NodeTravel_loc_list_and, 4,Send(i,@GetName));
+            }
+            else
+            {
+               iNumRsc += 2;
+               AddPacket(4,Send(i,@GetName), 4,NodeTravel_loc_list_comma);
+            }
+         }
+         else
+         {
+            ++iNumRsc;
+            AddPacket(4,Send(i,@GetName));
+         }
+      }
+
+      // If we didn't add enough location resources, make up for it
+      // with blank ones.
+      while iNumRsc++ < 16
+      {
+         AddPacket(4,NodeTravel_loc_list_blank);
+      }
+
+      return TRUE;
+   }
+
+   DoubleCheckAfterTrance(who=$,lTargets=$)
+   {
+      Send(who,@MsgSendUser,#message_rsc=NodeTravel_No_Location_Given);
+
+      return FALSE;
+   }
+
+   // This spell handles trance differently. Return TRUE here to allow
+   // it to be canceled like other trance spells.
+   GetRawTranceTime()
+   {
+      return TRUE;
+   }
+
+end
+////////////////////////////////////////////////////////////////////////////////

@@ -9355,12 +9355,21 @@ messages:
       }
 
       // This removes Death Rift's protection when the user enters any
-      // non-Underworld room. Does the same for death arena killed flag.
+      // non-Underworld room. Does the same for cheap death and death arena 
+      // killed flag.
       if iNewRoomNum <> RID_UNDERWORLD
       {
          if (piflags & PFLAG_DEATH_RIFTING)
          {
             Send(self,@SetDeathRiftProtection,#value=FALSE);
+            if (NOT Send(poOwner,@CheckRoomFlag,#flag=ROOM_SAFELOGOFF))
+            {
+               piLastSafeRoom = Send(self,@GetHomeRoom);
+            }
+         }
+         else if (piflags & PFLAG2_CHEAP_DEATH)
+         {
+            piFlags2 &= ~PFLAG2_CHEAP_DEATH;
             if (NOT Send(poOwner,@CheckRoomFlag,#flag=ROOM_SAFELOGOFF))
             {
                piLastSafeRoom = Send(self,@GetHomeRoom);

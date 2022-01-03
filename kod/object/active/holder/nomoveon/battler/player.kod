@@ -9904,16 +9904,6 @@ messages:
          // get multiple-killed.
          Send(self,@DeleteAllLethalOverTimeEffects);
 
-         // Currently, the following block is only for
-         // Necromancer Amulets and Hunter Swords.
-         foreach i in plActive
-         {
-            if Send(i,@IsItemType,#type=ITEMTYPE_SPECIAL)
-            {
-               Send(i,@ActivateCheapDeath);
-            }
-         }
-
          return;
       }
 
@@ -9940,20 +9930,6 @@ messages:
       {
          // If we get to here and we are in an arena, check for item drop.
          bNo_drop_death = TRUE;
-      }
-
-      // Currently, the following block is only for Necromancer Amulets
-      // and Hunter Swords. This is placed before the token death check,
-      // so that token deaths _will_ make you lose your artifact.
-      if bNo_drop_death
-      {
-         foreach i in plActive
-         {
-            if Send(i,@IsItemType,#type=ITEMTYPE_SPECIAL)
-            {
-               Send(i,@ActivateCheapDeath);
-            }
-         }
       }
 
       // Record-keeping. Keep this before the token check,
@@ -10019,7 +9995,7 @@ messages:
             foreach i in lItems
             {
                // Let the item know we died, in case it does something special.
-               Send(i,@OwnerKilled);
+               Send(i,@OwnerKilled,#what=what);
 
                if Send(i,@DropOnDeath)
                   AND Send(oRoom,@ReqNewHold,#what=i,#new_row=iRow,#new_col=iCol)
@@ -10284,6 +10260,7 @@ messages:
       }
 
       if (piflags & PFLAG_DEATH_RIFTING)
+         OR (piFlags2 & PFLAG2_CHEAP_DEATH)
       {
          // Leaving the Underworld while protected, no penalties. Protection
          // is removed in NewOwner to allow them to log off without penalties.
@@ -16981,6 +16958,17 @@ messages:
             Send(self,@AddSkill,#num=SKID_TOUCH,#iability=iMax);
          }
       }
+
+      return;
+   }
+
+   ActivateCheapDeath()
+   "Death caused by the death of the lich queen."
+   {
+      piFlags2 = piFlags2 | PFLAG2_CHEAP_DEATH;
+
+      Send(self,@UserGotoDeadRoom);
+      Send(self,@EffectSendUserDuration,#effect=EFFECT_PAIN,#duration=5000);
 
       return;
    }

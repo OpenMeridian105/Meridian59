@@ -18,58 +18,100 @@ constants:
 
    include blakston.khd
 
+   HUNGER_MAX_OVERDUE = 480   // This is in 6 minute periods.
+
+   // Default percent of ao3 and soth. 100 for only ao3s, 0 for only soths
+   NECBAL_DEFAULT = 50
+
 resources:
 
    include necbal.lkod
 
-   necbal_starting_password = "deathmage"
+   necbal_hour_rsc = "hour"
+   necbal_hours_rsc = "hours"
+
+   necbal_lich_name = "Venya'cyr, Queen of Brax"
+   necbal_disbanded_mail = \
+      "Subject: The Order is no more\n"
+      "The Order of the Necromancers has vanished into the night.  "
+      "I sleep once more, my pets."
+
+   necbal_lich_hunger_nonpayment = \
+      "~BYour dark queen has perished from starvation.  "
+      "Your amulet detonates, ripping your body to shreds."
+   necbal_lich_hunger_due_5 = \
+      "~BQueen Venya'cyr tells you, \"~r~BOh, my negligent servants!  "
+      "My hunger is a burning coal within my breast, and you have abandoned me!  "
+      "If I do not feed suffienctly in the next %i %s, "
+      "I will slip back into the darkness, and you shall all follow me!~n~B\""
+   necbal_lich_hunger_due_4 = \
+      "~BQueen Venya'cyr tells you, \"~r~BI hunger very greatly, my minions.  "
+      "You have been grossly negligent in your duties to me.  "
+      "My physical form is dissolving...  If I do not feed suffienctly in the next %i %s, "
+      "I will slip back into the darkness, and you shall all follow me!~n~B\""
+   necbal_lich_hunger_due_3 = \
+      "~BQueen Venya'cyr tells you, \"~r~BI hunger very greatly, my minions.  "
+      "My physical form is dissolving...  If I do not feed suffienctly in the next %i %s, "
+      "I will slip back into the darkness, and you shall all follow me!~n~B\""
+   necbal_lich_hunger_due_2 = \
+      "~BQueen Venya'cyr tells you, \"~r~BI hunger greatly, my minions.  "
+      "My physical form is dissolving...  If I do not feed suffienctly in the next %i %s, "
+      "I will slip back into the darkness, and you shall all follow me!~n~B\""
+   necbal_lich_hunger_due_1 = \
+      "~BQueen Venya'cyr tells you, \"~r~BI hunger, my minions.  "
+      "My physical form is dissolving...  If I do not feed suffienctly in the next %i %s, "
+      "I will slip back into the darkness, and you shall all follow me!~n~B\""
+
+   necbal_scores = \
+      "~B~kThe order has slain a total of %i hunters, "
+      "while the hunters have defeated a total of %i Necromancers."
+   necbal_snd = assassin.ogg
 
 properties:
 
    pbScenarioActivated = FALSE
 
-   ptMaintain = $
+   // When 0, only Swords generate, when 100 only amulets generate.
+   piAmuletPercentOfArtifacts = 50
 
-   // Number of days into the current month.
-   piDays = 0
+   plNecromancers = $
+   plHunters = $
 
-   //
-   // Kill Counters.
-   //
-   // piDays*piPKcountPerDay + piPKcountTally is the total pks so far this month.
-   //
+   plNecromancer_Amulets = $
+   plHunter_Swords = $
 
-   // Current PK tally for this 24 hr period.
-   piPKcountTally = 0
+   // Lists of format [ [RID, row, col, finerow, finecol], [...], ... ]
+   plAmuletLocations = $
+   plSwordLocations = $
 
-   // Average PKs per day so far this month.
-   piPKcountPerDay = 0
+   poLich = $
 
-   // List of last 12 months' piPKcountPerDay, most recent first.
-   plArchivedPKCounts = $
+   // Two kills a day - units of piHunger * 10000.
+   piLichHunger = 167
+   piLichHungerDue = 0
+   piLichHungerCounter = 0
 
-   // Current tally for this 24 hr period.
-   piNKcountTally = 0
+   // Item hunger interval, default 1 minute.
+   piHungerInterval = 6000
+   piHungerFactor = 1000
 
-   // Average per day so far this month.
-   piNKcountPerDay = 0
+   // In units of FineHunger.
+   piNecBaseHungerGain = 2
+   piHuntBaseHungerGain = 2
 
-   // List of last 12 months' piPKcountPerDay, most recent first.
-   plArchivedNKCounts = $
+   // Items below this level in value will be low priority for teleporting
+   // to guildh15 when the lich is killed.
+   piTeleportThresholdValue = 100
 
-   // Current tally for this 24 hr period.
-   piHKcountTally = 0
+   // Determines whether numberitems are judged by total or unit value
+   // (TRUE=total, FALSE=unit)
+   pbTeleportNumberItems = TRUE
 
-   // Average per day so far this month.
-   piHKcountPerDay = 0
+   plNecromancerTreasure = $
+   ptPlaceNecromancerTreasure = $
+   piTreasureContentLimit = 580
 
-   // List of last 12 months' piPKcountPerDay, most recent first.
-   plArchivedHKCounts = $
-
-   //
    // Item timers and counters.
-   //
-
    ptTriggerAmuletGeneration = $
    ptTriggerSwordGeneration = $
    ptGenerateAmulet = $
@@ -78,44 +120,33 @@ properties:
    piCriticalMassOfArtifacts = 120        // (# of amulets) + (# of swords)
    piRechargeTime = 20                    // in days
    piSteadyStateTime = 60                 // in days
-   piNumAmuletsGenerated = 0
-   piNumSwordsGenerated = 0
 
-   // When 0, only Swords generate, when 100 only amulets generate.
-   piAmuletPercentOfArtifacts = 50
+   ptMaintain = $
 
-   // Lists of format [ [RID, row, col, finerow, finecol], [...], ... ]
-   plAmuletLocations = $
-   plSwordLocations = $
+   // Number of days into the current month.
+   piDays = 0
 
-   // Item hunger interval, default one minute.
-   piHungerInterval = 60 * 1000
+   // Kill Counters.
+   // piDays*piKills_Total + piKills is the total pks so far this month.
+   
+   // Average per day so far this month.
+   piKills_Total = 0
+   piNecromancer_Kills_Total = 0
+   piHunter_Kills_Total = 0
 
-   // In units of FineHunger.
-   piNecBaseHungerGain = 2
-   piHuntBaseHungerGain = 2
+   // Current tally for this 24 hr period.
+   piKills = 0
+   piNecromancer_Kills = 0
+   piHunter_Kills = 0
 
-   // multiplier * 1000
-   piPkHungerFactor = 1000
+   // List of last 12 months' piKills_Total, most recent first.
+   plArchived_Kills = $
+   plArchived_Necromancer_Kills = $
+   plArchived_Hunter_Kills = $
 
    // Percentages
    piPkPercentDueToScenario = 0
-   piTargetPkPercentDueToScenario = 80
    plArchivedPkPercents = $
-
-   // Items below this level in value will be low priority for teleporting
-   // to guildh15 when the lich is killed.
-   piTeleportThresholdValue = 100
-
-   // Determines whether numberitems are judged by total or unit value
-   // (TRUE=total, FALSE=unit)
-   pbTeleportNumberItems = FALSE
-
-   plNecromancerTreasure = $
-   ptPlaceNecromancerTreasure = $
-   piGuildh15ContentsLimit = 180
-
-   poNecromancerGuild = $
 
 messages:
 
@@ -128,21 +159,67 @@ messages:
       return;
    }
 
+   Delete()
+   {
+
+      if ptTriggerAmuletGeneration <> $
+      {
+         DeleteTimer(ptTriggerAmuletGeneration);
+         ptTriggerAmuletGeneration = $;
+      }
+
+      if ptTriggerSwordGeneration <> $
+      {
+         DeleteTimer(ptTriggerSwordGeneration);
+         ptTriggerSwordGeneration = $;
+      }
+
+      if ptGenerateAmulet <> $
+      {
+         DeleteTimer(ptGenerateAmulet);
+         ptGenerateAmulet = $;
+      }
+
+      if ptGenerateSword <> $
+      {
+         DeleteTimer(ptGenerateSword);
+         ptGenerateSword = $;
+      }
+
+      if ptMaintain <> $
+      {
+         DeleteTimer(ptMaintain);
+         ptMaintain = $;
+      }
+
+      plNecromancerTreasure = $;
+
+      if ptPlaceNecromancerTreasure <> $
+      {
+         DeleteTimer(ptPlaceNecromancerTreasure);
+         ptPlaceNecromancerTreasure = $;
+      }
+
+      polich = $;
+
+      propagate;
+   }
+
    Recreate()
    {
-      if plArchivedPKCounts = $
+      if plArchived_Kills = $
       { 
-         plArchivedPKCounts = [ 20 ];
+         plArchived_Kills = [ 20 ];
       }
 
-      if plArchivedNKCounts = $
+      if plArchived_Necromancer_Kills = $
       { 
-         plArchivedNKCounts = [ 8 ];
+         plArchived_Necromancer_Kills = [ 8 ];
       }
 
-      if plArchivedHKCounts = $
+      if plArchived_Hunter_Kills = $
       { 
-         plArchivedHKCounts = [ 8 ];
+         plArchived_Hunter_Kills = [ 8 ];
       }
 
       if plArchivedPkPercents = $
@@ -158,18 +235,11 @@ messages:
 
       plNecromancerTreasure = $;
 
-      // Check if we have an active necro guild that isn't being tracked here.
-      // If the hall does have an owner, it will recreate the correct lich.
-      if poNecromancerGuild = $
-      {
-         poNecromancerGuild = Send(Send(SYS,@FindRoomByNum,#num=RID_GUILDH15),
-                                    @GetGuildOwner);
-      }
-
       return;
    }
 
    ActivateScenario()
+   "Admin supported. Enable the necromancer / hunter scenario"
    {
       if pbScenarioActivated
       {
@@ -179,6 +249,7 @@ messages:
       }
 
       pbScenarioActivated = TRUE;
+      Send(self,@SpawnLich);
 
       if ptTriggerAmuletGeneration <> $
       {
@@ -191,9 +262,6 @@ messages:
          DeleteTimer(ptTriggerSwordGeneration);
          ptTriggerSwordGeneration = $;
       }
-
-      //piNumAmuletsGenerated = 0;
-      //piNumSwordsGenerated = 0;
 
       Send(self,@TriggerAmuletGeneration);
       Send(self,@TriggerSwordGeneration);
@@ -204,6 +272,8 @@ messages:
    DeactivateScenario()
    "Admin supported. Disable the necromancer / hunter scenario"
    {
+      local i;
+
       if NOT pbScenarioActivated 
       { 
          Debug("Tried to deactivate Necromancer/Hunter Scenario without it active!");
@@ -212,6 +282,27 @@ messages:
       }
 
       pbScenarioActivated = FALSE;
+
+      foreach i in plNecromancer_Amulets
+      {
+         if i <> $
+         {
+            Send(i,@Delete);
+         }
+      }
+
+      foreach i in plHunter_Swords
+      {
+         if i <> $
+         {
+            Send(i,@Delete);
+         }
+      }
+
+      if poLich <> $
+      {
+         Send(poLich,@Delete);
+      }
 
       if ptTriggerAmuletGeneration <> $
       {
@@ -227,73 +318,413 @@ messages:
 
       return;
    }
-
-   EstablishNecromancerGuild(master=$)
+   
+   Maintain()
    {
-      if master = $
+      ptMaintain = $;
+
+      piKills_Total = (piKills_Total * piDays + piKills);
+      piKills = 0;
+
+      piNecromancer_Kills_Total = (piNecromancer_Kills_Total * piDays + piNecromancer_Kills);
+      piNecromancer_Kills = 0;
+
+      piHunter_Kills_Total = (piHunter_Kills_Total * piDays + piHunter_Kills);
+      piHunter_Kills = 0;
+
+      piDays = piDays + 1;
+      piKills_Total = piKills_Total/piDays;
+      piNecromancer_Kills_Total = piNecromancer_Kills_Total/piDays;
+      piHunter_Kills_Total = piHunter_Kills_Total/piDays;
+
+      if piKills_Total > 0
       {
-         return;
+         piPkPercentDueToScenario = 100 * (piNecromancer_Kills_Total+piHunter_Kills_Total)
+                                       / piKills_Total;
+      }
+      else
+      {
+         piPkPercentDueToScenario = 0;
+      }
+      
+      if piDays = 30
+      {
+         Send(self,@GetScores);
+
+         piDays = 0;
+         plArchived_Kills = Cons(piKills_Total,plArchived_Kills);
+         piKills_Total = 0;
+
+         plArchived_Necromancer_Kills = Cons(piNecromancer_Kills_Total,plArchived_Necromancer_Kills);
+         piNecromancer_Kills_Total = 0;
+         
+         plArchived_Hunter_Kills = Cons(piHunter_Kills_Total,plArchived_Hunter_Kills);
+         piHunter_Kills_Total = 0;
+
+         plArchivedPkPercents = Cons(piPkPercentDueToScenario,plArchivedPkPercents);
+
+         if Length(plArchived_Kills) > 12
+         {
+            plArchived_Kills = DelLastListElem(plArchived_Kills);
+         }
+
+         if Length(plArchived_Necromancer_Kills) > 12
+         {
+            plArchived_Necromancer_Kills = DelLastListElem(plArchived_Necromancer_Kills);
+         }
+
+         if Length(plArchived_Hunter_Kills) > 12
+         {
+            plArchived_Hunter_Kills = DelLastListElem(plArchived_Hunter_Kills);
+         }
+
+         if Length(plArchivedPkPercents) > 12
+         {
+            plArchivedPkPercents = DelLastListElem(plArchivedPkPercents);
+         }
       }
 
-      if Send(master,@GetGuild) <> $
-      {
-         Debug("Tried to establish necroguild with master already guilded.");
-
-         return;
-      }
-
-      if poNecromancerGuild <> $
-      {
-         return;
-      }
-
-      poNecromancerGuild = Create(&NecromancerGuild,#master=master);
-      Send(Send(SYS,@FindRoomByNum,#num=RID_GUILDH15),
-               @ClaimGuildHall,#oGuild=poNecromancerGuild,#rep=master,
-               #password=necbal_starting_password);
-
-      Send(Send(SYS,@FindRoomByNum,#num=RID_LICH_MAZE),@RandomizeLeverEffects);
-      Send(Send(SYS,@FindRoomByNum,#num=RID_G9),@RandomizeLeverEffects);
+      ptMaintain = CreateTimer(self,@Maintain,MS_PER_DAY);
 
       return;
    }
 
-   ClearNecromancerGuild(bDeleted=FALSE)
+   GetNecromancers()
    {
-      if poNecromancerGuild <> $
+      return plNecromancers;
+   }
+
+   AddNecromancer(who=$)
+   {
+      if who = $
+         OR NOT IsClass(who,&User)
       {
-         Send(poNecromancerGuild,@Delete,#timerdelete=TRUE);
-         poNecromancerGuild = $;
+         return FALSE;
       }
 
+      if NOT Send(self,@IsNecromancer,#who=who)
+      {
+         Debug("New Necromancer: ",Send(who,@GetName));
+
+         plNecromancers = Cons(who,plNecromancers);
+      }
+
+      return TRUE;
+   }
+
+   IsNecromancer(who=$)
+   {
+      if who = $
+      {
+         return;
+      }
+
+      return FindListElem(plNecromancers,who);
+   }
+
+   RemoveNecromancer(who=$)
+   {
+      local i, bFound;
+
+      bFound = FALSE;
+
+      if who = $
+      {
+         return FALSE;
+      }
+
+      foreach i in plNecromancers
+      {
+         if i = who
+         {
+            Debug("Removed from the order ",Send(who,@GetName));
+
+            plNecromancers = DelListElem(plNecromancers,i);
+
+            bFound = TRUE;
+         }
+      }
+      
+      return bFound;
+   }
+
+   GetNecroAmulets()
+   {
+      return plNecromancer_Amulets;
+   }
+
+   AddNecroAmulet(what=$)
+   {
+      if what = $
+         OR NOT IsClass(what,&NecromancerAmulet)
+      {
+         return FALSE;
+      }
+
+      if NOT FindListElem(plNecromancer_Amulets,what)
+      {
+         plNecromancer_Amulets = Cons(what,plNecromancer_Amulets);
+      }
+
+      return TRUE;
+   }
+
+   RemoveNecroAmulet(what=$)
+   {
+      local i, bFound;
+
+      bFound = FALSE;
+
+      if what = $
+      {
+         return FALSE;
+      }
+
+      foreach i in plNecromancer_Amulets
+      {
+         if i = what
+         {
+            plNecromancer_Amulets = DelListElem(plNecromancer_Amulets,i);
+
+            bFound = TRUE;
+         }
+      }
+      
+      return bFound;
+   }
+
+   GetHunters()
+   {
+      return plHunters;
+   }
+
+   AddHunter(who=$)
+   {
+      if who = $
+         OR NOT IsClass(who,&User)
+      {
+         return FALSE;
+      }
+
+      if NOT Send(self,@IsHunter,#who=who)
+      {
+         Debug("New Hunter: ",Send(who,@GetName));
+
+         plHunters = Cons(who,plHunters);
+      }
+
+      return TRUE;
+   }
+
+   IsHunter(who=$)
+   {
+      if who = $
+      {
+         return;
+      }
+
+      return FindListElem(plHunters,who);
+   }
+
+   RemoveHunter(who=$)
+   {
+      local i, bFound;
+
+      bFound = FALSE;
+
+      if who = $
+      {
+         return FALSE;
+      }
+
+      foreach i in plHunters
+      {
+         if i = who
+         {
+            Debug("Removed from hunters ",Send(who,@GetName));
+
+            plHunters = DelListElem(plHunters,i);
+
+            bFound = TRUE;
+         }
+      }
+      
+      return bFound;
+   }
+
+   GetHunterSwords()
+   {
+      return plHunter_Swords;
+   }
+
+   AddHunterSword(what=$)
+   {
+      if what = $
+         OR NOT IsClass(what,&HunterSword)
+      {
+         return FALSE;
+      }
+
+      if NOT FindListElem(plHunter_Swords,what)
+      {
+         plHunter_Swords = Cons(what,plHunter_Swords);
+      }
+
+      return TRUE;
+   }
+
+   RemoveHunterSword(what=$)
+   {
+      local i, bFound;
+
+      bFound = FALSE;
+
+      if what = $
+      {
+         return FALSE;
+      }
+
+      foreach i in plHunter_Swords
+      {
+         if i = what
+         {
+            plHunter_Swords = DelListElem(plHunter_Swords,i);
+
+            bFound = TRUE;
+         }
+      }
+      
+      return bFound;
+   }
+
+   RecordWarKill(who=$,victim=$)
+   {
+      // Bail for missing info, if victim isn't a player.
+      if who = $ OR victim = $
+         OR NOT IsClass(victim,&Player)
+      {
+         return FALSE;
+      }
+
+      if Send(victim,@IsUsingA,#class=&NecromancerAmulet)
+      {
+         piHunter_Kills++;
+      }
+      else if (Send(victim,@FindHoldingActive,#class=&HunterSword) <> $)
+      {
+         piNecromancer_Kills++;
+      }
+
+      piKills++;
+
       return;
    }
-
-   SetNecroGuild(oGuild=$)
+   
+   #region Artifact Hunger
+   
+   GetHungerInterval()
    {
-      poNecromancerGuild = oGuild;
-
-      return;
+      return piHungerInterval;
    }
 
-   GetNecroGuild()
+   CalculateAmuletHungerSatisfied(oAmulet=$, killer=$, victim=$)
    {
-      return poNecromancerGuild;
+      local iGain;
+
+      if oAmulet = $
+         OR killer = $
+         OR victim = $
+      {
+         return;
+      }
+
+      iGain = piNecBaseHungerGain;
+      if killer = Send(oAmulet,@GetOwner)
+      {
+         iGain = iGain * 3;
+      }
+
+      if IsClass(victim,&Monster)
+      {
+         iGain = iGain * Send(victim,@GetDifficulty);
+      }
+
+      if IsClass(victim,&User)
+      {
+         iGain = iGain * 4;
+         iGain = (iGain * Send(victim,@GetBaseMaxHealth)) / 20;
+      }
+
+      iGain = (iGain * (Send(victim,@GetKarma)+300)) / 200;
+      iGain = iGain * piHungerFactor / 1000;
+
+      return iGain;
    }
 
+   CalculateSwordHungerSatisfied(oSword=$, killer=$, victim=$)
+   {
+      local iGain;
+
+      if oSword = $
+         OR killer = $
+         OR victim=$
+      {
+         return;
+      }
+
+      iGain = piHuntBaseHungerGain;
+
+      if killer = Send(oSword,@GetOwner)
+      {
+         iGain = iGain*3;
+      }
+
+      if IsClass(victim,&Monster)
+      {
+         iGain = iGain*(Send(victim,@GetDifficulty));
+      }
+      else if IsClass(victim,&User)
+      {
+         if Send(victim,@CheckPlayerFlag,#flag=PFLAG_MURDERER)
+         {
+            iGain = iGain*(4+Send(victim,@GetUnjustifiedKills)/10);
+         }
+         else if Send(victim,@CheckPlayerFlag,#flag=PFLAG_OUTLAW)
+         {
+            iGain = iGain*3;
+         }
+         else
+         {
+            iGain = iGain*2;
+         }
+
+         iGain = (iGain * Send(victim,@GetBaseMaxHealth)) / 20;
+      }
+
+      iGain = (iGain * (-Send(victim,@GetKarma) + 300)) / 200;
+      iGain = iGain * piHungerFactor / 1000;
+
+      return iGain;
+   }
+   #endregion Artifact Hunger
+
+   #region Artifact Generation
    TriggerAmuletGeneration()
    "This doesn't actually do the artifact generation, it just keeps a steady "
    "meter (to prevent random walk) and handles triggering the artifact "
    "generation at somewhat random times."
    {
-      local iPeriod;
+      local iPeriod, iNumAmulets, iNumSwords;
+
+      iNumAmulets = Length(plNecromancer_Amulets);
+      iNumSwords = Length(plHunter_Swords);
 
       // General principle: # of artifacts generated rises from 0 to
       // piSteadyStateNumOfArtifacts in about piRechargeTime days, then
       // rises from piSteadyStateNumOfArtifacts to piCriticalMassOfArtifacts
       // in the next piSteadyStateTime days.
-      if piNumAmuletsGenerated < (piAmuletPercentOfArtifacts
-         * (piNumAmuletsGenerated+piNumSwordsGenerated) / 100)
+      if (iNumAmulets < (piAmuletPercentOfArtifacts
+         * iNumAmulets + iNumSwords) / 100)
       {
          // We're off-balance, better hurry up!
          Debug("Had to bump up Amulet generation to balance numbers.");
@@ -301,7 +732,7 @@ messages:
       }
       else
       {
-         if piNumAmuletsGenerated
+         if iNumAmulets
             < (piSteadyStateNumOfArtifacts * piAmuletPercentOfArtifacts/100)
          {
             iPeriod = ((MS_PER_DAY / (piSteadyStateNumOfArtifacts
@@ -380,14 +811,17 @@ messages:
    "meter (to prevent random walk) and handles triggering the artifact "
    "generation at somewhat random times."
    {
-      local iPeriod;
+      local iPeriod, iNumAmulets, iNumSwords;
+
+      iNumAmulets = Length(plNecromancer_Amulets);
+      iNumSwords = Length(plHunter_Swords);
 
       // General principle: # of artifacts generated rises from 0 to
       // piSteadyStateNumOfArtifacts in about piRechargeTime days, then
       // rises from piSteadyStateNumOfArtifacts to piCriticalMassOfArtifacts
       // in the next piSteadyStateTime days.
-      if piNumSwordsGenerated < ((100-piAmuletPercentOfArtifacts)
-         * (piNumAmuletsGenerated+piNumSwordsGenerated) / 100)
+      if iNumSwords < ((100-piAmuletPercentOfArtifacts)
+         * (iNumAmulets+iNumSwords) / 100)
       {
          // We're off-balance, better hurry up!
          Debug("Had to bump up Sword generation to balance numbers.");
@@ -395,7 +829,7 @@ messages:
       }
       else
       {
-         if piNumSwordsGenerated
+         if iNumSwords
             < (piSteadyStateNumOfArtifacts * (100 - piAmuletPercentOfArtifacts)/100)
          {
             iPeriod = ((MS_PER_DAY / (piSteadyStateNumOfArtifacts
@@ -468,394 +902,6 @@ messages:
       return;
    }
 
-   GetHungerInterval()
-   {
-      return piHungerInterval;
-   }
-
-   IncrementPKCounter()
-   {
-      piPKcountTally = piPKcountTally + 1;
-
-      return;
-   }
-
-   IncrementNKCounter()
-   {
-      piNKcountTally = piNKcountTally + 1;
-
-      return;
-   }
-
-   IncrementHKCounter()
-   {
-      piHKcountTally = piHKcountTally + 1;
-
-      return;
-   }
-
-   Maintain()
-   {
-      ptMaintain = $;
-
-      piPKcountPerDay = (piPKcountPerDay * piDays + piPKcountTally);
-      piPKcountTally = 0;
-      piNKcountPerDay = (piNKcountPerDay * piDays + piNKcountTally);
-      piNKcountTally = 0;
-      piHKcountPerDay = (piHKcountPerDay * piDays + piHKcountTally);
-      piHKcountTally = 0;
-      piDays = piDays + 1;
-      piPKcountPerDay = piPKcountPerDay/piDays;
-      piNKcountPerDay = piNKcountPerDay/piDays;
-      piHKcountPerDay = piHKcountPerDay/piDays;
-
-      if piPKcountPerDay > 0
-      {
-         piPkPercentDueToScenario = 100 * (piNKcountPerDay+piHKcountPerDay)
-                                       / piPKcountPerDay;
-      }
-      else
-      {
-         piPkPercentDueToScenario = 0;
-      }
-
-      Send(self,@RecalculatePkHungerFactor);
-      
-      if piDays = 30
-      {
-         piDays = 0;
-         plArchivedPKCounts = Cons(piPKcountPerDay,plArchivedPKCounts);
-         piPKcountPerDay = 0;
-
-         if Length(plArchivedPKCounts) > 12
-         {
-            plArchivedPKCounts = DelLastListElem(plArchivedPKCounts);
-         }
-
-         plArchivedNKCounts = Cons(piNKcountPerDay,plArchivedNKCounts);
-         piNKcountPerDay = 0;
-
-         if Length(plArchivedNKCounts) > 12
-         {
-            plArchivedNKCounts = DelLastListElem(plArchivedNKCounts);
-         }
-         
-         plArchivedHKCounts = Cons(piHKcountPerDay,plArchivedHKCounts);
-         piHKcountPerDay = 0;
-
-         if Length(plArchivedHKCounts) > 12
-         {
-            plArchivedHKCounts = DelLastListElem(plArchivedHKCounts);
-         }
-
-         plArchivedPkPercents = Cons(piPkPercentDueToScenario,plArchivedPkPercents);
-
-         if Length(plArchivedPkPercents) > 12
-         {
-            plArchivedPkPercents = DelLastListElem(plArchivedPkPercents);
-         }
-      }
-
-      ptMaintain = CreateTimer(self,@Maintain,MS_PER_DAY);
-
-      return;
-   }
-
-   RecalculatePkHungerFactor()
-   "Refigures Necromancer/Hunter hunger factors based on the last 1-2 month "
-   "daily average.  The motivation here is for the scenario to channel, "
-   "rather than encourage PKing."
-   {
-      local AvgPKPerDay;
-
-      // Average current running average with last archived
-      // average - this prevents wild swings.
-      AvgPKPerDay = ((piPKcountPerDay * piDays)
-                           + (First(plArchivedPKCounts) * 30))/(piDays + 30);
-
-      // Consider only the approximate percentage we want
-      // to be due to the scenario.
-      AvgPKPerDay = AvgPKPerDay * piTargetPkPercentDueToScenario/100;
-
-      // Divide by a little more than the steady-state number of scenario
-      // participants (scale up by 1000 for precision - remember this factor).
-      AvgPKPerDay = (AvgPKPerDay * 1000)
-            / ((2*piSteadyStateNumOfArtifacts + piCriticalMassOfArtifacts)/3);
-      if AvgPKPerDay > 0
-      {
-         // This is (one minute)/(AvgPkPerDay/1000).
-         piHungerInterval = 60 * 1000 * 1000 / AvgPKPerDay;
-      }
-
-      return;
-   }
-
-   Delete()
-   {
-      Send(self,@ClearNecromancerGuild);
-
-      if ptTriggerAmuletGeneration <> $
-      {
-         DeleteTimer(ptTriggerAmuletGeneration);
-         ptTriggerAmuletGeneration = $;
-      }
-
-      if ptTriggerSwordGeneration <> $
-      {
-         DeleteTimer(ptTriggerSwordGeneration);
-         ptTriggerSwordGeneration = $;
-      }
-
-      if ptGenerateAmulet <> $
-      {
-         DeleteTimer(ptGenerateAmulet);
-         ptGenerateAmulet = $;
-      }
-
-      if ptGenerateSword <> $
-      {
-         DeleteTimer(ptGenerateSword);
-         ptGenerateSword = $;
-      }
-
-      if ptMaintain <> $
-      {
-         DeleteTimer(ptMaintain);
-         ptMaintain = $;
-      }
-
-      plNecromancerTreasure = $;
-
-      if ptPlaceNecromancerTreasure <> $
-      {
-         DeleteTimer(ptPlaceNecromancerTreasure);
-         ptPlaceNecromancerTreasure = $;
-      }
-
-      propagate;
-   }
-
-   GetNumAmulets()
-   {
-      return piNumAmuletsGenerated;
-   }
-
-   CalculateAmuletHungerSatisfied(NecAm=$, killer=$, victim=$)
-   {
-      local iGain;
-
-      if NecAm = $
-         OR killer = $
-         OR victim = $
-      {
-         return;
-      }
-
-      iGain = piNecBaseHungerGain;
-      if killer = Send(NecAm,@GetOwner)
-      {
-         iGain = iGain * 3;
-      }
-
-      if IsClass(victim,&Monster)
-      {
-         iGain = iGain * Send(victim,@GetDifficulty);
-      }
-
-      if IsClass(victim,&User)
-      {
-         iGain = iGain * 4;
-         iGain = (iGain * Send(victim,@GetBaseMaxHealth)) / 20;
-      }
-
-      iGain = (iGain * (Send(victim,@GetKarma)+300)) / 200;
-      iGain = iGain * piPkHungerFactor / 1000;
-
-      return iGain;
-   }
-
-   CalculateSwordHungerSatisfied(HuntSw=$, killer=$, victim=$)
-   {
-      local iGain;
-
-      if HuntSw = $
-         OR killer = $
-         OR victim=$
-      {
-         return;
-      }
-
-      iGain = piHuntBaseHungerGain;
-
-      if killer = Send(HuntSw,@GetOwner)
-      {
-         iGain = iGain*3;
-      }
-
-      if IsClass(victim,&Monster)
-      {
-         iGain = iGain*(Send(victim,@GetDifficulty));
-      }
-
-      if IsClass(victim,&User)
-      {
-         if Send(victim,@CheckPlayerFlag,#flag=PFLAG_MURDERER)
-         {
-            iGain = iGain*(4+Send(victim,@GetUnjustifiedKills)/10);
-         }
-         else
-         {
-            if Send(victim,@CheckPlayerFlag,#flag=PFLAG_OUTLAW)
-            {
-               iGain = iGain*3;
-            }
-            else
-            {
-               iGain = iGain*2;
-            }
-         }
-         iGain = (iGain * Send(victim,@GetBaseMaxHealth)) / 20;
-      }
-
-      iGain = (iGain * (-Send(victim,@GetKarma) + 300)) / 200;
-      iGain = iGain * piPkHungerFactor / 1000;
-
-      return iGain;
-   }
-
-   IncrementAmuletCount()
-   {
-      piNumAmuletsGenerated = piNumAmuletsGenerated + 1;
-
-      return;
-   }
-
-   DecrementAmuletCount()
-   {
-      piNumAmuletsGenerated = piNumAmuletsGenerated - 1;
-      if piNumAmuletsGenerated < 0
-      {
-         Debug("Miscounted amulets somehow, count less than zero.");
-         piNumAmuletsGenerated = 0;
-      }
-
-      return;
-   }
-
-   IncrementSwordCount()
-   {
-      piNumSwordsGenerated = piNumSwordsGenerated + 1;
-
-      return;
-   }
-
-   DecrementSwordCount()
-   {
-      piNumSwordsGenerated = piNumSwordsGenerated - 1;
-      if piNumSwordsGenerated < 0
-      {
-         Debug("Miscounted swords somehow,  count less than zero.");
-         piNumSwordsGenerated = 0;
-      }
-
-      return;
-   }
-
-   PutObjectInNecromancerTreasure(what=$)
-   {
-      Send(what,@NewOwner,#what=$);
-      plNecromancerTreasure = Cons(what,plNecromancerTreasure);
-
-      return;
-   }
-
-   StartPlacingNecromancerTreasure(delay=5000)
-   {
-      if ptPlaceNecromancerTreasure = $
-         AND plNecromancerTreasure <> $
-      {
-         ptPlaceNecromancerTreasure = CreateTimer(self,@PlaceNecromancerTreasure,delay);
-      }
-
-      return;
-   }
-
-   PlaceNecromancerTreasure()
-   {
-      local oGuildh15,iDropRow,iDropCol,oTreasure;
-
-      ptPlaceNecromancerTreasure=$;
-
-      oGuildh15 = Send(SYS,@FindRoomByNum,#num=RID_GUILDH15);
-      if Send(oGuildh15,@CountHoldingHowMany,#Class=&Object) < piGuildh15ContentsLimit
-      {
-         Send(self,@StartPlacingNecromancerTreasure,#delay=10);
-      }
-      else
-      {
-         Send(self,@StartPlacingNecromancerTreasure,#delay=10000);
-
-         return;
-      }
-
-      iDropRow = Send(oGuildh15,@GetTreasureRow);
-      iDropCol = Send(oGuildh15,@GetTreasureCol);
-
-      oTreasure = $;
-      if plNecromancerTreasure <> $
-      {
-         oTreasure = Last(plNecromancerTreasure);
-         if NOT IsClass(oTreasure,&NecromancerAmulet)
-            AND NOT IsClass(oTreasure,&HunterSword)
-         {
-            if Send(self,@TreasureIsHighPriority,#oTreasure=oTreasure)
-            {
-               Send(oGuildh15,@NewHold,#what=oTreasure,
-                     #new_row=iDropRow,#new_col=iDropCol);
-            }
-            else
-            {
-               // If the second-to-last elem is also low priority,
-               // it's time to switch gears.
-               if Length(plNecromancerTreasure) = 1
-                  OR NOT Send(self,@TreasureIsHighPriority,
-                              #oTreasure=Nth(plNecromancerTreasure,
-                              (Length(plNecromancerTreasure)-1)))
-               {
-                  Send(oGuildh15,@NewHold,#what=oTreasure,
-                        #new_row=iDropRow,#new_col=iDropCol);
-               }
-            }
-         }
-         plNecromancerTreasure = DelListElem(plNecromancerTreasure,oTreasure);
-
-         return;
-      }
-
-      return;
-   }
-
-   TreasureIsHighPriority(oTreasure=$)
-   {
-      if pbTeleportNumberItems
-         OR NOT Send(oTreasure,@IsStackable)
-      {
-         if Send(oTreasure,@GetValue) > piTeleportThresholdValue
-         {
-            return TRUE;
-         }
-      }
-      else
-      {
-         if Send(oTreasure,@GetInitValue) > piTeleportThresholdValue
-         {
-            return TRUE;
-         }
-      }
-
-      return FALSE;
-   }
-
    AmuletIsAtSpawnPoint(oAmulet=$)
    {
       local oOwner,i;
@@ -887,6 +933,366 @@ messages:
       }
 
       return FALSE;
+   }
+   
+   #endregion Artifact Generation
+
+   #region Necromancer Treasure
+   PutObjectInNecromancerTreasure(what=$)
+   {
+      Send(what,@NewOwner,#what=$);
+      plNecromancerTreasure = Cons(what,plNecromancerTreasure);
+
+      return;
+   }
+
+   StartPlacingNecromancerTreasure(delay=1000)
+   {
+      if ptPlaceNecromancerTreasure = $
+         AND plNecromancerTreasure <> $
+      {
+         ptPlaceNecromancerTreasure = CreateTimer(self,@PlaceNecromancerTreasure,delay);
+      }
+
+      return;
+   }
+
+   PlaceNecromancerTreasure()
+   {
+      local oNecChest, oTreasure;
+
+      ptPlaceNecromancerTreasure=$;
+
+      oNecChest = Send(Send(SYS,@FindRoomByNum,#num=RID_GUILDH15),@GetNecromancersChest);
+
+      if Send(oNecChest,@CountHoldingHowMany,#Class=&Object) < piTreasureContentLimit
+      {
+         Send(self,@StartPlacingNecromancerTreasure,#delay=1000);
+      }
+      else
+      {
+         Send(self,@StartPlacingNecromancerTreasure,#delay=5000);
+
+         return;
+      }
+
+      oTreasure = $;
+      if plNecromancerTreasure <> $
+      {
+         oTreasure = Last(plNecromancerTreasure);
+         if NOT IsClass(oTreasure,&NecromancerAmulet)
+            AND NOT IsClass(oTreasure,&HunterSword)
+         {
+            if Send(self,@TreasureIsHighPriority,#oTreasure=oTreasure)
+            {
+               Send(oNecChest,@NewHold,#what=oTreasure);
+            }
+            else
+            {
+               // If the second-to-last elem is also low priority,
+               // it's time to switch gears.
+               if Length(plNecromancerTreasure) = 1
+                  OR NOT Send(self,@TreasureIsHighPriority,
+                              #oTreasure=Nth(plNecromancerTreasure,
+                              (Length(plNecromancerTreasure)-1)))
+               {
+                  Send(oNecChest,@NewHold,#what=oTreasure);
+               }
+            }
+         }
+
+         plNecromancerTreasure = DelListElem(plNecromancerTreasure,oTreasure);
+
+         return;
+      }
+
+      return;
+   }
+
+   TreasureIsHighPriority(oTreasure=$)
+   {
+      if pbTeleportNumberItems
+         OR NOT Send(oTreasure,@IsStackable)
+      {
+         if Send(oTreasure,@GetValue) > piTeleportThresholdValue
+         {
+            return TRUE;
+         }
+      }
+      else
+      {
+         if Send(oTreasure,@GetInitValue) > piTeleportThresholdValue
+         {
+            return TRUE;
+         }
+      }
+
+      return FALSE;
+   }
+   #endregion Necromancer Treasure
+
+   #region Lich Queen
+
+   GetLich()
+   {
+      return poLich;
+   }
+
+   SpawnLich()
+   {
+      local oDeadLich, oLichHall;
+
+      piAmuletPercentOfArtifacts = NECBAL_DEFAULT;
+      oLichHall = Send(SYS,@FindRoomByNum,#num=RID_GUILDH15);
+      Send(Send(oLichHall,@GetNecromancersChest),@LockChest,#bLocked=TRUE);
+
+      if Send(oLichHall,@CountHoldingHowMany,#class=&Lich) = 0
+      {
+         poLich = Create(&Lich);
+
+         Send(oLichHall,@NewHold,#what=poLich,#new_row=13,#new_col=49,
+            #fine_row=16,#fine_col=0,#new_angle=ANGLE_WEST);
+
+         oDeadLich = Send(oLichHall,@FindHoldingActive,#class=&DeadLich);
+         if oDeadLich <> $
+         {
+            Send(oDeadLich,@Delete,#lichswapout=TRUE);
+         }
+
+         return TRUE;
+      }
+
+      return;
+   }
+
+   LichKilled()
+   {
+      local oPlayer, oItem, oLichHall, oTreasure;
+
+      if pbScenarioActivated = FALSE
+      {
+         return;
+      }
+
+      oLichHall = Send(SYS,@FindRoomByNum,#num=RID_GUILDH15);
+      poLich = Send(oLichHall,@FindHoldingActive,#class=&DeadLich);
+      Send(Send(oLichHall,@GetNecromancersChest),@LockChest,#bLocked=FALSE);
+
+      // Amulets no longer spawn without the queen
+      piAmuletPercentOfArtifacts = 0;
+
+      Send(Send(SYS,@FindRoomByNum,#num=RID_LICH_MAZE),@RandomizeLeverEffects);
+      Send(Send(SYS,@FindRoomByNum,#num=RID_G9),@RandomizeLeverEffects);
+
+      foreach oPlayer in plHunters
+      {
+         oItem = Send(oPlayer,@FindHoldingActive,#class=&HunterSword);
+         Send(oItem,@LichKilled);
+      }
+
+      foreach oPlayer in plNecromancers
+      {
+         oItem = Send(oPlayer,@FindHoldingActive,#class=&NecromancerAmulet);
+
+         if oItem <> $
+         {
+            Send(oItem,@LichKilled);
+         }
+
+         // find treasure from the necromancers
+         foreach oTreasure in Send(oPlayer,@GetHolderPassive)
+         {
+            if oTreasure <> self
+               AND Send(oTreasure,@DropOnDeath)
+               AND Send(oTreasure,@IsStackable)
+            {
+               Send(self,@PutObjectInNecromancerTreasure,#what=oTreasure);
+            }
+         }
+
+         // Necromancer has been defeated, activate cheap death
+         Send(oPlayer,@ActivateCheapDeath);
+         Send(self,@RemoveNecromancer,#who=oPlayer);
+
+         if NOT Send(oPlayer,@IsLoggedOn)
+         {
+            Send(oPlayer,@ReceiveNestedMail,#from=necbal_lich_name,
+                  #dest_list=[oPlayer],#nest_list=[4,necbal_disbanded_mail]);
+         }
+      }
+
+      Send(self,@PlaceNecromancerTreasure);
+
+      return;
+   }
+
+   PayLichHunger(amount = $)
+   {
+      piLichHungerDue = piLichHungerDue - amount;
+      if piLichHungerDue < 1
+      {
+         piLichHungerCounter = 0;
+      }
+
+      return;
+   }
+
+   GetLichHunger()
+   {
+      local iHunger, i;
+
+      iHunger = piLichHunger;
+      
+      foreach i in plNecromancers
+      {
+         iHunger = iHunger + (piLichHunger / 2);
+      }
+
+      iHunger = Bound(iHunger,2,$);
+
+      return (piLichHungerDue * 5 / (iHunger * HUNGER_MAX_OVERDUE));
+   }
+
+   LichHunger()
+   {
+      local iHunger, i, hourhours, oLich;
+
+      if piLichHungerDue < 1
+      {
+         piLichHungerCounter = 0;
+      }
+
+      if piLichHungerCounter = 1
+      {
+         foreach i in plNecromancers
+         {
+            if Send(i,@IsLoggedOn)
+            {
+               Send(i,@MsgSendUser,#message_rsc=necbal_lich_hunger_nonpayment);
+            }
+         }
+
+         // Queen has starved, she is dead
+         if poLich <> $
+         {
+            Send(poLich,@Killed,#bStarved=TRUE);
+         }
+
+         return;
+      }
+
+      iHunger = piLichHunger;
+      foreach i in plNecromancers
+      {
+         iHunger = iHunger + (piLichHunger / 2);
+      }
+
+      iHunger = Bound(iHunger,2,$);
+
+      piLichHungerDue = piLichHungerDue+ iHunger;
+      if piLichHungerCounter = 0
+      {
+         if piLichHungerDue > (iHunger*HUNGER_MAX_OVERDUE)
+         {
+            piLichHungerCounter = HUNGER_MAX_OVERDUE;
+         }
+      }
+      else
+      {
+         piLichHungerCounter = piLichHungerCounter - 1;
+      }
+
+      if piLichHungerCounter > 0
+         AND ((piLichHungerCounter % 40) = 0
+            OR (piLichHungerCounter < 40
+               AND piLichHungerCounter % 10 = 0))
+      {
+         hourhours = necbal_hours_rsc;
+         if piLichHungerCounter = 10
+         {
+            hourhours = necbal_hour_rsc;
+         }
+
+         if piLichHungerDue > (iHunger * HUNGER_MAX_OVERDUE)
+         {
+            foreach i in plNecromancers
+            {
+               if Send(i,@IsLoggedOn)
+               {
+                  Send(i,@MsgSendUser,#message_rsc=necbal_lich_hunger_due_5,
+                     #parm1=piLichHungerCounter/10,#parm2=hourhours);
+               }
+            }
+
+            return;
+         }
+
+         if piLichHungerDue > (iHunger * HUNGER_MAX_OVERDUE) * 4 / 5
+         {
+            foreach i in plNecromancers
+            {
+               if Send(i,@IsLoggedOn)
+               {
+                  Send(i,@MsgSendUser,#message_rsc=necbal_lich_hunger_due_4,
+                     #parm1=piLichHungerCounter/10,#parm2=hourhours);
+               }
+            }
+
+            return;
+         }
+
+         if piLichHungerDue > (iHunger * HUNGER_MAX_OVERDUE) * 3 / 5
+         {
+            foreach i in plNecromancers
+            {
+               if Send(i,@IsLoggedOn)
+               {
+                  Send(i,@MsgSendUser,#message_rsc=necbal_lich_hunger_due_3,
+                     #parm1=piLichHungerCounter/10,#parm2=hourhours);
+               }
+            }
+
+            return;
+         }
+
+         if piLichHungerDue > (iHunger * HUNGER_MAX_OVERDUE) * 2 / 5
+         {
+            foreach i in plNecromancers
+            {
+               if Send(i,@IsLoggedOn)
+               {
+                  Send(i,@MsgSendUser,#message_rsc=necbal_lich_hunger_due_2,
+                     #parm1=piLichHungerCounter/10,#parm2=hourhours);
+               }
+            }
+
+            return;
+         }
+
+         foreach i in plNecromancers
+         {
+            if Send(i,@IsLoggedOn)
+            {
+               Send(i,@MsgSendUser,#message_rsc=necbal_lich_hunger_due_1,
+                  #parm1=piLichHungerCounter/10,#parm2=hourhours);
+            }
+         }
+
+         return;
+      }
+
+     return;
+   }
+
+   #endregion Lich Queen
+
+   GetScores()
+   {
+      Send(SYS,@SystemBroadcast,#type=SAY_MESSAGE,#string=necbal_scores,
+         #parm1=piNecromancer_Kills_Total,#parm2=piHunter_Kills_Total,
+         #rSound=necbal_snd);
+
+      return;
    }
 
 end

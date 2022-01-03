@@ -191,34 +191,7 @@ messages:
 
    SetForSale()
    {
-      plFor_sale = [$,$,
-         [],
-        //[ SID_EVIL_TWIN, SID_POISON_FOG, SID_BLOOD_INHERITANCE ],
-       $ ];
-
-      return;
-   }
-
-   EstablishNecromancerGuild(master=$)
-   {
-      if master = $
-      {
-         return;
-      }
-
-      if Send(master,@GetGuild) <> $
-      {
-         Debug("Tried to establish necroguild with master already guilded.");
-
-         return;
-      }
-
-      Send(poOwner,@NewHold,#what=poLich,#new_row=piRow,#new_col=piCol,
-            #fine_row=piFine_Row,#fine_col=piFine_Col,#new_angle=ANGLE_WEST);
-      Send(Send(SYS,@GetNecromancerBalance),@EstablishNecromancerGuild,
-            #master=master);
-
-      Send(self,@Delete,#lichswapout=TRUE);
+      plFor_sale = [ $,$,$,$ ];
 
       return;
    }
@@ -235,16 +208,13 @@ messages:
          // cleaned up by garbage collection. If the new Lich dies, the quest
          // NPC is set back to the new dead Lich.
          iQNTindex = First(Nth(Send(oQE,@GetQuestTemplate,
-                           #index=QST_ID_ESTABLISH_NECROGUILD),QT_QUEST_NODES));
+                           #index=QST_ID_SPAWN_LICH),QT_QUEST_NODES));
          Send(oQE,@SetQuestNodeNPCList,#index=iQNTindex,#new_NPC_list=[poLich]);
       }
-      else
+      else if poLich <> $
       {
-         if poLich <> $
-         {
-            Send(poLich,@Delete);
-            poLich = $;
-         }
+         Send(poLich,@Delete);
+         poLich = $;
       }
 
       if ptNoSteal <> $
@@ -252,6 +222,7 @@ messages:
          DeleteTimer(ptNoSteal);
          ptNoSteal = $;
       }
+
       if ptGoIllusioned <> $
       {
          DeleteTimer(ptGoIllusioned);
@@ -310,16 +281,16 @@ messages:
 
    GoBackToGuildhall()
    {
-      local oGuildh15;
+      local oLichHall;
 
       if poOwner = $
       {
          return;
       }
 
-      oGuildh15 = Send(SYS,@FindRoomByNum,#num=RID_GUILDH15);
+      oLichHall = Send(SYS,@FindRoomByNum,#num=RID_GUILDH15);
 
-      if poOwner = oGuildh15
+      if poOwner = oLichHall
       {
          Send(SYS,@UtilGoNearSquare,#what=self,#where=poOwner,
               #new_row=13,#new_col=49,#fine_row=16,#fine_col=00,
@@ -328,16 +299,16 @@ messages:
          return;
       }
 
-      Send(oGuildh15,@NewHold,#what=self,#new_row=13,#new_col=49,
+      Send(oLichHall,@NewHold,#what=self,#new_row=13,#new_col=49,
             #fine_row=16,#fine_col=00,#new_angle=ANGLE_WEST);
 
-      if Send(oGuildh15,@CountHoldingHowMany,#class=&DeadLich) > 1
+      if Send(oLichHall,@CountHoldingHowMany,#class=&DeadLich) > 1
       {
          Debug("More than one dead lich in the guild hall!!");
       }
 
-      if Send(oGuildh15,@CountHoldingHowMany,#class=&DeadLich) > 0
-         AND Send(oGuildh15,@CountHoldingHowMany,#class=&Lich) > 0
+      if Send(oLichHall,@CountHoldingHowMany,#class=&DeadLich) > 0
+         AND Send(oLichHall,@CountHoldingHowMany,#class=&Lich) > 0
       {
          Debug("Both a lich and a dead lich in the guild hall!!");
       }

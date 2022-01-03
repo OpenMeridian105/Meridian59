@@ -71,15 +71,15 @@ resources:
       "that have snaked their way inside your body.  This is not likely to "
       "be a productive exercise."
 
-   HunterSword_hunger_1 = "Your sword thirsts for the hunt."
-   HunterSword_hunger_2 = "Your sword is growing impatient for a hunt."
+   HunterSword_hunger_1 = "~BYour sword thirsts for the hunt."
+   HunterSword_hunger_2 = "~BYour sword is growing impatient for a hunt."
    HunterSword_hunger_3 = \
-      "Your sword hungers for impure blood.  It is time to hunt."
+      "~BYour sword hungers for impure blood.  It is time to hunt."
    HunterSword_hunger_4 = \
-      "Your sword hungers for impure blood.  Its roots are beginning to "
+      "~BYour sword hungers for impure blood.  Its roots are beginning to "
       "draw sustenance from your body to compensate."
    HunterSword_hunger_5 = \
-      "Your sword hungers for impure blood.  Its roots twitch painfully "
+      "~BYour sword hungers for impure blood.  Its roots twitch painfully "
       "inside your chest as they suck at your life-essence."
 
    HunterSword_hunger_assuaged = \
@@ -128,79 +128,57 @@ classvars:
 
 properties:
 
-   plStatmods = $
-
-   pbIn_use = FALSE     // No longer used.
-   pbWarned = FALSE
    piHunger = 0
    piFineHunger = 0
    ptHungerTimer = $
    ptHoldingDamage = $
    piHoldingDamageInterval = 10 * 1000     // Ten seconds.
-   piHpWorthyThreshold = 60
+   piHpWorthyThreshold = 90
    piKarmaWorthyThreshold = -30
 
    piAttack_type = ATK_TYPE_SLASH
    piSpell_type = SPL_TYPE_HUNTERSWORD
 
-   pbCounted = FALSE
-   pbCheapDeath = FALSE
+   poWarnedPlayer = $
+
+   // piArtifactPower goes from 0 to 100
+   // 100 is the max, but it can go below 0.
+   // At piHunger = 0 and Karma = 65, piArtifactPower = 50
+   piArtifactPower = 0
 
 messages:
 
    Constructor()
    {
-      pbCounted = TRUE;
-      Send(Send(SYS,@GetNecromancerBalance),@IncrementSwordCount);
+      Send(Send(SYS,@GetNecromancerBalance),@AddHunterSword,#what=self);
       Send(self,@AdjustColor);
 
       propagate;
    }
 
-   NewOwner(what = $)
+   Delete()
    {
-      pbWarned = FALSE;
+      local oNecBal;
 
-      if ptHoldingDamage <> $
+      oNecBal = Send(SYS,@GetNecromancerBalance);
+      Send(oNecBal,@RemoveHunterSword,#what=self);
+
+      if poOwner <> $
+         AND IsClass(poOwner,&Player)
       {
-         DeleteTimer(ptHoldingDamage);
-         ptHoldingDamage = $;
+         Send(oNecBal,@RemoveHunter,#who=poOwner);
       }
+
       if ptHungerTimer <> $
       {
          DeleteTimer(ptHungerTimer);
          ptHungerTimer = $;
       }
 
-      // Remember, 'what' is our future owner, we're not there yet.
-      if what <> $
-         AND IsClass(what,&User)
+      if ptHoldingDamage <> $
       {
-         pbIn_use = TRUE;
-         plStatmods = [ 0, 0, 0, 0, 0, 0 ];
-         Send(what,@MsgSendUser,#message_rsc=HunterSword_used_rsc);
-
-         // Post these so that they happen after 'what' actually becomes our owner.
-         Post(self,@AdjustStats);
-         Post(self,@AdjustColor);
-
-         ptHungerTimer = CreateTimer(self,@HungerTrigger,Send(Send(SYS,@GetNecromancerBalance),
-                              @GetHungerInterval));
-      }
-      // Remember, poOwner is still our old owner until we
-      // propagate all the way to object.
-      if poOwner <> $ // AND pbIn_Use
-         AND IsClass(poOwner,&User)
-      {
-         if ptHungerTimer <> $
-         {
-            DeleteTimer(ptHungerTimer);
-            ptHungerTimer = $;
-         }
-         pbIn_use = FALSE;
-
-         // Restore to original values - 1.
-         Send(self,@RestoreStats,#who=poOwner);
+         DeleteTimer(ptHoldingDamage);
+         ptHoldingDamage = $;
       }
 
       propagate;
@@ -210,64 +188,29 @@ messages:
    {
       local iDamage;
 
-      if IsClass(what,&StorageBox)
-         OR IsClass(what,&SafetyDepositBox)
-      {
-         return FALSE;
-      }
-
       if what <> $
          AND IsClass(what,&User)
       {
-         if Send(what,@FindHoldingActive,#class=&HunterSword) <> $
-         {
-            return FALSE;
-         }
-         if Send(what,@IsUsingA,#class=&NecromancerAmulet)
-         {
-            return FALSE;
-         }
          if NOT Send(what,@CanAdvance)
          {
             Send(what,@DontInterfere);
 
             return FALSE;
          }
-      }
-      // This is to prevent us from being dropped in a cheap death.
-      if poOwner <> $
-         AND IsClass(poOwner,&User)
-      {
-         if Send(poOwner,@isDead)
+
+         if Send(what,@FindHoldingActive,#class=&HunterSword) <> $
+            OR Send(what,@IsUsingA,#class=&NecromancerAmulet)
          {
-            if pbCheapDeath
-            {
-               return FALSE;
-            }
-         }
-         else
-         {
-            Send(self,@TortureOwner);
+            // already has
+
             return FALSE;
          }
-      }
 
-      if what = $
-         OR NOT IsClass(what,&User)
-      {
-         propagate;
-      }
-
-      // Don't let them pick it up unless they're worthy!
-      if (NOT ((Send(what,@GetKarma) > piKarmaWorthyThreshold)
-            AND (Send(what,@GetBaseMaxHealth) > piHpWorthyThreshold)))
-         OR Send(what,@CheckPlayerFlag,#flag=PFLAG_OUTLAW)
-         OR Send(what,@CheckPlayerFlag,#flag=PFLAG_MURDERER)
-      {
-         Send(what,@MsgSendUser,#message_rsc=HunterSword_holding_damage);
-
-         if Send(what,@CanPlayerPvP)
+         // Don't let them pick it up unless they're worthy!
+         if NOT Send(self,@CheckPlayerWorthy,#who=what)
          {
+            Send(what,@MsgSendUser,#message_rsc=HunterSword_holding_damage);
+
             iDamage = Random(1,2);
             if Send(what,@GetKarma) < 0
             {
@@ -276,67 +219,234 @@ messages:
 
             if Send(what,@AssessDamage,#what=self,#damage=iDamage,#report=FALSE) = $
             {
+
                // We killed someone off... heh heh heh.
                Send(Send(what,@GetOwner),@SomethingKilled,#what=self,#victim=what);
                Send(what,@Killed,#what=self);
-               Post(Send(SYS,@GetNecromancerBalance),@PlaceSword,#what=self);
             }
+
+            return FALSE;
          }
 
+         if poWarnedPlayer <> what
+         {
+            Send(what,@MsgSendUser,#message_rsc=HunterSword_warning);
+            poWarnedPlayer = what;
+
+            return FALSE;
+         }
+      }
+      else if IsClass(what,&StorageBox)
+         OR IsClass(what,&SafetyDepositBox)
+      {
          return FALSE;
       }
 
-      if pbWarned = FALSE
-      {
-         Send(what,@MsgSendUser,#message_rsc=HunterSword_warning);
-         pbWarned = TRUE;
 
-         return FALSE;
+      propagate;
+   }
+
+   CheckPlayerWorthy(who=$)
+   {
+      if Send(who,@CanPlayerPvP)
+         AND Send(who,@GetBaseMaxHealth) > piHpWorthyThreshold
+         AND Send(who,@GetKarma) > piKarmaWorthyThreshold
+      {
+         return TRUE;
+      }
+
+      return FALSE;
+   }
+
+   NewOwner(what = $)
+   {
+      local oNecBal;
+
+      piHunger = 0;
+      piFineHunger = 0;
+      poWarnedPlayer = $;
+      oNecBal = Send(SYS,@GetNecromancerBalance);
+
+      if ptHoldingDamage <> $
+      {
+         DeleteTimer(ptHoldingDamage);
+         ptHoldingDamage = $;
+      }
+
+      if what <> $
+         AND IsClass(what,&User)
+      {
+         Post(self,@HoldingDamageTrigger);
+
+         if Send(self,@CheckPlayerWorthy,#who=what)
+         {
+            Send(oNecBal,@AddHunter,#who=what);
+            Send(self,@AdjustColor);
+
+            ptHungerTimer = CreateTimer(self,@HungerTrigger,Send(oNecBal,@GetHungerInterval));
+         }
       }
 
       propagate;
+   }
+
+   HoldingDamageTrigger()
+   {
+      ptHoldingDamage = $;
+      if NOT IsClass(poOwner,&User)
+      {
+         return;
+      }
+
+      if NOT Send(self,@CheckPlayerWorthy,#who=poOwner)
+      {
+         Send(poOwner,@MsgSendUser,#message_rsc=huntersword_holding_damage_using);
+
+         if Send(poOwner,@AssessDamage,#what=self,
+                  #damage=(Random(1,3)),#report=FALSE) = $
+         {
+            Send(poOwner,@MsgSendUser,#message_rsc=HunterSword_lose_sword);
+
+            // We killed them off... heh heh heh.
+            Send(Send(poOwner,@GetOwner),@SomethingKilled,
+                  #what=self,#victim=poOwner);
+            Send(poOwner,@Killed,#what=self);
+         }
+         else
+         {
+            ptHoldingDamage = CreateTimer(self,@HoldingDamageTrigger,piHoldingDamageInterval);
+
+            return;
+         }
+      }
+
+      return;
    }
 
    SomethingChanged(what=$)
    {
-      if IsClass(what,&User)
-         AND what = poOwner
+      if what = poOwner
+         AND IsClass(what,&Player)
+         AND NOT Send(self,@CheckPlayerWorthy,#who=what)
       {
-         if Send(what,@CheckPlayerFlag,#flag=PFLAG_OUTLAW)
-            OR Send(what,@CheckPlayerFlag,#flag=PFLAG_MURDERER)
+         if ptHungerTimer <> $
          {
-            if ptHungerTimer <> $
-            {
-               DeleteTimer(ptHungerTimer);
-               ptHungerTimer=$;
-            }
-            if ptHoldingDamage <> $
-            {
-               DeleteTimer(ptHoldingDamage);
-               ptHoldingDamage=$;
-            }
-            ptHoldingDamage = CreateTimer(self,@HoldingDamageTrigger,10);
+            DeleteTimer(ptHungerTimer);
+            ptHungerTimer=$;
          }
-         else
+
+         if ptHoldingDamage <> $
          {
-            if ptHungerTimer=$
-            {
-               Post(self,@HungerTrigger);
-            }
+            DeleteTimer(ptHoldingDamage);
+            ptHoldingDamage=$;
          }
+
+         ptHoldingDamage = CreateTimer(self,@HoldingDamageTrigger,10);
       }
 
       propagate;
    }
 
-   AdjustStats()
+   HungerTrigger()
    {
-      local iKarma, iKarmaFactor, iHungerFactor, iModifier, iStatMod;
+      local iTime;
+
+      ptHungerTimer = $;
+      if poOwner = $
+         OR NOT IsClass(poOwner,&User)
+      {
+         return;
+      }
+      
+      // Don't accrue hunger or associated penalties if we're already
+      // being slammed with holding penalties.
+      if NOT Send(poOwner,@IsLoggedOn)
+         OR ptHoldingDamage <> $
+      {
+         return;
+      }
+
+      // Check that owner still satisfies amulet restrictions.
+      if NOT Send(self,@CheckPlayerWorthy,#who=poOwner)
+         AND ptHoldingDamage = $
+      {
+         Send(self,@HoldingDamageTrigger);
+      }
+
+      piFineHunger++;
+      if piFineHunger = 60
+      {
+         piFineHunger = 0;
+         piHunger++;
+      }
+
+      Send(self,@AdjustPower);
+      Send(self,@AdjustColor);
+
+      if piHunger > HUNGER_5
+      {
+         if (piFineHunger % 5) = 0
+         {
+            Send(poOwner,@MsgSendUser,#message_rsc=HunterSword_hunger_5);
+         }
+
+         // Start doing serious damage, losing vigor.
+         Send(poOwner,@LoseVigor,#precision=TRUE,#amount = 400); // 4 vigor points
+
+         if Send(poOwner,@AssessDamage,#what=self,#damage=Random(5,10),
+                  #report=FALSE) = $
+         {
+            // We killed someone off... heh heh heh.
+            Send(Send(poOwner,@GetOwner),@SomethingKilled,#what=self,#victim=poOwner);
+            Send(poOwner,@Killed,#what=self);
+         }
+
+         return;
+      }
+      else if piHunger > HUNGER_4
+      {
+         if (piFineHunger % 10) = 0
+         {
+            Send(poOwner,@MsgSendUser,#message_rsc=HunterSword_hunger_4);
+         }
+
+         // Start losing vigor (2 each time).
+         Send(poOwner,@LoseVigor,#precision=TRUE,#amount=200);
+      }
+      else if piHunger > HUNGER_3
+         AND (piFineHunger % 30) = 0
+      {
+         Send(poOwner,@MsgSendUser,#message_rsc=HunterSword_hunger_3);
+      }
+      else if piHunger > HUNGER_2
+         AND (piFineHunger % 30) = 0
+      {
+         Send(poOwner,@MsgSendUser,#message_rsc=HunterSword_hunger_2);
+      }
+      else if piHunger > HUNGER_1
+         AND piFineHunger = 0
+      {
+         Send(poOwner,@MsgSendUser,#message_rsc=HunterSword_hunger_1);
+      }
+
+      iTime = Send(Send(SYS,@GetNecromancerBalance),@GetHungerInterval);
+      ptHungerTimer = CreateTimer(self,@HungerTrigger,iTime);
+
+      return;
+   }
+
+   AdjustPower()
+   {
+      local iKarma, iKarmaFactor, iHungerFactor;
+
+      if NOT IsClass(poOwner,&Player)
+      {
+         return;
+      }
 
       // Karma mod is bilinear -  rises fast from  0 at -30 to  75 at +30
       //                          rises slow from 75 at +30 to 100 at 100
       iKarma = Send(poOwner,@GetKarma);
-
       if iKarma < (-piKarmaWorthyThreshold)
       {
          iKarmaFactor =  (75 * (iKarma - piKarmaWorthyThreshold))
@@ -350,100 +460,14 @@ messages:
 
       iHungerFactor = ( 100 * (piHunger - HUNGER_5 ))/(-2 * HUNGER_5);
 
-      // iModifier goes from 0 to 100.
-      // 100 is the max, but it can go below 0.
-      // At piHunger = 0 and Karma = 65, iModifier = 50.
-      iModifier = (2 * iHungerFactor + iKarmaFactor) / 3;
-
-      if plStatmods = $
-      {
-         plStatmods = [0,0,0,0,0,0];
-      }
-
-      iStatMod = (105 * iModifier / 1000);
-      if (iStatMod - Nth(plStatmods,1)) <> 0
-      {
-         iStatMod = Send(poOwner,@AddMight,#points=(iStatMod - Nth(plStatmods,1)))
-                                                               + Nth(plStatmods,1);
-         SetNth(plStatmods,1,iStatMod);
-      }
-
-      iStatMod = (105 * iModifier / 1000);
-      if (iStatMod - Nth(plStatmods,4)) <> 0
-      {
-         iStatMod = Send(poOwner,@AddAim,#points=(iStatMod - Nth(plStatmods,4)))
-                                                            + Nth(plStatmods,4);
-         SetNth(plStatmods,4,iStatMod);
-      }
-
-      iStatMod = (-35 * iModifier / 1000) - 2;
-      if (iStatMod - Nth(plStatmods,2)) <> 0
-      {
-         iStatMod = Send(poOwner,@AddIntellect,#points=(iStatMod - Nth(plStatmods,2)))
-                                                                  + Nth(plStatmods,2);
-         SetNth(plStatmods,2,iStatMod);
-      }
-
-      iStatMod = (-35 * iModifier / 1000) - 2;
-      if (iStatMod - Nth(plStatmods,6)) <> 0
-      {
-         iStatMod = Send(poOwner,@AddMysticism,#points=(iStatMod - Nth(plStatmods,6)))
-                                                                  + Nth(plStatmods,6);
-         SetNth(plStatmods,6,iStatMod);
-      }
-
-      iStatMod = (39 * iModifier / 1000) - 2;
-      if (iStatMod - Nth(plStatmods,5)) <> 0
-      {
-         iStatMod = Send(poOwner,@AddStamina,#points=(iStatMod - Nth(plStatmods,5)))
-                                                                  + Nth(plStatmods,5);
-         SetNth(plStatmods,5,iStatMod);
-      }
-
-      iStatMod = (39 * iModifier / 1000) - 2;
-      if (iStatMod - Nth(plStatmods,3)) <> 0
-      {
-         iStatMod = Send(poOwner,@AddAgility,#points=(iStatMod - Nth(plStatmods,3)))
-                                                                  + Nth(plStatmods,3);
-         SetNth(plStatmods,3,iStatMod);
-      }
-
       // Weapon condition varies from 25% to 100% of piHits_init,
       // depending on hunger.
       piHits = Bound((100 - (piHunger + HUNGER_5) * 70 / (2 * HUNGER_5)),25,100)
                   * piHits_init / 100;
 
-      return;
-   }
+      piArtifactPower = (2 * iHungerFactor + iKarmaFactor) / 3;
 
-   RestoreStats(who = $)
-   {
-      if who = $
-      {
-         if poOwner <> $
-         {
-            who = poOwner;
-         }
-         else
-         {
-            Debug("No one to restore stats on!!");
-         }
-      }
-
-      if plStatmods = $
-      {
-         return;
-      }
-
-      Send(who,@AddIntellect,#points=(-Nth(plStatmods,2)));
-      Send(who,@AddMysticism,#points=(-Nth(plStatmods,6)));
-      Send(who,@AddMight,#points=(-Nth(plStatmods,1)));
-      Send(who,@AddAim,#points=(-Nth(plStatmods,4)));
-      Send(who,@AddStamina,#points=(-Nth(plStatmods,5)));
-      Send(who,@AddAgility,#points=(-Nth(plStatmods,3)));
-      plStatmods = $;
-
-      return;
+      return piArtifactPower;
    }
 
    AdjustColor()
@@ -454,221 +478,32 @@ messages:
       {
          Xlat = (XLAT_BASE_VALUE + XLAT_TO_RED);
       }
+      else if piHunger > (HUNGER_5*3/5)
+      {
+         Xlat = (XLAT_BASE_VALUE + XLAT_TO_YELLOW);
+      }
+      else if piHunger > (HUNGER_5*1/5)
+      {
+         Xlat = (XLAT_BASE_VALUE + XLAT_TO_ORANGE);
+      }
+      else if piHunger > (-HUNGER_5*1/5)
+      {
+         Xlat = (XLAT_BASE_VALUE + XLAT_TO_SKIN1);
+      }
+      else if piHunger > (-HUNGER_5*3/5)
+      {
+         Xlat = (XLAT_BASE_VALUE + XLAT_TO_SKIN2);
+      }
       else
       {
-         if piHunger > (HUNGER_5*3/5)
-         {
-            Xlat = (XLAT_BASE_VALUE + XLAT_TO_YELLOW);
-         }
-         else
-         {
-            if piHunger > (HUNGER_5*1/5)
-            {
-               Xlat = (XLAT_BASE_VALUE + XLAT_TO_ORANGE);
-            }
-            else
-            {
-               if piHunger > (-HUNGER_5*1/5)
-               {
-                  Xlat = (XLAT_BASE_VALUE + XLAT_TO_SKIN1);
-               }
-               else
-               {
-                  if piHunger > (-HUNGER_5*3/5)
-                  {
-                     Xlat = (XLAT_BASE_VALUE + XLAT_TO_SKIN2);
-                  }
-                  else
-                  {
-                     Xlat = (XLAT_BASE_VALUE + XLAT_TO_SKIN4);
-                  }
-               }
-            }
-         }
+         Xlat = (XLAT_BASE_VALUE + XLAT_TO_SKIN4);
       }
+
       Send(self,@SetPaletteTranslation,#translation=Xlat);
 
       if poOwner <> $
       {
          Send(poOwner,@SomethingChanged,#what=self);
-      }
-
-      return;
-   }
-
-   HungerTrigger()
-   {
-      local oSword;
-
-      ptHungerTimer = $;
-
-      if poOwner = $
-         OR NOT IsClass(poOwner,&User)
-      {
-         return;
-      }
-
-      // Temporary fix to get rid of beta users' extra swords.
-      oSword = Send(poOwner,@FindHoldingActive,#class=GetClass(self));
-      if oSword <> self
-      {
-         Send(Send(SYS,@GetNecromancerBalance),@PlaceSword,#what=oSword);
-      }
-
-      // Temporary fix to get rid of sword/amulet combos.
-      if Send(poOwner,@IsUsingA,#class=&NecromancerAmulet)
-      {
-         Post(Send(SYS,@GetNecromancerBalance),@PlaceSword,#what=self);
-      }
-
-      if Send(poOwner,@CheckPlayerFlag,#flag=PFLAG_OUTLAW)
-         OR Send(poOwner,@CheckPlayerFlag,#flag=PFLAG_MURDERER)
-      {
-         if ptHoldingDamage <> $
-         {
-            DeleteTimer(ptHoldingDamage);
-            ptHoldingDamage=$;
-         }
-         Send(self,@HoldingDamageTrigger);
-
-         return;
-      }
-
-      ptHungerTimer = CreateTimer(self,@HungerTrigger,Send(Send(SYS,@GetNecromancerBalance),
-                           @GetHungerInterval));
-
-      if NOT Send(poOwner,@IsLoggedOn)
-      {
-         return;
-      }
-
-      // Check that owner still satisfies sword restrictions.
-      if NOT ((Send(poOwner,@GetKarma) > piKarmaWorthyThreshold)
-            AND(Send(poOwner,@GetBaseMaxHealth) > piHpWorthyThreshold))
-         AND ptHoldingDamage = $
-      {
-         Send(self,@HoldingDamageTrigger);
-      }
-
-      piFineHunger = piFineHunger + 1;
-      if piFineHunger = 60
-      {
-         piFineHunger = 0;
-         piHunger = piHunger + 1;
-      }
-
-      Send(self,@AdjustStats);
-      Send(self,@AdjustColor);
-
-      if piHunger > HUNGER_5 {
-         // Start doing mild damage, losing vigor (4 each time).
-         Send(poOwner,@LoseVigor,#precision=TRUE,#amount=400);
-         Send(poOwner,@MsgSendUser,#message_rsc=HunterSword_hunger_5);
-
-         if Send(poOwner,@AssessDamage,#what=self,#damage=Random(1,5),
-                  #report=FALSE) = $
-         {
-            // We killed someone off... heh heh heh.
-            Send(Send(poOwner,@GetOwner),@SomethingKilled,#what=self,#victim=poOwner);
-            Send(poOwner,@Killed,#what=self);
-            Post(Send(SYS,@GetNecromancerBalance),@PlaceSword,#what=self);
-         }
-
-         return;
-      }
-
-      if piHunger > HUNGER_4
-      {
-         // Start losing vigor (2 each time).
-         Send(poOwner,@LoseVigor,#precision=TRUE,#amount=200);
-         if (piFineHunger % 5) = 0
-         {
-            Send(poOwner,@MsgSendUser,#message_rsc=HunterSword_hunger_4);
-         }
-
-         return;
-      }
-
-      if piHunger > HUNGER_3
-      {
-         if (piFineHunger % 15) = 0
-         {
-            Send(poOwner,@MsgSendUser,#message_rsc=HunterSword_hunger_3);
-         }
-
-         return;
-      }
-
-      if piHunger > HUNGER_2
-      {
-         if ((piFineHunger % 30) = 0)
-         {
-            Send(poOwner,@MsgSendUser,#message_rsc=HunterSword_hunger_2);
-         }
-
-         return;
-      }
-
-      if piHunger > HUNGER_1
-      {
-         if piFineHunger = 0
-         {
-            Send(poOwner,@MsgSendUser,#message_rsc=HunterSword_hunger_1);
-         }
-
-         return;
-      }
-
-      return;
-   }
-
-   HoldingDamageTrigger()
-   {
-      ptHoldingDamage = $;
-
-      if NOT IsClass(poOwner,&User)
-      {
-         return;
-      }
-
-      if Send(poOwner,@GetKarma) > piKarmaWorthyThreshold
-         AND Send(poOwner,@GetBaseMaxHealth) > piHpWorthyThreshold
-         AND (NOT Send(poOwner,@CheckPlayerFlag,#flag=PFLAG_OUTLAW))
-         AND (NOT Send(poOwner,@CheckPlayerFlag,#flag=PFLAG_MURDERER))
-      {
-         return;
-      }
-      else
-      {
-         if Send(poOwner,@CheckPlayerFlag,#flag=PFLAG_OUTLAW)
-            OR Send(poOwner,@CheckPlayerFlag,#flag=PFLAG_MURDERER)
-         {
-            if ptHungerTimer <> $
-            {
-               DeleteTimer(ptHungerTimer);
-               ptHungerTimer=$;
-            }
-
-            Send(poOwner,@MsgSendUser,#message_rsc=HunterSword_lose_sword);
-            Send(Send(SYS,@GetNecromancerBalance),@PlaceSword,#what=self);
-
-            return;
-         }
-
-         Send(poOwner,@MsgSendUser,#message_rsc=HunterSword_holding_damage_using);
-
-         if Send(poOwner,@AssessDamage,#what=self,
-                  #damage=(Random(1,3)),#report=FALSE) = $
-         {
-            // We killed them off... heh heh heh.
-            Send(Send(poOwner,@GetOwner),@SomethingKilled,#what=self,#victim=poOwner);
-            Send(poOwner,@Killed,#what=self);
-            Post(Send(SYS,@GetNecromancerBalance),@PlaceSword,#what=self);
-         }
-         else
-         {
-            ptHoldingDamage = CreateTimer(self,@HoldingDamageTrigger,piHoldingDamageInterval);
-         }
       }
 
       return;
@@ -715,32 +550,9 @@ messages:
          Send(poOwner,@MsgSendUser,#message_rsc=HunterSword_hunger_assuaged,
                #parm1=Send(victim,@GetDef),#parm2=Send(victim,@GetName));
          iGain = Send(Send(SYS,@GetNecromancerBalance),@CalculateSwordHungerSatisfied,
-                     #HuntSw=self,#killer=what,#victim=victim);
+                     #oSword=self,#killer=what,#victim=victim);
          Send(self,@SatisfyHunger,#amount=iGain);
       }
-
-      return;
-   }
-
-   OwnerKilled()
-   {
-      if pbCheapDeath
-      {
-         pbCheapDeath = FALSE;
-      }
-      else
-      {
-         // Instead of deleting the sword, we put it back in circulation.
-         //Post(self,@Delete);
-         Post(Send(SYS,@GetNecromancerBalance),@PlaceSword,#what=self);
-      }
-
-      return;
-   }
-
-   ActivateCheapDeath()
-   {
-      pbCheapDeath = TRUE;
 
       return;
    }
@@ -760,45 +572,21 @@ messages:
 
       // Can 'save up', but only to a point.
       piHunger = Bound(piHunger,-HUNGER_5,$);
-      Send(self,@AdjustStats);
+      Send(self,@AdjustPower);
       Send(self,@AdjustColor);
 
       return;
    }
 
-   Delete()
+   OwnerKilled(what=$)
    {
-      Send(self,@NewOwner,#what=$);
+      local oNecBal;
 
-      if pbCounted
-      {
-         pbCounted = FALSE;
-         Send(Send(SYS,@GetNecromancerBalance),@DecrementSwordCount);
-      }
+      oNecBal = Send(SYS,@GetNecromancerBalance);
+      Send(oNecBal,@RemoveHunter,#who=poOwner);
 
-      if ptHungerTimer <> $
-      {
-         DeleteTimer(ptHungerTimer);
-         ptHungerTimer = $;
-      }
-
-      if ptHoldingDamage <> $
-      {
-         DeleteTimer(ptHoldingDamage);
-         ptHoldingDamage = $;
-      }
-
-      // Have to post this so that in case the item gets deleted out of the
-      // blue while in use, it still has the stat mod data when delete()
-      // propagates down to unusing the item.
-      Post(self,@PostDelete);
-
-      propagate;
-   }
-
-   PostDelete()
-   {
-      plStatmods = $;
+      // Instead of deleting the sword, we put it back in circulation.
+      Post(oNecBal,@PlaceSword,#what=self);
 
       return;
    }
@@ -807,11 +595,11 @@ messages:
    "Don't allow new owner while we're in use."
    {
       if poOwner <> $
-         AND IsClass(poOwner,&User)
+         AND IsClass(poOwner,&Player)
       {
          Post(self,@TortureOwner);
 
-         return False;
+         return FALSE;
       }
 
       propagate;
@@ -824,12 +612,6 @@ messages:
       if Send(poOwner,@AssessDamage,#what=self,
                #damage=Random(viDamage_min,viDamage_max),#report=FALSE) = $
       {
-         // We killed someone off... heh heh heh.
-         if Send(self,@DropOnDeath)
-         {
-            Post(Send(SYS,@GetNecromancerBalance),@PlaceSword,#what=self);
-         }
-
          Send(Send(poOwner,@GetOwner),@SomethingKilled,
                #what=self,#victim=poOwner);
          Send(poOwner,@Killed,#what=self);
@@ -889,6 +671,12 @@ messages:
 // ActiveItem Stuff: //
 //////////////////////
 //
+
+   DestroyDisposable()
+   {
+      return;
+   }
+
    GetObjectType()
    {
       return ACTIVE;
@@ -897,25 +685,6 @@ messages:
    CanBeStoredInVault()
    {
       return FALSE;
-   }
-
-   LichKilled()
-   {
-      if poOwner <> $
-         AND IsClass(poOwner,&User)
-      {
-         Send(poOwner,@AssessDamage,#what=self,
-               #damage=(Send(poOwner,@GetHealth)*2/3),#report=FALSE);
-      }
-
-      Send(self,@Delete);
-
-      return;
-   }
-
-   DestroyDisposable()
-   {
-      return;
    }
 
    DamageItem()
@@ -990,6 +759,29 @@ messages:
       }
 
       return TRUE;
+   }
+
+   LichKilled()
+   {
+      Send(self,@Delete);
+
+      return;
+   }
+
+   GetBaseSpellModifier(oSpell=$)
+   {
+      local iSchool;
+
+      iSchool = Send(oSpell,@GetSchool);
+      if (iSchool = SS_SHALILLE
+         OR iSchool = SS_FAREN
+         OR iSchool = SS_RIIJA
+         OR iSchool = SS_JALA)
+      {
+         return 5 + (105 * piArtifactPower / 1000);
+      }
+
+      return 0;
    }
 
 end

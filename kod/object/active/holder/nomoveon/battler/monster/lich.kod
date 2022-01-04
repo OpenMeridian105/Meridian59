@@ -17,6 +17,7 @@ constants:
 
    LICH_ILLUSION_TIME = 5 * 60 * 1000  // five minutes
    MAGIC_RESIST = 60
+   WALL_DURATION = 60000
 
    // Run the LichHunger call in necbal.kod when piHunger reaches this value
    HUNGER_INTERVAL = 3
@@ -356,12 +357,9 @@ messages:
    {
       if poOwner <> $
          AND Send(poOwner,@GetRoomNum) = RID_GUILDH15
-         AND (new_col > 28 OR new_col < 8)
+         AND Send(poOwner,@InFoyer,#who=self,#iRow=new_row,#iCol=new_col)
       {
-         if NOT (piCol > 28 OR piCol < 8)
-         {
-            return FALSE;
-         }
+         Send(self,@GoBackToGuildhall);
       }
 
       propagate;
@@ -894,8 +892,8 @@ messages:
                      oElement = Create(&NecromancerMage,#DropsTreasure=FALSE,#Level=300);
                   }
 
-                  Send(poOwner,@NewHold,#what=oElement,#new_row=iMRow,#new_col=iMCol,
-                       #fine_row=iMRowFine,#fine_col=iMColFine);
+
+                  Send(poOwner,@NewHold,#what=oElement,#new_row=piRow,#new_col=piCol);
 
                   Send(oElement,@SetMaster,#oMaster=self);
 
@@ -911,37 +909,37 @@ messages:
                if iPick < 4
                {
                   // [(1)caster,(2)spellpower,(3)duration,(4)charges,(5)speed,(6)direction,(7)step,(8)noise,(9)curve]
-                  oElement = Create(&Web,#seed=[self,99,15000,0,0,0,0,0,0]);
+                  oElement = Create(&Web,#seed=[self,99,WALL_DURATION,0,0,0,0,0,0]);
                   Send(poOwner,@NewHold,#what=oElement,#new_row=iMRow,#new_col=iMCol,
                        #fine_row=iMRowFine,#fine_col=iMColFine);
                }
                else if iPick < 8
                {
-                  oElement = Create(&WallofFire,#seed=[self,99,15000,0,0,0,0,0,0]);
+                  oElement = Create(&WallofFire,#seed=[self,99,WALL_DURATION,0,0,0,0,0,0]);
                   Send(poOwner,@NewHold,#what=oElement,#new_row=iMRow,#new_col=iMCol,
                        #fine_row=iMRowFine,#fine_col=iMColFine);
                }
                else if iPick < 10
                {
-                  oElement = Create(&WallofLightning,#seed=[self,99,15000,0,0,0,0,0,0]);
+                  oElement = Create(&WallofLightning,#seed=[self,99,WALL_DURATION,0,0,0,0,0,0]);
                   Send(poOwner,@NewHold,#what=oElement,#new_row=iMRow,#new_col=iMCol,
                        #fine_row=iMRowFine,#fine_col=iMColFine);
                }
                else if iPick < 11
                {
-                  oElement = Create(&PoisonFogCloud,#seed=[self,99,15000,0,0,0,0,0,0]);
+                  oElement = Create(&PoisonFogCloud,#seed=[self,99,WALL_DURATION,0,0,0,0,0,0]);
                   Send(poOwner,@NewHold,#what=oElement,#new_row=iMRow,#new_col=iMCol,
                        #fine_row=iMRowFine,#fine_col=iMColFine);
                }
                else if iPick < 12
                {
-                  oElement = Create(&ActiveSporeCloud,#seed=[self,99,15000,0,0,0,0,0,0]);
+                  oElement = Create(&ActiveSporeCloud,#seed=[self,99,WALL_DURATION,0,0,0,0,0,0]);
                   Send(poOwner,@NewHold,#what=oElement,#new_row=iMRow,#new_col=iMCol,
                        #fine_row=iMRowFine,#fine_col=iMColFine);
                }
                else
                {
-                  oElement = Create(&FogCloud,#seed=[self,99,15000,0,0,0,0,0,0]);
+                  oElement = Create(&FogCloud,#seed=[self,99,WALL_DURATION,0,0,0,0,0,0]);
                   Send(poOwner,@NewHold,#what=oElement,#new_row=iMRow,#new_col=iMCol,
                        #fine_row=iMRowFine,#fine_col=iMColFine);
                }
@@ -1258,7 +1256,7 @@ messages:
       if poOwner = oLichHall
       {
          Send(SYS,@UtilGoNearSquare,#what=self,#where=poOwner,
-               #new_row=13,#new_col=49,#fine_row=16,#fine_col=00,
+               #new_row=13,#new_col=49,#fine_row=16,#fine_col=0,
                #new_angle=ANGLE_WEST);
 
          return;

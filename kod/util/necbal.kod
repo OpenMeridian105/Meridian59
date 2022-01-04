@@ -407,6 +407,7 @@ messages:
          Debug("New Necromancer: ",Send(who,@GetName));
 
          plNecromancers = Cons(who,plNecromancers);
+         Send(who,@WaveSendUser,#wave_rsc=necbal_snd);
       }
 
       return TRUE;
@@ -511,6 +512,7 @@ messages:
          Debug("New Hunter: ",Send(who,@GetName));
 
          plHunters = Cons(who,plHunters);
+         Send(who,@WaveSendUser,#wave_rsc=necbal_snd);
       }
 
       return TRUE;
@@ -1046,6 +1048,8 @@ messages:
       oLichHall = Send(SYS,@FindRoomByNum,#num=RID_GUILDH15);
       Send(Send(oLichHall,@GetNecromancersChest),@LockChest,#bLocked=TRUE);
 
+      Send(SYS,@AdminEnableSpell,#num=SID_SHADOW_RIFT);
+
       if Send(oLichHall,@CountHoldingHowMany,#class=&Lich) = 0
       {
          poLich = Create(&Lich);
@@ -1073,6 +1077,8 @@ messages:
       {
          return;
       }
+
+      Send(SYS,@AdminDisableSpell,#num=SID_SHADOW_RIFT);
 
       oLichHall = Send(SYS,@FindRoomByNum,#num=RID_GUILDH15);
       poLich = Send(oLichHall,@FindHoldingActive,#class=&DeadLich);

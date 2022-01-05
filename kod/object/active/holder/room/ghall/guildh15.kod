@@ -604,5 +604,17 @@ messages:
       return poNecromancerChest;
    }
 
+   SomethingMoved(what = $,new_row = $, new_col = $)
+   {
+      // Special case: prevent boss from leaving battle zone
+      if IsClass(what,&Lich)
+         AND Send(what,@GetSectorIDAtObject) = ENTRANCE_SECTOR
+      {
+         Post(what,@GoBackToGuildhall);
+      }
+
+      propagate;
+   }
+
 end
 ////////////////////////////////////////////////////////////////////////////////

@@ -275,6 +275,8 @@ int   port     = 3306;
      room_name_ger  VARCHAR(63) NOT NULL,                \
      room_roo       VARCHAR(63) NOT NULL,                \
      room_number    INT(4) NOT NULL,                     \
+     room_region    INT(4) NOT NULL,                     \
+     room_iflag     INT(4) NOT NULL,                     \
      PRIMARY KEY(room_number)                            \
    )                                                     \
    ENGINE=InnoDB DEFAULT CHARSET=latin1;"
@@ -1100,21 +1102,29 @@ int   port     = 3306;
      IN room_name      VARCHAR(63),       \
      IN room_name_ger  VARCHAR(63),       \
      IN room_roo       VARCHAR(63),       \
-     IN room_number    INT(4))            \
+     IN room_number    INT(4),            \
+     IN room_region    INT(4),            \
+     IN room_iflag    INT(4))             \
    BEGIN                                  \
    INSERT INTO wiki_rooms                 \
       (  room_name,                       \
          room_name_ger,                   \
          room_roo,                        \
-         room_number)                     \
+         room_number,                     \
+         room_region,                     \
+         room_iflag)                      \
          VALUES (room_name,               \
             room_name_ger,                \
             room_roo,                     \
-            room_number)                  \
+            room_number,                  \
+            room_region,                  \
+            room_iflag)                   \
       ON DUPLICATE KEY UPDATE             \
       room_name = room_name,              \
       room_name_ger = room_name_ger,      \
-      room_roo = room_roo;                \
+      room_roo = room_roo,                \
+      room_region = room_region,          \
+      room_iflag = room_iflag;            \
    END"
 
 #define SQLQUERY_CREATEPROC_NPC_ZONE     "\

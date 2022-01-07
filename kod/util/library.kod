@@ -1775,8 +1775,9 @@ messages:
 
       foreach oMonster in Send(SYS,@GetMonsterTemplates)
       {
-         if NOT FindListElem(lDontInclude,GetClass(oMonster))
-            AND NOT Send(oMonster,@IsExpansionMonster)
+         if Send(oMonster,@IsExpansionMonster)
+               AND NOT Send(SETTINGS_OBJECT,@IsExpansionEnabled)
+            AND NOT FindListElem(lDontInclude,GetClass(oMonster))
          {
             lTempList = Cons(GetClass(oMonster),[]);
             lTempList = Cons(LIBACT_MONSTER_ADVICE,lTempList);

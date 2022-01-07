@@ -506,6 +506,83 @@ messages:
          plWreaths = Cons([oRoom,24],plWreaths);
       }
 
+      // Jixa
+      oRoom = Send(SYS,@FindRoomByNum,#num=RID_JIXA);
+      oDecoration = Create(&OrnamentalObject,#type=OO_QORMAS_TREE_BIG);
+      Send(oRoom,@NewHold,#what=oDecoration,#new_row=27,#new_col=15,#fine_row=8,
+            #fine_col=34,#new_angle=ANGLE_EAST);
+      plDecorations = Cons(oDecoration,plDecorations);
+      if pbWreaths
+      {
+         // Inn doors.
+         Send(oRoom,@ChangeTexture,#id=40,#new_texture=61022,#flags=CTF_BELOWWALL);
+         plWreaths = Cons([oRoom,40],plWreaths);
+         // Adv hall door.
+         Send(oRoom,@ChangeTexture,#id=41,#new_texture=61020,#flags=CTF_BELOWWALL);
+         plWreaths = Cons([oRoom,41],plWreaths);
+      }
+
+      // Jixa Inn
+      oRoom = Send(SYS,@FindRoomByNum,#num=RID_JIXA_INN);
+      oDecoration = Create(&OrnamentalObject,#type=OO_QORMAS_TREE);
+      Send(oRoom,@NewHold,#what=oDecoration,#new_row=3,#new_col=3,#fine_row=48,
+            #fine_col=32,#new_angle=ANGLE_NORTH_WEST);
+      plDecorations = Cons(oDecoration,plDecorations);
+      if pbWreaths
+      {
+         Send(oRoom,@ChangeTexture,#id=40,#new_texture=61022,#flags=CTF_NORMALWALL);
+         plWreaths = Cons([oRoom,40],plWreaths);
+      }
+
+      // Jixa adv hall
+      oRoom = Send(SYS,@FindRoomByNum,#num=RID_JIXA_HALL);
+      oDecoration = Create(&OrnamentalObject,#type=OO_QORMAS_TREE);
+      Send(oRoom,@NewHold,#what=oDecoration,#new_row=3,#new_col=10,#fine_row=52,
+            #fine_col=20,#new_angle=ANGLE_NORTH_WEST);
+      plDecorations = Cons(oDecoration,plDecorations);
+      if pbWreaths
+      {
+         Send(oRoom,@ChangeTexture,#id=41,#new_texture=61020,#flags=CTF_NORMALWALL);
+         plWreaths = Cons([oRoom,41],plWreaths);
+      }  
+
+      // Berg
+      oRoom = Send(SYS,@FindRoomByNum,#num=RID_BERG_CITY);
+      oDecoration = Create(&OrnamentalObject,#type=OO_QORMAS_TREE_BIG);
+      Send(oRoom,@NewHold,#what=oDecoration,#new_row=20,#new_col=16,#fine_row=16,
+            #fine_col=48,#new_angle=ANGLE_EAST);
+      plDecorations = Cons(oDecoration,plDecorations);
+      if pbWreaths
+      {
+         // Inn/adv doors.
+         Send(oRoom,@ChangeTexture,#id=42,#new_texture=61021,#flags=CTF_BELOWWALL);
+         plWreaths = Cons([oRoom,42],plWreaths);
+      }
+
+      // Berg Inn
+      oRoom = Send(SYS,@FindRoomByNum,#num=RID_BERG_INN);
+      oDecoration = Create(&OrnamentalObject,#type=OO_QORMAS_TREE);
+      Send(oRoom,@NewHold,#what=oDecoration,#new_row=2,#new_col=2,#fine_row=32,
+            #fine_col=16,#new_angle=ANGLE_NORTH_WEST);
+      plDecorations = Cons(oDecoration,plDecorations);
+      if pbWreaths
+      {
+         Send(oRoom,@ChangeTexture,#id=42,#new_texture=61021,#flags=CTF_BELOWWALL);
+         plWreaths = Cons([oRoom,42],plWreaths);
+      }
+
+      // Berg adv hall
+      oRoom = Send(SYS,@FindRoomByNum,#num=RID_BERG_HALL);
+      oDecoration = Create(&OrnamentalObject,#type=OO_QORMAS_TREE);
+      Send(oRoom,@NewHold,#what=oDecoration,#new_row=2,#new_col=10,#fine_row=8,
+            #fine_col=8,#new_angle=ANGLE_NORTH_WEST);
+      plDecorations = Cons(oDecoration,plDecorations);
+      if pbWreaths
+      {
+         Send(oRoom,@ChangeTexture,#id=42,#new_texture=61021,#flags=CTF_BELOWWALL);
+         plWreaths = Cons([oRoom,42],plWreaths);
+      }
+
       // place gifts under the trees in inns and halls
       Send(self,@PlaceGifts);
 
@@ -669,6 +746,33 @@ messages:
       oRoom = Send(SYS,@FindRoomByNum,#num=RID_KOC_TAVERN);
       oTree = First(Send(self,@FindTrees,#oRoom=oRoom));
       Send(self,@PlaceGiftsAroundTree,#oTree=oTree);
+
+      if Send(SETTINGS_OBJECT,@IsExpansionEnabled)
+      {
+         // Jixa Inn
+         oRoom = Send(SYS,@FindRoomByNum,#num=RID_JIXA_INN);
+         oTree = First(Send(self,@FindTrees,#oRoom=oRoom));
+         Send(self,@PlaceGiftsAroundTree,#oTree=oTree,#bE=FALSE,
+               #bSE=FALSE,#bNE=FALSE);
+
+         // Jixa Hall
+         oRoom = Send(SYS,@FindRoomByNum,#num=RID_JIXA_HALL);
+         oTree = First(Send(self,@FindTrees,#oRoom=oRoom));
+         Send(self,@PlaceGiftsAroundTree,#oTree=oTree,#bE=FALSE,
+               #bSE=FALSE,#bNE=FALSE);
+
+         // Berg Inn
+         oRoom = Send(SYS,@FindRoomByNum,#num=RID_BERG_INN);
+         oTree = First(Send(self,@FindTrees,#oRoom=oRoom));
+         Send(self,@PlaceGiftsAroundTree,#oTree=oTree,#bE=FALSE,
+               #bSE=FALSE,#bNE=FALSE);
+
+         // Berg Hall
+         oRoom = Send(SYS,@FindRoomByNum,#num=RID_BERG_HALL);
+         oTree = First(Send(self,@FindTrees,#oRoom=oRoom));
+         Send(self,@PlaceGiftsAroundTree,#oTree=oTree,#bE=FALSE,
+               #bSE=FALSE,#bNE=FALSE);
+      }
 
       return;
    }

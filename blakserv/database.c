@@ -145,6 +145,7 @@ int   port     = 3306;
      spell_mediate_ratio  INT(4) DEFAULT NULL,           \
      spell_exertion       INT(4) DEFAULT NULL,           \
      spell_casttime       INT(4) DEFAULT NULL,           \
+     spell_iflag          INT(4) NOT NULL,               \
      PRIMARY KEY(spell_id)                               \
    )                                                     \
    ENGINE=InnoDB DEFAULT CHARSET=latin1;"
@@ -163,6 +164,7 @@ int   port     = 3306;
      skill_chance         INT(4) DEFAULT NULL,           \
      skill_mediate_ratio  INT(4) DEFAULT NULL,           \
      skill_exertion       INT(4) DEFAULT NULL,           \
+     skill_iflag          INT(4) NOT NULL,               \
      PRIMARY KEY(skill_id)                               \
    )                                                     \
    ENGINE=InnoDB DEFAULT CHARSET=latin1;"
@@ -797,7 +799,8 @@ int   port     = 3306;
      IN spell_chance         INT(4),               \
      IN spell_mediate_ratio  INT(4),               \
      IN spell_exertion       INT(4),               \
-     IN spell_casttime       INT(4))               \
+     IN spell_casttime       INT(4),               \
+     IN spell_iflag          INT(4))               \
    BEGIN                                           \
      INSERT INTO wiki_spells                       \
       (  spell_id,                                 \
@@ -812,7 +815,8 @@ int   port     = 3306;
          spell_chance,                             \
          spell_mediate_ratio,                      \
          spell_exertion,                           \
-         spell_casttime)                           \
+         spell_casttime,                           \
+         spell_iflag)                              \
          VALUES (spell_id,                         \
             spell_name,                            \
             spell_name_ger,                        \
@@ -825,7 +829,8 @@ int   port     = 3306;
             spell_chance,                          \
             spell_mediate_ratio,                   \
             spell_exertion,                        \
-            spell_casttime)                        \
+            spell_casttime,                        \
+            spell_iflag)                           \
       ON DUPLICATE KEY UPDATE                      \
       spell_name = spell_name,                     \
       spell_name_ger = spell_name_ger,             \
@@ -838,7 +843,8 @@ int   port     = 3306;
       spell_mediate_ratio = spell_mediate_ratio,   \
       spell_exertion = spell_exertion,             \
       spell_mediate_ratio = spell_mediate_ratio,   \
-      spell_casttime = spell_casttime;             \
+      spell_casttime = spell_casttime,             \
+      spell_iflag = spell_iflag;                   \
    END"
 
 #define SQLQUERY_CREATEPROC_SKILLS              "\
@@ -853,7 +859,8 @@ int   port     = 3306;
      IN skill_level          INT(4),             \
      IN skill_chance         INT(4),             \
      IN skill_mediate_ratio  INT(4),             \
-     IN skill_exertion       INT(4))             \
+     IN skill_exertion       INT(4),             \
+     IN skill_iflag          INT(4))             \
    BEGIN                                         \
      INSERT INTO wiki_skills                     \
       (  skill_id,                               \
@@ -866,7 +873,8 @@ int   port     = 3306;
          skill_level,                            \
          skill_chance,                           \
          skill_mediate_ratio,                    \
-         skill_exertion)                         \
+         skill_exertion,                         \
+         skill_iflag)                            \
          VALUES (skill_id,                       \
             skill_name,                          \
             skill_name_ger,                      \
@@ -877,7 +885,8 @@ int   port     = 3306;
             skill_level,                         \
             skill_chance,                        \
             skill_mediate_ratio,                 \
-            skill_exertion)                      \
+            skill_exertion,                      \
+            skill_iflag)                         \
       ON DUPLICATE KEY UPDATE                    \
       skill_name = skill_name,                   \
       skill_name_ger = skill_name_ger,           \
@@ -887,7 +896,8 @@ int   port     = 3306;
       skill_level = skill_level,                 \
       skill_chance = skill_chance,               \
       skill_mediate_ratio = skill_mediate_ratio, \
-      skill_exertion = skill_exertion;           \
+      skill_exertion = skill_exertion,           \
+      skill_iflag = skill_iflag;                 \
    END"
 
 #define SQLQUERY_CREATEPROC_SPELL_REAGENT  "\

@@ -100,7 +100,7 @@ messages:
    SetRooms()
    "Sets the available rooms for placing eggs.  Can be called by admin."
    {
-      local i, iRegion, lRooms;
+      local i, iRegion, lRooms, iNum;
 
       plEventRooms = $;
 
@@ -112,12 +112,33 @@ messages:
          // Only want mainland and Ko'catan, and no guild halls or
          // non-accessible rooms. Ko'catan forest has a lot of areas
          // inaccessible to the player also, so disallow that area too.
-         if (iRegion = RID_DEFAULT
-               OR (iRegion = RID_KOCATAN
+         if (iRegion = REGION_DEFAULT
+               OR iRegion = REGION_TOS
+               OR iRegion = REGION_BARLOQUE
+               OR iRegion = REGION_RAZA
+               OR iRegion = REGION_CORNOTH
+               OR iRegion = REGION_MARION
+               OR iRegion = REGION_JASPER
+               OR (iRegion = REGION_KOCATAN
                   AND NOT IsClass(i,&KCForest)))
             AND Send(i,@CanHavePlayerPortal)
             AND Send(i,@SeanceCheck) // Exclude special/inaccessible rooms.
          {
+            // Exclude a few other island rooms
+            if (iRegion = REGION_KOCATAN)
+            {
+               iNum = Send(i,@GetRoomNum);
+               if (iNum = RID_TEMPLE_RIIJA
+                  OR iNum = RID_TRADING_POST
+                  OR iNum = RID_MAD_SCIENTIST_HUT
+                  OR iNum = RID_JUNGLE_BOWMAKER_HUT
+                  OR iNum = RID_JUNGLE_TRADING_POST
+                  OR iNum = RID_JUNGLE_TRADING_POST_CELLAR
+                  OR iNum = RID_KA0)
+               {
+                  continue;
+               }
+            }
             plEventRooms = Cons(i,plEventRooms);
          }
       }

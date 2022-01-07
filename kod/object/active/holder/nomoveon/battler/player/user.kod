@@ -11184,62 +11184,68 @@ messages:
    {
       local oCurrentRoom, iCurrentRegion, oLastSafeRoom, iLastSafeRegion, oTargetRoom;
 
-      if piLastSafeRoom <> $
+      if (piLastSafeRoom = $)
+      {
+         // Nowhere to send them, default to Raza Inn.
+         oLastSafeRoom = Send(SYS,@FindRoomByNum,#num=RID_RAZA_INN);
+      }
+      else
       {
          oLastSafeRoom = Send(SYS,@FindRoomByNum,#num=piLastSafeRoom);
-         iLastSafeRegion = Send(oLastSafeRoom,@GetRegion);
+      }
 
-         if pbLogged_on
+      iLastSafeRegion = Send(oLastSafeRoom,@GetRegion);
+
+      if pbLogged_on
+      {
+         oCurrentRoom = poOwner;
+         iCurrentRegion = Send(oCurrentRoom,@GetRegion);
+
+         if iCurrentRegion = iLastSafeRegion
+            OR from_special
          {
-            oCurrentRoom = poOwner;
-            iCurrentRegion = Send(oCurrentRoom,@GetRegion);
-
-            if iCurrentRegion = iLastSafeRegion
-               OR from_special
-            {
-               Send(oLastSafeRoom,@Teleport,#what=self);
-               Send(self,@MsgSendUser,#message_rsc=user_goto_lastsaferoom);
-            }
-            else
-            {
-               // If the user is in a different region from their last
-               // safe room, use region default homeroom instead.
-               // This can happen if a player goes to a new region but
-               // never stops in at a safe room.
-
-               oTargetRoom = Send(SYS,@FindRoomByNum,
-                                 #num=Send(oCurrentRoom,@GetCurrentRegionHomeroom));
-               Send(oTargetRoom,@Teleport,#what=self);
-               Send(self,@MsgSendUser,#message_rsc=user_goto_safety);
-            }
+            Send(oLastSafeRoom,@Teleport,#what=self);
+            Send(self,@MsgSendUser,#message_rsc=user_goto_lastsaferoom);
          }
          else
          {
-            // If the user is logged off, we can't teleport.
-            // Instead, we update their saved logoff location.
+            // If the user is in a different region from their last
+            // safe room, use region default homeroom instead.
+            // This can happen if a player goes to a new region but
+            // never stops in at a safe room.
 
-            oCurrentRoom = Send(SYS,@FindRoomByNum,#num=piSave_Room);
-            iCurrentRegion = Send(oCurrentRoom,@GetRegion);
-            
-            if iCurrentRegion = iLastSafeRegion
-               OR from_special
-            {
-               piSave_room = piLastSafeRoom;
-               piSave_row = Send(oLastSafeRoom,@GetTeleportRow);
-               piSave_col = Send(oLastSafeRoom,@GetTeleportCol);
-               piSave_fine_row = 32;
-               piSave_fine_col = 32;
-            }
-            else
-            {
-               oTargetRoom = Send(SYS,@FindRoomByNum,#num=Send(oCurrentRoom,@GetCurrentRegionHomeroom));
+            oTargetRoom = Send(SYS,@FindRoomByNum,
+                              #num=Send(oCurrentRoom,@GetCurrentRegionHomeroom));
+            Send(oTargetRoom,@Teleport,#what=self);
+            Send(self,@MsgSendUser,#message_rsc=user_goto_safety);
+         }
+      }
+      else
+      {
+         // If the user is logged off, we can't teleport.
+         // Instead, we update their saved logoff location.
 
-               piSave_room = Send(oTargetRoom,@GetRoomNum);
-               piSave_row = Send(oTargetRoom,@GetTeleportRow);
-               piSave_col = Send(oTargetRoom,@GetTeleportCol);
-               piSave_fine_row = 32;
-               piSave_fine_col = 32;
-            }
+         oCurrentRoom = Send(SYS,@FindRoomByNum,#num=piSave_Room);
+         iCurrentRegion = Send(oCurrentRoom,@GetRegion);
+         
+         if iCurrentRegion = iLastSafeRegion
+            OR from_special
+         {
+            piSave_room = piLastSafeRoom;
+            piSave_row = Send(oLastSafeRoom,@GetTeleportRow);
+            piSave_col = Send(oLastSafeRoom,@GetTeleportCol);
+            piSave_fine_row = 32;
+            piSave_fine_col = 32;
+         }
+         else
+         {
+            oTargetRoom = Send(SYS,@FindRoomByNum,#num=Send(oCurrentRoom,@GetCurrentRegionHomeroom));
+
+            piSave_room = Send(oTargetRoom,@GetRoomNum);
+            piSave_row = Send(oTargetRoom,@GetTeleportRow);
+            piSave_col = Send(oTargetRoom,@GetTeleportCol);
+            piSave_fine_row = 32;
+            piSave_fine_col = 32;
          }
       }
 

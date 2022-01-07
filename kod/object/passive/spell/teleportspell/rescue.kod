@@ -111,7 +111,8 @@ messages:
 
    DoRescue(who = $)
    {
-      local i, each_obj, oCurrentRoom, oTargetRoom, oGuild, iCurrentRegion;
+      local i, each_obj, oCurrentRoom, oTargetRoom, oGuild, iCurrentRegion,
+            iTargetRegion;
 
       Send(who,@MsgSendUser,#message_rsc=Rescue_Success);
 
@@ -129,19 +130,27 @@ messages:
             oTargetRoom = Send(oGuild,@GetGuildHall);
 
             // If we have a guild hall, and not already in the guild hall,
-            // and we're in the same region as the hall, go there.
+            // and we're in the same region as the hall or not in a special
+            // region (Brax, orc caves) then teleport to the hall.
             if oTargetRoom <> $
                AND oTargetRoom <> oCurrentRoom
-               AND Send(oTargetRoom,@GetRegion) = iCurrentRegion
             {
-               Post(oTargetRoom,@Teleport,#what=who);
+               iTargetRegion = Send(oTargetRoom,@GetRegion);
+               if (iTargetRegion = iCurrentRegion
+                  OR (iTargetRegion <> REGION_KOCATAN
+                     AND iCurrentRegion <> REGION_BRAX
+                     AND iCurrentRegion <> REGION_ORCCAVES
+                     AND iCurrentRegion <> REGION_KOCATAN))
+               {
+                  Post(oTargetRoom,@Teleport,#what=who);
 
-               return;
+                  return;
+               }
             }
          }
 
          // Teleport to Ko'catan Inn if we're in Kocatan, or at Vigor Pool.
-         if iCurrentRegion = RID_KOCATAN
+         if iCurrentRegion = REGION_KOCATAN
             OR Send(oCurrentRoom,@GetRoomNum) = RID_ORC_CAVE5_EXT
          {
             oTargetRoom = Send(SYS,@FindRoomByNum,#num=RID_KOC_INN);
@@ -152,7 +161,7 @@ messages:
 
          // If we're in the orc caves, teleport to the Pool of Vigor.
          // Except: actually being in the Pool of Vigor is handled above.
-         if iCurrentRegion = RID_ORC_CAVE1
+         if iCurrentRegion = REGION_ORCCAVES
          {
             oTargetRoom = Send(SYS,@FindRoomByNum,#num=RID_ORC_CAVE5_EXT);
             Post(oTargetRoom,@Teleport,#what=who);

@@ -26,6 +26,13 @@ resources:
       "using the 'perform cleave' command, or using a hotkey."
    Cleave_sound_rsc = thunderclap.ogg
 
+   Cleave_blocked_attacker = "%s%s blocks your %s!"
+   Cleave_blocked_defender = "You block %s%s's %s!"
+   Cleave_parried_attacker = "%s%s parries your %s!"
+   Cleave_parried_defender = "You parry %s%s's %s!"
+   Cleave_dodged_attacker = "%s%s dodges your %s!"
+   Cleave_dodged_defender = "You dodge %s%s's %s!"
+
 classvars:
 
    vrName = Cleave_name_rsc
@@ -67,6 +74,12 @@ properties:
 
    plPrerequisites = $
 
+   // How much does each target that successfully blocked or parried
+   // add to our cooldown?
+   piBlocked_penalty = 500
+   piParried_penalty = 200
+   piDodged_penalty = 0
+
 messages:
 
    GetNumSkillTargets()
@@ -75,12 +88,12 @@ messages:
    }
 
    GetTargets(who=$,lTargets=$)
-   "Returns nil. We don't check targets till impact."
    {
-      return;
+      // lTargets is nil at this point. Get a fresh list.
+      return Send(self,@GetGoodTargets,#who=who,#report=FALSE);
    }
 
-   GetTargetsInRange(who=$,lTargets=$)
+   GetTargetsInRange(who=$)
    "Returns targets in range of cleave."
    {
       local i,use_weapon, stroke_obj, iDist, iRange, iRow, iCol, iFineRow,
@@ -128,7 +141,7 @@ messages:
             }
 
             if NOT Send(who,@AllowBattlerAttack,#victim=each_obj,
-                        #stroke_obj=self,#report=FALSE)
+                        #stroke_obj=stroke_obj,#report=FALSE)
             {
                continue;
             }
@@ -140,17 +153,38 @@ messages:
       return lFinalTargets;
    }
 
-   GetGoodTargets(who=$, lTargets=$, report=TRUE)
+   GetGoodTargets(who=$, lTargets=0, report=TRUE)
    {
-      local lGoodTargets;
+      local lGoodTargets, i, bFirst;
 
-      // This gets all targets within range.  Most skills just return the
-      // list back.
-      lGoodTargets = Send(self,@GetTargetsInRange,#who=who,#lTargets=lTargets);
+      // If this is our initial group of targets, let's note that down.
+      bFirst = (lTargets = 0);
 
-      // This gets all valid targets, checking for bad targets, safeties, etc.
+      // Provides us with a fresh list of battlers in our AE zone.
+      lGoodTargets = Send(self,@GetTargetsInRange,#who=who);
+
+      // This removes invalid targets, checking for safeties, etc.
       lGoodTargets = Send(self,@GetAttackTargets,#who=who,
                           #lTargets=lGoodTargets,#report=report);
+
+      if NOT bFirst
+      {
+         // We have our set of targets. Let's add cleave itself as a
+         // separator for future parsing.
+         lGoodTargets = Cons(self,lGoodTargets);
+
+         // Checking which of our previous targets have left the AE. These targets
+         // still need to be informed that our swing has ended at the time of impact.
+         foreach i in lTargets
+         {
+            if FindListElem(lGoodTargets,i)
+            {
+               continue;
+            }
+
+            lGoodTargets = Cons(i,lGoodTargets);
+         }
+      }
 
       return lGoodTargets;
    }
@@ -162,9 +196,9 @@ messages:
 
    PerformSkill(who=$,lTargets=$)
    {
-      local use_weapon, stroke_obj, iPower, i, bTarget;
+      local oWeapon, stroke_obj, iPower, i, bTarget, iDefended;
 
-      use_weapon = Send(who,@GetWeapon);
+      oWeapon = Send(who,@GetWeapon);
       stroke_obj = Send(who,@GetStrokeObject);
 
       iPower = viBonus + Send(self,@GetSkillPower,#who=who);
@@ -173,16 +207,124 @@ messages:
 
       bTarget = FALSE;
 
+      // Our list of targets is split into two sections.
+      // First: Targets who have left the AE, but who still need to be
+      // told that the swing has ended and who can potentially block us.
+      // Second: Targets that have stayed or entered the AE.
+      // Both sections are separated by an entry of cleave itself as
+      // a separator.
       foreach i in lTargets
       {
+         // If we hit our separator, we are done here.
+         if i = self
+         {
+            lTargets = DelListElem(lTargets,i);
+            break;
+         }
+
+         // Let's see if any of our initial targets has actually blocked,
+         // dodged or parried our attack.
+         iDefended = Send(i,@IsBlocked,#who=who);
+         Send(i,@SwingHasEnded,#who=who);
+
+         // We only tell cleave that it had a target if the targets that
+         // have left the AE interacted with us in any way.
+         if iDefended = ACTIVE_BLOCK
+         {
+            Send(who,@MsgSendUser,#message_rsc=Cleave_blocked_attacker,
+               #parm1=Send(i,@GetCapDef),#parm2=Send(i,@GetName),
+               #parm3=Send(self,@GetName));
+            Send(i,@MsgSendUser,#message_rsc=Cleave_blocked_defender,
+               #parm1=Send(who,@GetDef),#parm2=Send(who,@GetName),
+               #parm3=Send(self,@GetName));
+            Send(i,@ClearAllAttackers);
+            Send(who,@SetAttackTime,#time=500,#bAdd=TRUE);
+            bTarget = TRUE;
+         }
+         else if iDefended = ACTIVE_PARRY
+         {
+            Send(who,@MsgSendUser,#message_rsc=Cleave_parried_attacker,
+               #parm1=Send(i,@GetCapDef),#parm2=Send(i,@GetName),
+               #parm3=Send(self,@GetName));
+            Send(i,@MsgSendUser,#message_rsc=Cleave_parried_defender,
+               #parm1=Send(who,@GetDef),#parm2=Send(who,@GetName),
+               #parm3=Send(self,@GetName));
+            Send(i,@ClearAllAttackers);
+            bTarget = TRUE;
+         }
+         else if iDefended = ACTIVE_DODGE
+         {
+            Send(who,@MsgSendUser,#message_rsc=Cleave_dodged_attacker,
+               #parm1=Send(i,@GetCapDef),#parm2=Send(i,@GetName),
+               #parm3=Send(self,@GetName));
+            Send(i,@MsgSendUser,#message_rsc=Cleave_dodged_defender,
+               #parm1=Send(who,@GetDef),#parm2=Send(who,@GetName),
+               #parm3=Send(self,@GetName));
+            Send(i,@ClearAllAttackers);
+            bTarget = TRUE;
+         }
+
+         // Delete the target from our list of people we can hit.
+         lTargets = DelListElem(lTargets,i);
+      }
+
+      // Now for dealing with the targets that are still in range.
+      foreach i in lTargets
+      {
+         bTarget = TRUE;
+         iDefended = Send(i,@IsBlocked,#who=who);
+         Send(i,@SwingHasEnded,#who=who);
+
+         if iDefended = ACTIVE_BLOCK
+         {
+            Send(who,@MsgSendUser,#message_rsc=Cleave_blocked_attacker,
+               #parm1=Send(i,@GetCapDef),#parm2=Send(i,@GetName),
+               #parm3=Send(self,@GetName));
+            Send(i,@MsgSendUser,#message_rsc=Cleave_blocked_defender,
+               #parm1=Send(who,@GetDef),#parm2=Send(who,@GetName),
+               #parm3=Send(self,@GetName));
+            Send(i,@ClearAllAttackers);
+            Send(who,@SetAttackTime,#time=piBlocked_penalty,#bAdd=TRUE);
+            continue;
+         }
+         else if iDefended = ACTIVE_PARRY
+         {
+            Send(who,@MsgSendUser,#message_rsc=Cleave_parried_attacker,
+               #parm1=Send(i,@GetCapDef),#parm2=Send(i,@GetName),
+               #parm3=Send(self,@GetName));
+            Send(i,@MsgSendUser,#message_rsc=Cleave_parried_defender,
+               #parm1=Send(who,@GetDef),#parm2=Send(who,@GetName),
+               #parm3=Send(self,@GetName));
+            Send(i,@ClearAllAttackers);
+            Send(who,@SetAttackTime,#time=piParried_penalty,#bAdd=TRUE);
+            continue;
+         }
+         else if iDefended = ACTIVE_DODGE
+         {
+            Send(who,@MsgSendUser,#message_rsc=Cleave_dodged_attacker,
+               #parm1=Send(i,@GetCapDef),#parm2=Send(i,@GetName),
+               #parm3=Send(self,@GetName));
+            Send(i,@MsgSendUser,#message_rsc=Cleave_dodged_defender,
+               #parm1=Send(who,@GetDef),#parm2=Send(who,@GetName),
+               #parm3=Send(self,@GetName));
+            Send(i,@ClearAllAttackers);
+            Send(who,@SetAttackTime,#time=piDodged_penalty,#bAdd=TRUE);
+            continue;
+         }
+
          // Pass bCheck=FALSE so that our attacks don't check the timer.
          // Since we already checked LoS when picking our targets, don't
          // check if the targets are in view again.
          Send(who,@TryAttack,#what=i,#stroke_obj=stroke_obj,
-               #use_weapon=use_weapon,#factor=iPower,#bCheck=FALSE,
+               #use_weapon=oWeapon,#factor=iPower,#bCheck=FALSE,
                #bCheckAngle=FALSE);
 
-         bTarget = TRUE;
+         if (iDefended = ACTIVE_BLOCK_FAILED)
+            OR (iDefended = ACTIVE_PARRY_FAILED)
+            OR (iDefended = ACTIVE_DODGE_FAILED)
+         {
+            Send(i,@ClearAllAttackers);
+         }
       }
 
       Send(who,@EndAOEAttack,#lTargets=lTargets);
@@ -208,13 +350,28 @@ messages:
       return TRUE;
    }
 
-   DoPreTranceEffects(who=$)
+   DoPreTranceEffects(who=$,lTargets=$)
    {
+      local i;
+
+      foreach i in lTargets
+      {
+         // Adds us to the victims attack list, allowing them to parry, block or dodge.
+         Send(i,@AddAttacker,#who=who);
+      }
+
       // Do the animation.
       Post(Send(who,@GetWeapon),@WeaponAttack);
       Send(who,@EffectSendUserDuration,#effect=EFFECT_CLEAVE,#duration=900);
       Send(Send(who,@GetOwner),@SomethingWaveRoom,#what=who,
          #wave_rsc=Cleave_sound_rsc);
+
+      propagate;
+   }
+
+   TranceBroken(who=$,state=$,event=$)
+   {
+      Send(First(Nth(state,3)),@SwingHasEnded,#who=who);
 
       propagate;
    }

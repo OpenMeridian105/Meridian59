@@ -18,6 +18,8 @@ constants:
    UNUSED = 2
    ATTACKING = 3
    PARRYING = 4
+   UNLEASHING = 5
+   EXPOSED = 6
 
    WEAPON_TAKE_DAMAGE_PCT = 75  //chance to be damaged
    WEAPON_WARN_DURABILITY_HITS = 10  // warn user when piHits reaches this
@@ -126,6 +128,7 @@ classvars:
    vrWeapon_window_attack_start = 1
    vrWeapon_window_attack_end = 4
    vrWeapon_window_hold = 5
+   vrWeapon_window_exposed = 4
 
    vrWeapon_window_parry_start = 3
    vrWeapon_window_parry_end = 3
@@ -152,6 +155,8 @@ classvars:
    vrCondition_med = weapon_condition_med 
    vrCondition_poor = weapon_condition_poor 
    vrCondition_broken = weapon_condition_broken
+
+   vi_Unleash_type = UNLEASH_NONE
 
    viRange = 3 * FINENESS
 
@@ -755,6 +760,41 @@ messages:
       return;
    }
 
+   WeaponUnleash(what=$)
+   "Called by ReqWeaponAttack when the weapon is actually used in an attack."
+   {
+      piUsed = UNLEASHING;
+      
+      if vrWeapon_window_overlay <> $
+      {
+         Send(poOwner,@ChangeWindowOverlay,#what=self);
+      }
+
+      if vrWeapon_overlay <> $
+      {
+         Send(poOwner,@DoUnleash);
+      }
+
+      piUsed = EXPOSED;
+
+      return;
+   }
+
+   BackToGuard()
+   {
+      if piUsed = EXPOSED
+      {
+         piUsed = USED;
+         
+         if vrWeapon_window_overlay <> $
+         {
+            Send(poOwner,@ChangeWindowOverlay,#what=self);
+         }
+      }
+
+      return;
+   }
+
    NewUsed()
    {
       local oItemAtt;
@@ -889,7 +929,7 @@ messages:
 
    SendWindowOverlayAnimation()
    {
-      local iFlags;
+      local iFlags, iDelay;
 
       iFlags = piItem_flags & ITEM_PALETTE_MASK;
       if iFlags <> 0
@@ -901,6 +941,14 @@ messages:
       {
          AddPacket(1,ANIMATE_ONCE, 4,150, 2,vrWeapon_window_attack_start,
                    2,vrWeapon_window_attack_end, 2,vrWeapon_window_hold);
+      }
+      else if piUsed = UNLEASHING
+      {
+         iDelay = Send(Send(SYS,@FindSkillByNum,#num=SKID_UNLEASH),
+                     @GetTranceTime,#who=poOwner);
+                     iDelay = Bound(iDelay,150,600);
+         AddPacket(1,ANIMATE_ONCE, 4,150*iDelay/450, 2,vrWeapon_window_attack_start,
+                   2,vrWeapon_window_attack_end, 2,vrWeapon_window_exposed);
       }
       else if piUsed = PARRYING
       {
@@ -947,10 +995,17 @@ messages:
          AddPacket(1,ANIMATE_TRANSLATION, 1,iFlags);
       }
 
-      if iAnimation = PANM_WEAPON_ATTACK 
+      if iAnimation = PANM_WEAPON_ATTACK
       {
          iDelay = Bound(Send(poOwner,@GetAttackTime),300,1200);
          AddPacket(1,ANIMATE_ONCE, 4,300*iDelay/1200, 2,1, 2,3, 2,4);
+      }
+      else if iAnimation = PANM_WEAPON_UNLEASH 
+      {
+         iDelay = Send(Send(SYS,@FindSkillByNum,#num=SKID_UNLEASH),
+                     @GetTranceTime,#who=poOwner);
+         iDelay = Bound(iDelay,150,600);
+         AddPacket(1,ANIMATE_ONCE, 4,300*iDelay/450, 2,1, 2,3, 2,3);
       }
       else
       {
@@ -1246,6 +1301,11 @@ messages:
    CanAmbush(who=$,what=$)
    {
       return FALSE;
+   }
+
+   GetUnleashType()
+   {
+      return vi_Unleash_type;
    }
 
 end

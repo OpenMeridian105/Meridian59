@@ -69,6 +69,9 @@ properties:
    // If true, can cast elusion from any room.  Otherwise it's limited.
    pbCanCastFromAnywhere = TRUE
 
+   // Includes Jixa and Berg
+   pbCanEludeToEast = FALSE
+
 messages:
 
    ResetReagents()
@@ -107,7 +110,8 @@ messages:
       if (iRoomNum <> RID_TOS AND iRoomNum <> RID_MARION
          AND iRoomNum <> RID_BARLOQUE AND iRoomNum <> RID_CORNOTH
          AND iRoomNum <> RID_JASPER AND iRoomNum <> RID_KOC_INN
-         AND iRoomNum <> RID_RAZA)
+         AND iRoomNum <> RID_RAZA AND iRoomNum <> RID_JIXA 
+         AND iRoomNum <> RID_BERG_CITY)
       {
          // In your guild hall?
          if oRoom <> Send(who,@GetGuildHall)
@@ -257,7 +261,15 @@ messages:
                     Send(SYS,@FindRoomByNum,#num=RID_JASPER),
                     Send(SYS,@FindRoomByNum,#num=RID_RAZA)];
 
-      // 84 spellpower for Island (7 locations, divide by 12)
+      // Include expansion towns if they are enabled
+      if pbCanEludeToEast
+         AND Send(SETTINGS_OBJECT,@IsExpansionEnabled)
+      {
+         lAvailable = Cons(Send(SYS,@FindRoomByNum,#num=RID_JIXA),lLocations);
+         lAvailable = Cons(Send(SYS,@FindRoomByNum,#num=RID_BERG_CITY),lLocations);
+      }
+
+      // 84 spellpower for Island (7 divide by 12)
       iNumLocations = Bound(iSpellPower/12,1,7);
 
       // Special bonus!  Warp to guild hall with high enough spellpower.

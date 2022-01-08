@@ -306,13 +306,15 @@ messages:
    UpdateDatabase()
    {
       // Wiki Exports: Information for each spell and reagents needed by each spell
-      local i, oItem, bDelete;
+      local i, iFlag, oItem, bDelete;
+
+      iFlag = pbEnabled + 2 * pbAccessible + 4 * Send(self,@IsExpansionSpell);
 
       RecordStat(STAT_SPELLS, TAG_INT, viSpell_num, TAG_RESOURCE, vrName, RESOURCE_GER, vrName,
             TAG_RESOURCE, vrIcon, TAG_RESOURCE, vrDesc, RESOURCE_GER, vrDesc,
             TAG_INT, viSchool, TAG_INT, viSpell_level, TAG_INT, viMana,
             TAG_INT, viChance_To_Increase, TAG_INT, viMeditate_ratio,
-            TAG_INT, viSpellExertion, TAG_INT, viCast_time);
+            TAG_INT, viSpellExertion, TAG_INT, viCast_time, TAG_INT, iFlag);
 
       foreach i in plReagents
       {
@@ -380,6 +382,11 @@ messages:
    "Can any object learn this spell? Includes accessibility to DMs."
    {
       return pbCanBeLearned;
+   }
+
+   IsExpansionSpell()
+   {
+      return FALSE;
    }
 
    GetSchoolStr(iSchool=-1)

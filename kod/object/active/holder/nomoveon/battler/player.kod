@@ -12651,9 +12651,8 @@ messages:
          return PLAYER_LEARN_ERROR;
       }
 
-      if IsClass(obj,&Spell)
-         AND NOT Send(obj,@IsEnabled)
-         AND NOT Send(SETTINGS_OBJECT,@CanBuyDisabledSpells)
+      if NOT Send(obj,@IsEnabled)
+         AND NOT Send(SETTINGS_OBJECT,@CanBuyDisabledAbilities)
       {
          // Spell is temporarily disabled.
          return PLAYER_LEARN_ERROR;
@@ -15112,22 +15111,34 @@ messages:
       return;
    }
 
-   RemoveInaccessibleSpells()
+   RemoveInaccessibleAbilities()
    {
-      local num, i, oSpell, iability;
+      local num, i, oAbility, iAbility;
 
       foreach i in plSpells
       {
          num = Send(self,@DecodeSpellNum,#compound=i);
-         oSpell = Send(SYS,@FindSpellByNum,#num=num);
-         if NOT Send(oSpell,@IsAccessible)
+         oAbility = Send(SYS,@FindSpellByNum,#num=num);
+         if NOT Send(oAbility,@IsAccessible)
          {
             iAbility = Send(self,@DecodeSpellAbility,#compound=i);
             Send(self,@RemoveSpell,#num=num);
          }
       }
 
+      foreach i in plSkills
+      {
+         num = Send(self,@DecodeSkillNum,#compound=i);
+         oAbility = Send(SYS,@FindSkillByNum,#num=num);
+         if NOT Send(oAbility,@IsAccessible)
+         {
+            iAbility = Send(self,@DecodeSkillAbility,#compound=i);
+            Send(self,@RemoveSkill,#num=num);
+         }
+      }
+
       Send(self,@ToCliStats,#group=3);
+      Send(self,@ToCliStats,#group=4);
       Send(self,@RefigureSchoolsLists,#informlore=TRUE);
 
       return;

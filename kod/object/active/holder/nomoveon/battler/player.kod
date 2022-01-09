@@ -822,6 +822,10 @@ resources:
    player_ability_level_up = "~BYou feel ready to take your studies of %s to the next level!"
    player_ability_level_up_sound = abilitylevelup.ogg
 
+   player_no_east = \
+      "A mystical force rips through your body and prevents you from entering."
+   player_no_east_snd = electrify.ogg
+
 classvars:
 
    viHand_space = 2
@@ -14355,7 +14359,7 @@ messages:
 
    UserReqNewOwner(RID=0)
    {
-      local oRoom;
+      local oRoom, oEffect;
 
       if RID = 0
       {
@@ -14373,6 +14377,22 @@ messages:
          AND (NOT Send(self,@CanPlayerPvP))
       {
          Send(self,@MsgSendUser,#message_rsc=player_no_enter);
+
+         return FALSE;
+      }
+
+      if Send(oRoom,@IsExpansionRoom)
+         AND NOT Send(SETTINGS_OBJECT,@IsExpansionEnabled)
+      {
+         if IsClass(self,&DM)
+            AND Send(SETTINGS_OBJECT,@CanDMsTPToExpRooms)
+         {
+            return TRUE;
+         }
+
+         Send(self,@MsgSendUser,#message_rsc=player_no_east);
+         Send(self,@WaveSendUser,#wave_rsc=player_no_east_snd);
+         Send(self,@EffectSendUserDuration,#effect=EFFECT_WHITEOUT,#duration=600);
 
          return FALSE;
       }

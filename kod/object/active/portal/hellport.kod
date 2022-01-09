@@ -33,6 +33,8 @@ resources:
    hellportal_raza = "the rustic charm of the Raza Inn"
    hellportal_kocatan = "the sturdy, island fortress of Ko'catan"
    hellport_darena = "the blood-stained floor of the Death Arena"
+   hellportal_jixa = "the peacefull Inn near the woods of Jixa"
+   hellportal_berg = "the lively drifting on the mountains of Berg"
 
 classvars:
 
@@ -49,12 +51,15 @@ properties:
    ptLocations = $
    piDrawFx = DRAWFX_TRANSLUCENT_75
 
+   pbIncludeEast = FALSE
+
 messages:
 
    Constructed()
    {
       plPossibleLocations = [ RID_TOS_INN, RID_COR_INN, RID_BAR_INN,
-                              RID_JAS_INN, RID_MAR_INN, RID_RAZA_INN ];
+                              RID_JAS_INN, RID_MAR_INN, RID_RAZA_INN,
+                              RID_BERG_INN, RID_JIXA_INN ];
 
       // Set up the locations timer.
       Send(self,@LocationsTimer);
@@ -75,14 +80,26 @@ messages:
 
    SwapLocations()
    {
-      local iNum, iChosen, oRoom;
+      local iNum, iChosen, oRoom, lLocations;
 
       iNum = Length(plPossibleLocations);
 
       iChosen = piDest_Room;
       while iChosen = piDest_room
       {
-         iChosen = Nth(plPossibleLocations,Random(1,iNum));
+         // Include expansion towns if they are enabled
+         if pbIncludeEast
+            AND Send(SETTINGS_OBJECT,@IsExpansionEnabled)
+         {
+            lLocations = Cons(RID_BERG_INN,lLocations);
+            lLocations = Cons(RID_JIXA_INN,lLocations);
+         }
+         else
+         {
+            lLocations = plPossibleLocations;
+         }
+
+         iChosen = Nth(lLocations,Random(1,iNum));
       }
 
       oRoom = Send(SYS,@FindRoomByNum,#num=iChosen);
@@ -136,6 +153,14 @@ messages:
       else if piDest_room = RID_RAZA_INN
       {
          rLocation = hellportal_raza;
+      }
+      else if piDest_room = RID_BERG_INN
+      {
+         rLocation = hellportal_berg;
+      }
+      else if piDest_room = RID_JIXA_INN
+      {
+         rLocation = hellportal_jixa;
       }
       else
       {

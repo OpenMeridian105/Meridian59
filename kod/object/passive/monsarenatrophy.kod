@@ -1,0 +1,82 @@
+// Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+// All rights reserved.
+//
+// This software is distributed under a license that is described in
+// the LICENSE file that accompanies it.
+//
+// Meridian is a registered trademark.
+
+
+////////////////////////////////////////////////////////////////////////////////
+MonsterArenaTrophy is PassiveObject
+
+constants:
+
+   TROPHY_WAVES = 1
+   TROPHY_KILLS = 2
+   TROPHY_KILLS2 = 3
+
+   include blakston.khd
+   include protocol.khd
+
+resources:
+
+   //include sign-ar2.lkod
+
+   monsarenasign_name_rsc = "Kraanan's Ironman"
+   monsarenasign_icon1_rsc = artrop01.bgf
+   monsarenasign_icon4_rsc = artrop04.bgf
+
+   monsarenasign_desc_rsc = "Coming soon!" 
+
+   monsarenasign_dummy_line =  "    %s  (%i %s)\n"
+   monsarenasign_line = "    %q  (%i %s)\n"
+   monsarenasign_blank_rsc = " "
+   monsarenasign_wave = "wave"
+   monsarenasign_waves = "waves"
+   monsarenasign_kill = "kill"
+   monsarenasign_kills = "kills"
+
+   monsarenasign_dummy_name = "Noimad Trebuhcs"
+
+classvars:
+
+properties:
+
+   vrName = monsarenasign_name_rsc
+   vrIcon = monsarenasign_icon1_rsc
+   vrDesc = monsarenasign_desc_rsc
+
+   pitype = TROPHY_KILLS
+
+   // The room ID for the arena this sign is associated with.
+   piRID = RID_SURVIVAL_ARENA
+
+messages:
+
+   Constructor(type = $)
+   {
+      if type <> $
+      {
+         pitype = type;
+      }
+
+      if pitype = TROPHY_WAVES
+      {
+         vrIcon = monsarenasign_icon4_rsc;
+      }
+      else
+      {
+         vrIcon = monsarenasign_icon1_rsc;
+      }
+
+      propagate;
+   }
+
+   ReqNewOwner(what = $)
+   {
+      return FALSE;
+   }
+
+end
+////////////////////////////////////////////////////////////////////////////////

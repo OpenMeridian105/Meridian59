@@ -19,6 +19,7 @@ BOFS = tree.bof spell.bof boulder.bof news.bof trestype.bof arsign01.bof \
    nectome.bof modlnode.bof wrmtrail.bof shrinfog.bof \
    bell.bof dflycage.bof pillow.bof ghostitm.bof ventstem.bof \
    evntsign.bof maillist.bof objectatt.bof roomflagicon.bof \
-   questtemplate.bof honrsign.bof guildterritorysgn.bof marker.bof
+   questtemplate.bof honrsign.bof guildterritorysgn.bof marker.bof \
+   monsarenatrophy.bof
 
 !include $(KODDIR)\kod.mak

@@ -6595,6 +6595,7 @@ messages:
       if type = SAY_NORMAL
       {
          if StringContain(string,user_say_survival)
+            AND Send(poOwner,@GetRoomNum) = RID_SURVIVAL_ARENA
             AND Send(poOwner,@GetRoomNum) <> RID_OUTOFGRACE
          {
             // If UserSaySurvival handles the string, don't keep checking.
@@ -6960,40 +6961,22 @@ messages:
    {
       local lSurvivalOptions, oForceBaseRoom;
 
+      // Can't start an arena from an existing one.
       if IsClass(poOwner,&SurvivalRoom)
+         OR NOT IsClass(poOwner,&SurvivalArena)
       {
-         // Can't start an arena from an existing one.
          return FALSE;
       }
 
       if StringContain(string,user_say_start_solo_survival)
       {
-         if NOT Send(poOwner,@CheckRoomFlag,#flag=ROOM_SAFELOGOFF)
-            OR Send(poOwner,@GetRoomNum) = RID_UNDERWORLD
-            OR Send(poOwner,@GetRoomNum) = RID_FIELD1
-         {
-            Send(self,@MsgSendUser,#message_rsc=survival_err_not_safe);
-
-            return TRUE;
-         }
-
          Send(Send(SYS,@GetSurvivalRoomMaintenance),@CreateRoom,
                #who=self,#sString=string);
 
          return TRUE;
       }
-
-      if StringEqual(string,user_say_join_pub_survival)
+      else if StringEqual(string,user_say_join_pub_survival)
       {
-         if NOT Send(poOwner,@CheckRoomFlag,#flag=ROOM_SAFELOGOFF)
-            OR Send(poOwner,@GetRoomNum) = RID_UNDERWORLD
-            OR Send(poOwner,@GetRoomNum) = RID_FIELD1
-         {
-            Send(self,@MsgSendUser,#message_rsc=survival_err_not_safe);
-
-            return TRUE;
-         }
-
          if Send(Send(SYS,@GetSurvivalRoomMaintenance),@FindPublicRoom) = $
          {
             Send(self,@MsgSendUser,#message_rsc=survival_no_public_rooms);
@@ -7014,19 +6997,9 @@ messages:
 
          return TRUE;
       }
-
-      if StringContain(string,user_say_start_pub_survival)
+      else if StringContain(string,user_say_start_pub_survival)
       {
          lSurvivalOptions = $;
-         if (NOT Send(poOwner,@CheckRoomFlag,#flag=ROOM_SAFELOGOFF)
-            OR Send(poOwner,@GetRoomNum) = RID_UNDERWORLD
-            OR Send(poOwner,@GetRoomNum) = RID_FIELD1)
-            AND NOT IsClass(self,&Admin)
-         {
-            Send(self,@MsgSendUser,#message_rsc=survival_err_not_safe);
-
-            return TRUE;
-         }
 
          oForceBaseRoom = $;
          if IsClass(self,&DM)
@@ -7055,8 +7028,7 @@ messages:
 
          return TRUE;
       }
-
-      if StringEqual(string,user_say_join_guild_survival)
+      else if StringEqual(string,user_say_join_guild_survival)
       {
          if poGuild = $
          {
@@ -7095,22 +7067,12 @@ messages:
 
          return TRUE;
       }
-
-      if StringContain(string,user_say_start_guild_survival)
+      else if StringContain(string,user_say_start_guild_survival)
       {
          lSurvivalOptions = $;
          if poGuild = $
          {
             Send(self,@MsgSendUser,#message_rsc=survival_err_no_guild);
-
-            return TRUE;
-         }
-
-         if NOT Send(poOwner,@CheckRoomFlag,#flag=ROOM_SAFELOGOFF)
-            OR Send(poOwner,@GetRoomNum) = RID_UNDERWORLD
-            OR Send(poOwner,@GetRoomNum) = RID_FIELD1
-         {
-            Send(self,@MsgSendUser,#message_rsc=survival_err_not_safe);
 
             return TRUE;
          }

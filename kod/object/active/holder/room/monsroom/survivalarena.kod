@@ -14,6 +14,10 @@ constants:
 
    include blakston.khd
 
+   TROPHY_WAVES = 1
+   TROPHY_KILLS = 2
+   TROPHY_KILLS2 = 3
+
    SECTOR_ID_FIGHT = 2
    SECTOR_ID_BARS = 3
 
@@ -69,10 +73,22 @@ resources:
 
    SurvivalArena_sign_name = "Using the Training Grounds"
    SurvivalArena_sign_text = \
-      "Say 'join' or 'leave' to enter or leave the arena.\n"
-      "Combantants will need to kill all the enemies in order to progress to "
+      "Say the name of the game you wish to play.\n\n"
+      "SURVIVAL:\nSay 'join' or 'leave' to enter or leave the arena.\n"
+      "Combatants will need to kill all the enemies in order to progress to "
       "the next wave of creatures. The difficulty increases as the players "
-      "advance through each level. "
+      "advance through each level.\n\n"
+      "CLASSIC SURVIVAL: Say commands below:\n"
+      "Say 'start solo survival'\n"
+      "Say 'start public survival'\n"
+      "Say 'join public survival'\n"
+      "Say 'start guild survival'\n"
+      "Say 'join guild survival'\n\n"
+      "TRADITIONAL: Traditional bouts are those between only two combatants.\n\n"
+      "LAST MAN STANDING: Every man for himself.\n\n"
+      "GUILD VS GUILD: Two guilds may choose to combat each other.\n\n"
+      "BATTLE ROYALE: A mix between last man standing and guild vs guild."
+
    SurvivalArena_locked_house = \
       "The door to Osvann Vaendefdall's house is locked."
 
@@ -170,7 +186,7 @@ messages:
 
    CreateStandardObjects()
    {
-      local lObjCoords1, oSign;
+      local lObjCoords1, oSign, oObj;
 
       if poWatcher = $
       {
@@ -199,6 +215,21 @@ messages:
                       [ 4,57, OO_MIDTREE1]
                     ];
       Send(self,@CreateOrnObjFromList,#lObjlist=lObjCoords1);
+
+      // Trophy - Most kills
+      oObj = Create(&MonsterArenaTrophy,#type=TROPHY_KILLS);
+      Send(self,@NewHold,#what=oObj,#new_row=47,#new_col=66,
+            #fine_row=40,#fine_col=28,#new_angle=ANGLE_NORTH_WEST);
+
+      // Trophy - Most waves
+      oObj = Create(&MonsterArenaTrophy,#type=TROPHY_WAVES);
+      Send(self,@NewHold,#what=oObj,#new_row=48,#new_col=65,
+            #fine_row=8,#fine_col=62,#new_angle=ANGLE_NORTH_WEST);
+
+      // Trophy - 
+      oObj = Create(&MonsterArenaTrophy,#type=TROPHY_KILLS2);
+      Send(self,@NewHold,#what=oObj,#new_row=48,#new_col=65,
+            #fine_row=40,#fine_col=30,#new_angle=ANGLE_NORTH_WEST);
 
       // Lightning
       Send(self,@NewHold,#what=Create(&DynamicLight,#iColor=LIGHT_FIRE,#iIntensity=35),

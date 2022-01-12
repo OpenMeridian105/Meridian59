@@ -35,9 +35,9 @@ properties:
    // pbPickPocket = FALSE
 
    // Queue of most recent attackers.
-   plAttackers = $
+   plEnemies = $
    // Number of attackers to keep in queue.
-   piAttackers = 15
+   piEnemies = 15
 
    // List of treasure items
    plTreasure = $
@@ -84,33 +84,33 @@ messages:
          AND IsClass(what,&Player)
       {
          // List already contains this player - move to top.
-         if plAttackers <> $
-            AND (FindListElem(plAttackers,what) > 0)
+         if plEnemies <> $
+            AND (FindListElem(plEnemies,what) > 0)
          {
             // Don't do this if they're already at the top
-            if NOT (First(plAttackers) = what)
+            if NOT (First(plEnemies) = what)
             {
-               plAttackers = DelListElem(plAttackers,what);
-               plAttackers = Cons(what,plAttackers);
+               plEnemies = DelListElem(plEnemies,what);
+               plEnemies = Cons(what,plEnemies);
             }
          }
-         else if (Length(plAttackers) < piAttackers)
+         else if (Length(plEnemies) < piEnemies)
          {
             // Player not already in list, check size and delete if needed.
-            plAttackers = Cons(what,plAttackers);
+            plEnemies = Cons(what,plEnemies);
          }
          else
          {
-            plAttackers = DelListElem(plAttackers,Nth(plAttackers,piAttackers));
-            plAttackers = Cons(what,plAttackers);
+            plEnemies = DelListElem(plEnemies,Nth(plEnemies,piEnemies));
+            plEnemies = Cons(what,plEnemies);
          }
       }
 
       if pbDebug
       {
-         foreach atcker in plAttackers
+         foreach atcker in plEnemies
          {
-            Debug("plAttackers: ",atcker);
+            Debug("plEnemies: ",atcker);
          }
       }
 
@@ -123,8 +123,8 @@ messages:
 
       lInventory = [plActive, plPassive];
 
-      // Autogive loot to all players in plAttackers that are present
-      foreach oAttacker in plAttackers
+      // Autogive loot to all players in plEnemies that are present
+      foreach oAttacker in plEnemies
       {
          if Send(self,@GetOwner) <> Send(oAttacker,@GetOwner)
          {
@@ -173,7 +173,7 @@ messages:
          }
       }
 
-      plAttackers = $;
+      plEnemies = $;
 
       propagate;
    }

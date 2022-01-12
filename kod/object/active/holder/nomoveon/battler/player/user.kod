@@ -64,6 +64,13 @@ constants:
    // Amount of ms an action can be queued for before we are ready to execute.
    ACTION_QUEUE_TIME = 250
 
+   // How much time does it take us to actively defend against an attack?
+   ACTIVE_DEFENSE_TIME = 500
+   // How much time does it cost us if we defend too late?
+   ACTIVE_DEFENSE_TIMEOUT = 2000
+   // How much vigor does it cost us to defend late?
+   ACTIVE_DEFENSE_PENALTY = 5
+
 resources:
 
    include user.lkod
@@ -516,6 +523,8 @@ resources:
    user_cancel_lift = "%s%s retracts %s hand."
    user_accept_lift_helper = "%s%s grabs your hand."
    user_accept_lift = "You grab %s%s's hand."
+
+   user_active_defense_late = "You leave yourself exposed."
 
 classvars:
 
@@ -1841,7 +1850,7 @@ messages:
    "It is dynamically allocated each time (wasting list nodes)."
    {
       local liClient_cmd, oWhat, oRoom, iRow, iCol, lUsers, iAngle, sBody,
-            iSpeed, i, sStr_said, bCancel, iTimeLeft, oAbility, oOldOwner;
+            iSpeed, i, sStr_said, bCancel, iTimeLeft, oAbility, iState, oOldOwner;
 
       // This checks to see if the user is trying to Send too many packets
       //  per second.  If they are, then we mark them as a spammer and
@@ -1906,13 +1915,34 @@ messages:
             return;
          }
 
-         oOldOwner = poOwner;
+         if (iSpeed = USER_WALKING_SPEED)
+         {
+            iState = Send(self,@CheckAttackers);
+
+            if iState <> $
+               AND Send(self,@CheckAttackTimer)
+            {
+               if iState = ACTIVE_DEFENSE_READY
+               {
+                  Send(self,@ActiveDefense,#iRow=iRow,#iCol=iCol,#iAngle=iAngle);
+                  Send(self,@SetAttackTime,#time=ACTIVE_DEFENSE_TIME);
+               }
+               else if iState = ACTIVE_DEFENSE_LATE
+               {
+                  Send(self,@MsgSendUser,#message_rsc=user_active_defense_late);
+                  Send(self,@SetAttackTime,#time=ACTIVE_DEFENSE_TIMEOUT);
+                  Send(self,@LoseVigor,#amount=ACTIVE_DEFENSE_PENALTY);
+               }
+            }
+         }
 
          Send(self,@UserMove,#new_row=iRow/FINENESS,#new_col=iCol/FINENESS,
               #fine_row=(iRow % FINENESS),#fine_col=(iCol % FINENESS),
               #speed=iSpeed);
 
-        // Only use the sent angle if we stayed in the same room.
+         oOldOwner = poOwner;
+
+         // Only use the sent angle if we stayed in the same room.
          if (poOwner = oOldOwner)
          {
             Send(self,@UserTurn,#what=self,#new_angle=iAngle);
@@ -2101,7 +2131,7 @@ messages:
          // We are ready to act. Let's do just that.
          if ptAttackTimer = $
          {
-            Send(self,@UserAttack,#type=Nth(client_msg,2),#what=Nth(client_msg,3));
+            Send(self,@UserAttack,#what=Nth(client_msg,3));
          }
          // We are not ready yet.
          else
@@ -2114,7 +2144,7 @@ messages:
                // We are and we have no other action queued yet. Let's queue our action.
                if ptQueuedAction = $
                {
-                  plLastReceived = [BP_REQ_ATTACK,Nth(client_msg,2),Nth(client_msg,3)];
+                  plLastReceived = [BP_REQ_ATTACK,Nth(client_msg,3)];
                   ptQueuedAction = CreateTimer(self,@UserQueuedAction,iTimeLeft);
                }
                // We are already queueing an action. If it's already an attack, we can
@@ -2122,7 +2152,7 @@ messages:
                else if First(plLastReceived) <> BP_REQ_ATTACK
                {
                   DeleteTimer(ptQueuedAction);
-                  plLastReceived = [BP_REQ_ATTACK,Nth(client_msg,2),Nth(client_msg,3)];
+                  plLastReceived = [BP_REQ_ATTACK,Nth(client_msg,3)];
                   ptQueuedAction = CreateTimer(self,@UserQueuedAction,iTimeLeft);
                }
             }
@@ -2531,18 +2561,17 @@ messages:
 
          if iAction = BP_REQ_ATTACK
          {
-            Send(self,@UserAttack,#type=Nth(plLastReceived,2),
-               #what=Nth(plLastReceived,3));
+            Send(self,@UserAttack,#what=Nth(plLastReceived,2));
          }
          else if iAction = BP_REQ_CAST
          {
-            Send(self,@UserCast,#type=Nth(plLastReceived,2),
-               #what=Nth(plLastReceived,3));
+            Send(self,@UserCast,#oSpell=Nth(plLastReceived,2),
+               #lTargets=Nth(plLastReceived,3));
          }
          else if iAction = BP_REQ_PERFORM
          {
-            Send(self,@UserPerform,#type=Nth(plLastReceived,2),
-               #what=Nth(plLastReceived,3));
+            Send(self,@UserPerform,#oSkill=Nth(plLastReceived,2),
+               #lTargets=Nth(plLastReceived,3));
          }
 
          plLastReceived = $;

@@ -25,6 +25,15 @@ resources:
 
    stroke_swing_too_far = "You take aim, hoping to reach your target."
 
+   stroke_blocked_attacker = "%s%s blocks your %s!"
+   stroke_blocked_defender = "You block %s%s's %s!"
+   stroke_parried_attacker = "%s%s parries your %s!"
+   stroke_parried_defender = "You parry %s%s's %s!"
+   stroke_dodged_attacker = "%s%s dodges your %s!"
+   stroke_dodged_defender = "You dodge %s%s's %s!"
+
+   stroke_trance_cancel = "You feint your attack!"
+
    stroke_swish1 = SwSwish1.ogg
    stroke_swish2 = SwSwish2.ogg
    stroke_swish3 = SwSwish3.ogg
@@ -72,6 +81,12 @@ classvars:
 properties:
 
    plPrerequisites = $
+
+   // How much does a target that successfully blocked, parried or blocked
+   // add to our cooldown?
+   piBlocked_penalty = 1000
+   piParried_penalty = 3000
+   piDodged_penalty = 500
 
 messages:
 
@@ -249,9 +264,49 @@ messages:
 
    PerformSkill(who=$,lTargets=$)
    {
-      local oTarget, oWeapon, iMultiAttack, bAmbush;
+      local oTarget, oWeapon, iMultiAttack, bAmbush, iDefended;
 
       oTarget = First(lTargets);
+
+      iDefended = Send(oTarget,@IsBlocked,#who=who);
+      Send(oTarget,@SwingHasEnded,#who=who);
+
+      if iDefended = ACTIVE_BLOCK
+      {
+         Send(who,@MsgSendUser,#message_rsc=stroke_blocked_attacker,
+            #parm1=Send(oTarget,@GetCapDef),#parm2=Send(oTarget,@GetName),
+            #parm3=Send(self,@GetName));
+         Send(oTarget,@MsgSendUser,#message_rsc=stroke_blocked_defender,
+            #parm1=Send(who,@GetDef),#parm2=Send(who,@GetName),
+            #parm3=Send(self,@GetName));
+         Send(oTarget,@ClearAllAttackers);
+         Send(who,@SetAttackTime,#time=piBlocked_penalty,#bAdd=TRUE);
+         return;
+      }
+      else if iDefended = ACTIVE_PARRY
+      {
+         Send(who,@MsgSendUser,#message_rsc=stroke_parried_attacker,
+            #parm1=Send(oTarget,@GetCapDef),#parm2=Send(oTarget,@GetName),
+            #parm3=Send(self,@GetName));
+         Send(oTarget,@MsgSendUser,#message_rsc=stroke_parried_defender,
+            #parm1=Send(who,@GetDef),#parm2=Send(who,@GetName),
+            #parm3=Send(self,@GetName));
+         Send(oTarget,@ClearAllAttackers);
+         Send(who,@SetAttackTime,#time=piParried_penalty,#bAdd=TRUE);
+         return;
+      }
+      else if iDefended = ACTIVE_DODGE
+      {
+         Send(who,@MsgSendUser,#message_rsc=stroke_dodged_attacker,
+            #parm1=Send(oTarget,@GetCapDef),#parm2=Send(oTarget,@GetName),
+            #parm3=Send(self,@GetName));
+         Send(oTarget,@MsgSendUser,#message_rsc=stroke_dodged_defender,
+            #parm1=Send(who,@GetDef),#parm2=Send(who,@GetName),
+            #parm3=Send(self,@GetName));
+         Send(oTarget,@ClearAllAttackers);
+         Send(who,@SetAttackTime,#time=piDodged_penalty,#bAdd=TRUE);
+         return;
+      }
 
       oWeapon = Send(who,@GetWeapon);
 
@@ -265,6 +320,13 @@ messages:
             #use_weapon=oWeapon,#ambush=bAmbush,#bCheck=FALSE);
 
          --iMultiAttack;
+      }
+
+      if (iDefended = ACTIVE_BLOCK_FAILED)
+         OR (iDefended = ACTIVE_PARRY_FAILED)
+         OR (iDefended = ACTIVE_DODGE_FAILED)
+      {
+         Send(oTarget,@ClearAllAttackers);
       }
 
       // Record the swing for potential advancement.
@@ -419,9 +481,15 @@ messages:
 
       // Strokes pay their costs here.
       if NOT IsClass(self,&RangedStroke)
-         AND NOT Send(self,@PayCosts,#who=who)
       {
-         return;
+         if NOT Send(self,@PayCosts,#who=who)
+         {
+            return;
+         }
+
+         // Add ourselves to the victim's attack list, allowing them
+         // to parry, block or dodge.
+         Send(First(lTargets),@AddAttacker,#who=who);
       }
 
       propagate;
@@ -453,6 +521,36 @@ messages:
       {
          return FALSE;
       }
+
+      propagate;
+   }
+
+   // Determines if the preparation trance (&Trance) can be disrupted.
+   CanBreakTrance(who=$,state=$,event=1,disruption=0)
+   {
+      // Strokes can be interrupted as a feint.
+      if event = EVENT_CANCEL
+      {
+         return TRUE;
+      }
+
+      propagate;
+   }
+
+   TranceCanceled(who=$,state=$)
+   {
+      Send(who,@MsgSendUser,#message_rsc=stroke_trance_cancel,
+           #parm1=Send(self,@GetName));
+      Send(self,@SkillCanceled,#who=who);
+      Send(who,@SetAttackTime,#time=500);
+      Send(First(Nth(state,3)),@SwingHasEnded,#who=who);
+
+      return;
+   }
+
+   TranceBroken(who=$,state=$,event=$)
+   {
+      Send(First(Nth(state,3)),@SwingHasEnded,#who=who);
 
       propagate;
    }

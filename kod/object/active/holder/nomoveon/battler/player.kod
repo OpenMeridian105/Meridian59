@@ -825,6 +825,11 @@ resources:
    player_no_east = \
       "A mystical force rips through your body and prevents you from entering."
    player_no_east_snd = electrify.ogg
+   player_off_guard = "%s%s has caught you off-guard!"
+
+   player_active_block_failed = "You thrust out your shield, but fail to block the attack."
+   player_active_parry_failed = "You thrust out your weapon, but fail to parry the attack."
+   player_active_dodge_failed = "You try to move out of the way of the attack, but fail to dodge it."
 
 classvars:
 
@@ -1126,6 +1131,8 @@ properties:
    plPeriodicSounds = $
 
    plSets = $
+
+   plAttackers = $
 
 messages:
 
@@ -3425,11 +3432,11 @@ messages:
 
             bFlagsOnly = FALSE;
 
-            // If this is a trance that is about to execute a stroke, don't
+            // If this is a trance that is about to execute a skill, don't
             // interrupt the animation with SomethingChanged.
             // Use SomethingChangedFlags instead.
             if (IsClass(oSpell,&Trance))
-               AND IsClass(First(Nth(i,3)),&Stroke)
+               AND IsClass(First(Nth(i,3)),&Skill)
             {
                bFlagsOnly = TRUE;
             }
@@ -5775,6 +5782,13 @@ messages:
    {
       local oWeapon, oMonster;
 
+      // If we have been caught flat footed, we can't parry.
+      if Send(self,@IsExposed)
+         OR Send(self,@CheckAttackers) = ACTIVE_PARRY_FAILED
+      {
+         return 0;
+      }
+
       // Morphed?
       oMonster = Send(self,@GetIllusionForm);
       if (oMonster <> $)
@@ -5800,6 +5814,13 @@ messages:
    {
       local oShield, oMonster;
 
+      // If we have been caught flat footed, we can't block.
+      if Send(self,@IsExposed)
+         OR Send(self,@CheckAttackers) = ACTIVE_BLOCK_FAILED
+      {
+         return 0;
+      }
+
       // Morphed?
       oMonster = Send(self,@GetIllusionForm);
       if (oMonster <> $)
@@ -5824,6 +5845,12 @@ messages:
    GetDodgeAbility(stroke_obj=$)
    {
       local oMonster;
+
+      // If we have been caught flat footed, we can't dodge.
+      if Send(self,@IsExposed)
+      {
+         return 0;
+      }
 
       if stroke_obj <> $ AND NOT Send(stroke_obj,@CanDodge)
       {
@@ -6172,6 +6199,10 @@ messages:
             // Wings protect msg
          }
       }
+
+      // Any suffered damage has a chance to catch a victim off-guard.
+      Send(self,@CaughtOffGuard,#damage=damage,#what=what,
+         #stroke_obj=stroke_obj,#atype=atype,#stype=stype);
 
       Send(self,@LoseHealth,#amount=damage,#precision=TRUE);
 
@@ -6879,6 +6910,15 @@ messages:
       return TRUE;
    }
 
+   GetAttackTimeRemaining()
+   {
+      if ptAttackTimer <> $
+      {
+         return GetTimeRemaining(ptAttackTimer);
+      }
+      return FALSE;
+   }
+
    IsOkayAttackTime(time = 1000, seconds = $)
    "Have we waited long enough since the last attack/spell? Sets new "
    "valid attack time (time in msec, default 1 second)."
@@ -6934,7 +6974,23 @@ messages:
    AttackTimer()
    "Sets the attack timer variable to NIL so we know it's OK to attack again."
    {
+      local oWeapon;
+
       ptAttackTimer = $;
+
+      // Also check if we were left exposed by the attack. If so, back to guard.
+      oWeapon = Send(self,@LookupPlayerWeapon);
+
+      if oWeapon <> $
+      {
+         Send(oWeapon,@BackToGuard);
+      }
+
+      if piAnimation = PANM_EXPOSED
+      {
+         piAnimation = PANM_NONE;
+         Send(poOwner,@SomethingChanged,#what=self);
+      }
 
       return;
    }
@@ -11384,6 +11440,15 @@ messages:
       return;
    }
 
+   DoUnleash()
+   {
+      piAnimation = PANM_WEAPON_UNLEASH;
+      Send(poOwner,@SomethingChanged,#what=self);
+      piAnimation = PANM_EXPOSED;
+
+      return;
+   }
+
    GetIcon(trueicon=FALSE)
    {
       // trueicon is set to true anytime you want to know what
@@ -11414,7 +11479,13 @@ messages:
       }
 
       // Get our attack delay, but only if we are attacking, punching of firing.
-      if iAnimation >= PANM_FIST_ATTACK
+      if iAnimation = PANM_WEAPON_UNLEASH
+      {
+         iDelay = Send(Send(SYS,@FindSkillByNum,#num=SKID_UNLEASH),
+                     @GetTranceTime,#who=self);
+         iDelay = 1200*Bound(iDelay,150,600)/450;
+      }
+      else if iAnimation >= PANM_FIST_ATTACK
       {
          iDelay = Bound(Send(self,@GetAttackTime),300,1200);
       }
@@ -11435,6 +11506,13 @@ messages:
       if iAnimation = PANM_WEAPON_ATTACK
       {
          AddPacket(1,ANIMATE_ONCE, 4,300*iDelay/1200, 2,2, 2,4, 2,1);
+
+         return;
+      }
+
+      if iAnimation = PANM_WEAPON_UNLEASH
+      {
+         AddPacket(1,ANIMATE_ONCE, 4,300*iDelay/1200, 2,2, 2,4, 2,4);
 
          return;
       }
@@ -11696,7 +11774,13 @@ messages:
       }
 
       // Get our attack delay, but only if we are attacking, punching of firing.
-      if iAnimation >= PANM_FIST_ATTACK
+      if iAnimation = PANM_WEAPON_UNLEASH
+      {
+         iDelay = Send(Send(SYS,@FindSkillByNum,#num=SKID_UNLEASH),
+                     @GetTranceTime,#who=self);
+         iDelay = 1200*Bound(iDelay,150,600)/450;
+      }
+      else if iAnimation >= PANM_FIST_ATTACK
       {
          iDelay = Bound(Send(self,@GetAttackTime),300,1200);
       }
@@ -11787,9 +11871,17 @@ messages:
       {
          AddPacket(1,ANIMATE_ONCE, 4,300*iDelay/1200, 2,4, 2,6, 2,iLeft_group);
       }
+      else if iAnimation = PANM_WEAPON_UNLEASH
+      {
+         AddPacket(1,ANIMATE_ONCE, 4,300*iDelay/1200, 2,4, 2,6, 2,6);
+      }
       else if iAnimation = PANM_DANCE
       {
          AddPacket(1,ANIMATE_CYCLE, 4,150, 2,10, 2,26);
+      }
+      else if iAnimation = PANM_EXPOSED
+      {
+         AddPacket(1,ANIMATE_NONE, 2,6); 
       }
       else
       {
@@ -11830,9 +11922,17 @@ messages:
       {
          AddPacket(1,ANIMATE_ONCE, 4,300*iDelay/1200, 2,4, 2,6, 2,17);
       }
+      else if iAnimation = PANM_WEAPON_UNLEASH
+      {
+         AddPacket(1,ANIMATE_ONCE, 4,300*iDelay/1200, 2,4, 2,6, 2,6);
+      }
       else if iAnimation = PANM_DANCE
       {
          AddPacket(1,ANIMATE_CYCLE, 4,150, 2,18, 2,34);
+      }
+      else if iAnimation = PANM_EXPOSED
+      {
+         AddPacket(1,ANIMATE_NONE, 2,6); 
       }
 
       AddPacket(4,prLegs, 1,HS_LEGS);
@@ -11845,6 +11945,10 @@ messages:
       {
          AddPacket(1,ANIMATE_ONCE, 4,900*iDelay/1200, 2,6, 2,6, 2,1);
       }
+      else if iAnimation = PANM_WEAPON_UNLEASH
+      {
+         AddPacket(1,ANIMATE_ONCE, 4,900*iDelay/1200, 2,6, 2,6, 2,6);
+      }
       else if iAnimation = PANM_FIST_ATTACK
       {
          AddPacket(1,ANIMATE_ONCE, 4,1200*iDelay/1200, 2,6, 2,6, 2,1);
@@ -11856,6 +11960,10 @@ messages:
       else if iAnimation = PANM_DANCE
       {
          AddPacket(1,ANIMATE_CYCLE, 4,150, 2,8, 2,24);
+      }
+      else if iAnimation = PANM_EXPOSED
+      {
+         AddPacket(1,ANIMATE_NONE, 2,6); 
       }
       else
       {
@@ -17002,6 +17110,411 @@ messages:
       Send(self,@EffectSendUserDuration,#effect=EFFECT_PAIN,#duration=5000);
 
       return;
+   }
+
+   // An attacker is currently swinging at us.
+   // The second entry indicates the state of the attack.
+   // ACTIVE_DEFENSE_READY means, the attack has not been blocked or parried yet.
+   // ACTIVE_BLOCK: the attack will be blocked once executed.
+   // ACTIVE_PARRY: the attack will be parried once executed.
+   // ACTIVE_BLOCK_FAILED: we blocked in time but our skill was insufficient.
+   // ACTIVE_PARRY_FAILED: we parried in time but our skill was insufficient.
+   // ACTIVE_DEFENSE_LATE: we are too late. If we defend now, we are punished.
+   // In the last case, the second entry is a timer. While the timer is up,
+   // any active defense attempt will incur a penalty.
+   AddAttacker(who=$)
+   {
+      plAttackers = Cons([who,FALSE],plAttackers);
+
+      return;
+   }
+
+   // Returns $ if we don't have attackers, ACTIVE_DEFENSE_LATE if
+   // we have missed our chance to block and the state of our defense else.
+   CheckAttackers()
+   {
+      local i, iState;
+
+      if plAttackers = $
+      {
+         return;
+      }
+
+      foreach i in plAttackers
+      {
+         iState = Nth(i,2);
+
+         if NOT IsTimer(iState)
+         {
+            return iState;
+         }
+      }
+
+      return ACTIVE_DEFENSE_LATE;
+   }
+
+   // The attacker has finished their swing without interruption.
+   // The attacker lingers in plAttackers while his attack is on cooldown.
+   SwingHasEnded(who=$)
+   {
+      local i, iTime;
+
+      // The maximum window for punishment is half a second.
+      // A standard recovery is 550ms, but certain attacks may
+      // have longer cooldowns.
+      iTime = Bound(Send(who,@GetAttackTimeRemaining),$,500);
+
+      foreach i in plAttackers
+      {
+         if First(i) = who
+            AND Nth(i,2) = ACTIVE_DEFENSE_READY
+         {
+            SetNth(i,2,CreateTimer(self,@ClearAttacker,iTime));
+            return;
+         }
+      }
+
+      return;
+   }
+
+   // The attack hasn't been actively defended and the attacker is ready
+   // to strike again, remove him from plAttackers. So that we may try again.
+   ClearAttacker(timer=$)
+   {
+      local i;
+
+      foreach i in plAttackers
+      {
+         if Nth(i,2) = timer
+         {
+            SetFirst(i,$);
+            SetNth(i,2,$);
+            plAttackers = DelListElem(plAttackers,i);
+
+            return;
+         }
+      }
+
+      return;
+   }
+
+   ClearAllAttackers()
+   {
+      local i, timer;
+
+      foreach i in plAttackers
+      {
+         timer = Nth(i,2);
+
+         if IsTimer(timer)
+         {
+            DeleteTimer(timer);
+         }
+
+         plAttackers = DelListElem(plAttackers,i);
+      }
+
+      plAttackers = $;
+
+      return;
+   }
+
+   ActiveDefense(iRow=$,iCol=$,iAngle=$)
+   {
+      local i, iDiff, iOldCol, iOldRow, iTargetRow, iTargetCol, lCoordinates,
+         oShield, oWeapon, iRandom, rSound, bDefended;
+
+      lCoordinates = Send(poOwner,@GetStepCoordinates,#angle=iAngle,#who=self);
+
+      iOldRow = piRow*FINENESS + piFine_Row;
+      iOldCol = piCol*FINENESS + piFine_Col;
+      iTargetRow = Nth(lCoordinates,3)*FINENESS + Nth(lCoordinates,4);
+      iTargetCol = First(lCoordinates)*FINENESS + Nth(lCoordinates,2);
+      iDiff = Abs(iOldRow-iTargetRow) + Abs(iCol-iTargetCol);
+      iDiff -= Abs(iRow-iTargetRow) + Abs(iCol-iTargetCol);
+
+      bDefended = FALSE;
+
+      if iDiff < -1
+      {
+         oShield = Send(self,@LookupPlayerShield);
+
+         if oShield <> $
+         {
+            bDefended = TRUE;
+
+            if  Send(self,@ActiveBlock)
+            {
+               foreach i in plAttackers
+               {
+                  if NOT IsTimer(Nth(i,2))
+                  {
+                     SetNth(i,2,ACTIVE_BLOCK);
+                  }
+               }
+
+               // Pick a fitting block sound at random.
+               iRandom = Random(1,3);
+
+               if iRandom = 1
+               {
+                  rSound = battler_block_sound1;
+               }
+               else if iRandom = 2
+               {
+                  rSound = battler_block_sound2;
+               }
+               else
+               {
+                  rSound = battler_block_sound3;
+               }
+            }
+            else
+            {
+               foreach i in plAttackers
+               {
+                  SetNth(i,2,ACTIVE_BLOCK_FAILED);
+               }
+
+               Send(self,@MsgSendUser,#message_rsc=player_active_block_failed);
+            }
+
+            Send(oShield,@DoBlock);
+         }
+      }
+      else if iDiff > 1
+      {
+         oWeapon = Send(self,@LookupPlayerWeapon);
+
+         if oWeapon <> $
+         {
+            bDefended = TRUE;
+
+            if Send(self,@ActiveParry)
+            {
+               foreach i in plAttackers
+               {
+                  if NOT IsTimer(Nth(i,2))
+                  {
+                     SetNth(i,2,ACTIVE_PARRY);
+                  }
+               }
+
+               // Pick a fitting parry sound at random.
+               iRandom = Random(1,3);
+
+               if iRandom = 1
+               {
+                  rSound = battler_parry_sound1;
+               }
+               else if iRandom = 2
+               {
+                  rSound = battler_parry_sound2;
+               }
+               else
+               {
+                  rSound = battler_parry_sound3;
+               }
+            }
+            else
+            {
+               foreach i in plAttackers
+               {
+                  SetNth(i,2,ACTIVE_PARRY_FAILED);
+               }
+
+               Send(self,@MsgSendUser,#message_rsc=player_active_parry_failed);
+            }
+
+            Send(oWeapon,@DoParry);
+         }
+      }
+
+      if NOT bDefended
+      {
+         if Send(self,@ActiveDodge)
+         {
+            foreach i in plAttackers
+            {
+               if NOT IsTimer(Nth(i,2))
+               {
+                  SetNth(i,2,ACTIVE_DODGE);
+               }
+            }
+
+            // Pick a fitting dodge sound at random.
+            iRandom = Random(1,3);
+
+            if iRandom = 1
+            {
+               rSound = battler_sound_weapon_miss1;
+            }
+            else if iRandom = 2
+            {
+               rSound = battler_sound_weapon_miss2;
+            }
+            else
+            {
+               rSound = battler_sound_weapon_miss3;
+            }
+         }
+         else
+         {
+            foreach i in plAttackers
+            {
+               SetNth(i,2,ACTIVE_DODGE_FAILED);
+            }
+
+            Send(self,@MsgSendUser,#message_rsc=player_active_dodge_failed);
+         }
+
+         iRandom = Random(1,10);
+
+         Send(self,@EffectSendUserDurationDirectionAndDistance,
+            #effect=EFFECT_DODGE,#duration=400,
+            #direction=(2*Random(0,1)-1)*iRandom*MAX_ANGLE/50,
+            #distance=(150-iRandom*iRandom)*FINENESS/150);
+      }
+
+      if rSound <> $
+      {
+         Send(poOwner,@SomethingWaveRoom,#what=self,#wave_rsc=rSound);
+      }
+
+      return;
+   }
+
+   ActiveBlock()
+   {
+      local oSkill, iAbility, iChance, iVigor;
+
+      oSkill = Send(SYS,@FindSkillByNum,#num=SKID_BLOCK);
+      iAbility = Send(self,@GetSkillAbility,#Skill_num=SKID_BLOCK);
+
+      iChance = Send(oSkill,@GetActiveBlockChance,#ability=iAbility,#who=self);
+
+      iVigor = Send(oSkill,@GetActiveBlockCost);
+
+      if Send(self,@LoseVigor,#precision=TRUE,#amount=iVigor) < iVigor
+      {
+         return FALSE;
+      }
+
+      if iChance > Random(0,99)
+      {
+         return TRUE;
+      }
+
+      return FALSE;
+   }
+
+   ActiveParry()
+   {
+      local oSkill, iAbility, iChance, iVigor;
+
+      oSkill = Send(SYS,@FindSkillByNum,#num=SKID_PARRY);
+      iAbility = Send(self,@GetSkillAbility,#Skill_num=SKID_PARRY);
+
+      iChance = Send(oSkill,@GetActiveParryChance,#ability=iAbility,#who=self);
+
+      iVigor = Send(oSkill,@GetActiveParryCost);
+
+      if Send(self,@LoseVigor,#precision=TRUE,#amount=iVigor) < iVigor
+      {
+         return FALSE;
+      }
+
+      if iChance > Random(0,99)
+      {
+         return TRUE;
+      }
+
+      return FALSE;
+   }
+
+   ActiveDodge()
+   {
+      local oSkill, iAbility, iChance, iVigor;
+
+      oSkill = Send(SYS,@FindSkillByNum,#num=SKID_DODGE);
+      iAbility = Send(self,@GetSkillAbility,#Skill_num=SKID_DODGE);
+
+      iChance = Send(oSkill,@GetActiveDodgeChance,#ability=iAbility,#who=self);
+
+      iVigor = Send(oSkill,@GetActiveDodgeCost);
+
+      if Send(self,@LoseVigor,#precision=TRUE,#amount=iVigor) < iVigor
+      {
+         return FALSE;
+      }
+
+      if iChance > Random(0,99)
+      {
+         return TRUE;
+      }
+
+      return FALSE;
+   }
+
+   IsBlocked(who=$)
+   {
+      local i;
+
+      foreach i in plAttackers
+      {
+         if First(i) = who
+         {
+            return Nth(i,2);
+         }
+      }
+
+      return FALSE;
+   }
+
+   // We have been hit. Let's check if that has caught us off-guard.
+   // There are two possible scenarios:
+   // 1) We are hit during an ability's wind-up (trance).
+   // 2) An ability has left us exposed during its cooldown.
+   CaughtOffGuard(damage=0,what=$,stroke_obj=$,atype=0,stype=0)
+   {
+      local oAbility;
+
+      // Let's see if we are still in the wind-up stage.
+      oAbility = Send(self,@GetTranceAbility);
+
+      // It has indeed. Need a bit of extra time to compose ourselves.
+      if oAbility = $
+      {
+         if (piAnimation = PANM_EXPOSED)
+         {
+            // Lock them out of action for a bit longer.
+            Send(self,@SetAttackTime,#time=2000,#bAdd=TRUE);
+
+            // Tell them about it.
+            Send(self,@MsgSendUser,#message_rsc=player_off_guard,
+               #parm1=Send(what,@GetCapDef),#parm2=Send(what,@GetName));
+
+            // Restore their 3rd person animation state to default.
+            // That also means that we can't stack penalties.
+            // Window overlay doesn't change until timer is up.
+            piAnimation = PANM_NONE;
+            Send(poOwner,@SomethingChanged,#what=self);
+         }
+      }
+      else
+      {
+         // Tell the ability. This is separate from trance breaking
+         // and could even be something positive like a reactive effect.
+         Send(oAbility,@CaughtInPreparation,#who=self,#what=what,
+            #stroke_obj=stroke_obj,#atype=atype,#stype=stype);
+      }
+
+      return;
+   }
+
+   IsExposed()
+   {
+      return (piAnimation = PANM_EXPOSED) AND (Send(self,@GetTranceAbility) = $);
    }
 
 end

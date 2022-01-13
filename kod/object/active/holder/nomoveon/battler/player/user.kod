@@ -64,10 +64,6 @@ constants:
    // Amount of ms an action can be queued for before we are ready to execute.
    ACTION_QUEUE_TIME = 250
 
-   // How much time does it take us to actively defend against an attack?
-   ACTIVE_DEFENSE_TIME = 500
-   // How much time does it cost us if we defend too late?
-   ACTIVE_DEFENSE_TIMEOUT = 2000
    // How much vigor does it cost us to defend late?
    ACTIVE_DEFENSE_PENALTY = 5
 
@@ -1924,13 +1920,18 @@ messages:
             {
                if iState = ACTIVE_DEFENSE_READY
                {
-                  Send(self,@ActiveDefense,#iRow=iRow,#iCol=iCol,#iAngle=iAngle);
-                  Send(self,@SetAttackTime,#time=ACTIVE_DEFENSE_TIME);
+                  oAbility = Send(SYS,@FindSkillByNum,#num=
+                     Send(self,@ActiveDefense,#iRow=iRow,
+                     #iCol=iCol,#iAngle=iAngle));
+                  Send(self,@SetAttackTime,#time=Send(oAbility,@GetSuccessTime));
                }
                else if iState = ACTIVE_DEFENSE_LATE
                {
+                  oAbility = Send(SYS,@FindSkillByNum,#num=
+                     Send(self,@ActiveDefense,#iRow=iRow,
+                     #iCol=iCol,#iAngle=iAngle,#bLate=TRUE));
                   Send(self,@MsgSendUser,#message_rsc=user_active_defense_late);
-                  Send(self,@SetAttackTime,#time=ACTIVE_DEFENSE_TIMEOUT);
+                  Send(self,@SetAttackTime,#time=Send(oAbility,@GetFailTime));
                   Send(self,@LoseVigor,#amount=ACTIVE_DEFENSE_PENALTY);
                }
             }

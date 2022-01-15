@@ -49,12 +49,15 @@ messages:
    {
       local lState, iPower;
 
-      lState = Send(who,@GetRadiusEnchantmentState,#byclass=&WarpTime);
-      if (lState <> $)
+      if IsClass(what,&Spell)
       {
-         iPower = Nth(lState,5);
-         // Up to an extra second.
-         time += iPower * 10;
+         lState = Send(who,@GetRadiusEnchantmentState,#byclass=&WarpTime);
+         if (lState <> $)
+         {
+            iPower = Nth(lState,5);
+            // Up to an extra second.
+            time += iPower * 10;
+         }
       }
 
       Send(who,@StartEnchantment,#what=self,#time=time,#addicon=FALSE,
@@ -91,7 +94,13 @@ messages:
       lTargets = Send(oAbility,@GetGoodTargets,#who=who,#lTargets=lTargets,
                       #report=IsClass(oAbility,&Stroke));
 
-      if IsClass(oAbility,&Spell)
+      if IsClass(oAbility,&Monster)
+      {
+         Send(oAbility,@TryAttack,#what=First(lTargets),#stroke_obj=oAbility,
+               #factor=Nth(state,7),#iNum=Nth(lTargets,2),#bNow=TRUE,
+               #count=Nth(lTargets,3));
+      }
+      else if IsClass(oAbility,&Spell)
       {
          iSpellPower = Send(oAbility,@GetSpellPower,#who=who);
 
@@ -223,6 +232,11 @@ messages:
    GetBuffStat()
    {
       return FALSE;
+   }
+
+   ModifyMonsterBehavior()
+   {
+      return;
    }
 
 end

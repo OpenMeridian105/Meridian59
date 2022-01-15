@@ -39,6 +39,17 @@ constants:
    // tick duration and the amount of resource gained/lost accordingly.
    TICK_FACTOR_MONSTER = 500
 
+   MONSTER_MOVE = 0
+   MONSTER_CAST = -1
+   MONSTER_MELEE = 1
+   MONSTER_RANGED = 2
+
+   MONSTER_BASE_SWING_TIME = 625
+
+   // if Random(1,MONSTER_QUICK_ATTACK_CHANCE) < viDifficulty
+   // cut attack delay in half.
+   MONSTER_QUICK_ATTACK_CHANCE = 12
+
 resources:
 
    include monster.lkod
@@ -282,6 +293,17 @@ resources:
 
    monster_projectile_icon = rocksm.bgf
 
+   monster_out_of_range = \
+      "You avoid %s%s's attack."
+
+   monster_sound_out_of_range1 = weaponmiss1.ogg
+   monster_sound_out_of_range2 = weaponmiss2.ogg
+   monster_sound_out_of_range3 = weaponmiss3.ogg
+
+   monster_blocked_defender = "You block %s%s's attack!"
+   monster_parried_defender = "You parry %s%s's attack!"
+   monster_dodged_defender = "You dodge %s%s's attack!"
+
 classvars:
 
    vrKocName = monster_koc_name
@@ -358,6 +380,17 @@ classvars:
    // If viPowerLevel is nil, powerlevel is computer based on mysticism,
    // intellect and monster level.
    viPowerLevel = $
+
+   // How long does it take the mob to execute its standard attack?
+   viSwing_time = $
+
+   // How much does a mob slow down during an attack swing?
+   viSwing_movement_reduction = 20
+
+   // By how much will our next attack be delayed in case we are defended?
+   viBlocked_penalty = 1000
+   viParried_penalty = 3000
+   viDodged_penalty = 500
 
    // Percentage chance to do an extra swing. 150 means a guaranteed 2nd
    // swing as well as a 50 percent chance to swing thrice.
@@ -1929,8 +1962,6 @@ messages:
    "This records the last time the monster attacked someone, "
    "and the player or monster it attacked."
    {
-      local oMaster;
-
       piLastTimeAttacked = GetTickCount();
 
       poLastAttacker = who;
@@ -1951,6 +1982,11 @@ messages:
    CanAttackNow()
    {
       return Abs(piLastTimeAttacked - GetTickCount()) > Send(self,@GetAttackTime);
+   }
+
+   GetAttackTimeRemaining()
+   {
+      return Send(self,@GetAttackTime);
    }
 
    SomethingEntered(what = $,where=$)
@@ -2325,7 +2361,7 @@ messages:
    "chasing, or we attack. Note that even if we can't move,"
    "we can still be 'engaging'...."
    {
-      local i, iDistance, iChaseRange, iDelay, bSight;
+      local i, iDistance, iChaseRange, iDelay, iType, bSight;
 
       Send(self,@ClearBehavior,#timer=timer);
 
@@ -2443,11 +2479,11 @@ messages:
 
       if Send(self,@MonsterCombatCheck)
       {
-         iDelay = Send(self,@MonsterAction,#distance=iDistance,#sight=bSight);
+         iType = Send(self,@MonsterAction,#distance=iDistance,#sight=bSight);
       }
       else
       {
-         iDelay = 0;
+         iType = MONSTER_MOVE;
       }
 
       // We may no longer be around after the attack
@@ -2464,7 +2500,7 @@ messages:
       }
 
       // If we can move, we physically try to get closer if not in range.
-      if iDelay = 0
+      if iType = MONSTER_MOVE
          // TODO: this might need to check whether we're in range or not.
          //AND NOT Send(self,@CanReach,#what=poTarget,#bRanged=TRUE)
       {
@@ -2475,7 +2511,16 @@ messages:
       // Monster acted in some way. Let's figure out what to do next.
       if poOwner <> $
       {
-         Send(poBrain,@PostEngageTimer,#mob=self,#delay=Abs(iDelay));
+         if iType = MONSTER_MOVE
+         {
+            Send(poBrain,@PostEngageTimer,#mob=self,#delay=0);
+         }
+         else if iType = MONSTER_CAST
+         {
+            iDelay = Send(self,@GetAttackTime);
+            iDelay = iDelay * Bound(150 - piIntellect,50,$) / 100;
+            Send(poBrain,@PostEngageTimer,#mob=self,#delay=iDelay);
+         }
       }
 
       return;
@@ -3170,9 +3215,26 @@ messages:
       return TRUE;
    }
 
-   TryAttack(what=$,stroke_obj=$)
+   TryAttack(what=$,stroke_obj=$,factor=100,iNum=$,bNow=FALSE,count=0,type=0)
    "Ok, we got someone to attack, lets try and hit them."
    {
+      local oTrance, iDefended, iDelay, bAttacked;
+
+      if bNow
+      {
+         // Still around?
+         if poOwner = $
+         {
+            return FALSE;
+         }
+
+         // Target still around?
+         if Send(what,@GetOwner) <> poOwner
+         {
+            return FALSE;
+         }
+      }
+
       // AI_NOFIGHT means they can't directly attack.
       if (piBehavior & AI_NOFIGHT)
       {
@@ -3190,7 +3252,137 @@ messages:
             #new_col=Send(what,@GetCol),#new_finerow=Send(what,@GetFineRow),
             #new_finecol=Send(what,@GetFineCol),#face_target=TRUE);
 
+      if NOT bNow
+      {
+         // Time for some record keeping.
+         if type = MONSTER_MELEE
+         {
+            // Only allow active melee defending for now.
+            Send(what,@AddAttacker,#who=self);
+         }
+
+         piLastTimeAttacked = GetTickCount();
+         poLastAttacker = what;
+
+         oTrance = Send(SYS,@FindSpellByNum,#num=SID_TRANCE);
+
+         Send(oTrance,@BeginTrance,#what=self,#who=self,
+            #lTargets=[what,iNum,count],#power=factor,
+            #time=Send(self,@GetSwingTime));
+
+         return TRUE;
+      }
+
+      iDelay = Send(self,@GetAttackTime);
+      bAttacked = FALSE;
+
+      iDefended = Send(what,@IsBlocked,#who=self);
+      Send(what,@SwingHasEnded,#who=self);
+
+      if iDefended = ACTIVE_BLOCK
+      {
+         Send(what,@MsgSendUser,#message_rsc=monster_blocked_defender,
+            #parm1=Send(self,@GetDef),#parm2=Send(self,@GetName));
+         Send(what,@ClearAllAttackers);
+
+         iDelay += viBlocked_penalty;
+         bAttacked = TRUE;
+      }
+      else if iDefended = ACTIVE_PARRY
+      {
+         Send(what,@MsgSendUser,#message_rsc=monster_parried_defender,
+            #parm1=Send(self,@GetDef),#parm2=Send(self,@GetName));
+         Send(what,@ClearAllAttackers);
+
+         iDelay += viParried_penalty;
+         bAttacked = TRUE;
+      }
+      else if iDefended = ACTIVE_DODGE
+      {
+         Send(what,@MsgSendUser,#message_rsc=monster_dodged_defender,
+            #parm1=Send(self,@GetDef),#parm2=Send(self,@GetName));
+         Send(what,@ClearAllAttackers);
+
+         iDelay += viDodged_penalty;
+         bAttacked = TRUE;
+      }
+      else if (iDefended = ACTIVE_BLOCK_FAILED)
+         OR (iDefended = ACTIVE_PARRY_FAILED)
+         OR (iDefended = ACTIVE_DODGE_FAILED)
+      {
+         Send(what,@ClearAllAttackers);
+      }
+
+      // Random chance to cut delay in half to throw off would be defenders.
+      if Random(1,MONSTER_QUICK_ATTACK_CHANCE) < viDifficulty
+      {
+         iDelay = Random(iDelay/3,iDelay);
+      }
+
+      // Monster acted in some way. Let's figure out what to do next.
+      if (poOwner <> $) AND (NOT count)
+      {
+         Send(poBrain,@PostEngageTimer,#mob=self,#delay=iDelay);
+      }
+
+      if bAttacked
+      {
+         return TRUE;
+      }
+
       propagate;
+   }
+
+   GetGoodTargets(who=$,lTargets=$)
+   {
+      local oTarget, iNum, i, squaredrange, iRandom, rSound;
+
+      oTarget = First(lTargets);
+      iNum = Nth(lTargets,2);
+
+      squaredrange = piMeleeRange*piMeleeRange;
+
+      foreach i in plActions
+      {
+         if iNum = First(i)
+         {
+            squaredrange = Nth(i,4);
+            break;
+         }
+      }
+
+      // We allow a small fudge factor of 2 so it becomes a bit harder to
+      // simply run out of range.
+      if NOT Send(self,@CanReach,#what=oTarget,#squaredrange=4*squaredrange)
+      {
+         if IsClass(oTarget,&Player)
+         {
+            Send(oTarget,@MsgSendUser,
+               #message_rsc=monster_out_of_range,
+               #parm1=Send(self,@GetDef),#parm2=Send(self,@GetName));
+         }
+
+         iRandom = Random(1,3);
+
+         if iRandom = 1
+         {
+            rSound = monster_sound_out_of_range1;
+         }
+         else if iRandom = 2
+         {
+            rSound = monster_sound_out_of_range2;
+         }
+         else
+         {
+            rSound = monster_sound_out_of_range3;
+         }
+
+         Send(poOwner,@SomethingWaveRoom,#what=self,#wave_rsc=rSound);
+
+         return $;
+      }
+
+      return lTargets;     
    }
 
    GetOffense(what = $, stroke_obj=$)
@@ -6703,7 +6895,7 @@ messages:
    "Depending on our action, return an appropriate delay."
    {
       local i, iPriority, lActions, lAction, iNum, oSpell, iAttacks, iUrgency,
-         iFactor, iSpellPower, lTargets, iDelay, iPowerLevel, iPercentage, iAction,
+         iFactor, iSpellPower, lTargets, iType, iPowerLevel, iPercentage, iAction,
          oTarget, oInjured, oAfflicted, bCombat, bMove, bHarm;
 
       // Following a specific order to increase performance.
@@ -6979,8 +7171,9 @@ messages:
             break;
       }
 
-      // It's clear we will be acting now. Get our action delay.
-      iDelay = Send(self,@GetAttackTime);
+      // It's clear we will be acting now. Take note of the type of action
+      // to initiate a proper post engage timer.
+      iType = MONSTER_MOVE;
 
       // Standard melee attack. Let's initiate the attack.
       if (iNum = SKID_SLASH) OR
@@ -6992,6 +7185,7 @@ messages:
          (iNum = SKID_BITE) OR
          (iNum = SKID_SPIT)
       {
+         iType = MONSTER_MELEE;
          iAttacks = 100 + viBonusSwing;
          i = 0;
 
@@ -7001,7 +7195,7 @@ messages:
          {
             if (Random(1,100) <= iAttacks)
                AND Send(self,@TryAttack,#what=oTarget,#stroke_obj=self,
-                        #factor=Nth(lAction,7))
+                        #factor=Nth(lAction,7),#iNum=iNum,#count=i,#type=iType)
             {
                ++i;
             }
@@ -7027,6 +7221,7 @@ messages:
       // If we are a ranged attack, shoot something.
       else if (iNum = SKID_FIRE)
       {
+         iType = MONSTER_RANGED;
          iAttacks = 100 + viBonusShot;
          i = 0;
 
@@ -7036,7 +7231,7 @@ messages:
          {
             if (Random(1,100) <= iAttacks)
                AND Send(self,@TryAttack,#what=oTarget,#stroke_obj=self,
-                        #factor=Nth(lAction,7))
+                        #factor=Nth(lAction,7),#iNum=iNum,#count=i,#type=iType)
             {
                ++i;
             }
@@ -7062,8 +7257,10 @@ messages:
       // We're doing a spinning area effect attack! Fancy!
       else if (iNum = SKID_SPIN)
       {
+         iType = MONSTER_MELEE;
          iAttacks = 100 + viBonusSpin;
          i = 0;
+         iAction = 0;
          lTargets = Send(self,@GetTargetsInRange);
 
          while (iAttacks > 0)
@@ -7079,7 +7276,9 @@ messages:
                   if oTarget <> $ AND Send(oTarget,@GetOwner) <> $
                   {
                      Send(self,@TryAttack,#what=oTarget,#stroke_obj=self,
-                           #factor=Nth(lAction,7));
+                           #factor=Nth(lAction,7),#iNum=iNum,#count=i+iAction,
+                           #targets=iAction,#type=iType);
+                     ++iAction;   
                   }
                }
 
@@ -7104,8 +7303,9 @@ messages:
       else if (iNum = SKID_TAUNT) OR (iNum = SKID_STUN) OR (iNum = SKID_CRIPPLE)
          OR (iNum = SKID_SNARE) OR (iNum = SKID_DAZE) OR (iNum = SKID_WEAKEN)
       {
+         iType = MONSTER_MELEE;
          Send(self,@TryAttack,#what=oTarget,#stroke_obj=self,
-               #factor=Nth(lAction,7),#iNum=iNum);
+               #factor=Nth(lAction,7),#iNum=iNum,#type=iType);
 
          if poOwner <> $
          {
@@ -7119,6 +7319,7 @@ messages:
       // An AoE special attack!
       else if (iNum = SKID_DISTRACT) OR (iNum = SKID_FRIGHTEN)
       {
+         iType = MONSTER_MELEE;
          lTargets = Send(self,@GetTargetsInRange,#squaredrange=Nth(lAction,4));
 
          switch (iNum)
@@ -7135,12 +7336,16 @@ messages:
                break;
          }
 
+         iAction = 0;
+
          foreach oTarget in lTargets
          {
             if oTarget <> $ AND Send(oTarget,@GetOwner) <> $
             {
                Send(self,@TryAttack,#what=oTarget,#stroke_obj=self,
-                     #factor=Nth(lAction,7),#iNum=iNum);
+                     #factor=Nth(lAction,7),#iNum=iNum,#count=iAction,
+                     #type=iType);
+               ++iAction;
             }
          }
 
@@ -7172,6 +7377,7 @@ messages:
       // Time to set our local variables.
       else if iNum < SKID_MINIMUM
       {
+         iType = MONSTER_CAST;
          oSpell = Send(SYS,@FindSpellByNum,#num=iNum);
          lTargets = Send(oSpell,@GetTargets,#who=self,#lTargets=[oTarget]);
          iSpellPower = Bound(Send(self,@GetSpellPower,#oSpell=oSpell) + Nth(lAction,7),
@@ -7210,13 +7416,6 @@ messages:
             Send(oSpell,@CastSpell,#who=self,#lTargets=lTargets,
                   #iSpellPower=iSpellPower,#iPowerLevel=iPowerLevel);
          }
-
-         iDelay = iDelay * Bound(150 - piIntellect,50,$) / 100;
-      }
-      // If none of the above was true, we simply moved.
-      else
-      {
-         iDelay = FALSE;
       }
 
       // We did something. Pay the cost.
@@ -7307,7 +7506,7 @@ messages:
          Send(self,@SideStepCheck,#distance=distance);
       }
 
-      return iDelay;
+      return iType;
    }
 
    MonsterActionCheck(i=$,distance=0,bHarm=TRUE,iPercentage=100)
@@ -8187,8 +8386,14 @@ messages:
       return piSpeed;
    }
 
-   GetAttackTime()
+   GetAttackTime(bFuzzy=TRUE)
    {
+      // Returns the minimum delay.
+      if NOT bFuzzy
+      {
+         return (MOB_ATTACK_TIMER_WAIT + 3500-70*(3*viDifficulty+viSpeed))*3/4;
+      }
+
       return Send(self,@Fuzzy,#num=MOB_ATTACK_TIMER_WAIT)
              + 3500-70*(3*viDifficulty+viSpeed);
    }
@@ -11507,6 +11712,52 @@ messages:
    GetMultiAttack()
    {
       return FALSE;
+   }
+
+   GetMovementSpeedReduction()
+   {
+      return viSwing_movement_reduction;
+   }
+
+   // Determines if the mob's casting trance (&Trance) can be disrupted.
+   CanBreakTrance(who=$,state=$,event=EVENT_NONE,disruption=0)
+   {
+      // Some events can cancel any trance. Not the ones below though.
+      // These events can only break trance, if vbCanBreakTrance = TRUE.
+      if (event = EVENT_CANCEL)
+         OR (event = EVENT_ABILITY)
+         OR (event = EVENT_ATTACK)         
+         OR (event = EVENT_DAMAGE)
+         OR (event = EVENT_DISRUPT)
+         OR (event = EVENT_USE)
+      {
+         return FALSE;
+      }
+
+      return TRUE;
+   }
+
+   TranceBroken(who=$,state=$,event=$)
+   {
+      Send(First(Nth(state,3)),@SwingHasEnded,#who=who);
+
+      return;
+   }
+
+   GetSwingTime()
+   {
+      local iTime;
+
+      if viSwing_time = $
+      {
+         iTime = MONSTER_BASE_SWING_TIME;
+         iTime -= viDifficulty*25;
+         iTime -= piAgility*4;
+
+         return Bound(iTime,50,600);
+      }
+
+      return viSwing_time;
    }
 
 end

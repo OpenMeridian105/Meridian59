@@ -2745,6 +2745,91 @@ messages:
        return iCase*MAX_ANGLE/4;
    }
 
+   GetAngleFromDifferences(coldiff=0,rowdiff=0)
+   "Filthy piece of code that returns the angle of who relative to what."
+   {
+      local iColDiff, iRowDiff, iAngle, iCase, iTan;
+
+      // If we are stacked right on top of each other, return nil.
+      if (coldiff = 0) AND (rowdiff = 0)
+      {
+         return $;
+      }
+
+      // The numerator gets the >=. That allows us to cover all cases
+      // while avoiding division by zero.
+      // Keeping track of the 4 quadrants with cases allows us to
+      // use the same conditionals multiple times simply adding a quarter
+      // circle rotation to the results per quadrant beyond the first.
+      if coldiff > 0 AND rowdiff >= 0
+      {
+         iCase = 0;
+         iTan = 100*rowdiff/coldiff;
+      }
+      else if coldiff <= 0 AND rowdiff > 0
+      {
+         iCase = 1;
+         iTan = -100*coldiff/rowdiff;
+      }
+      else if coldiff < 0 AND rowdiff <= 0
+      {
+         iCase = 2;
+         iTan = 100*rowdiff/coldiff;
+      }
+      else
+      {
+         iCase = 3;
+         iTan = -100*coldiff/rowdiff;
+      }
+
+      if iTan > 1140
+      {
+         return iCase*MAX_ANGLE/4 + 0;
+      }
+
+      if iTan > 370
+      {
+         return iCase*MAX_ANGLE/4 + 8*MAX_ANGLE/36;
+      }
+
+      if iTan > 210
+      {
+         return iCase*MAX_ANGLE/4 + 7*MAX_ANGLE/36;
+      }
+
+      if iTan > 140
+      {
+         return iCase*MAX_ANGLE/4 + 6*MAX_ANGLE/36;
+      }
+
+      if iTan > 100
+      {
+         return iCase*MAX_ANGLE/4 + 5*MAX_ANGLE/36;
+      }
+
+      if iTan > 70
+      {
+         return iCase*MAX_ANGLE/4 + 4*MAX_ANGLE/36;
+      }
+
+      if iTan > 46
+      {
+         return iCase*MAX_ANGLE/4 + 3*MAX_ANGLE/36;
+      }
+
+      if iTan > 26
+      {
+         return iCase*MAX_ANGLE/4 + 2*MAX_ANGLE/36;
+      }
+
+      if iTan > 8
+      {
+         return iCase*MAX_ANGLE/4 + 1*MAX_ANGLE/36;
+      }
+
+       return iCase*MAX_ANGLE/4;
+   }
+
    // This returns the difference in fine_col to move 1 step in angle's direction.
    GetXFineStep(angle=0)
    "Filthy beast of a function that returns the cosine values based on angle."

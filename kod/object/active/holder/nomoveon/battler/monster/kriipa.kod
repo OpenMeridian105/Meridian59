@@ -29,10 +29,12 @@ constants:
    ANIM_JUMPUP = 2
    ANIM_JUMPDOWN = 3
 
-   STATE_JUMPINGDOWN = 0
    STATE_ONROOF = 1
    STATE_READY = 2
-   STATE_JUMPINGUP = 3
+
+   KRIIPA_MOVE = 0
+   KRIIPA_MELEE = 1
+   KRIIPA_JUMP = -1
 
 resources:
 
@@ -94,6 +96,7 @@ properties:
 
    piAnimation = ANIM_NONE
    piRoofState = STATE_ONROOF
+   pbState_change = FALSE
    ptCanopy = $
 
 messages:
@@ -180,14 +183,14 @@ messages:
    MonsterAction(distance=0,sight=TRUE)
    "Kriipas have special attack patterns, which are handled here."
    {
-      local i, iPriority, lActions, lAction, iNum, iDelay, bStateChange;
+      local i, iPriority, lActions, lAction, iNum, iType;
 
       lActions = $;
 
       // Given distance is 3D, but we can jump down so use 2D distance if
       // we're on the roof.
-      if (poTarget <> $
-         AND piRoofState = STATE_ONROOF)
+      if (poTarget <> $)
+         AND (piRoofState = STATE_ONROOF)
       {
          distance = Send(self,@SquaredFineDistanceTo,#what=poTarget);
       }
@@ -271,39 +274,35 @@ messages:
 
       // If we are on the roof and attacking, jump down.
       // If we are on the ground and moving, jump up.
-      bStateChange = FALSE;
-
       if iNum = SKID_MINIMUM
       {
          if piRoofState = STATE_READY AND ptCanopy = $
          {
-            Send(Self,@MonsterJumpUp);
-            bStateChange = TRUE;
+            pbState_change = TRUE;
             ptCanopy = CreateTimer(self,@CanopySwitch,600);
+            Send(self,@MonsterJumpUp);
          }
       }
       else
       {
          if piRoofState = STATE_ONROOF
          {
-            Send(Self,@MonsterJumpDown);
-            bStateChange = TRUE;
-            Send(Self,@CanopySwitch);
+            pbState_change = TRUE;
          }
       }
 
-      // It's clear we will be acting now. Get our action delay.
-      iDelay = Send(self,@GetAttackTime);
+      // It's clear we will be acting now. Take note of the type of action
+      // to initiate a proper post engage timer.
+      iType = KRIIPA_MOVE;
 
-      // We move. No delay passed on.
-      if (iNum = SKID_MINIMUM)
-      {
-         iDelay = bStateChange * 600;
-      }
       // Standard melee attack. Let's initiate the attack.
-      else
+      if NOT (iNum = SKID_MINIMUM)
       {
-         if NOT Send(self,@TryAttack,#what=poTarget,#stroke_obj=self,#ambush=bStateChange)
+         iType = KRIIPA_MELEE;
+
+         if NOT Send(self,@TryAttack,#what=poTarget,#stroke_obj=self,
+                  #ambush=pbState_change,#factor=Nth(lAction,7),#iNum=iNum,
+                  #count=0,#type=iType)
          {
             return FALSE;
          }
@@ -313,14 +312,38 @@ messages:
             Send(self,@DoMeleeAnimation);
          }
       }
+      else if pbState_change
+      {
+         iType = KRIIPA_JUMP;
+         pbState_change = FALSE;
+      }
 
       // We did something. Pay the cost.
       Send(self,@LoseVigor,#amount=Nth(lAction,3),#precision=TRUE);
 
-      return iDelay;
+      return iType;
    }
 
-   CanopySwitch()
+   TryAttack(what=$,stroke_obj=$,factor=100,ambush=FALSE,iNum=$,bNow=FALSE,count=0,type=0)
+   "Ok, we got someone to attack, lets try and hit them."
+   {
+      local oTrance, iDefended, iDelay, bAttacked;
+
+      if NOT bNow AND pbState_change
+      {
+         if piRoofState = STATE_ONROOF
+         {
+            Send(self,@MonsterJumpDown);
+            Send(self,@CanopySwitch);
+         }
+
+         pbState_change = FALSE;
+      }
+
+      propagate;
+   }
+
+   CanopySwitch(timer=$)
    {
       ptCanopy = $;
 

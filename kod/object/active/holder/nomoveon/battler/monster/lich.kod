@@ -22,6 +22,11 @@ constants:
    // Run the LichHunger call in necbal.kod when piHunger reaches this value
    HUNGER_INTERVAL = 3
 
+   LICH_MOVE = 0
+   LICH_CAST = -1
+   LICH_MELEE = 1
+   LICH_RANGED = 2
+
 resources:
 
    include lich.lkod
@@ -382,7 +387,7 @@ messages:
    "chasing, or we attack. Note that even if we can't move,"
    "we can still be 'engaging'...."
    {
-      local i,oVictim, iDistance, iChaseRange, iDelay, bSight;
+      local i,oVictim, iDistance, iChaseRange, iDelay, bSight, iType;
       oVictim = poTarget;
 
       Send(self,@ClearBehavior,#timer=timer);
@@ -435,11 +440,18 @@ messages:
 
       if Send(self,@MonsterCombatCheck)
       {
-         iDelay = Send(self,@MonsterAction,#distance=iDistance,#sight=bSight);
+         iType = Send(self,@MonsterAction,#distance=iDistance,#sight=bSight);
       }
       else
       {
-         iDelay = 0;
+         iType = LICH_MOVE;
+      }
+
+      // We may no longer be around after the attack
+      // (e.g. damage shield).
+      if poOwner = $
+      {
+         return;
       }
 
       // Got gassed after acting and is currently resting. Quit.
@@ -448,24 +460,29 @@ messages:
          return;
       }
 
-      // If we can move, we physically try to get closer.
-      if iDelay = 0
+       // If we can move, we physically try to get closer if not in range.
+      if iType = LICH_MOVE
       {
-         Send(poBrain,@GetEngageBehavior,#mob=self,#target=poTarget,#behavior=piBehavior);
+         Send(poBrain,@GetEngageBehavior,#mob=self,#target=poTarget,
+               #behavior=piBehavior,#bSight=bSight);
       }
 
       // 50% chance to move away from the target.
       Send(self,@RandomCombatMove,#direction=-5);
 
-      // Monster acted. Pass on the appriopriate delay.
-      if poTarget <> $
+      // Monster acted in some way. Let's figure out what to do next.
+      if poOwner <> $
       {
-         Send(poBrain,@PostEngageTimer,#mob=self,#delay=Abs(iDelay));
-      }
-      else
-      {
-         // Target died. Move on.
-         Send(self,@EnterStateMove);
+         if iType = LICH_MOVE
+         {
+            Send(poBrain,@PostEngageTimer,#mob=self,#delay=0);
+         }
+         else if iType = LICH_CAST
+         {
+            iDelay = Send(self,@GetAttackTime);
+            iDelay = iDelay * Bound(150 - piIntellect,50,$) / 100;
+            Send(poBrain,@PostEngageTimer,#mob=self,#delay=iDelay);
+         }
       }
 
       return;
@@ -498,8 +515,8 @@ messages:
    "Depending on our action, return an appropriate delay."
    {
       local i, iPriority, lActions, lAction, iNum, oSpell, iAttacks,
-         iFactor, iSpellPower, lTargets, iDelay, iPowerLevel,
-         oTarget, iAction;
+         iFactor, iSpellPower, lTargets, iPowerLevel, oTarget, iAction,
+         iType;
 
       // If we have sight, proceed as usual, else, only allow moving.
       if sight
@@ -598,15 +615,29 @@ messages:
          }
       }
 
+      // It's clear we will be acting now. Take note of the type of action
+      // to initiate a proper post engage timer.
+      iType = LICH_MOVE;
+
       // We have our action at this point, let's check its ID.
       iNum = First(lAction);
 
-      // It's clear we will be acting now. Get our action delay.
-      iDelay = Send(self,@GetAttackTime);
+      if piAction % 1000 = iNum
+      {
+         if piAction % 10000 < 9000
+         {
+            piAction += 1000;
+         }
+      }
+      else
+      {
+         piAction = iNum;
+      }
 
       // Standard melee attack. Let's initiate the attack.
       if (iNum = SKID_SLASH) OR (iNum = SKID_PUNCH)
       {
+         iType = LICH_MELEE;
          iAttacks = 100 + viBonusSwing;
          i = 0;
 
@@ -616,7 +647,7 @@ messages:
          {
             if (Random(1,100) <= iAttacks)
                AND Send(self,@TryAttack,#what=poTarget,#stroke_obj=self,
-                        #factor=Nth(lAction,7))
+                        #factor=Nth(lAction,7),#iNum=iNum,#count=i,#type=iType)
             {
                ++i;
             }
@@ -630,6 +661,11 @@ messages:
          }
          else if poOwner <> $
          {
+            // Not facing the target when slapping them is rude. Let's be polite.
+            Send(self,@MonsterOrient,#new_row=Send(poTarget,@GetRow),
+                  #new_col=Send(poTarget,@GetCol),
+                  #new_finerow=Send(poTarget,@GetFineRow),
+                  #new_finecol=Send(poTarget,@GetFineCol),#face_target=TRUE);
             // We actually attack. Do the animation if we're still around.
             Send(self,@DoMeleeAttack,#swings=i);
          }
@@ -637,6 +673,7 @@ messages:
       // If we are a ranged attack, shoot something.
       else if (iNum = SKID_FIRE)
       {
+         iType = LICH_RANGED;
          iAttacks = 100 + viBonusShot;
          i = 0;
 
@@ -646,7 +683,7 @@ messages:
          {
             if (Random(1,100) <= iAttacks)
                AND Send(self,@TryAttack,#what=poTarget,#stroke_obj=self,
-                        #factor=Nth(lAction,7))
+                        #factor=Nth(lAction,7),#iNum=iNum,#count=i,#type=iType)
             {
                ++i;
             }
@@ -660,6 +697,11 @@ messages:
          }
          else if poOwner <> $
          {
+            // Same goes for shooting them in the face...
+            Send(self,@MonsterOrient,#new_row=Send(poTarget,@GetRow),
+                  #new_col=Send(poTarget,@GetCol),
+                  #new_finerow=Send(poTarget,@GetFineRow),
+                  #new_finecol=Send(poTarget,@GetFineCol),#face_target=TRUE);
             // We actually attack. Do the animation if we're still around.
             Send(self,@DoMissileAttack,#shots=i);
          }
@@ -667,8 +709,10 @@ messages:
       // We're doing a spinning area effect attack! Fancy!
       else if (iNum = SKID_SPIN)
       {
+         iType = LICH_MELEE;
          iAttacks = 100 + viBonusSpin;
          i = 0;
+         iAction = 0;
          lTargets = Send(self,@GetTargetsInRange);
 
          while (iAttacks > 0)
@@ -684,7 +728,9 @@ messages:
                   if oTarget <> $ AND Send(oTarget,@GetOwner) <> $
                   {
                      Send(self,@TryAttack,#what=oTarget,#stroke_obj=self,
-                           #factor=Nth(lAction,7));
+                           #factor=Nth(lAction,7),#iNum=iNum,#count=i+iAction,
+                           #type=iType);
+                     ++iAction;   
                   }
                }
 
@@ -694,18 +740,22 @@ messages:
             iAttacks -= 100;
          }
 
-         if poOwner <> $
+         if (poOwner <> $) AND (poTarget <> $)
          {
+            // Gotta get in position for a good spinning first.
+            Send(self,@MonsterOrient,#new_row=Send(poTarget,@GetRow),
+                  #new_col=Send(poTarget,@GetCol),
+                  #new_finerow=Send(poTarget,@GetFineRow),
+                  #new_finecol=Send(poTarget,@GetFineCol),#face_target=TRUE);
             // We spun around i times. Let's animate it.
             Send(self,@DoSpinAttack,#spins=i);
          }
-
-         iDelay *= 2;
       }
       // Looks like we are casting something. How exciting!
       // Time to set our local variables.
       else if iNum < 400
       {
+         iType = LICH_CAST;
          oSpell = Send(SYS,@FindSpellByNum,#num=iNum);
          lTargets = [poTarget];
          lTargets = Send(oSpell,@GetTargets,#who=self,#lTargets=lTargets);
@@ -744,19 +794,11 @@ messages:
                #iSpellPower=iSpellPower,#iPowerLevel=iPowerLevel);
          }
 
-         // Speed caster!
-         iDelay = 1500;
-
          // We cast something. Let's check if we want to switch targets.
          if poTarget <> $
          {
             Send(self,@FindNewTarget);
          }
-      }
-      // If none of the above was true, we simply moved.
-      else
-      {
-         iDelay = FALSE;
       }
 
       // We did something. Pay the cost.
@@ -782,12 +824,12 @@ messages:
             }
             else
             {
-               SetNth(i,5,Bound(Nth(i,5)+(iDelay/50)+(distance/1000),$,1000));
+               SetNth(i,5,Bound(Nth(i,5)+30+(distance/1000),$,1000));
             }
          }
       }
 
-      return iDelay;
+      return iType;
    }
 
    SpellResist(oSpell=$,who=$,iSpellpower=$)

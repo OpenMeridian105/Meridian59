@@ -825,11 +825,17 @@ resources:
    player_no_east = \
       "A mystical force rips through your body and prevents you from entering."
    player_no_east_snd = electrify.ogg
-   player_off_guard = "%s%s has caught you off-guard!"
 
    player_active_block_failed = "You thrust out your shield, but fail to block the attack."
    player_active_parry_failed = "You thrust out your weapon, but fail to parry the attack."
    player_active_dodge_failed = "You try to move out of the way of the attack, but fail to dodge it."
+
+   // Caught during unleash post swing delay.
+   player_off_guard = "%s%s has caught you off-guard!"
+
+   // Tried to actively defend a feinted attack.
+   player_feint_victim = "You fell for %s%s's feint!"
+   player_feint_attacker = "You tricked %s%s!"
 
 classvars:
 
@@ -5783,7 +5789,7 @@ messages:
       local oWeapon, oMonster;
 
       // If we have been caught flat footed, we can't parry.
-      if Send(self,@IsExposed)
+      if Send(self,@IsOffGuard)
          OR Send(self,@CheckAttackers) = ACTIVE_PARRY_FAILED
       {
          return 0;
@@ -5815,7 +5821,7 @@ messages:
       local oShield, oMonster;
 
       // If we have been caught flat footed, we can't block.
-      if Send(self,@IsExposed)
+      if Send(self,@IsOffGuard)
          OR Send(self,@CheckAttackers) = ACTIVE_BLOCK_FAILED
       {
          return 0;
@@ -5847,7 +5853,7 @@ messages:
       local oMonster;
 
       // If we have been caught flat footed, we can't dodge.
-      if Send(self,@IsExposed)
+      if Send(self,@IsOffGuard)
       {
          return 0;
       }
@@ -6978,7 +6984,7 @@ messages:
 
       ptAttackTimer = $;
 
-      // Also check if we were left exposed by the attack. If so, back to guard.
+      // Also check if we were left off-guard by the attack. If so, back to guard.
       oWeapon = Send(self,@LookupPlayerWeapon);
 
       if oWeapon <> $
@@ -6986,7 +6992,7 @@ messages:
          Send(oWeapon,@BackToGuard);
       }
 
-      if piAnimation = PANM_EXPOSED
+      if piAnimation = PANM_OFF_GUARD
       {
          piAnimation = PANM_NONE;
          Send(poOwner,@SomethingChanged,#what=self);
@@ -11444,7 +11450,7 @@ messages:
    {
       piAnimation = PANM_WEAPON_UNLEASH;
       Send(poOwner,@SomethingChanged,#what=self);
-      piAnimation = PANM_EXPOSED;
+      piAnimation = PANM_OFF_GUARD;
 
       return;
    }
@@ -11879,7 +11885,7 @@ messages:
       {
          AddPacket(1,ANIMATE_CYCLE, 4,150, 2,10, 2,26);
       }
-      else if iAnimation = PANM_EXPOSED
+      else if iAnimation = PANM_OFF_GUARD
       {
          AddPacket(1,ANIMATE_NONE, 2,6); 
       }
@@ -11930,7 +11936,7 @@ messages:
       {
          AddPacket(1,ANIMATE_CYCLE, 4,150, 2,18, 2,34);
       }
-      else if iAnimation = PANM_EXPOSED
+      else if iAnimation = PANM_OFF_GUARD
       {
          AddPacket(1,ANIMATE_NONE, 2,6); 
       }
@@ -11961,7 +11967,7 @@ messages:
       {
          AddPacket(1,ANIMATE_CYCLE, 4,150, 2,8, 2,24);
       }
-      else if iAnimation = PANM_EXPOSED
+      else if iAnimation = PANM_OFF_GUARD
       {
          AddPacket(1,ANIMATE_NONE, 2,6); 
       }
@@ -17183,6 +17189,60 @@ messages:
       return;
    }
 
+   // The attacker has decided to abort the swing aka feinted the attack.
+   // A potential defender will be put on a short cooldown, allowing a
+   // potential second attack to go through undefended.
+   SwingWasFeinted(who=$)
+   {
+      local i, iTime, oSkill, oDefender, iDefense, bDefended;
+
+      bDefended = FALSE;
+
+      foreach i in plAttackers
+      {
+         oDefender = First(i);
+
+         if oDefender = who
+         {
+            iDefense = Nth(i,2);
+
+            if iDefense = ACTIVE_BLOCK
+            {
+               oSkill = Send(SYS,@FindSkillByNum,#num=SKID_BLOCK);
+               iTime = Send(oSkill,@GetFeintTime);
+               Send(self,@SetAttackTime,#time=iTime,#bAdd=TRUE);
+               bDefended = TRUE;
+            }
+            else if iDefense = ACTIVE_PARRY
+            {
+               oSkill = Send(SYS,@FindSkillByNum,#num=SKID_PARRY);
+               iTime = Send(oSkill,@GetFeintTime);
+               Send(self,@SetAttackTime,#time=iTime,#bAdd=TRUE);
+               bDefended = TRUE;
+            }
+            else if iDefense = ACTIVE_DODGE
+            {
+               oSkill = Send(SYS,@FindSkillByNum,#num=SKID_DODGE);
+               iTime = Send(oSkill,@GetFeintTime);
+               Send(self,@SetAttackTime,#time=iTime,#bAdd=TRUE);
+               bDefended = TRUE;
+            }
+         }
+      }
+
+      if bDefended
+      {
+         Send(self,@MsgSendUser,#message_rsc=player_feint_victim,
+            #parm1=Send(who,@GetDef),#parm2=Send(who,@GetName));
+         Send(who,@MsgSendUser,#message_rsc=player_feint_attacker,
+            #parm1=Send(self,@GetDef),#parm2=Send(self,@GetName));
+         Send(self,@ClearAllAttackers);
+         return TRUE;
+      }
+
+      return FALSE;
+   }
+
    // The attack hasn't been actively defended and the attacker is ready
    // to strike again, remove him from plAttackers. So that we may try again.
    ClearAttacker(timer=$)
@@ -17515,7 +17575,7 @@ messages:
    // We have been hit. Let's check if that has caught us off-guard.
    // There are two possible scenarios:
    // 1) We are hit during an ability's wind-up (trance).
-   // 2) An ability has left us exposed during its cooldown.
+   // 2) An ability has left us off-guard during its cooldown.
    CaughtOffGuard(damage=0,what=$,stroke_obj=$,atype=0,stype=0)
    {
       local oAbility;
@@ -17526,7 +17586,7 @@ messages:
       // It has indeed. Need a bit of extra time to compose ourselves.
       if oAbility = $
       {
-         if (piAnimation = PANM_EXPOSED)
+         if (piAnimation = PANM_OFF_GUARD)
          {
             // Lock them out of action for a bit longer.
             Send(self,@SetAttackTime,#time=2000,#bAdd=TRUE);
@@ -17553,9 +17613,9 @@ messages:
       return;
    }
 
-   IsExposed()
+   IsOffGuard()
    {
-      return (piAnimation = PANM_EXPOSED) AND (Send(self,@GetTranceAbility) = $);
+      return (piAnimation = PANM_OFF_GUARD) AND (Send(self,@GetTranceAbility) = $);
    }
 
 end

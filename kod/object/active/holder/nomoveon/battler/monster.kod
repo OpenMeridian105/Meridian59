@@ -2501,8 +2501,6 @@ messages:
 
       // If we can move, we physically try to get closer if not in range.
       if iType = MONSTER_MOVE
-         // TODO: this might need to check whether we're in range or not.
-         //AND NOT Send(self,@CanReach,#what=poTarget,#bRanged=TRUE)
       {
          Send(poBrain,@GetEngageBehavior,#mob=self,#target=poTarget,
                #behavior=piBehavior,#bSight=bSight);
@@ -3215,7 +3213,7 @@ messages:
       return TRUE;
    }
 
-   TryAttack(what=$,stroke_obj=$,factor=100,iNum=$,bNow=FALSE,count=0,type=0)
+   TryAttack(what=$,stroke_obj=$,factor=100,ambush=FALSE,iNum=$,bNow=FALSE,count=0,type=0)
    "Ok, we got someone to attack, lets try and hit them."
    {
       local oTrance, iDefended, iDelay, bAttacked;
@@ -3267,7 +3265,7 @@ messages:
          oTrance = Send(SYS,@FindSpellByNum,#num=SID_TRANCE);
 
          Send(oTrance,@BeginTrance,#what=self,#who=self,
-            #lTargets=[what,iNum,count],#power=factor,
+            #lTargets=[what,iNum,count,ambush],#power=factor,
             #time=Send(self,@GetSwingTime));
 
          return TRUE;
@@ -3310,7 +3308,7 @@ messages:
          OR (iDefended = ACTIVE_PARRY_FAILED)
          OR (iDefended = ACTIVE_DODGE_FAILED)
       {
-         Send(what,@ClearAllAttackers);
+         Post(what,@ClearAllAttackers);
       }
 
       // Random chance to cut delay in half to throw off would be defenders.
@@ -3332,6 +3330,29 @@ messages:
 
       propagate;
    }
+
+   // Our target may have moved out of range or disappeared miraculously.
+   TargetUnavailable(what=$)
+   {
+      local iDelay;
+
+      iDelay = Send(self,@GetAttackTime);
+
+      // Random chance to cut delay in half to throw off would be defenders.
+      if Random(1,MONSTER_QUICK_ATTACK_CHANCE) < viDifficulty
+      {
+         iDelay = Random(iDelay/3,iDelay);
+      }
+
+      // Let's figure out what to do next.
+      if poOwner <> $
+      {
+         Send(poBrain,@PostEngageTimer,#mob=self,#delay=iDelay);
+      }
+
+      return;
+   }
+
 
    GetGoodTargets(who=$,lTargets=$)
    {
@@ -7277,7 +7298,7 @@ messages:
                   {
                      Send(self,@TryAttack,#what=oTarget,#stroke_obj=self,
                            #factor=Nth(lAction,7),#iNum=iNum,#count=i+iAction,
-                           #targets=iAction,#type=iType);
+                           #type=iType);
                      ++iAction;   
                   }
                }

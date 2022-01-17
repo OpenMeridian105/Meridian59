@@ -225,6 +225,7 @@ int   port     = 3306;
      monster_behavior        INT(4) DEFAULT NULL,        \
      monster_difficulty      INT(4) DEFAULT NULL,        \
      monster_visiondistance  INT(4) DEFAULT NULL,        \
+     monster_iflag           INT(4) DEFAULT NULL,        \
      PRIMARY KEY(monster_name)                           \
    )                                                     \
    ENGINE=InnoDB DEFAULT CHARSET=latin1;"
@@ -976,7 +977,8 @@ int   port     = 3306;
      IN monster_speed           INT(4),                 \
      IN monster_behavior        INT(4),                 \
      IN monster_difficulty      INT(4),                 \
-     IN monster_visiondistance  INT(4))                 \
+     IN monster_visiondistance  INT(4),                 \
+     IN monster_iflag           INT(4))                 \
    BEGIN                                                \
    INSERT INTO wiki_monster                             \
       (  monster_name,                                  \
@@ -990,7 +992,8 @@ int   port     = 3306;
          monster_speed,                                 \
          monster_behavior,                              \
          monster_difficulty,                            \
-         monster_visiondistance)                        \
+         monster_visiondistance,                        \
+         monster_iflag)                                 \
          VALUES (monster_name,                          \
             monster_name_ger,                           \
             monster_icon,                               \
@@ -1002,7 +1005,8 @@ int   port     = 3306;
             monster_speed,                              \
             monster_behavior,                           \
             monster_difficulty,                         \
-            monster_visiondistance)                     \
+            monster_visiondistance,                     \
+            monster_iflag)                              \
       ON DUPLICATE KEY UPDATE                           \
       monster_desc = monster_desc,                      \
       monster_desc_ger = monster_desc_ger,              \
@@ -1012,7 +1016,8 @@ int   port     = 3306;
       monster_speed = monster_speed,                    \
       monster_behavior = monster_behavior,              \
       monster_difficulty = monster_difficulty,          \
-      monster_visiondistance = monster_visiondistance;  \
+      monster_visiondistance = monster_visiondistance,  \
+      monster_iflag = monster_iflag;                    \
    END"
 
 #define SQLQUERY_CREATEPROC_MONSTER_ZONE    "\

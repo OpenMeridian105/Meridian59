@@ -138,7 +138,7 @@ static sql_statistic_type Statistics_Table[] = {
    {STAT_SPELLS,        14, "WriteSpells", "wiki_spells"},
    {STAT_SPELL_REAGENT,  3, "WriteSpellReagent", "wiki_spell_reagent"},
    {STAT_TREASURE_GEN,   3, "WriteTreasureGen", "wiki_treasure_gen"},
-   {STAT_MONSTER,       12, "WriteMonster", "wiki_monster"},
+   {STAT_MONSTER,       13, "WriteMonster", "wiki_monster"},
    {STAT_MONSTER_ZONE,   3, "WriteMonsterZone", "wiki_monster_zone"},
    {STAT_NPCS,           6, "WriteNpcs", "wiki_npcs"},
    {STAT_WEAPONS,       11, "WriteWeapons", "wiki_weapons"},

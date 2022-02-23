@@ -31,12 +31,12 @@ messages:
 
    UpdateDatabase()
    {
+      local i, iFlags;
+
       // Wiki Export: Sold items, skills and spells by each NPC
       // List of all NPC's and a list of rooms where the NPC is in
 
-      local i, oSkill, oSpell;
-
-      if (plFor_Sale <> $) 
+      if (plFor_Sale <> $)
       {
          // Exclude NPCs who sell items from players, because their sell list
          // is variable and shouldn't be in the database.
@@ -57,19 +57,19 @@ messages:
          }
          foreach i in Nth(plFor_sale,2) //skills
          {
-            oSkill = Send(SYS,@FindSkillByNum,#num=i);
             RecordStat(STAT_NPC_SELLSKILL, TAG_RESOURCE, vrName, TAG_INT, i);
          }
          foreach i in Nth(plFor_sale,3) //spells
          {
-            oSpell = Send(SYS,@FindSpellByNum,#num=i);
             RecordStat(STAT_NPC_SELLSPELL, TAG_RESOURCE, vrName, TAG_INT, i);
          }
       }
 
+      iFlags = Send(self,@IsExpansionNPC);
+
       RecordStat(STAT_NPCS, TAG_RESOURCE, vrName, RESOURCE_GER, vrName, 
             TAG_RESOURCE, vrIcon, TAG_RESOURCE, vrDesc, RESOURCE_GER, vrDesc, 
-            TAG_INT, viMerchant_markup);
+            TAG_INT, viMerchant_markup, TAG_INT, iFlags);
 
       if (poOwner <> $)
       {
@@ -124,6 +124,11 @@ messages:
    }
 
    IsArenaMonster()
+   {
+      return FALSE;
+   }
+
+   IsExpansionNPC()
    {
       return FALSE;
    }

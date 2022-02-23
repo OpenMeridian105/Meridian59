@@ -249,6 +249,7 @@ int   port     = 3306;
      npc_desc            TEXT DEFAULT NULL,              \
      npc_desc_ger        TEXT DEFAULT NULL,              \
      npc_merchantmarkup  INT(4) DEFAULT NULL,            \
+     npc_iflag           INT(4) DEFAULT NULL,            \
      PRIMARY KEY(npc_name)                               \
    )                                                     \
    ENGINE=InnoDB DEFAULT CHARSET=latin1;"
@@ -1042,7 +1043,8 @@ int   port     = 3306;
       IN npc_icon            VARCHAR(63),       \
       IN npc_desc            TEXT,              \
       IN npc_desc_ger        TEXT,              \
-      IN npc_merchantmarkup  INT(4))            \
+      IN npc_merchantmarkup  INT(4),            \
+      IN npc_iflag           INT(4))            \
    BEGIN                                        \
    INSERT INTO wiki_npcs                        \
       (  npc_name,                              \
@@ -1050,18 +1052,21 @@ int   port     = 3306;
          npc_icon,                              \
          npc_desc,                              \
          npc_desc_ger,                          \
-         npc_merchantmarkup)                    \
+         npc_merchantmarkup,                    \
+         npc_iflag)                             \
          VALUES (npc_name,                      \
             npc_name_ger,                       \
             npc_icon,                           \
             npc_desc,                           \
             npc_desc_ger,                       \
-            npc_merchantmarkup)                 \
+            npc_merchantmarkup,                 \
+            npc_iflag)                          \
       ON DUPLICATE KEY UPDATE                   \
       npc_name_ger = npc_name_ger,              \
       npc_desc = npc_desc,                      \
       npc_desc_ger = npc_desc_ger,              \
-      npc_merchantmarkup = npc_merchantmarkup;  \
+      npc_merchantmarkup = npc_merchantmarkup,  \
+      npc_iflag = npc_iflag;                    \
    END"
 
 #define SQLQUERY_CREATEPROC_WEAPONS      "\

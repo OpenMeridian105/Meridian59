@@ -49,12 +49,15 @@ messages:
    {
       local lState, iPower;
 
-      lState = Send(who,@GetRadiusEnchantmentState,#byclass=&WarpTime);
-      if (lState <> $)
+      if IsClass(what,&Spell)
       {
-         iPower = Nth(lState,5);
-         // Up to an extra second.
-         time += iPower * 10;
+         lState = Send(who,@GetRadiusEnchantmentState,#byclass=&WarpTime);
+         if (lState <> $)
+         {
+            iPower = Nth(lState,5);
+            // Up to an extra second.
+            time += iPower * 10;
+         }
       }
 
       Send(who,@StartEnchantment,#what=self,#time=time,#addicon=FALSE,
@@ -77,7 +80,7 @@ messages:
    " 1) Casting time expires, time to call CastSpell"
    " 2) Spell expires"
    {
-      local oAbility, lTargets, iSpellPower;
+      local oAbility, lTargets, iSpellPower, lNewTargets;
 
       oAbility = First(state);
       lTargets = Nth(state,3);
@@ -88,10 +91,27 @@ messages:
       // Double-check to get valid targets.  Don't report 'cause we've already 
       // spammed them during the first check – unless we are dealing with a regular
       // autoattack here.
-      lTargets = Send(oAbility,@GetGoodTargets,#who=who,#lTargets=lTargets,
-                      #report=IsClass(oAbility,&Stroke));
+      lNewTargets = Send(oAbility,@GetGoodTargets,#who=who,#lTargets=lTargets,
+                      #report=(IsClass(oAbility,&Stroke) OR IsClass(oAbility,&Unleash)));
 
-      if IsClass(oAbility,&Spell)
+      if IsClass(oAbility,&Monster)
+      {
+         // Right now, monsters only use trances for regular attacks to allow players
+         // to actively defend. lTargets contains a single target and extra bits of
+         // information that are passed on in slots 2 to 4.
+         if lNewTargets <> $
+         {
+            Send(oAbility,@TryAttack,#what=First(lNewTargets),#stroke_obj=oAbility,
+                  #factor=Nth(state,7),#iNum=Nth(lNewTargets,2),#bNow=TRUE,
+                  #count=Nth(lNewTargets,3),#ambush=Nth(lNewTargets,4));
+         }
+         else
+         {
+            Send(oAbility,@TargetUnavailable,#what=First(lTargets));
+         }
+
+      }
+      else if IsClass(oAbility,&Spell)
       {
          iSpellPower = Send(oAbility,@GetSpellPower,#who=who);
 
@@ -223,6 +243,11 @@ messages:
    GetBuffStat()
    {
       return FALSE;
+   }
+
+   ModifyMonsterBehavior()
+   {
+      return;
    }
 
 end

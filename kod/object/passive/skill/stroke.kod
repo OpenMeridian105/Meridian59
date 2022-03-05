@@ -88,6 +88,14 @@ properties:
    piParried_penalty = 3000
    piDodged_penalty = 500
 
+   // How much do we add to our cooldown if we failed our feint?
+   // i.e. we feint without an enemy defense attempt.
+   piFeint_fail = 500
+
+   // How much do we add to our cooldown if we successfully feint?
+   // i.e. we feint while the enemy attempts to actively defend a hit.
+   piFeint_success = 250
+
 messages:
 
    // General combat messages:
@@ -539,11 +547,17 @@ messages:
 
    TranceCanceled(who=$,state=$)
    {
-      Send(who,@MsgSendUser,#message_rsc=stroke_trance_cancel,
-           #parm1=Send(self,@GetName));
+      Send(who,@MsgSendUser,#message_rsc=stroke_trance_cancel);
       Send(self,@SkillCanceled,#who=who);
-      Send(who,@SetAttackTime,#time=500);
-      Send(First(Nth(state,3)),@SwingHasEnded,#who=who);
+
+      if Send(First(Nth(state,3)),@SwingWasFeinted,#who=who)
+      {
+         Send(who,@SetAttackTime,#time=piFeint_success);
+      }
+      else
+      {
+         Send(who,@SetAttackTime,#time=piFeint_fail);
+      }
 
       return;
    }

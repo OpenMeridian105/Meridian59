@@ -2638,9 +2638,9 @@ messages:
    }
 
    GetAngleBetween(who=$, what=$)
-   "Filthy piece of code that returns the angle of who relative to what."
+   "Returns the room angle of who facing what."
    {
-      local iColDiff, iRowDiff, iAngle, iCase, iTan;
+      local iColDiff, iRowDiff;
 
       if (who = $ OR what = $)
          OR (Send(who,@GetOwner) <> Send(what,@GetOwner))
@@ -2648,25 +2648,23 @@ messages:
          return $;
       }
 
-      iColDiff = Send(who,@GetCol);
-      iColDiff -= Send(what,@GetCol);
+      iColDiff = Send(who,@GetCol)*FINENESS + Send(who,@GetFineCol)
+               - Send(what,@GetCol)*FINENESS + Send(what,@GetFineCol);
 
-      iRowDiff = Send(who,@GetRow);
-      iRowDiff -= Send(what,@GetRow);
+      iRowDiff = Send(who,@GetRow)*FINENESS + Send(who,@GetFineRow)
+               - Send(what,@GetRow)*FINENESS + Send(what,@GetFineRow);
 
-      // Fairly arbitrary distance below which we will take a closer look.
-      // Allows us to get reasonable angles even in melee.
-      if Abs(iRowDiff) < 10 AND Abs(iColDiff) < 10
-      {
-         iColDiff = Send(who,@GetCol)*FINENESS + Send(who,@GetFineCol);
-         iColDiff -= Send(what,@GetCol)*FINENESS + Send(what,@GetFineCol);
+      return Send(self,@GetAngleFromDifferences,
+         #coldiff=iColDiff,#rowdiff=iRowDiff);
+   }
 
-         iRowDiff = Send(who,@GetRow)*FINENESS + Send(who,@GetFineRow);
-         iRowDiff -= Send(what,@GetRow)*FINENESS + Send(what,@GetFineRow);
-      }
+   GetAngleFromDifferences(coldiff=0,rowdiff=0)
+   "Returns the room angle between two locations based on delta x/y."
+   {
+      local iCase, iTan;
 
       // If we are stacked right on top of each other, return nil.
-      if iRowDiff = 0 AND iColDiff = 0
+      if (coldiff = 0) AND (rowdiff = 0)
       {
          return $;
       }
@@ -2676,25 +2674,25 @@ messages:
       // Keeping track of the 4 quadrants with cases allows us to
       // use the same conditionals multiple times simply adding a quarter
       // circle rotation to the results per quadrant beyond the first.
-      if iColDiff > 0 AND iRowDiff >= 0
+      if coldiff > 0 AND rowdiff >= 0
       {
          iCase = 0;
-         iTan = 100*iRowDiff/iColDiff;
+         iTan = 100*rowdiff/coldiff;
       }
-      else if iColDiff <= 0 AND iRowDiff > 0
+      else if coldiff <= 0 AND rowdiff > 0
       {
          iCase = 1;
-         iTan = -100*iColDiff/iRowDiff;
+         iTan = -100*coldiff/rowdiff;
       }
-      else if iColDiff < 0 AND iRowDiff <= 0
+      else if coldiff < 0 AND rowdiff <= 0
       {
          iCase = 2;
-         iTan = 100*iRowDiff/iColDiff;
+         iTan = 100*rowdiff/coldiff;
       }
       else
       {
          iCase = 3;
-         iTan = -100*iColDiff/iRowDiff;
+         iTan = -100*coldiff/rowdiff;
       }
 
       if iTan > 1140
@@ -2759,7 +2757,7 @@ messages:
       angle = angle % MAX_ANGLE;
 
       // Since cosine(x) = cosine(2pi-x), let's only deal with angles between 0 and 2048.
-      // Equivalent to transforming angles beyond 180ï¿½ to their corresponding negative values,
+      // Equivalent to transforming angles beyond 180° to their corresponding negative values,
       // then treating them the same as positive angles for cosine considerations.
       if angle > MAX_ANGLE/2
       {

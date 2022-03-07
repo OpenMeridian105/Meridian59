@@ -208,11 +208,6 @@ classvars:
    viIcon_animation_start = 2
    viIcon_animation_end = 2
 
-   // viCast_time is in milliseconds.
-   viCast_time = 0
-   // viPostCast_time in seconds, since it works off GetTime().
-   viPostCast_time = 1
-
    // Cooldown classvars: SID is the ID of the cooldown spell to use.
    viCooldownSID = 0
 
@@ -274,6 +269,10 @@ classvars:
 
 properties:
 
+   // Both piCast_time and piPostCast_time are in milliseconds.
+   piCast_time = 0
+   piPostCast_time = 1000
+
    // Format of reagents:  Each element of plReagents is a list, describing a
    // single reagent of format [class of reagent, # of reagent required].
    plReagents = $
@@ -314,7 +313,7 @@ messages:
             TAG_RESOURCE, vrIcon, TAG_RESOURCE, vrDesc, RESOURCE_GER, vrDesc,
             TAG_INT, viSchool, TAG_INT, viSpell_level, TAG_INT, viMana,
             TAG_INT, viChance_To_Increase, TAG_INT, viMeditate_ratio,
-            TAG_INT, viSpellExertion, TAG_INT, viCast_time, TAG_INT, iFlag);
+            TAG_INT, viSpellExertion, TAG_INT, piCast_time, TAG_INT, iFlag);
 
       foreach i in plReagents
       {
@@ -1066,7 +1065,7 @@ messages:
 
          // Don't check the attack time for itemcast spells. The items
          // themselves will allow or disallow this.
-         if NOT Send(who,@IsOkayAttackTime,#seconds=viPostCast_Time)
+         if NOT Send(who,@IsOkayAttackTime,#time=piPostCast_time)
          {
             return FALSE;
          }
@@ -2436,11 +2435,11 @@ messages:
 
       iCastTime = Send(self,@GetTranceTime,#iSpellpower=iSpellpower,#who=who);
 
-      //If we fumble, we increase cast time by viPostCast_Time
+      //If we fumble, we increase cast time by piPostCast_time
       if NOT bSuccess
          AND Send(SETTINGS_OBJECT,@NoFizzles)
       {
-         iCastTime += viPostCast_Time*1000;
+         iCastTime += piPostCast_time;
 
          Send(who,@MsgSendUser,#message_rsc=spell_trance_fumble,
             #parm1=Send(self,@GetName));
@@ -2504,7 +2503,7 @@ messages:
 
       // If our cast time is the result of a fumble, increase post cast delay
       // by trance time.
-      if NOT viCast_time
+      if NOT piCast_time
       {
          Send(who,@SetAttackTime,#time=iCastTime,#bAdd=TRUE);
       }
@@ -2521,7 +2520,7 @@ messages:
          Debug("Bad iSpellpower passed to GetTranceTime");
       }
 
-      if viCast_time = 0
+      if piCast_time = 0
          OR (IsClass(who,&DM) AND Send(who,@PlayerIsImmortal))
       {
          return 0;
@@ -2530,17 +2529,17 @@ messages:
       // 51% for high, 149% for low
       iPercent = 150 - iSpellPower;
 
-      return (viCast_time*iPercent)/100;
+      return (piCast_time*iPercent)/100;
    }
 
    GetRawTranceTime()
    {
-      return viCast_time;
+      return piCast_time;
    }
 
    GetPostCastDelay()
    {
-      return viPostCast_Time;
+      return piPostCast_time;
    }
 
    DoPreTranceEffects(who=$,lTargets=$,iSpellpower=$)
@@ -3011,7 +3010,7 @@ messages:
       }
       else
       {
-         Send(who,@SetAttackTime,#time=viPostCast_Time*1000,#bAdd=TRUE);
+         Send(who,@SetAttackTime,#time=piPostCast_time,#bAdd=TRUE);
       }
 
       Send(who,@MsgSendUser,#message_rsc=spell_trance_break,
@@ -3352,6 +3351,22 @@ messages:
    CaughtInPreparation(who=$,what=$,use_weapon=$,stroke_obj=$)
    {
       return;
+   }
+
+   // Dummies. Only relevant for attackspells.
+   AddTrance()
+   {
+      return TRUE;
+   }
+
+   RemoveTrance()
+   {
+      return TRUE;
+   }
+
+   SetTimeValues()
+   {
+      return TRUE;
    }
 
 end

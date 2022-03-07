@@ -16,6 +16,10 @@ constants:
 
    include blakston.khd
 
+   ATTACK_SPELL_CAST_TIME = 0
+   ATTACK_SPELL_POST_CAST_TIME = 2000
+   ATTACK_SPELL_TRANCE_TIME = 500
+
 resources:
 
    include atakspel.lkod
@@ -37,9 +41,6 @@ classvars:
    viAttack_type = 0
    viSpell_type = SPL_TYPE_ALL
 
-   // In seconds, since it works off GetTime(),
-   viPostCast_time = 2
-
    viHarmful = TRUE
    viOutlaw = TRUE
    viChance_To_Increase = 20
@@ -49,6 +50,8 @@ classvars:
    vbSelfHarming = FALSE
 
 properties:
+
+   piPostCast_time = 2000
 
    piDamageMin = 0
    piDamageMax = 0
@@ -395,6 +398,67 @@ messages:
       }
 
       return piRange*piRange;
+   }
+
+   AddTrance()
+   {
+      if piCast_time <> 0
+      {
+         Debug("Failed to add trance to spell",Send(self,@GetName),"Trance",piCast_time,"Delay",piPostCast_time);
+         return FALSE;
+      }
+
+      piCast_time += ATTACK_SPELL_TRANCE_TIME;
+      piPostCast_time -= 2*ATTACK_SPELL_TRANCE_TIME;
+
+      Debug("Added trance to spell",Send(self,@GetName),"Trance",piCast_time,"Delay",piPostCast_time);
+
+      return TRUE;
+   }
+
+   RemoveTrance()
+   {
+      if piCast_time = 0
+      {
+         Debug("Failed to remove trance from spell",Send(self,@GetName),"Trance",piCast_time,"Delay",piPostCast_time);
+         return FALSE;
+      }
+
+      piCast_time -= ATTACK_SPELL_TRANCE_TIME;
+      piPostCast_time += 2*ATTACK_SPELL_TRANCE_TIME;
+
+      Debug("Removed trance from spell",Send(self,@GetName),"Trance",piCast_time,"Delay",piPostCast_time);
+
+      return TRUE;
+   }
+
+   SetTimeValues(iCast_time=$,iPostCast_time=$)
+   {
+
+      // No input? Reset values to standard.
+      if (iCast_time = $) AND (iPostCast_time = $)
+      {
+         piCast_time = ATTACK_SPELL_CAST_TIME;
+         piPostCast_time = ATTACK_SPELL_POST_CAST_TIME;
+      }
+      // Set cast time only.
+      else if iPostCast_time = $
+      {
+         piCast_time = iCast_time;
+      }
+      // Set post cast delay only.
+      else if iCast_time = $
+      {
+         piPostCast_time = iPostCast_time;
+      }
+      // Set both.
+      else
+      {
+         piCast_time = iCast_time;
+         piPostCast_time = iPostCast_time;
+      }
+
+      return TRUE;
    }
 
 end

@@ -9481,5 +9481,58 @@ messages:
       return;
    }
 
+   AttackSpellTranceOn()
+   {
+      local i, bSuccess;
+
+      bSuccess = TRUE;
+
+      foreach i in plSpells
+      {
+         if IsClass(i,&AttackSpell) AND NOT Send(i,@AddTrance)
+         {
+            bSuccess = FALSE;
+         }
+      }
+
+      return bSuccess;
+   }
+
+   AttackSpellTranceOff()
+   {
+      local i, bSuccess;
+
+      bSuccess = TRUE;
+
+      foreach i in plSpells
+      {
+         if IsClass(i,&AttackSpell) AND NOT Send(i,@RemoveTrance)
+         {
+            bSuccess = FALSE;
+         }
+      }
+
+      return bSuccess;
+   }
+
+   SetAttackSpellTimeValues(iCast_time=$,iPostCast_time=$)
+   {
+      local i, bSuccess;
+
+      bSuccess = TRUE;
+
+      foreach i in plSpells
+      {
+         if IsClass(i,&AttackSpell)
+            AND NOT Send(i,@SetTimeValues,#iCast_time=iCast_time,
+               #iPostCast_time=iPostCast_time)
+         {
+            bSuccess = FALSE;
+         }
+      }
+
+      return bSuccess;
+   }
+
 end
 ////////////////////////////////////////////////////////////////////////////////

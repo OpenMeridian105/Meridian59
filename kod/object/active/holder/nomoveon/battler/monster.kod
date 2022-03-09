@@ -565,6 +565,14 @@ classvars:
    viBonusXP = 0
    viBonusTP = 0
 
+   // Whether a mob can crush or not depends on its level, difficulty and
+   // might, unless we overrule here.
+   vbCrush_enemies = $
+
+   // If vbCrush_enemies doesn't decide, what score consisting of might, level
+   // and difficulty do we need to be able to crush?
+   viCrush_threshold = 400
+
 properties:
 
    piVisionDistance
@@ -3631,6 +3639,9 @@ messages:
               #target=self,#color_rsc=monster_color_blue_rsc);
       }
 
+      // Any hit will cause a slight knockback.
+      Send(self,@DoHitAnimation,#damage=iDamage,#what=what);
+
       Send(self,@AddHurtMeRecently,#who=what,#amount=iDamage);
 
       return iDamage;
@@ -4030,8 +4041,8 @@ messages:
    "Tries to immediately move the monster exactly one step away from oTarget"
    "Uses MoveTowardsCoords to perform the step."
    {
-      local drow, dcol;
-  
+      local drow, dcol, absdrow, absdcol, iNewCol, iNewRow;
+
       if oTarget = $
       {
          Debug("Bad info passed to MoveAway!");
@@ -4051,12 +4062,17 @@ messages:
       drow -= ((Send(oTarget,@GetRow) * FINENESS) + Send(oTarget,@GetFineRow));
       dcol -= ((Send(oTarget,@GetCol) * FINENESS) + Send(oTarget,@GetFineCol));
 
-      // add vector from oTarget to self on our position and try move there
+      // To avoid potentially faulty roll overs further down the line, let's
+      // calculate our final destinations here.
+      iNewRow = piRow*FINENESS + piFine_row + drow;
+      iNewCol = piCol*FINENESS + piFine_col + dcol;
+
+      // Split up the fine values as we pass them on.
       return Send(self, @MoveTowardsCoords,
-                   #iRow=(piRow + (drow / FINENESS)),
-                   #iCol=(piCol + (dcol / FINENESS)),
-                   #iFineRow=(piFine_row + (drow % FINENESS)),
-                   #iFineCol=(piFine_col + (dcol % FINENESS)),
+                   #iRow=iNewRow / FINENESS,
+                   #iCol=iNewCol / FINENESS,
+                   #iFineRow=iNewRow % FINENESS,
+                   #iFineCol=iNewCol % FINENESS,
                    #face_target=face_target,
                    #face_away=face_away);
    }
@@ -5793,6 +5809,9 @@ messages:
       {
          return;
       }
+
+      // Whatever big thing we were about to do - it ain't happening. :(
+      Send(self,@BreakTrance,#event=EVENT_DEATH);
 
       if poOwner <> $
       {
@@ -7947,6 +7966,16 @@ messages:
       return;
    }
 
+   MonsterHitAnimation()
+   "If a monster has a special animation when hit, call this."
+   {
+      piAnimation = ANIM_HIT;
+      Send(poOwner,@SomethingChanged,#what=self);
+      piAnimation = ANIM_NONE;
+
+      return;
+   }
+
    GetMeleeAnimation()
    {
       return ANIM_ATTACK;
@@ -7960,6 +7989,11 @@ messages:
    GetCastAnimation()
    {
       return ANIM_ATTACK;
+   }
+
+   GetHitAnimation()
+   {
+      return ANIM_HIT;
    }
 
    HitPointThresholdDamage()
@@ -11744,7 +11778,6 @@ messages:
    CanBreakTrance(who=$,state=$,event=EVENT_NONE,disruption=0)
    {
       // Some events can cancel any trance. Not the ones below though.
-      // These events can only break trance, if vbCanBreakTrance = TRUE.
       if (event = EVENT_CANCEL)
          OR (event = EVENT_ABILITY)
          OR (event = EVENT_ATTACK)         
@@ -11758,9 +11791,60 @@ messages:
       return TRUE;
    }
 
+   BreakTrance(event=0,what=$,disruption=0)
+   {
+      local i, oEnch, state, bFound;
+
+      bFound = FALSE;
+
+      foreach i in plEnchantments
+      {
+         oEnch = Nth(i,2);
+
+         if IsClass(oEnch,&Spell) OR IsClass(oEnch,&Trance)
+         {
+            if Length(i) >= ENCHANTMENT_LIST_STATE
+            {
+               state = Nth(i,3);
+            }
+            else
+            {
+               state = $;
+            }
+
+            if Send(oEnch,@BreakTrance,#who=self,#state=state,
+                  #event=event,#what=what,#disruption=disruption)
+            {
+               bFound = TRUE;
+            }
+         }
+      }
+
+      return bFound;
+   }
+
    TranceBroken(who=$,state=$,event=$)
    {
-      Send(First(Nth(state,3)),@SwingHasEnded,#who=who);
+      local oSkill, iDelay;
+
+      // We have been interrupted. Let's figure out what to do next.
+      if poOwner <> $
+      {
+         iDelay = Send(self,@GetAttackTime);
+
+         // We have been crushed. Let's see if that sets us back.
+         if event = EVENT_CRUSH
+         {
+            oSkill = Send(SYS,@FindSkillByNum,#num=SKID_CRUSHING_BLOWS);
+            iDelay += Send(oSkill,@GetCrushDelay,#who=self);
+         }
+
+         Send(poBrain,@PostEngageTimer,#mob=self,#delay=iDelay);
+      }
+
+      // Someone may have braced for our attack, tell them
+      // that they no longer need to worry.
+      Send(First(Nth(state,3)),@ClearAttacker,#who=who);
 
       return;
    }
@@ -11779,6 +11863,16 @@ messages:
       }
 
       return viSwing_time;
+   }
+
+   CanCrushEnemy()
+   {
+      if vbCrush_enemies <> $
+      {
+         return vbCrush_enemies;
+      }
+
+      return piMight*4 + viLevel + viDifficulty*20 > viCrush_threshold;
    }
 
 end

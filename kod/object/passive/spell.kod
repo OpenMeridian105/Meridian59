@@ -267,6 +267,9 @@ classvars:
 
    vbCombatOnly = TRUE
 
+   // Does this spells ongoing effect constitute a trance?
+   vbTrance = FALSE
+
 properties:
 
    // Both piCast_time and piPostCast_time are in milliseconds.
@@ -2596,7 +2599,7 @@ messages:
 
       Send(self,@TranceEnding,#who=who,#state=state);
 
-      return TRUE;
+      return vbTrance;
    }
 
    // Determines if the casting trance (&Trance) can be disrupted.
@@ -3003,6 +3006,8 @@ messages:
 
    TranceBroken(who=$,state=$,event=$)
    {
+      local iTime, oSkill;
+
       if (event = EVENT_ABILITY) OR (event = EVENT_ATTACK)
       {
       // Reset attack timer to allow instant switching without recast.
@@ -3010,7 +3015,16 @@ messages:
       }
       else
       {
-         Send(who,@SetAttackTime,#time=piPostCast_time,#bAdd=TRUE);
+         iTime = piPostCast_time;
+
+         // We have been crushed. Let's see if that sets us back.
+         if event = EVENT_CRUSH
+         {
+            oSkill = Send(SYS,@FindSkillByNum,#num=SKID_CRUSHING_BLOWS);
+            iTime += Send(oSkill,@GetCrushDelay,#who=who);
+         }
+
+         Send(who,@SetAttackTime,#time=iTime,#bAdd=TRUE);
       }
 
       Send(who,@MsgSendUser,#message_rsc=spell_trance_break,

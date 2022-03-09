@@ -6210,6 +6210,9 @@ messages:
       Send(self,@CaughtOffGuard,#damage=damage,#what=what,
          #stroke_obj=stroke_obj,#atype=atype,#stype=stype);
 
+      // Any hit will cause a slight knockback.
+      Send(self,@DoHitAnimation,#damage=damage,#what=what);
+
       Send(self,@LoseHealth,#amount=damage,#precision=TRUE);
 
       if piHealth <= 0
@@ -12369,6 +12372,7 @@ messages:
       local i, oEnch,state, bFound, oYellNum, oYellRoom;
 
       bFound = FALSE;
+
       foreach i in plEnchantments
       {
          oEnch = Nth(i,2);
@@ -12383,9 +12387,11 @@ messages:
                state = $;
             }
 
-            Send(oEnch,@BreakTrance,#who=self,#state=state,
-                  #event=event,#what=what,#disruption=disruption);
-            bFound = TRUE;
+            if Send(oEnch,@BreakTrance,#who=self,#state=state,
+                  #event=event,#what=what,#disruption=disruption)
+            {
+               bFound = TRUE;
+            }
          }
       }
 
@@ -17243,22 +17249,47 @@ messages:
       return FALSE;
    }
 
+   // If a timer is provided:
    // The attack hasn't been actively defended and the attacker is ready
    // to strike again, remove him from plAttackers. So that we may try again.
-   ClearAttacker(timer=$)
+   // If who is provided:
+   // Remove who from the list of attackers, no further questions asked.
+   ClearAttacker(who=$,timer=$)
    {
       local i;
 
-      foreach i in plAttackers
+      if timer <> $
       {
-         if Nth(i,2) = timer
+         foreach i in plAttackers
          {
-            SetFirst(i,$);
-            SetNth(i,2,$);
-            plAttackers = DelListElem(plAttackers,i);
+            if Nth(i,2) = timer
+            {
+               SetFirst(i,$);
+               SetNth(i,2,$);
+               plAttackers = DelListElem(plAttackers,i);
 
-            return;
+               return;
+            }
          }
+      }
+      else
+      {
+         foreach i in plAttackers
+         {
+            if First(i) = who
+            {
+               timer = Nth(i,2);
+
+               if IsTimer(timer)
+               {
+                  DeleteTimer(timer);
+               }
+
+               plAttackers = DelListElem(plAttackers,i);
+
+               return;
+            }
+         }         
       }
 
       return;
@@ -17583,9 +17614,10 @@ messages:
       // Let's see if we are still in the wind-up stage.
       oAbility = Send(self,@GetTranceAbility);
 
-      // It has indeed. Need a bit of extra time to compose ourselves.
+      // Nope.
       if oAbility = $
       {
+         // Check if we have been hit during a vulnerable cooldown period.
          if (piAnimation = PANM_OFF_GUARD)
          {
             // Lock them out of action for a bit longer.
@@ -17602,6 +17634,7 @@ messages:
             Send(poOwner,@SomethingChanged,#what=self);
          }
       }
+      // Yep. Let's check if that has any consequences.
       else
       {
          // Tell the ability. This is separate from trance breaking

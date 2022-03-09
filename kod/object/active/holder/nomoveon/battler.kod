@@ -236,6 +236,25 @@ classvars:
    viBattler_level = 50
    viNaturalVigorRegeneration = 0
 
+   // How far do we want the battler to get pushed back on receiving damage?
+   // This number is in the same ballpark as FINENESS. The actual distance
+   // traveled varies widely with the victim's bulk (stamina and level),
+   // the weapon used and the attacker's ability to inflict crushing blows.
+   viKnockback_distance = 25
+
+   // How often do we try to half the knockback distance before we give up
+   // on trying to knock a battler closer to a wall?
+   viKnockback_iterations = 3
+
+   // Minimum fine movement to cause an actual move.
+   viKnockback_cutoff = 5
+
+   // Speed of the pushback effect.
+   viKnockback_speed = 60
+
+   // The maximum amount of finesteps a battler will get knocked back.
+   viKnockback_ceiling = FINENESS
+
 properties:
 
    // Evil twin object
@@ -2609,6 +2628,135 @@ messages:
    "Return $ if we were killed."
    {
       return 0;
+   }
+
+   DoHitAnimation(damage=0,what=$)
+   "Handles hit attack animation."
+   {
+      local iDistance, drow, dcol, absdrow, absdcol, iNewCol, iNewRow,
+      iNewFineCol, iNewFineRow, iNewRowData, iNewColData, iHalf, iAngle,
+      oSkill, iAbility;
+
+      if NOT IsClass(what,&Battler)
+      {
+         return;
+      }
+
+      // How far will we be knocked back?
+      iDistance = damage*viKnockback_distance/
+         (10*piMax_health + 30*Send(self,@GetMight));
+
+      // If the employed weapon can crush enemies, knockback is increased.
+      // The knockback is further increased by the battler's ability to
+      // land crushing blows. A successful crushing blow may interrupt the
+      // victim outright. Unlike interruptions from regular damage, this
+      // may also interrupt regular attack swings.
+      if Send(Send(what,@GetWeapon),@CanCrushEnemy)
+      {
+         // Find the skill.
+         oSkill = Send(SYS,@FindSkillByNum,#num=SKID_CRUSHING_BLOWS);
+
+         //And the battler's ability with it.
+         if IsClass(self,&Player)
+         {
+            iAbility = Send(self,@GetSkillAbility,#skill_num=SKID_CRUSHING_BLOWS);
+         }
+         else
+         {
+            // Mobs are their own weapons, so we only end up here for monsters
+            // who can crush. No need for a further check.
+            iAbility = (Send(self,@GetLevel) + 20*Send(self,@GetDifficulty))/3;
+         }
+
+         // All skill effects are handled in DoCrush.
+         Send(oSkill,@DoCrush,#who=what,#what=self,#distance=iDistance,
+            #ability=iAbility);
+
+         // 50% distance is gained from wielding a crushing weapon,
+         // another 50% distance from the wielder's skill ability.
+         iDistance += iDistance*(99+iAbility)/198;
+      }
+
+      // Not that impressive, really. Let's ignore gentle pushes.
+      if iDistance < viKnockback_cutoff
+      {
+         return;
+      }
+
+      // Let's limit the knockback to a reasonable distance, too.
+      iDistance = Bound(iDistance,$,viKnockback_ceiling);
+
+      drow = (piRow * FINENESS) + piFine_row;
+      dcol = (piCol * FINENESS) + piFine_col;
+      drow -= ((Send(what,@GetRow) * FINENESS) + Send(what,@GetFineRow));
+      dcol -= ((Send(what,@GetCol) * FINENESS) + Send(what,@GetFineCol));
+
+      absdrow = Abs(drow);
+      absdcol = Abs(dcol);
+
+      // (Sort of) normalize the step by scaling one direction to FINENESS.
+      // This results in step sizes between 1 unit and sqrt(2) units.
+      // Also allow scaling of the step with provided distance.
+      if absdrow >= absdcol
+      {
+         drow = (drow * FINENESS * iDistance / absdrow) / 100;
+         dcol = (dcol * FINENESS * iDistance / absdrow) / 100;
+      }
+      else
+      {
+         drow = (drow * FINENESS * iDistance / absdcol) / 100;
+         dcol = (dcol * FINENESS * iDistance / absdcol) / 100;
+      }
+
+      // To avoid potentially faulty roll overs further down the line, let's
+      // calculate our final destinations here.
+      iNewRowData = piRow*FINENESS + piFine_row + drow;
+      iNewRow = iNewRowData / FINENESS;
+      iNewFineRow = iNewRowData % FINENESS;
+
+      iNewColData = piCol*FINENESS + piFine_col + dcol;
+      iNewCol = iNewColData / FINENESS;
+      iNewFineCol = iNewColData % FINENESS;
+
+      iHalf = viKnockback_iterations;
+      iAngle = Send(self,@GetAngle);
+
+      while iHalf > 0
+      {
+         if CanMoveInRoomBSP(Send(poOwner,@GetRoomData),piRow,piCol,piFine_row,piFine_col,
+               Send(self,@GetHeight),iNewRow,iNewCol,iNewFineRow,iNewFineCol,
+               USER_RUNNING_SPEED,self,FALSE)
+         {
+            piRow = iNewRow;
+            piCol = iNewCol;
+            piFine_row = iNewFineRow;
+            piFine_col = iNewFineCol;
+
+            Send(poOwner,@SomethingTurned,#what=self,#new_angle=iAngle);
+
+            Send(poOwner,@SomethingMoved,#what=self,#speed=viKnockback_speed,
+                  #new_row=piRow,#new_col=piCol,
+                  #fine_row=piFine_row,#fine_col=piFine_col,
+                  #cause=CAUSE_MOB_MOVEMENT,#non_monsters_only=TRUE);
+            break;
+         }
+         else
+         {
+            drow /= 2;
+            iNewRowData -= drow;
+            iNewRow = iNewRowData / FINENESS;
+            iNewFineRow = iNewRowData % FINENESS;
+
+            dcol /= 2;
+            iNewColData -= dcol;
+            iNewCol = iNewColData / FINENESS;
+            iNewFineCol = iNewColData % FINENESS;
+
+            --iHalf;
+         }
+      }
+
+      return;
    }
 
    GetDamageDesc(damage=0, type=0)

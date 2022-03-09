@@ -147,13 +147,13 @@ messages:
       return;
    }
 
-   BreakTrance(who=$,state=$,event=1,disruption=0)
+   BreakTrance(who=$,state=$,event=EVENT_ABILITY,disruption=0)
    {
       local oAbility, iTime;
 
       if event = EVENT_OOM
       {
-         return;
+         return FALSE;
       }
 
       oAbility = First(state);
@@ -161,7 +161,7 @@ messages:
       if NOT Send(oAbility,@CanBreakTrance,#who=who,#state=state,#event=event,
          #disruption=disruption)
       {
-         return;
+         return FALSE;
       }
 
       if event <> EVENT_STEER
@@ -178,7 +178,7 @@ messages:
             Send(who,@SetTranceTime,#time=iTime,#bAdd=TRUE);
             Send(who,@MsgSendUser,#message_rsc=trance_disturbed);
 
-            return;
+            return FALSE;
          }
          else
          {
@@ -190,7 +190,7 @@ messages:
 
       Send(who,@RemoveEnchantment,#what=self);
 
-      return;
+      return TRUE;
    }
 
    RemoveEnchantmentEffects( who = $, state = $ )

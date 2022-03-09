@@ -1,0 +1,181 @@
+// Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+// All rights reserved.
+//
+// This software is distributed under a license that is described in
+// the LICENSE file that accompanies it.
+//
+// Meridian is a registered trademark.
+
+
+////////////////////////////////////////////////////////////////////////////////
+CrushingBlows is Skill
+
+constants:
+
+   include blakston.khd
+
+resources:
+
+   include crushblow.lkod
+   Crushing_blows_name_rsc = "crushing blows"
+   Crushing_blows_icon_rsc = icrushingblows.bgf
+   Crushing_blows_desc_rsc = \
+      "Allows your blows with heavy weapons to interrupt your enemies' attacks."
+
+   Crushing_blows_success = "You land a crushing blow!"
+   Crushing_blows_success_victim = "%s%s lands a crushing blow on you!"
+   Crushing_blows_interrupt = "Your crushing blow staggers %s%s!"
+
+classvars:
+
+   vrName = Crushing_blows_name_rsc
+   vrIcon = Crushing_blows_icon_rsc
+   vrDesc = Crushing_blows_desc_rsc
+
+   viIndefinite = ARTICLE_NONE
+   viDefinite = ARTICLE_NONE
+
+   viSkill_num = SKID_CRUSHING_BLOWS
+   viSchool = SKS_WEAPONCRAFT
+   viSkill_Level = 6
+   viChance_to_Increase = 10
+   viMeditate_ratio = 100
+
+   viSkillExertion = 30
+   vbCheck_exertion = FALSE
+
+   vbAutomatic = TRUE
+
+   // Distance in FINENESS that will result in a guaranteed chance to interrupt.
+   vi_Threshold = 16
+
+   // Base chance to interrupt when treshold is met.
+   vi_Base_chance = 25
+
+   // How much does a crushing blow delay a player?
+   vi_Delay_player = 500
+
+   // How much does a crushing blow delay a monster?
+   vi_Delay_monster = 2000
+
+properties:
+
+messages:
+
+   GetRequisiteStat(who=$)
+   "Varies from skill to skill and spell to spell."
+   {
+      return Send(who,@GetMight);
+   }
+
+   PayCosts(who=$,modifier=0)
+   "Some skills may require certain stats to be depleted."
+   "return TRUE if they were successfully depleted."
+   {
+      if NOT Send(self,@SuccessChance,#who=who,#modifier=modifier)
+      {
+         return FALSE;
+      }
+
+      Send(who,@LoseVigor,#precision=TRUE,#amount=viSkillExertion);
+
+      return TRUE;
+   }
+
+   DoCrush(who=$,what=$,distance=0,ability=0)
+   {
+      local iReqStat, iRandom, bImprove;
+
+      // No attempt if we don't have the skill.
+      if NOT ability
+      {
+         return;
+      }
+
+      bImprove = FALSE;
+
+      // Grant a chance to improve even if we fail, as long as we smacked hard enough.
+      if distance >= vi_Threshold*2/3
+      {
+         Send(self,@ImproveAbility,#who=who,#target=what);
+
+         bImprove = TRUE;
+      }
+
+      // General idea: Interrupting is based on a primary and a secondary check.
+      // Primary check: Hits above vi_Threshold will always result in
+      // a chance to interrupt with high skill bringing that number down by a third.
+      // Higher skill will lower that number.
+      // Secondary check: Passing the primary check grants vi_Base_chance
+      // to interrupt. The battler's requisite stat is added to that base chance.
+
+      // Primary check.
+      iRandom = Random(1,vi_Threshold/2);
+      iRandom -= iRandom*(ability)/297;
+      iRandom += vi_Threshold/2;
+
+      if distance < iRandom
+      {
+         return FALSE;
+      }
+
+      // Secondary chance.
+      iReqStat = Send(self,@GetRequisiteStat,#who=who);
+
+      if Random(1,100) <= vi_Base_chance + iReqStat
+      {
+         // Time to improve if we haven't had the chance yet.
+         if NOT bImprove
+         {
+            Send(self,@ImproveAbility,#who=who,#target=what);
+         }
+
+         Send(who,@MsgSendUser,#message_rsc=Crushing_blows_success);
+
+         if IsClass(what,&Player)
+         {
+            Send(what,@MsgSendUser,#message_rsc=Crushing_blows_success_victim,
+               #parm1=Send(who,@GetCapDef),#parm2=Send(who,@GetName));
+         }
+
+         if Send(what,@BreakTrance,#event=EVENT_CRUSH)
+         {
+            Post(who,@MsgSendUser,#message_rsc=Crushing_blows_interrupt,
+               #parm1=Send(what,@GetDef),#parm2=Send(what,@GetName));
+         }
+
+         // Add visual feedback.
+         if IsClass(what,&Monster)
+         {
+            Send(what,@MonsterHitAnimation);
+         }
+
+         return TRUE;
+      }
+
+      return FALSE;
+   }
+
+   GetCrushDelay(who=$)
+   {
+      if IsClass(who,&Player)
+      {
+         return vi_Delay_player;
+      }
+
+      return vi_Delay_monster;
+   }
+
+   // About a 1 in 20 chance to get a roll to improve at 50 might.
+   ImproveAbility(who=$)
+   {
+      if Random(1,1000) > Send(who,@GetMight)
+      {
+         return;
+      }
+
+      propagate;
+   }
+
+end
+////////////////////////////////////////////////////////////////////////////////

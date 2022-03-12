@@ -144,6 +144,8 @@ classvars:
 
    viAttack_delay = 1000
 
+   vbKey_hold = FALSE
+
 properties:
 
    plPrerequisites = $
@@ -921,7 +923,8 @@ messages:
       }
 
       Send(oTrance,@BeginTrance,#what=self,#who=who,#lTargets=lTargets,
-           #time=iPreperationTime,#power=iSkillPower);
+           #time=iPreperationTime,#power=iSkillPower,
+           #iHold=Send(self,@IsHeld,#who=who));
 
       Send(who,@SetAttackTime,#time=Send(self,@GetPostPerformDelay,#who=who) +
          iPreperationTime);
@@ -1301,6 +1304,16 @@ messages:
    CanCrushEnemy()
    {
       return FALSE;
+   }
+
+   StoppedHolding(who=$,state=$)
+   {
+      return;
+   }
+
+   IsHeld()
+   {
+      return vbKey_hold;
    }
 
 end

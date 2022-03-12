@@ -270,6 +270,8 @@ classvars:
    // Does this spells ongoing effect constitute a trance?
    vbTrance = FALSE
 
+   vbKey_hold = FALSE
+
 properties:
 
    // Both piCast_time and piPostCast_time are in milliseconds.
@@ -2502,7 +2504,8 @@ messages:
       Send(who,@WaveSendUser,#wave_rsc=spell_trance_begin_sound);
 
       Send(oTrance,@BeginTrance,#what=self,#who=who,#lTargets=lTargets,
-           #time=iCastTime,#bFreeCast=bFreeCast,#power=iSpellpower);
+           #time=iCastTime,#bFreeCast=bFreeCast,#power=iSpellpower,
+           #iHold=vbKey_hold);
 
       // If our cast time is the result of a fumble, increase post cast delay
       // by trance time.
@@ -3381,6 +3384,16 @@ messages:
    SetTimeValues()
    {
       return TRUE;
+   }
+
+   StoppedHolding(who=$,state=$)
+   {
+      return;
+   }
+
+   IsHeld()
+   {
+      return vbKey_hold;
    }
 
 end

@@ -110,6 +110,13 @@ properties:
    piAmbush_preperation_time = 250
    piAmbush_max_bonus = 150
 
+   // attack that allows the user to charge at the enemy
+   // faster than regular swinging.
+   piCharge_post_perform_time = 250
+   piCharge_preperation_time = 450
+   piCharge_max_bonus = 0
+   piCharge_speed_bonus = 100
+
    // How much does a target that successfully blocked, parried or dodged
    // add to our cooldown?
    piBlocked_penalty = 1000
@@ -239,8 +246,13 @@ messages:
          iBonus = Send(self,@GetAmbushPercentage,#who=who,#what=oTarget);
          iBonus = (iBonus*piAmbush_max_bonus/100) - 50;
       }
+      else if iType = UNLEASH_CHARGE
+      {
+         iBonus = piCharge_max_bonus;
+      }
 
       iPower = viBonus + iBonus + Send(self,@GetSkillPower,#who=who);
+      iPower = Bound(iPower,0,$);
 
       while (iMultiAttack >= 0)
       {
@@ -296,6 +308,12 @@ messages:
       use_weapon = Send(who,@GetWeapon);
       stroke_obj = Send(who,@GetStrokeObject);
       iRange = Send(stroke_obj,@GetRange,#weapon_used=use_weapon);
+
+      if Send(use_weapon,@GetUnleashType) = UNLEASH_CHARGE
+      {
+         iRange += (USER_RUNNING_SPEED*piCharge_preperation_time/1000)*
+            (100+piCharge_speed_bonus)/20;
+      }
 
       iRow = Send(who,@GetRow);
       iCol = Send(who,@GetCol);
@@ -375,6 +393,11 @@ messages:
          return piAmbush_preperation_time;
       }
 
+      if iType = UNLEASH_CHARGE
+      {
+         return piCharge_preperation_time;
+      }
+
       return viPreperation_time;
    }
 
@@ -414,6 +437,11 @@ messages:
       {
          iPost = piAmbush_post_perform_time;
          iHaste += Send(who,@GetAgility)*Send(who,@GetAim)/100;
+      }
+      else if iType = UNLEASH_CHARGE
+      {
+         iPost = piCharge_post_perform_time;
+         iHaste += Send(who,@GetAgility)*Send(who,@GetMight)/100;
       }
       else if iType = UNLEASH_NONE
       {
@@ -548,6 +576,17 @@ messages:
             #duration=Random(piGut_bleed_duration*4/5,piGut_bleed_duration*6/5));
 
       return;
+   }
+
+   GetMovementSpeedReduction(who=$)
+   {
+      if who <> $
+         AND Send(Send(who,@GetWeapon),@GetUnleashType) = UNLEASH_CHARGE 
+      {
+         return -piCharge_speed_bonus;
+      }
+
+      return piTranceMovementSpeedReduction;
    }
 
 end

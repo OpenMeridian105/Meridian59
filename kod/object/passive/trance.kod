@@ -70,10 +70,12 @@ messages:
          iHold = time;
       }
 
+      lState = [what,who,lTargets,TRUE,bFreeCast,100,power,FALSE];
+
       if NOT iHold
       {
          Send(who,@StartEnchantment,#what=self,#time=time,#addicon=FALSE,
-            #state=[what,who,lTargets,TRUE,bFreeCast,100,power,FALSE]);
+            #state=lState);
       }
       else if iHold > viHold_interval
       {
@@ -83,17 +85,16 @@ messages:
          Send(who,@StartEnchantment,#what=self,#time=viHold_interval,#addicon=FALSE,
             #state=[what,who,lTargets,TRUE,bFreeCast,100,power,iHold-viHold_interval]);
          Send(who,@SetAttackTime,#time=viHold_interval);
-         
       }
       else
       {
          Send(who,@StartEnchantment,#what=self,#time=iHold,#addicon=FALSE,
-            #state=[what,who,lTargets,TRUE,bFreeCast,100,power,FALSE]);
+            #state=lState);
          Send(who,@SetAttackTime,#time=Send(what,@GetPostCastDelay));
       }
 
-      Send(who,@AddMovementSpeedPercent,#iSpeed=
-         -Send(what,@GetMovementSpeedReduction,#who=who));
+      Send(who,@AddMovementSpeedPercent,
+         #iSpeed=-Send(what,@GetMovementSpeedReduction,#state=lState));
 
       return;
    }
@@ -116,8 +117,8 @@ messages:
       oAbility = First(state);
 
       // Let's clear up our trance related effects before proceeding further.
-      Send(who,@AddMovementSpeedPercent,#iSpeed=
-         Send(oAbility,@GetMovementSpeedReduction,#who=who));
+      Send(who,@AddMovementSpeedPercent,
+         #iSpeed=Send(oAbility,@GetMovementSpeedReduction,#state=state));
 
       // Check if we have any charge time left.
       if Nth(state,8)
@@ -226,8 +227,8 @@ messages:
          }
       }
 
-      Send(who,@AddMovementSpeedPercent,#iSpeed=
-         Send(oAbility,@GetMovementSpeedReduction,#who=who));
+      Send(who,@AddMovementSpeedPercent,
+         #iSpeed=Send(oAbility,@GetMovementSpeedReduction,#state=state));
 
       Send(who,@RemoveEnchantment,#what=self);
 

@@ -2336,7 +2336,12 @@ messages:
       {
          oAbility = Nth(client_msg,2);
 
-         if ptAttackTimer = $
+         if Send(self,@GetTranceAbility) = oAbility
+            AND Send(oAbility,@IsHeld,#who=self)
+         {
+            Send(self,@ContinueHold);
+         }
+         else if ptAttackTimer = $
          {
             Send(self,@UserCast,#oSpell=oAbility,
                #lTargets=Nth(client_msg,3));
@@ -2376,9 +2381,16 @@ messages:
 
       if liClient_cmd = BP_REQ_PERFORM
       {
+         oAbility = Nth(client_msg,2);
+
+         if Send(self,@GetTranceAbility) = oAbility
+            AND Send(oAbility,@IsHeld,#who=self)
+         {
+            Send(self,@ContinueHold);
+         }
          if ptAttackTimer = $
          {
-            Send(self,@UserPerform,#oSkill=Nth(client_msg,2),
+            Send(self,@UserPerform,#oSkill=oAbility,
                #lTargets=Nth(client_msg,3));
          }
          else
@@ -2390,7 +2402,7 @@ messages:
                if ptQueuedAction <> $ AND (First(plLastReceived) <> BP_REQ_PERFORM)
                {
                   DeleteTimer(ptQueuedAction);
-                  plLastReceived = [BP_REQ_PERFORM,Nth(client_msg,2),Nth(client_msg,3)];
+                  plLastReceived = [BP_REQ_PERFORM,oAbility,Nth(client_msg,3)];
                   ptQueuedAction = CreateTimer(self,@UserQueuedAction,iTimeLeft);
                }
             }

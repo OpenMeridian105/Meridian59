@@ -66,50 +66,52 @@ messages:
          return FALSE;
       }
 
-      // Make sure we are using an appropriate weapon.
-      oWeapon = Send(who,@GetWeapon);
-
-      if oWeapon = $
+      if vbIsMeleeAttack OR vbIsRangedAttack OR vbIsUnarmedAttack
       {
-         if NOT vbIsUnarmedAttack
+         // Make sure we are using an appropriate weapon.
+         oWeapon = Send(who,@GetWeapon);
+
+         if oWeapon = $
          {
-            Send(who,@MsgSendUser,#message_rsc=ActiveSkill_no_weapon_rsc);
+            if NOT vbIsUnarmedAttack
+            {
+               Send(who,@MsgSendUser,#message_rsc=ActiveSkill_no_weapon_rsc);
 
-            return FALSE;
+               return FALSE;
+            }
          }
-      }
-      else if NOT IsClass(oWeapon,&Weapon)
-      {
-         Send(who,@MsgSendUser,#message_rsc=ActiveSkill_wrong_weapon_rsc);
-
-         return FALSE;
-      }
-      // Assume both can use ranged active skills.
-      else if IsClass(oWeapon,&RangedWeapon)
-         OR IsClass(oWeapon,&ThrownWeapon)
-      {
-         if NOT vbIsRangedAttack
+         else if NOT IsClass(oWeapon,&Weapon)
          {
             Send(who,@MsgSendUser,#message_rsc=ActiveSkill_wrong_weapon_rsc);
 
             return FALSE;
          }
-      }
-      else if NOT vbIsMeleeAttack
-      {
-         Send(who,@MsgSendUser,#message_rsc=ActiveSkill_wrong_weapon_rsc);
+         // Assume both can use ranged active skills.
+         else if IsClass(oWeapon,&RangedWeapon)
+            OR IsClass(oWeapon,&ThrownWeapon)
+         {
+            if NOT vbIsRangedAttack
+            {
+               Send(who,@MsgSendUser,#message_rsc=ActiveSkill_wrong_weapon_rsc);
 
-         return FALSE;
-      }
+               return FALSE;
+            }
+         }
+         else if NOT vbIsMeleeAttack
+         {
+            Send(who,@MsgSendUser,#message_rsc=ActiveSkill_wrong_weapon_rsc);
 
-      // If the skill is an attack, it needs some targets.
-      if (vbIsMeleeAttack OR vbIsRangedAttack OR vbIsUnarmedAttack)
-         AND vbCheckTargetsPreTrance
-         AND (lTargets = $)
-      {
-         Send(who,@MsgSendUser,#message_rsc=ActiveSkill_no_targets_rsc);
+            return FALSE;
+         }
 
-         return FALSE;
+         // If the skill is an attack, it needs some targets.
+         if vbCheckTargetsPreTrance
+            AND (lTargets = $)
+         {
+            Send(who,@MsgSendUser,#message_rsc=ActiveSkill_no_targets_rsc);
+
+            return FALSE;
+         }
       }
 
       if viSignatureBuffSID <> $

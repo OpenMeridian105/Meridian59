@@ -28,6 +28,9 @@ classvars:
    // Whether trance has any effect on movement speed.
    vbIsMoveSpeedModifier = TRUE
 
+   // How much time inbetween checks for a held down ability key.
+   viHold_interval = 250
+
 properties:
 
    vbIsLightSource = FALSE
@@ -45,7 +48,7 @@ messages:
       return SID_TRANCE;
    }
 
-   BeginTrance(what=$,who=$,lTargets=$,time=0,bFreeCast=FALSE,power=0)
+   BeginTrance(what=$,who=$,lTargets=$,time=0,bFreeCast=FALSE,power=0,iHold=FALSE)
    {
       local lState, iPower;
 
@@ -60,10 +63,38 @@ messages:
          }
       }
 
-      Send(who,@StartEnchantment,#what=self,#time=time,#addicon=FALSE,
-           #state=[what,who,lTargets,TRUE,bFreeCast,100,power]);
+      // We are dealing with a charge ability that requires holding a key.
+      if iHold AND time
+      {
+         // Convert cast time to hold time.
+         iHold = time;
+      }
 
-      Send(who,@AddMovementSpeedPercent,#iSpeed=-Send(what,@GetMovementSpeedReduction));
+      lState = [what,who,lTargets,TRUE,bFreeCast,100,power,FALSE];
+
+      if NOT iHold
+      {
+         Send(who,@StartEnchantment,#what=self,#time=time,#addicon=FALSE,
+            #state=lState);
+      }
+      else if iHold > viHold_interval
+      {
+         // Trance time is limited to viHold_interval. If the trance expires without
+         // the same ability key being pressed again, EndEnchantment() will call
+         // StoppedHolding instead of CastSkill() or PerformSpell().
+         Send(who,@StartEnchantment,#what=self,#time=viHold_interval,#addicon=FALSE,
+            #state=[what,who,lTargets,TRUE,bFreeCast,100,power,iHold-viHold_interval]);
+         Send(who,@SetAttackTime,#time=viHold_interval);
+      }
+      else
+      {
+         Send(who,@StartEnchantment,#what=self,#time=iHold,#addicon=FALSE,
+            #state=lState);
+         Send(who,@SetAttackTime,#time=Send(what,@GetPostCastDelay));
+      }
+
+      Send(who,@AddMovementSpeedPercent,
+         #iSpeed=-Send(what,@GetMovementSpeedReduction,#state=lState));
 
       return;
    }
@@ -79,14 +110,25 @@ messages:
    "Called when:"
    " 1) Casting time expires, time to call CastSpell"
    " 2) Spell expires"
+   " 3) Hold interval expires"
    {
       local oAbility, lTargets, iSpellPower, lNewTargets;
 
       oAbility = First(state);
-      lTargets = Nth(state,3);
 
       // Let's clear up our trance related effects before proceeding further.
-      Send(who,@AddMovementSpeedPercent,#iSpeed=Send(oAbility,@GetMovementSpeedReduction));
+      Send(who,@AddMovementSpeedPercent,
+         #iSpeed=Send(oAbility,@GetMovementSpeedReduction,#state=state));
+
+      // Check if we have any charge time left.
+      if Nth(state,8)
+      {
+         Send(oAbility,@StoppedHolding,#who=who,#state=state);
+
+         return;
+      }
+
+      lTargets = Nth(state,3);
 
       // Double-check to get valid targets.  Don't report 'cause we've already 
       // spammed them during the first check – unless we are dealing with a regular
@@ -109,7 +151,6 @@ messages:
          {
             Send(oAbility,@TargetUnavailable,#what=First(lTargets));
          }
-
       }
       else if IsClass(oAbility,&Spell)
       {
@@ -186,7 +227,8 @@ messages:
          }
       }
 
-      Send(who,@AddMovementSpeedPercent,#iSpeed=Send(oAbility,@GetMovementSpeedReduction));
+      Send(who,@AddMovementSpeedPercent,
+         #iSpeed=Send(oAbility,@GetMovementSpeedReduction,#state=state));
 
       Send(who,@RemoveEnchantment,#what=self);
 
@@ -248,6 +290,11 @@ messages:
    ModifyMonsterBehavior()
    {
       return;
+   }
+
+   GetHoldInterval()
+   {
+      return viHold_interval;
    }
 
 end

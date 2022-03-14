@@ -5,6 +5,6 @@
 !include $(TOPDIR)\common.mak
 
 DEPEND = ..\activeskill.bof
-BOFS = cleave.bof unleash.bof
+BOFS = cleave.bof unleash.bof sprint.bof
 
 !include $(KODDIR)\kod.mak

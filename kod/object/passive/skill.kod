@@ -92,8 +92,12 @@ classvars:
    vrIcon = skill_icon_rsc
    vrDesc = skill_desc_text_rsc
    vrSkill_intro = skill_intro_rsc
+   vrSkill_tired = skill_too_tired
 
    vrFailed = skill_failed_by_chance
+   vrTrance_begin = skill_trance_begin_sound
+   vrTrance_break = skill_trance_break_sound
+   vrTrance_cancel = skill_trance_cancel_sound
    vrSucceed_wav = $
 
    viIndefinite = ARTICLE_NONE
@@ -143,6 +147,8 @@ classvars:
    vbFixedTrance = FALSE
 
    viAttack_delay = 1000
+
+   vbKey_hold = FALSE
 
 properties:
 
@@ -445,7 +451,7 @@ messages:
       if NOT Send(who,@HasVigor,#precision=TRUE,#amount=viSkillExertion)
          AND vbCheck_Exertion
       {
-         Send(who,@MsgSendUser,#message_rsc=skill_too_tired,#parm1=vrName);
+         Send(who,@MsgSendUser,#message_rsc=vrSkill_tired,#parm1=vrName);
 
          return FALSE;
       }
@@ -917,11 +923,12 @@ messages:
       {
          Send(who,@MsgSendUser,#message_rsc=skill_trance_begin,
               #parm1=Send(self,@GetName));
-         Send(who,@WaveSendUser,#wave_rsc=skill_trance_begin_sound);
+         Send(who,@WaveSendUser,#wave_rsc=vrTrance_begin);
       }
 
       Send(oTrance,@BeginTrance,#what=self,#who=who,#lTargets=lTargets,
-           #time=iPreperationTime,#power=iSkillPower);
+           #time=iPreperationTime,#power=iSkillPower,
+           #iHold=Send(self,@IsHeld,#who=who));
 
       Send(who,@SetAttackTime,#time=Send(self,@GetPostPerformDelay,#who=who) +
          iPreperationTime);
@@ -1075,7 +1082,7 @@ messages:
 
       Send(who,@MsgSendUser,#message_rsc=skill_trance_break,
            #parm1=Send(self,@GetName));
-      Send(who,@WaveSendUser,#wave_rsc=skill_trance_break_sound);
+      Send(who,@WaveSendUser,#wave_rsc=vrTrance_break);
 
       return;
    }
@@ -1084,7 +1091,7 @@ messages:
    {
       Send(who,@MsgSendUser,#message_rsc=skill_trance_cancel,
            #parm1=Send(self,@GetName));
-      Send(who,@WaveSendUser,#wave_rsc=skill_trance_cancel_sound);
+      Send(who,@WaveSendUser,#wave_rsc=vrTrance_cancel);
 
       if state <> $
          AND NOT Nth(state,5)
@@ -1301,6 +1308,16 @@ messages:
    CanCrushEnemy()
    {
       return FALSE;
+   }
+
+   StoppedHolding(who=$,state=$)
+   {
+      return;
+   }
+
+   IsHeld()
+   {
+      return vbKey_hold;
    }
 
 end

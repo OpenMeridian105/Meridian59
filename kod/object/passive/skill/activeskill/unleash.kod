@@ -38,6 +38,8 @@ resources:
    Unleash_gut_attacker = "You gut your target!"
    Unleash_gut_victim = "You have been gutted!"
 
+   Unleash_charge_failed = "You stumble!"
+
    Unleash_sound_rsc = unleash.ogg
 
 classvars:
@@ -86,16 +88,19 @@ properties:
    // hit during the cooldown.
    piBase_bonus = 50
 
+   //// LUNGE
    // almost instant but with a longer post action delay
    piLunge_post_perform_time = 1050
    piLunge_preperation_time = 150
    piLunge_max_bonus = 150
 
+   //// SLAM
    // slower swing, higher damage
    piSlam_post_perform_time = 1050
    piSlam_preperation_time = 450
    piSlam_max_bonus = 100
 
+   //// GUT
    // regular swing that leaves a bleed effect instead
    piGut_post_perform_time = 550
    piGut_preperation_time = 450
@@ -105,21 +110,38 @@ properties:
    piGut_bleed_max_damage = 4000
    piGut_bleed_duration = 10000
 
+   //// AMBUSH
    // regular swing that leaves a bleed effect instead
    piAmbush_post_perform_time = 750
    piAmbush_preperation_time = 250
    piAmbush_max_bonus = 150
 
+   //// CHARGE
+   // attack that allows the user to charge at the enemy
+   // faster than regular swinging.
+   piCharge_post_perform_time = 250
+   piCharge_preperation_time = 450
+   piCharge_max_bonus = 0
+   // Adjusts user speed during wind up.
+   piCharge_speed_bonus = 100
+   // Denominator that adjusts skill range. 20 means that you can't
+   // use the skill until you are almost guaranteed to be able to reach
+   // your target. 15 means that you can start slightly out of range.
+   piCharge_range_ratio = 20
+   // Held for this many ms if you fail to reach your target.
+   piCharge_penalty = 2500
+
+   //// COUNTERED BY ACTIVE DEFENSE
    // How much does a target that successfully blocked, parried or dodged
    // add to our cooldown?
    piBlocked_penalty = 1000
    piParried_penalty = 3000
    piDodged_penalty = 500
 
-// How much do we add to our cooldown if we failed our feint?
+   //// FEINTING THE ATTACK
+   // How much do we add to our cooldown if we failed our feint?
    // i.e. we feint without an enemy defense attempt.
    piFeint_fail = 500
-
    // How much do we add to our cooldown if we successfully feint?
    // i.e. we feint while the enemy attempts to actively defend a hit.
    piFeint_success = 250
@@ -239,14 +261,28 @@ messages:
          iBonus = Send(self,@GetAmbushPercentage,#who=who,#what=oTarget);
          iBonus = (iBonus*piAmbush_max_bonus/100) - 50;
       }
+      else if iType = UNLEASH_CHARGE
+      {
+         iBonus = piCharge_max_bonus;
+      }
 
       iPower = viBonus + iBonus + Send(self,@GetSkillPower,#who=who);
+      iPower = Bound(iPower,0,$);
 
       while (iMultiAttack >= 0)
       {
-         Send(who,@TryAttack,#what=oTarget,#stroke_obj=stroke_obj,
+         if NOT Send(who,@TryAttack,#what=oTarget,#stroke_obj=stroke_obj,
             #use_weapon=oWeapon,#ambush=bAmbush,#factor=iPower,
-            #bCheck=FALSE);
+            #bCheck=FALSE)
+            AND (iType = UNLEASH_CHARGE)
+         {
+            // Charges get punished if they fail to reach their target to make
+            // charging away from the target in order to flee less attractive.
+            Send(Send(SYS,@FindSpellByNum,#num=SID_SUMMON_WEB),@DoHold,#what=who,
+            #oTarget=who,#duration=piCharge_penalty,#report=FALSE);
+
+            Send(who,@MsgSendUser,#message_rsc=Unleash_charge_failed);
+         }
 
          --iMultiAttack;
       }
@@ -296,6 +332,12 @@ messages:
       use_weapon = Send(who,@GetWeapon);
       stroke_obj = Send(who,@GetStrokeObject);
       iRange = Send(stroke_obj,@GetRange,#weapon_used=use_weapon);
+
+      if Send(use_weapon,@GetUnleashType) = UNLEASH_CHARGE
+      {
+         iRange += (USER_RUNNING_SPEED*piCharge_preperation_time/1000)*
+            (100+piCharge_speed_bonus)/piCharge_range_ratio;
+      }
 
       iRow = Send(who,@GetRow);
       iCol = Send(who,@GetCol);
@@ -375,6 +417,11 @@ messages:
          return piAmbush_preperation_time;
       }
 
+      if iType = UNLEASH_CHARGE
+      {
+         return piCharge_preperation_time;
+      }
+
       return viPreperation_time;
    }
 
@@ -414,6 +461,11 @@ messages:
       {
          iPost = piAmbush_post_perform_time;
          iHaste += Send(who,@GetAgility)*Send(who,@GetAim)/100;
+      }
+      else if iType = UNLEASH_CHARGE
+      {
+         iPost = piCharge_post_perform_time;
+         iHaste += Send(who,@GetAgility)*Send(who,@GetMight)/100;
       }
       else if iType = UNLEASH_NONE
       {
@@ -548,6 +600,21 @@ messages:
             #duration=Random(piGut_bleed_duration*4/5,piGut_bleed_duration*6/5));
 
       return;
+   }
+
+   GetMovementSpeedReduction(state=$)
+   {
+      local oBattler;
+
+      oBattler = Nth(state,2);
+
+      if oBattler <> $
+         AND Send(Send(oBattler,@GetWeapon),@GetUnleashType) = UNLEASH_CHARGE 
+      {
+         return -piCharge_speed_bonus;
+      }
+
+      return piTranceMovementSpeedReduction;
    }
 
 end

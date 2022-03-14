@@ -15425,7 +15425,7 @@ messages:
             {
                lState = Nth(i,3);
                oSpell = First(lState);
-               iSpeed -= Send(oSpell,@GetMovementSpeedReduction);
+               iSpeed -= Send(oSpell,@GetMovementSpeedReduction,#who=self);
             }
             else
             {
@@ -17649,6 +17649,68 @@ messages:
    IsOffGuard()
    {
       return (piAnimation = PANM_OFF_GUARD) AND (Send(self,@GetTranceAbility) = $);
+   }
+
+   // We are in the middle of charging an ability and have just received word
+   // that we may continue charging for a little while longer.
+   ContinueHold()
+   {
+      local i, oTrance, lState, tTrance, iTime, iTotal;
+
+      oTrance = Send(SYS,@FindSpellByNum,#num=SID_TRANCE);
+
+      // Time interval before which the next hold check will have to pass.
+      iTime = Send(oTrance,@GetHoldInterval);
+
+      foreach i in plEnchantments
+      {
+         if Nth(i,2) = oTrance
+         {
+            tTrance = First(i);
+            lState = Nth(i,3);
+
+            // Total amount of time left until the charge is complete.
+            iTotal = Nth(lState,8);
+
+            // To get the true total time left, we have to add whatever
+            // remains of the current hold interval.
+            iTotal += GetTimeRemaining(tTrance);
+
+            if iTotal < iTime
+            {
+               // Less than one hold interval is left in our charge time.
+               // Set the timer to what is left of our time.
+               iTime = iTotal;
+               // No total time left beyond that.
+               iTotal = 0;
+            }
+            else
+            {
+               // Set a regular hold interval and subtract how ever long that
+               // is from our total time.
+               iTotal -= iTime;
+            }
+
+            // Delete our previous timer.
+            DeleteTimer(tTrance);
+            tTrance = $;
+
+            // And set a new one.
+            SetFirst(i,CreateTimer(self,@EnchantmentTimer,iTime));
+
+            // Also, update our total.
+            SetNth(lState,8,iTotal);
+
+            break;
+         }
+      }
+
+      return;
+   }
+
+   GetLastMoveUpdate()
+   {
+      return piLastMoveUpdateTime;
    }
 
 end

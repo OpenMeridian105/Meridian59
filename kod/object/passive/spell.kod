@@ -162,8 +162,6 @@ resources:
 
    Spell_too_few_hp_rsc = "You are not powerful enough to cast this spell."
 
-   cannot_cast_cooldown = \
-      "You cannot cast %s - this spell is still on cooldown!"
    cannot_cast_on_phased_out = \
       "You can't cast anything on %s while %s is phased out of existence!"
 
@@ -972,14 +970,6 @@ messages:
       return TRUE;
    }
 
-   CooldownCastTried(who = $, rName = $)
-   "rName is the name of the spell being cast."
-   {
-      Send(who,@MsgSendUser,#message_rsc=cannot_cast_cooldown,#parm1=rName);
-
-      return;
-   }
-
    CanPayCosts(who=$,lTargets=$,iSpellPower=0,bItemCast=FALSE,bFreeCast=FALSE)
    {
       local i, each_obj, oRoom, iRand, oSpell, oTarget;
@@ -992,7 +982,7 @@ messages:
             AND Send(who,@IsEnchanted,#what=oSpell))
          {
             // Cooldown might want to do specific things here.
-            Send(oSpell,@CooldownCastTried,#who=who,#rName=vrName);
+            Send(oSpell,@CooldownTried,#who=who,#oAbility=self);
 
             return FALSE;
          }

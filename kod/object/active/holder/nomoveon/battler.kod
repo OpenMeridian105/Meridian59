@@ -728,6 +728,31 @@ messages:
       return $;
    }
 
+   GetEnchantedTime(what=$)
+   "Returns the remaining time of enchantment <what>."
+   {
+      local i, tTimer;
+
+      foreach i in plEnchantments
+      {
+         if Nth(i,2) = what
+         {
+            tTimer = First(i);
+            break;
+         }
+      }
+
+      if tTimer <> $
+      {
+         if IsTimer(tTimer)
+         {
+            return GetTimeRemaining(tTimer);
+         }
+      }
+
+      return tTimer;
+   }
+
    GetEnchantmentsByClass(enchClass=&Spell)
    "Returns a subset of plEnchantments whose elements are of the given class."
    {

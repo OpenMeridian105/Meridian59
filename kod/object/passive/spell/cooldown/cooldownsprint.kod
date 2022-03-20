@@ -27,22 +27,45 @@ classvars:
    vrIcon = cooldown_sprint_icon_rsc
    viSpell_num = SID_COOLDOWN_SPRINT
    vbIsSkillCooldown = TRUE
+   vbReport = FALSE
 
 properties:
 
    // 2 to 10 seconds outside of combat
    // 22 to 30 seconds outside of combat
    piBaseDuration = 10000
+   piMinDuration = 2000
    piCombatpenalty = 20000
    piSpellPowerModifier = 80
 
 messages:
+
+   DoSpellEffect(who = $, iDuration = $, oAbility = $)
+   {
+      if NOT vbReport
+      {
+         return;
+      }
+
+      propagate;
+   }
+
+   UndoSpellEffect(who = $, oAbility = $)
+   {
+      if NOT vbReport
+      {
+         return;
+      }
+
+      propagate;
+   }
 
    GetDuration(who=$,iSpellPower=0)
    {
       local iDuration;
 
       iDuration = piBaseDuration - iSpellPower * piSpellPowerModifier;
+      iDuration = Bound(iDuration,piMinDuration,$);
 
       if NOT Send(who,@CanHelpPlayerStrict)
       {

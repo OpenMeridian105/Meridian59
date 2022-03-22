@@ -537,6 +537,27 @@ id_type lookup_id(id_type id, bool refcount = true)
    return NULL;
 }
 /************************************************************************/
+/*
+ * update_id: Update the ownernum and source of an id in classvar table.
+ *   Classvars and properties need to do this when the parent ID already
+ *   in the table is overridden by an ID in the current class.
+ */
+void update_id(id_type id)
+{
+   id_type record;
+
+   record = (id_type)table_lookup(st.classvars, (void *)id, id_hash, id_compare);
+   if (record != NULL && record->type == id->type)
+   {
+      record->ownernum = id->ownernum;
+      record->source = id->source;
+   }
+   else
+   {
+      action_error("Failed to update ID for %s in classvars table!", id->name);
+   }
+}
+/************************************************************************/
 /* 
  * add_identifier: Add identifier to appropriate namespace, and assigns
  *                 it the next available id #.  Does nothing
@@ -1150,7 +1171,7 @@ classvar_type make_classvar(id_type id, expr_type e)
 {
    classvar_type cv;
 
-   cv = (classvar_type) SafeMalloc(sizeof(classvar_struct));
+   cv = (classvar_type)SafeMalloc(sizeof(classvar_struct));
 
    if (e->type != E_CONSTANT)
    {
@@ -1159,22 +1180,24 @@ classvar_type make_classvar(id_type id, expr_type e)
    }
 
    lookup_id(id, false);
-   switch(id->type) 
+   switch (id->type)
    {
    case I_CONSTANT:
    case I_PROPERTY:
       action_error("Duplicate identifier %s", id->name);
       break;
-      
+
       /* Legal if it hasn't yet appeared in this class */
    case I_CLASSVAR:
       if (id->ownernum == st.curclass && id->source == COMPILE)
-	 action_error("Class variable %s appears twice", id->name);
-      else 
+         action_error("Class variable %s appears twice", id->name);
+      else
       {
-	 id->ownernum = st.curclass;
-	 id->source = COMPILE;
-	 add_identifier(id, I_CLASSVAR);
+         id->ownernum = st.curclass;
+         id->source = COMPILE;
+         // ID already in the table, so update rather than trying to add again
+         // which doesn't work as duplicates are ignored by add_identifier().
+         update_id(id);
       }
       break;
 
@@ -1187,12 +1210,12 @@ classvar_type make_classvar(id_type id, expr_type e)
 
    cv->id = id;
    cv->rhs = e->value.constval;
-   return cv;   
+   return cv;
 }
 /************************************************************************/
 property_type make_property(id_type id, expr_type e)
 {
-   property_type p = (property_type) SafeMalloc(sizeof(property_struct));
+   property_type p = (property_type)SafeMalloc(sizeof(property_struct));
 
    if (e->type != E_CONSTANT)
    {
@@ -1203,54 +1226,56 @@ property_type make_property(id_type id, expr_type e)
    /* Left-hand side must not have appeared as a property before, except possibly as a
     * property of one of our superclasses.  Properties shadow other global names. */
    lookup_id(id, false);
-   switch(id->type) {
+   switch (id->type) {
 
    case I_CONSTANT:
       action_error("Duplicate identifier %s", id->name);
       break;
-      
+
       /* Legal if it hasn't yet appeared in this class */
    case I_PROPERTY:
       if (id->ownernum == st.curclass && id->source == COMPILE)
-	 action_error("Property %s appears twice", id->name);
-      else 
+         action_error("Property %s appears twice", id->name);
+      else
       {
-	 id->ownernum = st.curclass;
-	 id->source = COMPILE;
-	 add_identifier(id, I_PROPERTY);
+         id->ownernum = st.curclass;
+         id->source = COMPILE;
+         // ID already in the table, so update rather than trying to add again
+         // which doesn't work as duplicates are ignored by add_identifier().
+         update_id(id);
       }
       break;
 
    case I_CLASSVAR:
       if (id->ownernum == st.curclass && id->source == COMPILE)
-	 action_error("Property and classvar %s both appear in same class\n", id->name);
+         action_error("Property and classvar %s both appear in same class", id->name);
       else
       {
-	 classvar_type new_cv;
-	 id_type new_id;
-	 const_type new_const;
-	 
-	 // Override classvar with special tag value
-	 new_cv = (classvar_type) SafeMalloc(sizeof(classvar_struct));
-	 new_const = (const_type) SafeMalloc(sizeof(const_struct));
-	 new_id = duplicate_id(id);
+         classvar_type new_cv;
+         id_type new_id;
+         const_type new_const;
 
-	 new_cv->id = new_id;
-	 new_cv->rhs = new_const;
-	 new_id->ownernum = st.curclass;
-	 new_id->source = COMPILE;
-	 new_const->type = C_OVERRIDE;
-	 
-	 // Replace classvar with property in table
-	 table_delete_item(st.classvars, id, id_hash, id_compare);
-	 id->ownernum = st.curclass;
-	 id->source = COMPILE;
-	 add_identifier(id, I_PROPERTY);
+         // Override classvar with special tag value
+         new_cv = (classvar_type)SafeMalloc(sizeof(classvar_struct));
+         new_const = (const_type)SafeMalloc(sizeof(const_struct));
+         new_id = duplicate_id(id);
 
-	 // Store # of property in class var
-	 new_const->value.numval = id->idnum;
+         new_cv->id = new_id;
+         new_cv->rhs = new_const;
+         new_id->ownernum = st.curclass;
+         new_id->source = COMPILE;
+         new_const->type = C_OVERRIDE;
 
-	 st.override_classvars = list_add_item(st.override_classvars, new_cv);	 
+         // Replace classvar with property in table
+         table_delete_item(st.classvars, id, id_hash, id_compare);
+         id->ownernum = st.curclass;
+         id->source = COMPILE;
+         add_identifier(id, I_PROPERTY);
+
+         // Store # of property in class var
+         new_const->value.numval = id->idnum;
+
+         st.override_classvars = list_add_item(st.override_classvars, new_cv);
       }
       break;
 
@@ -1263,7 +1288,7 @@ property_type make_property(id_type id, expr_type e)
 
    p->id = id;
    p->rhs = e->value.constval;
-   return p;   
+   return p;
 }
 /*******************************************************************************/
 /*  

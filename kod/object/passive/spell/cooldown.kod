@@ -28,6 +28,7 @@ constants:
 
    HEADER_MESSAGE = 1
    HEADER_DESCRIPTION = 2
+   HEADER_TRIED = 3
 
 resources:
 
@@ -35,21 +36,34 @@ resources:
 
    cooldown_look_rsc = "%r\n%r"
    cooldown_desc_rsc = "You cannot cast %s while this cooldown is in effect."
-   cooldown_on_rsc = "The %r spell can be cast again in %r%r%r%r%r%r%r."
-   cooldown_off_rsc = "You can now cast the %s spell again."
+   cooldown_spell_on_rsc = "The %r spell can be cast again in %r%r%r%r%r%r%r."
+   cooldown_skill_on_rsc = "The %r skill can be used again in %r%r%r%r%r%r%r."
+   cooldown_spell_off_rsc = "You can now cast the %s spell again."
+   cooldown_skill_off_rsc = "You can now use the %s skill again."
+   cooldown_spell_tried = \
+      "You cannot cast %r for another %r%r%r%r%r%r%r!"
+   cooldown_skill_tried = \
+      "You cannot use %r for another %r%r%r%r%r%r%r!"
+   cooldown_almost_ready = "You are almost ready to use %s again!"
    cooldown_time_header_rsc = \
       "\n\nThe %s will expire in %r%r%r%r%r%r%r."
 
 classvars:
 
    vrDesc = cooldown_desc_rsc
-   vrCooldownOn = cooldown_on_rsc
-   vrCooldownOff = cooldown_off_rsc
+   vrCooldownSpellOn = cooldown_spell_on_rsc
+   vrCooldownSkillOn = cooldown_skill_on_rsc
+   vrCooldownSpellOff = cooldown_spell_off_rsc
+   vrCooldownSkillOff = cooldown_skill_off_rsc
+   vrCooldownSpellTried = cooldown_spell_tried
+   vrCooldownSkillTried = cooldown_skill_tried
+   vrCooldownAlmostReady = cooldown_almost_ready
    viMana = 0
    viSpell_level = 50
    viSpellExertion = 0
    viSchool = SS_DM_COMMAND
    viPersonal_ench = FALSE
+   vbIsSkillCooldown = FALSE
 
 properties:
 
@@ -93,10 +107,10 @@ messages:
 
       if (iDuration = $)
       {
-         iDuration = Send(self,@GetDuration,#iSpellPower=iSpellPower);
+         iDuration = Send(self,@GetDuration,#iSpellPower=iSpellPower,#who=oTarget);
       }
 
-      Send(self,@DoSpellEffect,#who=oTarget,#iDuration=iDuration,#oSpell=who);
+      Send(self,@DoSpellEffect,#who=oTarget,#iDuration=iDuration,#oAbility=who);
       Send(oTarget,@StartEnchantment,#what=self,#time=iDuration,#state=who);
 
       return;
@@ -117,6 +131,45 @@ messages:
       return 1;
    }
 
+   CooldownTriedMsg(parm1 = $, parm2 = $)
+   "parm1 is time in ms, parm2 is spell object. parm1 can be $."
+   {
+      if (parm2 = $)
+      {
+         return FALSE;
+      }
+
+      if (parm1 <> $)
+      {
+         Send(self,@SendTimeRemaining,#iTime=parm1 / 1000,#parm1=HEADER_TRIED,
+               #parm2=parm2);
+      }
+
+      return TRUE;
+   }
+
+   CooldownTried(who = $, oAbility = $)
+   "rName is the name of the spell being cast."
+   {
+      local iDuration;
+
+      iDuration = Send(who,@GetEnchantedTime,#what=self);
+
+      if iDuration < 1000
+      {
+         Send(who,@MsgSendUser,#message_rsc=vrCooldownAlmostReady,
+            #parm1=Send(oAbility,@GetName));
+      }
+      else
+      {
+         Send(who,@MsgSendUserCallback,#what=self,
+               #sCallback=SetString($,@CooldownTriedMsg),
+               #parm1=iDuration,#parm2=oAbility);
+      }
+
+      return;
+   }
+
    CooldownOnMsg(parm1 = $, parm2 = $)
    "parm1 is time in ms, parm2 is spell object. parm1 can be $."
    {
@@ -134,19 +187,30 @@ messages:
       return TRUE;
    }
 
-   DoSpellEffect(who = $, iDuration = $, oSpell = $)
+   DoSpellEffect(who = $, iDuration = $, oAbility = $)
    {
       Send(who,@MsgSendUserCallback,#what=self,
             #sCallback=SetString($,@CooldownOnMsg),
-            #parm1=iDuration,#parm2=oSpell);
+            #parm1=iDuration,#parm2=oAbility);
 
       return;
    }
 
-   UndoSpellEffect(who = $, oSpell = $)
+   UndoSpellEffect(who = $, oAbility = $)
    {
-      Send(who,@MsgSendUser,#message_rsc=vrCooldownOff,
-            #parm1=Send(oSpell,@GetName));
+      local rString;
+
+      if vbIsSkillCooldown
+      {
+         rString = vrCooldownSkillOff;
+      }
+      else
+      {
+         rString = vrCooldownSpellOff;
+      }
+
+      Send(who,@MsgSendUser,#message_rsc=rString,
+            #parm1=Send(oAbility,@GetName));
 
       return;
    }
@@ -165,7 +229,7 @@ messages:
 
    EndEnchantment(who = $, state = 0, report = TRUE)
    {
-      Send(self,@UndoSpellEffect,#who=who,#oSpell=state);
+      Send(self,@UndoSpellEffect,#who=who,#oAbility=state);
 
       return;
    }
@@ -200,9 +264,31 @@ messages:
 
    SendTimeRemainingHeader(parm1=HEADER_DESCRIPTION,parm2=$)
    {
+      local rString;
+
       if (parm1 = HEADER_MESSAGE)
       {
-         AddPacket(4,vrCooldownOn, 4, Send(parm2,@GetName));
+         if vbIsSkillCooldown
+         {
+            rString = vrCooldownSkillOn;
+         }
+         else
+         {
+            rString = vrCooldownSpellOn;
+         }
+         AddPacket(4,rString, 4, Send(parm2,@GetName));
+      }
+      else if parm1 = HEADER_TRIED
+      {
+         if vbIsSkillCooldown
+         {
+            rString = vrCooldownSkillTried;
+         }
+         else
+         {
+            rString = vrCooldownSpellTried;
+         }
+         AddPacket(4,rString, 4, Send(parm2,@GetName));
       }
       else
       {

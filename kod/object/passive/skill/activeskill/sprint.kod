@@ -59,15 +59,16 @@ classvars:
 
    vbFixedTrance = TRUE
 
-   // Default values. Those are overridden by the properties below.
    viPreperation_time = 10000
-   viPostPerform_time = 2000
+   viPostPerform_time = 0
 
    viStamina_drain = 2000
 
    vbKey_hold = TRUE
 
    vrTrance_break = Sprint_trance_break_sound
+
+   viCooldownSID = SID_COOLDOWN_SPRINT
 
 properties:
 
@@ -118,56 +119,64 @@ messages:
    // The various ways this skill can end...
    TranceBroken(who=$,state=$)
    {
-      local iPower;
-
-      iPower = Nth(state,7);
-      Send(who,@MsgSendUser,#message_rsc=Sprint_end);
-      Send(who,@DeleteOverTimeEffect,#who=self,#removal=REMOVE_INTERNAL);
-      Send(who,@SetAttackTime,#time=viPostPerform_time*60/(iPower+10));
+      // Handles post use effects.
+      Send(self,@SprintEnded,#who=who,#state=state);
 
       propagate;
    }
 
    TranceCanceled(who=$,state=$)
    {
-      local iPower;
-
-      iPower = Nth(state,7);
-      Send(who,@MsgSendUser,#message_rsc=Sprint_end);
-      Send(who,@DeleteOverTimeEffect,#who=self,#removal=REMOVE_INTERNAL);
-      Send(who,@SetAttackTime,#time=viPostPerform_time*60/(iPower+10));
+      // Handles post use effects.
+      Send(self,@SprintEnded,#who=who,#state=state);
 
       propagate;
    }
 
    TranceCompleted(who=$,state=$)
    {
-      local iPower;
-
-      iPower = Nth(state,7);
-
       // Check for advancement conditions.
       if Abs(Send(who,@GetLastMoveUpdate) - GetTickCount()) < 1000
       {
          Send(self,@ImproveAbility,#who=who);
       }
 
-      iPower = Nth(state,7);
-      Send(who,@MsgSendUser,#message_rsc=Sprint_end);
-      Send(who,@DeleteOverTimeEffect,#who=self,#removal=REMOVE_INTERNAL);
-      Send(who,@SetAttackTime,#time=viPostPerform_time*60/(iPower+10));
+      // Handles post use effects.
+      Send(self,@SprintEnded,#who=who,#state=state);
 
       propagate;
    }
 
    StoppedHolding(who=$,state=$)
    {
-      local iPower;
+      // Handles post use effects.
+      Send(self,@SprintEnded,#who=who,#state=state);
+
+      propagate;
+   }
+
+   SprintEnded(who=$,state=$)
+   {
+      local iPower, oSpell;
 
       iPower = Nth(state,7);
       Send(who,@MsgSendUser,#message_rsc=Sprint_end);
       Send(who,@DeleteOverTimeEffect,#who=self,#removal=REMOVE_INTERNAL);
-      Send(who,@SetAttackTime,#time=viPostPerform_time*60/(iPower+10));
+
+      // Add a cooldown if applicable.
+      if IsClass(who,&Battler)
+      {
+         if viCooldownSID > 0
+         {
+            oSpell = Send(SYS,@FindSpellByNum,#num=viCooldownSID);
+
+            if (oSpell <> $)
+            {
+               Send(oSpell,@CastSpell,#who=self,#oTarget=who,
+                  #iSpellPower=iPower);
+            }
+         }
+      }
 
       return;
    }

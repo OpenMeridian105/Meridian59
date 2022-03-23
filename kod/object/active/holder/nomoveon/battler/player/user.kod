@@ -64,6 +64,9 @@ constants:
    // Amount of ms an action can be queued for before we are ready to execute.
    ACTION_QUEUE_TIME = 250
 
+   // Amount of ms inbetween telling a user that his action is on CD.
+   ACTION_COOLDOWN_TIME = 1000
+
    // How much vigor does it cost us to defend late?
    ACTIVE_DEFENSE_PENALTY = 5
 
@@ -2343,6 +2346,40 @@ messages:
          }
          else if ptAttackTimer = $
          {
+            // Repurposing variable.
+            iState = Send(oAbility,@GetCooldownSID);
+
+            // Check whether we have a cooldown.
+            if iState
+            {
+               // We do, iState is now set to the CD object.
+               iState = Send(SYS,@FindSpellByNum,#num=iState);
+
+               if (iState <> $
+                  AND Send(Self,@IsEnchanted,#what=iState))
+               {
+                  iTimeLeft = Send(self,@GetEnchantedTime,#what=iState);
+                  iTimeLeft = Bound(iTimeLeft,$,ACTION_COOLDOWN_TIME);
+
+                  if ptQueuedAction = $
+                  {
+                     plLastReceived = [BP_REQ_CAST,oAbility,Nth(client_msg,3)];
+                     ptQueuedAction = CreateTimer(self,@UserQueuedAction,iTimeLeft);
+                     Send(iState,@CooldownTried,#who=self,#oAbility=oAbility);
+                  }
+                  else if NOT ((First(plLastReceived) = BP_REQ_CAST)
+                     AND (oAbility = Nth(plLastReceived,2)))
+                  {
+                     DeleteTimer(ptQueuedAction);
+                     plLastReceived = [BP_REQ_CAST,oAbility,Nth(client_msg,3)];
+                     ptQueuedAction = CreateTimer(self,@UserQueuedAction,iTimeLeft);
+                     Send(iState,@CooldownTried,#who=self,#oAbility=oAbility);
+                  }
+               
+                  return;
+               }
+            }
+
             Send(self,@UserCast,#oSpell=oAbility,
                #lTargets=Nth(client_msg,3));
          }
@@ -2367,7 +2404,15 @@ messages:
 
             if iTimeLeft < ACTION_QUEUE_TIME
             {
-               if ptQueuedAction <> $ AND (First(plLastReceived) <> BP_REQ_CAST)
+               // We have nothing queued yet, let's queue the skill.
+               if ptQueuedAction = $
+               {
+                  plLastReceived = [BP_REQ_CAST,oAbility,Nth(client_msg,3)];
+                  ptQueuedAction = CreateTimer(self,@UserQueuedAction,iTimeLeft);
+               }
+               // If our new request changes anything, we'll allow it.
+               else if NOT ((First(plLastReceived) = BP_REQ_CAST)
+                  AND (oAbility = Nth(plLastReceived,2)))
                {
                   DeleteTimer(ptQueuedAction);
                   plLastReceived = [BP_REQ_CAST,oAbility,Nth(client_msg,3)];
@@ -2390,6 +2435,40 @@ messages:
          }
          if ptAttackTimer = $
          {
+            // Repurposing variable.
+            iState = Send(oAbility,@GetCooldownSID);
+
+            // Check whether we have a cooldown.
+            if iState
+            {
+               // We do, iState is now set to the CD object.
+               iState = Send(SYS,@FindSpellByNum,#num=iState);
+
+               if (iState <> $
+                  AND Send(Self,@IsEnchanted,#what=iState))
+               {
+                  iTimeLeft = Send(self,@GetEnchantedTime,#what=iState);
+                  iTimeLeft = Bound(iTimeLeft,$,ACTION_COOLDOWN_TIME);
+
+                  if ptQueuedAction = $
+                  {
+                     plLastReceived = [BP_REQ_PERFORM,oAbility,Nth(client_msg,3)];
+                     ptQueuedAction = CreateTimer(self,@UserQueuedAction,iTimeLeft);
+                     Send(iState,@CooldownTried,#who=self,#oAbility=oAbility);
+                  }
+                  else if NOT ((First(plLastReceived) = BP_REQ_PERFORM)
+                     AND (oAbility = Nth(plLastReceived,2)))
+                  {
+                     DeleteTimer(ptQueuedAction);
+                     plLastReceived = [BP_REQ_PERFORM,oAbility,Nth(client_msg,3)];
+                     ptQueuedAction = CreateTimer(self,@UserQueuedAction,iTimeLeft);
+                     Send(iState,@CooldownTried,#who=self,#oAbility=oAbility);
+                  }
+               
+                  return;
+               }
+            }
+
             Send(self,@UserPerform,#oSkill=oAbility,
                #lTargets=Nth(client_msg,3));
          }
@@ -2399,7 +2478,15 @@ messages:
 
             if iTimeLeft < ACTION_QUEUE_TIME
             {
-               if ptQueuedAction <> $ AND (First(plLastReceived) <> BP_REQ_PERFORM)
+               // We have nothing queued yet, let's queue the skill.
+               if ptQueuedAction = $
+               {
+                  plLastReceived = [BP_REQ_PERFORM,oAbility,Nth(client_msg,3)];
+                  ptQueuedAction = CreateTimer(self,@UserQueuedAction,iTimeLeft);
+               }
+               // If our new request changes anything, we'll allow it.
+               else if NOT ((First(plLastReceived) = BP_REQ_PERFORM)
+                  AND (oAbility = Nth(plLastReceived,2)))
                {
                   DeleteTimer(ptQueuedAction);
                   plLastReceived = [BP_REQ_PERFORM,oAbility,Nth(client_msg,3)];

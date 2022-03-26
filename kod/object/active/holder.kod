@@ -408,7 +408,8 @@ messages:
                   #bulk=iBulk_can_hold);
    }
 
-   NewHold(what = $)
+   // If bLast = TRUE, add item to the end of our list instead.
+   NewHold(what = $, bLast = FALSE)
    {
       local i, each_obj;
 
@@ -440,14 +441,14 @@ messages:
          }
       }
 
-      Send(self,@NewHoldObject,#what=what);
+      Send(self,@NewHoldObject,#what=what,#bLast=bLast);
 
       return;
    }
 
-   NewHoldObject(what = $)
+   NewHoldObject(what = $, bLast = FALSE)
    {
-      Send(self,@HolderAddNode,#node=what);
+      Send(self,@HolderAddNode,#node=what,#bLast=bLast);
 
       return;
    }
@@ -1113,7 +1114,7 @@ messages:
       return data;
    }
 
-   HolderAddNode(node = $)
+   HolderAddNode(node = $, bLast = FALSE)
    {
       local i, oThing, each_obj;
 
@@ -1121,7 +1122,15 @@ messages:
 
       if Send(oThing,@GetObjectType) = ACTIVE
       {
-         plActive = Cons(node,plActive);
+         if bLast
+         {
+            plActive = AppendListElem(node,plActive);
+         }
+         else
+         {
+            plActive = Cons(node,plActive);
+         }
+
          Send(oThing,@NewOwner,#what=self);
          foreach i in Rest(plActive)
          {
@@ -1134,7 +1143,15 @@ messages:
 
       if Send(oThing,@GetObjectType) = PASSIVE
       {
-         plPassive = Cons(node,plPassive);
+         if bLast
+         {
+            plPassive = AppendListElem(node,plPassive);
+         }
+         else
+         {
+            plPassive = Cons(node,plPassive);
+         }
+
          Send(oThing,@NewOwner,#what=self);
          foreach i in plActive
          {

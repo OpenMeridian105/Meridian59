@@ -294,6 +294,8 @@ resources:
    follower_far = "Fine, I'll stay far back..."
    follower_farther = "Fine, staying a bit farther back..."
    follower_not_farther = "Are you trying to ditch me?!"
+   follower_torch_on = "Leave it to me. I'll use my torch when needed."
+   follower_torch_off = "Alright. Stowing that torch away again."
    follower_help = \
       "Need help with something? You can ask me to...\n"
       "...tell you about the basic game ~I~Bcommands~I~B that you can enter in the chat.\n"
@@ -304,6 +306,7 @@ resources:
       "...tell you what ~I~Bspells~I~B I have learned so far.\n"
       "...move in a little ~I~Bcloser~I~B, or really ~I~Bclose~I~B so I don't fall behind.\n"
       "...stay a bit ~I~Bfarther~I~B back or stay ~I~Bfar~I~B back to stay out of trouble.\n"
+      "...stow away my ~I~Btorch~I~B or keep it handy in case we need it.\n"
       "...~I~Bmeet up~I~B with you later in case you don't need me at the moment.\n"
       "You could also tell me that ~I~Bit's time to part ways again~I~B.\n"
       "I'd think twice about that if I were you though.  I bet you'd never "
@@ -425,6 +428,7 @@ resources:
    follower_closer_trigger = "closer"
    follower_far_trigger = "far"
    follower_farther_trigger = "farther"
+   follower_torch_trigger = "torch"
    follower_help_trigger = "help"
    follower_info_trigger = "info"
    follower_brief_trigger = "brief"
@@ -474,6 +478,9 @@ classvars:
    viInfo_time = 1800
    viChat_frequency = 100
 
+   viBulk_hold_max = 1700
+   viWeight_hold_max = 1700
+
 properties:
 
    vrName = follower_name_rsc
@@ -490,6 +497,7 @@ properties:
    piCombatCheck = 0
    viNaturalVigorRegeneration = 0
    piStayClose = 2
+   pbTorch = FALSE
    ptChat = $
    piMonsterFlags = MFLAG_DONT_DISPOSE
    poInfo = $
@@ -786,9 +794,6 @@ messages:
             if IsClass(i,&RangedWeapon)
                OR IsClass(i,&Ammo)
                OR IsClass(i,&Lute)
-               OR IsClass(i,&Torch)
-               OR (IsClass(i,&Shield)
-                  AND GetListElemByClass(plUsing,&Torch) <> $)
                OR NOT Send(self,@TryUseItem,#what=i)
             {
                // If we can't, return them.
@@ -815,7 +820,7 @@ messages:
       propagate;
    }
 
-   UnuseItem(what=$,bDrop=TRUE)
+   UnuseItem(what=$,bDrop=FALSE)
    {
       local i;
 
@@ -849,47 +854,28 @@ messages:
 
    SetLeader(oLeader=$,report=TRUE,bContracted=FALSE)
    {
-      local i, oObject;
+      local lItems, i, oObject;
 
       // Time for a farewell...
       if (poLeader <> $) AND (oLeader = $)
       {
-         // Let's return all the stuff.
-         foreach i in plUsing
+         foreach lItems in [plActive,plPassive]
          {
-            if NOT (IsClass(i,&ShirtBase)
-               OR IsClass(i,&Pants)
-               OR IsClass(i,&Torch))
+            foreach i in lItems
             {
-               plUsing = DelListElem(plUsing,i);
-
-               Send(i,@NewUnused,#what=self);
-
-               Send(poOwner,@NewHold,#what=i,#new_row=piRow,#new_col=piCol,
-                     #fine_row=piFine_row+2,#fine_col=piFine_col+2);
+               if IsClass(i,&ShirtBase)
+                  OR IsClass(i,&Pants)
+                  OR IsClass(i,&Torch)
+               {
+                  continue;
+               }
+               else if Send(poOwner,@ReqNewHold,#what=i,#new_row=piRow,#new_col=piCol)
+               {
+                  Send(poOwner,@NewHold,#what=i,#merge=FALSE,
+                        #new_row=piRow,#new_col=piCol,
+                        #fine_row=piFine_row,#fine_col=piFine_col);
+               }
             }
-         }
-
-         // Check if we still have a shield stashed somewhere.
-         foreach i in plPassive
-         {
-            oObject = Send(self,@HolderExtractObject,#data=i);
-
-            if IsClass(oObject,&Shield)
-               AND NOT IsClass(oObject,&Torch)
-            {
-               break;
-            }
-            else
-            {
-               oObject = $;
-            }
-         }
-
-         if oObject <> $
-         {
-            Send(poOwner,@NewHold,#what=oObject,#new_row=piRow,#new_col=piCol,
-                  #fine_row=piFine_row+2,#fine_col=piFine_col+2);
          }
 
          if ptAction <> $
@@ -1749,13 +1735,13 @@ messages:
          iLight = Send(poOwner,@GetRoomLight);
          iLight += Send(poLeader,@GetLightLevel);
 
-         if (iLight >= LIGHT_NICE)
+         if (iLight >= LIGHT_NICE) OR NOT pbTorch
          {
             foreach i in plUsing
             {
                if IsClass(i,&Torch)
                {
-                  Send(self,@UnuseItem,#what=i,#bDrop=FALSE);
+                  Send(self,@UnuseItem,#what=i);
                   break;
                }
             }
@@ -1791,7 +1777,7 @@ messages:
                {
                   if IsClass(i,&Shield)
                   {
-                     Send(self,@UnuseItem,#what=i,#bDrop=FALSE);
+                     Send(self,@UnuseItem,#what=i);
                      break;
                   }
                }
@@ -2177,6 +2163,27 @@ messages:
       {
          Post(self,@GreetLeader,#bRequested=TRUE);
          Send(self,@FaceLeader);
+
+         return TRUE;
+      }
+
+      // Ask follower to light our way in dark environments.
+      if StringEqual(message,follower_torch_trigger)
+      {
+         pbTorch = NOT pbTorch;
+
+         if pbTorch
+         {
+            Post(self,@MercenarySayToOne,#target=what,#message_rsc=follower_torch_on);
+         }
+         else
+         {
+            Post(self,@MercenarySayToOne,#target=what,#message_rsc=follower_torch_off);
+         }   
+
+         Send(self,@FaceLeader);
+
+         Send(self,@FollowerAdjustLight);
 
          return TRUE;
       }
@@ -3575,6 +3582,52 @@ messages:
    IsOwnedByPlayer()
    {
       return TRUE;
+   }
+
+   IsServant(what=$)
+   {
+      return (what = poLeader);
+   }
+
+   ReqNewHold(what = $)
+   {
+      if NOT Send(what,@CanBeStoredInVault)
+         OR (Send(what,@GetBulk) <= 0)
+      {
+         return FALSE;
+      }
+
+      propagate;
+   }
+
+   GetBulkMax()
+   {
+      local iLoad;
+
+      iLoad = Send(SETTINGS_OBJECT,@GetFollowerLoad);
+
+      if iLoad
+      {
+         return iLoad;
+      }
+
+      return (viBulk_hold_max + (Send(self,@GetMight) * 20)) *
+         Send(SETTINGS_OBJECT,@GetFollowerLoadPercentage) / 100;
+   }
+
+   GetWeightMax()
+   {
+      local iLoad;
+
+      iLoad = Send(SETTINGS_OBJECT,@GetFollowerLoad);
+
+      if iLoad
+      {
+         return iLoad;
+      }
+
+      return (viWeight_hold_max + (Send(self,@GetMight) * 20)) *
+         Send(SETTINGS_OBJECT,@GetFollowerLoadPercentage) / 100;
    }
 
 end

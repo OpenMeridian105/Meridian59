@@ -1151,7 +1151,22 @@ messages:
          return;
       }
 
-      propagate;
+      // Only proceed if this is a PvE attack.
+      if IsClass(what,&Monster)
+         AND NOT Send(what,@IsOwnedByPlayer)
+      {
+         // Must be PvE if the attacker is a monster.
+         propagate;
+      }
+
+      if IsClass(victim,&Monster)
+         AND NOT Send(victim,@IsOwnedByPlayer)
+      {
+         // Must be PvE if the victim is a monster.
+         propagate;
+      }
+
+      return;
    }
 
    SomethingEntered(what = $,where=$)

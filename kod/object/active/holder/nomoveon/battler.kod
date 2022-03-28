@@ -2724,8 +2724,19 @@ messages:
       // Also allow scaling of the step with provided distance.
       if absdrow >= absdcol
       {
-         drow = (drow * FINENESS * iDistance / absdrow) / 100;
-         dcol = (dcol * FINENESS * iDistance / absdrow) / 100;
+         if absdrow
+         {
+            drow = (drow * FINENESS * iDistance / absdrow) / 100;
+            dcol = (dcol * FINENESS * iDistance / absdrow) / 100;
+         }
+         else
+         {
+            // Damage source and target are in the same position.
+            // Bail out.
+            // TO-DO: Push victim in the direction the attacker is
+            // facing, if attacker <> victim.
+            return;
+         }
       }
       else
       {

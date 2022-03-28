@@ -3192,7 +3192,7 @@ messages:
          bWasBad = (Send(poMaster,@CheckPlayerFlag,#flag=PFLAG_OUTLAW)
                     OR Send(poMaster,@CheckPlayerFlag,#flag=PFLAG_MURDERER));
 
-         // Check the attack here. If it fails, Player's AllowBatterAttack
+         // Check the attack here. If it fails, Player's AllowBattlerAttack
          // handles the message sent to the player.
          if NOT Send(poMaster,@AllowBattlerAttack,#victim=victim,
                      #actual=actual,#report=report,#stroke_obj=self)
@@ -7439,7 +7439,8 @@ messages:
          // get into our way now.
          if NOT ((Length(lTargets) = 1)
             AND (Nth(lAction,8) = COMBAT_ACTION_HARM)
-            AND Send(oTarget,@SpellResist,#oSpell=oSpell,#who=self,#iSpellpower=iSpellPower))
+            AND (NOT Send(self,@AllowBattlerAttack,#victim=oTarget,#stroke_obj=self)
+               OR Send(oTarget,@SpellResist,#oSpell=oSpell,#who=self,#iSpellpower=iSpellPower)))
          {
             // Monsters don't necessarily cast at the same power level as
             // players. Calculate power percentage here.

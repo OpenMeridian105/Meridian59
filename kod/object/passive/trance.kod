@@ -112,7 +112,7 @@ messages:
    " 2) Spell expires"
    " 3) Hold interval expires"
    {
-      local oAbility, lTargets, iSpellPower, lNewTargets;
+      local oAbility, lTargets, iSpellPower, lOldTargets;
 
       oAbility = First(state);
 
@@ -128,12 +128,12 @@ messages:
          return;
       }
 
-      lTargets = Nth(state,3);
+      lOldTargets = Nth(state,3);
 
       // Double-check to get valid targets.  Don't report 'cause we've already 
       // spammed them during the first check – unless we are dealing with a regular
       // autoattack here.
-      lNewTargets = Send(oAbility,@GetGoodTargets,#who=who,#lTargets=lTargets,
+      lTargets = Send(oAbility,@GetGoodTargets,#who=who,#lTargets=lOldTargets,
                       #report=(IsClass(oAbility,&Stroke) OR IsClass(oAbility,&Unleash)));
 
       if IsClass(oAbility,&Monster)
@@ -141,15 +141,15 @@ messages:
          // Right now, monsters only use trances for regular attacks to allow players
          // to actively defend. lTargets contains a single target and extra bits of
          // information that are passed on in slots 2 to 4.
-         if lNewTargets <> $
+         if lTargets <> $
          {
-            Send(oAbility,@TryAttack,#what=First(lNewTargets),#stroke_obj=oAbility,
-                  #factor=Nth(state,7),#iNum=Nth(lNewTargets,2),#bNow=TRUE,
-                  #count=Nth(lNewTargets,3),#ambush=Nth(lNewTargets,4));
+            Send(oAbility,@TryAttack,#what=First(lTargets),#stroke_obj=oAbility,
+                  #factor=Nth(state,7),#iNum=Nth(lTargets,2),#bNow=TRUE,
+                  #count=Nth(lTargets,3),#ambush=Nth(lTargets,4));
          }
          else
          {
-            Send(oAbility,@TargetUnavailable,#what=First(lTargets));
+            Send(oAbility,@TargetUnavailable,#what=First(lOldTargets));
          }
       }
       else if IsClass(oAbility,&Spell)

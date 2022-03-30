@@ -31,7 +31,8 @@ resources:
       "%s%s tried to cast %s%s on you."
    PersonalEnchantment_Other_Already_Enchanted_rsc = \
       "%s%s is already affected by that magic."
-   PersonalEnchantment_bad_target = "You cannot enchant %s%s."
+   PersonalEnchantment_bad_target = "You cannot enchant %s%s with %s"
+   PersonalEnchantment_self_only = "You may only enchant yourself with %s."
    PersonalEnchantment_bad_location = \
       "You cannot cast enchantments upon others here."
 
@@ -116,7 +117,8 @@ messages:
             AND NOT (vbCanCastOnMonsters AND IsClass(oTarget,&Monster))
          {
             Send(who,@MsgSendUser,#message_rsc=PersonalEnchantment_bad_target,
-                 #parm1=Send(oTarget,@GetDef),#parm2=Send(oTarget,@GetName));
+                 #parm1=Send(oTarget,@GetDef),#parm2=Send(oTarget,@GetName),
+                 #parm3=Send(self,@GetName));
 
             return FALSE;
          }
@@ -130,6 +132,16 @@ messages:
 
             return FALSE;
          }
+      }
+      else if (NOT bItemCast
+         AND who <> First(lTargets)
+         AND IsClass(who,&User))
+      {
+         // vbCanCastOnOthers FALSE meaning self-only.
+         Send(who,@MsgSendUser,#message_rsc=PersonalEnchantment_self_only,
+               #parm1=Send(self,@GetName));
+
+         return FALSE;
       }
 
       // Check for enchantment already applied
@@ -198,7 +210,8 @@ messages:
          AND NOT Send(oTarget,@IsLoggedOn)
       {
          Send(who,@MsgSendUser,#message_rsc=PersonalEnchantment_bad_target,
-               #parm1=Send(oTarget,@GetDef),#parm2=Send(oTarget,@GetName));
+               #parm1=Send(oTarget,@GetDef),#parm2=Send(oTarget,@GetName),
+               #parm3=Send(self,@GetName));
 
          return FALSE;
       }

@@ -86,6 +86,7 @@ resources:
    user_got_some = "You can't pick up all the %s."
    user_cant_pickup_item_wav_rsc = player_cannot_carry.ogg
    user_disallow_drop = "You are unable to drop %s%s."
+   user_follower_no_space = "Your follower is unable to hold %s%s."
    user_err_drop = "You're not holding that."
    user_err_put = "You can't put %s%s in %s%s; %s%s can't hold things!"
    user_disallow_put = "You're unable to put %s%s in %s%s."
@@ -6332,7 +6333,7 @@ messages:
 
    UserPut(what = $,where = $,number = $)
    {
-      local i, lObjects, lItem_pos, oNumber;
+      local i, lObjects, lItem_pos, oNumber, bFollower;
 
       // Detect if someone's using an exploit to put items into another player.
       if IsClass(where,&User)
@@ -6369,6 +6370,8 @@ messages:
          return;
       }
 
+      bFollower = IsClass(where,&Follower) AND Send(where,@IsServant,#what=self);
+
       if Send(what,@IsStackable)
       {
          if number <= 0
@@ -6398,14 +6401,22 @@ messages:
                      #number=Send(oNumber,@GetNumber));
             }
 
-            Send(where,@NewHold,#what=oNumber);
+            Send(where,@NewHold,#what=oNumber,#bLast=bFollower);
          }
          else
          {
-            Send(self,@NewHold,#what=oNumber); // rejoin, usually
+            if bFollower
+            {
+               Send(self,@MsgSendUser,#message_rsc=user_follower_no_space, 
+                  #parm1=Send(what,@GetDef),#parm2=Send(what,@GetName));
+            }
+            else
+            {
+               Send(self,@MsgSendUser,#message_rsc=user_disallow_drop, 
+                  #parm1=Send(oNumber,@GetDef),#parm2=Send(oNumber,@GetName));
+            }
 
-            Send(self,@MsgSendUser,#message_rsc=user_disallow_drop, 
-                 #parm1=Send(oNumber,@GetDef),#parm2=Send(oNumber,@GetName));
+            Send(self,@NewHold,#what=oNumber); // rejoin, usually
          }
 
          return;
@@ -6414,13 +6425,21 @@ messages:
       if Send(what,@ReqNewOwner,#what=where)
          AND Send(where,@ReqNewHold,#what=what,#who=self)
       {
-         Send(where,@NewHold,#what=what);
+         Send(where,@NewHold,#what=what,#bLast=bFollower);
       }
       else
       {
-         Send(self,@MsgSendUser,#message_rsc=user_disallow_put,
-              #parm1=Send(what,@GetDef),#parm2=Send(what,@GetName),
-              #parm3=Send(where,@GetDef),#parm4=Send(where,@GetName));
+         if bFollower
+         {
+            Send(self,@MsgSendUser,#message_rsc=user_follower_no_space, 
+               #parm1=Send(what,@GetDef),#parm2=Send(what,@GetName));
+         }
+         else
+         {
+            Send(self,@MsgSendUser,#message_rsc=user_disallow_put,
+               #parm1=Send(what,@GetDef),#parm2=Send(what,@GetName),
+               #parm3=Send(where,@GetDef),#parm4=Send(where,@GetName));
+         }
       }
 
       return;
@@ -6434,7 +6453,7 @@ messages:
          AND NOT IsClass(what,&ReagentBag))
          OR (IsClass(what,&User)
              AND NOT (what = self OR IsClass(self,&Admin)))
-         OR IsClass(what,&Monster)
+         OR (IsClass(what,&Monster) AND NOT Send(what,@IsServant,#what=self))
       {
          Debug("ALERT!!  User ",self,Send(self,@GetTrueName),"trying to look ",
                "inside ",what,Send(what,@GetTrueName));

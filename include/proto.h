@@ -420,6 +420,7 @@ enum {
 #define OF_ACTIVATABLE   0x00000800    // Set if object can be activated
 #define OF_APPLYABLE     0x00001000    // Set if object can be applied to another object
 #define OF_NPC           0x00002000    // Set if object is an NPC (not necessarily offerable/buyable)
+#define OF_EQUIPPED      0x00004000    // Set if object is equipped by another player/NPC/monster
 
 #define OF_BOUNCING      0x00010000    // If both flags on then object is bouncing
 #define OF_FLICKERING    0x00020000    // For players or objects if holding a flickering light.

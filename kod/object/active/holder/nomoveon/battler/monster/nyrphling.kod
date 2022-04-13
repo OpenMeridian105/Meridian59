@@ -14,21 +14,6 @@ constants:
 
    include blakston.khd
 
-   ANIM_WALK = 1
-   ANIM_STING = 2
-   ANIM_CLAW = 3
-   ANIM_BITE = 4
-
-   FRAME_STAND = 1
-   FRAME_WALK_START = 2
-   FRAME_WALK_END = 12
-   FRAME_STING_START = 13
-   FRAME_STING_END = 20
-   FRAME_CLAW_START = 21
-   FRAME_CLAW_END = 27
-   FRAME_BITE_START = 28
-   FRAME_BITE_END = 33
-
 resources:
 
    include nyrphling.lkod
@@ -59,6 +44,27 @@ classvars:
    vrDesc = nyrphling_desc_rsc
    vrDead_icon = nyrphling_dead_icon_rsc
    vrDead_name = nyrphling_dead_name_rsc
+
+   // Animation frames and frame durations.
+   viRest_frame = 1
+   viLook_start_frame = 2
+   viLook_end_frame = 12
+   viLook_duration = 100      // Duration per frame.
+   viMove_start_frame = 2
+   viMove_end_frame = 12
+   viMove_duration = 100      // Duration per frame.
+   viAttack_start_frame = 21
+   viAttack_end_frame = 27
+   viAttack_duration = 100    // Duration per frame.
+   viCast_start_frame = 13
+   viCast_end_frame = 20
+   viCast_duration = 100      // Duration per frame.
+   viSpecial_start_frame = 28
+   viSpecial_end_frame = 33
+   viSpecial_duration = 100   // Duration per frame.
+   viHit_start_frame = 21
+   viHit_end_frame = 23
+   viHit_duration = 500       // Maximum total duration of animation.
 
    // This monster does all kinds of nefarious stuff...
    viPoisonChance = 50
@@ -120,20 +126,6 @@ messages:
       propagate;
    }
 
-   SendLookAnimation()
-   {
-      AddPacket(1,ANIMATE_CYCLE,4,100,2,FRAME_WALK_START,2,FRAME_WALK_END);
-
-      return;
-   }
-
-   SendMoveAnimation()
-   {
-      AddPacket(1,ANIMATE_CYCLE,4,100,2,FRAME_WALK_START,2,FRAME_WALK_END);
-
-      return;
-   }
-
    DoMeleeAttack(swings=0,iNum=0)
    "Calls melee attack animation as often as needed."
    {
@@ -188,42 +180,6 @@ messages:
    GetAttackTime()
    {
       return MOB_ATTACK_TIMER_WAIT + Random(400,600);
-   }
-
-   SendAnimation()
-   {
-      if piAnimation = ANIM_ATTACK
-         OR piAnimation = ANIM_CLAW
-      {
-         AddPacket(1,ANIMATE_ONCE,4,100,
-            2,FRAME_CLAW_START,
-            2,FRAME_CLAW_END,
-            2,FRAME_STAND);
-
-         return;
-      }
-
-      if piAnimation = ANIM_STING
-      {
-         AddPacket(1,ANIMATE_ONCE,4,100,
-            2,FRAME_STING_START,
-            2,FRAME_STING_END,
-            2,FRAME_STAND);
-
-         return;
-      }
-
-      if piAnimation = ANIM_BITE
-      {
-         AddPacket(1,ANIMATE_ONCE,4,100,
-            2,FRAME_BITE_START,
-            2,FRAME_BITE_END,
-            2,FRAME_STAND);
-
-         return;
-      }
-
-      propagate;
    }
 
    // Nyrphlings are a bit special: Different attacks cause different effects.

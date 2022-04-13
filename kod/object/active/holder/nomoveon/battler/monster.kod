@@ -367,6 +367,33 @@ classvars:
    // All monsters use BRAIN_ORIGINAL for now.
    viBrain_type = BRAIN_ORIGINAL
 
+   //// Animation frame numbers and frame durations.
+   // Standard frames for resting, moving, attacking and getting hit.
+   viRest_frame = 1
+   viLook_start_frame = 1
+   viLook_end_frame = 1
+   viLook_duration = 150      // Duration per frame.
+   viMove_start_frame = 1
+   viMove_end_frame = 1
+   viMove_duration = 150      // Duration per frame.
+   viAttack_start_frame = 1
+   viAttack_end_frame = 1
+   viAttack_duration = 150    // Duration per frame.
+   viHit_start_frame = 1
+   viHit_end_frame = 1
+   viHit_duration = 500       // Maximum total duration of animation.
+
+   // Extra frames for casting spells, special attacks or firing shots.
+   viCast_start_frame = 1
+   viCast_end_frame = 1
+   viCast_duration = 150      // Duration per frame.
+   viSpecial_start_frame = 1
+   viSpecial_end_frame = 1
+   viSpecial_duration = 150   // Duration per frame.
+   viFire_start_frame = 1
+   viFire_end_frame = 1
+   viFire_duration = 150      // Duration per frame.
+
    // Bitvector for monster/NPC behaviors. This variable contains the flags
    // monsters use for determining combat/aggro behavior.
    viDefault_behavior = 0
@@ -580,7 +607,6 @@ properties:
    piVisionDistance
    piMeleeRange
    piFireRange
-   piAnimation = ANIM_NONE
 
    // List of the mobs wanted items.
    plWantedItems = $
@@ -2506,6 +2532,10 @@ messages:
          iType = MONSTER_MOVE;
       }
 
+      // We might want to do something fancy depending on what type of action
+      // we have taken.
+      Post(self,@MonsterPostAction,#type=iType);
+
       // We may no longer be around after the attack
       // (e.g. evil twin killing a target).
       if poOwner = $
@@ -2535,6 +2565,12 @@ messages:
          }
       }
 
+      return;
+   }
+
+   MonsterPostAction()
+   "Effects that neeed to happen immediately post action."
+   {
       return;
    }
 
@@ -7148,12 +7184,25 @@ messages:
          return FALSE;
       }
 
+      // Reusing vaiable: iAction stores whether we have more than one action.
+      iAction = Length(lActions) > 1;
+
       // We are allowed to act and got a pool of actions.
       // Compare priorities to decide for one.
       iPriority = MIN_KOD_INT;
+
       foreach i in lActions
       {
-         // Reusing variable... iNum is the current priority as saved in the list.
+         // If we have another action at our disposal, check if we want to
+         // even consider using our time moving instead.
+         if iAction
+            AND (First(i) = SKID_MINIMUM)
+            AND NOT Send(self,@ActiveMoveCheck)
+         {
+            continue;
+         }
+
+         // Reusing variable: iNum is the current priority as saved in the list.
          iNum = Nth(i,5);
 
          // Adjust the priority of healing based on victim's health.
@@ -7163,7 +7212,7 @@ messages:
          }
 
          // If the used action happened to also be our latest action, lower its
-         // priority based on the number of consecutive exections.
+         // priority based on the number of consecutive executions.
          if First(i) = piAction % 1000
          {
             iNum = Send(SYS,@PowerCalculation,#factor=iNum,#denom=2,#exp=(piAction%10000)/1000);
@@ -7719,6 +7768,10 @@ messages:
          return FALSE;
       }
 
+      // We may have checked whether we could reach targets.
+      // Reset our valid target check in case we did.
+      piState &= VSTATE_VALIDITY_MASK;
+
       return iAction;
    }
 
@@ -7991,7 +8044,18 @@ messages:
       Send(poOwner,@SomethingChanged,#what=self);
       piAnimation = ANIM_NONE;
 
-      return;
+      // Report that we have successfully played our animation.
+      return TRUE;
+   }
+
+   IsStationary()
+   {
+      if viAttributes & MOB_NOMOVE
+      {
+         return TRUE;
+      }
+
+      propagate;
    }
 
    GetMeleeAnimation()
@@ -11897,6 +11961,196 @@ messages:
    IsServant(what=$)
    {
       return FALSE;
+   }
+
+   // Animation framework
+   SendLookAnimation()
+   {
+      // Check for a color translation first.
+      if (piColor_Translation <> 0)
+      {
+         AddPacket(1,ANIMATE_TRANSLATION,1,piColor_Translation);
+      }
+
+      if viLook_start_frame <> viLook_end_frame
+      {
+         AddPacket(1,ANIMATE_CYCLE, 4,viLook_duration,
+            2,viLook_start_frame, 2,viLook_end_frame);
+      }
+      else
+      {
+         AddPacket(1,ANIMATE_NONE,2,viLook_start_frame);
+      }
+
+      return;
+   }
+
+   SendMoveAnimation()
+   {
+      // Check for a color translation first.
+      if (piColor_Translation <> 0)
+      {
+         AddPacket(1,ANIMATE_TRANSLATION,1,piColor_Translation);
+      }
+
+      if viMove_start_frame <> viMove_end_frame
+      {
+         AddPacket(1,ANIMATE_CYCLE, 4,viMove_duration,
+            2,viMove_start_frame, 2,viMove_end_frame);
+      }
+      else
+      {
+         AddPacket(1,ANIMATE_NONE,2,viMove_start_frame);
+      }
+
+      return;
+   }
+
+   SendAnimation()
+   {
+      // Check for a color translation first.
+      if (piColor_Translation <> 0)
+      {
+         AddPacket(1,ANIMATE_TRANSLATION,1,piColor_Translation);
+      }
+
+      if piAnimation = ANIM_ATTACK
+      {
+         Send(self,@SendAttackAnimation);
+      }
+      else if piAnimation = ANIM_HIT
+      {
+         Send(self,@SendHitAnimation);
+      }
+      else if piAnimation = ANIM_CAST
+      {
+         Send(self,@SendCastAnimation);
+      }
+      else if piAnimation = ANIM_SPECIAL
+      {
+         Send(self,@SendSpecialAnimation);
+      }
+      else if piAnimation = ANIM_FIRE
+      {
+         Send(self,@SendFireAnimation);
+      }
+      else if piAnimation
+      {
+         Send(self,@SendAttackAnimation);
+      }
+      else
+      {
+         Send(self,@SendNoAnimation);
+      }      
+
+      return;
+   }
+
+   SendNoAnimation()
+   {
+      AddPacket(1,ANIMATE_NONE,2,viRest_frame);
+
+      return;
+   }
+
+   SendAttackAnimation()
+   {
+      AddPacket(1,ANIMATE_ONCE, 4,viAttack_duration,
+         2,viAttack_start_frame, 2,viAttack_end_frame, 2,viRest_frame);
+
+      return;
+   }
+
+   SendCastAnimation()
+   {
+      AddPacket(1,ANIMATE_ONCE, 4,viCast_duration,
+         2,viCast_start_frame, 2,viCast_end_frame, 2,viRest_frame);
+
+      return;
+   }
+
+   SendSpecialAnimation()
+   {
+      AddPacket(1,ANIMATE_ONCE, 4,viSpecial_duration,
+         2,viSpecial_start_frame, 2,viSpecial_end_frame, 2,viRest_frame);
+
+      return;
+   }
+
+   SendFireAnimation()
+   {
+      AddPacket(1,ANIMATE_ONCE, 4,viFire_duration,
+         2,viFire_start_frame, 2,viFire_end_frame, 2,viRest_frame);
+
+      return;
+   }
+
+   // Assembles a randomized hit animation packet based on parameters.
+   // To keep animation synchronized despite randomness when needed, we
+   // create faked randomness based on TimeStamps and invididualize this
+   // with the mob's health to avoid grouped animations (e.g. during AEs.)
+   // For durations, we use GetTickCount to allow fairly random outcomes
+   // even when events happen back to back. Frame calculations are based
+   // on GetTime to reduce the chance of mismatched frames when TickCount
+   // changes mid-calculation.
+   SendHitAnimation(startframe=$,endframe=$,restframe=$,duration=$)
+   {
+      local iStart, iEnd, iTime, iDelta, iRandom;
+
+      if ( restframe = $ ) { restframe = viRest_frame; }
+      if ( startframe = $ ) { startframe = viHit_start_frame; }
+      if ( endframe = $ ) { endframe = viHit_end_frame; }
+      if ( duration = $ ) { duration = viHit_duration; }
+
+      // We animate based on the amount of frames we have to work with.
+      iDelta = endframe - startframe;
+
+      // Let's also figure the total duration our animation should take.
+      // We randomize between one third duration and full duration.
+      if Send(self,@HasOverlays)
+      {
+         // If we have to sync multiple overlays, use faked randomization
+         // based on TickCount and current stamina.
+         duration += (Bound(GetTickCount() - piStamina,0,$)) % duration;
+         duration /= 2;
+
+         // Pick random start frames and end frames within the frame range and
+         // within reasonable limits.
+         iRandom = Bound(GetTime() - piStamina,0,$);
+         iStart = startframe + iRandom % (iDelta + 1);
+         iEnd = Bound(iStart + iRandom % (iDelta/2 + 1),$,endframe);
+      }
+      else
+      {
+         // If we don't have to worry about synchronization, simply randomize.
+         duration += Random(0,duration);
+         duration /= 2;
+
+         // As above, just with true random numbers.
+         iStart = startframe + Random(0,iDelta);
+         iEnd = Bound(iStart + Random(0,iDelta/2),$,endframe);
+      }
+
+      // Divide the total duration of the animation by the number of frames.
+      // Make sure each frame plays for at least 100ms.
+      duration /= (iEnd - iStart) + 1;
+      duration = Bound(duration,100,$);
+
+      // Finally, send that packet on its way.
+      AddPacket(1,ANIMATE_ONCE, 4,duration, 2,iStart, 2,iEnd, 2,restframe);
+
+      return;
+   }
+
+   HasOverlays()
+   {
+      return FALSE;
+   }
+
+   // Are we willing to move as our actual combat action?
+   ActiveMoveCheck()
+   {
+      return Random(1,piAgility*2) > piStamina;
    }
 
 end

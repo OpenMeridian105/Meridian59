@@ -11,15 +11,14 @@ BOFS  = ant.bof centip.bof cow.bof ent.bof fairy.bof fungbst.bof ghost.bof \
         troll.bof yeti.bof zombie.bof thief.bof revenant.bof frogman.bof iceper.bof \
         priestes.bof evfairy.bof lupogg.bof tester.bof avar.bof avchief.bof \
         avshaman.bof reflectn.bof guard.bof orccave.bof orcboss.bof shadowb.bof \
-        orcwiza.bof dfly.bof dflyq.bof lupking.bof kriipa.bof bossbody.bof \
-        stntroll.bof snowrat.bof lich.bof deadlich.bof duskrat.bof thrasher.bof \
-        nrthlwrm.bof bramble.bof eviltwin.bof dethspid.bof grdworm.bof human.bof \
-        xeochctl.bof dflypet.bof dangel.bof mollusk.bof specmum.bof \
-        evilent.bof elephant.bof bunny.bof wolf.bof chupacabra.bof minotaur.bof \
-        oldorc.bof oldrat.bof oldcentip.bof npc.bof bigslime.bof beetle.bof \
-        ranu.bof bullant.bof giaeye.bof vitkhul.bof lostsoul.bof nyrphling.bof \
-        spinebeast.bof spinebeastsmall.bof wendigo.bof dragon.bof glyph.bof \
-        spinebeastboss.bof nerutroll.kod
+        orcwiza.bof dfly.bof lupking.bof kriipa.bof bossbody.bof stntroll.bof \
+        snowrat.bof lich.bof deadlich.bof duskrat.bof thrasher.bof nrthlwrm.bof \
+        bramble.bof eviltwin.bof dethspid.bof grdworm.bof human.bof xeochctl.bof \
+        dangel.bof mollusk.bof specmum.bof evilent.bof elephant.bof bunny.bof \
+        wolf.bof chupacabra.bof minotaur.bof oldorc.bof oldrat.bof oldcentip.bof \
+        npc.bof bigslime.bof beetle.bof ranu.bof bullant.bof giaeye.bof vitkhul.bof \
+        lostsoul.bof nyrphling.bof spinebeast.bof wendigo.bof dragon.bof glyph.bof \
+        nerutroll.kod
 
 
 !include $(KODDIR)\kod.mak

@@ -49,6 +49,9 @@ classvars:
    // Distance in FINENESS that will result in a guaranteed chance to interrupt.
    vi_Threshold = 16
 
+   // Percentage of threshold reduction caused by ability.
+   vi_Ability_percentage = 50
+
    // Base chance to interrupt when treshold is met.
    vi_Base_chance = 25
 
@@ -111,7 +114,7 @@ messages:
 
       // Primary check.
       iRandom = Random(1,vi_Threshold/2);
-      iRandom -= iRandom*(ability)/297;
+      iRandom -= iRandom*vi_Ability_percentage/100*ability/100;
       iRandom += vi_Threshold/2;
 
       if distance < iRandom
@@ -145,12 +148,16 @@ messages:
          }
 
          // Add visual feedback.
-         if IsClass(what,&Monster)
+         if IsClass(what,&Player)
          {
-            Send(what,@MonsterHitAnimation);
+            Send(what,@DoKnockback);
+            return TRUE;
          }
 
-         return TRUE;
+         if Send(what,@MonsterHitAnimation) 
+         {
+            return TRUE;
+         }
       }
 
       return FALSE;

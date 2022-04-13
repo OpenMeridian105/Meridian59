@@ -14,11 +14,6 @@ constants:
 
    include blakston.khd
    
-
-   ANIM_BREATH = 1
-   ANIM_BITE = 2
-   ANIM_SPIT = 3
-
    SPIT_COLOR = 82
 
    LUPOGG_KING_MOVE = 0
@@ -69,6 +64,27 @@ classvars:
    vrDesc = lupoggking_desc_rsc
    vrDead_icon = lupoggking_dead_icon_rsc
    vrDead_name = lupoggking_dead_name_rsc
+
+   viRest_frame = 1
+   viLook_start_frame = 2
+   viLook_end_frame = 21
+   viLook_duration = 200      // Duration per frame.
+   viMove_start_frame = 7
+   viMove_end_frame = 11
+   viMove_duration = 200      // Duration per frame.
+   viAttack_start_frame = 12
+   viAttack_end_frame = 16
+   viAttack_duration = 200    // Duration per frame.
+   viHit_start_frame = 17
+   viHit_end_frame = 19
+   viHit_duration = 500       // Maximum total duration of animation.
+
+   viCast_start_frame = 2
+   viCast_end_frame = 6
+   viCast_duration = 200      // Duration per frame.
+   viFire_start_frame = 17
+   viFire_end_frame = 21
+   viFire_duration = 200      // Duration per frame.
 
    viTreasure_type = TID_LUPOGG_KING
    viSpeed = SPEED_SLOW
@@ -182,7 +198,7 @@ messages:
 
    DoMeleeAnimation(what = $)
    {
-      piAnimation = ANIM_BITE;
+      piAnimation = ANIM_ATTACK;
       Send(poOwner,@SomethingChanged,#what=self);
       piAnimation = ANIM_NONE;
 
@@ -247,46 +263,6 @@ messages:
       piAnimation = ANIM_NONE;
 
       return;
-   }
-
-   SendMoveAnimation()
-   {
-      AddPacket(1,ANIMATE_CYCLE, 4,200, 2,7, 2,11);
-
-      return;
-   }
-
-   SendLookAnimation()
-   {
-      AddPacket(1,ANIMATE_CYCLE, 4,200, 2,2, 2,21);
-
-      return;
-   }
-
-   SendAnimation()
-   {
-      if piAnimation = ANIM_BITE
-      {
-         AddPacket(1,ANIMATE_ONCE, 4,200, 2,12, 2,16, 2,1);
-
-         return;
-      }
-
-      if piAnimation = ANIM_SPIT
-      {
-         AddPacket(1,ANIMATE_ONCE, 4,200, 2,17, 2,21, 2,1);
-
-         return;
-      }
-
-      if piAnimation = ANIM_BREATH
-      {
-         AddPacket(1,ANIMATE_ONCE, 4,200, 2,2, 2,6, 2,1);
-
-         return;
-      }
-
-      propagate;
    }
 
    MonsterAction(distance=0,sight=TRUE)
@@ -909,6 +885,11 @@ messages:
    CanBeWebbed()
    {
       return FALSE;
+   }
+
+   IsStationary()
+   {
+      return TRUE;
    }
 
 end

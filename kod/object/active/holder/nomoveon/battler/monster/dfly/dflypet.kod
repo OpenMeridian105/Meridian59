@@ -1,0 +1,106 @@
+// Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+// All rights reserved.
+//
+// This software is distributed under a license that is described in
+// the LICENSE file that accompanies it.
+//
+// Meridian is a registered trademark.
+
+
+////////////////////////////////////////////////////////////////////////////////
+DragonFlyPet is DragonFly
+
+constants:
+
+   include blakston.khd
+
+   HS_WINGS = 1
+
+resources:
+
+   include dflypet.lkod
+
+   DragonFlyPet_koc_name_rsc = "vo'huzotz"
+   DragonFlyPet_name_rsc = "pet dragonfly"
+   DragonFlyPet_icon_rsc = dflypet.bgf
+   DragonFlyPet_desc_rsc = \
+      "These small lizards look exceptionally friendly.  Their gossamer "
+      "wings allow them to jump into the air and take flight for brief "
+      "periods of time.  When backed into a corner, dragonflies are known "
+      "to have a nasty spitting attack."
+
+   DragonFlyPet_wings_rsc = dflypetw.bgf
+
+   DragonFlyPet_dead_icon_rsc = dflypetX.bgf
+   DragonFlyPet_dead_name_rsc = "dead pet dragonfly"
+
+   DragonFlyPet_sound_hit = df_atkm.ogg
+   DragonFlyPet_sound_miss = df_atkm.ogg
+   DragonFlyPet_sound_death = df_dth.ogg
+   DragonFlyPet_sound_aware = df_awr.ogg
+
+   DragonFlyPet_spit = loogy.bgf
+
+classvars:
+
+   viIndefinite = ARTICLE_A
+   vrName = DragonFlyPet_name_rsc
+   vrIcon = DragonFlyPet_icon_rsc
+   vrWings = DragonFlyPet_wings_rsc
+   vrDesc = DragonFlyPet_desc_rsc
+   vrDead_icon = DragonFlyPet_dead_icon_rsc
+   vrDead_name = DragonFlyPet_dead_name_rsc
+   vrKocName = DragonFlyPet_koc_name_rsc
+
+   viTreasure_type = TID_NONE
+
+   viVisionDistance = 18
+   viDefault_behavior = AI_FIGHT_AGGRESSIVE | AI_FIGHT_NEWBIESAFE
+   viCashmin = 0
+   viCashmax = 0
+
+   vrSound_hit = DragonFlyPet_sound_hit
+   vrSound_miss = DragonFlyPet_sound_miss
+   vrSound_aware = DragonFlyPet_sound_aware
+   vrSound_death = DragonFlyPet_sound_death
+
+properties:
+
+   piColor = PT_GRAY_TO_DGREEN
+
+messages:
+
+   SendLookAnimation()
+   {
+      AddPacket(1,ANIMATE_TRANSLATION,1,piColor);
+
+      propagate;
+   }
+
+   SendMoveAnimation()
+   {
+      AddPacket(1,ANIMATE_TRANSLATION,1,piColor);
+
+      propagate;
+   }
+
+   SendAnimation()
+   {
+      AddPacket(1,ANIMATE_TRANSLATION,1,piColor);
+
+      propagate;
+   }
+
+   SetColor(iColor=PT_GRAY_TO_DGREEN)
+   {
+      piColor = iColor;
+      if poOwner <> $
+      {
+         Send(poOwner,@SomethingChanged,#what=self);
+      }
+
+      return;
+   }
+
+end
+////////////////////////////////////////////////////////////////////////////////

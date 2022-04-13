@@ -14,14 +14,6 @@ constants:
 
    include blakston.khd
 
-   FRAME_STAND = 1
-   FRAME_WALK_START = 2
-   FRAME_WALK_END = 6
-   FRAME_ATTACK_START = 7
-   FRAME_ATTACK_END = 12
-   ANIMSPEED_WALK = 125
-   ANIMSPEED_ATTACK = 125
-
 resources:
 
    include orcboss.lkod
@@ -52,6 +44,21 @@ classvars:
    vrDesc = OrcPitBoss_desc_rsc
    vrDead_icon = OrcPitBoss_dead_icon_rsc
    vrDead_name = OrcPitBoss_dead_name_rsc
+
+   // Standard frames for resting, moving, attacking and getting hit.
+   viRest_frame = 1
+   viLook_start_frame = 2
+   viLook_end_frame = 12
+   viLook_duration = 125      // Duration per frame.
+   viMove_start_frame = 2
+   viMove_end_frame = 6
+   viMove_duration = 125      // Duration per frame.
+   viAttack_start_frame = 7
+   viAttack_end_frame = 12
+   viAttack_duration = 125    // Duration per frame.
+   viHit_start_frame = 7
+   viHit_end_frame = 10
+   viHit_duration = 500       // Maximum total duration of animation.
 
    viTreasure_type = TID_ORC_CHIEF
 
@@ -126,39 +133,6 @@ messages:
       Send(Self,@DoMeleeAnimation);
 
       return;
-   }
-
-   SendLookAnimation()
-   {
-      /// Walk animation
-      AddPacket(1,ANIMATE_CYCLE,4,ANIMSPEED_WALK,
-                2,FRAME_WALK_START,2,FRAME_WALK_END);
-
-      return;
-   }
-
-   SendMoveAnimation()
-   {
-      // Make it look like OrcPitBoss is walking
-      // Cycle through "walking" bitmaps (groups 2-6) at 50 ms per frame
-      AddPacket(1,ANIMATE_CYCLE,4,ANIMSPEED_WALK,
-                2,FRAME_WALK_START,2,FRAME_WALK_END);
-
-      return;
-   }
-
-   SendAnimation()
-   {
-      if piAnimation = ANIM_ATTACK
-      {
-         AddPacket(1,ANIMATE_ONCE,4,ANIMSPEED_ATTACK,
-               2,FRAME_ATTACK_START,2,FRAME_ATTACK_END,2,FRAME_STAND);
-
-         return;
-      }
-
-      // if no body animation.
-      propagate;
    }
 
    CreateDeadBody(killer=$)

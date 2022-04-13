@@ -14,8 +14,6 @@ constants:
 
    include blakston.khd
 
-   ANIM_SPIKES = 2
-
 resources:
 
    include chupacabra.lkod
@@ -43,6 +41,26 @@ classvars:
    vrDesc = chupacabra_desc_rsc
    vrDead_icon = chupacabra_dead_icon_rsc
    vrDead_name = chupacabra_dead_name_rsc
+
+   // Standard frames for resting, moving, attacking and getting hit.
+   viRest_frame = 1
+   viLook_start_frame = 2
+   viLook_end_frame = 3
+   viLook_duration = 200      // Duration per frame.
+   viMove_start_frame = 3
+   viMove_end_frame = 7
+   viMove_duration = 75      // Duration per frame.
+   viAttack_start_frame = 8
+   viAttack_end_frame = 12
+   viAttack_duration = 75    // Duration per frame.
+   viHit_start_frame = 8
+   viHit_end_frame = 11
+   viHit_duration = 500       // Maximum total duration of animation.
+
+   // Extra frames for casting spells, special attacks or firing shots.
+   viSpecial_start_frame = 2
+   viSpecial_end_frame = 2
+   viSpecial_duration = 150   // Duration per frame.
 
    viSpeed = SPEED_VERY_FAST
    viAttack_type = ATK_TYPE_BITE
@@ -97,39 +115,6 @@ messages:
          piAnimation = ANIM_NONE;
       }
 
-      propagate;
-   }
-
-   SendLookAnimation()
-   {
-      AddPacket(1,ANIMATE_CYCLE, 4,200,2,2,2,3);
-
-      return;
-   }
-
-   SendMoveAnimation()
-   {
-      // Cycle through "walking" bitmaps (groups 2-5) at 50 milliseconds per frame
-      AddPacket(1,ANIMATE_CYCLE,4,75,2,3,2,7);
-
-      return;
-   }
-
-   SendAnimation()
-   {
-      if piAnimation = ANIM_ATTACK
-      {
-         AddPacket(1,ANIMATE_ONCE,4,75,2,8,2,12,2,1);
-
-         return;
-      }
-
-      if piAnimation = ANIM_SPIKES
-      {
-         AddPacket(1,ANIMATE_ONCE,4,150,2,1,2,2,2,1);
-      }
-
-      // if no body animation
       propagate;
    }
 

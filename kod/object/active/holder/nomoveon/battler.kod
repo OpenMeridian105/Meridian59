@@ -257,6 +257,9 @@ classvars:
 
 properties:
 
+   // piAnimation should be ANIM_NONE in between KOD calls.
+   piAnimation = ANIM_NONE 
+
    // Evil twin object
    poEvilTwin = $
 
@@ -2671,6 +2674,8 @@ messages:
       iDistance = damage*viKnockback_distance/
          (10*piMax_health + 30*Send(self,@GetMight));
 
+      iAbility = FALSE;
+
       // If the employed weapon can crush enemies, knockback is increased.
       // The knockback is further increased by the battler's ability to
       // land crushing blows. A successful crushing blow may interrupt the
@@ -2682,24 +2687,42 @@ messages:
          oSkill = Send(SYS,@FindSkillByNum,#num=SKID_CRUSHING_BLOWS);
 
          //And the battler's ability with it.
-         if IsClass(self,&Player)
+         if IsClass(what,&Player)
          {
-            iAbility = Send(self,@GetSkillAbility,#skill_num=SKID_CRUSHING_BLOWS);
+            iAbility = Send(what,@GetSkillAbility,#skill_num=SKID_CRUSHING_BLOWS);
+
+            // High might grants us natural ability in crushing blows.
+            // If we are above 40 might, we have a base chance of crushing.
+            iAbility = Bound(iAbility,Send(what,@GetMight) - 40,$);
          }
          else
          {
             // Mobs are their own weapons, so we only end up here for monsters
             // who can crush. No need for a further check.
-            iAbility = (Send(self,@GetLevel) + 20*Send(self,@GetDifficulty))/3;
+            iAbility = (Send(what,@GetLevel) + 20*Send(what,@GetDifficulty))/3;
          }
-
-         // All skill effects are handled in DoCrush.
-         Send(oSkill,@DoCrush,#who=what,#what=self,#distance=iDistance,
-            #ability=iAbility);
 
          // 50% distance is gained from wielding a crushing weapon,
          // another 50% distance from the wielder's skill ability.
          iDistance += iDistance*(99+iAbility)/198;
+
+         // All skill effects are handled in DoCrush.
+         if Send(oSkill,@DoCrush,#who=what,#what=self,#distance=iDistance,
+            #ability=iAbility)
+         {
+            // Reusing variable. iAbility simply tracks whether our victim
+            // has been crushed at this point. If it has, we have already
+            // animated a flinch.
+            iAbility = TRUE;
+         }
+      }
+
+      // Monsters with zero movement speed are generally rooted in place.
+      // They still may be crushed by a blow though, simply skip the
+      // movement part below.
+      if Send(self,@IsStationary)
+      {
+         return;
       }
 
       // Not that impressive, really. Let's ignore gentle pushes.
@@ -2791,6 +2814,39 @@ messages:
             --iHalf;
          }
       }
+
+      // Seems like we have actually been knocked back. Let's see if
+      // that has already been animated. If not, do a static animation.
+      // This is required to avoid glitchy push frames.
+      if NOT iAbility
+      {
+         Send(self,@StaticAnimation);
+      }
+
+      return;
+   }
+
+   // Most battlers are able to move.
+   IsStationary()
+   {
+      local oSpell;
+
+      oSpell = Send(SYS,@FindSpellByNum,#num=SID_SPIDER_WEB);
+
+      // Not if stuck in a web though.
+      if Send(Self,@IsEnchanted,#what=oSpell)
+      {
+         return TRUE;
+      }
+
+      return FALSE;
+   }
+
+   StaticAnimation()
+   "Static animation to avoid frame glitch during unanimated knockback."
+   {
+      piAnimation = ANIM_NONE;
+      Send(poOwner,@SomethingChanged,#what=self);
 
       return;
    }

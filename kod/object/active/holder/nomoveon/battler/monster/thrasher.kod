@@ -13,7 +13,6 @@ Thrasher is Monster
 constants:
 
    include blakston.khd
-   ANIM_SPIN = 2
    
    PALSY_CHANCE = 20
 
@@ -58,6 +57,21 @@ classvars:
    vrDesc = thrasher_desc_rsc
    vrDead_icon = thrasher_dead_icon_rsc
    vrDead_name = thrasher_dead_name_rsc
+
+   viRest_frame = 9
+   viLook_start_frame = 1
+   viLook_end_frame = 5
+   viLook_duration = 200      // Duration per frame.
+   viMove_start_frame = 1
+   viMove_end_frame = 5
+   viMove_duration = 120      // Duration per frame.
+   viAttack_start_frame = 6
+   viAttack_end_frame = 8
+   viAttack_duration = 150    // Duration per frame.
+   viHit_start_frame = 3
+   viHit_end_frame = 5
+   viHit_duration = 500       // Maximum total duration of animation.
+   viSpecial_start_frame = 7
 
    viTreasure_type = TID_THRASHER
    viCashmin = -9000
@@ -236,52 +250,24 @@ messages:
    }
 
    //// Animation and overlays
-
-   SendMoveAnimation()
+   SendSpecialAnimation()
    {
-      if piColor_Translation <> 0
-      {
-         AddPacket(1,ANIMATE_TRANSLATION,1,piColor_Translation);
-      }
-
-      // Walk is frames 1-5
-      AddPacket(1,ANIMATE_CYCLE, 4,80, 2,1, 2,5);
-
-      return;
-   }
-
-   SendAnimation()
-   {
-      if piColor_Translation <> 0
-      {
-         AddPacket(1,ANIMATE_TRANSLATION, 1,piColor_Translation);
-      }
-
-      if piAnimation = ANIM_ATTACK
-      {
-         // Attacking is frames 6-8 then back to standing, (9)
-         AddPacket(1,ANIMATE_ONCE, 4,150, 2,6, 2,8, 2,9);
-
-         return;
-      }
-
-      if piAnimation = ANIM_SPIN
-      {
-         // 7 was the proper frizzame, I think.
-         AddPacket(1,ANIMATE_NONE, 2,7);
-
-         return;
-      }
-
-      // Standing is frame 9
-      AddPacket(1,ANIMATE_NONE, 2,9);
+      AddPacket(1,ANIMATE_NONE, 2,viSpecial_start_frame);
 
       return;
    }
 
    SendMoveOverlays()
    {
-      // Also walking, 1-5 I assume. currently 1, 2, 1 to test
+      // Scimitars are animated, the rest isn't.
+      if prShieldOverlay = thrasher_scimitar_overlay
+      {
+         AddPacket(1,1, 4,prShieldOverlay, 1,HS_HEAD, 1,ANIMATE_CYCLE,
+            4,viMove_duration, 2,1, 2,5);
+
+         return;
+      }
+
       AddPacket(1,1, 4,prShieldOverlay, 1,HS_HEAD, 1,ANIMATE_NONE, 2,1);
 
       return;
@@ -289,17 +275,19 @@ messages:
 
    SendOverlays()
    {
-      if piAnimation = ANIM_ATTACK
+      local iStart, iEnd, iTime;
+
+      if (piAnimation = ANIM_ATTACK)
+         AND (prShieldOverlay = thrasher_scimitar_overlay)
       {
          // Shield and Mace have no attack frames.
          // Scimitar animates from group 2-4 for an attack.
-         AddPacket(1,1, 4,prShieldOverlay, 1,HS_HEAD, 1,ANIMATE_ONCE, 4,150,
-                   2,1, 2,1, 2,1);
+         AddPacket(1,1, 4,prShieldOverlay, 1,HS_HEAD, 1,ANIMATE_ONCE,
+            4,viAttack_duration, 2,2, 2,4, 2,1);
 
          return;
       }
 
-      // Default setting: no animation.  This includes when spinning.
       AddPacket(1,1, 4,prShieldOverlay, 1,HS_HEAD, 1,ANIMATE_NONE, 2,1);
 
       return;

@@ -1109,6 +1109,15 @@ messages:
       return TRUE;
    }
 
+   MonsterHitAnimation()
+   {
+      piAnimation = PANM_HIT;
+      Send(poOwner,@SomethingChanged,#what=self);
+      piAnimation = PANM_NONE;
+
+      return;
+   }
+
    GetAttackRange()
    {
       local iWeapon;
@@ -1142,7 +1151,7 @@ messages:
 
    SendAnimation()
    {
-      local iBody_xlat;
+      local iBody_xlat, iTime, iFrame;
 
       iBody_xlat = (piBody_translations & HUMAN_TRANSLATION_BODY_MASK)
                         / HUMAN_TRANSLATION_BODY_MUL;
@@ -1168,6 +1177,16 @@ messages:
       if piAnimation = PANM_BOW_FIRE
       {
          AddPacket(1,ANIMATE_ONCE, 4,1200, 2,5, 2,5, 2,1);
+
+         return;
+      }
+
+      if piAnimation = PANM_HIT
+      {
+         // Introduce persistent randomness across animation components.
+         iTime = GetTime();
+         iFrame = 15 + iTime % 2;
+         AddPacket(1,ANIMATE_ONCE, 4,150 + GetTickCount() % 300, 2,iFrame, 2,iFrame, 2,1);
 
          return;
       }
@@ -1290,7 +1309,8 @@ messages:
    SendOverlays()
    {
       local i,iOverlays,hotspot,iLeft_group,iRight_group,iSkin_xlat,
-            iArms_xlat, iLegs_xlat;
+            iArms_xlat, iLegs_xlat, iFrame, iTime, bWeapon;
+
 
       // Send overlay bitmap info to user.  
 
@@ -1324,6 +1344,13 @@ messages:
          }
       }
 
+      // In case of a knockback, GetTime() decides which frames are used.
+      if piAnimation = PANM_HIT
+      {
+         iTime = GetTime();
+         bWeapon = IsClass(Send(self,@GetWeapon),&Weapon);
+      }
+
       AddPacket(1, iOverlays);
       iArms_xlat = (piBody_translations2 & HUMAN_TRANSLATION2_ARMS_MASK)
                         / HUMAN_TRANSLATION2_ARMS_MUL;
@@ -1349,6 +1376,12 @@ messages:
       else if piAnimation = PANM_WEAPON_ATTACK
       {
          AddPacket(1,ANIMATE_ONCE, 4,300, 2,4, 2,6, 2,iLeft_group);
+      }
+      else if piAnimation = PANM_HIT
+      {
+         iFrame = 19 + iTime % 2;
+         AddPacket(1,ANIMATE_ONCE, 4,150 + GetTickCount() % 300,
+            2,iFrame, 2,iFrame, 2,iLeft_group);
       }
       else if piAnimation = PANM_DANCE
       {
@@ -1393,6 +1426,21 @@ messages:
       {
          AddPacket(1,ANIMATE_ONCE, 4,300, 2,4, 2,6, 2,17);
       }
+      else if piAnimation = PANM_HIT
+      {
+         iFrame = 27 + iTime % 2;
+         // Need different animations for targets wielding a weapon.
+         if bWeapon
+         {
+            AddPacket(1,ANIMATE_ONCE, 4,150 + GetTickCount() % 300,
+               2,iFrame, 2,iFrame, 2,17);
+         }
+         else
+         {
+            AddPacket(1,ANIMATE_ONCE, 4,150 + GetTickCount() % 300,
+               2,iFrame, 2,iFrame, 2,iRight_group);
+         }
+      }
       else if piAnimation = PANM_DANCE
       {
          AddPacket(1,ANIMATE_CYCLE, 4,150, 2,18, 2,34);
@@ -1418,9 +1466,11 @@ messages:
       {
          AddPacket(1,ANIMATE_ONCE, 4,1200, 2,7, 2,7, 2,1);
       }
-      else if piAnimation = PANM_DANCE
+      else if piAnimation = PANM_HIT
       {
-         AddPacket(1,ANIMATE_CYCLE, 4,150, 2,8, 2,24);
+         iFrame = 17 + iTime % 2;
+         AddPacket(1,ANIMATE_ONCE, 4,150 + GetTickCount() % 300,
+            2,iFrame, 2,iFrame, 2,1);
       }
       else
       {

@@ -48,6 +48,20 @@ classvars:
    vrDead_icon = NarthylWorm_dead_icon_rsc
    vrDead_name = NarthylWorm_dead_name_rsc
 
+   viRest_frame = 1
+   viLook_start_frame = 5
+   viLook_end_frame = 8
+   viLook_duration = 150      // Duration per frame.
+   viMove_start_frame = 1
+   viMove_end_frame = 4
+   viMove_duration = 150      // Duration per frame.
+   viAttack_start_frame = 5
+   viAttack_end_frame = 8
+   viAttack_duration = 150    // Duration per frame.
+   viHit_start_frame = 5
+   viHit_end_frame = 7
+   viHit_duration = 500       // Maximum total duration of animation.
+
    viTreasure_type = TID_NARTHYL_WORM
    viSpeed = SPEED_SLOW
    viAttack_type = ATK_TYPE_PIERCE
@@ -105,10 +119,49 @@ messages:
          Send(poOwner,@SomethingChanged,#what=self);
          piAnimation = ANIM_NONE;
          ptRestartAnimation = CreateTimer(self,@RestartAnimation,
-                                    SEC_PER_FRAME*5);
+                                    viAttack_duration*5);
       }
 
       return;
+   }
+
+   MonsterHitAnimation()
+   "If a monster has a special animation when hit, call this."
+   {
+      local iDuration, iRandom, iStart, iDelta, iEnd;
+
+      if poOwner <> $
+      {
+         piAnimation = ANIM_HIT;
+         Send(poOwner,@SomethingChanged,#what=self);
+         piAnimation = ANIM_NONE;
+
+         // We need to recreate the duration of the animation
+         // by running through the regular hit routine.
+         iDelta = viHit_end_frame - viHit_start_frame;
+         iDuration = viHit_duration;
+         iDuration += (Bound(GetTickCount() - piStamina,0,$)) % iDuration;
+         iDuration /= 2;
+
+         // Pick random start frames and end frames within the frame range and
+         // within reasonable limits.
+         iRandom = Bound(GetTime() - piStamina,0,$);
+         iStart = viHit_start_frame + iRandom % (iDelta + 1);
+         iEnd = Bound(iStart + iRandom % (iDelta/2 + 1),$,viHit_end_frame);
+
+         // Divide the total duration of the animation by the number of frames.
+         // Make sure each frame plays for at least 100ms.
+         iDuration /= (iEnd - iStart) + 1;
+         iDuration = Bound(iDuration,100,$);
+
+         // Finally, multiply with the number of frames in the animation again
+         // to get the total duration. Hacky crap. :(        
+         iDuration *= (iEnd - iStart) + 1;
+
+         ptRestartAnimation = CreateTimer(self,@RestartAnimation,iDuration);
+      }
+
+      return TRUE;
    }
 
    RestartAnimation()
@@ -134,35 +187,19 @@ messages:
       propagate;
    }
 
-   SendMoveAnimation()
+   // Resting animation.
+   SendNoAnimation()
    {
-      if (piColor_Translation <> 0)
-      {
-         AddPacket(1,ANIMATE_TRANSLATION,1,piColor_Translation);
-      }
-
-      AddPacket(1,ANIMATE_CYCLE,4,SEC_PER_FRAME,2,1,2,4);
+      AddPacket(1,ANIMATE_CYCLE,4,viMove_duration,
+         2,viMove_start_frame,2,viMove_end_frame);
 
       return;
    }
 
-   SendAnimation()
+   // Not really, but something similar.
+   HasOverlays()
    {
-      if (piColor_Translation <> 0)
-      {
-         AddPacket(1,ANIMATE_TRANSLATION,1,piColor_Translation);
-      }
-
-      if piAnimation = ANIM_ATTACK
-      {
-         AddPacket(1,ANIMATE_ONCE,4,SEC_PER_FRAME,2,5,2,8,2,1);
-      }
-      else
-      {
-         AddPacket(1,ANIMATE_CYCLE,4,SEC_PER_FRAME,2,1,2,4); // that's the standing one.
-      }
-
-      return;
+      return TRUE;
    }
 
 end

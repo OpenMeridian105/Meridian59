@@ -457,7 +457,7 @@ messages:
    // skill proficiency and the weapon used.
    GetPostPerformDelay(who=$,use_weapon=$)
    {
-      local iDelay;
+      local iHaste, iDelay;
 
       // A weapon may be provided to this message. If none is provided,
       // check what weapon is currently being wielded.
@@ -476,6 +476,10 @@ messages:
       // Each weapon may modify that total by a percentage.
       iDelay = (viPreperation_time + viPostPerform_time)
                * Send(use_weapon,@GetDelay,#who=who) / 1000;
+
+      // Our delay is also affected by haste.
+      iHaste = Send(self,@GetAbilityHaste,#who=who);
+      iDelay = iDelay * 1000 / iHaste;      
 
       // The windup time factored into our total calculated delay, but
       // needs to be subtracted again to get the correct wind down time.

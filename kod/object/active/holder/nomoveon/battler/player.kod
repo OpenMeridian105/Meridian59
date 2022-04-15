@@ -17086,86 +17086,94 @@ messages:
    }
 
    // Not optimized for performance since it's an ultra low frequency call.
-   GrantNewStrokes(bAll=FALSE,bMax=FALSE)
+   // To prevent accidental calls of this message, a call without parameter
+   // will do nothing.
+   // Call with bStandard only grants strike, thrust and slash.
+   // Call with bTouch only grants touch.
+   // Call with iAll grants all new strokes at iAll percentage, including stab.
+   GrantNewStrokes(iAll=FALSE,bStandard=FALSE,bTouch=FALSE)
    "Grants all (eligible) players strike, thrust and touch."
    {
       local iAbility, i, iMax, oSpell;
 
-      // See how far our player has advanced the (old) slash skill.
-      iAbility = Send(self,@GetSkillAbility,#skill_num=SKID_SLASH);
-
-      if iAbility
+      if iAll OR bStandard
       {
-         // Remove old slash, but only if we actually had it.
-         Send(self,@RemoveSkill,#num=SKID_SLASH);
-      }
+         // See how far our player has advanced the (old) slash skill.
+         iAbility = Send(self,@GetSkillAbility,#skill_num=SKID_SLASH);
 
-      if bMax
-      {
-         // Override ability in case we want to set to max.
-         iAbility = 99;
-      }
-
-      if iAbility > 0
-      {
-         // If our player originally had the slash skill, he is automatically
-         // entitled to owning the rank 1 stroke: Strike 
-         Send(self,@AddSkill,#num=SKID_STRIKE,#iability=iAbility);
-
-         // If our player knows any rank 2 skills, he is also entitled to
-         // owning the rank 2 stroke: Thrust
-         if Send(self,@CountKnownAtLevel,#school=SKS_WEAPONCRAFT,#level=2) OR bAll
+         if iAbility
          {
-            Send(self,@AddSkill,#num=SKID_THRUST,#iability=iAbility);
+            // Remove old slash, but only if we actually had it.
+            Send(self,@RemoveSkill,#num=SKID_SLASH);
          }
 
-         // Finally, if our player knows any rank 3 skills, he is entitled to
-         // owning the rank 3 stroke: Slash
-         if Send(self,@CountKnownAtLevel,#school=SKS_WEAPONCRAFT,#level=3) OR bAll
+         if iAll
          {
-            Send(self,@AddSkill,#num=SKID_SLASH,#iability=iAbility);
+            // Override in case we grant all skills.
+            iAbility = Bound(iAll,1,99);
          }
-      }
 
-      // Also grant Stab in case we want to grant all skills.
-      if bAll AND iAbility > 0
-      {
-         Send(self,@AddSkill,#num=SKID_STAB,#iability=iAbility);
-      }
-
-      // Finally, take care of Touch. If our player has any touch attack, grant
-      // the skill Touch at the percentage as the highest touch attack percentage.
-      iMax = 0;
-
-      foreach i in plSpells
-      {
-         oSpell = Send(SYS,@FindSpellByNum,#num=Send(self,@DecodeSpellNum,#compound=i));
-
-         if IsClass(oSpell,&TouchAttackSpell)
+         if iAbility > 0
          {
-            iAbility = Send(oSpell,@GetAbility,#who=self);
+            // If our player originally had the slash skill, he is automatically
+            // entitled to owning the rank 1 stroke: Strike 
+            Send(self,@AddSkill,#num=SKID_STRIKE,#iability=iAbility);
 
-            if iAbility > iMax
+            // If our player knows any rank 2 skills, he is also entitled to
+            // owning the rank 2 stroke: Thrust
+            if Send(self,@CountKnownAtLevel,#school=SKS_WEAPONCRAFT,#level=2) OR iAll
             {
-               iMax = iAbility;
+               Send(self,@AddSkill,#num=SKID_THRUST,#iability=iAbility);
+            }
+
+            // Finally, if our player knows any rank 3 skills, he is entitled to
+            // owning the rank 3 stroke: Slash
+            if Send(self,@CountKnownAtLevel,#school=SKS_WEAPONCRAFT,#level=3) OR iAll
+            {
+               Send(self,@AddSkill,#num=SKID_SLASH,#iability=iAbility);
             }
          }
       }
 
-      // If we grant max skills, we don't grant touch unless we have found
-      // a touch attack. If we grant all skills, we also grant touch at 99
-      // regardless of touch attack percentage since we don't want to disadvantage
-      // people who actually have a touchattack against those who don't.
-      if (iMax > 0) OR bAll
+      if iAll OR bTouch
       {
-         if bMax OR bAll
+         if iAll
          {
-            Send(self,@AddSkill,#num=SKID_TOUCH,#iability=99);
+            iMax = Bound(iAll,1,99);
          }
          else
          {
+            // If our player has any touch attacks, grant the skill Touch at
+            // the same percentage as the highest one of them.
+            iMax = 0;
+
+            foreach i in plSpells
+            {
+               oSpell = Send(SYS,@FindSpellByNum,#num=Send(self,@DecodeSpellNum,#compound=i));
+
+               if IsClass(oSpell,&TouchAttackSpell)
+               {
+                  iAbility = Send(oSpell,@GetAbility,#who=self);
+
+                  if iAbility > iMax
+                  {
+                     iMax = iAbility;
+                  }
+               }
+            }
+         }
+
+         // Grant the skill if there is any reason to do so.
+         if iMax > 0
+         {
             Send(self,@AddSkill,#num=SKID_TOUCH,#iability=iMax);
          }
+      }
+
+      // Finally grant Stab in case we want to grant all skills for testing purposes.
+      if iAll
+      {
+         Send(self,@AddSkill,#num=SKID_STAB,#iability=Bound(iAll,1,99));
       }
 
       return;

@@ -14,6 +14,9 @@ constants:
 
    include blakston.khd
 
+   UNLEASH_BASE_HASTE = 800
+   UNLEASH_MAX_HASTE = 1000
+
 resources:
 
    include unleash.lkod
@@ -440,32 +443,52 @@ messages:
 
       // Unleash is slower than a regular by default attack, but
       // the requisite stat works to counter that.
-      iHaste = 800;
+      iHaste = UNLEASH_BASE_HASTE;
 
       if iType = UNLEASH_LUNGE
       {
          iPost = piLunge_post_perform_time;
-         iHaste += Send(who,@GetAim)*4;
+
+         if pbHaste
+         {
+            iHaste += Send(who,@GetAim)*4;
+         }
       }
       else if iType = UNLEASH_SLAM
       {
          iPost = piSlam_post_perform_time;
-         iHaste += Send(who,@GetMight)*4;
+
+         if pbHaste
+         {
+            iHaste += Send(who,@GetMight)*4;
+         }
       }
       else if iType = UNLEASH_GUT
       {
          iPost = piGut_post_perform_time;
-         iHaste += Send(who,@GetAgility)*4;
+
+         if pbHaste
+         {
+            iHaste += Send(who,@GetAgility)*4;
+         }
       }
       else if iType = UNLEASH_AMBUSH
       {
          iPost = piAmbush_post_perform_time;
-         iHaste += Send(who,@GetAgility)*Send(who,@GetAim)/100;
+
+         if pbHaste
+         {
+            iHaste += Send(who,@GetAgility)*Send(who,@GetAim)/100;
+         }
       }
       else if iType = UNLEASH_CHARGE
       {
          iPost = piCharge_post_perform_time;
-         iHaste += Send(who,@GetAgility)*Send(who,@GetMight)/100;
+
+         if pbHaste
+         {
+            iHaste += Send(who,@GetAgility)*Send(who,@GetMight)/100;
+         }
       }
       else if iType = UNLEASH_NONE
       {
@@ -476,8 +499,7 @@ messages:
 
       // Total delay is the sum of wind up and wind down time.
       iDelay = iPrep + iPost;
-
-      iDelay = iDelay * 1000 / Bound(iHaste,800,1000);
+      iDelay = iDelay * 1000 / Bound(iHaste,UNLEASH_BASE_HASTE,UNLEASH_MAX_HASTE);
 
       // The windup time factored into our total calculated delay, but
       // needs to be subtracted again to get the correct wind down time.

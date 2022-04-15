@@ -1797,8 +1797,18 @@ messages:
       return;
    }
 
-   EnterStateEngage( target = $, actnow = TRUE, delay = 0)
+   EnterStateEngage( target = $, actnow = TRUE, delay = 0, bResume = FALSE)
    {
+      // Got gassed after acting and is currently resting. Quit.
+      if (piState & STATE_REST) AND NOT bResume
+      {
+         Post(poOwner,@SomeoneSaid,#what=self,#string=Lm_monster_winded,
+               #type=SAY_MESSAGE,#parm1=Send(self,@GetCapDef),
+               #parm2=Send(self,@GetName),#parm3=Send(self,@GetHisHer));
+
+         return;
+      }
+
       if poTarget <> target AND vrSound_aware <> $
       {
          // Log a debug message for $ owner to help find out where these
@@ -2499,12 +2509,6 @@ messages:
       // We may no longer be around after the attack
       // (e.g. evil twin killing a target).
       if poOwner = $
-      {
-         return;
-      }
-
-      // Got gassed after acting and is currently resting. Quit.
-      if (piState & STATE_REST)
       {
          return;
       }
@@ -11110,10 +11114,6 @@ messages:
       Send(self,@EnterStateRest,#target=poTarget,
             #delay=Bound(10000-100*piStamina,5000,10000));
       Send(self,@GainVigor,#amount=piVigor_rest_threshold);
-
-      Post(poOwner,@SomeoneSaid,#what=self,#string=Lm_monster_winded,
-            #type=SAY_MESSAGE,#parm1=Send(self,@GetCapDef),
-            #parm2=Send(self,@GetName),#parm3=Send(self,@GetHisHer));
 
       return;
    }

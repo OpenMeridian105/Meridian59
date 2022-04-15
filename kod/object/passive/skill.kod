@@ -15,6 +15,7 @@ constants:
    include blakston.khd
 
    SKILL_MURMUR_SQUARED = 64
+   BASE_HASTE = 1000
 
 resources:
 
@@ -159,6 +160,7 @@ properties:
    piMeditate_ratio = 100
    piTranceMovementSpeedReduction = 0
 
+   pbHaste = FALSE
    pbAccessible = TRUE
    pbEnabled = TRUE
 
@@ -1215,8 +1217,7 @@ messages:
 
       if who <> $
       {
-         iHaste = 1000 + Send(who,@GetAgility) * 2
-                       + Send(self,@GetRequisiteStat,#who=who) * 2;
+         iHaste = Send(self,@GetAbilityHaste,#who=who);
 
          if vbFixedTrance
          {
@@ -1234,6 +1235,42 @@ messages:
       }
 
       return viPostPerform_time;
+   }
+
+   GetAbilityHaste(who=$)
+   {
+      if (who = $) OR NOT pbHaste
+      {
+         return BASE_HASTE;
+      }
+
+      return BASE_HASTE + Send(who,@GetAgility) * 2
+         + Send(self,@GetRequisiteStat,#who=who) * 2;
+   }
+
+   ToggleAbilityHaste(bOff=FALSE,bOn=FALSE)
+   {
+      local bBefore;
+
+      bBefore = pbHaste;
+
+      if NOT (bOff OR bOn)
+         OR (bOff AND bOn)
+      {
+         pbHaste = NOT pbHaste;
+      }
+      else if bOff
+      {
+         pbHaste = FALSE;
+      }
+      else
+      {
+         pbHaste = TRUE;
+      }
+
+      Debug("Haste for ability",vrName,"was switched from",bBefore,"to",pbHaste);
+
+      return;
    }
 
    GetRawTranceTime(who=$)

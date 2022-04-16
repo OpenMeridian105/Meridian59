@@ -50,6 +50,18 @@ constants:
    PLAYER_TRANSLATION2_ARMS_MASK = 0xff00
    PLAYER_TRANSLATION2_ARMS_MUL = 0x100
 
+   PLAYER_HIT_BASE_DURATION = 150
+   PLAYER_HIT_RANDOM_DURATION = 300
+
+   PLAYER_HIT_TORSO = 15
+   PLAYER_HIT_LEFT_ARM = 19
+   PLAYER_HIT_RIGHT_ARM = 27
+   PLAYER_HIT_LEGS = 17
+   PLAYER_HIT_FRAME_COUNT = 2
+
+   PLAYER_REST_FRAME = 1
+   PLAYER_WEAPON_REST_FRAME = 17
+
    BASE_NEED = 105
 
    // How steep is the curve for learning new levels of spells?
@@ -11603,12 +11615,21 @@ messages:
          return;
       }
 
+      // Players and humans also have hit animations, yet because of the various
+      // overlays in place, we have to mix and match overlays to get a reasonable
+      // result. As such, there is no designated hit start frame or end frame as
+      // other mobs have it since the frame selection is overlay specific.
       if iAnimation = PANM_HIT
       {
-         // Synchronized randomness across animation components.
+         // In order to keep frames synchronized across overlays, we have to use
+         // timestamp-based randomness. We use GetTime to pick frames and
+         // GetTickCount to determine animation speed.
+         // Introduce persistent randomness across animation components.
          iTime = GetTime();
-         iFrame = 15 + iTime % 2;
-         AddPacket(1,ANIMATE_ONCE, 4,150 + GetTickCount() % 300, 2,iFrame, 2,iFrame, 2,1);
+         iFrame = PLAYER_HIT_TORSO + iTime % PLAYER_HIT_FRAME_COUNT;
+         AddPacket(1,ANIMATE_ONCE, 4,PLAYER_HIT_BASE_DURATION
+            + GetTickCount() % PLAYER_HIT_RANDOM_DURATION,
+            2,iFrame, 2,iFrame, 2,PLAYER_REST_FRAME);
 
          return;
       }
@@ -11966,8 +11987,9 @@ messages:
       }
       else if iAnimation = PANM_HIT
       {
-         iFrame = 19 + iTime % 2;
-         AddPacket(1,ANIMATE_ONCE, 4,150 + GetTickCount() % 300,
+         iFrame = PLAYER_HIT_LEFT_ARM + iTime % PLAYER_HIT_FRAME_COUNT;
+         AddPacket(1,ANIMATE_ONCE, 4,PLAYER_HIT_BASE_DURATION
+            + GetTickCount() % PLAYER_HIT_RANDOM_DURATION,
             2,iFrame, 2,iFrame, 2,iLeft_group);
       }
       else if iAnimation = PANM_DANCE
@@ -12023,16 +12045,18 @@ messages:
       }
       else if iAnimation = PANM_HIT
       {
-         iFrame = 27 + iTime % 2;
+         iFrame = PLAYER_HIT_RIGHT_ARM + iTime % PLAYER_HIT_FRAME_COUNT;
          // Need different animations for targets wielding a weapon.
          if bWeapon
          {
-            AddPacket(1,ANIMATE_ONCE, 4,150 + GetTickCount() % 300,
-               2,iFrame, 2,iFrame, 2,17);
+            AddPacket(1,ANIMATE_ONCE, 4,PLAYER_HIT_BASE_DURATION
+               + GetTickCount() % PLAYER_HIT_RANDOM_DURATION,
+               2,iFrame, 2,iFrame, 2,PLAYER_WEAPON_REST_FRAME);
          }
          else
          {
-            AddPacket(1,ANIMATE_ONCE, 4,150 + GetTickCount() % 300,
+            AddPacket(1,ANIMATE_ONCE, 4,PLAYER_HIT_BASE_DURATION
+               + GetTickCount() % PLAYER_HIT_RANDOM_DURATION,
                2,iFrame, 2,iFrame, 2,iRight_group);
          }
       }
@@ -12069,9 +12093,10 @@ messages:
       }
       else if iAnimation = PANM_HIT
       {
-         iFrame = 17 + iTime % 2;
-         AddPacket(1,ANIMATE_ONCE, 4,150 + GetTickCount() % 300,
-            2,iFrame, 2,iFrame, 2,1);
+         iFrame = PLAYER_HIT_LEGS + iTime % PLAYER_HIT_FRAME_COUNT;
+         AddPacket(1,ANIMATE_ONCE, 4,PLAYER_HIT_BASE_DURATION
+            + GetTickCount() % PLAYER_HIT_RANDOM_DURATION,
+            2,iFrame, 2,iFrame, 2,PLAYER_REST_FRAME);
       }
       else if iAnimation = PANM_DANCE
       {

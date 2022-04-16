@@ -47,19 +47,19 @@ classvars:
    vbAutomatic = TRUE
 
    // Distance in FINENESS that will result in a guaranteed chance to interrupt.
-   vi_Threshold = 16
+   viThreshold = 16
 
    // Percentage of threshold reduction caused by ability.
-   vi_Ability_percentage = 50
+   viAbility_percentage = 50
 
    // Base chance to interrupt when treshold is met.
-   vi_Base_chance = 25
+   viBase_chance = 25
 
    // How much does a crushing blow delay a player?
-   vi_Delay_player = 500
+   viDelay_player = 500
 
    // How much does a crushing blow delay a monster?
-   vi_Delay_monster = 2000
+   viDelay_monster = 2000
 
 properties:
 
@@ -98,7 +98,7 @@ messages:
       bImprove = FALSE;
 
       // Grant a chance to improve even if we fail, as long as we smacked hard enough.
-      if distance >= vi_Threshold*2/3
+      if distance >= viThreshold*2/3
       {
          Send(self,@ImproveAbility,#who=who,#target=what);
 
@@ -106,16 +106,16 @@ messages:
       }
 
       // General idea: Interrupting is based on a primary and a secondary check.
-      // Primary check: Hits above vi_Threshold will always result in
+      // Primary check: Hits above viThreshold will always result in
       // a chance to interrupt with high skill bringing that number down by a third.
       // Higher skill will lower that number.
-      // Secondary check: Passing the primary check grants vi_Base_chance
+      // Secondary check: Passing the primary check grants viBase_chance
       // to interrupt. The battler's requisite stat is added to that base chance.
 
       // Primary check.
-      iRandom = Random(1,vi_Threshold/2);
-      iRandom -= iRandom*vi_Ability_percentage/100*ability/100;
-      iRandom += vi_Threshold/2;
+      iRandom = Random(1,viThreshold/2);
+      iRandom -= iRandom*viAbility_percentage/100*ability/100;
+      iRandom += viThreshold/2;
 
       if distance < iRandom
       {
@@ -125,7 +125,7 @@ messages:
       // Secondary chance.
       iReqStat = Send(self,@GetRequisiteStat,#who=who);
 
-      if Random(1,100) <= vi_Base_chance + iReqStat
+      if Random(1,100) <= viBase_chance + iReqStat
       {
          // Time to improve if we haven't had the chance yet.
          if NOT bImprove
@@ -167,10 +167,10 @@ messages:
    {
       if IsClass(who,&Player)
       {
-         return vi_Delay_player;
+         return viDelay_player;
       }
 
-      return vi_Delay_monster;
+      return viDelay_monster;
    }
 
    // About a 1 in 20 chance to get a roll to improve at 50 might.

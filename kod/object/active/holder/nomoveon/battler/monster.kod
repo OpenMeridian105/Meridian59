@@ -44,7 +44,8 @@ constants:
    MONSTER_MELEE = 1
    MONSTER_RANGED = 2
 
-   MONSTER_BASE_SWING_TIME = 625
+   MONSTER_MIN_SWING_TIME = 150
+   MONSTER_MAX_SWING_TIME = 600
 
    // if Random(1,MONSTER_QUICK_ATTACK_CHANCE) < viDifficulty
    // cut attack delay in half.
@@ -950,13 +951,13 @@ messages:
       local lActions, i, oSpell;
 
       // Any entry in the monster's spell book needs to have the
-      // following form: [SID,Mana,Vigor,Range,Priority,P-Factor,SP].
+      // following form: [SID,Mana,Vigor,Range,Priority,P-Reduction,SP].
       // SID: Spell ID (e.g. SID_SPLASH_OF_ACID)
       // Mana: Cost of the spell, NOT in precision mode (e.g. 4)
       // Vigor: Cost of the spell, NOT in precision mode (e.g. 1)
       // Range: Squared fine range of the spell (e.g. (3x64)^2 = 36.864)
       // Priority: Mobs will choose spells with higher priority.
-      // P-Factor: Factor that determines how much priority an action
+      // P-Reduction: Subtrahend that determines how much priority an action
       // loses after each use.
       // SP: Spellpower the spell contributes. Additive to monster SP.
       lActions = ListCopy(plActions);
@@ -1587,18 +1588,6 @@ messages:
       poLastAttacker = $;
 
       propagate;
-   }
-
-   // For illusionary form, it makes a bunch of monsters so it can call 'em and
-   //  get access to their SendAnimation() things.  To be useful, it needs to
-   //  be able to set our piAnimation (to either ANIM_NONE or ANIM_ATTACK, which
-   //  work for all monsters).
-
-   SetAnimation(animation = $)
-   {
-      piAnimation = animation;
-
-      return;
    }
 
    //// Enchantments of Monsters
@@ -6988,7 +6977,7 @@ messages:
    "Depending on our action, return an appropriate delay."
    {
       local i, iPriority, lActions, lAction, iNum, oSpell, iAttacks, iUrgency,
-         iFactor, iSpellPower, lTargets, iType, iPowerLevel, iPercentage, iAction,
+         iReduction, iSpellPower, lTargets, iType, iPowerLevel, iPercentage, iAction,
          oTarget, oInjured, oAfflicted, bCombat, bMove, bHarm;
 
       // Following a specific order to increase performance.
@@ -7184,52 +7173,10 @@ messages:
          return FALSE;
       }
 
-      // Reusing vaiable: iAction stores whether we have more than one action.
-      iAction = Length(lActions) > 1;
-
       // We are allowed to act and got a pool of actions.
-      // Compare priorities to decide for one.
-      iPriority = MIN_KOD_INT;
-
-      foreach i in lActions
-      {
-         // If we have another action at our disposal, check if we want to
-         // even consider using our time moving instead.
-         if iAction
-            AND (First(i) = SKID_MINIMUM)
-            AND NOT Send(self,@ActiveMoveCheck)
-         {
-            continue;
-         }
-
-         // Reusing variable: iNum is the current priority as saved in the list.
-         iNum = Nth(i,5);
-
-         // Adjust the priority of healing based on victim's health.
-         if Nth(i,8) = COMBAT_ACTION_HEAL
-         {
-            iNum += iUrgency;
-         }
-
-         // If the used action happened to also be our latest action, lower its
-         // priority based on the number of consecutive executions.
-         if First(i) = piAction % 1000
-         {
-            iNum = Send(SYS,@PowerCalculation,#factor=iNum,#denom=2,#exp=(piAction%10000)/1000);
-         }
-
-         // Finally, when out of combat, spells have priority over other actions.
-         if NOT (piState & STATE_ENGAGE) AND (First(i) < SKID_MINIMUM)
-         {
-            iNum = Bound(iNum,viMeleePriority,$);
-         }
-
-         if iNum >= iPriority
-         {
-            lAction = i;
-            iPriority = iNum;
-         }
-      }
+      // Pick the one we like best based on priority.
+      lAction = Send(self,@GetTopPriorityAction,#lActions=lActions,
+         #urgency=iUrgency);
 
       // We have our action at this point, let's check its ID.
       // Also, let's store it in piAction so we can keep track of it.
@@ -7530,7 +7477,8 @@ messages:
       Send(self,@LoseVigor,#amount=Nth(lAction,3),#precision=TRUE);
 
       // If we made it this far, we acted in some way. Adjust our priorities.
-      iFactor = Nth(lAction,6);
+      iPriority = Nth(lAction,5);
+      iReduction = Nth(lAction,6);
 
       foreach i in plActions
       {
@@ -7545,7 +7493,7 @@ messages:
             // We just cast this. Lower priority.
             if iAction = iNum
             {
-               SetNth(i,5,Bound(iPriority - iFactor,-10000,$));
+               SetNth(i,5,Bound(iPriority - iReduction,-10000,$));
             }
             // We are running around. Increase priority slightly.
             else if iNum = SKID_MINIMUM
@@ -7578,14 +7526,14 @@ messages:
                }
                // We can tell it's the mobs standard attack because
                // it's priority isn't lowered after use.
-               else if iFactor = 0
+               else if iReduction = 0
                {
                   SetNth(i,5,viMeleePriority);
                }
                else
                // Special attacks are handled just like spells.
                {
-                  SetNth(i,5,Bound(iPriority - iFactor,-10000,$));
+                  SetNth(i,5,Bound(iPriority - iReduction,-10000,$));
                }
             }
             // We are adjusting the priority of a different attack.
@@ -7773,6 +7721,67 @@ messages:
       piState &= VSTATE_VALIDITY_MASK;
 
       return iAction;
+   }
+
+   GetTopPriorityAction(lActions=$,urgency=0)
+   "Figure our most pressing action based on priority and urgency."
+   {
+      local bMove, iTop, i, iNum, iPriority, lAction;
+
+      bMove = Send(self,@ActiveMoveCheck);
+
+      iTop = MIN_KOD_INT;
+
+      foreach i in lActions
+      {
+         iNum = First(i);
+
+         iPriority = Nth(i,5);
+
+         // Adjust the priority of healing based on victim's health.
+         if Nth(i,8) = COMBAT_ACTION_HEAL
+         {
+            iPriority += urgency;
+         }
+
+         // If the used action happened to also be our latest action, lower its
+         // priority based on the number of consecutive executions.
+         if iNum = piAction % 1000
+         {
+            iPriority = Send(SYS,@PowerCalculation,#factor=iPriority,
+               #denom=2,#exp=(piAction%10000)/1000);
+         }
+
+         // In combat, let's make sure that regular actions don't drop to or
+         // below move priority unless we feel particularly mobile.
+         if piState & STATE_ENGAGE
+         {
+            if NOT bMove
+               AND (iNum <> SKID_MINIMUM)
+            {
+               iPriority = Bound(iPriority,viMovePriority + 1,$);
+            }
+         }
+         else
+         {
+            // Out of combat, spells have priority over other actions.
+            if iNum < SKID_MINIMUM
+            {
+               iPriority = Bound(iPriority,viMeleePriority,$);
+            }
+         }
+
+         if iPriority > iTop
+         {
+            lAction = i;
+            iTop = iPriority;
+         }
+      }
+
+      // Finally, store our new priority for this particular action.
+      SetNth(lAction,5,iPriority);
+
+      return lAction;
    }
 
    AdjustActionPriority(num=$,amount=$)
@@ -11936,16 +11945,8 @@ messages:
    {
       local iTime;
 
-      if viSwing_time = $
-      {
-         iTime = MONSTER_BASE_SWING_TIME;
-         iTime -= viDifficulty*25;
-         iTime -= piAgility*4;
-
-         return Bound(iTime,50,600);
-      }
-
-      return viSwing_time;
+      iTime = (viAttack_end_frame - viAttack_start_frame) * viAttack_duration; 
+      return Bound(iTime,MONSTER_MIN_SWING_TIME,MONSTER_MAX_SWING_TIME);
    }
 
    CanCrushEnemy()

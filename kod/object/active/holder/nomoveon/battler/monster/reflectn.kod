@@ -590,53 +590,37 @@ messages:
 
    SomethingChanged(what=$)
    {
-      local oWeapon, iRange, i;
+      local oWeapon, iRange, i, iDrawfx, bChanged;
 
       if what = poOriginal
       {
-         piDrawfx = Send(poOriginal,@GetDrawingEffects);
+         iDrawfx = piDrawfx;
 
-         // Reset plActions.
-         plActions = [[SKID_MINIMUM,0,0,MAX_KOD_INT,50,1,99,COMBAT_ACTION_NEUTRAL]];
+         piDrawfx = Send(self,@GetDrawingEffects);
 
-         // Gotta get the reflection's correct action list.
+         bChanged = (iDrawfx <> piDrawfx);
+
+         // Gotta get the evil twin's correct action list.
          if IsClass(poOriginal,&User)
          {
+            // Reset plActions.
+            plActions = [[SKID_MINIMUM,0,0,MAX_KOD_INT,50,1,99,COMBAT_ACTION_NEUTRAL]];
+
             oWeapon = Send(poOriginal,@GetWeapon);
 
-            if oWeapon <> $
-            {
-               iRange = Send(oWeapon,@GetRange);
-               iRange *= iRange;
+            iRange = Send(oWeapon,@GetRange);
+            iRange *= iRange;
 
-               if IsClass(oWeapon,&RangedWeapon)
-                  OR IsClass(oWeapon,&ThrownWeapon)
-               {
-                  plActions = Cons([SKID_FIRE,0,0,iRange,100,1,99,COMBAT_ACTION_HARM],plActions);
-               }
-               else
-               {
-                  plActions = Cons([SKID_SLASH,0,0,iRange,100,1,99,COMBAT_ACTION_HARM],plActions);
-               }
+            if IsClass(oWeapon,&RangedWeapon)
+               OR IsClass(oWeapon,&ThrownWeapon)
+            {
+               plActions = Cons([SKID_FIRE,0,0,iRange,100,1,99,COMBAT_ACTION_HARM],plActions);
             }
             else
             {
-               plActions = Cons([SKID_SLASH,0,0,4096,100,1,99,COMBAT_ACTION_HARM],plActions);
+               plActions = Cons([SKID_SLASH,0,0,iRange,100,1,99,COMBAT_ACTION_HARM],plActions);
             }
-         }
-         else
-         {
-            iRange = Send(poOriginal,@GetMeleeRange);
-            iRange *= iRange;
-            plActions = Cons([SKID_SLASH,0,0,iRange,100,1,99,COMBAT_ACTION_HARM],plActions);
 
-            iRange = Send(poOriginal,@GetFireRange);
-            iRange *= iRange;
-            plActions = Cons([SKID_FIRE,0,0,iRange,100,1,99,COMBAT_ACTION_HARM],plActions);
-         }
-
-         if IsClass(poOriginal,&User)
-         {
             if Send(what,@GetAnimation) = PANM_WAVE
             {
                Send(self,@DoWave);
@@ -653,8 +637,12 @@ messages:
             {
                Send(poOwner,@SomethingChanged,#what=self);
             }
+
+            bChanged = TRUE;
          }
-         else if poOwner <> $
+
+         if (poOwner <> $)
+            AND bChanged
          {
             Send(poOwner,@SomethingChanged,#what=self);
          }
@@ -930,12 +918,23 @@ messages:
 
    SendAnimation()
    {
-       return Send(poOriginal,@SendAnimation,#iAnimation=piAnimation);
+      // Inject our animation into the original.
+      Send(poOriginal,@SetAnimation,#animation=piAnimation);
+      // Get the required packets.
+      Send(poOriginal,@SendAnimation);
+      // Reset the original's animation.
+      Send(poOriginal,@SetAnimation);
+      return;
    }
-
    SendOverlays()
    {
-      return Send(poOriginal,@SendOverlays,#iAnimation=piAnimation);
+      // Inject our animation into the original.
+      Send(poOriginal,@SetAnimation,#animation=piAnimation);
+      // Get the required packets.
+      Send(poOriginal,@SendOverlays);
+      // Reset the original's animation.
+      Send(poOriginal,@SetAnimation);
+      return;
    }
 
    GetIllusionForm()
@@ -1015,6 +1014,16 @@ messages:
    GetWeapon()
    {
       return Send(poOriginal,@GetWeapon);
+   }
+
+   GetSwingTime()
+   {
+      if IsClass(poOriginal,&Monster)
+      {
+         return Send(poOriginal,@GetSwingTime);
+      }
+
+      return Send(Send(poOriginal,@GetStrokeObject),@GetTranceTime);
    }
 
 end

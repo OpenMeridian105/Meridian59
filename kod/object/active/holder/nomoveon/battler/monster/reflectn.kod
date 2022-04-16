@@ -99,7 +99,7 @@ messages:
 
    Constructor(iSpellPower=1,oMaster=$)
    {
-      local oSpell;
+      local oSpell, i;
 
       if oMaster <> $
       {
@@ -116,6 +116,28 @@ messages:
       {
          Send(oMaster,@StartOverTimeEffect,#strength=-MANA_DRAIN,
             #what=oSpell,#who=self,#removable=REMOVE_INTERNAL,#showicon=TRUE,#type=TYPE_MANA);
+
+         if IsClass(oMaster,&Monster)
+         {
+            // We have the same actions at our disposal as the original.
+            plActions = ListCopy(Send(oMaster,@GetActions));
+
+            // Well, almost...
+            foreach i in plActions
+            {
+               if First(i) < SKID_MINIMUM
+               {
+                  // We don't get any spells.
+                  DelListElem(plActions,i);
+               }
+               else
+               {
+                  // But at least our skills don't cost resources.
+                  SetNth(i,2,0);
+                  SetNth(i,3,0);
+               }
+            }
+         }
       }
 
       propagate;

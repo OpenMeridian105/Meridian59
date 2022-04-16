@@ -252,6 +252,8 @@ classvars:
    // Speed of the pushback effect.
    viKnockback_speed = 60
 
+   vbCan_be_pushed = TRUE
+
    // The maximum amount of finesteps a battler will get knocked back.
    viKnockback_ceiling = FINENESS
 
@@ -2717,10 +2719,11 @@ messages:
          }
       }
 
-      // Monsters with zero movement speed are generally rooted in place.
-      // They still may be crushed by a blow though, simply skip the
+      // Check if our target can be pushed around. Usually not the case
+      // for massive, stationary or webbed targets.
+      // They may still be crushed by a blow though, so simply skip the
       // movement part below.
-      if Send(self,@IsStationary)
+      if NOT Send(self,@CanBePushed)
       {
          return;
       }
@@ -2824,6 +2827,11 @@ messages:
       }
 
       return;
+   }
+
+   CanBePushed()
+   {
+      return vbCan_be_pushed AND NOT Send(self,@IsStationary);
    }
 
    // Most battlers are able to move.

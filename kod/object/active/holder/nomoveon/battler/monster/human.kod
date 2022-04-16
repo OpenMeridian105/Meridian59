@@ -818,23 +818,22 @@ messages:
       return viDifficulty * 11;
    }
 
-   // Returns weapon used.
+   // Returns weapon used. Code copied and adapted from player.kod.
    GetWeapon()
    {
       local oWeapon;
 
       oWeapon = Send(self,@LookupPlayerWeapon);
-      // If there is no wielded melee weapon, then see if we
-      // have a touch attack active.
+
       if oWeapon = $
       {
-         // This will return $ if there's no Touch Attacks enchanting player.
-         oWeapon = Send(self,@GetEnchantmentsByClass,
-               #EnchClass=&TouchAttackSpell);
-         if oWeapon <> $
+         if Send(self,@GetEnchantmentsByClass,#EnchClass=&TouchAttackSpell) <> $
          {
-            // The spell object is the second element of the list. Get that.
-            oWeapon = Nth(first(oWeapon),2);
+            return Send(SYS,@FindSkillByNum,#num=SKID_TOUCH);
+         }
+         else
+         {
+            return Send(SYS,@FindSkillByNum,#num=SKID_PUNCH);
          }
       }
 
@@ -940,7 +939,7 @@ messages:
 
       oWeapon = Send(self,@GetWeapon);
 
-      if oWeapon = $
+      if IsClass(oWeapon,&Punch)
       {
          Send(self,@DoFistAttack);
       }
@@ -948,7 +947,7 @@ messages:
       {
          Send(oWeapon,@WeaponAttack);
       }
-      else if IsClass(oWeapon,&TouchAttackSpell)
+      else if IsClass(oWeapon,&Touch)
       {
          Send(self,@DoCast);
       }

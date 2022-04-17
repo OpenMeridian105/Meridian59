@@ -81,6 +81,19 @@ resources:
       "\nYou would need %i more point(s) in this level to advance to the next one "
       "using this skill."
 
+   skill_cant_help = \
+      "Your guardian angel tells you, \"%s%s has attacked someone else too "
+      "recently.  Do not interfere.\""
+
+   skill_angel_no_unlawful = \
+       "Helping an unlawful person such as %s%s would brand you as an "
+       "outlaw.  You are not yet ready to participate in conflicts against "
+       "other players."
+
+   skill_safety_no_unlawful = \
+      "Helping an unlawful person such as %s%s will brand you as an outlaw.  "
+      "Good thing your safety was on!"
+
    skill_fail_wav = doorlck.ogg
 
    skill_trance_begin_sound = spell_trance_begin.ogg
@@ -1025,7 +1038,7 @@ messages:
       foreach oObject in lTargets
       {
          oOwner = Send(oObject,@GetOwner);
-         // If we're in the arena, we can cast it.
+         // If we're in the arena, we can use it.
          if IsClass(oObject,&Battler)
             AND (oOwner <> $ AND Send(oOwner,@IsArena))
          {
@@ -1036,7 +1049,7 @@ messages:
          if (IsClass(oObject,&Player)
             AND NOT Send(oObject,@CanBeAttackedByAnyHurter,#who=who))
          {
-            Send(who,@MsgSendUser,#message_rsc=spell_cant_help,
+            Send(who,@MsgSendUser,#message_rsc=skill_cant_help,
                   #parm1=Send(oObject,@GetDef),
                   #parm2=Send(oObject,@GetName));
 
@@ -1056,8 +1069,8 @@ messages:
          // Check for angel
          if NOT Send(who,@CanPlayerPvP)
          {
-            // No helping the bad guys as an outlaw/murderer!
-            Send(who,@MsgSendUser,#message_rsc=spell_angel_no_unlawful,
+            // No helping the bad guys/outlaws/murderers!
+            Send(who,@MsgSendUser,#message_rsc=skill_angel_no_unlawful,
                  #parm1=Send(oObject,@GetDef),
                  #parm2=Send(oObject,@GetName));
             
@@ -1068,7 +1081,7 @@ messages:
          if NOT Send(who,@CheckPlayerPreference,#flag=CF_SAFETY_OFF)
          {
             // Tell caster the safety caught the possible outlaw act.
-            Send(who,@MsgSendUser,#message_rsc=spell_safety_no_unlawful,
+            Send(who,@MsgSendUser,#message_rsc=skill_safety_no_unlawful,
                  #parm1=Send(oObject,@GetDef),
                  #parm2=Send(oObject,@GetName));
 

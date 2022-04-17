@@ -3970,7 +3970,7 @@ messages:
       return;
    }
 
-   RemoveEnchantment(what = $, report=TRUE)
+   RemoveEnchantment(what = $, report=TRUE, event = FALSE)
    "If have a current enchantment set by <what>, end it."
    {
       local i, state;
@@ -3998,7 +3998,7 @@ messages:
             }
 
             Send(Nth(i,2),@RemoveEnchantmentEffects,#who=self,
-                  #state=state,#report=report);
+                  #state=state,#event=event,#report=report);
 
             Send(self,@ShowRemoveEnchantment,#what=Nth(i,2),
                   #type=ENCHANTMENT_PLAYER);
@@ -15575,6 +15575,9 @@ messages:
             piMovementSpeedPercent = iSpeed;
          }
       }
+
+      // Tell the client that our movement speed may have changed.
+      Send(self,@MovementSpeedChanged);
 
       return;
    }

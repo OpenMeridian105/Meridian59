@@ -221,24 +221,30 @@ messages:
 
             return FALSE;
          }
-         else
-         {
-            Send(oAbility,@TranceBroken,#who=who,#state=state,#event=event);
-         }
       }
 
-      Send(who,@AddMovementSpeedPercent,
-         #iSpeed=Send(oAbility,@GetMovementSpeedReduction,#state=state));
-
-      Send(who,@RemoveEnchantment,#what=self);
+      // Any fallout from having our trance broken will be handled in
+      // RemoveEnchantmentEffects below (called by RemoveEnchantment).
+      Send(who,@RemoveEnchantment,#what=self,#event=event);
 
       return TRUE;
    }
 
-   RemoveEnchantmentEffects( who = $, state = $ )
-   "This is normally translated to EndEnchantment in spell.kod"
-   "For trance, it is just swallowed."
+   // This is normally translated to EndEnchantment in spell.kod.
+   // However, this is only triggered when trance is interrupted
+   // EndEnchantment should be the result of a successful trance.
+   // RemoveEnchantment is usually called by BreakTrance().
+   // It can also be the result of a deletion though.
+   RemoveEnchantmentEffects( who = $, state = $, event = FALSE )
    {
+      local oAbility;
+
+      oAbility = First(state);
+
+      Send(who,@AddMovementSpeedPercent,
+         #iSpeed=Send(oAbility,@GetMovementSpeedReduction,#state=state));
+      Send(oAbility,@TranceBroken,#who=who,#state=state,#event=event);
+     
       return;
    }
 

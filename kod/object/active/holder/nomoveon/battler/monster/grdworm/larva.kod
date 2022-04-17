@@ -14,17 +14,6 @@ constants:
 
    include blakston.khd
 
-   FRAME_UNDERGROUND = 1
-   FRAME_POPUP_START = 2
-   FRAME_POPUP_END = 4
-   FRAME_SURFACED = 5
-   FRAME_ATTACK_START = 6
-   FRAME_ATTACK_END = 9
-   FRAME_POPDOWN_START = 10
-   FRAME_POPDOWN_END = 12
-
-   ANIMATION_SPEED = 100
-
 resources:
 
    include larva.lkod
@@ -51,6 +40,26 @@ classvars:
    vrDead_name = GroundWormLarva_dead_name_rsc
    vrSound_aware = GroundWormLarva_sound_aware
 
+   viRest_frame = 5           // Surfaced frame.
+   viLook_start_frame = 5     // Surfaced frame.
+   viLook_end_frame = 5       // Surfaced frame.
+   viLook_duration = 250      // Duration per frame.
+   viMove_start_frame = 1     // Submerged frame.
+   viMove_end_frame = 1       // Submerged frame.
+   viMove_duration = 150      // Duration per frame.
+   viAttack_start_frame = 6
+   viAttack_end_frame = 9
+   viAttack_duration = 150    // Duration per frame.
+   viHit_start_frame = 3
+   viHit_end_frame = 4
+   viHit_duration = 500       // Maximum total duration of animation.
+   viCast_start_frame = 2     // Popup start frame.
+   viCast_end_frame = 4       // Popup start frame.
+   viCast_duration = 150      // Duration per frame.
+   viSpecial_start_frame = 10 // Popdown start frame.   
+   viSpecial_end_frame = 12   // Popdown end frame.   
+   viSpecial_duration = 80    // Duration per frame.
+
    viTreasure_type = TID_WORM_LARVA
    viSpeed = SPEED_SLOW
    viSpell_type = SPL_TYPE_ACID
@@ -67,76 +76,6 @@ classvars:
 properties:
 
 messages:
-
-   // These are exact duplicates of the code in the groundworm superclass,
-   //but the constants are defined differently for the larva - different frames.
-
-   SendAttackAnimation()
-   {
-      AddPacket(1,ANIMATE_ONCE,4,ANIMATION_SPEED,2,FRAME_ATTACK_START,
-            2,FRAME_ATTACK_END,2,FRAME_SURFACED);
-
-      return;
-   }
-
-   SendPopupAnimation()
-   {
-      AddPacket(1,ANIMATE_ONCE,4,ANIMATION_SPEED,2,FRAME_POPUP_START,
-            2,FRAME_POPUP_END,2,FRAME_SURFACED);
-
-      return;
-   }
-
-   SendPopdownAnimation()
-   {
-      AddPacket(1,ANIMATE_ONCE,4,ANIMATION_SPEED,2,FRAME_POPDOWN_START,
-            2,FRAME_POPDOWN_END,2,FRAME_UNDERGROUND);
-
-      return;
-   }
-
-   SendPopupAttackAnimation()
-   {
-      AddPacket(1,ANIMATE_ONCE,4,ANIMATION_SPEED,2,FRAME_POPUP_START,
-            2,FRAME_ATTACK_END,2,FRAME_SURFACED);
-
-      return;
-   }
-
-   SendLookAnimation()
-   {
-      if pbSurfaced
-      {
-         AddPacket(1,ANIMATE_NONE,2,FRAME_SURFACED);
-      }
-      else
-      {
-         AddPacket(1,ANIMATE_NONE,2,FRAME_POPUP_START);
-      }
-
-      return;
-   }
-
-   CanMonsterFight(who=$, oStroke = $, use_weapon = $)
-   {
-      if (oStroke <> $) AND IsClass(oStroke,&DMSpell)
-      {
-         return TRUE;
-      }
-
-      if NOT pbSurfaced
-      {
-         if use_weapon = $
-            OR NOT (IsClass(use_weapon,&Hammer)
-                    OR IsClass(use_weapon,&SpiritualHammer)
-                    OR IsClass(use_weapon,&Mace))
-         {
-            return FALSE;
-         }
-      }
-
-      return TRUE;
-   }
 
 end
 ////////////////////////////////////////////////////////////////////////////////

@@ -14,21 +14,6 @@ constants:
 
    include blakston.khd
 
-   ANIM_SPEED = 100
-   WING_ANIM_SPEED = 100
-   ANIM_HOVER = 2
-   HOVER_DELAY = ANIM_SPEED * 5
-   LAND_DELAY = HOVER_DELAY * 5
-
-   FRAME_STAND = 1
-   FRAME_LAND = 1
-   FRAME_HOVER_START = 2
-   FRAME_HOVER_END = 3
-   FRAME_FLY_START = 4
-   FRAME_FLY_END = 5
-   FRAME_ATTACK_START = 6
-   FRAME_ATTACK_END = 9
-
    HS_WINGS = 1
 
 resources:
@@ -61,10 +46,29 @@ classvars:
    viIndefinite = ARTICLE_A
    vrName = DragonFly_name_rsc
    vrIcon = DragonFly_icon_rsc
+   vrWings = DragonFly_wings_rsc
    vrDesc = DragonFly_desc_rsc
    vrDead_icon = DragonFly_dead_icon_rsc
    vrDead_name = DragonFly_dead_name_rsc
    vrKocName = DragonFly_koc_name_rsc
+
+   // Animation frames and frame durations.
+   viRest_frame = 1
+   viLook_start_frame = 1
+   viLook_end_frame = 1
+   viLook_duration = 100      // Duration per frame.
+   viMove_start_frame = 4
+   viMove_end_frame = 5
+   viMove_duration = 100      // Duration per frame.
+   viAttack_start_frame = 6
+   viAttack_end_frame = 9
+   viAttack_duration = 100    // Duration per frame.
+   viSpecial_start_frame = 2
+   viSpecial_end_frame = 3
+   viSpecial_duration = 100   // Duration per frame.
+   viHit_start_frame = 6
+   viHit_end_frame = 8
+   viHit_duration = 500       // Maximum total duration of animation.
 
    viTreasure_type = TID_DRAGONFLY
 
@@ -120,10 +124,33 @@ messages:
 
       if ptHover = $
       {
-         ptHover = CreateTimer(self,@HoverTimer,HOVER_DELAY);
+         ptHover = CreateTimer(self,@HoverTimer,viMove_duration*5);
       }
 
       return;
+   }
+
+   MonsterHitAnimation()
+   "If a monster has a special animation when hit, call this."
+   {
+      local iDuration;
+
+      piAnimation = ANIM_HIT;
+      piDrawEffectFlag = piDrawEffectFlag | OF_BOUNCING;
+      Send(poOwner,@SomethingChanged,#what=self);
+      piAnimation = ANIM_HOVER;
+
+      if ptHover = $
+      {
+         iDuration = viHit_duration;
+         iDuration += (Bound(GetTickCount() - piStamina,0,$)) % (2*iDuration);
+         iDuration /= 3;
+
+         ptHover = CreateTimer(self,@HoverTimer,iDuration);
+      }
+
+      // Report that we have successfully played our animation.
+      return TRUE;
    }
 
    GetProjectileSpeed()
@@ -159,7 +186,7 @@ messages:
          DeleteTimer(ptLand);
       }
 
-      ptLand = CreateTimer(self,@LandTimer,LAND_DELAY);
+      ptLand = CreateTimer(self,@LandTimer,viMove_duration*25);
 
       return;
    }
@@ -181,7 +208,7 @@ messages:
    SendLookAnimation()
    {
       AddPacket(1,ANIMATE_NONE);
-      AddPacket(2,FRAME_LAND);
+      AddPacket(2,viRest_frame);
 
       return;
    }
@@ -195,7 +222,7 @@ messages:
 
    SendMoveAnimation()
    {
-      AddPacket(1,ANIMATE_CYCLE,4,ANIM_SPEED,2,FRAME_FLY_START,2,FRAME_FLY_END);
+      AddPacket(1,ANIMATE_CYCLE,4,viMove_duration,2,viMove_start_frame,2,viMove_end_frame);
 
       return;
    }
@@ -203,10 +230,10 @@ messages:
    SendmoveOverlays()
    {
       AddPacket(1,1);
-      AddPacket(4,DragonFly_wings_rsc,1,HS_WINGS);
+      AddPacket(4,vrWings,1,HS_WINGS);
       AddPacket(1,ANIMATE_EFFECT,1,DRAWFX_TRANSLUCENT_25-DRAWFX_TRANSLUCENT_25+1);
-      AddPacket(1,ANIMATE_CYCLE,4,WING_ANIM_SPEED,
-            2,(FRAME_FLY_START - 1),2,(FRAME_FLY_END - 1) );
+      AddPacket(1,ANIMATE_CYCLE,4,viMove_duration,
+            2,(viMove_start_frame - 1),2,(viMove_end_frame - 1) );
 
       return;
    }
@@ -216,21 +243,33 @@ messages:
       if piAnimation = ANIM_HOVER
       {
          AddPacket(1,1);
-         AddPacket(4,DragonFly_wings_rsc,1,HS_WINGS);
+         AddPacket(4,vrWings,1,HS_WINGS);
          AddPacket(1,ANIMATE_EFFECT,1,DRAWFX_TRANSLUCENT_25-DRAWFX_TRANSLUCENT_25+1);
-         AddPacket(1,ANIMATE_CYCLE,4,WING_ANIM_SPEED,
-               2,(FRAME_HOVER_START - 1),2,(FRAME_HOVER_END - 1) );
+         AddPacket(1,ANIMATE_CYCLE,4,viSpecial_duration,
+               2,(viSpecial_start_frame - 1),2,(viSpecial_end_frame - 1) );
 
          return;
       }
 
-      if piAnimation = ANIM_ATTACK
+      if piAnimation = ANIM_HIT
       {
          AddPacket(1,1);              /// uses normal body speed for attack
-         AddPacket(4,DragonFly_wings_rsc,1,HS_WINGS);
+         AddPacket(4,vrWings,1,HS_WINGS);
          AddPacket(1,ANIMATE_EFFECT,1,DRAWFX_TRANSLUCENT_25-DRAWFX_TRANSLUCENT_25+1);
-         AddPacket(1,ANIMATE_ONCE,4,ANIM_SPEED,2,(FRAME_ATTACK_START - 1),
-               2,(FRAME_ATTACK_END - 1),2,(FRAME_HOVER_END - 1) );
+         Send(self,@SendHitAnimation,#startframe=viHit_start_frame - 1,
+            #endframe=viHit_end_frame - 1,#restframe=viSpecial_end_frame - 1,
+            #duration=viHit_duration);
+
+         return;
+      }
+
+      if piAnimation
+      {
+         AddPacket(1,1);              /// uses normal body speed for attack
+         AddPacket(4,vrWings,1,HS_WINGS);
+         AddPacket(1,ANIMATE_EFFECT,1,DRAWFX_TRANSLUCENT_25-DRAWFX_TRANSLUCENT_25+1);
+         AddPacket(1,ANIMATE_ONCE,4,viAttack_duration,2,(viAttack_start_frame - 1),
+               2,(viAttack_end_frame - 1),2,(viSpecial_end_frame - 1) );
 
          return;
       }
@@ -242,22 +281,40 @@ messages:
    {
       if piAnimation = ANIM_HOVER
       {
-         AddPacket(1,ANIMATE_CYCLE,4,ANIM_SPEED,2,FRAME_HOVER_START,
-               2,FRAME_HOVER_END);
+         AddPacket(1,ANIMATE_CYCLE,4,viSpecial_duration,2,viSpecial_start_frame,
+               2,viSpecial_end_frame);
 
          return;
       }
 
-      if piAnimation = ANIM_ATTACK
+      if piAnimation = ANIM_HIT
       {
-         AddPacket(1,ANIMATE_ONCE,4,ANIM_SPEED,2,FRAME_ATTACK_START,
-               2,FRAME_ATTACK_END,2,FRAME_HOVER_END);
+         Send(self,@SendHitAnimation,#startframe=viHit_start_frame,
+            #endframe=viHit_end_frame,#restframe=viSpecial_end_frame,
+            #duration=viHit_duration);
+
+         return;
+      }
+
+      if piAnimation
+      {
+         AddPacket(1,ANIMATE_ONCE,4,viAttack_duration,2,viAttack_start_frame,
+               2,viAttack_end_frame,2,viSpecial_end_frame);
 
          return;
       }
 
       // if no body animation.
       propagate;
+   }
+
+   StaticAnimation()
+   "Static animation to avoid frame glitch during unanimated knockback."
+   {
+      piAnimation = ANIM_HOVER;
+      Send(poOwner,@SomethingChanged,#what=self);
+
+      return;
    }
 
    Delete()
@@ -312,6 +369,11 @@ messages:
    CanBeTangled()
    {
       return FALSE;
+   }
+
+   HasOverlays()
+   {
+      return TRUE;
    }
 
 end

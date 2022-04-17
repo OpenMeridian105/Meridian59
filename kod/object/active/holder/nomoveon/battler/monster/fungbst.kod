@@ -18,8 +18,6 @@ constants:
 
    include blakston.khd
 
-   ANIM_SLEEP = 2
-
 resources:
 
    include fungbst.lkod
@@ -52,6 +50,24 @@ classvars:
    vrDesc = fungusbeast_desc_rsc
    vrDead_icon = fungusbeast_dead_icon_rsc
    vrDead_name = fungusbeast_dead_name_rsc
+
+   viRest_frame = 1
+   viLook_start_frame = 2
+   viLook_end_frame = 7
+   viLook_duration = 300      // Duration per frame.
+   viMove_start_frame = 2
+   viMove_end_frame = 7
+   viMove_duration = 150      // Duration per frame.
+   viAttack_start_frame = 8
+   viAttack_end_frame = 12
+   viAttack_duration = 150    // Duration per frame.
+   viHit_start_frame = 8
+   viHit_end_frame = 11
+   viHit_duration = 500       // Maximum total duration of animation.
+
+   viSpecial_start_frame = 13
+   viSpecial_end_frame = 13
+   viSpecial_duration = 150   // Duration per frame.
 
    viTreasure_type = TID_MEDIUM
    viSpeed = SPEED_VERY_SLOW
@@ -110,38 +126,16 @@ messages:
       return;
    }
 
-   SendMoveAnimation()
-   {
-      AddPacket(1,ANIMATE_CYCLE,4,75,2,2,2,7);
-
-      return;
-   }
-
    SendAnimation()
    {
       if piAnimation = ANIM_SLEEP
       {
-         AddPacket(1,ANIMATE_NONE,2,13);
+         AddPacket(1,ANIMATE_NONE,2,viSpecial_start_frame);
 
          return;
       }
 
-      if piAnimation = ANIM_ATTACK
-      {
-         AddPacket(1,ANIMATE_ONCE,4,150,2,8,2,12,2,1);
-
-         return;
-      }
-
-      if piAnimation = ANIM_HIT
-      {
-         AddPacket(1,ANIMATE_ONCE,4,125,2,8,2,9,2,1);
-         return;
-      }
-
-      AddPacket(1,ANIMATE_NONE,2,1);
-
-      return;
+      propagate;
    }
 
    // stuff for spore sending

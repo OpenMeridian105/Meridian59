@@ -8,21 +8,11 @@
 
 
 ////////////////////////////////////////////////////////////////////////////////
-SpinebeastBoss is Monster
+SpinebeastBoss is Spinebeast
 
 constants:
 
    include blakston.khd
-
-   ANIM_GORE = 2
-
-   FRAME_STAND = 1
-   FRAME_WALK_START = 2
-   FRAME_WALK_END = 12
-   FRAME_ATTACK_START = 13
-   FRAME_ATTACK_END = 19
-   FRAME_GORE_START = 20
-   FRAME_GORE_END = 26
 
 resources:
 
@@ -98,6 +88,9 @@ classvars:
    vbCanSeduce = FALSE
 
    viMaxChildSpawns = 20
+
+   // Too boss to be pushed around.
+   vbCan_be_pushed = FALSE
 
 properties:
 
@@ -234,66 +227,6 @@ messages:
       return;
    }
 
-   SendLookAnimation()
-   {
-      AddPacket(1,ANIMATE_CYCLE, 4,100,2,FRAME_WALK_START,2,FRAME_WALK_END);
-
-      return;
-   }
-
-   SendMoveAnimation()
-   {
-      AddPacket(1,ANIMATE_CYCLE,4,100,2,FRAME_WALK_START,2,FRAME_WALK_END);
-
-      return;
-   }
-
-   DoMeleeAnimation(what = $)
-   {
-      if NOT Random(0,2)
-      {
-         piAnimation = ANIM_GORE;
-      }
-      else
-      {
-         piAnimation = ANIM_ATTACK;
-      }
-
-      Send(poOwner,@SomethingChanged,#what=self);
-
-      piAnimation = ANIM_NONE;
-
-      return;
-   }
-
-   SendAnimation()
-   {
-      if piAnimation = ANIM_ATTACK
-      {
-         AddPacket(1,ANIMATE_ONCE,4,100,2,FRAME_ATTACK_START,2,
-                   FRAME_ATTACK_END,2,FRAME_STAND);
-
-         return;
-      }
-
-      if piAnimation = ANIM_GORE
-      {
-         AddPacket(1,ANIMATE_ONCE,4,125,2,FRAME_GORE_START,2,
-                   FRAME_GORE_END,2,FRAME_STAND);
-
-         return;
-      }
-
-      propagate;
-   }
-
-   // SpinebeastBosss are quite fast on their feet, but that shouldn't translate to
-   // equally fast attacks...
-   GetAttackTime()
-   {
-      return MOB_ATTACK_TIMER_WAIT + Random(500,1000);
-   }
-
    DestroyDisposable()
    {
       return;
@@ -302,32 +235,6 @@ messages:
    CanMorphTo()
    {
       return FALSE;
-   }
-
-   IsAlliedClass(what=$)
-   {
-      if IsClass(what,&SpinebeastBoss) /* OR
-         IsClass(what,&SpinebeastBossSmall)*/ // Class does not exist yet.
-      {
-         return TRUE;
-      }
-
-      propagate;
-   }
-
-   IsEnemy(what=$)
-   {
-      if IsClass(what,&Nyrphling)
-      {
-         return TRUE;
-      }
-
-      propagate;
-   }
-
-   IsExpansionMonster()
-   {
-      return TRUE;
    }
 
 end

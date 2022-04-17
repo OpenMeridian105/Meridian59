@@ -42,6 +42,21 @@ classvars:
    vrDesc = skeleton_desc_rsc
    vrDead_icon = skeleton_dead_icon_rsc
    vrDead_name = skeleton_dead_name_rsc
+
+   // Standard frames for resting, moving, attacking and getting hit.
+   viRest_frame = 1
+   viLook_start_frame = 2
+   viLook_end_frame = 13
+   viLook_duration = 100      // Duration per frame.
+   viMove_start_frame = 2
+   viMove_end_frame = 7
+   viMove_duration = 100      // Duration per frame.
+   viAttack_start_frame = 8
+   viAttack_end_frame = 13
+   viAttack_duration = 100    // Duration per frame.
+   viHit_start_frame = 3
+   viHit_end_frame = 8
+   viHit_duration = 500       // Maximum total duration of animation.
    
    viCashmin = 50
    viCashmax = 400
@@ -118,14 +133,19 @@ messages:
       return (viDifficulty*10)/2;
    }
 
-   SendMoveAnimation()
+   SendLookOverlays()
    {
+      // 1 overlay: the head.
+      AddPacket(1,1);
+      AddPacket(4,vrHeadIcon, 1,HS_HEAD);
+
       if piColor_Translation <> 0
       {
          AddPacket(1,ANIMATE_TRANSLATION, 1,piColor_Translation);
       }
-
-      AddPacket(1,ANIMATE_CYCLE, 4,100, 2,2, 2,7);
+      
+      AddPacket(1,ANIMATE_CYCLE, 4,viLook_duration,
+         2,viLook_start_frame, 2,viLook_end_frame);
 
       return;
    }
@@ -134,7 +154,15 @@ messages:
    {
       // 1 overlay: the head.
       AddPacket(1,1);
-      AddPacket(4,vrHeadIcon, 1,HS_HEAD, 1,ANIMATE_CYCLE, 4,100, 2,2, 2,7);
+      AddPacket(4,vrHeadIcon, 1,HS_HEAD);
+
+      if piColor_Translation <> 0
+      {
+         AddPacket(1,ANIMATE_TRANSLATION, 1,piColor_Translation);
+      }
+
+      AddPacket(1,ANIMATE_CYCLE, 4,viMove_duration,
+         2,viMove_start_frame, 2,viMove_end_frame);
 
       return;
    }
@@ -144,34 +172,7 @@ messages:
       local iRandom, iTime;
 
       // 1 overlay: the head.
-      AddPacket(1,1);
-
-      if piAnimation = ANIM_ATTACK
-      {
-         AddPacket(4,vrHeadIcon, 1,HS_HEAD, 1,ANIMATE_ONCE, 4,100, 2,8, 2,13,
-                   2,1);
-      }
-      else if piAnimation = ANIM_HIT
-      {
-         iTime = GetTickCount()%600;
-         iTime = Bound(iTime,300,$);
-
-         iRandom = GetTime()%2;
-
-         AddPacket(4,vrHeadIcon, 1,HS_HEAD, 1,ANIMATE_ONCE, 4,
-            iTime, 2,11+iRandom, 2,11+iRandom, 2,1);
-      }
-      else
-      {
-         AddPacket(4,vrHeadIcon, 1,HS_HEAD, 1,ANIMATE_NONE, 2,1);
-      }
-
-      return;
-   }
-
-   SendAnimation()
-   {
-      local iRandom, iTime;
+      AddPacket(1,1, 4,vrHeadIcon, 1,HS_HEAD);
 
       if piColor_Translation <> 0
       {
@@ -180,21 +181,20 @@ messages:
 
       if piAnimation = ANIM_ATTACK
       {
-         AddPacket(1,ANIMATE_ONCE, 4,100, 2,8, 2,13, 2,1);
-         return;
+         AddPacket(1,ANIMATE_ONCE, 4,viAttack_duration,
+            2,viAttack_start_frame, 2,viAttack_end_frame,
+            2,viRest_frame);
       }
-
-      if piAnimation = ANIM_HIT
+      else if piAnimation = ANIM_HIT
       {
-         iTime = GetTickCount()%600;
-         iTime = Bound(iTime,300,$);
-         iRandom = GetTime()%2;
-
-         AddPacket(1,ANIMATE_ONCE,4,iTime,2,11+iRandom,2,11+iRandom,2,1);
-         return;
+         Send(self,@SendHitAnimation,#startframe=viHit_start_frame,
+            #endframe=viHit_end_frame,#restframe=viRest_frame,
+            #duration=viHit_duration);
       }
-
-      AddPacket(1,ANIMATE_NONE,2,1);
+      else
+      {
+         AddPacket(1,ANIMATE_NONE, 2,viRest_frame);
+      }
 
       return;
    }
@@ -224,6 +224,11 @@ messages:
       }
 
       propagate;
+   }
+
+   HasOverlays()
+   {
+      return TRUE;
    }
 
 end

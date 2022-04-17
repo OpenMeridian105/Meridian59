@@ -28,6 +28,20 @@ constants:
 
    EQUIPMENT_DROP_PERCENT = 20
 
+   HUMAN_HIT_BASE_DURATION = 150
+   HUMAN_HIT_RANDOM_DURATION = 300
+
+   HUMAN_HIT_TORSO = 15
+   HUMAN_HIT_LEFT_ARM = 19
+   HUMAN_HIT_RIGHT_ARM = 27
+   HUMAN_HIT_LEGS = 17
+   HUMAN_HIT_FRAME_COUNT = 2
+
+   HUMAN_REST_FRAME = 1
+   HUMAN_WEAPON_REST_FRAME = 17
+
+
+
 resources:
 
    include human.lkod
@@ -818,23 +832,22 @@ messages:
       return viDifficulty * 11;
    }
 
-   // Returns weapon used.
+   // Returns weapon used. Code copied and adapted from player.kod.
    GetWeapon()
    {
       local oWeapon;
 
       oWeapon = Send(self,@LookupPlayerWeapon);
-      // If there is no wielded melee weapon, then see if we
-      // have a touch attack active.
+
       if oWeapon = $
       {
-         // This will return $ if there's no Touch Attacks enchanting player.
-         oWeapon = Send(self,@GetEnchantmentsByClass,
-               #EnchClass=&TouchAttackSpell);
-         if oWeapon <> $
+         if Send(self,@GetEnchantmentsByClass,#EnchClass=&TouchAttackSpell) <> $
          {
-            // The spell object is the second element of the list. Get that.
-            oWeapon = Nth(first(oWeapon),2);
+            return Send(SYS,@FindSkillByNum,#num=SKID_TOUCH);
+         }
+         else
+         {
+            return Send(SYS,@FindSkillByNum,#num=SKID_PUNCH);
          }
       }
 
@@ -940,7 +953,7 @@ messages:
 
       oWeapon = Send(self,@GetWeapon);
 
-      if oWeapon = $
+      if IsClass(oWeapon,&Punch)
       {
          Send(self,@DoFistAttack);
       }
@@ -948,7 +961,7 @@ messages:
       {
          Send(oWeapon,@WeaponAttack);
       }
-      else if IsClass(oWeapon,&TouchAttackSpell)
+      else if IsClass(oWeapon,&Touch)
       {
          Send(self,@DoCast);
       }
@@ -1109,6 +1122,15 @@ messages:
       return TRUE;
    }
 
+   MonsterHitAnimation()
+   {
+      piAnimation = PANM_HIT;
+      Send(poOwner,@SomethingChanged,#what=self);
+      piAnimation = PANM_NONE;
+
+      return;
+   }
+
    GetAttackRange()
    {
       local iWeapon;
@@ -1142,7 +1164,7 @@ messages:
 
    SendAnimation()
    {
-      local iBody_xlat;
+      local iBody_xlat, iTime, iFrame;
 
       iBody_xlat = (piBody_translations & HUMAN_TRANSLATION_BODY_MASK)
                         / HUMAN_TRANSLATION_BODY_MUL;
@@ -1168,6 +1190,25 @@ messages:
       if piAnimation = PANM_BOW_FIRE
       {
          AddPacket(1,ANIMATE_ONCE, 4,1200, 2,5, 2,5, 2,1);
+
+         return;
+      }
+
+      // Players and humans also have hit animations, yet because of the various
+      // overlays in place, we have to mix and match overlays to get a reasonable
+      // result. As such, there is no designated hit start frame or end frame as
+      // other mobs have it since the frame selection is overlay specific.
+      if piAnimation = PANM_HIT
+      {
+         // In order to keep frames synchronized across overlays, we have to use
+         // timestamp-based randomness. We use GetTime to pick frames and
+         // GetTickCount to determine animation speed.
+         // Introduce persistent randomness across animation components.
+         iTime = GetTime();
+         iFrame = HUMAN_HIT_TORSO + iTime % HUMAN_HIT_FRAME_COUNT;
+         AddPacket(1,ANIMATE_ONCE, 4,HUMAN_HIT_BASE_DURATION
+            + GetTickCount() % HUMAN_HIT_RANDOM_DURATION,
+            2,iFrame, 2,iFrame, 2,HUMAN_REST_FRAME);
 
          return;
       }
@@ -1290,7 +1331,8 @@ messages:
    SendOverlays()
    {
       local i,iOverlays,hotspot,iLeft_group,iRight_group,iSkin_xlat,
-            iArms_xlat, iLegs_xlat;
+            iArms_xlat, iLegs_xlat, iFrame, iTime, bWeapon;
+
 
       // Send overlay bitmap info to user.  
 
@@ -1324,6 +1366,13 @@ messages:
          }
       }
 
+      // In case of a knockback, GetTime() decides which frames are used.
+      if piAnimation = PANM_HIT
+      {
+         iTime = GetTime();
+         bWeapon = IsClass(Send(self,@GetWeapon),&Weapon);
+      }
+
       AddPacket(1, iOverlays);
       iArms_xlat = (piBody_translations2 & HUMAN_TRANSLATION2_ARMS_MASK)
                         / HUMAN_TRANSLATION2_ARMS_MUL;
@@ -1349,6 +1398,14 @@ messages:
       else if piAnimation = PANM_WEAPON_ATTACK
       {
          AddPacket(1,ANIMATE_ONCE, 4,300, 2,4, 2,6, 2,iLeft_group);
+      }
+      // See SendAnimation for details.
+      else if piAnimation = PANM_HIT
+      {
+         iFrame = HUMAN_HIT_LEFT_ARM + iTime % HUMAN_HIT_FRAME_COUNT;
+         AddPacket(1,ANIMATE_ONCE, 4,HUMAN_HIT_BASE_DURATION
+            + GetTickCount() % HUMAN_HIT_RANDOM_DURATION,
+            2,iFrame, 2,iFrame, 2,iLeft_group);
       }
       else if piAnimation = PANM_DANCE
       {
@@ -1393,6 +1450,23 @@ messages:
       {
          AddPacket(1,ANIMATE_ONCE, 4,300, 2,4, 2,6, 2,17);
       }
+      else if piAnimation = PANM_HIT
+      {
+         iFrame = HUMAN_HIT_RIGHT_ARM + iTime % HUMAN_HIT_FRAME_COUNT;
+         // Need different animations for targets wielding a weapon.
+         if bWeapon
+         {
+            AddPacket(1,ANIMATE_ONCE, 4,HUMAN_HIT_BASE_DURATION
+               + GetTickCount() % HUMAN_HIT_RANDOM_DURATION,
+               2,iFrame, 2,iFrame, 2,HUMAN_WEAPON_REST_FRAME);
+         }
+         else
+         {
+            AddPacket(1,ANIMATE_ONCE, 4,HUMAN_HIT_BASE_DURATION
+               + GetTickCount() % HUMAN_HIT_RANDOM_DURATION,
+               2,iFrame, 2,iFrame, 2,iRight_group);
+         }
+      }
       else if piAnimation = PANM_DANCE
       {
          AddPacket(1,ANIMATE_CYCLE, 4,150, 2,18, 2,34);
@@ -1418,9 +1492,12 @@ messages:
       {
          AddPacket(1,ANIMATE_ONCE, 4,1200, 2,7, 2,7, 2,1);
       }
-      else if piAnimation = PANM_DANCE
+      else if piAnimation = PANM_HIT
       {
-         AddPacket(1,ANIMATE_CYCLE, 4,150, 2,8, 2,24);
+         iFrame = HUMAN_HIT_LEGS + iTime % HUMAN_HIT_FRAME_COUNT;
+         AddPacket(1,ANIMATE_ONCE, 4,HUMAN_HIT_BASE_DURATION
+            + GetTickCount() % HUMAN_HIT_RANDOM_DURATION,
+            2,iFrame, 2,iFrame, 2,HUMAN_REST_FRAME);
       }
       else
       {

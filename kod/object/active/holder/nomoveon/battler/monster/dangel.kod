@@ -62,6 +62,21 @@ classvars:
    vrDead_name = DarkAngel_dead_name_rsc
    vrKocName = DarkAngel_koc_name_rsc
 
+   // Animation frames and frame durations.
+   viRest_frame = 1
+   viLook_start_frame = 1
+   viLook_end_frame = 1
+   viLook_duration = 200      // Duration per frame.
+   viMove_start_frame = 1
+   viMove_end_frame = 1
+   viMove_duration = 200      // Duration per frame.
+   viAttack_start_frame = 2
+   viAttack_end_frame = 6
+   viAttack_duration = 125    // Duration per frame.
+   viHit_start_frame = 2
+   viHit_end_frame = 4
+   viHit_duration = 500       // Maximum total duration of animation.
+
    viTreasure_type = TID_DARK_ANGEL
    viCashmin = 0
    viCashmax = 0
@@ -168,20 +183,6 @@ messages:
       return LIGHT_BORANGE;
    }
 
-   SendLookAnimation()
-   {
-      AddPacket(1,ANIMATE_NONE,2,FRAME_STAND);
-
-      return;
-   }
-
-   SendMoveAnimation()
-   {
-      AddPacket(1,ANIMATE_NONE, 2,FRAME_STAND);
-
-      return;
-   }
-
    SendMoveOverlays()
    {
       Send(self,@SendOverlays);
@@ -197,42 +198,6 @@ messages:
                 2,FRAME_WING_END);
 
       return;
-   }
-
-   SendAnimation(iAnimation = $)
-   {
-      local iAnim;
-
-      if iAnimation = $
-      {
-         iAnim = piAnimation;
-      }
-      else
-      {
-         iAnim = iAnimation;
-      }
-      
-      if iAnim = ANIM_NONE
-      {
-         AddPacket(1,ANIMATE_NONE,2,FRAME_STAND);
-
-         return;
-      }
-      
-      if iAnim = ANIM_ATTACK
-      {
-         AddPacket(1,ANIMATE_ONCE, 4,ANIM_SPEED, 2,FRAME_ATTACK_START,
-                   2,FRAME_ATTACK_END, 2,FRAME_STAND);
-
-         return;
-      }
-
-      propagate;
-   }
-
-   Delete()
-   {
-      propagate;
    }
 
    CanMorphTo()

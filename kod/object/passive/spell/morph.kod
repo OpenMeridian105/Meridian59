@@ -382,6 +382,42 @@ messages:
       return Send(oIllusion,@GetIcon);
    }
 
+   IllusionSetAnimation(who = $, animation = $)
+   {
+      if (animation = PANM_FIST_ATTACK)
+         OR (animation = PANM_WEAPON_ATTACK)
+         OR (animation = PANM_MONSTER_ATTACK)
+         OR (animation = PANM_WEAPON_UNLEASH)
+         OR (animation = PANM_POINT)
+      {
+         Send(who,@SetAnimation,#animation=ANIM_ATTACK);
+      }
+      else if (animation = PANM_BOW_FIRE)
+      {
+         Send(who,@SetAnimation,#animation=ANIM_FIRE);
+      }
+      else if (animation = PANM_CAST)
+         OR (animation = PANM_WAVE)
+      {
+         Send(who,@SetAnimation,#animation=ANIM_CAST);
+      }
+      else if (animation = PANM_DANCE)
+      {
+         Send(who,@SetAnimation,#animation=ANIM_SPECIAL);
+      }
+      else if (animation = PANM_HIT)
+         OR (animation = PANM_OFF_GUARD)
+      {
+         Send(who,@SetAnimation,#animation=ANIM_HIT);
+      }
+      else
+      {
+         Send(who,@SetAnimation,#animation=ANIM_NONE);
+      }
+
+      return;
+   }
+
    IllusionSendAnimation(who = $,animation = $)
    {
       local iIllusion_type, oIllusion;
@@ -393,16 +429,8 @@ messages:
       }
 
       oIllusion = Nth(Send(SYS,@GetMonsterTemplates),iIllusion_type);
-      if animation = PANM_WEAPON_ATTACK
-         OR animation = PANM_FIST_ATTACK
-         OR animation = PANM_MONSTER_ATTACK
-      {
-         Send(oIllusion,@SetAnimation,#animation=ANIM_ATTACK);
-      }
-      else
-      {
-         Send(oIllusion,@SetAnimation,#animation=ANIM_NONE);
-      }
+
+      Send(self,@IllusionSetAnimation,#who=oIllusion,#animation=animation);
 
       Send(oIllusion,@SendAnimation);
 
@@ -436,16 +464,8 @@ messages:
       }
 
       oIllusion = Nth(Send(SYS,@GetMonsterTemplates),iIllusion_type);
-      if animation = PANM_WEAPON_ATTACK
-         OR animation = PANM_FIST_ATTACK
-         OR PANM_MONSTER_ATTACK
-      {
-         Send(oIllusion,@SetAnimation,#animation=ANIM_ATTACK);
-      }
-      else
-      {
-         Send(oIllusion,@SetAnimation,#animation=ANIM_NONE);
-      }
+
+      Send(self,@IllusionSetAnimation,#who=oIllusion,#animation=animation);
 
       Send(oIllusion,@SendOverlays);
 

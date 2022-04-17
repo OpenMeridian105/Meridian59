@@ -17,24 +17,6 @@ constants:
 
    include blakston.khd
 
-   ANIM_POPUP = 2
-   ANIM_THROW = 3
-
-   FRAME_STANDING = 1
-   FRAME_WALK_START = 2
-   FRAME_WALK_END = 6
-   FRAME_ATTACK_START = 7
-   FRAME_ATTACK_END = 10
-   FRAME_THROW_START = 11
-   FRAME_THROW_END = 14
-   FRAME_POPUP_START = 15
-   FRAME_POPUP_END = 19
-
-   ANIMATION_WALK_SPEED = 80
-   ANIMATION_ATTACK_SPEED = 225
-   ANIMATION_THROW_SPEED = 80
-   ANIMATION_POPUP_SPEED = 200
-
    // Time from creation to "popping up"
    POPUP_DELAY = 2500
 
@@ -69,6 +51,27 @@ classvars:
    vrDesc = MolluskMonster_desc_rsc
    vrDead_icon = MolluskMonster_dead_icon_rsc
    vrDead_name = MolluskMonster_dead_name_rsc
+
+   viRest_frame = 1
+   viLook_start_frame = 7
+   viLook_end_frame = 10
+   viLook_duration = 400      // Duration per frame.
+   viMove_start_frame = 2
+   viMove_end_frame = 6
+   viMove_duration = 80       // Duration per frame.
+   viAttack_start_frame = 7
+   viAttack_end_frame = 10
+   viAttack_duration = 225    // Duration per frame.
+   viHit_start_frame = 11
+   viHit_end_frame = 13
+   viHit_duration = 500       // Maximum total duration of animation.
+
+   viSpecial_start_frame = 15
+   viSpecial_end_frame = 19
+   viSpecial_duration = 200   // Duration per frame.
+   viFire_start_frame = 11
+   viFire_end_frame = 14
+   viFire_duration = 80       // Duration per frame.
 
    viTreasure_type = TID_MOLLUSK
    viSpeed = SPEED_FAST
@@ -150,77 +153,17 @@ messages:
       {
          if ptActive = $
          {
-            AddPacket(1,ANIMATE_NONE, 2,FRAME_STANDING);
+            AddPacket(1,ANIMATE_NONE, 2,viRest_frame);
          }
          else
          {
-            AddPacket(1,ANIMATE_NONE, 2,FRAME_POPUP_START);
+            AddPacket(1,ANIMATE_NONE, 2,viSpecial_start_frame);
          }
-
-         return;
-      }
-
-      if piAnimation = ANIM_ATTACK
-      {
-         Send(self,@SendAttackAnimation);
-
-         return;
-      }
-
-      if piAnimation = ANIM_THROW
-      {
-         Send(self,@SendThrowAnimation);
-
-         return;
-      }
-
-      if piAnimation = ANIM_POPUP
-      {
-         Send(self,@SendPopupAnimation);
 
          return;
       }
 
       propagate;
-   }
-
-   SendAttackAnimation()
-   {
-      AddPacket(1,ANIMATE_ONCE, 4,ANIMATION_ATTACK_SPEED,
-                2,FRAME_ATTACK_START, 2,FRAME_ATTACK_END, 2,FRAME_STANDING);
-
-      return;
-   }
-
-   SendThrowAnimation()
-   {
-      AddPacket(1,ANIMATE_ONCE, 4,ANIMATION_THROW_SPEED,
-                2,FRAME_THROW_START, 2,FRAME_THROW_END, 2,FRAME_STANDING);
-
-      return;
-   }
-
-   SendMoveAnimation()
-   {
-      AddPacket(1,ANIMATE_CYCLE, 4,ANIMATION_WALK_SPEED,
-                2,FRAME_WALK_START, 2,FRAME_WALK_END);
-
-      return;
-   }
-
-   SendPopupAnimation()
-   {
-      AddPacket(1,ANIMATE_ONCE, 4,ANIMATION_POPUP_SPEED,
-                2,FRAME_POPUP_START, 2,FRAME_POPUP_END, 2,FRAME_STANDING);
-
-      return;
-   }
-
-   SendLookAnimation()
-   {
-      AddPacket(1,ANIMATE_NONE, 2,FRAME_STANDING);
-
-      return;
    }
 
    DoMissileAnimation()

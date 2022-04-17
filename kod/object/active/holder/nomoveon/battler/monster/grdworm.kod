@@ -14,22 +14,9 @@ constants:
 
    include blakston.khd
 
-   ANIM_POPUP = 2
-   ANIM_POPDOWN = 3
-   ANIM_POPUPATTACK = 4
-
-   FRAME_UNDERGROUND = 1
-   FRAME_POPUP_START = 2
-   FRAME_POPUP_END = 6
-   FRAME_SURFACED = 7
-   FRAME_ATTACK_START = 8
-   FRAME_ATTACK_END = 11
-   FRAME_POPDOWN_START = 12
-   FRAME_POPDOWN_END = 14
-
-   ANIMATION_SPEED = 80
-
    POSTPOP_DELAY = 500     // half a second
+
+   GROUNDWORM_MOVE = 0
 
 resources:
 
@@ -62,6 +49,26 @@ classvars:
    vrDead_icon = GroundWorm_dead_icon_rsc
    vrDead_name = GroundWorm_dead_name_rsc
 
+   viRest_frame = 7           // Surfaced frame.
+   viLook_start_frame = 7     // Surfaced frame.
+   viLook_end_frame = 7       // Surfaced frame.
+   viLook_duration = 250      // Duration per frame.
+   viMove_start_frame = 1     // Submerged frame.
+   viMove_end_frame = 1       // Submerged frame.
+   viMove_duration = 150      // Duration per frame.
+   viAttack_start_frame = 8
+   viAttack_end_frame = 11
+   viAttack_duration = 150    // Duration per frame.
+   viHit_start_frame = 10
+   viHit_end_frame = 11
+   viHit_duration = 500       // Maximum total duration of animation.
+   viCast_start_frame = 2     // Popup start frame.
+   viCast_end_frame = 6       // Popup start frame.
+   viCast_duration = 150      // Duration per frame.
+   viSpecial_start_frame = 12 // Popdown start frame.   
+   viSpecial_end_frame = 14   // Popdown end frame.   
+   viSpecial_duration = 80    // Duration per frame.
+
    viTreasure_type = TID_TOUGH
    viSpeed = SPEED_FAST
    viSpell_type = SPL_TYPE_ACID
@@ -80,6 +87,9 @@ classvars:
    viTrailLength = 3
    vbTrailLarge = TRUE
 
+   // Firmly planted in the ground.
+   vbCan_be_pushed = FALSE
+
 properties:
 
    piAnimation = ANIM_NONE
@@ -88,8 +98,6 @@ properties:
    piLastCol = 0
 
    pbSurfaced = FALSE
-
-   ptPostPop = $
 
 messages:
 
@@ -116,36 +124,9 @@ messages:
       }
       else
       {
-         if ptPostPop = $
-         {
-            ptPostPop = createTimer(self,@PostPop,POSTPOP_DELAY);
-            piAnimation = ANIM_POPUPATTACK;
-            pbSurfaced = TRUE;
-            Send(poOwner,@SomethingChanged,#what=self);
-            piAnimation = ANIM_NONE;
-         }
+         // If we weren't above ground before, we are now.
+         Send(self,@Pop,#bUp=TRUE);
       }
-
-      return;
-   }
-
-   PopDown()
-   {
-      if ptPostPop = $
-      {
-         ptPostPop = createTimer(self,@PostPop,POSTPOP_DELAY);
-         piAnimation = ANIM_POPDOWN;
-         pbSurfaced = FALSE;
-         Send(poOwner,@SomethingChanged,#what=self);
-         piAnimation = ANIM_NONE;
-      }
-
-      return;
-   }
-
-   PostPop()
-   {
-      ptPostPop = $;
 
       return;
    }
@@ -154,7 +135,7 @@ messages:
    {
       if pbSurfaced
       {
-         Send(self,@PopDown);
+         Send(self,@Pop);
       }
 
       propagate;
@@ -164,7 +145,7 @@ messages:
    {
       if pbSurfaced
       {
-         Send(self,@PopDown);
+         Send(self,@Pop);
       }
 
       propagate;
@@ -174,7 +155,7 @@ messages:
    {
       if pbSurfaced
       {
-         Send(self,@PopDown);
+         Send(self,@Pop);
       }
 
       propagate;
@@ -182,95 +163,49 @@ messages:
 
    SendMoveAnimation()
    {
-      Send(self,@SendAnimation);
-
+      Send(self,@SendNoAnimation);
       return;
    }
 
-   SendAnimation()
+   SendHitAnimation()
    {
-      if piAnimation = ANIM_ATTACK
+      if NOT pbSurfaced
       {
-         Send(self,@SendAttackAnimation);
-
+         AddPacket(1,ANIMATE_NONE,2,viMove_start_frame);
          return;
       }
 
-      if piAnimation = ANIM_POPUP
-      {
-         Send(self,@SendPopupAnimation);
+      propagate;
+   }
 
+   SendNoAnimation()
+   {
+      if NOT pbSurfaced
+      {
+         AddPacket(1,ANIMATE_NONE,2,viMove_start_frame);
          return;
       }
 
-      if piAnimation = ANIM_POPDOWN
-      {
-         Send(self,@SendPopdownAnimation);
-
-         return;
-      }
-
-      if piAnimation = ANIM_POPUPATTACK
-      {
-         Send(self,@SendPopupAttackAnimation);
-
-         return;
-      }
-
-      if pbSurfaced
-      {
-         AddPacket(1,ANIMATE_NONE,2,FRAME_SURFACED);
-      }
-      else
-      {
-         AddPacket(1,ANIMATE_NONE,2,FRAME_UNDERGROUND);
-      }
-
-      return;
+      propagate;
    }
 
    SendAttackAnimation()
    {
-      AddPacket(1,ANIMATE_ONCE,4,ANIMATION_SPEED,2,FRAME_ATTACK_START,
-            2,FRAME_ATTACK_END,2,FRAME_SURFACED);
-
-      return;
-   }
-
-   SendPopupAnimation()
-   {
-      AddPacket(1,ANIMATE_ONCE,4,ANIMATION_SPEED,2,FRAME_POPUP_START,
-            2,FRAME_POPUP_END,2,FRAME_SURFACED);
-
-      return;
-   }
-
-   SendPopdownAnimation()
-   {
-      AddPacket(1,ANIMATE_ONCE,4,ANIMATION_SPEED,2,FRAME_POPDOWN_START,
-            2,FRAME_POPDOWN_END,2,FRAME_UNDERGROUND);
-
-      return;
-   }
-
-   SendPopupAttackAnimation()
-   {
-      AddPacket(1,ANIMATE_ONCE,4,ANIMATION_SPEED,2,FRAME_POPUP_START,
-            2,FRAME_ATTACK_END,2,FRAME_SURFACED);
-
-      return;
-   }
-
-   SendLookAnimation()
-   {
-      if pbSurfaced
+      if NOT pbSurfaced
       {
-         AddPacket(1,ANIMATE_NONE,2,FRAME_SURFACED);
+         AddPacket(1,ANIMATE_ONCE,4,viAttack_duration,2,viCast_start_frame,
+               2,viAttack_end_frame,2,viRest_frame);
+         return;
       }
-      else
-      {
-         AddPacket(1,ANIMATE_NONE,2,FRAME_POPUP_START);
-      }
+
+      propagate;
+   }
+
+   // Popdown
+   SendSpecialAnimation()
+   {
+      AddPacket(1,ANIMATE_ONCE,4,viSpecial_duration,2,viSpecial_start_frame,
+            2,viSpecial_end_frame,2,viMove_start_frame);
 
       return;
    }
@@ -395,19 +330,6 @@ messages:
       return TRUE;
    }
 
-   Killed(what = $)
-   {
-      // Delete this now, in case this timer is active.
-      if ptPostPop <> $
-      {
-         DeleteTimer(ptPostPop);
-      }
-
-      ptPostPop = $;
-
-      propagate;
-   }
-
    Delete()
    {
       local i;
@@ -416,13 +338,8 @@ messages:
       {
          Send(i,@Delete);
       }
-      plTrail = $;
 
-      if ptPostPop <> $
-      {
-         DeleteTimer(ptPostPop);
-      }
-      ptPostPop = $;
+      plTrail = $;
 
       propagate;
    }
@@ -432,111 +349,57 @@ messages:
       return FALSE;
    }
 
-   ////  Action Routines
-   EngageTimer( timer = $ )
-   "We're trying to engage our target, so either we keep"
-   "chasing, or we attack. Note that even if we can't move,"
-   "we can still be 'engaging'...."
+   // Are we willing to move as our actual combat action?
+   // Nope, we're not very mobile.
+   ActiveMoveCheck()
    {
-      local i,oVictim, iDistance, iChaseRange, iDelay, bSight;
-      oVictim = poTarget;
+      return FALSE;
+   }
 
-      Send(self,@ClearBehavior,#timer=timer);
-
-      // Sanity checks
-      if poOwner = $
+   MonsterPostAction(type=$)
+   "Effects that neeed to happen immediately post action."
+   {
+      if type = GROUNDWORM_MOVE
       {
-         Debug("Unreachable. Null owner.");
-         Send(self,@EnterStateLimbo);
-
-         return;
+         Send(self,@Pop,#bDown=TRUE);
       }
 
-      // If target left, we should already know
-      if oVictim = $
-      {
-         //Debug("Unreachable. Null victim.");
-         Send(self,@EnterStateWait);
+      return;
+   }
 
-         return;
+   Pop(bUp=FALSE,bDown=FALSE,timer=$)
+   {
+      local bBefore;
+
+      bBefore = pbSurfaced;
+
+      if NOT (bUp OR bDown)
+         OR (bUP AND bDown)
+      {
+         pbSurfaced = NOT pbSurfaced;
       }
-
-      // Victim phased out or is now in spectator mode, break aggro.
-      if IsClass(oVictim,&User)
-         AND Send(oVictim,@IsInCannotInteractMode)
+      else if bUp
       {
-         Send(self,@EnterStateMove);
-
-         return;
-      }
-
-      // Get distance to target and check LoS.
-      iDistance = Send(self,@SquaredFineDistanceTo3D,#what=oVictim);
-      bSight = Send(poOwner,@LineOfSight,#obj1=self,#obj2=oVictim);
-
-      // Mobs may stop chasing if the target gets out of range.
-      // Not if it has hurt us recently though.
-      if NOT Send(self,@GetHurtMeRecentlyAmount,#who=oVictim)
-      {
-         iChaseRange =  piVisionDistance * FINENESS;
-         iChaseRange = iChaseRange * (50 + piStamina) / 50;
-         if NOT bSight
-         {
-            iChaseRange /= 5;
-         }
-         iChaseRange *= iChaseRange;
-
-         // Mobs may lose interest if the target is too far away or out of sight.
-         if (NOT ((piBehavior & AI_FIGHT_SINGLEMINDED) OR (poMaster <> $)))
-            AND (iDistance > iChaseRange)
-         {
-            Send(self,@EnterStateMove);
-
-            return;
-         }
-      }
-
-      if Send(self,@MonsterCombatCheck)
-      {
-         iDelay = Send(self,@MonsterAction,#distance=iDistance,#sight=bSight);
+         pbSurfaced = TRUE;
       }
       else
       {
-         iDelay = 0;
+         pbSurfaced = FALSE;
       }
 
-      if (iDelay = 0) AND pbSurfaced
+      if bBefore <> pbSurfaced
       {
-         Send(self,@PopDown);
-      }
+         if pbSurfaced
+         {
+            piAnimation = ANIM_EMERGE;
+         }
+         else
+         {
+            piAnimation = ANIM_SUBMERGE;
+         }
 
-      // We may no longer be around after the attack (e.g. evil twin killing a target).
-      if poOwner = $
-      {
-         return;
-      }
-
-      // Got gassed after acting and is currently resting. Quit.
-      if (piState & STATE_REST)
-      {
-         return;
-      }
-
-      // If we can move, we physically try to get closer.
-      if iDelay = 0
-      {
-         Send(poBrain,@GetEngageBehavior,#mob=self,#target=poTarget,#behavior=piBehavior);
-      }
-
-      // Monster acted. Pass on the appriopriate delay.
-      if poTarget <> $
-      {
-         Send(poBrain,@PostEngageTimer,#mob=self,#delay=Abs(iDelay));
-      }
-      else
-      {
-         // Target died. Move on.
-         Send(self,@EnterStateMove);
+         Send(poOwner,@SomethingChanged,#what=self);
+         piAnimation = ANIM_NONE;
       }
 
       return;

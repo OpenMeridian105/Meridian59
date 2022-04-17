@@ -44,7 +44,8 @@ constants:
    MONSTER_MELEE = 1
    MONSTER_RANGED = 2
 
-   MONSTER_BASE_SWING_TIME = 625
+   MONSTER_MIN_SWING_TIME = 150
+   MONSTER_MAX_SWING_TIME = 600
 
    // if Random(1,MONSTER_QUICK_ATTACK_CHANCE) < viDifficulty
    // cut attack delay in half.
@@ -367,6 +368,33 @@ classvars:
    // All monsters use BRAIN_ORIGINAL for now.
    viBrain_type = BRAIN_ORIGINAL
 
+   //// Animation frame numbers and frame durations.
+   // Standard frames for resting, moving, attacking and getting hit.
+   viRest_frame = 1
+   viLook_start_frame = 1
+   viLook_end_frame = 1
+   viLook_duration = 150      // Duration per frame.
+   viMove_start_frame = 1
+   viMove_end_frame = 1
+   viMove_duration = 150      // Duration per frame.
+   viAttack_start_frame = 1
+   viAttack_end_frame = 1
+   viAttack_duration = 150    // Duration per frame.
+   viHit_start_frame = 1
+   viHit_end_frame = 1
+   viHit_duration = 500       // Maximum total duration of animation.
+
+   // Extra frames for casting spells, special attacks or firing shots.
+   viCast_start_frame = 1
+   viCast_end_frame = 1
+   viCast_duration = 150      // Duration per frame.
+   viSpecial_start_frame = 1
+   viSpecial_end_frame = 1
+   viSpecial_duration = 150   // Duration per frame.
+   viFire_start_frame = 1
+   viFire_end_frame = 1
+   viFire_duration = 150      // Duration per frame.
+
    // Bitvector for monster/NPC behaviors. This variable contains the flags
    // monsters use for determining combat/aggro behavior.
    viDefault_behavior = 0
@@ -580,7 +608,6 @@ properties:
    piVisionDistance
    piMeleeRange
    piFireRange
-   piAnimation = ANIM_NONE
 
    // List of the mobs wanted items.
    plWantedItems = $
@@ -924,13 +951,13 @@ messages:
       local lActions, i, oSpell;
 
       // Any entry in the monster's spell book needs to have the
-      // following form: [SID,Mana,Vigor,Range,Priority,P-Factor,SP].
+      // following form: [SID,Mana,Vigor,Range,Priority,P-Reduction,SP].
       // SID: Spell ID (e.g. SID_SPLASH_OF_ACID)
       // Mana: Cost of the spell, NOT in precision mode (e.g. 4)
       // Vigor: Cost of the spell, NOT in precision mode (e.g. 1)
       // Range: Squared fine range of the spell (e.g. (3x64)^2 = 36.864)
       // Priority: Mobs will choose spells with higher priority.
-      // P-Factor: Factor that determines how much priority an action
+      // P-Reduction: Subtrahend that determines how much priority an action
       // loses after each use.
       // SP: Spellpower the spell contributes. Additive to monster SP.
       lActions = ListCopy(plActions);
@@ -1561,18 +1588,6 @@ messages:
       poLastAttacker = $;
 
       propagate;
-   }
-
-   // For illusionary form, it makes a bunch of monsters so it can call 'em and
-   //  get access to their SendAnimation() things.  To be useful, it needs to
-   //  be able to set our piAnimation (to either ANIM_NONE or ANIM_ATTACK, which
-   //  work for all monsters).
-
-   SetAnimation(animation = $)
-   {
-      piAnimation = animation;
-
-      return;
    }
 
    //// Enchantments of Monsters
@@ -2506,6 +2521,10 @@ messages:
          iType = MONSTER_MOVE;
       }
 
+      // We might want to do something fancy depending on what type of action
+      // we have taken.
+      Post(self,@MonsterPostAction,#type=iType);
+
       // We may no longer be around after the attack
       // (e.g. evil twin killing a target).
       if poOwner = $
@@ -2535,6 +2554,12 @@ messages:
          }
       }
 
+      return;
+   }
+
+   MonsterPostAction()
+   "Effects that neeed to happen immediately post action."
+   {
       return;
    }
 
@@ -6952,7 +6977,7 @@ messages:
    "Depending on our action, return an appropriate delay."
    {
       local i, iPriority, lActions, lAction, iNum, oSpell, iAttacks, iUrgency,
-         iFactor, iSpellPower, lTargets, iType, iPowerLevel, iPercentage, iAction,
+         iReduction, iSpellPower, lTargets, iType, iPowerLevel, iPercentage, iAction,
          oTarget, oInjured, oAfflicted, bCombat, bMove, bHarm;
 
       // Following a specific order to increase performance.
@@ -7149,38 +7174,9 @@ messages:
       }
 
       // We are allowed to act and got a pool of actions.
-      // Compare priorities to decide for one.
-      iPriority = MIN_KOD_INT;
-      foreach i in lActions
-      {
-         // Reusing variable... iNum is the current priority as saved in the list.
-         iNum = Nth(i,5);
-
-         // Adjust the priority of healing based on victim's health.
-         if Nth(i,8) = COMBAT_ACTION_HEAL
-         {
-            iNum += iUrgency;
-         }
-
-         // If the used action happened to also be our latest action, lower its
-         // priority based on the number of consecutive exections.
-         if First(i) = piAction % 1000
-         {
-            iNum = Send(SYS,@PowerCalculation,#factor=iNum,#denom=2,#exp=(piAction%10000)/1000);
-         }
-
-         // Finally, when out of combat, spells have priority over other actions.
-         if NOT (piState & STATE_ENGAGE) AND (First(i) < SKID_MINIMUM)
-         {
-            iNum = Bound(iNum,viMeleePriority,$);
-         }
-
-         if iNum >= iPriority
-         {
-            lAction = i;
-            iPriority = iNum;
-         }
-      }
+      // Pick the one we like best based on priority.
+      lAction = Send(self,@GetTopPriorityAction,#lActions=lActions,
+         #urgency=iUrgency);
 
       // We have our action at this point, let's check its ID.
       // Also, let's store it in piAction so we can keep track of it.
@@ -7481,7 +7477,8 @@ messages:
       Send(self,@LoseVigor,#amount=Nth(lAction,3),#precision=TRUE);
 
       // If we made it this far, we acted in some way. Adjust our priorities.
-      iFactor = Nth(lAction,6);
+      iPriority = Nth(lAction,5);
+      iReduction = Nth(lAction,6);
 
       foreach i in plActions
       {
@@ -7496,7 +7493,7 @@ messages:
             // We just cast this. Lower priority.
             if iAction = iNum
             {
-               SetNth(i,5,Bound(iPriority - iFactor,-10000,$));
+               SetNth(i,5,Bound(iPriority - iReduction,-10000,$));
             }
             // We are running around. Increase priority slightly.
             else if iNum = SKID_MINIMUM
@@ -7529,14 +7526,14 @@ messages:
                }
                // We can tell it's the mobs standard attack because
                // it's priority isn't lowered after use.
-               else if iFactor = 0
+               else if iReduction = 0
                {
                   SetNth(i,5,viMeleePriority);
                }
                else
                // Special attacks are handled just like spells.
                {
-                  SetNth(i,5,Bound(iPriority - iFactor,-10000,$));
+                  SetNth(i,5,Bound(iPriority - iReduction,-10000,$));
                }
             }
             // We are adjusting the priority of a different attack.
@@ -7719,7 +7716,72 @@ messages:
          return FALSE;
       }
 
+      // We may have checked whether we could reach targets.
+      // Reset our valid target check in case we did.
+      piState &= VSTATE_VALIDITY_MASK;
+
       return iAction;
+   }
+
+   GetTopPriorityAction(lActions=$,urgency=0)
+   "Figure our most pressing action based on priority and urgency."
+   {
+      local bMove, iTop, i, iNum, iPriority, lAction;
+
+      bMove = Send(self,@ActiveMoveCheck);
+
+      iTop = MIN_KOD_INT;
+
+      foreach i in lActions
+      {
+         iNum = First(i);
+
+         iPriority = Nth(i,5);
+
+         // Adjust the priority of healing based on victim's health.
+         if Nth(i,8) = COMBAT_ACTION_HEAL
+         {
+            iPriority += urgency;
+         }
+
+         // If the used action happened to also be our latest action, lower its
+         // priority based on the number of consecutive executions.
+         if iNum = piAction % 1000
+         {
+            iPriority = Send(SYS,@PowerCalculation,#factor=iPriority,
+               #denom=2,#exp=(piAction%10000)/1000);
+         }
+
+         // In combat, let's make sure that regular actions don't drop to or
+         // below move priority unless we feel particularly mobile.
+         if piState & STATE_ENGAGE
+         {
+            if NOT bMove
+               AND (iNum <> SKID_MINIMUM)
+            {
+               iPriority = Bound(iPriority,viMovePriority + 1,$);
+            }
+         }
+         else
+         {
+            // Out of combat, spells have priority over other actions.
+            if iNum < SKID_MINIMUM
+            {
+               iPriority = Bound(iPriority,viMeleePriority,$);
+            }
+         }
+
+         if iPriority > iTop
+         {
+            lAction = i;
+            iTop = iPriority;
+         }
+      }
+
+      // Finally, store our new priority for this particular action.
+      SetNth(lAction,5,iPriority);
+
+      return lAction;
    }
 
    AdjustActionPriority(num=$,amount=$)
@@ -7991,7 +8053,18 @@ messages:
       Send(poOwner,@SomethingChanged,#what=self);
       piAnimation = ANIM_NONE;
 
-      return;
+      // Report that we have successfully played our animation.
+      return TRUE;
+   }
+
+   IsStationary()
+   {
+      if viAttributes & MOB_NOMOVE
+      {
+         return TRUE;
+      }
+
+      propagate;
    }
 
    GetMeleeAnimation()
@@ -11872,16 +11945,8 @@ messages:
    {
       local iTime;
 
-      if viSwing_time = $
-      {
-         iTime = MONSTER_BASE_SWING_TIME;
-         iTime -= viDifficulty*25;
-         iTime -= piAgility*4;
-
-         return Bound(iTime,50,600);
-      }
-
-      return viSwing_time;
+      iTime = (viAttack_end_frame - viAttack_start_frame) * viAttack_duration; 
+      return Bound(iTime,MONSTER_MIN_SWING_TIME,MONSTER_MAX_SWING_TIME);
    }
 
    CanCrushEnemy()
@@ -11897,6 +11962,196 @@ messages:
    IsServant(what=$)
    {
       return FALSE;
+   }
+
+   // Animation framework
+   SendLookAnimation()
+   {
+      // Check for a color translation first.
+      if (piColor_Translation <> 0)
+      {
+         AddPacket(1,ANIMATE_TRANSLATION,1,piColor_Translation);
+      }
+
+      if viLook_start_frame <> viLook_end_frame
+      {
+         AddPacket(1,ANIMATE_CYCLE, 4,viLook_duration,
+            2,viLook_start_frame, 2,viLook_end_frame);
+      }
+      else
+      {
+         AddPacket(1,ANIMATE_NONE,2,viLook_start_frame);
+      }
+
+      return;
+   }
+
+   SendMoveAnimation()
+   {
+      // Check for a color translation first.
+      if (piColor_Translation <> 0)
+      {
+         AddPacket(1,ANIMATE_TRANSLATION,1,piColor_Translation);
+      }
+
+      if viMove_start_frame <> viMove_end_frame
+      {
+         AddPacket(1,ANIMATE_CYCLE, 4,viMove_duration,
+            2,viMove_start_frame, 2,viMove_end_frame);
+      }
+      else
+      {
+         AddPacket(1,ANIMATE_NONE,2,viMove_start_frame);
+      }
+
+      return;
+   }
+
+   SendAnimation()
+   {
+      // Check for a color translation first.
+      if (piColor_Translation <> 0)
+      {
+         AddPacket(1,ANIMATE_TRANSLATION,1,piColor_Translation);
+      }
+
+      if piAnimation = ANIM_ATTACK
+      {
+         Send(self,@SendAttackAnimation);
+      }
+      else if piAnimation = ANIM_HIT
+      {
+         Send(self,@SendHitAnimation);
+      }
+      else if piAnimation = ANIM_CAST
+      {
+         Send(self,@SendCastAnimation);
+      }
+      else if piAnimation = ANIM_SPECIAL
+      {
+         Send(self,@SendSpecialAnimation);
+      }
+      else if piAnimation = ANIM_FIRE
+      {
+         Send(self,@SendFireAnimation);
+      }
+      else if piAnimation
+      {
+         Send(self,@SendAttackAnimation);
+      }
+      else
+      {
+         Send(self,@SendNoAnimation);
+      }      
+
+      return;
+   }
+
+   SendNoAnimation()
+   {
+      AddPacket(1,ANIMATE_NONE,2,viRest_frame);
+
+      return;
+   }
+
+   SendAttackAnimation()
+   {
+      AddPacket(1,ANIMATE_ONCE, 4,viAttack_duration,
+         2,viAttack_start_frame, 2,viAttack_end_frame, 2,viRest_frame);
+
+      return;
+   }
+
+   SendCastAnimation()
+   {
+      AddPacket(1,ANIMATE_ONCE, 4,viCast_duration,
+         2,viCast_start_frame, 2,viCast_end_frame, 2,viRest_frame);
+
+      return;
+   }
+
+   SendSpecialAnimation()
+   {
+      AddPacket(1,ANIMATE_ONCE, 4,viSpecial_duration,
+         2,viSpecial_start_frame, 2,viSpecial_end_frame, 2,viRest_frame);
+
+      return;
+   }
+
+   SendFireAnimation()
+   {
+      AddPacket(1,ANIMATE_ONCE, 4,viFire_duration,
+         2,viFire_start_frame, 2,viFire_end_frame, 2,viRest_frame);
+
+      return;
+   }
+
+   // Assembles a randomized hit animation packet based on parameters.
+   // To keep animation synchronized despite randomness when needed, we
+   // create faked randomness based on TimeStamps and invididualize this
+   // with the mob's health to avoid grouped animations (e.g. during AEs.)
+   // For durations, we use GetTickCount to allow fairly random outcomes
+   // even when events happen back to back. Frame calculations are based
+   // on GetTime to reduce the chance of mismatched frames when TickCount
+   // changes mid-calculation.
+   SendHitAnimation(startframe=$,endframe=$,restframe=$,duration=$)
+   {
+      local iStart, iEnd, iTime, iDelta, iRandom;
+
+      if ( restframe = $ ) { restframe = viRest_frame; }
+      if ( startframe = $ ) { startframe = viHit_start_frame; }
+      if ( endframe = $ ) { endframe = viHit_end_frame; }
+      if ( duration = $ ) { duration = viHit_duration; }
+
+      // We animate based on the amount of frames we have to work with.
+      iDelta = endframe - startframe;
+
+      // Let's also figure the total duration our animation should take.
+      // We randomize between one third duration and full duration.
+      if Send(self,@HasOverlays)
+      {
+         // If we have to sync multiple overlays, use faked randomization
+         // based on TickCount and current stamina.
+         duration += (Bound(GetTickCount() - piStamina,0,$)) % duration;
+         duration /= 2;
+
+         // Pick random start frames and end frames within the frame range and
+         // within reasonable limits.
+         iRandom = Bound(GetTime() - piStamina,0,$);
+         iStart = startframe + iRandom % (iDelta + 1);
+         iEnd = Bound(iStart + iRandom % (iDelta/2 + 1),$,endframe);
+      }
+      else
+      {
+         // If we don't have to worry about synchronization, simply randomize.
+         duration += Random(0,duration);
+         duration /= 2;
+
+         // As above, just with true random numbers.
+         iStart = startframe + Random(0,iDelta);
+         iEnd = Bound(iStart + Random(0,iDelta/2),$,endframe);
+      }
+
+      // Divide the total duration of the animation by the number of frames.
+      // Make sure each frame plays for at least 100ms.
+      duration /= (iEnd - iStart) + 1;
+      duration = Bound(duration,100,$);
+
+      // Finally, send that packet on its way.
+      AddPacket(1,ANIMATE_ONCE, 4,duration, 2,iStart, 2,iEnd, 2,restframe);
+
+      return;
+   }
+
+   HasOverlays()
+   {
+      return FALSE;
+   }
+
+   // Are we willing to move as our actual combat action?
+   ActiveMoveCheck()
+   {
+      return Random(1,piAgility*2) > piStamina;
    }
 
 end

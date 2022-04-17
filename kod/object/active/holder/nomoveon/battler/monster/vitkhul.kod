@@ -14,19 +14,6 @@ constants:
 
    include blakston.khd
 
-   ANIM_WRATH = 2
-   ANIM_CAST = 3
-
-   FRAME_STAND = 1
-   FRAME_WALK_START = 2
-   FRAME_WALK_END = 6
-   FRAME_ATTACK_START = 7
-   FRAME_ATTACK_END = 11
-   FRAME_CASTARMS_START = 12
-   FRAME_CASTARMS_END = 16
-   FRAME_CASTSTAFF_START = 17
-   FRAME_CASTSTAFF_END = 19
-
 resources:
 
    include vitkhul.lkod
@@ -40,7 +27,7 @@ resources:
       "them to the edge of insanity, then pushing them over and drinking in their "
       "unmitigated terror in an ecstatic rush of depraved exhilaration.  "
       "Like two icy flames, the vitkhul's unblinking eyes are fixated on you, its "
-      "dreadful stare betraying its glacial malice and cruel thirst for suffering.  "
+      "chilling stare betraying its glacial malice and cruel thirst for suffering.  "
       "Little by little, you feel your composure slipping away as dreadful visions "
       "of your imminent, gruesome death begin to seep into your mind.  "
 
@@ -62,6 +49,27 @@ classvars:
    vrDesc = Vitkhul_desc_rsc
    vrDead_icon = Vitkhul_dead_icon_rsc
    vrDead_name = Vitkhul_dead_name_rsc
+
+   // Animation frames and frame durations.
+   viRest_frame = 1
+   viLook_start_frame = 2
+   viLook_end_frame = 6
+   viLook_duration = 125      // Duration per frame.
+   viMove_start_frame = 2
+   viMove_end_frame = 6
+   viMove_duration = 125      // Duration per frame.
+   viAttack_start_frame = 7
+   viAttack_end_frame = 11
+   viAttack_duration = 125    // Duration per frame.
+   viCast_start_frame = 12
+   viCast_end_frame = 16
+   viCast_duration = 125      // Duration per frame.
+   viSpecial_start_frame = 17
+   viSpecial_end_frame = 19
+   viSpecial_duration = 125   // Duration per frame.
+   viHit_start_frame = 12
+   viHit_end_frame = 14
+   viHit_duration = 500       // Maximum total duration of animation.
 
    viTreasure_type = TID_VITKHUL
 
@@ -138,61 +146,17 @@ messages:
       return;
    }
 
-   SendLookAnimation()
-   {
-      AddPacket(1,ANIMATE_CYCLE,4,125,2,FRAME_WALK_START,2,FRAME_WALK_END);
-
-      return;
-   }
-
-   SendMoveAnimation()
-   {
-      // Cycle through "walking" bitmaps (groups 2-6) at 125 ms per frame
-      AddPacket(1,ANIMATE_CYCLE,4,125,2,FRAME_WALK_START,2,FRAME_WALK_END);
-
-      return;
-   }
-
-   SendAnimation()
-   {
-      if piAnimation = ANIM_ATTACK
-      {
-         AddPacket(1,ANIMATE_ONCE,4,125,2,FRAME_ATTACK_START,2,
-                   FRAME_ATTACK_END,2,FRAME_STAND);
-
-         return;
-      }
-
-      if piAnimation = ANIM_WRATH
-      {
-         AddPacket(1,ANIMATE_ONCE,4,125,2,FRAME_CASTARMS_START,2,
-                   FRAME_CASTARMS_END,2,FRAME_STAND);
-
-         return;
-      }
-
-      if piAnimation = ANIM_CAST
-      {
-         AddPacket(1,ANIMATE_ONCE,4,125,2,FRAME_CASTSTAFF_START,2,
-                   FRAME_CASTSTAFF_END,2,FRAME_STAND);
-
-         return;
-      }
-
-      propagate;
-   }
-
    MonsterCastAnimation(iSpellNum=$)
    "If a monster has a special cast animation, call this."
    {
       if iSpellNum = SID_SPIRIT_BLAST
         OR iSpellNum = SID_DARKNESS
       {
-         piAnimation = ANIM_WRATH;
+         piAnimation = ANIM_CAST;
       }
       else
       {
-         piAnimation = ANIM_CAST;
+         piAnimation = ANIM_WRATH;
       }
 
       Send(poOwner,@SomethingChanged,#what=self);

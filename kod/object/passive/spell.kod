@@ -828,7 +828,7 @@ messages:
 
    CanPayManaVigor(who=$,lTargets=$,iSpellPower=0,bFreeCast=FALSE)
    {
-      local iCrystalizeManaAbility, oCrystalizeMana;
+      local iCrystalizeManaAbility, oCrystalizeMana, iManaCost;
 
       if Send(who,@PlayerIsImmortal)
       {
@@ -849,9 +849,10 @@ messages:
          return FALSE;
       }
 
+      iManaCost = Send(self,@GetManaCost,#who=who,#iSpellpower=iSpellpower);
+
       // Make sure caster has enough magic
-      if Send(who,@GetMana)
-            < Send(self,@GetManaCost,#who=who,#iSpellpower=iSpellpower)
+      if NOT Send(who,@HasMana,#amount=iManaCost)
       {
          iCrystalizeManaAbility = Send(who,@GetSpellAbility,
                                        #spell_num=SID_CRYSTALIZE_MANA);

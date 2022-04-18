@@ -914,6 +914,7 @@ messages:
       {
          amount = piHealth;
          piHealth = 0;
+         Send(self,@ZeroHealth);
       }
       else
       {
@@ -922,17 +923,14 @@ messages:
 
       Send(self,@NewHealth);
 
-      if precision
-      {
-         return amount;
-      }
-
-      return amount / 100;
+      return;
    }
 
-   GainHealth(amount=0, precision = FALSE, bCapped=TRUE)
+   GainHealth(amount=0, precision = FALSE, bCapped=TRUE, bNoRestrict=FALSE)
    "If uncapped, still respects the hardcap."
    {
+      local iCurrentHealth, iNewHealth, iGained;
+
       if Send(self,@IsInCannotInteractMode)
       {
          Send(self,@NewHealth);
@@ -940,34 +938,45 @@ messages:
          return 0;
       }
 
+      // piHealth carries our health with a precision of .01 health points.
       if NOT precision
       {
          amount *= 100;
       }
 
-      if bCapped AND piHealth + amount > 100 * piMax_health
+      // Take a snapshot of what we have.
+      iCurrentHealth = piHealth;
+
+      // See how much we might have afterwards.
+      iNewHealth = iCurrentHealth + amount;
+
+      // This refers to our regular max health.
+      if bCapped
       {
-         amount = 100 * piMax_health - piHealth;
-         piHealth = 100 * piMax_health;
+         iNewHealth = Bound(iNewHealth,0,piMax_health*100);
       }
-      else if piHealth + amount > 200 * piMax_health
+      // This refers to temp boosted values that decay over time.
+      else if NOT bNoRestrict
       {
-         amount = 200 * piMax_health - piHealth;
-         piHealth = 200 * piMax_health;
-      }
-      else
-      {
-         piHealth += amount;
+         iNewHealth = Bound(iNewHealth,0,piMax_health*200);
       }
 
+      // Let's make sure we don't drop below previous gains.
+      piHealth = Bound(iNewHealth,iCurrentHealth,$);
+
+      // Tell the player that their health may have changed.
       Send(self,@NewHealth);
 
+      // Finally, check how much we actually gained.
+      iGained = piHealth - iCurrentHealth;
+
+      // And return that value in the desired precision.
       if precision
       {
-         return amount;
+         return iGained;
       }
 
-      return amount / 100;
+      return iGained / 100;
    }
 
    SetHealth(amount=$)
@@ -1250,6 +1259,16 @@ messages:
       return piMana/piMax_mana;
    }
 
+   HasMana(amount = 0, precision = FALSE)
+   {
+      if NOT precision
+      {
+         amount *= 100;
+      }
+
+      return piMana >= amount;
+   }
+
    SetMana(amount=$)
    {
       if amount <> $
@@ -1280,8 +1299,7 @@ messages:
          AND Send(self,@IsInCannotInteractMode)
       {
          Send(self,@NewMana);
-
-         return 0;
+         return;
       }
 
       if NOT precision
@@ -1293,6 +1311,7 @@ messages:
       {
          amount = piMana;
          piMana = 0;
+         Send(self,@ZeroMana);
       }
       else
       {
@@ -1301,17 +1320,14 @@ messages:
 
       Send(self,@NewMana);
 
-      if precision
-      {
-         return amount;
-      }
-
-      return amount / 100;
+      return;
    }
 
    GainMana(amount=0, precision = FALSE, bCapped=TRUE, bNoRestrict=FALSE)
    "If uncapped, still respects the hardcap."
    {
+      local iCurrentMana, iNewMana, iGained;
+
       if Send(self,@IsInCannotInteractMode)
       {
          Send(self,@NewMana);
@@ -1319,38 +1335,45 @@ messages:
          return 0;
       }
 
+      // piMana carries our mana with a precision of .01 mana points.
       if NOT precision
       {
          amount *= 100;
       }
 
-      if bCapped AND piMana + amount > 100 * piMax_mana
+      // Take a snapshot of what we have.
+      iCurrentMana = piMana;
+
+      // See how much we might have afterwards.
+      iNewMana = iCurrentMana + amount;
+
+      // This refers to our regular max mana.
+      if bCapped
       {
-         amount = 100 * piMax_mana - piMana;
-         piMana = 100 * piMax_mana;
+         iNewMana = Bound(iNewMana,0,piMax_mana*100);
       }
-      else if bNoRestrict
+      // This refers to temp boosted values that decay over time.
+      else if NOT bNoRestrict
       {
-         piMana += amount;
-      }
-      else if piMana + amount > 200 * piMax_mana
-      {
-         amount = 200 * piMax_mana - piMana;
-         piMana = 200 * piMax_mana;
-      }
-      else
-      {
-         piMana += amount;
+         iNewMana = Bound(iNewMana,0,piMax_mana*200);
       }
 
+      // Let's make sure we don't drop below previous gains.
+      piMana = Bound(iNewMana,iCurrentMana,$);
+
+      // Tell the player that their mana may have changed.
       Send(self,@NewMana);
 
+      // Finally, check how much we actually gained.
+      iGained = piMana - iCurrentMana;
+
+      // And return that value in the desired precision.
       if precision
       {
-         return amount;
+         return iGained;
       }
 
-      return amount / 100;
+      return iGained / 100;
    }
 
    // Check if target is currently suffering from a mana curse.
@@ -1598,13 +1621,13 @@ messages:
       return piVigor/200;
    }
 
-   LoseVigor(amount = 0, bCheck = FALSE, precision = FALSE)
+   LoseVigor(amount=0,precision=FALSE)
    {
       if Send(self,@IsInCannotInteractMode)
       {
          Send(self,@NewVigor);
 
-         return 0;
+         return;
       }
 
       if NOT precision
@@ -1617,11 +1640,6 @@ messages:
       {
          amount = Send(Send(SYS,@GetParliament),@ModifyVigorCost,
                         #who=self,#amount=amount);
-      }
-
-      if bCheck AND (amount > piVigor)
-      {
-         return FALSE;
       }
 
       if (piVigor > 0) AND (amount >= piVigor)
@@ -1637,17 +1655,17 @@ messages:
 
       Send(self,@NewVigor);
 
-      if precision
-      {
-         return amount;
-      }
-
-      return amount / 100;
+      return;
    }
 
-   GainVigor(amount=0, precision = FALSE, bCapped=TRUE)
+   // Unlike other resources, vigor has a hard cap of 200, which
+   // also happens to be the default cap. For vigor, bCapped
+   // refers to the rest cap of 80 points of vigor.
+   GainVigor(amount=0, precision = FALSE, bCapped=FALSE)
    "If uncapped, still respects the hardcap."
    {
+      local iCurrentVigor, iNewVigor, iGained;
+
       if Send(self,@IsInCannotInteractMode)
       {
          Send(self,@NewVigor);
@@ -1655,34 +1673,47 @@ messages:
          return 0;
       }
 
+      // piVigor carries our vigor with a precision of .01 vigor points.
+      // This matches exertion numnbers from skills, but not from spells.
       if NOT precision
       {
          amount *= 100;
       }
 
-      if bCapped AND piVigor + amount > 100 * piMax_vigor
+      // Take a snapshot of what we have.
+      iCurrentVigor = piVigor;
+
+      // See how much we might have afterwards.
+      iNewVigor = iCurrentVigor + amount;
+
+      // This refers to the rest cap.
+      if bCapped
       {
-         amount = 100 * piMax_vigor - piVigor;
-         piVigor = 100 * piMax_vigor;
-      }
-      else if piVigor + amount > 200 * piMax_vigor
-      {
-         amount = 200 * piMax_vigor - piVigor;
-         piVigor = 200 * piMax_vigor;
+         // Max vigor is a low precision number.
+         // 40% of 200 vigor = 80 vigor.
+         iNewVigor = Bound(iNewVigor,0,piMax_vigor*40);
       }
       else
       {
-         piVigor += amount;
+         iNewVigor = Bound(iNewVigor,0,piMax_vigor*100);
       }
 
+      // Let's make sure we don't drop below previous gains.
+      piVigor = Bound(iNewVigor,iCurrentVigor,$);
+
+      // Tell the player that their vigor may have changed.
       Send(self,@NewVigor);
 
+      // Finally, check how much we actually gained.
+      iGained = piVigor - iCurrentVigor;
+
+      // And return that value in the desired precision.
       if precision
       {
-         return amount;
+         return iGained;
       }
 
-      return amount / 100;
+      return iGained / 100;
    }
 
    HasVigor(amount = 0, precision = FALSE)
@@ -1690,6 +1721,13 @@ messages:
       if NOT precision
       {
          amount *= 100;
+      }
+
+      // Faction discount of up to 30% for players.
+      if IsClass(self,&Player)
+      {
+         amount = Send(Send(SYS,@GetParliament),@ModifyVigorCost,
+                        #who=self,#amount=amount);
       }
 
       return piVigor >= amount;

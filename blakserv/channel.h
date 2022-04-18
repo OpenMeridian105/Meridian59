@@ -34,6 +34,7 @@ void FlushDefaultChannels(void);
 
 void aprintf(const char *fmt,...); // Admin window output, not displayed in channels.
 void dprintf(const char *fmt,...);
+void tprintf(const char *fmt,...); // Used for stack trace, goes to channel d
 void eprintf(const char *fmt,...);
 void bprintf(const char *fmt,...);  /* blakod errors, goes to channel e */
 void lprintf(const char *fmt,...);

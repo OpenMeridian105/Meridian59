@@ -326,7 +326,7 @@ Bool EqualTableEntry(val_type s1_val,val_type s2_val)
          {
             bprintf("EqualTableEntry can't find resource %i,%i\n",
             s1_val.v.tag,s1_val.v.data);
-            eprintf("%s\n",BlakodStackInfo());
+            PrintStackToDebug();
             return False;
          }
          s1 = r->resource_val[0];
@@ -339,7 +339,7 @@ Bool EqualTableEntry(val_type s1_val,val_type s2_val)
          {
             bprintf("EqualTableEntry can't find string %i,%i\n",
             s1_val.v.tag,s1_val.v.data);
-            eprintf("%s\n",BlakodStackInfo());
+            PrintStackToDebug();
             return False;
          }
          s1 = snod->data;
@@ -362,7 +362,7 @@ Bool EqualTableEntry(val_type s1_val,val_type s2_val)
          {
             bprintf("EqualTableEntry can't find resource %i,%i\n",
             s2_val.v.tag,s2_val.v.data);
-            eprintf("%s\n",BlakodStackInfo());
+            PrintStackToDebug();
             return False;
          }
          s2 = r->resource_val[0];
@@ -375,7 +375,7 @@ Bool EqualTableEntry(val_type s1_val,val_type s2_val)
          {
             bprintf("EqualTableEntry can't find string %i,%i\n",
             s2_val.v.tag,s2_val.v.data);
-            eprintf("%s\n",BlakodStackInfo());
+            PrintStackToDebug();
             return False;
          }
          s2 = snod->data;
@@ -398,7 +398,7 @@ Bool EqualTableEntry(val_type s1_val,val_type s2_val)
    {
       eprintf("EqualTableEntry can't match %i,%i with %i,%i\n",
          s1_val.v.tag,s1_val.v.data,s2_val.v.tag,s2_val.v.data);
-      eprintf("%s\n",BlakodStackInfo());
+      PrintStackToDebug();
       return False;
    }
 
@@ -419,7 +419,7 @@ unsigned int GetTableHash(val_type val)
          if (r == NULL)
          {
             bprintf("GetTableHash can't find resource %i\n",val.v.data);
-            eprintf("%s\n",BlakodStackInfo());
+            PrintStackToDebug();
             return 0;
          }
          s = r->resource_val[0];
@@ -431,7 +431,7 @@ unsigned int GetTableHash(val_type val)
          if (snod == NULL)
          {
             bprintf("GetTableHash can't find string %i\n",val.v.data);
-            eprintf("%s\n",BlakodStackInfo());
+            PrintStackToDebug();
             return 0;
          }
          s = snod->data;

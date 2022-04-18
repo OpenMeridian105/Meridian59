@@ -138,7 +138,11 @@ Bool LoadLineAccount(char *account_str, char *name_str, char *password_str,
    suspend_time = 0;
    if (suspend_str)
    {
-      sscanf(suspend_str, "%i", &suspend_time);
+      if (sscanf(suspend_str, "%i", &suspend_time) != 1)
+      {
+         eprintf("LoadLineAccount (%i) failed to get suspend time, continuing\n",
+            lineno);
+      }
    }
 
    /* now decode the password */

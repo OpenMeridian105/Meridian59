@@ -96,6 +96,23 @@ void dprintf(const char *fmt,...)
    WriteStrChannel(CHANNEL_D,s);
 }
 
+// Like dprintf but no time header.
+void tprintf(const char *fmt, ...)
+{
+   char s[BUFFER_SIZE];
+   va_list marker;
+   s[0] = '\0';
+
+   va_start(marker, fmt);
+   vsprintf(s + strlen(s), fmt, marker);
+   va_end(marker);
+
+   if (s[strlen(s) - 1] != '\n')
+      strcat(s, "\r\n");
+
+   WriteStrChannel(CHANNEL_D, s);
+}
+
 void eprintf(const char *fmt,...)
 {
    char s[BUFFER_SIZE];

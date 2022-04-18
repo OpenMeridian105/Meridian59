@@ -578,12 +578,12 @@ int C_DumpStack(int object_id,local_var_type *local_vars,
 					  int num_normal_parms,parm_node normal_parm_array[],
 					  int num_name_parms,parm_node name_parm_array[])
 {
-	char buf[2000];
+   if (ConfigBool(DEBUG_DUMPSTACK))
+      PrintStackToDebug();
+   else
+      dprintf("DumpStack() disabled in server config, <set config bool [Debug] DumpStack Yes> to enable.");
 
-	sprintf(buf,"Stack:\n%s\n",BlakodStackInfo());
-	dprintf("%s",buf);
-
-	return NIL;
+   return NIL;
 }
 
 int C_SendMessage(int object_id,local_var_type *local_vars,

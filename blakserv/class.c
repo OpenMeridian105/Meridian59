@@ -456,57 +456,55 @@ char * GetClassVarNameByID(class_node *c,int classvar_id)
 		return NULL;
 }
 
-void ForEachClass(void (*callback_func)(class_node *c))
+void ForEachClass(void(*callback_func)(class_node *c))
 {
-	class_node *c;
-	int i;
-	
-	for (i=0;i<classes_table_size;i++)
-	{
-		c = classes[i];
-		while (c != NULL)
-		{
-			callback_func(c);
-			c = c->next;
-		}
-	}
+   class_node *c;
+
+   for (int i = 0; i < classes_table_size; ++i)
+   {
+      c = classes[i];
+      while (c != NULL)
+      {
+         callback_func(c);
+         c = c->next;
+      }
+   }
 }
 
-const char * GetClassDebugStr(class_node *c,int dstr_id)
+const char * GetClassDebugStr(class_node *c, int dstr_id)
 {
-	if (dstr_id > c->dstrs->num_strings || dstr_id < 0)
-	{
-		eprintf("GetClassDebugStr got invalid dstr id, %i %i\n",c->class_id,dstr_id);
-		return "Invalid DStr";
-	}
-	return c->bof_base + ((int *) &c->dstrs->string_offsets)[dstr_id];
+   if (dstr_id > c->dstrs->num_strings || dstr_id < 0)
+   {
+      eprintf("GetClassDebugStr got invalid dstr id, %i %i\n",
+         c->class_id, dstr_id);
+      return "Invalid DStr";
+   }
+   return c->bof_base + ((int *)&c->dstrs->string_offsets)[dstr_id];
 }
 
-int GetSourceLine(class_node *c,char *bkod_ptr)
+int GetSourceLine(class_node *c, char *bkod_ptr)
 {
-	bof_line_entry *bline;
-	int prev_line;
-	int i;
-	
-	if (c->line_table == NULL)
-		return 0;
-	
-	/* search for first line starting at or after current spot, then print previous
-	line, because chances are we advanced past beginning of instruction */
-	
-	prev_line = 0;
-	
-	bline = &c->line_table->entries;
-	for (i=0;i<c->line_table->num_line_entries;i++)
-	{
-		if (bline->file_offset + c->bof_base > bkod_ptr)
-			return prev_line;
-		prev_line = bline->line_number;
-		bline++;
-		
-	}
+   bof_line_entry *bline;
+   int prev_line;
+  
+   if (c->line_table == NULL)
+      return 0;
 
-	return 0;
+   /* search for first line starting at or after current spot, then print previous
+   line, because chances are we advanced past beginning of instruction */
+
+   prev_line = 0;
+
+   bline = &c->line_table->entries;
+   for (int i = 0; i < c->line_table->num_line_entries; ++i)
+   {
+      if (bline->file_offset + c->bof_base > bkod_ptr)
+         return prev_line;
+      prev_line = bline->line_number;
+      bline++;
+
+   }
+
+   // Just return prev_line, can get here at the end of a bof file.
+   return prev_line;
 }
-
-

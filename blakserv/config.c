@@ -191,6 +191,7 @@ config_table_type config_table[] =
 { DEBUG_HASH,             T, "Hash",          CONFIG_BOOL,  "No" },
 { DEBUG_TIME_CALLS,       T, "TimeCalls",     CONFIG_BOOL,  "No" },
 { DEBUG_UDP,              T, "UDP",           CONFIG_BOOL,  "No" },
+{ DEBUG_DUMPSTACK,        T, "DumpStack",     CONFIG_BOOL,  "Yes" },
 
 { SECURITY_GROUP,         F, "[Security]",    CONFIG_GROUP, "" },
 { SECURITY_LOG_SPOOFS,    T, "LogSpoofs",     CONFIG_BOOL,  "Yes" }, 

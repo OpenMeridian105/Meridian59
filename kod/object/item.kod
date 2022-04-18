@@ -1092,6 +1092,8 @@ messages:
          Send(poOwner,@AddMovementSpeedPercent,#iSpeed=iSpeed);
       }
 
+      viObject_flags |= OF_EQUIPPED;
+
       return;
    }
 
@@ -1156,6 +1158,14 @@ messages:
       if (iSpeed <> 0)
       {
          Send(poOwner,@AddMovementSpeedPercent,#iSpeed=-iSpeed);
+      }
+
+      viObject_flags &= ~OF_EQUIPPED;
+
+      if (poOwner <> $
+         AND IsClass(poOwner,&Player))
+      {
+         Send(poOwner,@SomethingChangedFlags,#what=self);
       }
 
       return;
@@ -2665,6 +2675,21 @@ messages:
       {
          Send(poOwner,@SomethingChangedFlags,#what=self);
       }
+
+      return;
+   }
+
+   // These aren't normally used, but can call from admin window if necessary.
+   AddEquippedFlag()
+   {
+      viObject_flags |= OF_EQUIPPED;
+
+      return;
+   }
+
+   RemoveEquippedFlag()
+   {
+      viObject_flags &= ~OF_EQUIPPED;
 
       return;
    }

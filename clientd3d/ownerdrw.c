@@ -79,7 +79,7 @@ int OwnerListAddItem(HWND hwnd, object_node *obj, int index, Bool combo, Bool qu
       name = desc;
    }
    /* If player using an object, say so */
-   if (IsInUse(obj->id))
+   if (IsInUse(obj->id) || (obj->flags & OF_EQUIPPED))
    {
       sprintf(desc, "%.*s %s", MAXNAME, name, GetString(hInst, IDS_INUSE));
       name = desc;

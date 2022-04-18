@@ -868,92 +868,119 @@ __forceinline void StoreProperty(int object_id, int data, val_type new_data)
 
 char *BlakodDebugInfo()
 {
-   static char s[100];
+   #define DEBUGINFO_STR 64
+
+   static char s[DEBUGINFO_STR];
    class_node *c;
 
    if (kod_stat.interpreting_class == INVALID_CLASS || !IsInterpreting())
    {
-      sprintf(s,"Server");
+      snprintf(s, DEBUGINFO_STR, "Server");
    }
    else
    {
       c = GetClassByID(kod_stat.interpreting_class);
       if (c == NULL)
-         sprintf(s,"Invalid class %i",kod_stat.interpreting_class);
+         snprintf(s, DEBUGINFO_STR, "Invalid class %i", kod_stat.interpreting_class);
       else
-         sprintf(s,"%s (%i)",c->fname,GetSourceLine(c,bkod));
+         snprintf(s, DEBUGINFO_STR, "%s (%i)", c->fname, GetSourceLine(c, bkod));
    }
    return s;
 }
 
-char *BlakodStackInfo()
+// Send char pointer c to tprintf if b - a > 0, set a to 0.
+#define PSTD_FLUSH_CHECK(a, b, c) \
+   if (b - a < 0) { \
+      c -= a; \
+      tprintf(c); \
+      a = 0; \
+   }
+
+// Print the current stack to debug, avoiding the BUFFER_SIZE limit in
+// channel.c by flushing early (worst-case is ~7000 chars).
+void PrintStackToDebug()
 {
-   static char buf[5000];
-   class_node *c;
-   int i;
+   static char dump_buffer[BUFFER_SIZE];
+   char *buf_ptr = dump_buffer;
+   int num_chars;
+   int buf_len = 0;
 
-   buf[0] = '\0';
-   for (i=message_depth-1;i>=0;i--)
+   dprintf("Stack trace:");
+   for (int i = message_depth - 1; i >= 0; --i)
    {
-      char s[1000];
-      if (stack[i].class_id == INVALID_CLASS)
+      char *bkod_ptr = (i == message_depth - 1) ? bkod : stack[i].bkod_ptr;
+      kod_stack_type * frame = &stack[i];
+
+      // Should never happen, but better safe than sorry.
+      if (!frame || !bkod_ptr)
       {
-         sprintf(s,"Server");
+         dprintf("Tried to print a stack trace, but got invalid data! bkod_ptr exists: %s, frame exists: %s",
+            bkod_ptr ? "true" : "false", frame ? "true" : "false");
+         continue;
       }
-      else
+
+      // Called from outside kod?
+      if (frame->class_id == INVALID_CLASS)
       {
-         c = GetClassByID(stack[i].class_id);
-         if (c == NULL)
-            sprintf(s,"Invalid class %i",stack[i].class_id);
-         else
+         dprintf("Server (not a stack frame)");
+         continue;
+      }
+      class_node *c = GetClassByID(frame->class_id);
+
+      if (c == NULL)
+      {
+         dprintf("Invalid class %i", frame->class_id);
+         continue;
+      }
+
+      // "Class::Message(" Use %.*s with a fixed string of pluses to get
+      // exactly one plus per propagate depth.
+      PSTD_FLUSH_CHECK(buf_len, BUFFER_SIZE, buf_ptr);
+      num_chars = snprintf(buf_ptr, BUFFER_SIZE - buf_len, "%.*s%s::%s(",
+         frame->propagate_depth, "++++++++++++++++++++++",
+         c->class_name ? c->class_name : "(unknown)",
+         GetNameByID(frame->message_id));
+      buf_ptr += num_chars;
+      buf_len += num_chars;
+
+      // Parameter list i.e. "#parm1=type value, #parm2=type value"
+      for (int j = 0; j < frame->num_parms; ++j)
+      {
+         val_type val;
+         val.int_val = frame->parms[j].value;
+
+         PSTD_FLUSH_CHECK(buf_len, BUFFER_SIZE, buf_ptr);
+         num_chars = snprintf(buf_ptr, BUFFER_SIZE - buf_len, "#%s=%s %s",
+            GetNameByID(frame->parms[j].name_id),
+            GetTagName(val), GetDataName(val));
+         buf_ptr += num_chars;
+         buf_len += num_chars;
+         if (j < frame->num_parms - 1)
          {
-            char *bp;
-            char *class_name;
-            char buf2[200];
-            char parms[800];
-            int j;
-
-            /* for current frame, stack[] has pointer at beginning of function;
-               use current pointer instead */
-            bp = stack[i].bkod_ptr;
-            if (i == message_depth-1)
-               bp = bkod;
-
-            class_name = "(unknown)";
-            if (c->class_name)
-               class_name = c->class_name;
-            /* use %.*s with a fixed string of pluses to get exactly one plus per
-               propagate depth */
-            sprintf(s,"%.*s%s::%s",stack[i].propagate_depth,"++++++++++++++++++++++",
-               class_name,GetNameByID(stack[i].message_id));
-            strcat(s,"(");
-            parms[0] = '\0';
-            for (j=0;j<stack[i].num_parms;j++)
-            {
-               val_type val;
-               val.int_val = stack[i].parms[j].value;
-               sprintf(buf2,"#%s=%s %s",GetNameByID(stack[i].parms[j].name_id),
-                       GetTagName(val),GetDataName(val));
-               if (j > 0)
-                  strcat(parms,",");
-               strcat(parms,buf2);
-            }
-            strcat(s,parms);
-            strcat(s,")");
-            sprintf(buf2," %s (%i)",c->fname,GetSourceLine(c,bp));
-            strcat(s,buf2);
+            num_chars = snprintf(buf_ptr, BUFFER_SIZE - buf_len, ", ");
+            buf_ptr += num_chars;
+            buf_len += num_chars;
          }
       }
-      if (i < message_depth-1)
-         strcat(buf,"\n");
-      strcat(buf,s);
-      if (strlen(buf) > sizeof(buf) - 1000)
-      {
-         strcat(buf,"\n...and more");
-         break;
-      }
+
+      PSTD_FLUSH_CHECK(buf_len, BUFFER_SIZE, buf_ptr);
+      // Have to subract 1 from bkod_ptr to return the correct line
+      // since the ptr is set to the next one to execute.
+      num_chars = snprintf(buf_ptr, BUFFER_SIZE - buf_len, ") [%s (%i)]\n",
+         c->fname, GetSourceLine(c, bkod_ptr - 1));
+      buf_ptr += num_chars;
+      buf_len += num_chars;
+
+      // Flushing if getting too close to the limit. Very conservative here -
+      // largest stack frame ~3000 (max params, max len on param names etc)
+      // so flush with max 6000 chars to spare from the 10k channel buffer.
+      PSTD_FLUSH_CHECK(buf_len, BUFFER_SIZE * 0.4f, buf_ptr);
    }
-   return buf;
+
+   // Flush buffer to tprintf (debug print without timestamp).
+   PSTD_FLUSH_CHECK(buf_len, 0, buf_ptr);
+
+   dprintf("End stack trace");
 }
 
 // New opcodes

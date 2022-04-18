@@ -215,12 +215,7 @@ void GameProcessSessionBufferUDP(session_node *s)
 {
    bool debug_udp = ConfigBool(DEBUG_UDP);
    if (debug_udp)
-   {
-      if (!s)
-         dprintf("Processing UDP packet but got null session!\n");
-      else
-         dprintf("Processing UDP packet for session %i\n", s->session_id);
-   }
+      dprintf("Processing UDP packet for session %i\n", s->session_id);
 
    while (s->receive_list_udp != NULL)
    {

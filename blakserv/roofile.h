@@ -32,7 +32,7 @@
 #define V2FINENESSKODTOROO(x) V2SCALE((x), 16.0f)    // scales a V2 instance from KOD fineness to ROO fineness
 #define V2FINENESSROOTOKOD(x) V2SCALE((x), 0.0625f)  // scales a V2 instance from ROO fineness to KOD fineness
 #define MAX_KOD_DEGREE        4096.0f                // max value of KOD angle
-#define HALFFRUSTUMWIDTH      600.0f                 // half player view frustum, * ~1.5x to account for latency
+#define HALFFRUSTUMWIDTH      768.0f                 // 135 degrees FoV
 #define MAXINTERSECTIONS      2048                   // max. trackable intersections in BSPCanMoveInRoom3D
 #define NOBLOCKOBJUSERDELAY   2000                   // ms since last objmove to cause user-move validations
 

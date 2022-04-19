@@ -1869,10 +1869,16 @@ messages:
       return FALSE;
    }
 
-   EnterStateMove()
+   EnterStateMove(bResume = FALSE)
    {
       local oObject, i, oEnch, state, oInfo, iInfo, iRowDiff, iColDiff,
          iAbsRow, iAbsCol, iLeaderRow, iLeaderCol, iHeight;
+
+      // We need a moment to get our strength back.
+      if (piState & STATE_REST) AND NOT bResume
+      {
+         return;
+      }
 
       // The following is only relevant if we have a leader.
       // If we don't, chances are we have just been fired and are trying
@@ -2076,15 +2082,21 @@ messages:
       propagate;
    }
 
-   EnterStateEngage( target = $, actnow = TRUE, delay = 0)
+   EnterStateEngage( target = $, actnow = TRUE, delay = 0, bResume = FALSE)
    {
+      // We need a moment to get our strength back.
+      if (piState & STATE_REST) AND NOT bResume
+      {
+         return;
+      }
+
       // Can't engage against the leader...
       if (poLeader <> $
          AND poLeader = target)
       // ...or engage when we are told to stay.
          OR piMonsterflags & MFLAG_STAYING
       {
-         Send(self,@EnterStateMove,#actnow=FALSE);
+         Send(self,@EnterStateMove);
 
          return;
       }
@@ -3799,6 +3811,12 @@ messages:
    }
 
    IsFullTalk()
+   {
+      return TRUE;
+   }
+
+   // Followers are quick on their feet.
+   ActiveMoveCheck()
    {
       return TRUE;
    }

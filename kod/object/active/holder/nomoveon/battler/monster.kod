@@ -1797,36 +1797,62 @@ messages:
       return;
    }
 
-   EnterStateMove(actnow=FALSE,delay=$)
+   EnterStateMove(actnow=FALSE, bResume = FALSE)
    {
       local iDelay;
 
-      // SetTarget without a 'what' passed sets target to nil.
+      // Currently on time-out.
+      if (piState & STATE_REST) AND NOT bResume
+      {
+         return;
+      }
+
+      // Clear our target.
       if (poTarget <> $)
       {
          Send(self,@SetTarget);
       }
 
-      // Note: All monsters "move" even the ones who physically can't.
+      // Moving is the standard state of any monster that is
+      // active, but not engaged in combat, even if stationary.
       Send(self,@SetState,#bit=STATE_MOVE);
 
+      // Whatever we planned to do before, it no longer matters.
       Send(self,@ClearBehavior);
 
+      // We are totally Zen now.
       piHatred = 0;
 
+      // Got some urgent loitering to do. No time to waste!
       if actnow
       {
          Send(self,@MoveTimer);
       }
       else
       {
-         if delay = $
+         // If we were busy doing something else but walking before,
+         // take a moment to cool off. This also allows us to finish
+         // unresolved animations.
+         if piAction <> SKID_MINIMUM
          {
-            iDelay = Send(self,@GetMoveTime);
+            // Our delay is decided by intellect and agility.
+            iDelay = Send(self,@GetPostFightDelay);
+
+            // Let's make sure we have enough time to finish our
+            // animation though.
+            iDelay = Bound(iDelay,Send(self,@GetAnimationTime),$);
+
+            // Set piAction to move so that we don't have any extra
+            // delay on our next move.
+            piAction = SKID_MINIMUM;
+
+            Send(self,@EnterStateRest,#target=poTarget,#delay=iDelay);
+            return;
          }
          else
          {
-            iDelay = delay;
+            // Get our regular move delay.
+            iDelay = Send(self,@GetMoveTime);
          }
 
          ptBehavior = CreateTimer(self,@MoveTimer,iDelay);
@@ -2624,7 +2650,7 @@ messages:
       }
 
       // See if we want to change state now, but check for brain here first.
-      // Sometimes we've died by now.
+      // Sometimes we've died by now. Life is so fleeting...
       if poOwner <> $
       {
          Send(poBrain,@PostMoveTimer,#mob=self);
@@ -11923,7 +11949,7 @@ messages:
 
    GetPostFightDelay()
    {
-      return Bound((70-piAgility)*(70-piIntellect),500,5000);
+      return (70-piAgility)*(70-piIntellect);
    }
 
    //// Morph related messages.
@@ -12143,6 +12169,23 @@ messages:
       }      
 
       return;
+   }
+
+   // Most monster animations take no longer than an attack.
+   GetAnimationTime()
+   {
+      local iTime;
+
+      // Get the number of frames involved.
+      iTime = 1 + viAttack_end_frame - viAttack_start_frame;
+
+      // Multiply by the length each frame is played.
+      iTime *= viAttack_duration;
+
+      // Multiply by the number of times the animation is played.
+      iTime *= (1 + piAction/10000);
+
+      return iTime; 
    }
 
    SendNoAnimation()

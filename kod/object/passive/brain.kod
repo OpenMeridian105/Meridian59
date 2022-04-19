@@ -611,30 +611,23 @@ messages:
       oTarget = Send(mob,@GetTarget);
 
       // Nope.
-      if oTarget = $ OR Send(oTarget,@GetOwner) = $
+      if oTarget = $
+         OR Send(oTarget,@GetOwner) = $
       {
-         // We just left a fight, that tends to leave us a bit befuddled.
-         delay = Bound(delay,Send(mob,@GetPostFightDelay),$);
-
          // Check if we can find a substitute.
          oTarget = Send(mob,@GetTopHurter);
+
          if oTarget <> $
          {
             // Yup!
             bSwitch = TRUE;
          }
       }
-      else
-      {
-         // Still trying to reach our target it seems.
-         // Move time is our lower bound for delay between actions.
-         delay = Bound(delay,Send(mob,@GetMoveTime),$);
-      }
 
       // Nothing to club. Go for a walk. Hope for better club elsewhere.
       if oTarget = $
       {
-         Send(mob,@EnterStateMove,#delay=delay);
+         Send(mob,@EnterStateMove);
 
          return;
       }
@@ -648,7 +641,7 @@ messages:
          {
             // Yeah, we do.
             Send(mob,@EnterStateEngage,#target=oTarget,#actnow=FALSE,
-                  #delay=delay);
+                  #delay=Bound(delay,Send(mob,@GetMoveTime),$));
          }
          else
          {
@@ -659,7 +652,8 @@ messages:
       // Our old clubbing buddy is still around. Club 'em.
       else
       {
-         Send(mob,@EnterStateEngage,#target=oTarget,#actnow=FALSE,#delay=delay);
+         Send(mob,@EnterStateEngage,#target=oTarget,#actnow=FALSE,
+            #delay=Bound(delay,Send(mob,@GetMoveTime),$));
       }
 
       return;
@@ -726,7 +720,7 @@ messages:
 
       if (oTarget = $) AND (oHurter = $)
       {
-         Send(mob,@EnterStateMove);
+         Send(mob,@EnterStateMove,#bResume=TRUE);
 
          return;
       }
@@ -741,7 +735,7 @@ messages:
          }
          else
          {
-            Send(mob,@EnterStateMove);
+            Send(mob,@EnterStateMove,#bResume=TRUE);
          }
       }
       else if oHurter = $

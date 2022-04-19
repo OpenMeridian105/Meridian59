@@ -1564,6 +1564,66 @@ messages:
       return;
    }
 
+   // Human animation durations vary from case to case.
+   // These durations are extracted from SendAnimations
+   // by multiplying frame count and frame duration.
+   GetAnimationTime()
+   {
+      local iAction, iTime;
+
+      iAction = piAction % 1000;
+      iTime = 900;
+
+      // Slash animation
+      if (iAction = SKID_SLASH) OR
+         (iAction = SKID_THRUST) OR
+         (iAction = SKID_STRIKE) OR
+         (iAction = SKID_PUNCH) OR
+         (iAction = SKID_CLAW) OR
+         (iAction = SKID_STING) OR
+         (iAction = SKID_BITE) OR
+         (iAction = SKID_SPIT) OR
+         (iAction = SKID_SPIN)
+      {
+         iTime = 900;
+      }
+      // Punch animation
+      else if iAction = SKID_WEAKEN
+         OR iAction = SKID_SNARE
+         OR iAction = SKID_CONFUSE
+      {
+         iTime = 1200;
+      }
+      // Cast animation
+      else if iAction < SKID_MINIMUM
+         OR iAction = SKID_STUN
+         OR iAction = SKID_CRIPPLE
+         OR iAction = SKID_DAZE
+      {
+         iTime = 300;
+      }
+      // Wave animation
+      else if iAction = SKID_DISTRACT
+      {
+         iTime = 400;
+      }
+      // Point animation
+      else if iAction = SKID_TAUNT
+      {
+         iTime = 700;
+      }
+      // Fire animation
+      else if iAction = SKID_FIRE
+      {
+         iTime = 1200;
+      }
+
+      // Multiply by the number of times the animation is played.
+      iTime *= (1 + piAction/10000);
+
+      return iTime; 
+   }
+
    SetPlayerIcon(what = $,new_icon = $,translation = $, alldone = TRUE)
    "Sets our icon to <new_icon>, and keeps track of <what> to undo "
    "when necessary. Tells everyone we changed."

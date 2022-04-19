@@ -28,14 +28,13 @@ resources:
       "any damage suffered by the victim.  This will also command your follower to "
       "attack the target and summon them to your side in case they are absent."
       "\n\nNOTE: This is an 'active' skill, which must be performed manually "
-      "using the 'perform mark' command, or using a hotkey."
+      "by holding down a hotkey."
    Mark_skill_intro = "Weaponcraft Lv. 2: Mark a target for your allies and follower!"
    Mark_follower_call = "Your follower rushes to your aid!"
    Mark_no_targets = "You need to have a proper target to mark for your allies!"
    Mark_bad_target = "You have a funny feeling that this is not going to work."
    Mark_success = "You mark %s%s for your allies!"
    Mark_follower_feedback = "Engaging %s%s!"
-   Mark_trance = "You carefully select your target..."
    Mark_call_sound_rsc = markcall.ogg
    Mark_sound_rsc = mark.ogg
 
@@ -62,8 +61,10 @@ classvars:
    vbAutomatic = FALSE
    vbReportTrance = FALSE
 
-   viPreperation_time = 1000
-   viPostPerform_time = 0
+   viPreperation_time = 500
+   viPostPerform_time = 500
+
+   vbKey_hold = TRUE
 
    vrSucceed_wav = Mark_sound_rsc
 
@@ -120,8 +121,6 @@ messages:
    {
       local oFollower;
 
-      Send(who,@MsgSendUser,#message_rsc=Mark_trance);      
-
       if NOT Send(who,@HasActiveFollower)
       {
          propagate;
@@ -145,6 +144,16 @@ messages:
       local oFollower, oTarget, iPower, oState;
 
       oTarget = First(lTargets);
+
+      // Sanity check.
+      if oTarget = $
+         OR (Send(who,@GetOwner) <> Send(oTarget,@GetOwner))
+      {
+         Send(who,@MsgSendUser,#message_rsc=Mark_bad_target);
+
+         return;
+      }
+
       oFollower = Send(who,@GetMercenary);
       iPower = Send(self,@GetSkillPower,#who=who);
 

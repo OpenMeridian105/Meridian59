@@ -8482,6 +8482,18 @@ messages:
       return unknown_resistance_name;
    }
 
+   GetWeaponTypeName(type=-1)
+   {
+      switch (type)
+      {
+      case WEAPON_TYPE_BLUDGEON: return bludgeon_damage_name;
+      case WEAPON_TYPE_THRUST: return thrust_damage_name;
+      case WEAPON_TYPE_SLASH: return slash_damage_name;
+      }
+
+      return unknown_damage_name;
+   }
+
    GetAttackDamageTypeName(type=ATK_TYPE_ALL)
    {
       switch (type)
@@ -8834,6 +8846,26 @@ messages:
          }
          GodLog(Send(i,@GetName), " | ", Send(oOwner,@GetName), " | ",
             Send(oOwner,@GetNumMembers));
+      }
+
+      return;
+   }
+
+   PrintWeaponInfo()
+   {
+      local i, lWeapons;
+
+      SendListByClass(plItemtemplates,0,&Weapon,@PrintWeaponInfo);
+
+      // Handle weapons that aren't in item templates
+      lWeapons = Cons(Create(&RiijaSword),lWeapons);
+      lWeapons = Cons(Create(&BlackDagger),lWeapons);
+      lWeapons = Cons(Create(&SpiritualHammer),lWeapons);
+
+      SendList(lWeapons,0,@PrintWeaponInfo);
+      foreach i in lWeapons
+      {
+         Send(i,@Delete);
       }
 
       return;

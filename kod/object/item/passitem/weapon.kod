@@ -161,7 +161,7 @@ classvars:
 
    vbCrush_enemies = FALSE
 
-   viRange = 3 * FINENESS
+   viRange = 2 * FINENESS
 
 properties:
 
@@ -184,8 +184,24 @@ messages:
       RecordStat(STAT_WEAPONS, TAG_RESOURCE, rName, RESOURCE_GER, rName, 
             TAG_RESOURCE, vrIcon, TAG_INT, viInventory_group, TAG_INT,
             Send(self,@GetPaletteTranslation), TAG_RESOURCE, vrDesc,
-            RESOURCE_GER, vrDesc, TAG_INT, viValue_average, TAG_INT, viWeight,
-            TAG_INT, viBulk, TAG_INT, Send(self,@GetDatabaseFlags));
+            RESOURCE_GER, vrDesc, TAG_INT, viValue_average,
+            TAG_INT, viWeight, TAG_INT, viBulk, TAG_INT, viRange,
+            TAG_INT, Send(self,@GetDefaultStrokeNumber),
+            TAG_INT, Send(self,@GetProfNumber),
+            TAG_INT, Send(self,@GetDatabaseFlags));
+
+      return;
+   }
+
+   PrintWeaponInfo()
+   {
+      local oBaseSkill, oSkill;
+
+      oBaseSkill = Send(SYS,@FindSkillByNum,#num=Send(self,@GetDefaultStrokeNumber));
+      oSkill = Send(SYS,@FindSkillByNum,#num=Send(self,@GetProfNumber));
+
+      Debug(vrName, viRange, Send(SYS,@GetWeaponTypeName,#type=viWeaponType),
+            Send(oBaseSkill,@GetName), Send(oSkill,@GetName));
 
       return;
    }
@@ -856,6 +872,11 @@ messages:
 
    //// Attack Type Functions (Enchanted weapons, Qor weapons, burning blades, etc.)
 
+   GetWeaponType()
+   {
+      return viWeaponType;
+   }
+
    GetSpellType()
    {
       return piSpell_type;
@@ -1117,36 +1138,29 @@ messages:
       return TRUE;
    }
 
-   ValidateWeaponAttributes(num = 1)
+   ValidateWeaponAttributes(bAreYouSure=0, num = 1)
    "Deletes any items with more major weapon attributes than num. Default 1."
    {
-      local iNum;
+      local i, iNum;
 
-      iNum = 0;
+      if (bAreYouSure <> 144114)
+      {
+         return;
+      }
 
       if plItem_attributes = $
       {
          return;
       }
 
-      if Send(self,@HasAttribute,#itematt=WA_BLINDER)
-      {
-         iNum = iNum + 1;
-      }
+      iNum = 0;
 
-      if Send(self,@HasAttribute,#itematt=WA_PARALYZER)
+      foreach i in [WA_BLINDER, WA_PARALYZER, WA_VAMPER, WA_PURGER]
       {
-         iNum = iNum + 1;
-      }
-
-      if Send(self,@HasAttribute,#itematt=WA_VAMPER)
-      {
-         iNum = iNum + 1;
-      }
-
-      if Send(self,@HasAttribute,#itematt=WA_PURGER)
-      {
-         iNum = iNum + 1;
+         if Send(self,@HasAttribute,#itematt=i)
+         {
+            ++iNum;
+         }
       }
 
       if iNum > num
@@ -1211,51 +1225,6 @@ messages:
    ReqRepair()
    {
       return TRUE;
-   }
-
-   FixSpellItemAtts(bAreYouSure=FALSE)
-   "Swaps spell objects in WA_SPELLCASTER weapons for the SID. "
-   "Essentially it just removes and readds the enchantment."
-   {
-      local i, oAttribute, oSpell;
-
-      if NOT bAreYouSure
-      {
-         Debug("This is an OLD update fix message, do NOT run it unless you ",
-            "are absolutely sure you know what you are doing!");
-
-         return system_failure_rsc;
-      }
-
-      if Send(self,@HasAttribute,#itematt=WA_SPELLCASTER)
-      {
-         oAttribute = Send(SYS,@FindItemAttByNum,#num=WA_SPELLCASTER);
-         oSpell = $;
-
-         foreach i in plItem_Attributes
-         {
-            if Send(self,@GetNumFromCompound,#compound=First(i)) = WA_SPELLCASTER
-            {
-               oSpell = Nth(i,2);
-               break;
-            }
-         }
-
-         if oSpell = $
-         {
-            Debug("$ spell found when fixing WA_SPELLCASTER itematts!",
-                  " object is ",self);
-
-            return;
-         }
-
-         Send(oAttribute,@RemoveFromItem,#oItem=self);
-         Send(oAttribute,@AddToItem,#oItem=self,
-               #spellNum=Send(oSpell,@GetSpellNum),#random_gen=TRUE);
-         Debug("readded enchantment to ",self);
-      }
-
-      return;
    }
 
    GetLightColor()

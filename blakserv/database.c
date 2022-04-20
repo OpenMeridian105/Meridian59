@@ -267,6 +267,9 @@ int   port     = 3306;
      weapon_value     INT(4) DEFAULT NULL,               \
      weapon_weight    INT(4) DEFAULT NULL,               \
      weapon_bulk      INT(4) DEFAULT NULL,               \
+     weapon_range     INT(4) DEFAULT NULL,               \
+     weapon_skill     INT(4) DEFAULT NULL,               \
+     weapon_prof      INT(4) DEFAULT NULL,               \
      weapon_iflag     INT(4) DEFAULT NULL,               \
      PRIMARY KEY(weapon_name)                            \
    )                                                     \
@@ -1081,6 +1084,9 @@ int   port     = 3306;
      IN weapon_value     INT(4),          \
      IN weapon_weight    INT(4),          \
      IN weapon_bulk      INT(4),          \
+     IN weapon_range     INT(4),          \
+     IN weapon_skill     INT(4),          \
+     IN weapon_prof      INT(4),          \
      IN weapon_iflag     INT(4))          \
    BEGIN                                  \
    INSERT INTO wiki_weapons               \
@@ -1094,6 +1100,9 @@ int   port     = 3306;
          weapon_value,                    \
          weapon_weight,                   \
          weapon_bulk,                     \
+         weapon_range,                    \
+         weapon_skill,                    \
+         weapon_prof,                     \
          weapon_iflag)                    \
          VALUES (weapon_name,             \
             weapon_name_ger,              \
@@ -1105,6 +1114,9 @@ int   port     = 3306;
             weapon_value,                 \
             weapon_weight,                \
             weapon_bulk,                  \
+            weapon_range,                 \
+            weapon_skill,                 \
+            weapon_prof,                  \
             weapon_iflag)                 \
       ON DUPLICATE KEY UPDATE             \
       weapon_group = weapon_group,        \
@@ -1114,6 +1126,9 @@ int   port     = 3306;
       weapon_value = weapon_value,        \
       weapon_weight = weapon_weight,      \
       weapon_bulk = weapon_bulk,          \
+      weapon_range = weapon_range,        \
+      weapon_skill = weapon_skill,        \
+      weapon_prof = weapon_prof,          \
       weapon_iflag = weapon_iflag;        \
    END"
 

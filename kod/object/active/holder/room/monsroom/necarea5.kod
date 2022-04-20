@@ -137,29 +137,22 @@ messages:
 
    NewHold(what=$)
    {
-      local oNecroGuild,lMembers,oNecro,iChance;
+      local lNecromancers, oNecromancer;
 
-      if IsClass(what,&User) AND NOT IsClass(what,&dm)
+      // Warn Necromancers when hunters are in their base
+      if IsClass(what,&User)
+         AND NOT IsClass(what,&DM)
+         AND Send(what,@FindHoldingActive,#class=&HunterSword) <> $
       {
-         oNecroGuild = send(send(SYS,@FindRoomByNum,#num=RID_GUILDH15),@GetGuildOwner);
-         if oNecroGuild <> $
-         {
-            if NOT send(what,@IsUsingA,#Class=&NecromancerAmulet)
-            {
-               iChance = 10;
-               if send(what,@FindHoldingActive,#class=&HunterSword) <> $
-               {
-                  iChance = iChance/2;
-               }
+         lNecromancers = Send(Send(SYS,@GetNecromancerBalance),@GetNecromancers);
 
-               if random(1,iChance) = 1
+         if lNecromancers <> $
+         {
+            foreach oNecromancer in lNecromancers
+            {
+               if Send(oNecromancer,@IsLoggedOn)
                {
-                  lMembers = send(oNecroGuild,@GetMemberList);
-                  oNecro = First(nth(lMembers,random(1,length(lMembers))));
-                  if send(oNecro,@isLoggedOn)
-                  {
-                     Send(oNecro,@MsgSendUser,#message_rsc=necroarea5_guildwarning);
-                  }
+                  Send(oNecromancer,@MsgSendUser,#message_rsc=necroarea5_guildwarning);
                }
             }
          }

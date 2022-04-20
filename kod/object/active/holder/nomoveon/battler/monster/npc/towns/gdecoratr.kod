@@ -159,7 +159,7 @@ messages:
    {
       local oGuild, bMove, bPlace, bRemove, bClarify, oObject, iCost, i, 
          each_obj, bFound, obj, iRow, iCol, iAngle, iFine_Row, iFine_Col,
-         oLichHall;
+         oSpecialHall;
 
       if NOT IsClass(what,&User)
          OR NOT IsClass(poOwner,&GuildHall)
@@ -181,20 +181,29 @@ messages:
          OR (Send(poOwner,@GetGuildOwner) <> oGuild)
          OR Send(oGuild,@GetRank,#who=what) < RANK_LIEUTENANT
       {
-         oLichHall = Send(SYS,@FindRoomByNum,#num=RID_GUILDH15);
+         oSpecialHall = Send(SYS,@FindRoomByNum,#num=RID_GUILDH15);
 
          // Necromancer hall doesn't require player to be guilded,
          // only check for the amulet itself
          if Send(what,@IsUsingA,#Class=&NecromancerAmulet)
-            AND poOwner <> oLichHall
+            AND poOwner <> oSpecialHall
          {
             return;
          }
-         else if Send(oLichHall,@CountHoldingHowMany,#class=&Lich) = 0
+         else if Send(oSpecialHall,@CountHoldingHowMany,#class=&Lich) = 0
          {
             // if there is no lich, the necromancers don't own the hall
             return;
          }
+
+         // Likewise for hunter hall, check for sword of hunt
+         oSpecialHall = Send(SYS,@FindRoomByNum,#num=RID_GUILDH16);
+         if Send(what,@IsUsingA,#Class=&HunterSword)
+            AND poOwner <> oSpecialHall
+         {
+            return;
+         }
+
       }
 
       // Respond to special commands.

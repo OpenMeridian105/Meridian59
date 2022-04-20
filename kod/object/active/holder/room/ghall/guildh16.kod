@@ -12,35 +12,46 @@ GuildHall16 is GuildHall
 
 constants:
 
-   OUT1 = 1
-
    ENTRANCE = 2
 
-   LIFT_DELAY = 10000
+   LIFT_DELAY = 20000
+
+   SEC_PLATFORM = 50
+   SEC_LAVA = 51
+   SEC_HALL_INSIDE = 52
 
    include blakston.khd
 
 resources:
 
-   include guildh16.lkod
+   //include GuildHall16.lkod
 
-   room_name_guildh16 = "Muskgate Post"
+   room_name_GuildHall16 = "The Red Line"
    room_guildh16 = guildh16.roo
+
+   ghall_lava_damage0 = "You withstand the lava unscathed."
+   ghall_lava_damage = \ 
+     "Ouch! The lava burns you for ~B~r%i~B~v damage."
+
+   ghall16_lava_snd = frying.ogg
+
+   guildhall16_entrancedoor_open_sound = shielddn.ogg
+   guildhall16_entrancedoor_close_sound = shieldup.ogg
 
 classvars:
 
-   vrName = room_name_guildh16
+   vrName = room_name_GuildHall16
 
-   viTeleport_row = 13
-   viTeleport_col = 23
+   viTeleport_row = 45
+   viTeleport_col = 30
 
-   viInner_teleport_row = 6
-   viInner_teleport_col = 17
+   viInner_teleport_row = 45
+   viInner_teleport_col = 30
 
-   viNews_row = 5
-   viNews_col = 23
-   viNews_finerow = 0
-   viNews_finecol = 0
+   viNews_row = 13
+   viNews_col = 31
+   viNews_finerow = 32
+   viNews_finecol = 32
 
    viFoyer_north = 10
    viFoyer_south = 16
@@ -52,8 +63,8 @@ classvars:
    viLever_fine_row = 0
    viLever_fine_col = 40
 
-   viHellPortal_row = 3
-   viHellPortal_col = 16
+   viHellPortal_row = 11
+   viHellPortal_col = 34
    viHellPortal_angle = ANGLE_SOUTH
 
    viPublicChest_row = 10
@@ -64,7 +75,13 @@ classvars:
 
    viSeconds_til_close = 16
 
-   vbIsExpansionRoom = TRUE
+   viBurnStrength = 2000
+   viBurnDuration = 7000
+
+   viTerrain_type = TERRAIN_BADLANDS | TERRAIN_MYSTICAL | TERRAIN_LAVA
+   vrWading_Sound = ghall16_lava_snd
+   vrSecretdoor_open_sound = guildhall16_entrancedoor_open_sound
+   vrSecretdoor_close_sound = guildhall16_entrancedoor_close_sound
 
 properties:
 
@@ -74,7 +91,9 @@ properties:
    piBaseLight = LIGHT_NICE
 
    ptSecret = $
-   ptEntrance = $
+
+   piLavaDamage = 8
+   piLavaBurnChance = 15
 
 messages:
 
@@ -94,11 +113,8 @@ messages:
    {
       plExits = $;
 
-      // TO BERG
-      plExits = Cons([ 12, 25, RID_BERG_1, 10, 52, ROTATE_180 ],plExits);
-
-      // TO BERG MOUNTAIN
-      plExits = Cons([ 8, 27, RID_BERG_1, 14, 50, ROTATE_180 ],plExits);
+      plExits = Cons([ 55, 34, RID_K5, 4, 24, ROTATE_NONE ],plExits);
+      plExits = Cons([ 56, 34, RID_K5, 4, 24, ROTATE_NONE ],plExits);
 
       propagate;
    }
@@ -111,37 +127,6 @@ messages:
          ptSecret = $;
       }
 
-      if ptEntrance <> $
-      {
-         DeleteTimer(ptEntrance);
-         ptEntrance = $;
-      }
-
-      propagate;
-   }
-
-   OpenEntranceDoor()
-   {
-      if ptEntrance = $
-      {
-         Send(self,@TimeStampDoor);
-         Send(self,@SetSector,#sector=ENTRANCE,#animation=ANIMATE_FLOOR_LIFT,
-              #height=64,#speed=50);
-         ptEntrance = CreateTimer(self,@CloseEntranceDoor,LIFT_DELAY);
-         Send(self,@OpenEntranceDoorSound);
-      }
-
-      return;
-   }
-
-   CloseEntranceDoor()
-   {
-      Send(self,@SetSector,#sector=ENTRANCE,#animation=ANIMATE_FLOOR_LIFT,
-            #height=144,#speed=50);
-      Send(self,@CloseEntranceDoorSound);
-
-      // We now propagate this to handle removing players from the door,
-      // and so the door can still be entered while it is closing.
       propagate;
    }
 
@@ -149,8 +134,10 @@ messages:
    {
       if ptSecret = $
       {
-         Send(self,@SetSector,#sector=OUT1,#animation=ANIMATE_FLOOR_LIFT,
-              #height=0,#speed=16);
+         Send(self,@Rumble);
+         Send(self,@ChangeTexture,#id=SEC_PLATFORM,#new_texture=9764,#flags=CTF_FLOOR);
+         Send(self,@SetSector,#sector=SEC_PLATFORM,#animation=ANIMATE_FLOOR_LIFT,
+              #height=312,#speed=50);
          ptSecret = CreateTimer(self,@CloseSecretDoor,LIFT_DELAY);
          Send(self,@OpenSecretDoorSound);
       }
@@ -161,8 +148,9 @@ messages:
    CloseSecretDoor()
    {
       ptSecret = $;
-      Send(self,@SetSector,#sector=OUT1,#animation=ANIMATE_FLOOR_LIFT,
-           #height=88,#speed=16);
+      Send(self,@SetSector,#sector=SEC_PLATFORM,#animation=ANIMATE_FLOOR_LIFT,
+           #height=156,#speed=50);
+      Send(self,@ChangeTexture,#id=SEC_PLATFORM,#new_texture=9713,#flags=CTF_FLOOR);
       Send(self,@CloseSecretDoorSound);
 
       return;
@@ -170,31 +158,233 @@ messages:
 
    CreateStandardObjects()
    {
-      Send(self,@NewHold,#what=Create(&Table),
-           #new_row=6,#new_col=25,#fine_row=32,#fine_col=32);
-      Send(self,@NewHold,#what=Create(&Table),
-           #new_row=2,#new_col=23,#fine_row=32,#fine_col=16);
+      local lUpgrades;
 
       Send(self,@NewHold,#what=Create(&Brazier),
            #new_row=15,#new_col=26,#fine_row=0,#fine_col=0);
-      Send(self,@NewHold,#what=Create(&Brazier),
-           #new_row=2,#new_col=2,#fine_row=32,#fine_col=48);
-      Send(self,@NewHold,#what=Create(&Brazier),
-           #new_row=5,#new_col=2,#fine_row=32,#fine_col=48);
-      Send(self,@NewHold,#what=Create(&Brazier),
-           #new_row=7,#new_col=26,#fine_row=32,#fine_col=32);
 
       Send(self,@NewHold,#what=Create(&Chest),
-           #new_row=4,#new_col=4,#fine_row=0,#fine_col=16,#new_angle=ANGLE_EAST);
+           #new_row=13,#new_col=44,#fine_row=0,#fine_col=16,#new_angle=ANGLE_EAST);
   
       Send(self,@NewHold,#what=Create(&Firepit,#iSoundRadius=5),
-            #new_row=2,#new_col=26,#fine_row=36,#fine_col=28);
+            #new_row=40,#new_col=36,#fine_row=36,#fine_col=28);
 
       poDecorator = Create(&GuildDecorator);
-      Send(self,@NewHold,#what=poDecorator,
-           #new_row=3,#new_col=11,#fine_row=32,#fine_col=32);
+      Send(self,@NewHold,#what=poDecorator,#lList=lUpgrades,
+           #new_row=18,#new_col=26,#fine_row=32,#fine_col=32);
+
+      lUpgrades = [
+                     [Create(&SmallBox), 125000],
+                     [Create(&Statue), 100000],
+                     [Create(&DarkAngel), 100000],
+                     [Create(&Ghost), 100000],
+                     [Create(&Thrasher), 100000],
+                     [Create(&GuildDevice,#num=SID_INVISIBILITY), 60000],
+                     [Create(&CookingPot), 50000],
+                     [Create(&GuildDevice,#num=SID_DETECT_INVISIBLE), 50000],
+                     [Create(&GuildDevice,#num=SID_ARMOR_OF_GORT), 45000],
+                     [Create(&GuildDevice,#num=SID_MAJOR_HEAL), 40000],
+                     [Create(&FoodDispenser,#classtype=&Snowball), 25000],
+                     [Create(&DragonflyCage), 10000],
+                     [Create(&Tombstone), 2500],
+                     [Create(&Chandelier), 2000],
+                     [Create(&SkullBrazier), 2000],
+                     [Create(&OrcTorch), 2000]
+                   ];
 
       propagate;
+   }
+
+   NewHoldObject(what = $, new_pos = $)
+   {
+      local iSectorID;
+
+      if (what = $
+         OR new_pos = $
+         OR NOT IsClass(what,&User))
+      {
+         propagate;
+      }
+
+      iSectorID = Send(self,@GetSectorIDAtLocation,#row=Nth(new_pos,2),
+                        #col=Nth(new_pos,3),#fine_row=Nth(new_pos,4),
+                        #fine_col=Nth(new_pos,5));
+      Post(self,@UserSectorCheck,#who=what,#iSectorID=iSectorID);
+
+      propagate;
+   }
+
+   SomethingMoved(what = $)
+   {
+      Send(self,@UserSectorCheck,#who=what,
+            #iSectorID=Send(what,@GetSectorIDAtObject));
+
+      // Special case if monster falls in the lava pit
+      if IsClass(what,&Monster)
+        AND Send(what,@GetSectorIDAtObject) = SEC_LAVA
+      {
+         Post(what,@Delete);
+      }
+
+      propagate;
+   }
+
+   SomethingPhasedIn(what=$)
+   {
+      Send(self,@UserSectorCheck,#who=what,
+            #iSectorID=Send(what,@GetSectorIDAtObject));
+
+      propagate;
+   }
+
+   SomethingSpectatedIn(what=$)
+   {
+      Send(self,@UserSectorCheck,#who=what,
+            #iSectorID=Send(what,@GetSectorIDAtObject));
+
+      propagate;
+   }
+
+   UserSectorCheck(iSectorID = 0, who = $)
+   {
+      if (who = $) OR NOT IsClass(who,&Player)
+      {
+         return;
+      }
+      else if iSectorID = SEC_LAVA
+      {
+         Send(self,@CookVictim,#what=who);
+      }
+      else if (iSectorID = SEC_PLATFORM)
+        AND NOT pbSecretDoorOpen
+      {
+         if Send(who,@FindUsing,#class=&HunterSword)
+         {
+            Send(self,@OpenSecretDoor);
+         }
+      }
+
+      return;
+   }
+
+   CookVictim(what=$)
+   {
+      local oEffect, rMessage, iDamage;
+      
+      // Lava in this room should sit at height of 132
+      // This check is to prevent burns when jumping onto the platform
+      if IsClass(what,&Player)
+         AND Send(what,@GetHeight) = 132
+      {
+         if Random(1,100) < piLavaBurnChance
+            AND Send(what,@CanBurn)
+         {
+            oEffect = Send(SYS,@FindSpellByNum,#num=SID_BURN);
+            Send(oEffect,@StartBurn,#who=what,#source=self,
+                        #strength=viBurnStrength,#duration=viBurnDuration);
+         }
+
+         if piLavaDamage > 0
+         {
+             iDamage = Send(what,@AssessDamage,#what=self,
+                        #damage=Random(1,piLavaDamage),
+                        #stype=SPL_TYPE_FIRE,#report=TRUE,
+                        #report_resistance=FALSE);
+
+             if iDamage = $
+             {
+                Send(what,@Killed,#what=what);
+                return;
+             }          
+             else if iDamage = 0
+             {
+                rMessage = ghall_lava_damage0;
+             }
+             else if iDamage >= 1
+             {
+                rMessage = ghall_lava_damage;
+             }
+
+             Send(what,@MsgSendUser,#message_rsc=rMessage,#parm1=iDamage/100);
+             Send(self,@SomethingAttacked,#what=self,#victim=what,
+                        #use_weapon=SPL_TYPE_FIRE);
+         }
+      }
+      return;
+   }
+
+   CanEnter(who=$)
+   "This call allows hunters to be able to log off safely here"
+   {
+      if Send(who,@IsUsingA,#Class=&HunterSword)
+      {
+         return TRUE;
+      }
+
+      propagate;
+   }
+
+   InFoyer(who=$,iRow=$,iCol=$,iFineRow=$,iFineCol=$)
+   {
+      local iSectorID;
+
+      if who <> $
+      {
+         if Send(who,@GetOwner) <> self
+         {
+            return FALSE;
+         }
+
+         iRow = Send(who,@GetRow);
+         iCol = Send(who,@GetCol);
+         iFineCol = Send(who,@GetFineCol);
+         iFineRow = Send(who,@GetFineRow);
+
+         iSectorID = Send(self,@GetSectorIDAtLocation,#row=Send(who,@GetRow),
+                        #col=Send(who,@GetCol),#fine_row=Send(who,@GetFineRow),
+                        #fine_col=Send(who,@GetFineCol));
+      }
+
+      if iSectorID <> SEC_HALL_INSIDE
+      {
+         return TRUE;
+      }
+
+      return FALSE;
+   }
+
+   // This works for standard rectangle guildhall foyers. Other configurations
+   // need to override this.
+   IsMoveOK(old_row = 1, old_col = 1, old_fine_row = 1, old_fine_col = 1,
+            new_row = 1, new_col = 1, new_fine_row = 1, new_fine_col = 1,
+            who=$)
+   {
+      // Hardcoded movement check, prevent hacking into hall.
+      // Basic requirement door must not be open
+      if ptSecret = $
+      {
+         if Send(self,@InFoyer,#iRow=old_row,#iCol=old_col,
+                  #iFineRow=old_fine_row,#iFineCol=old_fine_col)
+         {
+            // We're in the foyer. Check if we're trying to move into the hall.
+            if NOT Send(self,@InFoyer,#iRow=new_row,#iCol=new_col,
+                        #iFineRow=new_fine_Row,#iFineCol=new_fine_col)
+            {
+               // Bad player! Fail the attempt.
+               Debug("ALERT!",Send(who,@GetTrueName),who,
+                     "tried to move through closed Guild Hall door ",
+                     Send(self,@GetName)," from ",old_row,old_col,old_fine_row,
+                     old_fine_col," to ",new_row,new_col,new_fine_row,
+                     new_fine_col,". Last door opening was ",
+                     GetTime() - Send(self,@GetDoorTimeStamp),
+                     " seconds ago.");
+
+               return FALSE;
+            }
+         }
+      }
+
+      return TRUE;
    }
 
 end

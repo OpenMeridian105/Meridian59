@@ -30,7 +30,7 @@ resources:
    LichMaze_door_sound = necmaze.ogg
    LichMaze_loop = necloop2.ogg
 
-   LichMaze_guildwarning = "Your amulet vibrates for a moment, startling you."
+   LichMaze_guildwarning = "~BYour amulet vibrates for a moment, startling you."
 
 classvars:
 
@@ -197,29 +197,22 @@ messages:
 
    NewHold(what=$)
    {
-      local oNecroGuild,lMembers,oNecro,iChance;
+      local lNecromancers, oNecromancer;
 
-      if IsClass(what,&User) AND NOT IsClass(what,&dm)
+      // Warn Necromancers when hunters are in their base
+      if IsClass(what,&User)
+         AND NOT IsClass(what,&DM)
+         AND Send(what,@FindHoldingActive,#class=&HunterSword) <> $
       {
-         oNecroGuild = Send(Send(SYS,@FindRoomByNum,#num=RID_GUILDH15),@GetGuildOwner);
-         if oNecroGuild <> $
-         {
-            if not Send(what,@IsUsingA,#Class=&NecromancerAmulet)
-            {
-               iChance = 4;
-               if (Send(what,@FindHoldingActive,#class=&HunterSword)<>$)
-               {
-                  iChance = iChance/2;
-               }
+         lNecromancers = Send(Send(SYS,@GetNecromancerBalance),@GetNecromancers);
 
-               if random(1,iChance) = 1
+         if lNecromancers <> $
+         {
+            foreach oNecromancer in lNecromancers
+            {
+               if Send(oNecromancer,@IsLoggedOn)
                {
-                  lMembers = Send(oNecroGuild,@GetMemberList);
-                  oNecro = First(Nth(lMembers,random(1,length(lMembers))));
-                  if Send(oNecro,@IsLoggedOn)
-                  {
-                     Send(oNecro,@MsgSendUser,#message_rsc=lichmaze_guildwarning);
-                  }
+                  Send(oNecromancer,@MsgSendUser,#message_rsc=lichmaze_guildwarning);
                }
             }
          }

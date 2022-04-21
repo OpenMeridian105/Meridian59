@@ -12,8 +12,6 @@ GuildHall16 is GuildHall
 
 constants:
 
-   ENTRANCE = 2
-
    LIFT_DELAY = 20000
 
    SEC_PLATFORM = 50
@@ -24,16 +22,16 @@ constants:
 
 resources:
 
-   //include GuildHall16.lkod
+   include guildh16.lkod
 
    room_name_GuildHall16 = "The Red Line"
    room_guildh16 = guildh16.roo
 
-   ghall_lava_damage0 = "You withstand the lava unscathed."
-   ghall_lava_damage = \ 
+   guildhall16_lava_damage0 = "You withstand the lava unscathed."
+   guildhall16_lava_damage = \ 
      "Ouch! The lava burns you for ~B~r%i~B~v damage."
 
-   ghall16_lava_snd = frying.ogg
+   guildhall16_lava_snd = frying.ogg
 
    guildhall16_entrancedoor_open_sound = shielddn.ogg
    guildhall16_entrancedoor_close_sound = shieldup.ogg
@@ -42,8 +40,8 @@ classvars:
 
    vrName = room_name_GuildHall16
 
-   viTeleport_row = 41
-   viTeleport_col = 30
+   viTeleport_row = 40
+   viTeleport_col = 40
 
    viInner_teleport_row = 11
    viInner_teleport_col = 33
@@ -67,9 +65,9 @@ classvars:
    viHellPortal_col = 34
    viHellPortal_angle = ANGLE_SOUTH
 
-   viPublicChest_row = 10
-   viPublicChest_col = 23
-   viPublicChest_angle = ANGLE_SOUTH
+   viPublicChest_row = 44
+   viPublicChest_col = 25
+   viPublicChest_angle = ANGLE_SOUTH_WEST
 
    viQuality = 4
 
@@ -79,7 +77,7 @@ classvars:
    viBurnDuration = 7000
 
    viTerrain_type = TERRAIN_BADLANDS | TERRAIN_MYSTICAL | TERRAIN_LAVA
-   vrWading_Sound = ghall16_lava_snd
+   vrWading_Sound = guildhall16_lava_snd
    vrSecretdoor_open_sound = guildhall16_entrancedoor_open_sound
    vrSecretdoor_close_sound = guildhall16_entrancedoor_close_sound
 
@@ -96,18 +94,6 @@ properties:
    piLavaBurnChance = 15
 
 messages:
-
-   Constructor()
-   {
-      plGuild_doors = [ [13,20] ];
-      plInternal_Guild_doors =  [ [13, 19, $], [13, 20, $] ];
-
-      // This is a box containing the guild door, used
-      // for removing players from it when it closes.
-      plEntrance = [ 1300, 1400, 2000, 2000 ];
-
-      propagate;
-   }
 
    CreateStandardExits()
    {
@@ -159,26 +145,12 @@ messages:
    CreateStandardObjects()
    {
       local lUpgrades;
-
-      Send(self,@NewHold,#what=Create(&Brazier),
-           #new_row=15,#new_col=26,#fine_row=0,#fine_col=0);
-
-      Send(self,@NewHold,#what=Create(&Chest),
-           #new_row=13,#new_col=44,#fine_row=0,#fine_col=16,#new_angle=ANGLE_EAST);
-  
-      Send(self,@NewHold,#what=Create(&Firepit,#iSoundRadius=5),
-            #new_row=40,#new_col=36,#fine_row=36,#fine_col=28);
-
-      poDecorator = Create(&GuildDecorator);
-      Send(self,@NewHold,#what=poDecorator,#lList=lUpgrades,
-           #new_row=18,#new_col=26,#fine_row=32,#fine_col=32);
-
       lUpgrades = [
                      [Create(&SmallBox), 125000],
                      [Create(&Statue), 100000],
-                     [Create(&DarkAngel), 100000],
-                     [Create(&Ghost), 100000],
-                     [Create(&Thrasher), 100000],
+                     [Create(&Scorpion), 80000],
+                     [Create(&DeathSpider), 80000],
+                     [Create(&NarthylWorm), 80000],
                      [Create(&GuildDevice,#num=SID_INVISIBILITY), 60000],
                      [Create(&CookingPot), 50000],
                      [Create(&GuildDevice,#num=SID_DETECT_INVISIBLE), 50000],
@@ -191,6 +163,20 @@ messages:
                      [Create(&SkullBrazier), 2000],
                      [Create(&OrcTorch), 2000]
                    ];
+
+      poDecorator = Create(&GuildDecorator);
+      Send(poDecorator,@SetGuildUpgrades,#lList=lUpgrades);
+      Send(self,@NewHold,#what=poDecorator,
+           #new_row=18,#new_col=26,#fine_row=32,#fine_col=32);
+
+      Send(self,@NewHold,#what=Create(&Brazier),
+           #new_row=15,#new_col=26,#fine_row=0,#fine_col=0);
+
+      Send(self,@NewHold,#what=Create(&Chest),
+           #new_row=13,#new_col=44,#fine_row=0,#fine_col=16,#new_angle=ANGLE_EAST);
+  
+      Send(self,@NewHold,#what=Create(&Firepit,#iSoundRadius=5),
+            #new_row=40,#new_col=36,#fine_row=36,#fine_col=28);
 
       propagate;
    }
@@ -298,11 +284,11 @@ messages:
              }          
              else if iDamage = 0
              {
-                rMessage = ghall_lava_damage0;
+                rMessage = guildhall16_lava_damage0;
              }
              else if iDamage >= 1
              {
-                rMessage = ghall_lava_damage;
+                rMessage = guildhall16_lava_damage;
              }
 
              Send(what,@MsgSendUser,#message_rsc=rMessage,#parm1=iDamage/100);

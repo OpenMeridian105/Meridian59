@@ -141,7 +141,7 @@ static sql_statistic_type Statistics_Table[] = {
    {STAT_MONSTER,       13, "WriteMonster", "wiki_monster"},
    {STAT_MONSTER_ZONE,   3, "WriteMonsterZone", "wiki_monster_zone"},
    {STAT_NPCS,           7, "WriteNpcs", "wiki_npcs"},
-   {STAT_WEAPONS,       11, "WriteWeapons", "wiki_weapons"},
+   {STAT_WEAPONS,       14, "WriteWeapons", "wiki_weapons"},
    {STAT_ROOMS,          6, "WriteRooms", "wiki_rooms"},
    {STAT_NPC_ZONE,       4, "WriteNpcZone", "wiki_npc_zone"},
    {STAT_NPC_SELLITEM,   3, "WriteNpcSellItem", "wiki_npc_sellitem"},

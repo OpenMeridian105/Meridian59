@@ -240,7 +240,7 @@ classvars:
    // This number is in the same ballpark as FINENESS. The actual distance
    // traveled varies widely with the victim's bulk (stamina and level),
    // the weapon used and the attacker's ability to inflict crushing blows.
-   viKnockback_distance = 25
+   viKnockback_distance = 20
 
    // How often do we try to half the knockback distance before we give up
    // on trying to knock a battler closer to a wall?
@@ -2575,7 +2575,7 @@ messages:
    //
    // NOTE: For a monster, the stroke_obj is the monster itself for now.
    TryAttack(what=$,stroke_obj=$,ambush=FALSE,factor=100,bGuaranteed=FALSE,iNum=$,
-      bReturnDamage=FALSE)
+      bReturnDamage=FALSE,crush=0)
    {
       local iOffense, iDefense, iChanceToHit, iDamage, iScalefactor, oWeapon;
 
@@ -2628,7 +2628,7 @@ messages:
 
          iDamage = Send(what,@AssessDamage,#what=self,#damage=iDamage,
             #atype=Send(self,@GetAttackType),#stype=Send(self,@GetSpellType),
-            #scalefactor=iScalefactor,#precision=TRUE);
+            #scalefactor=iScalefactor,#precision=TRUE,#crush=crush);
 
          Send(self,@AssessHit,#what=what,#stroke_obj=stroke_obj,
             #use_weapon=oWeapon,#damage=iDamage);
@@ -2711,7 +2711,7 @@ messages:
       return 0;
    }
 
-   DoHitAnimation(damage=0,what=$)
+   DoHitAnimation(damage=0,what=$,crush=0)
    "Handles hit attack animation."
    {
       local iDistance, drow, dcol, absdrow, absdcol, iNewCol, iNewRow,
@@ -2725,7 +2725,7 @@ messages:
 
       // How far will we be knocked back?
       iDistance = damage*viKnockback_distance/
-         (10*piMax_health + 30*Send(self,@GetMight));
+         (20*piMax_health + 20*Send(self,@GetMight));
 
       iAbility = FALSE;
 
@@ -2759,9 +2759,13 @@ messages:
          // another 50% distance from the wielder's skill ability.
          iDistance += iDistance*(99+iAbility)/198;
 
+         // Our crush modifier adds a flat amount of distance regardless
+         // of the strength of the blow.
+         iDistance += crush;
+
          // All skill effects are handled in DoCrush.
          if Send(oSkill,@DoCrush,#who=what,#what=self,#distance=iDistance,
-            #ability=iAbility)
+            #ability=iAbility,#crush=crush)
          {
             // Reusing variable. iAbility simply tracks whether our victim
             // has been crushed at this point. If it has, we have already

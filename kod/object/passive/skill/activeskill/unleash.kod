@@ -66,6 +66,7 @@ classvars:
    vbAutomatic = FALSE
 
    vbIsMeleeAttack = TRUE
+   vbIsMartialAttack = TRUE
 
    vbReportTrance = FALSE
    vbCanBreakTrance = FALSE
@@ -102,6 +103,7 @@ properties:
    piSlam_post_perform_time = 1050
    piSlam_preperation_time = 450
    piSlam_max_bonus = 100
+   piSlam_crush_bonus = 0
 
    //// GUT
    // regular swing that leaves a bleed effect instead
@@ -133,6 +135,17 @@ properties:
    piCharge_range_ratio = 20
    // Held for this many ms if you fail to reach your target.
    piCharge_penalty = 2500
+   piCharge_crush_bonus = 0
+
+   //// STAGGER
+   // Same as regular punch but with increased crush chance, stamina drain
+   // and a slight speed boost.
+   piStagger_post_perform_time = 650
+   piStagger_preperation_time = 150
+   piStagger_speed_bonus = 20
+   piStagger_max_bonus = 0
+   piStagger_range_ratio = 20
+   piStagger_crush_bonus = 16
 
    //// COUNTERED BY ACTIVE DEFENSE
    // How much does a target that successfully blocked, parried or dodged
@@ -164,7 +177,22 @@ messages:
    PerformSkill(who=$,lTargets=$)
    {
       local oWeapon, stroke_obj, iPower, iBonus, oTarget, iType,
-         iDefended, iMultiAttack, bAmbush, iDamage;
+         iDefended, iMultiAttack, bAmbush, iDamage, iStagger;
+
+      // Let's check what kind of weapon we have here.
+      oWeapon = Send(who,@GetWeapon);
+      iType = Send(oWeapon,@GetUnleashType);
+
+      // Our swing has officially ended and we are now waiting to recover.
+      if iType = UNLEASH_STAGGER
+      {
+         Send(who,@SetCombatState,#state=COMBAT_STATE_BAD_STANCE);
+      }
+      else
+      {
+         Send(who,@SetCombatState,#state=COMBAT_STATE_OFF_GUARD);
+      }
+
 
       oTarget = First(lTargets);
 
@@ -208,15 +236,13 @@ messages:
          return;
       }
 
-      oWeapon = Send(who,@GetWeapon);
+      // Now that we have dealt with that, let's get a bit more info.
       stroke_obj = Send(who,@GetStrokeObject);
       iMultiAttack = Send(oWeapon,@GetMultiAttack);
       bAmbush = Send(oWeapon,@CanAmbush,#who=who,#what=oTarget);
 
-      // Let's check what kind of weapon we have here.
-      iType = Send(oWeapon,@GetUnleashType);
-
       iBonus = piBase_bonus;
+      iStagger = 0;
 
       if iType = UNLEASH_LUNGE
       {
@@ -234,6 +260,13 @@ messages:
       {
          // Powerful attack with a longer post perform delay.
          iBonus = piSlam_max_bonus;
+         iStagger = piSlam_crush_bonus;
+      }
+      else if iType = UNLEASH_STAGGER
+      {
+         // Fast punch with high knockback and crushing blow chance.
+         iBonus = piStagger_max_bonus;
+         iStagger = piStagger_crush_bonus;
       }
       else if iType = UNLEASH_GUT
       {
@@ -267,6 +300,7 @@ messages:
       else if iType = UNLEASH_CHARGE
       {
          iBonus = piCharge_max_bonus;
+         iStagger = piCharge_crush_bonus;
       }
 
       iPower = viBonus + iBonus + Send(self,@GetSkillPower,#who=who);
@@ -276,7 +310,7 @@ messages:
       {
          if NOT Send(who,@TryAttack,#what=oTarget,#stroke_obj=stroke_obj,
             #use_weapon=oWeapon,#ambush=bAmbush,#factor=iPower,
-            #bCheck=FALSE)
+            #bCheck=FALSE,#crush=iStagger)
             AND (iType = UNLEASH_CHARGE)
          {
             // Charges get punished if they fail to reach their target to make
@@ -318,7 +352,7 @@ messages:
       Send(First(lTargets),@AddAttacker,#who=who);
 
       // Do the animation.
-      Post(Send(who,@GetWeapon),@WeaponUnleash);
+      Post(Send(who,@GetWeapon),@WeaponUnleash,#who=who);
 
       Send(Send(who,@GetOwner),@SomethingWaveRoom,#what=who,
          #wave_rsc=Unleash_sound_rsc);
@@ -328,18 +362,24 @@ messages:
 
    GetTargets(who=$,lTargets=$)
    {
-      local i,use_weapon, stroke_obj, iDist, iRange, iRow, iCol, iFineRow,
-         iFineCol, oRoom, oTarget;
+      local i,oWeapon, stroke_obj, iDist, iRange, iRow, iCol, iFineRow,
+         iFineCol, oRoom, oTarget, iType;
 
       oRoom = Send(who,@GetOwner);
-      use_weapon = Send(who,@GetWeapon);
+      oWeapon = Send(who,@GetWeapon);
       stroke_obj = Send(who,@GetStrokeObject);
-      iRange = Send(stroke_obj,@GetRange,#weapon_used=use_weapon);
+      iRange = Send(stroke_obj,@GetRange,#weapon_used=oWeapon);
+      iType = Send(oWeapon,@GetUnleashType);
 
-      if Send(use_weapon,@GetUnleashType) = UNLEASH_CHARGE
+      if iType = UNLEASH_CHARGE
       {
          iRange += (USER_RUNNING_SPEED*piCharge_preperation_time/1000)*
             (100+piCharge_speed_bonus)/piCharge_range_ratio;
+      }
+      else if iType = UNLEASH_STAGGER
+      {
+         iRange += (USER_RUNNING_SPEED*piStagger_preperation_time/1000)*
+            (100+piStagger_speed_bonus)/piStagger_range_ratio;
       }
 
       iRow = Send(who,@GetRow);
@@ -391,7 +431,7 @@ messages:
    {
       local oWeapon, iType;
 
-      oWeapon = Send(who,@LookupPlayerWeapon);
+      oWeapon = Send(who,@GetWeapon);
 
       if oWeapon = $
       {
@@ -425,6 +465,11 @@ messages:
          return piCharge_preperation_time;
       }
 
+      if iType = UNLEASH_STAGGER
+      {
+         return piStagger_preperation_time;
+      }
+
       return viPreperation_time;
    }
 
@@ -432,7 +477,7 @@ messages:
    {
       local iHaste, iDelay, iPrep, iPost, oWeapon, iType;
 
-      oWeapon = Send(who,@LookupPlayerWeapon);
+      oWeapon = Send(who,@GetWeapon);
 
       if oWeapon = $
       {
@@ -478,7 +523,7 @@ messages:
 
          if pbHaste
          {
-            iHaste += Send(who,@GetAgility)*Send(who,@GetAim)/100;
+            iHaste += Send(who,@GetAgility)*Send(who,@GetAim)/12;
          }
       }
       else if iType = UNLEASH_CHARGE
@@ -487,7 +532,16 @@ messages:
 
          if pbHaste
          {
-            iHaste += Send(who,@GetAgility)*Send(who,@GetMight)/100;
+            iHaste += Send(who,@GetAgility)*Send(who,@GetMight)/12;
+         }
+      }
+      else if iType = UNLEASH_STAGGER
+      {
+         iPost = piStagger_post_perform_time;
+
+         if pbHaste
+         {
+            iHaste += Send(who,@GetStamina)*Send(who,@GetMight)/12;
          }
       }
       else if iType = UNLEASH_NONE
@@ -626,14 +680,22 @@ messages:
 
    GetMovementSpeedReduction(state=$)
    {
-      local oBattler;
+      local oBattler, iType;
 
       oBattler = Nth(state,2);
+      iType = Send(Send(oBattler,@GetWeapon),@GetUnleashType);
 
       if oBattler <> $
-         AND Send(Send(oBattler,@GetWeapon),@GetUnleashType) = UNLEASH_CHARGE 
       {
-         return -piCharge_speed_bonus;
+         if iType = UNLEASH_CHARGE
+         {
+            return -piCharge_speed_bonus;
+         }
+
+         if iType = UNLEASH_STAGGER
+         {
+            return -piStagger_speed_bonus;
+         }
       }
 
       return piTranceMovementSpeedReduction;

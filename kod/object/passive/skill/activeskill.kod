@@ -17,16 +17,19 @@ resources:
 
    include activeskill.lkod
 
-   ActiveSkill_wrong_weapon_rsc = "You are not wielding a suitable weapon for this attack."
-   ActiveSkill_no_weapon_rsc = "You can't use this skill with your bare hands!"
-   ActiveSkill_no_targets_rsc = "There is nothing to attack within your weapon's range."
+   ActiveSkill_no_melee_rsc = "You are not wielding a suitable weapon for this attack!"
+   ActiveSkill_no_ranged_rsc = "You can't use this skill with a ranged weapon!"
+   ActiveSkill_no_martial_rsc = "You can't use this skill with your bare hands!"
+   ActiveSkill_no_touch_rsc = "You can't use this skill with your hands looking like - this!"
+   ActiveSkill_no_targets_rsc = "There is nothing to attack within your range!"
 
 classvars:
 
    viSignatureBuffSID = $
-   vbIsRangedAttack = FALSE
-   vbIsMeleeAttack = FALSE
-   vbIsUnarmedAttack = FALSE
+   vbIsRangedAttack = FALSE         // Bows & throwing weapons
+   vbIsMeleeAttack = FALSE          // Any melee weapon
+   vbIsMartialAttack = FALSE        // Punching and kicking
+   vbIsTouchAttack = FALSE          // Active touch attack enchantment
    vbCheckTargetsPreTrance = TRUE
 
 properties:
@@ -66,40 +69,39 @@ messages:
          return FALSE;
       }
 
-      if vbIsMeleeAttack OR vbIsRangedAttack OR vbIsUnarmedAttack
+      if vbIsMeleeAttack
+         OR vbIsRangedAttack
+         OR vbIsMartialAttack
+         OR vbIsTouchAttack
       {
          // Make sure we are using an appropriate weapon.
          oWeapon = Send(who,@GetWeapon);
 
-         if oWeapon = $
+         if IsClass(oWeapon,&Punch)
+            AND NOT vbIsMartialAttack
          {
-            if NOT vbIsUnarmedAttack
-            {
-               Send(who,@MsgSendUser,#message_rsc=ActiveSkill_no_weapon_rsc);
+            Send(who,@MsgSendUser,#message_rsc=ActiveSkill_no_martial_rsc);
 
-               return FALSE;
-            }
+            return FALSE;
          }
-         else if NOT IsClass(oWeapon,&Weapon)
+         else if IsClass(oWeapon,&Touch)
+            AND NOT vbIsTouchAttack
          {
-            Send(who,@MsgSendUser,#message_rsc=ActiveSkill_wrong_weapon_rsc);
+            Send(who,@MsgSendUser,#message_rsc=ActiveSkill_no_touch_rsc);
 
             return FALSE;
          }
          // Assume both can use ranged active skills.
-         else if IsClass(oWeapon,&RangedWeapon)
-            OR IsClass(oWeapon,&ThrownWeapon)
+         else if (IsClass(oWeapon,&RangedWeapon) OR IsClass(oWeapon,&ThrownWeapon))
+            AND NOT vbIsRangedAttack 
          {
-            if NOT vbIsRangedAttack
-            {
-               Send(who,@MsgSendUser,#message_rsc=ActiveSkill_wrong_weapon_rsc);
+            Send(who,@MsgSendUser,#message_rsc=ActiveSkill_no_ranged_rsc);
 
-               return FALSE;
-            }
+            return FALSE;
          }
          else if NOT vbIsMeleeAttack
          {
-            Send(who,@MsgSendUser,#message_rsc=ActiveSkill_wrong_weapon_rsc);
+            Send(who,@MsgSendUser,#message_rsc=ActiveSkill_no_melee_rsc);
 
             return FALSE;
          }

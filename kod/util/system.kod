@@ -57,6 +57,9 @@ resources:
    system_killed_self = "~B~U~k[###]~n ~B~v%q was just slain by %s own folly."
    system_user_killed_room = \
       "~B~U~k[###]~n ~B~v%q has met an unfortunate end in %s."
+   system_user_killed_room_angel = \
+      "~B~U~k[###]~n ~B~vShal'ille has come to the aid of %q, who has met "
+      "an unfortunate end in %s."
    system_user_killed_bridge_faith = \
       "~B~U~k[###]~n ~B~v%q just hurled %sself from the cliffs of Riija to find a watery "
       "grave."
@@ -2067,15 +2070,32 @@ messages:
          }
          else
          {
-            rMessage = system_user_killed_room;
-            param2 = Send(killer,@GetTrueName);
+            // For other rooms, if the player's current owner differs from
+            // the room that killed them, list the current owner. Players
+            // who die from overtime effects (e.g. burning) could make it
+            // to an adjacent room before expiring, making the death message
+            // incorrect if it uses the originating room.
+            if (oRoom <> $ AND oRoom <> killer)
+            {
+               killer = oRoom;
+            }
+
+            if (Send(what,@DoesPlayerTakeNewbieDeath))
+            {
+               rMessage = system_user_killed_room_angel;
+               param2 = Send(killer,@GetTrueName);
+            }
+            else
+            {
+               rMessage = system_user_killed_room;
+               param2 = Send(killer,@GetTrueName);
+            }
          }
 
          // Eliminate param3 that was set by default
          param3 = $;
       }
-
-      if what = killer
+      else if what = killer
       {
          rMessage = System_killed_self;
          param2 = Send(what,@GetHisHer);

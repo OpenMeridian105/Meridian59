@@ -145,6 +145,8 @@ resources:
    user_was_killed = \
       "You are dead, poor soul.  Go now, and take revenge on %s%s!"
    user_was_killed_bridge_faith = "Ouch, that last step was a doozy."
+   user_was_killed_room = \
+      "You have succumbed to the injuries you sustained in %s!"
 
    user_is_resting = "You are sitting and resting."
    user_is_standing = "You are standing."
@@ -11129,24 +11131,25 @@ messages:
       Send(self,@CancelLift);
 
       if what = self
+         OR what = $
       {
          propagate;
       }
 
-      if what <> $ AND IsClass(what,&TempleRiija)
-      {
-         Send(self,@MsgSendUser,#message_rsc=user_was_killed_bridge_faith);
-         
-         propagate;
-      }
-
-      if what <> $ AND IsClass(what,&Battler)
+      if IsClass(what,&Battler)
       {
          // Victim learns the real identity of a morphed/anonymous killer here.
          Send(self,@MsgSendUser,#message_rsc=user_was_killed,
-              #parm1=Send(what,@GetDef),#parm2=Send(what,@GetTrueName));
-
-         propagate;
+               #parm1=Send(what,@GetDef),#parm2=Send(what,@GetTrueName));
+      }
+      else if IsClass(what,&TempleRiija)
+      {
+         Send(self,@MsgSendUser,#message_rsc=user_was_killed_bridge_faith);
+      }
+      else if IsClass(what,&Room)
+      {
+         Send(self,@MsgSendUser,#message_rsc=user_was_killed_room,
+               #parm1=Send(what,@GetTrueName));
       }
 
       // any other causes of death get no special messages.

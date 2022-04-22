@@ -96,15 +96,22 @@ messages:
 
    NextDest()
    {
-      local iNext_Dest, oRoom, bCanPort;
+      local iNext_Dest, oRoom, bCanPort, iAttempts;
 
-      //Debug("Finding new destination...");
       piTeleport_Counter = 0;
       iNext_Dest = piCurrent_Dest;
 
-      if Length(plDestinations) > 1
+      // Only one destination to choose from, bailing...
+      if Length(plDestinations) <= 1
       {
-         while (bCanPort = FALSE)
+         return;
+      }
+      else
+      {
+         // Safety Check: Bail at 10 to prevent any possible infinte loop
+         // in the event if plDestinations is ever incorrect
+         iAttempts=10;
+         while (iNext_Dest = piCurrent_Dest AND iAttempts > 0)
          {
             iNext_Dest = Random(1,Length(plDestinations));
 
@@ -112,23 +119,12 @@ messages:
             if Send(Send(SYS,@FindRoomByNum,#num=iNext_Dest),@IsExpansionRoom)
                AND Send(SETTINGS_OBJECT,@IsExpansionEnabled)
                AND Send(SETTINGS_OBJECT,@CanWanderersTravelToEast)
-               AND iNext_Dest <> piCurrent_Dest
             {
-               bCanPort = TRUE;
+               iAttempts=0;
             }
 
-            if iNext_Dest <> piCurrent_Dest
-            {
-               bCanPort = TRUE;
-            }
+            iAttempts--;
          }
-         return;
-      }
-      else
-      {
-         //Debug("Only one destination to choose from, bailing...");
-
-         return;
       }
 
       piCurrent_Dest = iNext_Dest;
@@ -152,6 +148,7 @@ messages:
                   #fine_row=nth(nth(plDestinations,piCurrent_Dest),4),
                   #fine_col=nth(nth(plDestinations,piCurrent_Dest),5));
          }
+
          Post(self,@UpdateHeight);
          Send(oRoom,@WandererEntered,#mob=self);
       }

@@ -142,8 +142,8 @@ classvars:
    viCashMin = 200
    viCashMax = 600
 
-   // AI humans have a considerably lower chance to damage gear.
-   viGearDamageChance = 20
+   // AI humans don't take gear damage. It's not fun.
+   viGearDamageChance = 0
 
    // Can't seduce human mobs.
    vbCanSeduce = FALSE
@@ -224,15 +224,10 @@ messages:
       Send(self,@SetClothes);
 
       Send(self,@SetShield);
-      Send(self,@SetEquipment);
 
-      propagate;
-   }
-
-   Constructed()
-   {
-      // Have to set attack range for mobs with weapon.
-      piMeleeRange = Send(self,@GetAttackRange);
+      // Posting this since equipped weapons will add attacks that require
+      // resources that haven't been set yet.
+      Post(self,@SetEquipment);
 
       propagate;
    }
@@ -353,6 +348,8 @@ messages:
             Send(what,@NewUnused,#what=self);
             if (IsClass(what,&Weapon))
             {
+               Send(self,@UpdateMeleeRange);
+               Send(self,@AddDefaultAttacks,#bUpdate=TRUE);
                Send(self,@RemoveWeaponAction,#what=what);
             }
             return TRUE;
@@ -405,12 +402,11 @@ messages:
       }
 
       iRange = Send(what,@GetRange);
-      iRange *= iRange;
 
       if (IsClass(what,&ThrownWeapon)
          OR IsClass(what,&RangedWeapon))
       {
-         lTemp = [SKID_FIRE,0,100,iRange,viFirePriority,0,100,COMBAT_ACTION_HARM];
+         lTemp = [SKID_FIRE,0,100,iRange*iRange,viFirePriority,0,100,COMBAT_ACTION_HARM];
          // Don't add a duplicate.
          if (GetListNode(plActions, 1, SKID_FIRE) = $)
          {
@@ -419,20 +415,49 @@ messages:
       }
       else
       {
+         // Melee weapon range is cut in half for mobs.
+         iRange /= 2;
          // Find our existing SKID_SLASH action, and update the range.
          lTemp = GetListNode(plActions, 1, SKID_SLASH);
          if (lTemp <> $)
          {
-            SetNth(lTemp,4, iRange);
+            SetNth(lTemp,4, iRange*iRange);
          }
          else
          {
-            lTemp = [SKID_SLASH,0,100,iRange,viMeleePriority,0,100,COMBAT_ACTION_HARM];
+            lTemp = [SKID_SLASH,0,100,iRange*iRange,viMeleePriority,0,100,COMBAT_ACTION_HARM];
             plActions = Cons(lTemp,plActions);
          }
       }
 
       return;
+   }
+
+   UpdateMeleeRange()
+   {
+      local oWeapon, iRange;
+
+      oWeapon = Send(self,@GetWeapon);
+
+      if oWeapon = $
+      {
+         piMeleeRange = viMeleeRange;
+         return;
+      }
+
+      iRange = Send(oWeapon,@GetRange);
+
+      if IsClass(oWeapon,&ThrownWeapon)
+         OR IsClass(oWeapon,&RangedWeapon)
+      {
+         piMeleeRange = iRange;
+      }
+      else
+      {
+         piMeleeRange = Bound(iRange/2,FINENESS*2,$);
+      }
+
+      return piMeleeRange;
    }
 
    LeaveHold(what = $)
@@ -1133,13 +1158,21 @@ messages:
 
    GetAttackRange()
    {
-      local iWeapon;
+      local oWeapon, iRange;
 
-      iWeapon = Send(Self,@GetWeapon);
+      oWeapon = Send(Self,@GetWeapon);
 
-      if iWeapon <> $
+      if oWeapon <> $
       {
-         return Send(iWeapon,@GetRange);
+         iRange = Send(oWeapon,@GetRange);
+
+         if (IsClass(oWeapon,&ThrownWeapon)
+            OR IsClass(oWeapon,&RangedWeapon))
+         {
+            return iRange;
+         }
+
+         return Bound(iRange/2,FINENESS*2,$);
       }
 
       propagate;
@@ -1529,6 +1562,66 @@ messages:
       }
 
       return;
+   }
+
+   // Human animation durations vary from case to case.
+   // These durations are extracted from SendAnimations
+   // by multiplying frame count and frame duration.
+   GetAnimationTime()
+   {
+      local iAction, iTime;
+
+      iAction = piAction % 1000;
+      iTime = 900;
+
+      // Slash animation
+      if (iAction = SKID_SLASH) OR
+         (iAction = SKID_THRUST) OR
+         (iAction = SKID_STRIKE) OR
+         (iAction = SKID_PUNCH) OR
+         (iAction = SKID_CLAW) OR
+         (iAction = SKID_STING) OR
+         (iAction = SKID_BITE) OR
+         (iAction = SKID_SPIT) OR
+         (iAction = SKID_SPIN)
+      {
+         iTime = 900;
+      }
+      // Punch animation
+      else if iAction = SKID_WEAKEN
+         OR iAction = SKID_SNARE
+         OR iAction = SKID_CONFUSE
+      {
+         iTime = 1200;
+      }
+      // Cast animation
+      else if iAction < SKID_MINIMUM
+         OR iAction = SKID_STUN
+         OR iAction = SKID_CRIPPLE
+         OR iAction = SKID_DAZE
+      {
+         iTime = 300;
+      }
+      // Wave animation
+      else if iAction = SKID_DISTRACT
+      {
+         iTime = 400;
+      }
+      // Point animation
+      else if iAction = SKID_TAUNT
+      {
+         iTime = 700;
+      }
+      // Fire animation
+      else if iAction = SKID_FIRE
+      {
+         iTime = 1200;
+      }
+
+      // Multiply by the number of times the animation is played.
+      iTime *= (1 + piAction/10000);
+
+      return iTime; 
    }
 
    SetPlayerIcon(what = $,new_icon = $,translation = $, alldone = TRUE)
@@ -2008,6 +2101,8 @@ messages:
       if (what <> $
          AND IsClass(what,&Weapon))
       {
+         Send(self,@UpdateMeleeRange);
+         Send(self,@AddDefaultAttacks,#bUpdate=TRUE);
          Send(self,@AddWeaponAction,#what=what);
       }
 

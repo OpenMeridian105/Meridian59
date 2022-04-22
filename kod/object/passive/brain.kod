@@ -611,10 +611,12 @@ messages:
       oTarget = Send(mob,@GetTarget);
 
       // Nope.
-      if oTarget = $ OR Send(oTarget,@GetOwner) = $
+      if oTarget = $
+         OR Send(oTarget,@GetOwner) = $
       {
          // Check if we can find a substitute.
          oTarget = Send(mob,@GetTopHurter);
+
          if oTarget <> $
          {
             // Yup!
@@ -630,9 +632,6 @@ messages:
          return;
       }
 
-      // Move time is our lower bound for delay between actions.
-      delay = Bound(delay,Send(mob,@GetMoveTime),$);
-
       // We have a new potential target.
       if bSwitch
       {
@@ -642,7 +641,7 @@ messages:
          {
             // Yeah, we do.
             Send(mob,@EnterStateEngage,#target=oTarget,#actnow=FALSE,
-                  #delay=delay);
+                  #delay=Bound(delay,Send(mob,@GetMoveTime),$));
          }
          else
          {
@@ -653,7 +652,8 @@ messages:
       // Our old clubbing buddy is still around. Club 'em.
       else
       {
-         Send(mob,@EnterStateEngage,#target=oTarget,#actnow=FALSE,#delay=delay);
+         Send(mob,@EnterStateEngage,#target=oTarget,#actnow=FALSE,
+            #delay=Bound(delay,Send(mob,@GetMoveTime),$));
       }
 
       return;
@@ -720,7 +720,7 @@ messages:
 
       if (oTarget = $) AND (oHurter = $)
       {
-         Send(mob,@EnterStateMove);
+         Send(mob,@EnterStateMove,#bResume=TRUE);
 
          return;
       }
@@ -735,7 +735,7 @@ messages:
          }
          else
          {
-            Send(mob,@EnterStateMove);
+            Send(mob,@EnterStateMove,#bResume=TRUE);
          }
       }
       else if oHurter = $
@@ -795,6 +795,7 @@ messages:
       }
 
       if (behavior & AI_NOMOVE)
+         OR Send(mob,@CheckMonsterFlag,#flag=MFLAG_HOLDING)
       {
          // Monster is immobile.
          return;
@@ -1104,6 +1105,7 @@ messages:
 
       // Monster is immobile.
       if (behavior & AI_NOMOVE)
+         OR Send(mob,@CheckMonsterFlag,#flag=MFLAG_HOLDING)
       {
          return;
       }

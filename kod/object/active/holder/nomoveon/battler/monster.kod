@@ -140,7 +140,7 @@ resources:
    Lm_monster_snare = "~I~r%s%s attempts to ensnare %s%s!"
    Lm_monster_daze = "~I~r%s%s attempts to daze %s%s!"
    Lm_monster_distract = "~I~r%s%s attempts to distract their opponents!"
-   Lm_monster_frighten = "~I~r%s%s attempts to frighten their opponents!"
+   Lm_monster_confuse = "~I~r%s%s attempts to confuse their opponents!"
 
    monster_desc_level = "This opponent will take you to %i hitpoints."
    Lm_condition_healthy = "%s\n\n%r"
@@ -483,8 +483,8 @@ classvars:
    viBurnStrength = $
    viBurnDuration = $
 
-   // Multiplier for SKID_FRIGHTEN.
-   viFrightenFactor = 10
+   // Multiplier for SKID_CONFUSE.
+   viConfuseFactor = 10
 
    // Some monsters are immune to certain drain effects.
    vbCanPoison = TRUE
@@ -1134,10 +1134,10 @@ messages:
          plActions = Cons(lTemp,plActions);
       }
 
-      if (viAttacks & ATTACK_FRIGHTEN) 
-         AND (GetListNode(plActions, 1, SKID_FRIGHTEN) = $)
+      if (viAttacks & ATTACK_CONFUSE) 
+         AND (GetListNode(plActions, 1, SKID_CONFUSE) = $)
       {
-         lTemp = [SKID_FRIGHTEN,0,500,piMeleeRange*piMeleeRange*9,viMeleePriority,1000,0,COMBAT_ACTION_HARM];
+         lTemp = [SKID_CONFUSE,0,500,piMeleeRange*piMeleeRange*2,viMeleePriority,1000,0,COMBAT_ACTION_HARM];
          plActions = Cons(lTemp,plActions);
       }
 
@@ -1204,9 +1204,21 @@ messages:
       return FALSE;
    }
 
-   RemoveCombatAction(iNum=0)
+   RemoveCombatAction(iNum=0,bAll=FALSE)
    {
       local i;
+
+      if bAll
+      {
+         foreach i in plActions
+         {
+            plActions = DelListElem(plActions,i);
+         }         
+
+         plActions = $;
+
+         return TRUE;
+      }
 
       foreach i in plActions
       {
@@ -1785,28 +1797,65 @@ messages:
       return;
    }
 
-   EnterStateMove(actnow=FALSE)
+   EnterStateMove(actnow=FALSE, bResume = FALSE)
    {
-      // SetTarget without a 'what' passed sets target to nil.
+      local iDelay;
+
+      // Currently on time-out.
+      if (piState & STATE_REST) AND NOT bResume
+      {
+         return;
+      }
+
+      // Clear our target.
       if (poTarget <> $)
       {
          Send(self,@SetTarget);
       }
 
-      // Note: All monsters "move" even the ones who physically can't.
+      // Moving is the standard state of any monster that is
+      // active, but not engaged in combat, even if stationary.
       Send(self,@SetState,#bit=STATE_MOVE);
 
+      // Whatever we planned to do before, it no longer matters.
       Send(self,@ClearBehavior);
 
+      // We are totally Zen now.
       piHatred = 0;
 
+      // Got some urgent loitering to do. No time to waste!
       if actnow
       {
          Send(self,@MoveTimer);
       }
       else
       {
-         ptBehavior = CreateTimer(self,@MoveTimer,Send(self,@GetMoveTime));
+         // If we were busy doing something else but walking before,
+         // take a moment to cool off. This also allows us to finish
+         // unresolved animations.
+         if piAction <> SKID_MINIMUM
+         {
+            // Our delay is decided by intellect and agility.
+            iDelay = Send(self,@GetPostFightDelay);
+
+            // Let's make sure we have enough time to finish our
+            // animation though.
+            iDelay = Bound(iDelay,Send(self,@GetAnimationTime),$);
+
+            // Set piAction to move so that we don't have any extra
+            // delay on our next move.
+            piAction = SKID_MINIMUM;
+
+            Send(self,@EnterStateRest,#target=poTarget,#delay=iDelay);
+            return;
+         }
+         else
+         {
+            // Get our regular move delay.
+            iDelay = Send(self,@GetMoveTime);
+         }
+
+         ptBehavior = CreateTimer(self,@MoveTimer,iDelay);
       }
 
       return;
@@ -2601,7 +2650,7 @@ messages:
       }
 
       // See if we want to change state now, but check for brain here first.
-      // Sometimes we've died by now.
+      // Sometimes we've died by now. Life is so fleeting...
       if poOwner <> $
       {
          Send(poBrain,@PostMoveTimer,#mob=self);
@@ -3594,7 +3643,7 @@ messages:
    AssessDamage(what=$,damage=$,atype=0,stype=0,bonus=0,scalefactor=1000,
       absolute=FALSE,precision=FALSE)
    {
-      local iDamage, iResist, iPercentClass, i, each_obj;
+      local iDamage, iResist, iPercentClass, i, each_obj, oMark, lState;
 
       if NOT precision
       {
@@ -3674,6 +3723,17 @@ messages:
       Send(self,@DoHitAnimation,#damage=iDamage,#what=what);
 
       Send(self,@AddHurtMeRecently,#who=what,#amount=iDamage);
+
+      // Finally, check if we are marked. If so, extra damage over time.
+      oMark = Send(SYS,@FindSkillByNum,#Num=SKID_MARK);
+      lState = Send(self,@GetEnchantedState,#what=oMark);
+
+      // We are not interested in the damage over time effect, just the skill.
+      if lState <> $
+      {
+         Send(oMark,@MarkEffect,#victim=self,#attacker=what,
+            #damage=damage,#state=lState);
+      }
 
       return iDamage;
    }
@@ -4320,6 +4380,12 @@ messages:
       {
          piState = iState;
 
+         if poMarker <> $
+         {
+            Send(poMarker,@MoveMarker,#row=iRow,#fine_row=iFineRow,
+               #col=iCol,#fine_col=iFineCol,#speed=piSpeed);
+         }
+
          // stores if we reconsidered our move destination
          iStillGo = TRUE;
 
@@ -4503,7 +4569,7 @@ messages:
    ReturnToCommander()
    "Return to our commander if we have one and we have strayed too far."
    {
-      local iRow, iCol, iRadius, oCommander, oRoom;
+      local iRow, iCol, iRadius, oCommander, oRoom, lState;
 
       // Usually, our leader is in command.
       oCommander = poLeader;
@@ -4531,6 +4597,17 @@ messages:
       {
          return FALSE;
       }
+
+      // If our commander has set a mark on our target, let's stick to that target.
+      lState =Send(poTarget,@GetEnchantedState,
+         #what=Send(SYS,@FindSkillByNum,#num=SKID_MARK));
+
+      if (lState <> $)
+         AND (First(lState) = oCommander)
+      {
+         return FALSE;
+      }
+
 
       iRadius = Send(self,@HowCloseToCommander);
 
@@ -5550,14 +5627,19 @@ messages:
          {
             Post(what,@EnterStateWait,#delay=(piAgility+piIntellect+viLevel)*60);
          }
-         // Makes the target flee.
+         // Makes the target stumble around. (Blind effect.)
          // AE, so messages are handled in MonsterAction()
-         else if (iNum = SKID_FRIGHTEN) AND IsClass(what,&Monster)
-            AND vbCanFrighten
-            AND (Random(1,viLevel) > Send(what,@GetLevel)/3)
+         else if (iNum = SKID_CONFUSE)
          {
-            Send(what,@FrightenedBy,#who=who,
-                  #duration=(piMight+piStamina+viLevel)*viFrightenFactor);
+            oEffect = Send(SYS,@FindSpellByNum,#num=SID_BLIND);
+
+            if NOT Send(what,@IsEnchanted,#what=oEffect)
+               AND (Random(1,viLevel) > Send(what,@GetLevel)/3)
+            {
+               Send(oEffect,@DoSpellEffects,#who=who,#lTargets=[what],
+                     #iDuration=(piIntellect+piAgility+viLevel)*30,#report=FALSE);
+               Post(what,@EnterStateWait,#delay=(piIntellect+piAgility+viLevel)*60);
+            }
          }
       }
 
@@ -5747,7 +5829,7 @@ messages:
 
    KilledSomething(what=$,use_weapon=$,stroke_obj=$)
    {
-      local oOwner;
+      local oOwner, oCommander;
 
       if what = $
       {
@@ -5756,18 +5838,27 @@ messages:
          return;
       }
 
-      // If we have a master, they are responsible for our kills.
       if poMaster <> $
       {
+         oCommander = poMaster;
+      }
+      else if poLeader <> $
+      {
+         oCommander = poLeader;
+      }
+
+      // If we have a master, they are responsible for our kills.
+      if oCommander <> $
+      {
          if IsClass(what,&Player)
-            AND IsClass(poMaster,&Player)
+            AND IsClass(oCommander,&Player)
          {
             // If we killed an innocent, tell the master they're in trouble.
-            if (NOT Send(poMaster,@CheckPlayerFlag,#flag=PFLAG_MURDERER))
+            if (NOT Send(oCommander,@CheckPlayerFlag,#flag=PFLAG_MURDERER))
                AND NOT (Send(what,@CheckPlayerFlag,#Flag=PFLAG_OUTLAW)
                   OR Send(what,@CheckPlayerFlag,#Flag=PFLAG_MURDERER))
             {
-               Send(poMaster,@MsgSendUser,#message_rsc=vrMinion_trouble);
+               Send(oCommander,@MsgSendUser,#message_rsc=vrMinion_trouble);
             }
 
             // Evil twins are dispelled by any player they kill.
@@ -5779,7 +5870,7 @@ messages:
 
          // Our master handles the kill from here, since they
          // made us do it.
-         return Send(poMaster,@KilledSomething,#what=what,
+         return Send(oCommander,@KilledSomething,#what=what,#oMinion=self,
                      #use_weapon=use_weapon,#stroke_obj=stroke_obj);
       }
 
@@ -5839,7 +5930,7 @@ messages:
    Killed(what=$,stroke_obj=$)
    "The mob was just killed."
    {
-      local i,val,oBody,hReputation, oQuester;
+      local i,val,oBody,hReputation, oQuester, oCommander;
 
       // If the monster was just killed, assume it did itself in.
       if what = $
@@ -5862,9 +5953,18 @@ messages:
          // KilledSomething, but to be safe (and because quests are
          // checked here) we should check again for a master.
          if IsClass(what,&Monster)
-            AND Send(what,@GetMaster) <> $
          {
-            what = Send(what,@GetMaster);
+            oCommander = Send(what,@GetMaster);
+
+            if oCommander = $
+            {
+               oCommander = Send(what,@GetLeader);
+            }
+
+            if oCommander <> $
+            {
+               what = oCommander;
+            }
          }
 
          oBody = Send(self,@CreateDeadBody,#killer=what);
@@ -7370,7 +7470,7 @@ messages:
          }
       }
       // An AoE special attack!
-      else if (iNum = SKID_DISTRACT) OR (iNum = SKID_FRIGHTEN)
+      else if (iNum = SKID_DISTRACT) OR (iNum = SKID_CONFUSE)
       {
          iType = MONSTER_MELEE;
          lTargets = Send(self,@GetTargetsInRange,#squaredrange=Nth(lAction,4));
@@ -7382,8 +7482,8 @@ messages:
                      #type=SAY_MESSAGE,#parm1=Send(self,@GetCapDef),
                      #parm2=Send(self,@GetName));
                break;
-            case SKID_FRIGHTEN:
-               Send(poOwner,@SomeoneSaid,#what=self,#string=Lm_monster_frighten,
+            case SKID_CONFUSE:
+               Send(poOwner,@SomeoneSaid,#what=self,#string=Lm_monster_confuse,
                      #type=SAY_MESSAGE,#parm1=Send(self,@GetCapDef),
                      #parm2=Send(self,@GetName));
                break;
@@ -7589,7 +7689,7 @@ messages:
          {
             return FALSE;
          }
-         if ((iNum = SKID_SPIN) OR (iNum = SKID_DISTRACT) OR (iNum = SKID_FRIGHTEN))
+         if ((iNum = SKID_SPIN) OR (iNum = SKID_DISTRACT) OR (iNum = SKID_CONFUSE))
             AND (Length(Send(self,@GetTargetsInRange)) < 2)
          {
             return FALSE;
@@ -7933,7 +8033,7 @@ messages:
             }
             break;
 
-         case SKID_FRIGHTEN:
+         case SKID_CONFUSE:
             if IsClass(self,&Human)
             {
                Send(self,@DoFistAttack);
@@ -8496,6 +8596,8 @@ messages:
 
    GetSpeed()
    {
+      local iDistance, iRadius;
+
       if poLeader = $
       {
          // Set our current speed based on classvar and agility.
@@ -8503,7 +8605,25 @@ messages:
       }
       else if IsClass(self,&Follower)
       {
-         piSpeed = USER_RUNNING_SPEED;
+         if (piState & STATE_MOVE) 
+         {
+            // Adjust speed based on distance to leader.
+            iDistance = Send(self, @SquaredFineDistanceTo3D, #what=poLeader);
+
+            // Need to bound here to avoid exceeding MAX_KOD_INT later.
+            iDistance = Bound(iDistance,$,MAX_KOD_INT/USER_RUNNING_SPEED);
+
+            // Increase the desired commander distance to soften those last steps some more.
+            iRadius = (Send(self,@HowCloseToCommander) + 1) * 3 * FINENESS / 2;
+            iRadius *= iRadius;
+
+            // Be sure to stay within reasonable limits.
+            piSpeed = Bound(USER_RUNNING_SPEED*iDistance/iRadius,SPEED_AVERAGE,3*USER_RUNNING_SPEED/2);
+         }
+         else
+         {
+            piSpeed = USER_RUNNING_SPEED;
+         }
       }
       else
       {
@@ -11828,6 +11948,11 @@ messages:
       return vrSound_miss;
    }
 
+   GetPostFightDelay()
+   {
+      return (70-piAgility)*(70-piIntellect);
+   }
+
    //// Morph related messages.
    // Monsters function as their own weapons. When a player morphs, additional
    // messages need to be covered.
@@ -12045,6 +12170,23 @@ messages:
       }      
 
       return;
+   }
+
+   // Most monster animations take no longer than an attack.
+   GetAnimationTime()
+   {
+      local iTime;
+
+      // Get the number of frames involved.
+      iTime = 1 + viAttack_end_frame - viAttack_start_frame;
+
+      // Multiply by the length each frame is played.
+      iTime *= viAttack_duration;
+
+      // Multiply by the number of times the animation is played.
+      iTime *= (1 + piAction/10000);
+
+      return iTime; 
    }
 
    SendNoAnimation()

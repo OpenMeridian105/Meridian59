@@ -1,0 +1,110 @@
+// Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+// All rights reserved.
+//
+// This software is distributed under a license that is described in
+// the LICENSE file that accompanies it.
+//
+// Meridian is a registered trademark.
+
+
+////////////////////////////////////////////////////////////////////////////////
+Marker is PassiveObject
+
+constants:
+
+   include blakston.khd
+
+resources:
+
+   include marker.lkod
+
+   marker_name_rsc = "marked"
+   marker_desc_template = "%r%r"
+   marker_desc_rsc = "%s%s has been marked by %s%s."
+   marker_info_rsc = "\nThe marked target has suffered %i additional damage."
+
+   marker_icon = marked.bgf
+
+classvars:
+
+   vrName = marker_name_rsc
+   vrDesc = marker_desc_rsc
+   vrInfo = marker_info_rsc
+   vrIcon = marker_icon
+
+properties:
+
+   poMarker = $
+   poTarget = $
+   piDamage = 0
+
+messages:
+
+   Constructor(who=$,what=$)
+   {
+      poMarker = who;
+      poTarget = what;
+
+      propagate;
+   }
+
+   SendAnimation()
+   {
+      AddPacket(1,ANIMATE_CYCLE,4, 1000, 2,1, 2,1);
+
+      return;
+   }
+
+   SendMoveAnimation()
+   {
+      AddPacket(1,ANIMATE_CYCLE,4, 1000, 2,1, 2,1);
+
+      return;
+   }
+
+   GetObjectFlags()
+   {
+      return OF_NOEXAMINE | OF_BOUNCING;
+   }
+
+   ShowDesc()
+   {
+      AddPacket(4,marker_desc_template, 4,vrDesc, 
+         4,Send(poTarget,@GetCapDef), 4,Send(poTarget,@GetName),
+         4,Send(poMarker,@GetCapDef), 4,Send(poMarker,@GetName),
+         4,vrInfo, 4,piDamage/100);
+
+      return;
+   }
+
+   AddDamage(damage=0)
+   {
+      piDamage += damage;
+      return;
+   }
+
+   SendLightingInformation()
+   {
+      // 5 out of 255 intensity of light.
+      AddPacket(2,(LIGHT_FLAG_ON | LIGHT_FLAG_DYNAMIC),1,50, 2,LIGHT_YELLOW);
+
+      return;
+   }
+
+   MoveMarker(col=0,fine_col=0,row=0,fine_row=0,speed=0)
+   {
+      if poOWner <> $
+      {
+         Send(poOwner,@SomethingMoved,#what=self,
+                        #new_row=row,#new_col=col,
+                        #fine_row=fine_row,#fine_col=fine_col,
+                        #speed=(0x80|speed),
+                        #cause=CAUSE_MOB_MOVEMENT,
+                        #non_monsters_only=TRUE);
+      }
+
+      return;
+   }
+
+end
+////////////////////////////////////////////////////////////////////////////////

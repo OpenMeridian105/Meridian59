@@ -127,13 +127,10 @@ messages:
    {
       if state
       {
-         Send(who,@LoseHealth,#amount=state,#precision=TRUE);
+         // Don't die: too harsh; makes spell unusable.
+         state = Bound(state,$,Send(who,@GetExactHealth)-1);
 
-         if Send(who,@GetExactHealth) < 1
-         {
-            // Don't die: too harsh; makes spell unusable.
-            Send(who,@SetExactHealth,#amount=1);
-         }
+         Send(who,@LoseHealth,#amount=state,#precision=TRUE);
       }
 
       return;

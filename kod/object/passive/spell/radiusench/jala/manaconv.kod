@@ -71,6 +71,18 @@ properties:
 
    prMusic = ManaConvergence_song
 
+   // Amount of mana drained per tick.
+   piDrain_strength = 100
+
+   // Tick duration at mind SP.
+   piBase_duration = 5000
+
+   // Tick duration at max SP.
+   piMin_duration = 4000
+
+   // Percentage of mana drained that is restored to the caster.
+   piConversion_rate = 100
+
 messages:
 
    ResetReagents()
@@ -90,11 +102,15 @@ messages:
       if (IsClass(who,&Player)
          AND NOT (who = oCaster))
       {
-         iManaGain = Send(who,@LoseMana,#amount=1);
+         iManaGain = Bound(piDrain_strength,0,Send(who,@GetExactMana));
+         Send(who,@LoseMana,#amount=iManaGain,#precision=TRUE);
 
-         if (iManaGain > 0)
+         if iManaGain
          {
-            Send(oCaster,@GainMana,#amount=iManaGain,#bCapped=TRUE);
+            // Scale the lost mana based on conversion rate.
+            iManaGain = iManaGain * piConversion_rate / 100;
+
+            Send(oCaster,@GainMana,#amount=iManaGain,#bCapped=FALSE,#precision=TRUE);
             Send(oCaster,@MsgSendUser,#message_rsc=manacon_sap_caster,
                   #parm1=Send(who,@GetCapDef),#parm2=Send(who,@GetName),
                   #parm3=Send(who,@GetHisHer));
@@ -111,8 +127,10 @@ messages:
    {
       local iDuration;
 
-      // 4000-5000 ms.
-      return 5000 - (Nth(state,5) * 10);
+      iDuration = piBase_duration - (piBase_duration - piMin_duration)
+         * Nth(state,5) / SPELLPOWER_MAXIMUM;
+
+      return iDuration;
    }
 
 end

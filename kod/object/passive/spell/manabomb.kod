@@ -110,8 +110,8 @@ messages:
       local oRoom, lEnchanted, iMana, i, iManaLost;
 
       // Take mana from caster.
-      iMana = Send(who,@GetMana);
-      Send(who,@LoseMana,#amount=iMana);
+      iMana = Send(who,@GetExactMana);
+      Send(who,@LoseMana,#amount=iMana,#precision=TRUE);
 
       // Send message to all in room.
       oRoom = Send(who,@GetOwner);
@@ -124,11 +124,12 @@ messages:
 
       foreach i in lTargets
       {
-         // Mana loss.
-         iManaLost = Send(i,@LoseMana,#amount=iMana);
+         // The victim's mana loss is limited by their total mana.
+         iManaLost = Bound(iMana,0,Send(i,@GetExactMana));
+         Send(i,@LoseMana,#amount=iManaLost,#precision=TRUE);
 
          // Spell effect messages.
-         if Send(i,@GetMana) = 0
+         if Send(i,@GetExactMana) = 0
          {
             if IsClass(i,&Player)
             {
@@ -145,13 +146,13 @@ messages:
             if IsClass(i,&Player)
             {
                Send(i,@MsgSendUser,#message_rsc=manabomb_hit_some,
-                     #parm1=iManaLost);
+                     #parm1=iManaLost/100);
                Send(i,@BadSpellFlashEffect);
             }
 
             Send(who,@MsgSendUser,#message_rsc=manabomb_took_some,
                   #parm1=Send(i,@GetCapDef),#parm2=Send(i,@GetName),
-                  #parm3=Send(i,@GetHisHer),#parm4=iManaLost);
+                  #parm3=Send(i,@GetHisHer),#parm4=iManaLost/100);
          }
       }
 

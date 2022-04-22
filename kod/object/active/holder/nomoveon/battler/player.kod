@@ -6370,7 +6370,7 @@ messages:
             // If so, we have weaponized our touch.
             return Send(SYS,@FindSkillByNum,#num=SKID_TOUCH);
          }
-         // Looks like it's just out fist.
+         // Looks like it's just our fist.
          else
          {
             // Good enough. Since we've had martial training, its considered
@@ -6507,18 +6507,14 @@ messages:
       return piWeaponInfo/1000;
    }
 
-   KilledSomething(what = $,use_weapon = $,stroke_obj = $)
+   KilledSomething(what=$,use_weapon=$,stroke_obj=$,oMinion=$)
    "Called when the player killed something."
    {
       local iChance, oVictimRoom, oObject;
 
-      // Let our follower know if we have one. It'll make their day!
-      // Also gotta do this first, to avoid complications... (They're crazy jealous!)
-      if (Send(self,@HasActiveFollower)
-         AND (Send(poMercenary,@GetOwner) = poOwner))
-      {
-         Send(poMercenary,@LeaderKilledSomething,#what=what,#use_weapon=use_weapon);
-      }
+      // If we killed someone or something, we did damage, even though
+      // that damage may have been done by our minions.
+      Send(self,@SetPlayerFlag,#flag=PFLAG_DID_DAMAGE,#value=TRUE);
 
       // Killed something with a weapon, damage weapon.
       if (use_weapon <> $)
@@ -6527,34 +6523,57 @@ messages:
          Send(use_weapon,@DamageItem);
       }
 
-      // Killed something by holding down the attack key. Damage
-      // any gear that might have helped our attack.
-      if (stroke_obj <> $)
-         AND (IsClass(stroke_obj,&Skill)
-            OR IsClass(stroke_obj,&TouchAttackSpell))
+      // Some stuff only applies when we have killed ourselves.
+      if oMinion = $
       {
          SendList(plAttack_modifiers,0,@DamageItem);
-      }
 
-      // If we killed someone or something, we did damage.
-      Send(self,@SetPlayerFlag,#flag=PFLAG_DID_DAMAGE,#value=TRUE);
-
-      // Send text message - a stroke may want to provide it's own.
-      if NOT Send(what,@SayDyingWords,#what=self)
-      {
-         if stroke_obj <> $
+         // Let our follower know if we have one. It'll make their day!
+         // Also gotta do this first, to avoid complications... (They're crazy jealous!)
+         if (Send(self,@HasActiveFollower)
+            AND (Send(poMercenary,@GetOwner) = poOwner))
          {
-            if NOT Send(stroke_obj,@PlayerKilledSomethingMsg,#who=self,#victim=what)
-               AND self <> what
+            Send(poMercenary,@LeaderKilledSomething,#what=what,#use_weapon=use_weapon);
+         }
+
+         // Killed something by holding down the attack key. Damage
+         // any gear that might have helped our attack.
+         if (stroke_obj <> $)
+            AND (IsClass(stroke_obj,&Skill)
+               OR IsClass(stroke_obj,&TouchAttackSpell))
+         {
+            SendList(plAttack_modifiers,0,@DamageItem);
+         }
+
+         // Send text message - a stroke may want to provide it's own.
+         if NOT Send(what,@SayDyingWords,#what=self)
+         {
+            if stroke_obj <> $
+            {
+               if NOT Send(stroke_obj,@PlayerKilledSomethingMsg,#who=self,#victim=what)
+                  AND self <> what
+               {
+                  Send(self,@MsgSendUser,#message_rsc=player_killed_something,
+                     #parm1=Send(what,@GetDef),#parm2=Send(what,@GetName));
+               }
+            }
+            else if self <> what
             {
                Send(self,@MsgSendUser,#message_rsc=player_killed_something,
-                    #parm1=Send(what,@GetDef),#parm2=Send(what,@GetName));
+                  #parm1=Send(what,@GetDef),#parm2=Send(what,@GetName));
             }
          }
-         else if self <> what
+
+         // We only take karma hits for our own kills. Totally unfair really.
+         // Inciting the violence is just as bad really!
+         if NOT (Send(what,@IsIllusion)
+               OR Send(poOwner,@IsArena)
+               OR Send(poOwner,@GetChaosZone))
          {
-            Send(self,@MsgSendUser,#message_rsc=player_killed_something,
-                 #parm1=Send(what,@GetDef),#parm2=Send(what,@GetName));
+            Send(self,@AddKarma,#amount=Send(self,@CalculateKarmaChangeFromKill,
+                  #karma_victim=Send(what,@GetKarma),
+                  #karma_killer=Send(self,@GetKarma),
+                  #bIsMob=IsClass(what,&Monster)),#bReport=TRUE);
          }
       }
 
@@ -6651,18 +6670,6 @@ messages:
                }
             }
          }
-      }
-
-      // Stop minions ruining our karma, they are kind of bloodthirsty
-      // and tend to kill indiscriminately (especially mobs).
-      if (NOT (use_weapon <> $ AND IsClass(use_weapon,&Monster))
-         AND NOT Send(what,@IsIllusion)
-         AND NOT (poOwner <> $ AND Send(poOwner,@IsArena)))
-      {
-         Send(self,@AddKarma,#amount=Send(self,@CalculateKarmaChangeFromKill,
-               #karma_victim=Send(what,@GetKarma),
-               #karma_killer=Send(self,@GetKarma),
-               #bIsMob=IsClass(what,&Monster)),#bReport=TRUE);
       }
 
       Send(what,@Killed,#what=self,#stroke_obj=stroke_obj);
@@ -17670,10 +17677,12 @@ messages:
 
       iVigor = Send(oSkill,@GetActiveBlockCost);
 
-      if Send(self,@LoseVigor,#precision=TRUE,#amount=iVigor) < iVigor
+      if NOT Send(self,@HasVigor,#amount=iVigor,#precision=TRUE)
       {
          return FALSE;
       }
+
+      Send(self,@LoseVigor,#amount=iVigor,#precision=TRUE);
 
       if iChance > Random(0,99)
       {
@@ -17694,10 +17703,12 @@ messages:
 
       iVigor = Send(oSkill,@GetActiveParryCost);
 
-      if Send(self,@LoseVigor,#precision=TRUE,#amount=iVigor) < iVigor
+      if NOT Send(self,@HasVigor,#amount=iVigor,#precision=TRUE)
       {
          return FALSE;
       }
+
+      Send(self,@LoseVigor,#amount=iVigor,#precision=TRUE);
 
       if iChance > Random(0,99)
       {
@@ -17718,10 +17729,12 @@ messages:
 
       iVigor = Send(oSkill,@GetActiveDodgeCost);
 
-      if Send(self,@LoseVigor,#precision=TRUE,#amount=iVigor) < iVigor
+      if NOT Send(self,@HasVigor,#amount=iVigor,#precision=TRUE)
       {
          return FALSE;
       }
+
+      Send(self,@LoseVigor,#amount=iVigor,#precision=TRUE);
 
       if iChance > Random(0,99)
       {

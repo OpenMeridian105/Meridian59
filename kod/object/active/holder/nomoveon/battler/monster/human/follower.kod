@@ -169,6 +169,8 @@ resources:
    follower_return_lost = \
       "Sorry about that.  I must have gotten lost somewhere along the way...  "
       "Good thing I knew that you were going to come here sooner or later!"
+   follower_return_summoned = \
+      "Ready for battle!"
 
    // Message triggered by FollowerDing()
    follower_learn = \
@@ -307,6 +309,8 @@ resources:
       "...move in a little ~I~Bcloser~I~B, or really ~I~Bclose~I~B so I don't fall behind.\n"
       "...stay a bit ~I~Bfarther~I~B back or stay ~I~Bfar~I~B back to stay out of trouble.\n"
       "...stow away my ~I~Btorch~I~B or keep it handy in case we need it.\n"
+      "...toggle between ~I~Bhold~I~Bing my position and moving with you.  (You can also use ~I~Bon~I~B/~I~Boff~I~B.)\n"
+      "...toggle between ~I~Bstay~I~Bing out of combat and engaging enemies as usual.  (You can also use ~I~Bon~I~B/~I~Boff~I~B.)\n"
       "...~I~Bmeet up~I~B with you later in case you don't need me at the moment.\n"
       "You could also tell me that ~I~Bit's time to part ways again~I~B.\n"
       "I'd think twice about that if I were you though.  I bet you'd never "
@@ -416,6 +420,12 @@ resources:
    follower_cant_accept_item = \
       "I couldn't possibly bear the responsibility of carrying %s%s!"
 
+   follower_hold_on = "Holding position!"
+   follower_hold_off = "On the move!"
+
+   follower_stay_on = "Staying clear of the enemy!"
+   follower_stay_off = "Engaging the enemy!"
+
    // Triggers for MercenaryCommand()
    follower_commands_trigger = "command"
    follower_commands_advanced_trigger = "adv"
@@ -449,6 +459,10 @@ resources:
    follower_tips_bank_trigger = "ba"
    follower_tips_vault_trigger = "va"
    follower_tips_mend_trigger = "me"
+   follower_hold_trigger = "hold"
+   follower_stay_trigger = "stay"
+   follower_on_trigger = "on"
+   follower_off_trigger = "off"
 
    follower_hello_trigger_a = "hi"
    follower_hello_trigger_b = "hey"
@@ -473,6 +487,7 @@ classvars:
    vrMercenaryLeave = follower_leave
    vrFollowerReturnDeath = follower_return_death
    vrFollowerReturnLost = follower_return_lost
+   vrFollowerReturnSummoned = follower_return_summoned
    viSocial = 100
    vrInfo = $
    viInfo_time = 1800
@@ -1043,9 +1058,9 @@ messages:
       return;
    }
 
-   FollowerReturn(oBody=$)
+   FollowerReturn(oBody=$,bSummoned=FALSE)
    {
-      local oOwner;
+      local oOwner, oSmoke, iCol, iRow, iFineCol, iFineRow;
 
       // Just a precaution. Followers shouldn't occupy the merc slot
       // if the feature is disabled.
@@ -1074,8 +1089,31 @@ messages:
             Send(self,@FollowerReturnMessage,#what=poLeader,#bDeath=TRUE);
          }
       }
-      // Not called by our corpse. That means our leader has entered a
-      // safe house. Let's join him again.
+      // Not called by our corpse. Let's see if we got summoned by our leader.
+      else if bSummoned
+      {
+         oOwner = Send(poLeader,@GetOwner);
+
+         iRow = Send(poLeader,@GetRow);
+         iFineRow = Send(poLeader,@GetFineRow);
+         iCol = Send(poLeader,@GetCol);
+         iFineCol = Send(poLeader,@GetFineCol);
+
+         Send(oOwner,@NewHold,#what=self,#new_row=iRow,#fine_row=iFineRow,
+            #new_col=iCol,#fine_col=iFineCol);
+
+         // Let's add a bit of flair...
+         oSmoke = Create(&FogCloud,#seed=[self,99,5000,0,0,0,0,0,0]);
+         Send(oOwner,@NewHold,#what=oSmoke,#new_row=iRow,#new_col=iCol,
+               #fine_row=iFineRow,#fine_col=iFineCol);
+
+         Send(self,@GainHealth,#amount=piMax_health*50/100);
+
+         Send(self,@UpdateRates);
+
+         Send(self,@FollowerReturnMessage,#what=poLeader,#bSummoned=TRUE);
+      }
+      // Nope, that means our leader has entered a safe house. Let's join him again.
       else
       {
          // If we meet up with our follower in a safe place
@@ -1104,11 +1142,20 @@ messages:
       return;
    }
 
-   FollowerReturnMessage(what=$,bDeath=FALSE)
+   GetCorpse()
+   {
+      return poBody;
+   }
+
+   FollowerReturnMessage(what=$,bDeath=FALSE,bSummoned=FALSE)
    {
       if bDeath
       {
          Post(self,@MercenarySayToOne,#target=what,#message_rsc=vrFollowerReturnDeath);
+      }
+      else if bSummoned
+      {
+         Post(self,@MercenarySayToOne,#target=what,#message_rsc=vrFollowerReturnSummoned);         
       }
       else
       {
@@ -1202,9 +1249,21 @@ messages:
       return;
    }
 
-   FollowerDing(bCreation=FALSE)
+   FollowerDing(bCreation=FALSE,bReset=FALSE)
    {
-      local iSpell, oSpell, iMana, iExertion, iPriority, iPower, iAttacks, iCount, iLevelPercentage;
+      local iSpell, oSpell, iMana, iExertion, iPriority, iPower, iAttacks, iCount,
+         iLevelPercentage, oWeapon;
+
+      if poLeader = $
+      {
+         return;
+      }
+
+      if bReset
+      {
+         Send(self,@RemoveCombatAction,#bALL=TRUE);
+         Send(self,@UpdateMeleeRange);
+      }
 
       iLevelPercentage = 100*Send(poLeader,@GetBaseMaxHealth)/(100 + Send(poLeader,@GetRawStamina));
       viLevel = FOLLOWER_MAX_LEVEL*iLevelPercentage/100;
@@ -1215,32 +1274,42 @@ messages:
       Send(self,@GainMana,#amount=200);
       Send(self,@GainVigor,#amount=200);
 
+      // Let's start with the appropriate default skill. This will be updated as needed
+      // when items are unequipped or equipped by NewUsing() and UnuseItem() in human.kod.
+      oWeapon = Send(self,@GetWeapon);
+
+      if oWeapon = $
+      {
+         iAttacks = ATTACK_PUNCH;
+      }
+      else
+      {
+         iAttacks = ATTACK_SLASH;
+      }
+
       // Update our combat abilities depending on role.
       if piRole = FOLLOWER_ROLE_WARRIOR
       {
-         if viLevel < FOLLOWER_EXPERIENCED
+         if viLevel >= FOLLOWER_EXPERIENCED
          {
-            iAttacks = ATTACK_SLASH;
+            iAttacks |= ATTACK_TAUNT; 
          }
-         else if viLevel < FOLLOWER_SEASONED
+         if viLevel >= FOLLOWER_SEASONED
          {
-            iAttacks = ATTACK_SLASH | ATTACK_TAUNT; 
+            iAttacks |= ATTACK_WEAKEN; 
          }
-         else if viLevel < FOLLOWER_HARDENED
+         if viLevel >= FOLLOWER_HARDENED
          {
-            iAttacks = ATTACK_SLASH | ATTACK_TAUNT | ATTACK_WEAKEN;
+            iAttacks |= ATTACK_STUN;
          }
-         else if viLevel < FOLLOWER_VETERAN
+         if viLevel >= FOLLOWER_VETERAN
          {
-            iAttacks = ATTACK_SLASH | ATTACK_TAUNT | ATTACK_WEAKEN | ATTACK_FRIGHTEN; 
-         }
-         else
-         {
-            iAttacks = ATTACK_SLASH | ATTACK_TAUNT | ATTACK_WEAKEN | ATTACK_FRIGHTEN | ATTACK_STUN; 
+            iAttacks |= ATTACK_CONFUSE; 
          }
 
          // Update our list of default attacks if necessary.
-         if iAttacks <> viAttacks
+         if (iAttacks <> viAttacks)
+            OR bReset
          {
             viAttacks = iAttacks;
             Send(self,@AddDefaultAttacks,#bUpdate=TRUE);
@@ -1252,25 +1321,22 @@ messages:
 
       if piRole = FOLLOWER_ROLE_BARD
       {
-         if viLevel < FOLLOWER_EXPERIENCED
+         if viLevel >= FOLLOWER_EXPERIENCED
          {
-            iAttacks = ATTACK_SLASH;
+            iAttacks |= ATTACK_SNARE; 
          }
-         else if viLevel < FOLLOWER_SEASONED
+         if viLevel >= FOLLOWER_SEASONED
          {
-            iAttacks = ATTACK_SLASH | ATTACK_SNARE; 
+            iAttacks |= ATTACK_DISTRACT; 
          }
-         else if viLevel < FOLLOWER_HARDENED
+         if viLevel >= FOLLOWER_HARDENED
          {
-            iAttacks = ATTACK_SLASH | ATTACK_SNARE | ATTACK_DISTRACT;
-         }
-         else
-         {
-            iAttacks = ATTACK_SLASH | ATTACK_SNARE | ATTACK_DISTRACT | ATTACK_DAZE; 
+            iAttacks |= ATTACK_DAZE;
          }
 
          // Update our list of default attacks if necessary.
-         if iAttacks <> viAttacks
+         if (iAttacks <> viAttacks)
+            OR bReset
          {
             viAttacks = iAttacks;
             Send(self,@AddDefaultAttacks,#bUpdate=TRUE);
@@ -1282,21 +1348,18 @@ messages:
 
       if piRole = FOLLOWER_ROLE_WARLOCK
       {
-         if viLevel < FOLLOWER_SEASONED
+         if viLevel >= FOLLOWER_SEASONED
          {
-            iAttacks = ATTACK_SLASH;
+            iAttacks |= ATTACK_CRIPPLE; 
          }
-         else if viLevel < FOLLOWER_VETERAN
+         if viLevel >= FOLLOWER_HARDENED
          {
-            iAttacks = ATTACK_SLASH | ATTACK_CRIPPLE; 
-         }
-         else
-         {
-            iAttacks = ATTACK_SLASH | ATTACK_CRIPPLE | ATTACK_FRIGHTEN; 
+            iAttacks |= ATTACK_CONFUSE;
          }
 
          // Update our list of default attacks if necessary.
-         if iAttacks <> viAttacks
+         if (iAttacks <> viAttacks)
+            OR bReset
          {
             viAttacks = iAttacks;
             Send(self,@AddDefaultAttacks,#bUpdate=TRUE);
@@ -1352,6 +1415,7 @@ messages:
                                        #iPower=iPower)
          {
             if NOT bCreation
+               AND NOT bReset
             {
                Send(self,@FollowerLearnMessage,#iNum=iSpell);
             }
@@ -1455,7 +1519,7 @@ messages:
                   iSpell = SID_MYSTIC_TOUCH;
                   break;
                case FOLLOWER_ROLE_PRIEST:
-                  iSpell = SID_HOLY_SYMBOL;
+                  iSpell = SID_LIGHT;
                   break;
                case FOLLOWER_ROLE_WARLOCK:
                   iSpell = SID_KARAHOLS_CURSE;
@@ -1793,10 +1857,16 @@ messages:
       return FALSE;
    }
 
-   EnterStateMove()
+   EnterStateMove(bResume = FALSE)
    {
       local oObject, i, oEnch, state, oInfo, iInfo, iRowDiff, iColDiff,
          iAbsRow, iAbsCol, iLeaderRow, iLeaderCol, iHeight;
+
+      // We need a moment to get our strength back.
+      if (piState & STATE_REST) AND NOT bResume
+      {
+         return;
+      }
 
       // The following is only relevant if we have a leader.
       // If we don't, chances are we have just been fired and are trying
@@ -2000,13 +2070,21 @@ messages:
       propagate;
    }
 
-   EnterStateEngage( target = $, actnow = TRUE, delay = 0)
+   EnterStateEngage( target = $, actnow = TRUE, delay = 0, bResume = FALSE)
    {
-      // Can't engage against the leader.
+      // We need a moment to get our strength back.
+      if (piState & STATE_REST) AND NOT bResume
+      {
+         return;
+      }
+
+      // Can't engage against the leader...
       if (poLeader <> $
          AND poLeader = target)
+      // ...or engage when we are told to stay.
+         OR piMonsterflags & MFLAG_STAYING
       {
-         Send(self,@EnterStateMove,#actnow=FALSE);
+         Send(self,@EnterStateMove);
 
          return;
       }
@@ -2314,6 +2392,70 @@ messages:
          }
 
          Send(self,@FaceLeader);
+
+         return TRUE;
+      }
+
+      // Ask follower to hold their position (or not).
+      if StringContain(message,follower_hold_trigger)
+      {
+         if StringContain(message,follower_on_trigger)
+         {
+            piMonsterflags |= MFLAG_HOLDING;
+         }
+         else if StringContain(message,follower_off_trigger)
+         {
+            piMonsterflags &= ~MFLAG_HOLDING;
+         }
+         else if piMonsterflags & MFLAG_HOLDING
+         {
+            piMonsterflags &= ~MFLAG_HOLDING;
+         }
+         else
+         {
+            piMonsterflags |= MFLAG_HOLDING;
+         }
+
+         if piMonsterflags & MFLAG_HOLDING
+         {
+            Post(self,@MercenarySayToOne,#target=what,#message_rsc=follower_hold_on);
+         }
+         else
+         {
+            Post(self,@MercenarySayToOne,#target=what,#message_rsc=follower_hold_off);
+         }
+
+         return TRUE;
+      }
+
+      // Ask follower to stay out of combat (or not).
+      if StringContain(message,follower_stay_trigger)
+      {
+         if StringContain(message,follower_on_trigger)
+         {
+            piMonsterflags |= MFLAG_STAYING;
+         }
+         else if StringContain(message,follower_off_trigger)
+         {
+            piMonsterflags &= ~MFLAG_STAYING;
+         }
+         else if piMonsterflags & MFLAG_STAYING
+         {
+            piMonsterflags &= ~MFLAG_STAYING;
+         }
+         else
+         {
+            piMonsterflags |= MFLAG_STAYING;
+         }
+
+         if piMonsterflags & MFLAG_STAYING
+         {
+            Post(self,@MercenarySayToOne,#target=what,#message_rsc=follower_stay_on);
+         }
+         else
+         {
+            Post(self,@MercenarySayToOne,#target=what,#message_rsc=follower_stay_off);
+         }
 
          return TRUE;
       }
@@ -3516,6 +3658,7 @@ messages:
          if (bArmor AND (IsClass(i,&Armor) OR IsClass(i,&Helmet)))
             OR (bWeapon AND (IsClass(i,&Weapon) OR IsClass(i,&Shield)))
             OR (bClothes AND (IsClass(i,&Pants) OR IsClass(i,&ShirtBase)))
+            OR (bArmor AND bWeapon AND bClothes AND NOT IsClass(i,&Torch))
          {
             plUsing = DelListElem(plUsing,i);
 
@@ -3628,6 +3771,17 @@ messages:
 
       return (viWeight_hold_max + (Send(self,@GetMight) * 20)) *
          Send(SETTINGS_OBJECT,@GetFollowerLoadPercentage) / 100;
+   }
+
+   IsFullTalk()
+   {
+      return TRUE;
+   }
+
+   // Followers are quick on their feet.
+   ActiveMoveCheck()
+   {
+      return TRUE;
    }
 
 end

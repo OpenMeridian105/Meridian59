@@ -2601,6 +2601,7 @@ messages:
             iDelay = iDelay * Bound(150 - piIntellect,50,$) / 100;
             Send(poBrain,@PostEngageTimer,#mob=self,#delay=iDelay);
          }
+
       }
 
       return;
@@ -3304,46 +3305,42 @@ messages:
    TryAttack(what=$,stroke_obj=$,factor=100,ambush=FALSE,iNum=$,bNow=FALSE,count=0,type=0)
    "Ok, we got someone to attack, lets try and hit them."
    {
-      local oTrance, iDefended, iDelay, bAttacked;
+      local oTrance, iDefended, iDelay, bAttacked, bSuccess;
 
-      if bNow
+      bSuccess = TRUE;
+
+      // AI_NOFIGHT means we can't directly attack.
+      if piBehavior & AI_NOFIGHT
       {
-         // Still around?
-         if poOwner = $
-         {
-            return FALSE;
-         }
-
-         // Target still around?
-         if Send(what,@GetOwner) <> poOwner
-         {
-            return FALSE;
-         }
+         bSuccess = FALSE;
       }
-
-      // AI_NOFIGHT means they can't directly attack.
-      if (piBehavior & AI_NOFIGHT)
-      {
-         return FALSE;
-      }
-
       // AllowBattlerAttack handles all other attack checks.
-      if (NOT Send(self,@AllowBattlerAttack,#victim=what,#stroke_obj=stroke_obj))
+      else if NOT Send(self,@AllowBattlerAttack,#victim=what,#stroke_obj=stroke_obj)
       {
-         return FALSE;
+         bSuccess = FALSE;
       }
 
-      // Face the target.
-      Send(self,@MonsterOrient,#new_row=Send(what,@GetRow),
-            #new_col=Send(what,@GetCol),#new_finerow=Send(what,@GetFineRow),
-            #new_finecol=Send(what,@GetFineCol),#face_target=TRUE);
-
-      if NOT bNow
+      // We are only just getting ready to swing.
+      if NOT bNOW
       {
+         // We can't get ourselves to attack that target.
+         if NOT bSuccess
+         {
+            // Figure out what to do next. Since we didn't attack, use move time.
+            Send(poBrain,@PostEngageTimer,#mob=self,#delay=Send(self,@GetMoveTime));
+            return FALSE;
+         }
+
+         // Looking good so far, let's face our target
+         Send(self,@MonsterOrient,#new_row=Send(what,@GetRow),
+               #new_col=Send(what,@GetCol),#new_finerow=Send(what,@GetFineRow),
+               #new_finecol=Send(what,@GetFineCol),#face_target=TRUE);
+
          // Time for some record keeping.
          if type = MONSTER_MELEE
          {
-            // Only allow active melee defending for now.
+            // If we are executing a melee attack, give the victim a chance
+            // to brace for our attack.
             Send(what,@AddAttacker,#who=self);
          }
 
@@ -3359,60 +3356,93 @@ messages:
          return TRUE;
       }
 
-      iDelay = Send(self,@GetAttackTime);
+      // We are not in post trance territory, which means we are about to hit.
+      // Verify that we and our target are still around.
+      if poOwner = $
+      {
+         bSuccess = FALSE;
+      }
+      else if Send(what,@GetOwner) <> poOwner
+      {
+         bSuccess = FALSE;
+      }
+
+      // If our attack was actively defended, we return instead of propagating
+      // further down. However, since we executed an attack, we'll return TRUE.
       bAttacked = FALSE;
 
-      iDefended = Send(what,@IsBlocked,#who=self);
-      Send(what,@SwingHasEnded,#who=self);
-
-      if iDefended = ACTIVE_BLOCK
+      if bSuccess
       {
-         Send(what,@MsgSendUser,#message_rsc=monster_blocked_defender,
-            #parm1=Send(self,@GetDef),#parm2=Send(self,@GetName));
-         Send(what,@ClearAllAttackers);
+         // We took an actual swing. Start with a standard attack delay.
+         iDelay = Send(self,@GetAttackTime);
 
-         iDelay += viBlocked_penalty;
-         bAttacked = TRUE;
+         // Let's see if our swing has been defended.
+         iDefended = Send(what,@IsBlocked,#who=self);
+
+         if iDefended = ACTIVE_BLOCK
+         {
+            Send(what,@MsgSendUser,#message_rsc=monster_blocked_defender,
+               #parm1=Send(self,@GetDef),#parm2=Send(self,@GetName));
+            iDelay += viBlocked_penalty;
+            bAttacked = TRUE;
+         }
+         else if iDefended = ACTIVE_PARRY
+         {
+            Send(what,@MsgSendUser,#message_rsc=monster_parried_defender,
+               #parm1=Send(self,@GetDef),#parm2=Send(self,@GetName));
+            iDelay += viParried_penalty;
+            bAttacked = TRUE;
+         }
+         else if iDefended = ACTIVE_DODGE
+         {
+            Send(what,@MsgSendUser,#message_rsc=monster_dodged_defender,
+               #parm1=Send(self,@GetDef),#parm2=Send(self,@GetName));
+            iDelay += viDodged_penalty;
+            bAttacked = TRUE;
+         }
+
+         if iDefended
+         {
+            // Victim tried to actively defend the attack. This means
+            // they are no longer able to defend against any other
+            // potentially incoming attacks.
+            Post(what,@ClearAllAttackers);
+         }
+         else
+         {
+            // Victim didn't try to defend. If they attempt a defense
+            // now, they will be left exposed.
+            Send(what,@SwingHasEnded,#who=self);
+         }
       }
-      else if iDefended = ACTIVE_PARRY
+      else
       {
-         Send(what,@MsgSendUser,#message_rsc=monster_parried_defender,
-            #parm1=Send(self,@GetDef),#parm2=Send(self,@GetName));
-         Send(what,@ClearAllAttackers);
-
-         iDelay += viParried_penalty;
-         bAttacked = TRUE;
-      }
-      else if iDefended = ACTIVE_DODGE
-      {
-         Send(what,@MsgSendUser,#message_rsc=monster_dodged_defender,
-            #parm1=Send(self,@GetDef),#parm2=Send(self,@GetName));
-         Send(what,@ClearAllAttackers);
-
-         iDelay += viDodged_penalty;
-         bAttacked = TRUE;
-      }
-      else if (iDefended = ACTIVE_BLOCK_FAILED)
-         OR (iDefended = ACTIVE_PARRY_FAILED)
-         OR (iDefended = ACTIVE_DODGE_FAILED)
-      {
-         Post(what,@ClearAllAttackers);
-      }
-
-      // Random chance to cut delay in half to throw off would be defenders.
-      if Random(1,MONSTER_QUICK_ATTACK_CHANCE) < viDifficulty
-      {
-         iDelay = Random(iDelay/3,iDelay);
+         // We didn't execute an actual attack. Remove us from the list
+         // of attackers.
+         iDelay = Send(self,@GetMoveTime);
+         Send(what,@ClearAttacker,#who=self);
       }
 
       // Monster acted in some way. Let's figure out what to do next.
       if (poOwner <> $) AND (NOT count)
       {
+         // Random chance to cut delay in half to throw off would be defenders.
+         if Random(1,MONSTER_QUICK_ATTACK_CHANCE) < viDifficulty
+         {
+            iDelay = Random(iDelay/3,iDelay);
+         }
+
          Send(poBrain,@PostEngageTimer,#mob=self,#delay=iDelay);
       }
 
-      if bAttacked
+      if NOT bSuccess
       {
+         // We didn't manage to finish our swing.
+         return FALSE;
+      }
+      else if bAttacked
+      {
+         // We swung at the target but were defended.
          return TRUE;
       }
 

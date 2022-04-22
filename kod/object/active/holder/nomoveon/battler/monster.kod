@@ -3719,8 +3719,11 @@ messages:
               #target=self,#color_rsc=monster_color_blue_rsc);
       }
 
-      // Any hit will cause a slight knockback.
-      Send(self,@DoHitAnimation,#damage=iDamage,#what=what);
+      // Any physical hit will cause a slight knockback.
+      if atype
+      {
+         Send(self,@DoHitAnimation,#damage=iDamage,#what=what);
+      }
 
       Send(self,@AddHurtMeRecently,#who=what,#amount=iDamage);
 
@@ -11931,7 +11934,7 @@ messages:
          state = Nth(i,3);
          if (Send(oEnch,@GetCaster,#state=state) = self)
          {
-            Send(oEnch,@BreakTrance,#who=self,#state=state,#event=EVENT_OOM);
+            Send(oEnch,@BreakTrance,#who=self,#state=state,#event=EVENT_NO_MANA);
          }
       }
 
@@ -12001,6 +12004,9 @@ messages:
          OR (event = EVENT_DAMAGE)
          OR (event = EVENT_DISRUPT)
          OR (event = EVENT_USE)
+         OR (event = EVENT_NO_MANA)
+         OR (event = EVENT_NO_VIGOR)
+         OR (event = EVENT_CANCEL)
       {
          return FALSE;
       }
@@ -12295,6 +12301,19 @@ messages:
    {
       return Random(1,piAgility*2) > piStamina;
    }
+
+   // Dummies since monsters can appear as abilities in trance.kod.
+   IsHeld()
+   {
+      return FALSE;
+   }
+
+   TranceEnded()
+   {
+      return;
+   }
+
+
 
 end
 ////////////////////////////////////////////////////////////////////////////////

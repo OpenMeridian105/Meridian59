@@ -167,7 +167,9 @@ classvars:
 
    viAttack_delay = 1000
 
-   vbKey_hold = FALSE
+   viStamina_drain = 0
+
+   vbShowIcon = FALSE
 
    viShow_enchantment_icon = ENCHANTMENT_SHOW_ALL
 
@@ -180,6 +182,8 @@ properties:
    pbHaste = FALSE
    pbAccessible = TRUE
    pbEnabled = TRUE
+
+   pbKey_hold = FALSE
 
 messages:
 
@@ -793,7 +797,7 @@ messages:
          return viShow_enchantment_icon & 0x02;
       }
       
-      debug(self,"got invalid show enchantment icon type",type);
+      Debug(self,"got invalid show enchantment icon type",type);
       
       return TRUE;
    }
@@ -872,8 +876,13 @@ messages:
    }
 
    OverTimeEffectStarting(who=$,overtimeeffect=$,bReport=TRUE)
-   "Just a dummy catching over time effects without message."
    {
+      if IsClass(who,&Player)
+         AND pbKey_hold
+      {
+         Send(who,@PeriodicSounds);
+      }
+
       return;
    }
 
@@ -1021,7 +1030,7 @@ messages:
       if NOT bSuccess
          AND Send(SETTINGS_OBJECT,@NoFizzles)
       {
-         iPreperationTime += Send(self,@GetPostPerformDelay,#who=who);
+         iPreperationTime += Send(self,@GetPostActionDelay,#who=who);
 
          Send(who,@MsgSendUser,#message_rsc=skill_trance_fumble,
             #parm1=Send(self,@GetName));
@@ -1056,7 +1065,7 @@ messages:
          Send(self,@PerformSkill,#who=who,#lTargets=lFinalTargets,
             #iSkillPower=iSkillPower);
 
-         Send(who,@SetAttackTime,#time=Send(self,@GetPostPerformDelay,#who=who));
+         Send(who,@SetAttackTime,#time=Send(self,@GetPostActionDelay,#who=who));
 
          return;
       }
@@ -1078,7 +1087,7 @@ messages:
            #time=iPreperationTime,#power=iSkillPower,
            #iHold=Send(self,@IsHeld,#who=who));
 
-      Send(who,@SetAttackTime,#time=Send(self,@GetPostPerformDelay,#who=who) +
+      Send(who,@SetAttackTime,#time=Send(self,@GetPostActionDelay,#who=who) +
          iPreperationTime);
 
       return;
@@ -1216,7 +1225,7 @@ messages:
       }
       else
       {
-         iTime = Send(self,@GetPostPerformDelay,#who=who);
+         iTime = Send(self,@GetPostActionDelay,#who=who);
 
          // We have been crushed. Let's see if that sets us back.
          if event = EVENT_CRUSH
@@ -1226,6 +1235,15 @@ messages:
          }
 
          Send(who,@SetAttackTime,#time=iTime,#bAdd=TRUE);
+      }
+
+      // If we are a held ability, running out of resources is
+      // treated the same as no longer holding the key down.
+      if pbKey_hold
+         AND (event = EVENT_NO_VIGOR)
+      {
+         Send(self,@StoppedHolding,#who=who,#state=state);
+         return;
       }
 
       Send(who,@MsgSendUser,#message_rsc=skill_trance_break,
@@ -1261,10 +1279,22 @@ messages:
       return;
    }
 
+   TranceEnded(who=$,state=$)
+   {
+      if pbKey_hold
+      {
+         Send(who,@DeleteOverTimeEffect,#what=self,#who=who,
+            #removal=REMOVE_INTERNAL);
+      }
+
+      return;
+   }
+
    // Determines when a maintained ability (mana focus etc.) can be disrupted.
    BreakTrance(who=$,state=$,event=$)
    {
-      if event = EVENT_OOM
+      if (event = EVENT_NO_VIGOR AND viStamina_drain = 0)
+         OR (event = EVENT_NO_MANA)
       {
          return FALSE;
       }
@@ -1277,6 +1307,13 @@ messages:
    // Determines if the casting trance (&Trance) can be disrupted.
    CanBreakTrance(who=$,state=$,event=EVENT_NONE,disruption=0)
    {
+      // or out of vigor.
+      if (event = EVENT_NO_VIGOR)
+         AND NOT (pbKey_hold AND viskillExertion)
+      {
+         return FALSE;
+      }
+
       // Some events can cancel any trance. Not the ones below though.
       // These events can only break trance, if vbCanBreakTrance = TRUE.
       if NOT vbCanBreakTrance
@@ -1337,7 +1374,7 @@ messages:
       return viPreperation_time*Bound(150 - iSkillPower,50,150)/100;
    }
 
-   GetPostPerformDelay(who=$)
+   GetPostActionDelay(who=$)
    {
       local iHaste, iDelay;
 
@@ -1516,12 +1553,53 @@ messages:
 
    IsHeld()
    {
-      return vbKey_hold;
+      return pbKey_hold;
    }
 
    IsLightSource()
    {
       return vbIsLightSource;
+   }
+
+   GetPeriodicSound()
+   {
+      return;
+   }
+
+   GetPeriodicSoundEnd()
+   {
+      return;
+   }
+
+   GetPeriodicSoundDuration()
+   {
+      return;
+   }
+
+   StartChargeDrain(who=$,iPower=0,bFreeCast=FALSE)
+   "Applies a resource drain in proportion to the skill's cost for charging."
+   {
+      local iTime, iDrainRate;
+
+      // Apply a dummy drain for the sound effect if it's a freecast.
+      if bFreeCast
+      {
+         Send(who,@StartOverTimeEffect,#strength=0,#what=self,#who=who,
+            #removable=REMOVE_INTERNAL,#showicon=FALSE,#type=TYPE_VIGOR);
+         return;
+      }
+
+      // Let's start our vigor...
+      // First, get our adjusted cast time.
+      iTime = Send(self,@GetTranceTime,#iSkillPower=iPower,#who=who);
+
+      // Now, let's calculate our drain rate. We need to drain the vigor
+      // cost of the skill over the preparation time of the skill.
+      iDrainRate = viskillExertion*10000/iTime;         
+      Send(who,@StartOverTimeEffect,#strength=-iDrainRate,#what=self,#who=who,
+         #removable=REMOVE_INTERNAL,#showicon=vbShowIcon,#type=TYPE_VIGOR);
+
+      return;
    }
 
 end

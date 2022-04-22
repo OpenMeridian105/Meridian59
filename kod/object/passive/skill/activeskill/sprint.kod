@@ -31,7 +31,7 @@ resources:
    Sprint_exhaust = "You are too exhausted to sprint!"
 
    Sprint_sound_rsc = sprint.ogg
-   Sprint_trance_break_sound = sprintend.ogg
+   Sprint_end_sound_rsc = sprintend.ogg
 
 classvars:
 
@@ -39,6 +39,12 @@ classvars:
    vrIcon = Sprint_icon_rsc
    vrDesc = Sprint_desc_rsc
    vrSkill_tired = Sprint_exhaust
+
+   // Sprint handles sounds a bit differently.
+   // Set regular sound resources nil.
+   vrTrance_begin
+   vrTrance_break
+   vrTrance_cancel
 
    viIndefinite = ARTICLE_NONE
    viDefinite = ARTICLE_NONE
@@ -49,7 +55,7 @@ classvars:
    viChance_to_Increase = 15
    viMeditate_ratio = 50
 
-   viSkillExertion = 200
+   viSkillExertion = 500
    vbCheck_exertion = TRUE
 
    vbAutomatic = FALSE
@@ -62,18 +68,16 @@ classvars:
    viPreperation_time = 10000
    viPostPerform_time = 0
 
-   viStamina_drain = 2000
-
-   vbKey_hold = TRUE
-
-   vrTrance_break = Sprint_trance_break_sound
-
    viCooldownSID = SID_COOLDOWN_SPRINT
+
+   vbShowIcon = TRUE
 
 properties:
 
    plPrerequisites = $
    piTranceMovementSpeedReduction = -50
+
+   pbKey_hold = TRUE
 
 messages:
 
@@ -89,14 +93,9 @@ messages:
 
    BeginPerformPreparation(who=$,lTargets=$,bSuccess=TRUE)
    {
-      local iSkillPower, iDrain;
+      local iSkillPower;
 
       iSkillPower = Send(self,@GetSkillPower,#who=who);
-
-      iDrain = viStamina_drain - iSkillPower*15;
-
-      Send(who,@StartOverTimeEffect,#type=TYPE_VIGOR,#strength=-iDrain,#who=self,
-            #removable=REMOVE_INTERNAL,#showicon=TRUE);
 
       Send(Send(who,@GetOwner),@SomethingWaveRoom,#what=who,
          #wave_rsc=Sprint_sound_rsc);
@@ -105,7 +104,7 @@ messages:
 
       Send(Send(SYS,@FindSpellByNum,#num=SID_TRANCE),@BeginTrance,
          #what=self,#who=who,#time=viPreperation_time*(iSkillPower)/100,
-         #power=iSkillPower,#iHold=vbKey_hold);
+         #power=iSkillPower,#iHold=pbKey_hold);
 
       return;
    }
@@ -116,23 +115,6 @@ messages:
       return;
    }
 
-   // The various ways this skill can end...
-   TranceBroken(who=$,state=$)
-   {
-      // Handles post use effects.
-      Send(self,@SprintEnded,#who=who,#state=state);
-
-      propagate;
-   }
-
-   TranceCanceled(who=$,state=$)
-   {
-      // Handles post use effects.
-      Send(self,@SprintEnded,#who=who,#state=state);
-
-      propagate;
-   }
-
    TranceCompleted(who=$,state=$)
    {
       // Check for advancement conditions.
@@ -141,13 +123,10 @@ messages:
          Send(self,@ImproveAbility,#who=who);
       }
 
-      // Handles post use effects.
-      Send(self,@SprintEnded,#who=who,#state=state);
-
       propagate;
    }
 
-   StoppedHolding(who=$,state=$)
+   TranceEnded(who=$,state=$)
    {
       // Handles post use effects.
       Send(self,@SprintEnded,#who=who,#state=state);
@@ -161,23 +140,14 @@ messages:
 
       iPower = Nth(state,7);
       Send(who,@MsgSendUser,#message_rsc=Sprint_end);
-      Send(who,@DeleteOverTimeEffect,#who=self,#removal=REMOVE_INTERNAL);
 
-      // Add a cooldown if applicable.
-      if IsClass(who,&Battler)
-      {
-         if viCooldownSID > 0
-         {
-            oSpell = Send(SYS,@FindSpellByNum,#num=viCooldownSID);
+      Send(who,@WaveSendUser,#wave_rsc=Sprint_end_sound_rsc);
 
-            if (oSpell <> $)
-            {
-               Send(oSpell,@CastSpell,#who=self,#oTarget=who,
-                  #iSpellPower=iPower);
-            }
-         }
-      }
-
+      oSpell = Send(SYS,@FindSpellByNum,#num=viCooldownSID);
+ 
+      Send(oSpell,@CastSpell,#who=self,#oTarget=who,
+         #iSpellPower=iPower);
+ 
       return;
    }
 

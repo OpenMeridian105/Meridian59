@@ -311,7 +311,6 @@ resources:
       "...stow away my ~I~Btorch~I~B or keep it handy in case we need it.\n"
       "...toggle between ~I~Bhold~I~Bing my position and moving with you.  (You can also use ~I~Bon~I~B/~I~Boff~I~B.)\n"
       "...toggle between ~I~Bstay~I~Bing out of combat and engaging enemies as usual.  (You can also use ~I~Bon~I~B/~I~Boff~I~B.)\n"
-      "...~I~Bdrop~I~B the gear that I'm currently using.\n"
       "...~I~Bmeet up~I~B with you later in case you don't need me at the moment.\n"
       "You could also tell me that ~I~Bit's time to part ways again~I~B.\n"
       "I'd think twice about that if I were you though.  I bet you'd never "
@@ -337,13 +336,6 @@ resources:
       "...keeping your shillings safe in a ~I~Bbank~I~B.\n"
       "...~I~Bmending~I~B items in need of repair.\n"
       "~I[Simply say 'tips topicname' to learn about a topic.]~I"
-   follower_drop = \
-      "What would you like me to drop?  I can drop...\n"
-      "...my ~I~Barmor~I~B and helmet.\n"
-      "...my ~I~Bweapon~I~B and shield.\n"
-      "...~I~Beverything~I~B.  That'd be highly inappropriate though!\n"
-      "~I[Simply say 'drop' followed by what you would like your follower "
-      "to drop.]~I"
 
    // Messages used by FollowerSpellInform() triggered by MercenaryCommand()
    follower_no_spell_inform = "So far, I haven't learned any spells"
@@ -467,10 +459,6 @@ resources:
    follower_tips_bank_trigger = "ba"
    follower_tips_vault_trigger = "va"
    follower_tips_mend_trigger = "me"
-   follower_drop_trigger = "drop"
-   follower_drop_everything_trigger = "ev"
-   follower_drop_armor_trigger = "ar"
-   follower_drop_weapon_trigger = "we"
    follower_hold_trigger = "hold"
    follower_stay_trigger = "stay"
    follower_on_trigger = "on"
@@ -2401,31 +2389,6 @@ messages:
          else
          {
             Post(self,@MercenarySayToOne,#target=what,#message_rsc=follower_tips);
-         }
-
-         Send(self,@FaceLeader);
-
-         return TRUE;
-      }
-
-      // Ask follower to drop their gear
-      if StringContain(message,follower_drop_trigger)
-      {
-         if StringContain(message,follower_drop_everything_trigger)
-         {
-            Send(self,@DropGear);
-         }
-         else if StringContain(message,follower_drop_armor_trigger)
-         {
-            Send(self,@DropGear,#bWeapon=FALSE,#bCLothes=FALSE);
-         }
-         else if StringContain(message,follower_drop_weapon_trigger)
-         {
-            Send(self,@DropGear,#bArmor=FALSE,#bCLothes=FALSE);
-         }
-         else
-         {
-            Post(self,@MercenarySayToOne,#target=what,#message_rsc=follower_drop);
          }
 
          Send(self,@FaceLeader);

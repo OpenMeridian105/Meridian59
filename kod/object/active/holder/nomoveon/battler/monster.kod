@@ -3643,7 +3643,7 @@ messages:
    AssessDamage(what=$,damage=$,atype=0,stype=0,bonus=0,scalefactor=1000,
       absolute=FALSE,precision=FALSE)
    {
-      local iDamage, iResist, iPercentClass, i, each_obj, oMark;
+      local iDamage, iResist, iPercentClass, i, each_obj, oMark, lState;
 
       if NOT precision
       {
@@ -3726,12 +3726,13 @@ messages:
 
       // Finally, check if we are marked. If so, extra damage over time.
       oMark = Send(SYS,@FindSkillByNum,#Num=SKID_MARK);
+      lState = Send(self,@GetEnchantedState,#what=oMark);
 
       // We are not interested in the damage over time effect, just the skill.
-      if Send(self,@IsEnchanted,#what=oMark,#bEffect=FALSE)
+      if lState <> $
       {
-         Send(oMark,@MarkEffect,#victim=self,#attacker=what,#damage=damage,
-            #state=Send(self,@GetEnchantedState,#what=oMark));
+         Send(oMark,@MarkEffect,#victim=self,#attacker=what,
+            #damage=damage,#state=lState);
       }
 
       return iDamage;

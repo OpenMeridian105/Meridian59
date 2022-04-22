@@ -143,11 +143,17 @@ messages:
    {
       local oFollower, oTarget, iPower, oState;
 
+      if lTargets = $
+      {
+         Send(who,@MsgSendUser,#message_rsc=Mark_no_targets);
+
+         return FALSE;
+      }
+
       oTarget = First(lTargets);
 
       // Sanity check.
-      if oTarget = $
-         OR (Send(who,@GetOwner) <> Send(oTarget,@GetOwner))
+      if (Send(who,@GetOwner) <> Send(oTarget,@GetOwner))
       {
          Send(who,@MsgSendUser,#message_rsc=Mark_bad_target);
 
@@ -273,23 +279,25 @@ messages:
          return FALSE;
       }
 
-      if (lTargets = $)
+      if lTargets <> $
       {
-         Send(who,@MsgSendUser,#message_rsc=Mark_no_targets);
+         oTarget = First(lTargets);
+         oState = Send(who,@GetEnchantedState,#what=self);
 
-         return FALSE;
+         if Send(who,@GetOwner) <> Send(oTarget,@GetOwner)
+         {
+            Send(who,@MsgSendUser,#message_rsc=Mark_bad_target);
+
+            return FALSE;
+         }
       }
 
-      oTarget = First(lTargets);
-      oState = Send(who,@GetEnchantedState,#what=self);
+      return TRUE;
+   }
 
-      if Send(who,@GetOwner) <> Send(oTarget,@GetOwner)
-      {
-         Send(who,@MsgSendUser,#message_rsc=Mark_bad_target);
-
-         return FALSE;
-      }
-
+   CheckPlayerPerformAttack(who=$,lTargets=$)
+   "Checks to see if player can attack said targets."
+   {
       return TRUE;
    }
 

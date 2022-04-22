@@ -96,16 +96,20 @@ messages:
 
    NextDest()
    {
-      local iNext_Dest, oRoom, bCanPort;
+      local i, iNext_Dest, bCanPort, oRoom;
 
-      //Debug("Finding new destination...");
       piTeleport_Counter = 0;
       iNext_Dest = piCurrent_Dest;
+      oRoom = Send(SYS,@FindRoomByNum,
+                     #num=First(Nth(plDestinations,piCurrent_Dest)));
 
-      if Length(plDestinations) > 1
+      // Safety Check: Bail at 10 to prevent any possible infinte loop
+      // in the event if plDestinations is ever incorrect
+      i = 0;
+      while (bCanPort = FALSE AND i < 10)
       {
-         while (bCanPort = FALSE)
-         {
+          if Length(plDestinations) > 1
+          {
             iNext_Dest = Random(1,Length(plDestinations));
 
             // Check if expansion destinations are enabled
@@ -116,26 +120,17 @@ messages:
             {
                bCanPort = TRUE;
             }
-
-            if iNext_Dest <> piCurrent_Dest
+            else if iNext_Dest <> piCurrent_Dest
             {
                bCanPort = TRUE;
             }
-         }
-         return;
-      }
-      else
-      {
-         //Debug("Only one destination to choose from, bailing...");
+          }
 
-         return;
+          i++;
       }
 
-      piCurrent_Dest = iNext_Dest;
-
-      oRoom = Send(SYS,@FindRoomByNum,
-                     #num=First(Nth(plDestinations,piCurrent_Dest)));
-      if oRoom <> $
+      if bCanPort
+         AND oRoom <> $
       {
          if Length(Nth(plDestinations, piCurrent_Dest)) = 3
          {

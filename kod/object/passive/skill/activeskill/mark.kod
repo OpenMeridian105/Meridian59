@@ -52,7 +52,7 @@ classvars:
    viSkill_num = SKID_MARK
    viSchool = SKS_WEAPONCRAFT
    viSkill_level = 2
-   viChance_to_Increase = 15
+   viChance_to_Increase = 30
    viMeditate_ratio = 20
 
    viSkillExertion = 0
@@ -62,13 +62,13 @@ classvars:
    vbReportTrance = FALSE
 
    viPreperation_time = 500
-   viPostPerform_time = 500
-
-   vbKey_hold = TRUE
+   viPostPerform_time = 1000
 
    vrSucceed_wav = Mark_sound_rsc
 
 properties:
+
+   pbKey_hold = TRUE
 
    plPrerequisites = $
    piDamagePercent = 50
@@ -208,8 +208,12 @@ messages:
          Send(oFollower,@TargetSwitch,#what=oTarget,#iHatred=1000);
          Send(oFollower,@EnterStateEngage,#target=oTarget,#actnow=TRUE);
       }
+
+      Send(self,@PlaySkillSound,#room_obj=Send(who,@GetOwner),#what=who);
+
+      // Returning here to skip ImproveAbility.
       
-      propagate;
+      return;
    }
 
    MarkEffect(victim=$,attacker=$,damage=0,state=$)
@@ -221,7 +225,7 @@ messages:
       {
          // Damage is handled with .01 precision. 1 (P)oint (o)f (D)amage = 100 iStrength.
          // Power multiplies by up to 100. 1 PoD = 10.000 iStrength.
-         iStrength = damage*Nth(state,2);
+         iStrength = damage*(Nth(state,2)+100)/2;
          // If piDamagepercent is set to 100, 1 PoD = 10.000 iStrength.
          iStrength = (iStrength/100)*piDamagePercent;
          // Bleed duration is provided in ms. For a 5.000 ms duration, we need to divide our 

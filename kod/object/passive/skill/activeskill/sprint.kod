@@ -91,6 +91,11 @@ messages:
       return TRUE;
    }
 
+   GetTranceTime(iSkillPower=0)
+   {
+      return viPreperation_time*(33+iSkillPower)/132;
+   }
+
    BeginPerformPreparation(who=$,lTargets=$,bSuccess=TRUE)
    {
       local iSkillPower;
@@ -103,8 +108,8 @@ messages:
       Send(who,@MsgSendUser,#message_rsc=Sprint_start);
 
       Send(Send(SYS,@FindSpellByNum,#num=SID_TRANCE),@BeginTrance,
-         #what=self,#who=who,#time=viPreperation_time*(iSkillPower)/100,
-         #power=iSkillPower,#iHold=pbKey_hold);
+         #what=self,#who=who,#power=iSkillPower,#iHold=pbKey_hold,
+         #time=Send(self,@GetTranceTime,#iSkillPower=iSkillPower));
 
       return;
    }
@@ -154,6 +159,21 @@ messages:
    GetMovementSpeedReduction(state=$)
    {
       return -Nth(state,7)/2;
+   }
+
+   GetPeriodicSound()
+   {
+      return;
+   }
+
+   GetPeriodicSoundEnd()
+   {
+      return;
+   }
+
+   GetPeriodicSoundDuration()
+   {
+      return;
    }
 
 end

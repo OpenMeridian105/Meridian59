@@ -3685,8 +3685,20 @@ messages:
          return 0;
       }
 
+      // Check if we are marked. On a deathblow, we grant a chance to improve.
+      // On a regular hit, we apply a damage over time effect.
+      oMark = Send(SYS,@FindSkillByNum,#Num=SKID_MARK);
+      lState = Send(self,@GetEnchantedState,#what=oMark);
+
       if piHealth <= 0
       {
+         // Looks like a deathblow. Grant a chance to improve mark.
+         if lState <> $
+         {
+            Post(oMark,@ImproveAbility,#who=First(lState),#target=self,
+               #bonus=Send(poMarker,@GetDamage));
+         }
+
          foreach i in Send(poOwner,@GetHolderActive)
          {
             each_obj = First(i);
@@ -3702,6 +3714,13 @@ messages:
          }
          
          return $;
+      }
+
+      // Looks like we survived the hit. Allow mark to apply some extra damage.
+      if lState <> $
+      {
+         Send(oMark,@MarkEffect,#victim=self,#attacker=what,
+            #damage=damage,#state=lState);
       }
 
       Send(self,@NewHealth);
@@ -3726,17 +3745,6 @@ messages:
       }
 
       Send(self,@AddHurtMeRecently,#who=what,#amount=iDamage);
-
-      // Finally, check if we are marked. If so, extra damage over time.
-      oMark = Send(SYS,@FindSkillByNum,#Num=SKID_MARK);
-      lState = Send(self,@GetEnchantedState,#what=oMark);
-
-      // We are not interested in the damage over time effect, just the skill.
-      if lState <> $
-      {
-         Send(oMark,@MarkEffect,#victim=self,#attacker=what,
-            #damage=damage,#state=lState);
-      }
 
       return iDamage;
    }

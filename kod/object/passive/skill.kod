@@ -97,9 +97,17 @@ resources:
 
    skill_fail_wav = doorlck.ogg
 
-   skill_trance_begin_sound = spell_trance_begin.ogg
+   skill_trance_begin_sound = skill_trance_begin.ogg
    skill_trance_break_sound = skill_trance_break.ogg
    skill_trance_cancel_sound = skill_trance_cancel.ogg
+
+   skill_charge_min = charge_min.ogg
+   skill_charge_low = charge_low.ogg
+   skill_charge_mid = charge_mid.ogg
+   skill_charge_high = charge_high.ogg
+   skill_charge_max = charge_max.ogg
+
+   skill_charge_end = charge_end.ogg
 
 classvars:
 
@@ -172,6 +180,22 @@ classvars:
    vbShowIcon = FALSE
 
    viShow_enchantment_icon = ENCHANTMENT_SHOW_ALL
+
+   vrCharge_min = skill_charge_min
+   vrCharge_low = skill_charge_low
+   vrCharge_mid = skill_charge_mid
+   vrCharge_high = skill_charge_high
+   vrCharge_max = skill_charge_max
+   vrCharge_end = skill_charge_end
+   viCharge_loop_duration = 200
+
+   //// Skillpower adjustments for charge skills that haven't been fully charged.
+   // Fully charged skills are performed at 100 percent of their original skillpower.
+   // Base skillpower at 0 charge.
+   viCharge_base = 20
+
+   // Additional skillpower gained while charging.
+   viCharge_boost = 80
 
 properties:
 
@@ -492,7 +516,21 @@ messages:
          return FALSE;
       }
 
-      if NOT Send(who,@HasVigor,#precision=TRUE,#amount=viSkillExertion)
+      // If we are a held ability, any sort of positive vigor value
+      // will suffice. The charge will be ended upon running out
+      // via EVENT_NO_VIGOR in BreakTrance.
+      if pbKey_hold
+      {
+         // If we are stuck at zero zero vigor, don't allow skill use.
+         if viSkillExertion AND NOT Send(who,@GetVigor)
+         {
+            Send(who,@MsgSendUser,#message_rsc=vrSkill_tired,#parm1=vrName);
+            return FALSE;
+         }
+
+         return TRUE;
+      }
+      else if NOT Send(who,@HasVigor,#precision=TRUE,#amount=viSkillExertion)
          AND vbCheck_Exertion
       {
          Send(who,@MsgSendUser,#message_rsc=vrSkill_tired,#parm1=vrName);
@@ -540,7 +578,10 @@ messages:
    SkillCanceled(who=$)
    "Canceling a skill will refund half of the skills cost."
    {
-      Send(who,@GainVigor,#precision=TRUE,#amount=viSkillExertion/2);
+      if NOT pbKey_hold
+      {
+         Send(who,@GainVigor,#precision=TRUE,#amount=viSkillExertion/2);
+      }
 
       return;
    }
@@ -574,6 +615,12 @@ messages:
          Send(self,@SkillFailed,#who=who);
 
          return FALSE;
+      }
+
+      // Held abilities pay their cost via resource drain while charging.
+      if pbKey_hold
+      {
+         return TRUE;
       }
 
       // Unlike spell exertion, which represents whole points of vigor,
@@ -623,20 +670,20 @@ messages:
    "Made a seperate area by Damion, 3/24."
    "Put initial random check first to reduce server load."
    "ImproveAbility depends on four factors:  a player's intellect, the"
-   "player's primerequisite stat for this spell, the level of the spell"
+   "player's primerequisite stat for this ability, the level of the ability"
    "and the level the player has already acquired."
    {
       local difficulty, iability, intellect, requisitestat, increase_chance,
             iInitialChance, oOwner;
 
-      // Monsters can cast spells, can't improve in them
+      // Monsters can use abilities but can't improve in them.
       if NOT IsClass(who,&Player)
       {
          return FALSE;
       }
 
-      // players can't advance on anything they can choose to
-      //  generate: revenants and illusions
+      // Players can't advance on anything they can choose to
+      // generate, such as revenants and illusions.
       if target <> $ AND NOT Send(target,@CanPlayerAdvanceOnMe)
       {
          return FALSE;
@@ -740,7 +787,7 @@ messages:
          difficulty = 60;
       }
 
-      iAbility = Send(who,@GetSpellAbility,#spell_num=viSkill_num);
+      iAbility = Send(who,@GetSkillAbility,#Skill_num=viSkill_num);
 
       // This decreases the imp chance as we go up in level.  It also gives
       //  a better chance to imp on harder monsters.  Adding 10 to compensate
@@ -751,7 +798,7 @@ messages:
       final = (increase_chance * factor)/100;
       final = Bound(final,5,$);
 
-      // Are we above the spells requisite stat?  Apply the "soft cap".
+      // Are we above the ability's requisite stat?  Apply the "soft cap".
       if iability > ((2 * iRequisiteStat) - 1)
       {
          final /= Bound(Send(SETTINGS_OBJECT,@GetSkillSoftcapPenalty),1,$);
@@ -811,24 +858,16 @@ messages:
    }
 
    EndEnchantment(who=$)
-   "Called by EnchantmentTimer when an enchantment ends, or by "
-   "RemoveEnchantmentEffects when an enchantment is forcefully/prematurely "
-   "removed.  Handles mana drain - spells with drain effects should propagate "
-   "here."
    {
       return;
    }
 
    IsPeriodic()
-   "This is used by the logon/logoff enchantment keeping function.  "
-   "Returns false for most enchantments."
    {
       return FALSE;
    }
 
    RestartEnchantmentEffect()
-   "If a spell activates an effect that is run on the client-side only "
-   "(such as blind or hold), reinstate that effect."
    {
       return;
    }
@@ -1076,7 +1115,7 @@ messages:
 
       oTrance = Send(SYS,@FindSpellByNum,#num=SID_TRANCE);
 
-      if vbReportTrance
+      if vbReportTrance AND NOT pbKey_hold
       {
          Send(who,@MsgSendUser,#message_rsc=skill_trance_begin,
               #parm1=Send(self,@GetName));
@@ -1341,7 +1380,7 @@ messages:
    {
       local oSpell;
 
-      // Add a mana drain and cooldown if applicable.
+      // Add a cooldown if applicable.
       if IsClass(who,&Battler)
       {
          if viCooldownSID > 0
@@ -1561,19 +1600,45 @@ messages:
       return vbIsLightSource;
    }
 
-   GetPeriodicSound()
+   GetPeriodicSound(level=$)
    {
-      return;
+      local rSound;
+
+      if level <> $
+      {
+         level /= 20;
+
+         switch(level)
+         {
+            case 0:
+               rSound = vrCharge_min;
+               break;
+            case 1:
+               rSound = vrCharge_low;
+               break;
+            case 2:
+               rSound = vrCharge_mid;
+               break;
+            case 3:
+               rSound = vrCharge_high;
+               break;
+            default:
+               rSound = vrCharge_max;
+               break;
+         }
+      }
+
+      return rSound;
    }
 
    GetPeriodicSoundEnd()
    {
-      return;
+      return vrCharge_end;
    }
 
    GetPeriodicSoundDuration()
    {
-      return;
+      return viCharge_loop_duration;
    }
 
    StartChargeDrain(who=$,iPower=0,bFreeCast=FALSE)

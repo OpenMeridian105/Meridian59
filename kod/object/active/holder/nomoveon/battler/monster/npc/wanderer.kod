@@ -108,19 +108,22 @@ messages:
       }
       else
       {
-         // Safety Check: Bail at 10 to prevent any possible infinte loop
-         // in the event if plDestinations is ever incorrect
+         // Safety Check: Bail at 10 attempts to prevent any possible infinte loop
+         // in the event if plDestinations is ever incorrect (ie. the list has only expansion rooms)
          iAttempts=10;
          while (iNext_Dest = piCurrent_Dest AND iAttempts > 0)
          {
             iNext_Dest = Random(1,Length(plDestinations));
 
             // Check if expansion destinations are enabled
-            if Send(Send(SYS,@FindRoomByNum,#num=iNext_Dest),@IsExpansionRoom)
-               AND Send(SETTINGS_OBJECT,@IsExpansionEnabled)
-               AND Send(SETTINGS_OBJECT,@CanWanderersTravelToEast)
+            oRoom = Send(SYS,@FindRoomByNum,#num=First(Nth(plDestinations,iNext_Dest)));
+            if oRoom <> $ 
+               AND Send(oRoom,@IsExpansionRoom)
+               AND NOT (Send(SETTINGS_OBJECT,@IsExpansionEnabled)
+                  OR Send(SETTINGS_OBJECT,@CanWanderersTravelToEast))
             {
-               iAttempts=0;
+               iNext_Dest = piCurrent_Dest;
+               oRoom = $;
             }
 
             iAttempts--;
@@ -129,8 +132,6 @@ messages:
 
       piCurrent_Dest = iNext_Dest;
 
-      oRoom = Send(SYS,@FindRoomByNum,
-                     #num=First(Nth(plDestinations,piCurrent_Dest)));
       if oRoom <> $
       {
          if Length(Nth(plDestinations, piCurrent_Dest)) = 3

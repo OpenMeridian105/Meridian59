@@ -230,6 +230,24 @@ resources:
    battler_sound_projectile_miss2 = projectilemiss2.ogg
    battler_sound_projectile_miss3 = projectilemiss3.ogg
 
+   battler_miss1a = miss1a.ogg
+   battler_miss2a = miss2a.ogg
+   battler_miss3a = miss3a.ogg
+   battler_miss4a = miss4a.ogg
+   battler_miss5a = miss5a.ogg
+   battler_miss6a = miss6a.ogg
+   battler_miss7a = miss7a.ogg
+   battler_miss8a = miss8a.ogg
+
+   battler_miss1b = miss1b.ogg
+   battler_miss2b = miss2b.ogg
+   battler_miss3b = miss3b.ogg
+   battler_miss4b = miss4b.ogg
+   battler_miss5b = miss5b.ogg
+   battler_miss6b = miss6b.ogg
+   battler_miss7b = miss7b.ogg
+   battler_miss8b = miss8b.ogg
+
 classvars:
 
    viObject_flags = OF_ATTACKABLE
@@ -3492,7 +3510,7 @@ messages:
             rString = battler_misses;
          }
 
-         // Misses can only be heard by the missed target.
+         // Miss "swish" can only be heard by the missed target.
          bRoom = FALSE;
 
          // Pick a fitting miss sound at random even if it's a dodge.
@@ -3540,6 +3558,9 @@ messages:
       {
          Send(self,@WaveSendUser,#wave_rsc=rSound,#source_obj=what);
       }
+
+      // However, we still play a room sound externally.
+      Send(what,@PlayMissSound,#what=what);
 
       return rString;
    }
@@ -4120,6 +4141,95 @@ messages:
       // Add half a point of damage to our hurt me list. This allows
       // us to keep track of who attacked whom regardless of misses.
       Send(what,@AddHurtMeRecently,#who=self,#amount=50);
+
+      return;
+   }
+
+   PlayMissSound(what=$)
+   {
+      local iRoll, rPrimarySound, rSecondarySound;
+
+      if IsClass(what,&Player)
+      {
+         iRoll = Random(1,8);
+
+         switch(iRoll)
+         {
+            case 1:
+               rPrimarySound = battler_miss1a;
+               break;
+
+            case 2:
+               rPrimarySound = battler_miss2a;
+               break;
+
+            case 3:
+               rPrimarySound = battler_miss3a;
+               break;
+
+            case 4:
+               rPrimarySound = battler_miss4a;
+               break;
+
+            case 5:
+               rPrimarySound = battler_miss5a;
+               break;
+
+            case 6:
+               rPrimarySound = battler_miss6a;
+               break;
+
+            case 7:
+               rPrimarySound = battler_miss7a;
+               break;
+
+            case 8:
+               rPrimarySound = battler_miss8a;
+               break;
+         }
+
+         iRoll = Random(1,8);
+
+         switch(iRoll)
+         {
+            case 1:
+               rSecondarySound = battler_miss1b;
+               break;
+
+            case 2:
+               rSecondarySound = battler_miss2b;
+               break;
+
+            case 3:
+               rSecondarySound = battler_miss3b;
+               break;
+
+            case 4:
+               rSecondarySound = battler_miss4b;
+               break;
+
+            case 5:
+               rSecondarySound = battler_miss5b;
+               break;
+
+            case 6:
+               rSecondarySound = battler_miss6b;
+               break;
+
+            case 7:
+               rSecondarySound = battler_miss7b;
+               break;
+
+            case 8:
+               rSecondarySound = battler_miss8b;
+               break;
+         }
+
+         Send(poOwner,@SomethingWaveRoom,#what=self,
+                  #wave_rsc=rPrimarySound);
+         Send(poOwner,@SomethingWaveRoom,#what=self,
+                  #wave_rsc=rSecondarySound);
+      }
 
       return;
    }

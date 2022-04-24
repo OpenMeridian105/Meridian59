@@ -209,6 +209,8 @@ resources:
    player_assgame_soon = \
       "~kRoq tells you, \"~IA new Assassin's Circle shall be initiated "
       "shortly.\""
+   player_must_attack_battler = \
+      "You can't attack that!"
 
    player_tougher_wav_rsc = tougher.ogg
    player_missed_something_wave_rsc = swordmis.ogg
@@ -4697,6 +4699,13 @@ messages:
       }
 
       cVictimClass = GetClass(victim);
+
+      if NOT IsClass(victim,&Battler)
+      {
+         Send(self,@MsgSendUser,#message_rsc=player_must_attack_battler);
+
+         return FALSE;
+      }
 
       // Default location to check is the room the victim is in.
       // This allows X-room atacks (such as firewalls) to work.

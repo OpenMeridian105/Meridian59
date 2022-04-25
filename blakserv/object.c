@@ -468,19 +468,42 @@ void SetNumObjects(int new_num_objects)
    num_objects = new_num_objects;
 }
 
-/*
-void debugobjects(int session_id)
+// Dump a count of all objects by class to admin log.
+// Assumes class_id < 20000, which should hold for a few years.
+void DumpClassInstances()
 {
-   int i;
+   #define MAX_CLASS 20000
+   int count[MAX_CLASS];
 
-   for (i=0;i<num_objects;i++)
+   memset(count, 0, MAX_CLASS * sizeof(int));
+
+   aprintf(":< Class instances:\n");
+
+   // Build array of counts.
+   for (int i = 0; i < num_objects; ++i)
    {
-      dprintf("%5i",i);
-      if (objects[i].deleted)
-	 dprintf("%5i\n",-1);
-      else
-	 dprintf("%5i\n",objects[i].class_id);
+      object_node *o = &objects[i];
+      if (!o || o->deleted)
+         continue;
+      if (o->class_id >= MAX_CLASS)
+      {
+         // Exit rather than give partial results to motivate me to fix this ASAP.
+         aprintf("ERROR: max class ID higher than allocated array, aborting.\n");
+         return;
+      }
+      count[o->class_id] += 1;
    }
-   dprintf("\n");
+
+   // Dump array
+   for (int i = 0; i < MAX_CLASS; ++i)
+   {
+      class_node *c = GetClassByID(i);
+      if (c)
+      {
+         // Simple comma-separated so they can be imported into other programs.
+         aprintf("%s,%i\n", c->class_name, count[i]);
+      }
+   }
+
+   aprintf(":>\n");
 }
-*/

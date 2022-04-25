@@ -498,7 +498,7 @@ int GetSourceLine(class_node *c, char *bkod_ptr)
    bline = &c->line_table->entries;
    for (int i = 0; i < c->line_table->num_line_entries; ++i)
    {
-      if (bline->file_offset + c->bof_base > bkod_ptr)
+      if (bline->file_offset + c->bof_base >= bkod_ptr)
          return prev_line;
       prev_line = bline->line_number;
       bline++;

@@ -441,18 +441,19 @@ messages:
       if NOT Send(self,@ClaimerHasFlag,#who=poClaimer)
       {
          Debug("Didn't catch claimer",Send(poClaimer,@GetName),
-               "'s loss of flag in",Send(poOwner,@getName));
+               "'s loss of flag in",Send(poOwner,@GetName));
          Send(self,@ClaimFailed);
 
          return;
       }
 
+      iClaimerFaction = Send(poClaimer,@GetFaction);
+
       // Special Happyland victory condition:  must have majority in
       // room (total HP, including troops).
       if NOT Send(SYS,@IsPKAllowed)
       {
-         iClaimerVotes = Send(self,@CountHappylandVotes,
-                              #faction=Send(poClaimer,@GetFaction));
+         iClaimerVotes = Send(self,@CountHappylandVotes,#faction=iClaimerFaction);
          iDefenderVotes = Send(self,@CountHappylandVotes,#faction=piFaction);
 
          if iClaimerVotes <= iDefenderVotes
@@ -480,23 +481,21 @@ messages:
       // Update guild territory counts
       oTerritoryGame = Send(SYS,@GetTerritoryGame);
 
-      Send(oTerritoryGame,@AddGuildTerritory,
-         #oGuild=Send(poClaimer,@GetGuild),#iFaction=Send(poClaimer,@GetFaction));
+      Send(oTerritoryGame,@AddGuildTerritory,#oGuild=Send(poClaimer,@GetGuild),
+            #iFaction=iClaimerFaction);
 
       if poCapturer <> $
       {
          Send(oTerritoryGame,@SubtractGuildTerritory,
-            #oGuild=Send(poCapturer,@GetGuild),#iFaction=piFaction);
+               #oGuild=poGuild,#iFaction=piFaction);
       }
 
       Send(oTerritoryGame,@UpdateGuildTerritories);
 
-      piFaction = Send(poClaimer,@GetFaction);
+      piFaction = iClaimerFaction;
       Send(poOwner,@SomethingChanged,#what=self);
 
       // Delete the flag.
-      iClaimerFaction = Send(poClaimer,@GetFaction);
-
       if iClaimerFaction = FACTION_DUKE
       {
          oClaimingFlag = Send(poClaimer,@FindHolding,#class=&DukeFlag);
@@ -519,7 +518,7 @@ messages:
       poCapturer = poClaimer;
       poClaimer = $;
 
-      if Send(poCapturer,@GetFaction) = 0
+      if iClaimerFaction = 0
       {
          poGuild = $;
       }
@@ -551,13 +550,13 @@ messages:
             AND Send(oVoter,@PlayerIsIntriguing)
             AND (Send(oVoter,@GetFaction) = faction)
          {
-            iCount = iCount + bound(40,150, Send(oVoter,@GetMaxHealth));
+            iCount += Bound(40,150, Send(oVoter,@GetMaxHealth));
          }
 
          if IsClass(oVoter,&FactionTroop)
             AND (Send(oVoter,@GetFaction)=faction)
          {
-            iCount = iCount + bound(0,150, Send(oVoter,@GetLevel));
+            iCount += Bound(0,150, Send(oVoter,@GetLevel));
          }
       }
 

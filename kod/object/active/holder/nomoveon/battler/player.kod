@@ -6218,8 +6218,11 @@ messages:
       Send(self,@CaughtOffGuard,#damage=damage,#what=what,
          #stroke_obj=stroke_obj,#atype=atype,#stype=stype);
 
-      // Any hit will cause a slight knockback.
-      Send(self,@DoHitAnimation,#damage=damage,#what=what);
+      // Any physical hit will cause a slight knockback.
+      if atype
+      {
+         Send(self,@DoHitAnimation,#damage=damage,#what=what);
+      }
 
       Send(self,@LoseHealth,#amount=damage,#precision=TRUE);
 
@@ -6440,7 +6443,7 @@ messages:
          oStroke =  Send(SYS,@FindSkillByNum,#num=SKID_PUNCH);
       }
 
-      iTime = Send(oStroke,@GetPostPerformDelay,#who=self,#use_weapon=oWeapon);
+      iTime = Send(oStroke,@GetPostActionDelay,#who=self,#use_weapon=oWeapon);
       iTime += Send(oStroke,@GetTranceTime,#who=self);
 
       return iTime;
@@ -16397,7 +16400,7 @@ messages:
    // Ends maintained spells, most likely because we ran out of mana.
    CancelMaintainedSpells()
    {
-     Send(self,@BreakTrance,#event=EVENT_OOM);
+     Send(self,@BreakTrance,#event=EVENT_NO_MANA);
 
      propagate;
    }
@@ -16415,6 +16418,8 @@ messages:
             Send(self,@UnuseItem,#what=i);
          }
       }
+
+      Send(self,@BreakTrance,#event=EVENT_NO_VIGOR);
 
       return;
    }
@@ -16866,7 +16871,7 @@ messages:
 
    PeriodicSounds(timer=$,bSuspend=FALSE)
    {
-      local i, j, rSound, oEffect, lSound, tTimer;
+      local i, rSound, oEffect, lSound, tTimer, iLevel;
 
       if bSuspend
       {
@@ -16909,13 +16914,19 @@ messages:
          }
       }
 
-      foreach j in plOverTimeEffects
+      foreach i in plOverTimeEffects
       {
-         oEffect = Nth(j,5);
+         oEffect = Nth(i,5);
 
-         if (oEffect <> 0) AND IsClass(oEffect,&Spell)
+         if (oEffect <> 0)
+            AND (IsClass(oEffect,&Spell) OR IsClass(oEffect,&Skill))
          {
-            rSound = Send(oEffect,@GetPeriodicSound);
+            if Send(oEffect,@IsHeld)
+            {
+               iLevel = Send(self,@GetChargePercentage,#bTimer=TRUE);
+            }
+
+            rSound = Send(oEffect,@GetPeriodicSound,#level=iLevel);
          }
          else
          {
@@ -17024,24 +17035,120 @@ messages:
    SetTranceFocus(focus=0,bAdd=FALSE)
    "Override the current trance timer with specified value."
    {
-      local lState;
+      local lState, iOld;
 
       lState = Send(self,@GetEnchantedState,
          #what=Send(SYS,@FindSpellByNum,#num=SID_TRANCE));
 
       if lState <> $
       {
+         iOld = Nth(lState,6);
+
          if bAdd
          {
-            focus = Bound(focus+Nth(lState,6),0,$);
+            focus = Bound(focus+iOld,0,$);
          }
 
          SetNth(lState,6,focus);
 
-         return focus;
+         // If we have any focus left, return its value.
+         if focus > 0
+         {
+            return focus;
+         }
+
+         // If our focus has been depleted, return the amount
+         // of focus we had previously. Change polarity though.
+         return -iOld;
       }
 
       return;
+   }
+
+   SetChargeTime(time=0,bAdd=FALSE)
+   "Override remaining charge time with specified value."
+   {
+      local i, lState;
+
+      foreach i in plEnchantments
+      {
+         if IsClass(Nth(i,2),&Trance)
+         {
+            lState = Nth(i,3);
+
+            if bAdd
+            {
+               SetNth(lState,8,Nth(lState,8)+time);
+            }
+            else
+            {
+               SetNth(lState,8,time);
+            }
+
+            return TRUE;
+         }
+      }
+
+      return FALSE;
+   }
+
+   GetChargePercentage(bTimer=FALSE)
+   "Returns the percentage of charge time left."
+   {
+      local i, iTime, lState, oAbility, tTimer;
+
+      lState = Send(self,@GetEnchantedState,
+         #what=Send(SYS,@FindSpellByNum,#num=SID_TRANCE));
+
+      if lState = $
+      {
+         return FALSE;
+      }
+
+      // Start with the remaining time stored in the trance state.
+      iTime = Nth(lState,8);
+
+      // Add time from our current charge interval if told to.
+      if bTimer
+      {
+         foreach i in plEnchantments
+         {
+            if IsClass(Nth(i,2),&Trance)
+            {
+               // Start with what's left of our current timer.
+               tTimer = First(i);
+
+               // If this is called by StoppedHolding(), trance's timer has
+               // already expired, but the enchantment is still storing the
+               // leftover charge time in its state.
+               if tTimer <> $
+                  AND IsTimer(tTimer)
+               {
+                  iTime += GetTimeRemaining(First(i));
+               }
+
+               break;
+            }
+         }
+      }
+
+      // Get ready to turn the whole thing into a percentage.
+      iTime *= 100;
+
+      // Compare to the total time it takes to charge the action.
+      oAbility = First(lState);
+
+      if IsClass(oAbility,&Spell)
+      {
+         iTime /= Send(oAbility,@GetTranceTime,#iSpellpower=Nth(lState,7),#who=self);
+      }
+      else
+      {
+         iTime /= Send(oAbility,@GetTranceTime,#iSkillPower=Nth(lState,7),#who=self);
+      }
+
+      // Subtact from 100 to return the actual completion percentage.
+      return 100 - iTime;
    }
 
    CreateSetList()

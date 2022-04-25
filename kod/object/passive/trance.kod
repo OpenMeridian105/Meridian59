@@ -77,20 +77,26 @@ messages:
          Send(who,@StartEnchantment,#what=self,#time=time,#addicon=FALSE,
             #state=lState);
       }
-      else if iHold > viHold_interval
-      {
-         // Trance time is limited to viHold_interval. If the trance expires without
-         // the same ability key being pressed again, EndEnchantment() will call
-         // StoppedHolding instead of CastSkill() or PerformSpell().
-         Send(who,@StartEnchantment,#what=self,#time=viHold_interval,#addicon=FALSE,
-            #state=[what,who,lTargets,TRUE,bFreeCast,100,power,iHold-viHold_interval]);
-         Send(who,@SetAttackTime,#time=viHold_interval);
-      }
       else
       {
-         Send(who,@StartEnchantment,#what=self,#time=iHold,#addicon=FALSE,
-            #state=lState);
-         Send(who,@SetAttackTime,#time=Send(what,@GetPostCastDelay));
+         if iHold > viHold_interval
+         {
+            // Trance time is limited to viHold_interval. If the trance expires without
+            // the same ability key being pressed again, EndEnchantment() will call
+            // StoppedHolding instead of CastSkill() or PerformSpell().
+            Send(who,@StartEnchantment,#what=self,#time=viHold_interval,#addicon=FALSE,
+               #state=[what,who,lTargets,TRUE,bFreeCast,100,power,iHold-viHold_interval]);
+            Send(who,@SetAttackTime,#time=Send(what,@GetPostActionDelay));
+         }
+         else
+         {
+            Send(who,@StartEnchantment,#what=self,#time=iHold,#addicon=FALSE,
+               #state=lState);
+            Send(who,@SetAttackTime,#time=Send(what,@GetPostActionDelay));
+         }
+
+         // Apply the appropriate resource drain.
+         Send(what,@StartChargeDrain,#who=who,#iPower=power,#bFreeCast=bFreeCast);
       }
 
       Send(who,@AddMovementSpeedPercent,
@@ -119,6 +125,10 @@ messages:
       // Let's clear up our trance related effects before proceeding further.
       Send(who,@AddMovementSpeedPercent,
          #iSpeed=Send(oAbility,@GetMovementSpeedReduction,#state=state));
+
+      // Wraps up any unfinished business that has to be taken care of
+      // regardless of how the trance came to an end.
+      Send(oAbility,@TranceEnded,#who=who,#state=state);
 
       // Check if we have any charge time left.
       if Nth(state,8)
@@ -190,14 +200,10 @@ messages:
 
    BreakTrance(who=$,state=$,event=EVENT_ABILITY,disruption=0)
    {
-      local oAbility, iTime;
-
-      if event = EVENT_OOM
-      {
-         return FALSE;
-      }
+      local oAbility, iTime, iFocus, bHeld;
 
       oAbility = First(state);
+      bHeld = Send(oAbility,@IsHeld);
 
       if NOT Send(oAbility,@CanBreakTrance,#who=who,#state=state,#event=event,
          #disruption=disruption)
@@ -212,14 +218,42 @@ messages:
             Send(oAbility,@TranceCanceled,#who=who,#state=state);
          }
          else if (event = EVENT_DAMAGE)
-            AND Send(who,@SetTranceFocus,#focus=-disruption,#bAdd=TRUE)
          {
+            iFocus = Send(who,@SetTranceFocus,#focus=-disruption,#bAdd=TRUE);
             iTime = Send(oAbility,@GetRawTranceTime);
-            iTime = iTime * disruption / 100;
-            Send(who,@SetTranceTime,#time=iTime,#bAdd=TRUE);
-            Send(who,@MsgSendUser,#message_rsc=trance_disturbed);
 
-            return FALSE;
+            // We have some focus left. See, how much the disruption has set us back.
+            if iFocus > 0
+            {
+               iTime = iTime * disruption / 100;
+
+               Send(who,@MsgSendUser,#message_rsc=trance_disturbed);
+
+               if bHeld
+               {
+                  // For charged abilities, increase the total time
+                  // instead extending the current charge frame.
+                  Send(who,@SetChargeTime,#time=iTime,#bAdd=TRUE);
+               }
+               else
+               {
+                  // Regular trance abilities have their timer increased.
+                  Send(who,@SetTranceTime,#time=iTime,#bAdd=TRUE);
+               }
+
+               // Extend our post cast time by the same delay.
+               Send(who,@SetAttackTime,#time=iTime,#bAdd=TRUE);
+
+               return FALSE;
+            }
+            else
+            {
+               // Extend our post cast time in proportion to how much focus
+               // we had left before it was broken. We have to switch polarity
+               // since our previous focus is returned as a negative integer.
+               iTime = - iTime * iFocus / 100;
+               Send(who,@SetAttackTime,#time=iTime,#bAdd=TRUE);
+            }
          }
       }
 
@@ -235,7 +269,7 @@ messages:
    // EndEnchantment should be the result of a successful trance.
    // RemoveEnchantment is usually called by BreakTrance().
    // It can also be the result of a deletion though.
-   RemoveEnchantmentEffects( who = $, state = $, event = FALSE )
+   RemoveEnchantmentEffects(who=$,state=$,event=FALSE)
    {
       local oAbility;
 
@@ -244,7 +278,11 @@ messages:
       Send(who,@AddMovementSpeedPercent,
          #iSpeed=Send(oAbility,@GetMovementSpeedReduction,#state=state));
 
-      // We already handled any potential fallout in TranceCenceled.
+      // Wraps up any unfinished business that has to be taken care of
+      // regardless of how the trance came to an end.
+      Send(oAbility,@TranceEnded,#who=who,#state=state);
+
+      // We already handled any potential fallout in TranceCanceled.
       if (event = EVENT_CANCEL)
       {
          return;

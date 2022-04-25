@@ -18,7 +18,7 @@ constants:
 
    ATTACK_SPELL_CAST_TIME = 0
    ATTACK_SPELL_POST_CAST_TIME = 2000
-   ATTACK_SPELL_TRANCE_TIME = 500
+   ATTACK_SPELL_TRANCE_TIME = 1500
 
 resources:
 
@@ -52,6 +52,9 @@ classvars:
 properties:
 
    piPostCast_time = 2000
+   piCast_time = 0
+
+   pbKey_hold = FALSE
 
    piDamageMin = 0
    piDamageMax = 0
@@ -400,7 +403,7 @@ messages:
       return piRange*piRange;
    }
 
-   AddTrance()
+   AddChargeTime()
    {
       if piCast_time <> 0
       {
@@ -408,15 +411,16 @@ messages:
          return FALSE;
       }
 
-      piCast_time += ATTACK_SPELL_TRANCE_TIME;
-      piPostCast_time -= 2*ATTACK_SPELL_TRANCE_TIME;
+      piCast_time = ATTACK_SPELL_TRANCE_TIME;
+      piPostCast_time = ATTACK_SPELL_TRANCE_TIME;
+      pbKey_hold = TRUE;
 
       Debug("Added trance to spell",Send(self,@GetName),"Trance",piCast_time,"Delay",piPostCast_time);
 
       return TRUE;
    }
 
-   RemoveTrance()
+   RemoveChargeTime()
    {
       if piCast_time = 0
       {
@@ -424,41 +428,47 @@ messages:
          return FALSE;
       }
 
-      piCast_time -= ATTACK_SPELL_TRANCE_TIME;
-      piPostCast_time += 2*ATTACK_SPELL_TRANCE_TIME;
+      piCast_time = ATTACK_SPELL_CAST_TIME;
+      piPostCast_time = ATTACK_SPELL_POST_CAST_TIME;
+      pbKey_hold = FALSE;
 
       Debug("Removed trance from spell",Send(self,@GetName),"Trance",piCast_time,"Delay",piPostCast_time);
 
       return TRUE;
    }
 
-   SetTimeValues(iCast_time=$,iPostCast_time=$)
+   SetTimeValues(iCast_time=$,iPostCast_time=$,bKey_hold=$)
    {
+      if iCast_time = $
+      {
+         iCast_time = ATTACK_SPELL_CAST_TIME;
+      }
 
-      // No input? Reset values to standard.
-      if (iCast_time = $) AND (iPostCast_time = $)
+      if iPostCast_time = $
       {
-         piCast_time = ATTACK_SPELL_CAST_TIME;
-         piPostCast_time = ATTACK_SPELL_POST_CAST_TIME;
+         iPostCast_time = ATTACK_SPELL_POST_CAST_TIME;
       }
-      // Set cast time only.
-      else if iPostCast_time = $
+
+      if bKey_hold = $
       {
-         piCast_time = iCast_time;
+         bKey_hold = FALSE;
       }
-      // Set post cast delay only.
-      else if iCast_time = $
-      {
-         piPostCast_time = iPostCast_time;
-      }
-      // Set both.
-      else
-      {
-         piCast_time = iCast_time;
-         piPostCast_time = iPostCast_time;
-      }
+
+      piCast_time = iCast_time;
+      piPostCast_time = iPostCast_time;
+      pbKey_hold = bKey_hold;
 
       return TRUE;
+   }
+
+   SuccessChance()
+   {
+      if pbKey_hold
+      {
+         return TRUE;
+      }
+
+      propagate;
    }
 
 end

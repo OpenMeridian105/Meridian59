@@ -181,7 +181,7 @@ messages:
 
    ReqNewApply(what=$,apply_on=$)
    {
-      local iPostCastDelay, oSpell;
+      local iPostActionDelay, oSpell;
 
       if vbDisabled
       {
@@ -211,14 +211,14 @@ messages:
             return FALSE;
          }
 
-         iPostCastDelay = Send(oSpell,@GetPostCastDelay);
+         iPostActionDelay = Send(oSpell,@GetPostActionDelay);
 
          // Bind this at reasonable levels
-         iPostCastDelay = Bound(iPostCastDelay,1,10);
+         iPostActionDelay = Bound(iPostActionDelay,1,10);
 
          // Check the attack timer, and start a new one if we use the item.
          // Only allow one use per second.
-         if NOT Send(what,@IsOkayAttackTime,#seconds=iPostCastDelay)
+         if NOT Send(what,@IsOkayAttackTime,#seconds=iPostActionDelay)
          {
             Send(what,@MsgSendUser,#message_rsc=spellitem_cannot_use_yet);
 

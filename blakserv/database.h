@@ -116,7 +116,8 @@ enum sql_recordtype
    STAT_QUESTS = 38,
    STAT_TREASURE_EXTRA = 39,
    STAT_TREASURE_MAGIC = 40,
-   STAT_MAXSTAT = 40 // Equal to highest defined stat.
+   STAT_NPC_SELLCOND = 41,
+   STAT_MAXSTAT = 41 // Equal to highest defined stat.
 };
 
 // Statistics_Table entries have the format:
@@ -165,7 +166,8 @@ static sql_statistic_type Statistics_Table[] = {
    {STAT_OFFERINGS,     11, "WriteOfferings", "wiki_offerings"},
    {STAT_QUESTS,         6, "WriteQuests", "wiki_quests"},
    {STAT_TREASURE_EXTRA, 4, "WriteTreasureExtra", "wiki_treasure_extra"},
-   {STAT_TREASURE_MAGIC, 3, "WriteTreasureMagic", "wiki_treasure_magic"}
+   {STAT_TREASURE_MAGIC, 3, "WriteTreasureMagic", "wiki_treasure_magic"},
+   {STAT_NPC_SELLCOND,   4, "WriteNpcSellCond", "wiki_npc_sellcond"}
 };
 
 enum sql_worker_state

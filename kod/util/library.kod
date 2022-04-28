@@ -2169,6 +2169,33 @@ messages:
 
 #region Mob Library
 
+   GetConditionalSaleItems(mob=$)
+   {
+      local i, j, lAction, lItems;
+
+      if (mob = $)
+      {
+         return;
+      }
+
+      foreach i in plMobLib
+      {
+         if (First(i) = mob)
+         {
+            foreach j in Nth(i,2)
+            {
+               lAction = Nth(j,3);
+               if (First(lAction) = LIBACT_CONDITIONAL)
+               {
+                  lItems = Cons([Nth(lAction,2), Nth(lAction,3)], lItems);
+               }
+            }
+         }
+      }
+
+      return lItems;
+   }
+
    PrintMobConditional(mob=$)
    "Prints out all the conditional sale items for 'mob'."
    {

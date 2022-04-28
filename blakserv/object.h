@@ -49,5 +49,6 @@ Bool SetObjectPropertyByName(int object_id,char *prop_name,val_type val);
 void ForEachObject(void (*callback_func)(object_node *o));
 void MoveObject(int dest_id,int source_id);
 void SetNumObjects(int new_num_objects);
+void DumpClassInstances();
 
 #endif

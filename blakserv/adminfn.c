@@ -116,6 +116,7 @@ void AdminDeleteUnusedAccounts(int session_id, admin_parm_type parms[], int num_
 void AdminShowResource(int session_id, admin_parm_type parms[], int num_blak_parm, parm_node blak_parm[]);
 void AdminPrintResource(resource_node *r);
 void AdminShowDynamicResources(int session_id, admin_parm_type parms[], int num_blak_parm, parm_node blak_parm[]);
+void AdminDumpClassInst(int session_id, admin_parm_type parms[], int num_blak_parm, parm_node blak_parm[]);
 void AdminShowTimers(int session_id, admin_parm_type parms[], int num_blak_parm, parm_node blak_parm[]);
 void AdminShowTimer(int session_id, admin_parm_type parms[], int num_blak_parm, parm_node blak_parm[]);
 void AdminShowTimerMessageID(int session_id, admin_parm_type parms[], int num_blak_parm, parm_node blak_parm[]);
@@ -459,6 +460,12 @@ admin_table_type admin_disable_table[] =
 };
 #define LEN_ADMIN_DISABLE_TABLE (sizeof(admin_disable_table)/sizeof(admin_table_type))
 
+admin_table_type admin_dump_table[] =
+{
+   { AdminDumpClassInst,{N}, F, A | M, NULL, 0, "classinstances","Dump a count of instantianted objects by class" },
+};
+#define LEN_ADMIN_DUMP_TABLE (sizeof(admin_dump_table)/sizeof(admin_table_type))
+
 admin_table_type admin_enable_table[] =
 {
 	{ AdminEnableSysTimer,{I,N}, F, A|M, NULL, 0, "systimer","Enable a system timer" },
@@ -485,6 +492,7 @@ admin_table_type admin_main_table[] =
 	{ NULL, {N}, F, A|M, admin_create_table, LEN_ADMIN_CREATE_TABLE, "create", "Create subcommand" },
 	{ NULL, {N}, F, A|M, admin_delete_table, LEN_ADMIN_DELETE_TABLE, "delete", "Delete subcommand" },
 	{ NULL, {N}, F, A|M, admin_disable_table,LEN_ADMIN_DISABLE_TABLE,"disable", "Disable subcommand" },
+	{ NULL, {N}, F, A|M, admin_dump_table,   LEN_ADMIN_DUMP_TABLE,   "dump",    "Dump subcommand" },
 	{ NULL, {N}, F, A|M, admin_enable_table, LEN_ADMIN_ENABLE_TABLE, "enable", "Enable subcommand" },
 	{ AdminGarbage,       {N},   F, A|M, NULL, 0, "garbage",   "Garbage collect" },
 	{ NULL, {N}, F, A|M, admin_hangup_table, LEN_ADMIN_HANGUP_TABLE, "hangup", "Hangup subcommand" },
@@ -2014,7 +2022,7 @@ void AdminShowAccByEmail(int session_id, admin_parm_type parms[],
 
 void AdminPrintAccountByEmail(account_node *a, char *email)
 {
-   if (strcmp(a->email, email) != 0)
+   if (stricmp(a->email, email) != 0)
       return;
 
    AdminShowOneAccount(a);
@@ -2187,6 +2195,13 @@ void AdminCheckTimerHeap(int session_id, admin_parm_type parms[],
       aprintf("Timer heap is valid.\n");
    else
       aprintf("Timer heap is NOT valid.\n");
+}
+
+// Dumps a count of how many instantiated objects exist of each class.
+void AdminDumpClassInst(int session_id, admin_parm_type parms[],
+                        int num_blak_parm, parm_node blak_parm[])
+{
+   DumpClassInstances();
 }
 
 // Keep track of how many timers get printed.

@@ -327,6 +327,17 @@ int   port     = 3306;
    )                                                     \
    ENGINE=InnoDB DEFAULT CHARSET=latin1;"
 
+#define SQLQUERY_CREATETABLE_NPC_SELLCOND             "\
+   CREATE TABLE wiki_npc_sellcond                      \
+   (                                                   \
+     npc_name        VARCHAR(63) NOT NULL,             \
+     npc_item_sold   VARCHAR(63) NOT NULL,             \
+     item_color      INT(4) NOT NULL,                  \
+     item_price      INT(4) NOT NULL,                  \
+     PRIMARY KEY(npc_name,npc_item_sold, item_color)   \
+   )                                                   \
+   ENGINE=InnoDB DEFAULT CHARSET=latin1;"
+
 #define SQLQUERY_CREATETABLE_REAGENTS                   "\
    CREATE TABLE wiki_reagents                            \
    (                                                     \
@@ -1217,6 +1228,24 @@ int   port     = 3306;
          npc_spell_id)                       \
          VALUES (npc_name,                   \
             npc_spell_id);                   \
+   END"
+
+#define SQLQUERY_CREATEPROC_NPC_SELLCOND "\
+   CREATE PROCEDURE WriteNpcSellCond(     \
+     IN npc_name       VARCHAR(63),       \
+     IN npc_item_sold  VARCHAR(63),       \
+     IN item_color     INT(4),            \
+     IN item_price     INT(4))            \
+   BEGIN                                  \
+   INSERT INTO wiki_npc_sellcond          \
+      (  npc_name,                        \
+         npc_item_sold,                   \
+         item_color,                      \
+         item_price)                      \
+         VALUES (npc_name,                \
+            npc_item_sold,                \
+            item_color,                   \
+            item_price);                  \
    END"
 
 #define SQLQUERY_CREATEPROC_REAGENTS          "\
@@ -2345,6 +2374,7 @@ void _MySQLVerifySchema()
    MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATETABLE_NPC_SELLITEM, status);
    MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATETABLE_NPC_SELLSKILL, status);
    MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATETABLE_NPC_SELLSPELL, status);
+   MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATETABLE_NPC_SELLCOND, status);
    MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATETABLE_REAGENTS, status);
    MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATETABLE_FOOD, status);
    MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATETABLE_AMMO, status);
@@ -2395,6 +2425,7 @@ void _MySQLVerifySchema()
    MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATEPROC_NPC_SELLITEM, status);
    MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATEPROC_NPC_SELLSKILL, status);
    MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATEPROC_NPC_SELLSPELL, status);
+   MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATEPROC_NPC_SELLCOND, status);
    MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATEPROC_REAGENTS, status);
    MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATEPROC_FOOD, status);
    MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATEPROC_AMMO, status);

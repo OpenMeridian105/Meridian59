@@ -3163,7 +3163,7 @@ messages:
    }
 
    DropItem(droppedItem=$, targetGhost=$, dropRoom=$, dropRow=0, dropCol=0,
-            dropFineRow=32,dropFineCol=32,index=$, merge=TRUE)
+            dropFineRow=32,dropFineCol=32,index=$, merge=TRUE, bPen=FALSE)
    {
       local oItem, oDropRoom, iDropRow, iDropCol, iDropFineRow, iDropFineCol,
             oItemAtt;
@@ -3181,6 +3181,11 @@ messages:
 
       // Can't drop nothing.
       if (oItem = $)
+      {
+         return FALSE;
+      }
+
+      if (bPen AND NOT Send(oItem,@CanDropInPenalty))
       {
          return FALSE;
       }

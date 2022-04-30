@@ -6,7 +6,7 @@
 
 DEPEND = ..\cooldown.bof
 BOFS = cooldownnb.bof cooldownsb.bof cooldowncreawings.bof \
-       cooldownsprint.bof
+       cooldownsprint.bof cooldownunleash.bof
 
 
 !include $(KODDIR)\kod.mak

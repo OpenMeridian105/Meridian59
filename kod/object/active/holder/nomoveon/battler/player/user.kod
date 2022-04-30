@@ -613,8 +613,6 @@ properties:
 
    // Keeps track of the last received, but yet to be processed action.
    plLastReceived = $
-   // Timer keeping track of the currently queued action.
-   ptQueuedAction = $
 
 messages:
 
@@ -2149,20 +2147,8 @@ messages:
             // But maybe we are going to be ready soon enough to queue the next attack?
             if iTimeLeft < ACTION_QUEUE_TIME
             {
-               // We are and we have no other action queued yet. Let's queue our action.
-               if ptQueuedAction = $
-               {
-                  plLastReceived = [BP_REQ_ATTACK,Nth(client_msg,3)];
-                  ptQueuedAction = CreateTimer(self,@UserQueuedAction,iTimeLeft);
-               }
-               // We are already queueing an action. If it's already an attack, we can
-               // safely ignore the new attack request. If it isn't queue an attack instead.
-               else if First(plLastReceived) <> BP_REQ_ATTACK
-               {
-                  DeleteTimer(ptQueuedAction);
-                  plLastReceived = [BP_REQ_ATTACK,Nth(client_msg,3)];
-                  ptQueuedAction = CreateTimer(self,@UserQueuedAction,iTimeLeft);
-               }
+               // Indeed. Whatever we were going to do before, we are doing this now.
+               plLastReceived = [BP_REQ_ATTACK,Nth(client_msg,3)];
             }
          }
 
@@ -2342,11 +2328,14 @@ messages:
       {
          oAbility = Nth(client_msg,2);
 
+         // We are currently charging a held ability. Let's consider this to
+         // be an attempt to bring this endeavor to its fruition.
          if Send(self,@GetTranceAbility) = oAbility
             AND Send(oAbility,@IsHeld,#who=self)
          {
             Send(self,@ContinueHold);
          }
+         // We aren't busy with anything really.
          else if ptAttackTimer = $
          {
             // Repurposing variable.
@@ -2364,20 +2353,9 @@ messages:
                   iTimeLeft = Send(self,@GetEnchantedTime,#what=iState);
                   iTimeLeft = Bound(iTimeLeft,$,ACTION_COOLDOWN_TIME);
 
-                  if ptQueuedAction = $
-                  {
-                     plLastReceived = [BP_REQ_CAST,oAbility,Nth(client_msg,3)];
-                     ptQueuedAction = CreateTimer(self,@UserQueuedAction,iTimeLeft);
-                     Send(iState,@CooldownTried,#who=self,#oAbility=oAbility);
-                  }
-                  else if NOT ((First(plLastReceived) = BP_REQ_CAST)
-                     AND (oAbility = Nth(plLastReceived,2)))
-                  {
-                     DeleteTimer(ptQueuedAction);
-                     plLastReceived = [BP_REQ_CAST,oAbility,Nth(client_msg,3)];
-                     ptQueuedAction = CreateTimer(self,@UserQueuedAction,iTimeLeft);
-                     Send(iState,@CooldownTried,#who=self,#oAbility=oAbility);
-                  }
+                  plLastReceived = [BP_REQ_CAST,oAbility,Nth(client_msg,3)];
+                  ptAttackTimer = CreateTimer(self,@ActionTimer,iTimeLeft);
+                  Send(iState,@CooldownTried,#who=self,#oAbility=oAbility);
                
                   return;
                }
@@ -2389,38 +2367,26 @@ messages:
          else if IsClass(oAbility,&Phase)
             AND Send(self,@CanPhaseAgain)
          {
-            if ptQueuedAction <> $
-            {
-               DeleteTimer(ptQueuedAction);
-               ptQueuedAction = $;
-               plLastReceived = $;
-            }
+            DeleteTimer(ptAttackTimer);
+            ptAttackTimer = $;
+            plLastReceived = $;
 
             Send(self,@BreakTrance);
-            Send(self,@SetAttackTime);
             Send(self,@UserCast,#oSpell=oAbility,
                #lTargets=Nth(client_msg,3));
          }
+         // Our attack timer hasn't expired yet.
          else
          {
+            // Check how much time we have left.
             iTimeLeft = GetTimeRemaining(ptAttackTimer);
 
+            // Not much. Let's think ahead.
             if iTimeLeft < ACTION_QUEUE_TIME
             {
-               // We have nothing queued yet, let's queue the skill.
-               if ptQueuedAction = $
-               {
-                  plLastReceived = [BP_REQ_CAST,oAbility,Nth(client_msg,3)];
-                  ptQueuedAction = CreateTimer(self,@UserQueuedAction,iTimeLeft);
-               }
-               // If our new request changes anything, we'll allow it.
-               else if NOT ((First(plLastReceived) = BP_REQ_CAST)
-                  AND (oAbility = Nth(plLastReceived,2)))
-               {
-                  DeleteTimer(ptQueuedAction);
-                  plLastReceived = [BP_REQ_CAST,oAbility,Nth(client_msg,3)];
-                  ptQueuedAction = CreateTimer(self,@UserQueuedAction,iTimeLeft);
-               }
+               // Regardless of what our plans were before, we have new ones.
+               // (Which might be similar to the old ones.)
+               plLastReceived = [BP_REQ_CAST,oAbility,Nth(client_msg,3)];
             }
          }
 
@@ -2431,12 +2397,15 @@ messages:
       {
          oAbility = Nth(client_msg,2);
 
+         // We are currently charging a held ability. Let's consider this to
+         // be an attempt to bring this endeavor to its fruition.
          if Send(self,@GetTranceAbility) = oAbility
             AND Send(oAbility,@IsHeld,#who=self)
          {
             Send(self,@ContinueHold);
          }
-         if ptAttackTimer = $
+         // We aren't busy with anything really.
+         else if ptAttackTimer = $
          {
             // Repurposing variable.
             iState = Send(oAbility,@GetCooldownSID);
@@ -2453,20 +2422,9 @@ messages:
                   iTimeLeft = Send(self,@GetEnchantedTime,#what=iState);
                   iTimeLeft = Bound(iTimeLeft,$,ACTION_COOLDOWN_TIME);
 
-                  if ptQueuedAction = $
-                  {
-                     plLastReceived = [BP_REQ_PERFORM,oAbility,Nth(client_msg,3)];
-                     ptQueuedAction = CreateTimer(self,@UserQueuedAction,iTimeLeft);
-                     Send(iState,@CooldownTried,#who=self,#oAbility=oAbility);
-                  }
-                  else if NOT ((First(plLastReceived) = BP_REQ_PERFORM)
-                     AND (oAbility = Nth(plLastReceived,2)))
-                  {
-                     DeleteTimer(ptQueuedAction);
-                     plLastReceived = [BP_REQ_PERFORM,oAbility,Nth(client_msg,3)];
-                     ptQueuedAction = CreateTimer(self,@UserQueuedAction,iTimeLeft);
-                     Send(iState,@CooldownTried,#who=self,#oAbility=oAbility);
-                  }
+                  plLastReceived = [BP_REQ_PERFORM,oAbility,Nth(client_msg,3)];
+                  ptAttackTimer = CreateTimer(self,@ActionTimer,iTimeLeft);
+                  Send(iState,@CooldownTried,#who=self,#oAbility=oAbility);
                
                   return;
                }
@@ -2475,26 +2433,18 @@ messages:
             Send(self,@UserPerform,#oSkill=oAbility,
                #lTargets=Nth(client_msg,3));
          }
+         // Our attack timer hasn't expired yet.
          else
          {
+            // Check how much time we have left.
             iTimeLeft = GetTimeRemaining(ptAttackTimer);
 
+            // Not much. Let's think ahead.
             if iTimeLeft < ACTION_QUEUE_TIME
             {
-               // We have nothing queued yet, let's queue the skill.
-               if ptQueuedAction = $
-               {
-                  plLastReceived = [BP_REQ_PERFORM,oAbility,Nth(client_msg,3)];
-                  ptQueuedAction = CreateTimer(self,@UserQueuedAction,iTimeLeft);
-               }
-               // If our new request changes anything, we'll allow it.
-               else if NOT ((First(plLastReceived) = BP_REQ_PERFORM)
-                  AND (oAbility = Nth(plLastReceived,2)))
-               {
-                  DeleteTimer(ptQueuedAction);
-                  plLastReceived = [BP_REQ_PERFORM,oAbility,Nth(client_msg,3)];
-                  ptQueuedAction = CreateTimer(self,@UserQueuedAction,iTimeLeft);
-               }
+               // Regardless of what our plans were before, we have new ones.
+               // (Which might be identical to our old ones.)
+               plLastReceived = [BP_REQ_PERFORM,oAbility,Nth(client_msg,3)];
             }
          }
 
@@ -2650,18 +2600,30 @@ messages:
       return;
    }
 
-   UserQueuedAction()
+   ActionTimer()
    {
       local iAction;
 
-      iAction = First(plLastReceived);
+      ptAttackTimer = $;
 
-      ptQueuedAction = $;
+      // Redraw our defense if we had our guard down.
+      if Send(self,@GuardRecovery)
+      {
+         Post(self,@DrawDefense);
+      }
 
+      // Whatever thing we were just involved in, it's over now.
+      // Reset our animation.
+      if piAnimation <> PANM_NONE
+      {
+         piAnimation = PANM_NONE;
+         Send(poOwner,@SomethingChanged,#what=self);
+      }
+
+      // Let's see if we had something planned already.
       if plLastReceived <> $
       {
-         // Just a precaution. Attack timer should have expired by now.
-         Send(self,@SetAttackTime);
+         iAction = First(plLastReceived);
 
          if iAction = BP_REQ_ATTACK
          {
@@ -7735,13 +7697,9 @@ messages:
          // exceeds ptAttackTimer, which might happen at some point
          // in the future.
          if (Send(self,@GetTranceAbility) = oAbility)
-            OR NOT Send(self,@CanBreakTrance,#event=EVENT_ATTACK)
+            OR NOT Send(self,@BreakTrance,#event=EVENT_ATTACK,#what=oAbility)
          {
             return;
-         }
-         else
-         {
-            Send(self,@BreakTrance,#event=EVENT_ATTACK,#what=oAbility);
          }
       }
 
@@ -7780,6 +7738,10 @@ messages:
       // Alright, perform that skill already.
       Send(oAbility,@BeginPerformPreparation,#who=self,#lTargets=lFinalTargets);
 
+      Debug("USER ATTACK",GetTickCount()-piLastTimeAttacked);
+      // Keep a record of our heroic deed.
+      piLastTimeAttacked = GetTickCount();
+
       return;
    }
 
@@ -7810,15 +7772,9 @@ messages:
          // to cast. If we are already preparing to cast the same spell,
          // don't interrupt our cast.
          if Send(self,@GetTranceAbility) = oSpell
-            OR NOT Send(self,@CanBreakTrance,#event=EVENT_ABILITY)
+            OR NOT Send(self,@BreakTrance,#event=EVENT_ABILITY,#what=oSpell)
          {
             return;
-         }
-         // We are trying to cast a different spell or not casting at all.
-         // Either way, our cast may disrupt &Trance or a maintained spell.
-         else
-         {
-            Send(self,@BreakTrance,#event=EVENT_ABILITY,#what=oSpell);
          }
       }
 
@@ -7925,6 +7881,10 @@ messages:
          Send(oSpell,@BeginCastingTrance,#who=self,#lTargets=lFinalTargets,
                #iSpellPower=iSpellPower,#bFreeCast=bFreeCast,
                #bSuccess=bSuccess);
+
+         Debug("USER CAST",GetTickCount()-piLastTimeAttacked);
+         // Keep a record of our heroic deed.
+         piLastTimeAttacked = GetTickCount();
       }
 
       return;
@@ -7949,13 +7909,9 @@ messages:
       if piFlags & PFLAG_TRANCE
       {
          if Send(self,@GetTranceAbility) = oSkill
-            OR NOT Send(self,@CanBreakTrance,#event=EVENT_ABILITY)
+            OR NOT Send(self,@BreakTrance,#event=EVENT_ABILITY,#what=oSkill)
          {
             return;
-         }
-         else
-         {
-            Send(self,@BreakTrance,#event=EVENT_ABILITY,#what=oSkill);
          }
       }
 
@@ -8007,6 +7963,10 @@ messages:
          // Alright, perform that skill already.
          Send(oSkill,@BeginPerformPreparation,#who=self,#lTargets=lFinalTargets,
             #bSuccess=bSuccess);
+
+         Debug("USER PERFORM",GetTickCount()-piLastTimeAttacked);
+         // Keep a record of our heroic deed.
+         piLastTimeAttacked = GetTickCount();
       }
 
       return;

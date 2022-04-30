@@ -14,8 +14,8 @@ constants:
 
    include blakston.khd
 
-   UNLEASH_BASE_HASTE = 800
-   UNLEASH_MAX_HASTE = 1000
+   UNLEASH_BASE_HASTE = 1000
+   UNLEASH_MAX_HASTE = 1200
 
 resources:
 
@@ -37,9 +37,6 @@ resources:
    Unleash_dodged_defender = "You dodge %s%s's %s!"
 
    Unleash_trance_cancel = "You feint your attack!"
-
-   Unleash_gut_attacker = "You gut your target!"
-   Unleash_gut_victim = "You have been gutted!"
 
    Unleash_charge_failed = "You stumble!"
 
@@ -80,8 +77,10 @@ classvars:
    vbCheckTargetsPreTrance = FALSE
 
    // Default values. Those are overridden by the properties below.
-   viPreperation_time = 450
-   viPostPerform_time = 550
+   viPreperation_time = 300
+   viPostPerform_time = 300
+
+   viCooldownSID = SID_COOLDOWN_UNLEASH
 
 properties:
 
@@ -94,57 +93,52 @@ properties:
 
    //// LUNGE
    // almost instant but with a longer post action delay
-   piLunge_post_perform_time = 1050
+   piLunge_post_perform_time = 350
    piLunge_preperation_time = 150
    piLunge_max_bonus = 150
 
    //// SLAM
    // slower swing, higher damage
-   piSlam_post_perform_time = 1050
-   piSlam_preperation_time = 450
-   piSlam_max_bonus = 100
+   piSlam_post_perform_time = 200
+   piSlam_preperation_time = 300
+   piSlam_max_bonus = 50
    piSlam_crush_bonus = 0
 
    //// GUT
    // regular swing that leaves a bleed effect instead
-   piGut_post_perform_time = 550
-   piGut_preperation_time = 450
-   piGut_max_bonus = -50
-   piGut_bleed_strength = 300
+   piGut_post_perform_time = 300
+   piGut_preperation_time = 500
+   piGut_max_bonus = -65
+   piGut_bleed_strength = 400
    piGut_bleed_min_damage = 500
    piGut_bleed_max_damage = 4000
    piGut_bleed_duration = 10000
 
    //// AMBUSH
-   // regular swing that leaves a bleed effect instead
-   piAmbush_post_perform_time = 750
-   piAmbush_preperation_time = 250
-   piAmbush_max_bonus = 150
+   // Fairly fast attack with directionally dependent damage
+   piAmbush_post_perform_time = 300
+   piAmbush_preperation_time = 150
+   piAmbush_max_bonus = 250
 
    //// CHARGE
    // attack that allows the user to charge at the enemy
    // faster than regular swinging.
-   piCharge_post_perform_time = 250
-   piCharge_preperation_time = 450
+   piCharge_post_perform_time = 350
+   piCharge_preperation_time = 350
    piCharge_max_bonus = 0
    // Adjusts user speed during wind up.
    piCharge_speed_bonus = 100
-   // Denominator that adjusts skill range. 20 means that you can't
-   // use the skill until you are almost guaranteed to be able to reach
-   // your target. 15 means that you can start slightly out of range.
-   piCharge_range_ratio = 20
    // Held for this many ms if you fail to reach your target.
-   piCharge_penalty = 2500
+   piCharge_penalty = 1000
    piCharge_crush_bonus = 0
 
    //// STAGGER
    // Same as regular punch but with increased crush chance, stamina drain
    // and a slight speed boost.
-   piStagger_post_perform_time = 650
+   piStagger_post_perform_time = 550
    piStagger_preperation_time = 150
    piStagger_speed_bonus = 20
    piStagger_max_bonus = 0
-   piStagger_range_ratio = 20
    piStagger_crush_bonus = 16
 
    //// COUNTERED BY ACTIVE DEFENSE
@@ -161,6 +155,8 @@ properties:
    // How much do we add to our cooldown if we successfully feint?
    // i.e. we feint while the enemy attempts to actively defend a hit.
    piFeint_success = 250
+
+   piExposed_penalty = 400
 
 messages:
 
@@ -346,8 +342,10 @@ messages:
       return TRUE;
    }
 
-   DoPreTranceEffects(who=$,lTargets=$)
+   DoPreTranceEffects(who=$,lTargets=$,power=0)
    {
+      local oSpell;
+
       // Adds us to the victims attack list, allowing them to parry, block or dodge.
       Send(First(lTargets),@AddAttacker,#who=who);
 
@@ -357,71 +355,19 @@ messages:
       Send(Send(who,@GetOwner),@SomethingWaveRoom,#what=who,
          #wave_rsc=Unleash_sound_rsc);
 
-      propagate;
-   }
-
-   GetTargets(who=$,lTargets=$)
-   {
-      local i,oWeapon, stroke_obj, iDist, iRange, iRow, iCol, iFineRow,
-         iFineCol, oRoom, oTarget, iType;
-
-      oRoom = Send(who,@GetOwner);
-      oWeapon = Send(who,@GetWeapon);
-      stroke_obj = Send(who,@GetStrokeObject);
-      iRange = Send(stroke_obj,@GetRange,#weapon_used=oWeapon);
-      iType = Send(oWeapon,@GetUnleashType);
-
-      if iType = UNLEASH_CHARGE
+      // Add a cooldown if applicable.
+      if IsClass(who,&Battler)
       {
-         iRange += (USER_RUNNING_SPEED*piCharge_preperation_time/1000)*
-            (100+piCharge_speed_bonus)/piCharge_range_ratio;
-      }
-      else if iType = UNLEASH_STAGGER
-      {
-         iRange += (USER_RUNNING_SPEED*piStagger_preperation_time/1000)*
-            (100+piStagger_speed_bonus)/piStagger_range_ratio;
-      }
+         if viCooldownSID > 0
+         {
+            oSpell = Send(SYS,@FindSpellByNum,#num=viCooldownSID);
 
-      iRow = Send(who,@GetRow);
-      iCol = Send(who,@GetCol);
-      iFineRow = Send(who,@GetFineRow);
-      iFineCol = Send(who,@GetFineCol);
-
-      oTarget = First(lTargets);
-
-      // Skip players who are phased/in spectator mode.
-      if IsClass(oTarget,&Player)
-         AND Send(oTarget,@IsInCannotInteractMode)
-      {
-         return;
-      }
-
-      iDist = Send(who,@SquaredFineDistanceTo3D,#what=oTarget);
-
-      // See if target is within range and sight.
-      if (iDist > iRange * iRange)
-         OR ((iDist > 1)
-            AND NOT LineOfSightView(Send(who,@GetAngle),
-               iRow,iCol,iFineRow, iFineCol,Send(oTarget,@GetRow),
-               Send(oTarget,@GetCol),Send(oTarget,@GetFineRow),
-               Send(oTarget,@GetFineCol)))
-      {
-         return;
-      }
-
-      if NOT Send(who,@AllowBattlerAttack,#victim=oTarget,#stroke_obj=stroke_obj)
-      {
-         return;
-      }
-
-      return lTargets;
-   }
-
-   CanPayCosts(who=$,lTargets=$)
-   {
-      if lTargets = $
-      {
-         return FALSE;
+            if (oSpell <> $)
+            {
+               Send(oSpell,@CastSpell,#who=self,#oTarget=who,
+                  #iSpellPower=power);
+            }
+         }
       }
 
       propagate;
@@ -477,87 +423,89 @@ messages:
    {
       local iHaste, iDelay, iPrep, iPost, oWeapon, iType;
 
-      oWeapon = Send(who,@GetWeapon);
+      iType = Send(Send(who,@GetWeapon),@GetUnleashType);
 
-      if oWeapon = $
-      {
-         iPost = viPostPerform_time;
-      }
-
-      iType = Send(oWeapon,@GetUnleashType);
+      iHaste = Send(self,@GetSkillHaste,#who=who,#type=iType);
 
       // Unleash is slower than a regular by default attack, but
       // the requisite stat works to counter that.
-      iHaste = UNLEASH_BASE_HASTE;
-
-      if iType = UNLEASH_LUNGE
+      switch(iType)
       {
-         iPost = piLunge_post_perform_time;
-
-         if pbHaste
-         {
-            iHaste += Send(who,@GetAim)*4;
-         }
-      }
-      else if iType = UNLEASH_SLAM
-      {
-         iPost = piSlam_post_perform_time;
-
-         if pbHaste
-         {
-            iHaste += Send(who,@GetMight)*4;
-         }
-      }
-      else if iType = UNLEASH_GUT
-      {
-         iPost = piGut_post_perform_time;
-
-         if pbHaste
-         {
-            iHaste += Send(who,@GetAgility)*4;
-         }
-      }
-      else if iType = UNLEASH_AMBUSH
-      {
-         iPost = piAmbush_post_perform_time;
-
-         if pbHaste
-         {
-            iHaste += Send(who,@GetAgility)*Send(who,@GetAim)/12;
-         }
-      }
-      else if iType = UNLEASH_CHARGE
-      {
-         iPost = piCharge_post_perform_time;
-
-         if pbHaste
-         {
-            iHaste += Send(who,@GetAgility)*Send(who,@GetMight)/12;
-         }
-      }
-      else if iType = UNLEASH_STAGGER
-      {
-         iPost = piStagger_post_perform_time;
-
-         if pbHaste
-         {
-            iHaste += Send(who,@GetStamina)*Send(who,@GetMight)/12;
-         }
-      }
-      else if iType = UNLEASH_NONE
-      {
-         iPost = viPostPerform_time;
+         case UNLEASH_LUNGE:
+            iPost = piLunge_post_perform_time;
+            break;
+         case UNLEASH_SLAM:
+            iPost = piSlam_post_perform_time;
+            break;
+         case UNLEASH_GUT:
+            iPost = piGut_post_perform_time;
+            break;
+         case UNLEASH_AMBUSH:
+            iPost = piAmbush_post_perform_time;
+            break;
+         case UNLEASH_CHARGE:
+            iPost = piCharge_post_perform_time;
+            break;
+         case UNLEASH_STAGGER:
+            iPost = piStagger_post_perform_time;
+            break;
+         default:
+            iPost = viPostPerform_time;
+            break;
       }
 
       iPrep = Send(self,@GetTranceTime,#who=who);
 
       // Total delay is the sum of wind up and wind down time.
       iDelay = iPrep + iPost;
-      iDelay = iDelay * 1000 / Bound(iHaste,UNLEASH_BASE_HASTE,UNLEASH_MAX_HASTE);
+      iDelay = iDelay * 1000 / iHaste;
 
       // The windup time factored into our total calculated delay, but
       // needs to be subtracted again to get the correct wind down time.
       return Bound(iDelay - iPrep,0,$);
+   }
+
+   GetSkillHaste(who=$,type=$)
+   {
+      local iHaste;
+
+      if NOT pbHaste
+      {
+         return UNLEASH_BASE_HASTE;
+      }
+
+      if type = $
+      {
+         type = Send(Send(who,@GetWeapon),@GetUnleashType);
+      }
+
+      iHaste = UNLEASH_BASE_HASTE;
+
+      switch(type)
+      {
+         case UNLEASH_LUNGE:
+            iHaste += Send(who,@GetAim)*4;
+            break;
+         case UNLEASH_SLAM:
+            iHaste += Send(who,@GetMight)*4;
+            break;
+         case UNLEASH_GUT:
+            iHaste += Send(who,@GetAgility)*4;
+            break;
+         case UNLEASH_AMBUSH:
+            iHaste += Send(who,@GetAgility)*Send(who,@GetAim)/12;
+            break;
+         case UNLEASH_CHARGE:
+            iHaste += Send(who,@GetAgility)*Send(who,@GetMight)/12;
+            break;
+         case UNLEASH_STAGGER:
+            iHaste += Send(who,@GetStamina)*Send(who,@GetMight)/12;
+            break;
+         default:
+            return UNLEASH_BASE_HASTE;
+      }
+
+      return Bound(iHaste,UNLEASH_BASE_HASTE,UNLEASH_MAX_HASTE);
    }
 
    // Determines if the preparation trance (&Trance) can be disrupted.
@@ -574,16 +522,22 @@ messages:
 
    TranceCanceled(who=$,state=$)
    {
+      local oDefender;
+
       Send(who,@MsgSendUser,#message_rsc=Unleash_trance_cancel);
       Send(self,@SkillCanceled,#who=who);
+      Send(who,@GuardRecovery);
 
-      if Send(First(Nth(state,3)),@SwingWasFeinted,#who=who)
+      oDefender = First(Nth(state,3));
+
+      if IsClass(oDefender,&Player)
+         AND NOT Send(oDefender,@SwingWasFeinted,#who=who)
       {
-         Send(who,@SetAttackTime,#time=piFeint_success);
+         Send(who,@SetAttackTime,#time=piFeint_fail);
       }
       else
       {
-         Send(who,@SetAttackTime,#time=piFeint_fail);
+         Send(who,@SetAttackTime,#time=piFeint_success);
       }
 
       return;
@@ -592,6 +546,7 @@ messages:
    TranceBroken(who=$,state=$,event=$)
    {
       Send(First(Nth(state,3)),@ClearAttacker,#who=who);
+      Send(who,@GuardRecovery);
 
       propagate;
    }
@@ -664,9 +619,6 @@ messages:
    {
       local oEffect;
 
-      Send(who,@MsgSendUser,#message_rsc=Unleash_gut_attacker);
-      Send(what,@MsgSendUser,#message_rsc=Unleash_gut_victim);
-
       oEffect = Send(SYS,@FindSpellByNum,#num=SID_BLEED);
 
       damage = damage*piGut_bleed_strength/100;
@@ -699,6 +651,22 @@ messages:
       }
 
       return piTranceMovementSpeedReduction;
+   }
+
+   CaughtOffGuard(who=$)
+   {
+      // Lock them out of action for a bit longer.
+      Send(who,@SetAttackTime,#time=piExposed_penalty,#bAdd=TRUE);
+
+      return;
+   }
+
+   // Make sure we stand tight again.
+   TranceFailed(who=$)
+   {
+      Send(who,@GuardRecovery);
+
+      return;
    }
 
 end

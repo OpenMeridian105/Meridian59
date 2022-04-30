@@ -6984,8 +6984,7 @@ messages:
 
       if i > 0
       {
-         ptAttackTimer = CreateTimer(self,@AttackTimer,i);
-         piLastTimeAttacked = GetTickCount();
+         ptAttackTimer = CreateTimer(self,@ActionTimer,i);
       }
 
       return TRUE;
@@ -7007,19 +7006,15 @@ messages:
 
       if time
       {
-         ptAttackTimer = CreateTimer(self,@AttackTimer,time);
-         piLastTimeAttacked = GetTickCount();
+         ptAttackTimer = CreateTimer(self,@ActionTimer,time);
       }
 
       return;
    }
 
-   AttackTimer()
-   "Sets the attack timer variable to NIL so we know it's OK to attack again."
+   GuardRecovery()
    {
       local oWeapon, bDraw;
-
-      ptAttackTimer = $;
 
       oWeapon = Send(self,@LookupPlayerWeapon);
       bDraw = FALSE;
@@ -7043,14 +7038,19 @@ messages:
 
          bDraw = TRUE;
       }
-
-      // We are ready to act once more.
-      piCombatState = COMBAT_STATE_READY;
-
-      // Redraw our defense if we had our guard down.
-      if bDraw
+      else if piCombatState = COMBAT_STATE_MID_FIST_SWING
       {
-         Post(self,@DrawDefense);
+         if oWeapon = $
+         {
+            Send(self,@DoWindowOverlayBackToStance);
+         }
+      }
+      else if piCombatState = COMBAT_STATE_MID_WEAPON_SWING
+      {
+         if oWeapon <> $
+         {
+            Send(oWeapon,@BackToGuard);
+         }
       }
 
       if piAnimation <> PANM_NONE
@@ -7059,7 +7059,10 @@ messages:
          Send(poOwner,@SomethingChanged,#what=self);
       }
 
-      return;
+      // We are ready to act once more.
+      piCombatState = COMBAT_STATE_READY;
+
+      return bDraw;
    }
 
    SendAttackOutOfRangeMessage(what = $, use_weapon = $, stroke_obj = $)
@@ -10742,7 +10745,7 @@ messages:
 
    DoAttackSwing()
    {
-      piCombatState = COMBAT_STATE_MID_SWING;
+      piCombatState = COMBAT_STATE_MID_WEAPON_SWING;
       piAnimation = PANM_WEAPON_ATTACK;
       Send(poOwner,@SomethingChanged,#what=self);
       piAnimation = PANM_NONE;
@@ -10754,7 +10757,7 @@ messages:
    "Causes the user do the fight animation w/fist, 1st and 3rd person"
    {
       Send(self,@DoWindowOverlayFistAttack);
-      piCombatState = COMBAT_STATE_MID_SWING;
+      piCombatState = COMBAT_STATE_MID_FIST_SWING;
       piAnimation = PANM_FIST_ATTACK;
       Send(poOwner,@SomethingChanged,#what=self);
       piAnimation = PANM_NONE;
@@ -10764,7 +10767,7 @@ messages:
 
    DoUnleash()
    {
-      piCombatState = COMBAT_STATE_MID_SWING;
+      piCombatState = COMBAT_STATE_MID_WEAPON_SWING;
       piAnimation = PANM_WEAPON_UNLEASH;
       Send(poOwner,@SomethingChanged,#what=self);
       piAnimation = PANM_OFF_GUARD;
@@ -10776,7 +10779,7 @@ messages:
    "Causes the user do the fight animation w/fist, 1st and 3rd person"
    {
       Send(self,@DoWindowOverlayFistUnleash);
-      piCombatState = COMBAT_STATE_MID_SWING;
+      piCombatState = COMBAT_STATE_MID_FIST_SWING;
       piAnimation = PANM_FIST_UNLEASH;
       Send(poOwner,@SomethingChanged,#what=self);
       piAnimation = PANM_OUT_OF_STANCE;
@@ -17066,7 +17069,7 @@ messages:
       return;
    }
 
-   CanBreakTrance(event=EVENT_NONE,disruption=0)
+   CanBreakTrance(event=EVENT_NONE,disruption=0,what=$)
    "Returns TRUE if player doesn't have a trance active, or if the trance "
    "can be broken.  Returns FALSE if player has a trance active but the "
    "trance is unbreakable (e.g. cleave perform trance).  Checks spell trances "
@@ -17090,7 +17093,7 @@ messages:
       }
 
       return Send(First(lState),@CanBreakTrance,#who=self,#state=lState,
-         #event=event,#disruption=disruption);
+         #event=event,#disruption=disruption,#what=what);
    }
 
    // Returns the spell that is currently in the process of being cast.
@@ -17572,15 +17575,15 @@ messages:
    // potential second attack to go through undefended.
    SwingWasFeinted(who=$)
    {
-      local i, iTime, oSkill, oDefender, iDefense, bDefended;
+      local i, iTime, oSkill, oAttacker, iDefense, bDefended;
 
       bDefended = FALSE;
 
       foreach i in plAttackers
       {
-         oDefender = First(i);
+         oAttacker = First(i);
 
-         if oDefender = who
+         if oAttacker = who
          {
             iDefense = Nth(i,2);
 
@@ -17999,8 +18002,10 @@ messages:
          if (piCombatState = COMBAT_STATE_OFF_GUARD)
             OR (piCombatState = COMBAT_STATE_BAD_STANCE)
          {
-            // Lock them out of action for a bit longer.
-            Send(self,@SetAttackTime,#time=2000,#bAdd=TRUE);
+            // We were left exposed by performing unleash.
+            // Let the skill handle any potential fallout.
+            oAbility = Send(SYS,@FindSkillByNum,#num=SKID_UNLEASH);
+            Send(oAbility,@CaughtOffGuard,#who=self);
 
             // Tell them about it.
             Send(self,@MsgSendUser,#message_rsc=player_off_guard,

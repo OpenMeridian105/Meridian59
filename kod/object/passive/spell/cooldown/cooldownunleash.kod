@@ -1,0 +1,124 @@
+// Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+// All rights reserved.
+//
+// This software is distributed under a license that is described in
+// the LICENSE file that accompanies it.
+//
+// Meridian is a registered trademark.
+
+
+////////////////////////////////////////////////////////////////////////////////
+CooldownUnleash is Cooldown
+
+constants:
+
+   include blakston.khd
+
+   UNLEASH_REPORT_THRESHOLD = 3000
+
+resources:
+
+   include cooldownunleash.lkod
+
+   cooldown_unleash_name_rsc = "unleash cooldown"
+   cooldown_unleash_icon_rsc = iunleash.bgf
+
+classvars:
+
+   vrName = cooldown_unleash_name_rsc
+   vrIcon = cooldown_unleash_icon_rsc
+   viSpell_num = SID_COOLDOWN_UNLEASH
+   vbIsSkillCooldown = TRUE
+   vbReport = FALSE
+
+properties:
+
+   // Non specific cooldown.
+   piUnleash_cooldown = 1000
+
+   // Cooldowns for different types.
+   piLunge_cooldown = 2500
+   piSlam_cooldown = 2500
+   piGut_cooldown = 0
+   piAmbush_cooldown = 0
+   piCharge_cooldown = 0
+   piStagger_cooldown = 4500
+
+messages:
+
+   DoSpellEffect(who = $, iDuration = $, oAbility = $)
+   {
+      if NOT vbReport
+      {
+         return;
+      }
+
+      propagate;
+   }
+
+   UndoSpellEffect(who = $, oAbility = $)
+   {
+      if NOT vbReport
+      {
+         return;
+      }
+
+      propagate;
+   }
+
+   GetDuration(who=$,iSpellPower=0,bBase=FALSE)
+   {
+      local iDuration, iType, iHaste, oSkill;
+
+      // Let's check what type of attack we are doing.
+      iType = Send(Send(who,@GetWeapon),@GetUnleashType);
+
+      switch(iType)
+      {
+         case UNLEASH_LUNGE:
+            iDuration = piLunge_cooldown;
+            break;
+         case UNLEASH_SLAM:
+            iDuration = piSlam_cooldown;
+            break;
+         case UNLEASH_GUT:
+            iDuration = piGut_cooldown;
+            break;
+         case UNLEASH_AMBUSH:
+            iDuration = piAmbush_cooldown;
+            break;
+         case UNLEASH_CHARGE:
+            iDuration = piCharge_cooldown;
+            break;
+         case UNLEASH_STAGGER:
+            iDuration = piStagger_cooldown;
+            break;
+         default:
+            return piUnleash_cooldown;
+      }
+
+      if bBase
+      {
+         return iDuration;
+      }
+
+      oSkill = Send(SYS,@FindSkillByNum,#num=SKID_UNLEASH);
+      iHaste = Send(oSkill,@GetSkillHaste,#who=who,#type=iType);
+      iDuration = iDuration * 1000 / iHaste;
+
+      return iDuration;
+   }
+
+   // No Spamming for ultra short cooldowns.
+   CooldownTried(who = $)
+   {
+      if Send(self,@GetDuration,#who=who,#bBase=TRUE) < UNLEASH_REPORT_THRESHOLD
+      {
+         return;
+      }
+
+      propagate;
+   }
+
+end
+////////////////////////////////////////////////////////////////////////////////

@@ -371,8 +371,7 @@ messages:
 
       iDelay = Send(oWeapon,@GetDelay,#who=who);
 
-      if (oWeapon <> $)
-         AND IsClass(oWeapon,&Weapon)
+      if IsClass(oWeapon,&Weapon)
          AND NOT Send(oWeapon,@ReqWeaponAttack)
       {
          return FALSE;
@@ -555,16 +554,22 @@ messages:
 
    TranceCanceled(who=$,state=$)
    {
+      local oDefender;
+
       Send(who,@MsgSendUser,#message_rsc=stroke_trance_cancel);
       Send(self,@SkillCanceled,#who=who);
+      Send(who,@GuardRecovery);
 
-      if Send(First(Nth(state,3)),@SwingWasFeinted,#who=who)
+      oDefender = First(Nth(state,3));
+
+      if IsClass(oDefender,&Player)
+         AND NOT Send(oDefender,@SwingWasFeinted,#who=who)
       {
-         Send(who,@SetAttackTime,#time=piFeint_success);
+         Send(who,@SetAttackTime,#time=piFeint_fail);
       }
       else
       {
-         Send(who,@SetAttackTime,#time=piFeint_fail);
+         Send(who,@SetAttackTime,#time=piFeint_success);
       }
 
       return;
@@ -573,6 +578,7 @@ messages:
    TranceBroken(who=$,state=$,event=$)
    {
       Send(First(Nth(state,3)),@ClearAttacker,#who=who);
+      Send(who,@GuardRecovery);
 
       propagate;
    }

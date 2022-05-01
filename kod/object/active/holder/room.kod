@@ -2664,11 +2664,11 @@ messages:
          return $;
       }
 
-      iColDiff = Send(who,@GetCol)*FINENESS + Send(who,@GetFineCol)
-               - Send(what,@GetCol)*FINENESS + Send(what,@GetFineCol);
+      iColDiff = Send(what,@GetCol)*FINENESS + Send(what,@GetFineCol)
+               - (Send(who,@GetCol)*FINENESS + Send(who,@GetFineCol));
 
-      iRowDiff = Send(who,@GetRow)*FINENESS + Send(who,@GetFineRow)
-               - Send(what,@GetRow)*FINENESS + Send(what,@GetFineRow);
+      iRowDiff = Send(what,@GetRow)*FINENESS + Send(what,@GetFineRow)
+               - (Send(who,@GetRow)*FINENESS + Send(who,@GetFineRow));
 
       return Send(self,@GetAngleFromDifferences,
          #coldiff=iColDiff,#rowdiff=iRowDiff);
@@ -2693,67 +2693,62 @@ messages:
       if coldiff > 0 AND rowdiff >= 0
       {
          iCase = 0;
-         iTan = 100*rowdiff/coldiff;
+         iTan = 1000*rowdiff/coldiff;
       }
       else if coldiff <= 0 AND rowdiff > 0
       {
          iCase = 1;
-         iTan = -100*coldiff/rowdiff;
+         iTan = -1000*coldiff/rowdiff;
       }
       else if coldiff < 0 AND rowdiff <= 0
       {
          iCase = 2;
-         iTan = 100*rowdiff/coldiff;
+         iTan = 1000*rowdiff/coldiff;
       }
       else
       {
          iCase = 3;
-         iTan = -100*coldiff/rowdiff;
+         iTan = -1000*coldiff/rowdiff;
       }
 
-      if iTan > 1140
+      if iTan > 10153
       {
-         return iCase*MAX_ANGLE/4 + 0;
+         return iCase*MAX_ANGLE/4 + 8*MAX_ANGLE/32;
       }
 
-      if iTan > 370
+      if iTan > 3297
       {
-         return iCase*MAX_ANGLE/4 + 8*MAX_ANGLE/36;
+         return iCase*MAX_ANGLE/4 + 7*MAX_ANGLE/32;
       }
 
-      if iTan > 210
+      if iTan > 1871
       {
-         return iCase*MAX_ANGLE/4 + 7*MAX_ANGLE/36;
+         return iCase*MAX_ANGLE/4 + 6*MAX_ANGLE/32;
       }
 
-      if iTan > 140
+      if iTan > 1219
       {
-         return iCase*MAX_ANGLE/4 + 6*MAX_ANGLE/36;
+         return iCase*MAX_ANGLE/4 + 5*MAX_ANGLE/32;
       }
 
-      if iTan > 100
+      if iTan > 821
       {
-         return iCase*MAX_ANGLE/4 + 5*MAX_ANGLE/36;
+         return iCase*MAX_ANGLE/4 + 4*MAX_ANGLE/32;
       }
 
-      if iTan > 70
+      if iTan > 535
       {
-         return iCase*MAX_ANGLE/4 + 4*MAX_ANGLE/36;
+         return iCase*MAX_ANGLE/4 + 3*MAX_ANGLE/32;
       }
 
-      if iTan > 46
+      if iTan > 303
       {
-         return iCase*MAX_ANGLE/4 + 3*MAX_ANGLE/36;
+         return iCase*MAX_ANGLE/4 + 2*MAX_ANGLE/32;
       }
 
-      if iTan > 26
+      if iTan > 98
       {
-         return iCase*MAX_ANGLE/4 + 2*MAX_ANGLE/36;
-      }
-
-      if iTan > 8
-      {
-         return iCase*MAX_ANGLE/4 + 1*MAX_ANGLE/36;
+         return iCase*MAX_ANGLE/4 + MAX_ANGLE/32;
       }
 
        return iCase*MAX_ANGLE/4;

@@ -6533,7 +6533,7 @@ messages:
 
    UserSay(type=$,string=$)
    {
-      local i, oSpell, lEnchantData, bTranceBlocksSay;
+      local i, oAbility, lEnchantData, bTranceBlocksSay;
 
       // A room can completely block a piece of communication if it chooses.
       // An excellent example is Out Of Grace, which blocks all tells to 
@@ -6606,7 +6606,7 @@ messages:
          if (piFlags & PFLAG_TRANCE)
          {
             // See if the trance spell does anything special 
-            //  with says.  Note that the 'say' will still go off.
+            // with says.  Note that the 'say' will still go off.
 
             bTranceBlocksSay = FALSE;
             
@@ -6615,11 +6615,11 @@ messages:
                if IsClass(nth(i,2),&Trance)
                {
                   lEnchantData = nth(i,3);
-                  oSpell = first(lEnchantData);
-                  Post(oSpell,@SomethingSaidDuringTrance,
+                  oAbility = first(lEnchantData);
+                  Post(oAbility,@SomethingSaidDuringTrance,
                        #who=self,#string=string,#lTargets=Nth(lEnchantData,3));
                   
-                  if Send(oSpell,@TranceBlocksSay)
+                  if Send(oAbility,@TranceBlocksSay)
                   {
                      bTranceBlocksSay = TRUE;
                   }
@@ -7722,7 +7722,11 @@ messages:
 
       if piFlags & PFLAG_TRANCE
       {
-         if IsClass(Send(self,@GetTranceAbility),&Skill)
+         // The first check should never return TRUE unless swing time
+         // exceeds ptAttackTimer, which might happen at some point
+         // in the future.
+         if (Send(self,@GetTranceAbility) = oAbility)
+            OR NOT Send(self,@CanBreakTrance,#event=EVENT_ATTACK)
          {
             return;
          }

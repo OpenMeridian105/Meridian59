@@ -157,7 +157,7 @@ classvars:
    vrCondition_poor = weapon_condition_poor 
    vrCondition_broken = weapon_condition_broken
 
-   vi_Unleash_type = UNLEASH_NONE
+   viUnleash_type = UNLEASH_NONE
 
    vbCrush_enemies = FALSE
 
@@ -779,7 +779,7 @@ messages:
       return;
    }
 
-   WeaponUnleash(what=$)
+   WeaponUnleash(who=$)
    "Called by ReqWeaponAttack when the weapon is actually used in an attack."
    {
       piUsed = UNLEASHING;
@@ -801,14 +801,11 @@ messages:
 
    BackToGuard()
    {
-      if piUsed = EXPOSED
+      piUsed = USED;
+      
+      if vrWeapon_window_overlay <> $
       {
-         piUsed = USED;
-         
-         if vrWeapon_window_overlay <> $
-         {
-            Send(poOwner,@ChangeWindowOverlay,#what=self);
-         }
+         Send(poOwner,@ChangeWindowOverlay,#what=self);
       }
 
       return;
@@ -1281,7 +1278,7 @@ messages:
 
    GetUnleashType()
    {
-      return vi_Unleash_type;
+      return viUnleash_type;
    }
 
    CanCrushEnemy()

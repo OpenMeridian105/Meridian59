@@ -46,22 +46,33 @@ classvars:
 
    vbAutomatic = TRUE
 
-   // Distance in FINENESS that will result in a guaranteed chance to interrupt.
-   viThreshold = 16
+properties:
 
-   // Percentage of threshold reduction caused by ability.
-   viAbility_percentage = 50
+   // Threshold for primany and secondary checks.
+   // Increase piPrimary to increase the minimum damage
+   // required to see any interrupts at all.
+   // piPrimary corresponds to the distance in fine units
+   // that the monster needs to be pushed back.
+   // Note: The distance that is passed has been increased
+   // by between 50% and 100% depending on skill and may
+   // have had a flat crush modifer added.
+   piPrimary = 32
 
-   // Base chance to interrupt when treshold is met.
-   viBase_chance = 25
+   // Increase piSecondary to decrease the chance to getting
+   // an interrupt once we have crossed the primary threshold.
+   piSecondary = 64
+
+   // Amount of requisite stat we expect the battler
+   // to operate at for regular results. Going beyond
+   // piStat_base will lower the threshold, while going
+   // below it will increase the threshold.
+   piStat_base = 50
 
    // How much does a crushing blow delay a player?
-   viDelay_player = 500
+   piDelay_player = 500
 
    // How much does a crushing blow delay a monster?
-   viDelay_monster = 2000
-
-properties:
+   piDelay_monster = 2000
 
 messages:
 
@@ -85,81 +96,68 @@ messages:
       return TRUE;
    }
 
-   DoCrush(who=$,what=$,distance=0,ability=0)
+   DoCrush(who=$,what=$,distance=0,ability=0,crush=0)
    {
-      local iReqStat, iRandom, bImprove;
+      local iReqStat, iThreshold, iChance, iRandom;
 
-      // No attempt if we don't have the skill.
+      // No attempt if we don't have any ability with the skill
+      // or some other way of boosting our ability to inflict
+      // crushing blows.
       if NOT ability
       {
          return;
       }
 
-      bImprove = FALSE;
+      iReqStat = Send(self,@GetRequisiteStat,#who=who);
 
-      // Grant a chance to improve even if we fail, as long as we smacked hard enough.
-      if distance >= viThreshold*2/3
-      {
-         Send(self,@ImproveAbility,#who=who,#target=what);
+      iThreshold = piPrimary * piStat_base / iReqStat;
 
-         bImprove = TRUE;
-      }
-
-      // General idea: Interrupting is based on a primary and a secondary check.
-      // Primary check: Hits above viThreshold will always result in
-      // a chance to interrupt with high skill bringing that number down by a third.
-      // Higher skill will lower that number.
-      // Secondary check: Passing the primary check grants viBase_chance
-      // to interrupt. The battler's requisite stat is added to that base chance.
-
-      // Primary check.
-      iRandom = Random(1,viThreshold/2);
-      iRandom -= iRandom*viAbility_percentage/100*ability/100;
-      iRandom += viThreshold/2;
-
-      if distance < iRandom
+      if distance < iThreshold
       {
          return FALSE;
       }
 
-      // Secondary chance.
-      iReqStat = Send(self,@GetRequisiteStat,#who=who);
+      // If we got this far, we deserve a chance at improving
+      // regardless of whether we pass the random check.
+      Send(self,@ImproveAbility,#who=who,#target=what);
 
-      if Random(1,100) <= viBase_chance + iReqStat
+      distance += Random(0,distance*ability/SPELLPOWER_MAXIMUM);
+
+      // Add a scaled crush bonus.
+      distance += crush*piSecondary/piPrimary;
+
+      if distance < iThreshold*piSecondary/piPrimary
       {
-         // Time to improve if we haven't had the chance yet.
-         if NOT bImprove
-         {
-            Send(self,@ImproveAbility,#who=who,#target=what);
-         }
-
-         Send(who,@MsgSendUser,#message_rsc=Crushing_blows_success);
-
-         if IsClass(what,&Player)
-         {
-            Send(what,@MsgSendUser,#message_rsc=Crushing_blows_success_victim,
-               #parm1=Send(who,@GetCapDef),#parm2=Send(who,@GetName));
-         }
-
-         if Send(what,@BreakTrance,#event=EVENT_CRUSH)
-         {
-            Post(who,@MsgSendUser,#message_rsc=Crushing_blows_interrupt,
-               #parm1=Send(what,@GetDef),#parm2=Send(what,@GetName));
-         }
-
-         // Add visual feedback.
-         if IsClass(what,&Player)
-         {
-            Send(what,@DoKnockback);
-            return TRUE;
-         }
-
-         if Send(what,@MonsterHitAnimation) 
-         {
-            return TRUE;
-         }
+         return FALSE;
       }
 
+      Send(who,@MsgSendUser,#message_rsc=Crushing_blows_success);
+
+      if IsClass(what,&Player)
+      {
+         Send(what,@MsgSendUser,#message_rsc=Crushing_blows_success_victim,
+            #parm1=Send(who,@GetCapDef),#parm2=Send(who,@GetName));
+      }
+
+      if Send(what,@BreakTrance,#event=EVENT_CRUSH)
+      {
+         Post(who,@MsgSendUser,#message_rsc=Crushing_blows_interrupt,
+            #parm1=Send(what,@GetDef),#parm2=Send(what,@GetName));
+      }
+
+      // Add visual feedback.
+      if IsClass(what,&Player)
+      {
+         Send(what,@DoKnockback);
+         return TRUE;
+      }
+
+      if Send(what,@MonsterHitAnimation) 
+      {
+         return TRUE;
+      }
+
+      // We only return TRUE if we have actually played an animation.
       return FALSE;
    }
 
@@ -167,10 +165,10 @@ messages:
    {
       if IsClass(who,&Player)
       {
-         return viDelay_player;
+         return piDelay_player;
       }
 
-      return viDelay_monster;
+      return piDelay_monster;
    }
 
    // About a 1 in 20 chance to get a roll to improve at 50 might.

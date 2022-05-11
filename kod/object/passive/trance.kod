@@ -193,12 +193,16 @@ messages:
 
             Post(oAbility,@PerformSkill,#who=who,#lTargets=lTargets);
          }
+         else
+         {
+            Send(oAbility,@TranceFailed,#who=who,#state=state);
+         }
       }
 
       return;
    }
 
-   BreakTrance(who=$,state=$,event=EVENT_ABILITY,disruption=0)
+   BreakTrance(who=$,state=$,event=EVENT_ABILITY,disruption=0,what=$)
    {
       local oAbility, iTime, iFocus, bHeld;
 
@@ -206,7 +210,7 @@ messages:
       bHeld = Send(oAbility,@IsHeld);
 
       if NOT Send(oAbility,@CanBreakTrance,#who=who,#state=state,#event=event,
-         #disruption=disruption)
+         #disruption=disruption,#what=what)
       {
          return FALSE;
       }

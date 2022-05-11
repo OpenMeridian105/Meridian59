@@ -209,6 +209,8 @@ resources:
    player_assgame_soon = \
       "~kRoq tells you, \"~IA new Assassin's Circle shall be initiated "
       "shortly.\""
+   player_must_attack_battler = \
+      "You can't attack that!"
 
    player_tougher_wav_rsc = tougher.ogg
    player_missed_something_wave_rsc = swordmis.ogg
@@ -1147,6 +1149,8 @@ properties:
    plSets = $
 
    plAttackers = $
+
+   piCombatState = COMBAT_STATE_READY
 
 messages:
 
@@ -4696,6 +4700,13 @@ messages:
 
       cVictimClass = GetClass(victim);
 
+      if NOT IsClass(victim,&Battler)
+      {
+         Send(self,@MsgSendUser,#message_rsc=player_must_attack_battler);
+
+         return FALSE;
+      }
+
       // Default location to check is the room the victim is in.
       // This allows X-room atacks (such as firewalls) to work.
       oRoom = Send(victim,@GetOwner);
@@ -6060,7 +6071,7 @@ messages:
    // be handled in high precision mode.
    AssessDamage(what=$,damage=$,atype=0,stype=0,stroke_obj=$,bonus=0,
       scalefactor=1000,report=TRUE,report_resistance=TRUE,absolute=FALSE,
-      precision=FALSE)
+      precision=FALSE,crush=0)
    {
       local i, j, iResistance, oSoldierShield, gainchance, color_rsc, rWeapon,
             iDuration, oSpell, iLimit, origdamage, oWeapon, shrunken;
@@ -6224,9 +6235,9 @@ messages:
          #stroke_obj=stroke_obj,#atype=atype,#stype=stype);
 
       // Any physical hit will cause a slight knockback.
-      if atype
+      if atype <> 0
       {
-         Send(self,@DoHitAnimation,#damage=damage,#what=what);
+         Send(self,@DoHitAnimation,#damage=damage,#what=what,#crush=crush);
       }
 
       Send(self,@LoseHealth,#amount=damage,#precision=TRUE);
@@ -6973,8 +6984,7 @@ messages:
 
       if i > 0
       {
-         ptAttackTimer = CreateTimer(self,@AttackTimer,i);
-         piLastTimeAttacked = GetTickCount();
+         ptAttackTimer = CreateTimer(self,@ActionTimer,i);
       }
 
       return TRUE;
@@ -6996,35 +7006,63 @@ messages:
 
       if time
       {
-         ptAttackTimer = CreateTimer(self,@AttackTimer,time);
-         piLastTimeAttacked = GetTickCount();
+         ptAttackTimer = CreateTimer(self,@ActionTimer,time);
       }
 
       return;
    }
 
-   AttackTimer()
-   "Sets the attack timer variable to NIL so we know it's OK to attack again."
+   GuardRecovery()
    {
-      local oWeapon;
+      local oWeapon, bDraw;
 
-      ptAttackTimer = $;
-
-      // Also check if we were left off-guard by the attack. If so, back to guard.
       oWeapon = Send(self,@LookupPlayerWeapon);
+      bDraw = FALSE;
 
-      if oWeapon <> $
+      // Sanity checks in case we have unexpectedly lost or gained a weapon.
+      if piCombatState >= COMBAT_STATE_BAD_STANCE
       {
-         Send(oWeapon,@BackToGuard);
+         if oWeapon = $
+         {
+            Send(self,@DoWindowOverlayBackToStance);
+         }
+
+         bDraw = TRUE;
+      }
+      else if piCombatState >= COMBAT_STATE_OFF_GUARD
+      {
+         if oWeapon <> $
+         {
+            Send(oWeapon,@BackToGuard);
+         }
+
+         bDraw = TRUE;
+      }
+      else if piCombatState = COMBAT_STATE_MID_FIST_SWING
+      {
+         if oWeapon = $
+         {
+            Send(self,@DoWindowOverlayBackToStance);
+         }
+      }
+      else if piCombatState = COMBAT_STATE_MID_WEAPON_SWING
+      {
+         if oWeapon <> $
+         {
+            Send(oWeapon,@BackToGuard);
+         }
       }
 
-      if piAnimation = PANM_OFF_GUARD
+      if piAnimation <> PANM_NONE
       {
          piAnimation = PANM_NONE;
          Send(poOwner,@SomethingChanged,#what=self);
       }
 
-      return;
+      // We are ready to act once more.
+      piCombatState = COMBAT_STATE_READY;
+
+      return bDraw;
    }
 
    SendAttackOutOfRangeMessage(what = $, use_weapon = $, stroke_obj = $)
@@ -10705,12 +10743,10 @@ messages:
       return;
    }
 
-   DoWave()
-   "Causes the user do the wave animation, 3rd person only"
+   DoAttackSwing()
    {
-      Send(self,@MsgSendUser,#message_rsc=player_wave);
-
-      piAnimation = PANM_WAVE;
+      piCombatState = COMBAT_STATE_MID_WEAPON_SWING;
+      piAnimation = PANM_WEAPON_ATTACK;
       Send(poOwner,@SomethingChanged,#what=self);
       piAnimation = PANM_NONE;
 
@@ -10721,8 +10757,51 @@ messages:
    "Causes the user do the fight animation w/fist, 1st and 3rd person"
    {
       Send(self,@DoWindowOverlayFistAttack);
-
+      piCombatState = COMBAT_STATE_MID_FIST_SWING;
       piAnimation = PANM_FIST_ATTACK;
+      Send(poOwner,@SomethingChanged,#what=self);
+      piAnimation = PANM_NONE;
+
+      return;
+   }
+
+   DoUnleash()
+   {
+      piCombatState = COMBAT_STATE_MID_WEAPON_SWING;
+      piAnimation = PANM_WEAPON_UNLEASH;
+      Send(poOwner,@SomethingChanged,#what=self);
+      piAnimation = PANM_OFF_GUARD;
+
+      return;
+   }
+
+   DoFistUnleash()
+   "Causes the user do the fight animation w/fist, 1st and 3rd person"
+   {
+      Send(self,@DoWindowOverlayFistUnleash);
+      piCombatState = COMBAT_STATE_MID_FIST_SWING;
+      piAnimation = PANM_FIST_UNLEASH;
+      Send(poOwner,@SomethingChanged,#what=self);
+      piAnimation = PANM_OUT_OF_STANCE;
+
+      return;
+   }
+
+   DoKnockback()
+   {
+      piAnimation = PANM_HIT;
+      Send(poOwner,@SomethingChanged,#what=self);
+      piAnimation = PANM_NONE;
+
+      return;
+   }
+
+   DoWave()
+   "Causes the user do the wave animation, 3rd person only"
+   {
+      Send(self,@MsgSendUser,#message_rsc=player_wave);
+
+      piAnimation = PANM_WAVE;
       Send(poOwner,@SomethingChanged,#what=self);
       piAnimation = PANM_NONE;
 
@@ -10781,6 +10860,34 @@ messages:
          AddPacket(1,BP_PLAYER_OVERLAY, 1,HS_SE, 4,PWO_RIGHT_HAND,
                    4,player_window_overlay_punch, 4,0, 4,0, 1,0, 4,0, 4,0,
                    1,0, 1,0, 1,ANIMATE_ONCE, 4,100, 2,1, 2,5, 2,0, 1,0);
+
+         SendPacket(poSession);
+      }
+
+      return;
+   }
+
+   DoWindowOverlayFistUnleash()
+   {
+      if pbLogged_on
+      {
+         AddPacket(1,BP_PLAYER_OVERLAY, 1,HS_SE, 4,PWO_RIGHT_HAND,
+                   4,player_window_overlay_touch, 4,0, 4,0, 1,0, 4,0, 4,0,
+                   1,0, 1,0, 1,ANIMATE_ONCE, 4,50, 2,2, 2,5, 2,5, 1,0);
+
+         SendPacket(poSession);
+      }
+
+      return;
+   }
+
+   DoWindowOverlayBackToStance()
+   {
+      if pbLogged_on
+      {
+         AddPacket(1,BP_PLAYER_OVERLAY, 1,HS_SE, 4,PWO_RIGHT_HAND,
+                   4,player_window_overlay_touch, 4,0, 4,0, 1,0, 4,0, 4,0,
+                   1,0, 1,0, 1,ANIMATE_ONCE, 4,50, 2,6, 2,7, 2,0, 1,0);
 
          SendPacket(poSession);
       }
@@ -11521,33 +11628,6 @@ messages:
       return;
    }
 
-   DoAttackSwing()
-   {
-      piAnimation = PANM_WEAPON_ATTACK;
-      Send(poOwner,@SomethingChanged,#what=self);
-      piAnimation = PANM_NONE;
-
-      return;
-   }
-
-   DoUnleash()
-   {
-      piAnimation = PANM_WEAPON_UNLEASH;
-      Send(poOwner,@SomethingChanged,#what=self);
-      piAnimation = PANM_OFF_GUARD;
-
-      return;
-   }
-
-   DoKnockback()
-   {
-      piAnimation = PANM_HIT;
-      Send(poOwner,@SomethingChanged,#what=self);
-      piAnimation = PANM_NONE;
-
-      return;
-   }
-
    GetIcon(trueicon=FALSE)
    {
       // trueicon is set to true anytime you want to know what
@@ -11579,6 +11659,7 @@ messages:
 
       // Get our attack delay, but only if we are attacking, punching of firing.
       if iAnimation = PANM_WEAPON_UNLEASH
+         OR iAnimation = PANM_FIST_UNLEASH
       {
          iDelay = Send(Send(SYS,@FindSkillByNum,#num=SKID_UNLEASH),
                      @GetTranceTime,#who=self);
@@ -11612,6 +11693,13 @@ messages:
       if iAnimation = PANM_WEAPON_UNLEASH
       {
          AddPacket(1,ANIMATE_ONCE, 4,300*iDelay/1200, 2,2, 2,4, 2,4);
+
+         return;
+      }
+
+      if iAnimation = PANM_FIST_UNLEASH
+      {
+         AddPacket(1,ANIMATE_ONCE, 4,600*iDelay/1200, 2,3, 2,4, 2,4);
 
          return;
       }
@@ -11893,6 +11981,7 @@ messages:
 
       // Get our attack delay, but only if we are attacking, punching of firing.
       if iAnimation = PANM_WEAPON_UNLEASH
+         OR iAnimation = PANM_FIST_UNLEASH
       {
          iDelay = Send(Send(SYS,@FindSkillByNum,#num=SKID_UNLEASH),
                      @GetTranceTime,#who=self);
@@ -12000,6 +12089,10 @@ messages:
       {
          AddPacket(1,ANIMATE_ONCE, 4,300*iDelay/1200, 2,4, 2,6, 2,6);
       }
+      else if iAnimation = PANM_FIST_UNLEASH
+      {
+         AddPacket(1,ANIMATE_ONCE, 4,600*iDelay/1200, 2,5, 2,6, 2,6);
+      }
       else if iAnimation = PANM_HIT
       {
          iFrame = PLAYER_HIT_LEFT_ARM + iTime % PLAYER_HIT_FRAME_COUNT;
@@ -12012,6 +12105,10 @@ messages:
          AddPacket(1,ANIMATE_CYCLE, 4,150, 2,10, 2,26);
       }
       else if iAnimation = PANM_OFF_GUARD
+      {
+         AddPacket(1,ANIMATE_NONE, 2,6); 
+      }
+      else if iAnimation = PANM_OUT_OF_STANCE
       {
          AddPacket(1,ANIMATE_NONE, 2,6); 
       }
@@ -12058,6 +12155,10 @@ messages:
       {
          AddPacket(1,ANIMATE_ONCE, 4,300*iDelay/1200, 2,4, 2,6, 2,6);
       }
+      else if iAnimation = PANM_FIST_UNLEASH
+      {
+         AddPacket(1,ANIMATE_ONCE, 4,600*iDelay/1200, 2,13, 2,14, 2,14);
+      }
       else if iAnimation = PANM_HIT
       {
          iFrame = PLAYER_HIT_RIGHT_ARM + iTime % PLAYER_HIT_FRAME_COUNT;
@@ -12083,6 +12184,10 @@ messages:
       {
          AddPacket(1,ANIMATE_NONE, 2,6); 
       }
+      else if iAnimation = PANM_OUT_OF_STANCE
+      {
+         AddPacket(1,ANIMATE_NONE, 2,14); 
+      }
 
       AddPacket(4,prLegs, 1,HS_LEGS);
       if Send(self,@GetLegsTranslation) <> 0
@@ -12097,6 +12202,10 @@ messages:
       else if iAnimation = PANM_WEAPON_UNLEASH
       {
          AddPacket(1,ANIMATE_ONCE, 4,900*iDelay/1200, 2,6, 2,6, 2,6);
+      }
+      else if iAnimation = PANM_FIST_UNLEASH
+      {
+         AddPacket(1,ANIMATE_ONCE, 4,1200*iDelay/1200, 2,6, 2,6, 2,6);
       }
       else if iAnimation = PANM_FIST_ATTACK
       {
@@ -12118,6 +12227,10 @@ messages:
          AddPacket(1,ANIMATE_CYCLE, 4,150, 2,8, 2,24);
       }
       else if iAnimation = PANM_OFF_GUARD
+      {
+         AddPacket(1,ANIMATE_NONE, 2,6); 
+      }
+      else if iAnimation = PANM_OUT_OF_STANCE
       {
          AddPacket(1,ANIMATE_NONE, 2,6); 
       }
@@ -16956,7 +17069,7 @@ messages:
       return;
    }
 
-   CanBreakTrance(event=EVENT_NONE,disruption=0)
+   CanBreakTrance(event=EVENT_NONE,disruption=0,what=$)
    "Returns TRUE if player doesn't have a trance active, or if the trance "
    "can be broken.  Returns FALSE if player has a trance active but the "
    "trance is unbreakable (e.g. cleave perform trance).  Checks spell trances "
@@ -16980,7 +17093,7 @@ messages:
       }
 
       return Send(First(lState),@CanBreakTrance,#who=self,#state=lState,
-         #event=event,#disruption=disruption);
+         #event=event,#disruption=disruption,#what=what);
    }
 
    // Returns the spell that is currently in the process of being cast.
@@ -17462,15 +17575,15 @@ messages:
    // potential second attack to go through undefended.
    SwingWasFeinted(who=$)
    {
-      local i, iTime, oSkill, oDefender, iDefense, bDefended;
+      local i, iTime, oSkill, oAttacker, iDefense, bDefended;
 
       bDefended = FALSE;
 
       foreach i in plAttackers
       {
-         oDefender = First(i);
+         oAttacker = First(i);
 
-         if oDefender = who
+         if oAttacker = who
          {
             iDefense = Nth(i,2);
 
@@ -17599,23 +17712,11 @@ messages:
 
       iNum = FALSE;
 
-      if iAngle < iAngleBetween
-      {
-         iDifference = iAngleBetween - iAngle;
+      iDifference = Abs(iAngleBetween - iAngle);
 
-         if iDifference > MAX_ANGLE/2
-         {
-            iDifference = MAX_ANGLE - iDifference; 
-         }
-      }
-      else
+      if iDifference > MAX_ANGLE/2
       {
-         iDifference = iAngle - iAngleBetween;
-
-         if iDifference > MAX_ANGLE/2
-         {
-            iDifference = MAX_ANGLE - iDifference; 
-         }
+         iDifference = MAX_ANGLE - iDifference; 
       }
 
       if iDifference > MAX_ANGLE / 3
@@ -17886,10 +17987,13 @@ messages:
       if oAbility = $
       {
          // Check if we have been hit during a vulnerable cooldown period.
-         if (piAnimation = PANM_OFF_GUARD)
+         if (piCombatState = COMBAT_STATE_OFF_GUARD)
+            OR (piCombatState = COMBAT_STATE_BAD_STANCE)
          {
-            // Lock them out of action for a bit longer.
-            Send(self,@SetAttackTime,#time=2000,#bAdd=TRUE);
+            // We were left exposed by performing unleash.
+            // Let the skill handle any potential fallout.
+            oAbility = Send(SYS,@FindSkillByNum,#num=SKID_UNLEASH);
+            Send(oAbility,@CaughtOffGuard,#who=self);
 
             // Tell them about it.
             Send(self,@MsgSendUser,#message_rsc=player_off_guard,
@@ -17900,6 +18004,9 @@ messages:
             // Window overlay doesn't change until timer is up.
             piAnimation = PANM_NONE;
             Send(poOwner,@SomethingChanged,#what=self);
+
+            // This shifts combat state from vulnerable to hit.
+            ++piCombatState;
          }
       }
       // Yep. Let's check if that has any consequences.
@@ -17916,7 +18023,8 @@ messages:
 
    IsOffGuard()
    {
-      return (piAnimation = PANM_OFF_GUARD) AND (Send(self,@GetTranceAbility) = $);
+      return piCombatState = COMBAT_STATE_OFF_GUARD
+         OR piCombatState = COMBAT_STATE_BAD_STANCE;
    }
 
    // We are in the middle of charging an ability and have just received word
@@ -17984,6 +18092,13 @@ messages:
    UpdateAddEquippedFlag()
    {
       SendList(plUsing,0,@AddEquippedFlag);
+
+      return;
+   }
+
+   SetCombatState(state=$)
+   {
+      piCombatState = state;
 
       return;
    }

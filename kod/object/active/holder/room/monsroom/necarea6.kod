@@ -119,6 +119,38 @@ properties:
 
 messages:
 
+   UpdateDatabaseMobZone()
+   {
+      // Wiki Exports: Additional boss monster.
+      local i, oMob, iPct;
+
+      foreach i in [&DaemonSkeleton, &GiantDaemonSkeleton, &Necromancer]
+      {
+         oMob = Send(SYS,@FindMonsterTemplateByClass,#cClass=i);
+         if (oMob = $)
+         {
+            Debug("UpdateDatabase() STAT_MONSTER_ZONE export found mob class ",
+               i, " with $ template, skipping export.");
+         }
+         else
+         {
+            if (i = &DaemonSkeleton)
+            {
+               iPct = 100;
+            }
+            else
+            {
+               iPct = -1;
+            }
+
+            RecordStat(STAT_MONSTER_ZONE, TAG_INT, piRoom_num,
+               TAG_RESOURCE, Send(oMob,@GetName), TAG_INT, iPct);
+         }
+      }
+
+      propagate;
+   }
+
    #region Create/Delete
    Constructed()
    {

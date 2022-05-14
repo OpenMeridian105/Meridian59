@@ -6031,6 +6031,8 @@ messages:
       plMonsterTemplates = Cons(Create(&Frogman,#template=TRUE),plMonsterTemplates);
       plMonsterTemplates = Cons(Create(&FungusBeast,#template=TRUE),plMonsterTemplates);
       plMonsterTemplates = Cons(Create(&Ghost,#template=TRUE),plMonsterTemplates);
+      // Duplicate Ghost for "Ghost of Far'Nohl" entry.
+      plMonsterTemplates = Cons(Create(&Ghost,#template=TRUE,#bFarNohl=TRUE),plMonsterTemplates);
       plMonsterTemplates = Cons(Create(&GiantRat,#template=TRUE),plMonsterTemplates);
       plMonsterTemplates = Cons(Create(&SewerRat,#template=TRUE),plMonsterTemplates);
       plMonsterTemplates = Cons(Create(&OldRat,#template=TRUE),plMonsterTemplates);
@@ -8691,6 +8693,7 @@ messages:
       EmptyStatTable(STAT_TREASURE_EXTRA);
       EmptyStatTable(STAT_TREASURE_MAGIC);
       EmptyStatTable(STAT_NPC_SELLITEM);
+      EmptyStatTable(STAT_NPC_SELLCOND);
       EmptyStatTable(STAT_NPC_SELLSKILL);
       EmptyStatTable(STAT_NPC_SELLSPELL);
       EmptyStatTable(STAT_NPC_ZONE);
@@ -9104,6 +9107,33 @@ messages:
       {
          if GetClass(i) = cClass
          {
+            return i;
+         }
+      }
+
+      return $;
+   }
+
+   FindMonsterTemplateByClass(cClass=$,bFarNohl=FALSE,clan=AVARCLAN_PROMAGIC)
+   "Search for monster by class but with some specific modifiers."
+   {
+      local i, bAvar, bGhost;
+
+      bAvar = (cClass = &Avar
+               OR cClass = &AvarShaman
+               OR cClass = &AvarChieftain);
+      bGhost = cClass = &Ghost;
+
+      foreach i in plMonsterTemplates
+      {
+         if GetClass(i) = cClass
+         {
+            if ((bAvar AND Send(i,@GetClan) <> clan)
+               OR (bGhost AND Send(i,@IsFarNohl) <> bFarNohl))
+            {
+               continue;
+            }
+
             return i;
          }
       }

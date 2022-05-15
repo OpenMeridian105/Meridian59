@@ -91,32 +91,32 @@ messages:
    
    SearchQuestPlayer()
    {
-      local lActive, lActiveItems, oObj;
+      local i, oObj;
 
-      lActiveItems = Send(poOwner,@GetplActive);
-      foreach lActive in lActiveItems
+      foreach i in Send(poOwner,@GetHolderActive)
       {
-         oObj = Send(poOwner,@HolderExtractObject,#data=lActive);
+         oObj = First(i);
 
          if IsClass(oObj,&Player)
          {
-               if Send(self,@SquaredDistanceTo,#what=oObj) < 3
-                  AND (Send(oObj,@GetActiveQuestNode,
-                        #index=QNT_ID_JIXA_ESCORT) <> $)
-                  AND NOT Send(self,@IsOwnedByPlayer)
-               {
-                   Send(self,@SetMaster,#oMaster=oObj);
-                   Send(self,@FaceLeader);
-                   Send(self,@DoWave);
-                   Send(self,@SayToOne,#target=oObj,#message_rsc=vrMercenaryJoin);
-                   return TRUE;
-               }
+            if Send(self,@SquaredDistanceTo,#what=oObj) < 3
+               AND (Send(oObj,@GetActiveQuestNode,
+                     #index=QNT_ID_JIXA_ESCORT) <> $)
+               AND NOT Send(self,@IsOwnedByPlayer)
+            {
+               Send(self,@SetMaster,#oMaster=oObj);
+               Send(self,@FaceLeader);
+               Send(self,@DoWave);
+               Send(self,@SayToOne,#target=oObj,#message_rsc=vrMercenaryJoin);
+
+               return TRUE;
+            }
          }
       }
 
       return;
    }
-   
+
    Killed(what=$)
    "Killing a traveller will make you a murderer."
    {
@@ -124,8 +124,13 @@ messages:
       {
          Send(what,@MakePlayerMurderer,#what=self);
       }
-   
+
       propagate;
+   }
+
+   IsExpansionMonster()
+   {
+      return TRUE;
    }
 
 end

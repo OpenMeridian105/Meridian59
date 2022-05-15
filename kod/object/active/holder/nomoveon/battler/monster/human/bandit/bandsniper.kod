@@ -1,0 +1,89 @@
+// Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+// All rights reserved.
+//
+// This software is distributed under a license that is described in
+// the LICENSE file that accompanies it.
+//
+// Meridian is a registered trademark.
+
+
+////////////////////////////////////////////////////////////////////////////////
+BanditSniper is Bandit
+
+constants:
+
+   include blakston.khd
+
+resources:
+
+   include bandsniper.lkod
+
+   Bandit_sniper_name_rsc = "bandit sniper"
+   Bandit_sniper_desc_rsc = \
+     "Lawless rogues that are known for their theft and burglary prey upon "
+     "hapless travelers and soldiers alike.  "
+     "Snipers are some of the most dangerous bandits, with accurate aim they "
+     "will take you down from a far."
+
+classvars:
+
+   vrName = Bandit_sniper_name_rsc
+   vrDesc = Bandit_sniper_desc_rsc
+
+properties:
+
+   viLevel = 120
+   viDifficulty = 7
+
+messages:
+
+   SetEquipment()
+   {
+      local oArmor, oWeapon, oShield, oHelm, iRandomNumber;
+
+      // Armor
+      iRandomNumber = Random(1, 100);
+      if iRandomNumber <= 50
+      {
+         oArmor = Create(&LeatherArmor);
+      }
+      else
+      {
+         oArmor = Create(&ChainArmor);
+      }
+
+      // Weapon
+      oWeapon = Create(&ShortBow);
+
+      // Shield - snipers get ammo for their bow instead
+      iRandomNumber = Random(1, 100);
+      if iRandomNumber <= 60
+      {
+         oShield = Create(&Arrow);
+      }
+      else
+      {
+         oShield = Create(&AcidArrow);
+      }
+
+      // Helm
+      iRandomNumber = Random(1, 100);
+      if iRandomNumber <= 10
+      {
+         oHelm = Create(&ThornedCirclet);
+      }
+      else if iRandomNumber <= 25
+      {
+         oHelm = Create(&WarHelm);
+      }
+
+      Send(self,@AddEquipmentObject,#what=oArmor);
+      Send(self,@AddEquipmentObject,#what=oWeapon);
+      Send(self,@AddEquipmentObject,#what=oShield);
+      Send(self,@AddEquipmentObject,#what=oHelm);
+
+      return;
+   }
+
+end
+////////////////////////////////////////////////////////////////////////////////

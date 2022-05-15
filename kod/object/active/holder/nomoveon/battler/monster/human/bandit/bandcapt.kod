@@ -1,0 +1,125 @@
+// Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+// All rights reserved.
+//
+// This software is distributed under a license that is described in
+// the LICENSE file that accompanies it.
+//
+// Meridian is a registered trademark.
+
+
+////////////////////////////////////////////////////////////////////////////////
+BanditCaptain is Bandit
+
+constants:
+
+   include blakston.khd
+
+resources:
+
+   include bandcapt.lkod
+
+   Bandit_captain_name_rsc = "bandit captain"
+   Bandit_captain_desc_rsc = \
+     "Lawless rogues that are known for their theft and burglary prey upon "
+     "hapless travelers and soldiers alike.  "
+     "This bandit is ranked of a captain. It takes a strong, ruthless leader "
+     "to keep a gang of bandits in line."
+
+classvars:
+
+   vrName = Bandit_captain_name_rsc
+   vrDesc = Bandit_captain_desc_rsc
+
+properties:
+
+   viLevel = 140
+   viDifficulty = 8
+
+messages:
+
+   SetEquipment()
+   {
+      local oArmor, oWeapon, oHelm, iRandomNumber;
+
+      // Armor
+      oArmor = Create(&ScaleArmor);
+
+      // Weapon
+      iRandomNumber = Random(1,100);
+      if iRandomNumber <= 33
+      {
+         oWeapon = Create(&Scimitar);
+      }
+      else if iRandomNumber <= 66
+      {
+         oWeapon = Create(&Hatchet);
+      }
+      else
+      {
+         oWeapon = Create(&Machete);
+      }
+
+      // Helm
+      iRandomNumber = Random(1,100);
+      if iRandomNumber <= 10
+      {
+         oHelm = Create(&ThornedCirclet);
+      }
+      else if iRandomNumber <= 25
+      {
+         oHelm = Create(&WarHelm);
+      }
+
+      // Guantlets
+      iRandomNumber = Random(1, 100);
+      if iRandomNumber <= 50
+      {
+         Send(self,@AddEquipmentObject,#what=Create(&Gauntlet));
+      }
+
+      Send(self,@AddEquipmentObject,#what=oArmor);
+      Send(self,@AddEquipmentObject,#what=oWeapon);
+      Send(self,@AddEquipmentObject,#what=oHelm);
+
+      return;
+   }
+
+   EnterStateMove()
+   {
+      Send(self,@SearchQuestPlayer);
+
+      propagate;
+   }
+
+   SearchQuestPlayer()
+   {
+      local i, oObj;
+
+      foreach i in Send(poOwner,@GetHolderActive)
+      {
+         oObj = First(i);
+
+         if (NOT IsClass(oObj,&Player))
+         {
+            continue;
+         }
+
+         if Send(oObj,@GetActiveQuestNode,#index=QNT_ID_JIXA_BANDIT) <> $
+            AND Send(self,@IsAlly,#target=oObj)
+            AND Send(self,@SquaredDistanceTo,#what=oObj) < 3
+            AND NOT Send(self,@IsOwnedByPlayer)
+         {
+            Send(self,@SetMaster,#oMaster=oObj);
+            Send(self,@FaceLeader);
+            Send(self,@DoWave);
+            Send(self,@SayToOne,#target=oObj,#message_rsc=vrMercenaryJoin);
+
+            return TRUE;
+         }
+      }
+
+      return;
+   }
+
+end
+////////////////////////////////////////////////////////////////////////////////

@@ -19,6 +19,7 @@ resources:
    include ghost.lkod
 
    ghost_koc_name_rsc = "far'nohl kotezleoc"
+   ghost_generic_koc_name_rsc = "kotezleoc"
    ghost_name_rsc = "ghost of Far'Nohl"
    ghost_generic_name_rsc = "ghost"
    ghost_icon_rsc = ghost.bgf
@@ -47,10 +48,8 @@ resources:
 
 classvars:
 
-   vrKocName = ghost_koc_name_rsc
-   vrName = ghost_generic_name_rsc
    vrIcon = ghost_icon_rsc
-   
+
    vrDead_icon = ghost_dead_icon_rsc
    vrDead_name = ghost_dead_name_rsc
 
@@ -112,6 +111,9 @@ properties:
    piDrawfx = DRAWFX_TRANSLUCENT_75
    piMinDamage = 6
    piMaxDamage = 16
+
+   vrName = ghost_generic_name_rsc
+   vrKocName = ghost_generic_koc_name_rsc
    vrDesc = ghost_desc_rsc
 
    piSpellPower = 99
@@ -119,7 +121,20 @@ properties:
 
    piReputationGroup = REP_FARNOHL
 
+   pbFarNohl = FALSE
+
 messages:
+
+   Constructor(bFarNohl=FALSE)
+   {
+      // Almost always FALSE.
+      if (bFarNohl)
+      {
+         Send(self,@SetFarNohl,#bFarNohl=bFarNohl);
+      }
+
+      propagate;
+   }
 
    Constructed()
    {
@@ -139,6 +154,31 @@ messages:
       plReputationEnemies = [REP_FAROL];
 
       propagate;
+   }
+
+   SetFarNohl(bFarNohl=FALSE)
+   {
+      pbFarNohl = bFarNohl;
+
+      if (pbFarNohl)
+      {
+         vrName = ghost_name_rsc;
+         vrKocName = ghost_koc_name_rsc;
+         vrDesc = ghost_desc_rsc;
+      }
+      else
+      {
+         vrName = ghost_generic_name_rsc;
+         vrKocName = ghost_generic_koc_name_rsc;
+         vrDesc = ghost_normal_desc_rsc;
+      }
+
+      if (poOwner <> $)
+      {
+         Send(poOwner,@SomethingChanged,#what=self);
+      }
+
+      return;
    }
 
    DoMeleeAnimation(what = $)
@@ -174,7 +214,7 @@ messages:
          if GetRandomPointBSP(Send(poOwner,@GetRoomData), 15, 24, *iMRow, *iMCol,
                   *iMRowFine, *iMColFine)
          {
-            if Random (1,iRandom) = 1
+            if Random(1,iRandom) = 1
             {
                oElement = Create(&Zombie,#DropsTreasure=FALSE,#Level=15);
                Send(poOwner,@NewHold,#what=oElement,#new_row=iMRow,#new_col=iMCol,
@@ -192,7 +232,7 @@ messages:
       propagate;
    }
 
-   SendmoveOverlays()
+   SendMoveOverlays()
    {
       Send(self,@SendOverlays);
 
@@ -219,33 +259,12 @@ messages:
       propagate;
    }
 
-   GetName()
+   NewOwner(what=$)
    {
-      // There's only one Far'nohl, and he's in the castle.
-      if poOwner <> $
-         AND Send(poOwner,@GetRoomNum) = RID_THRONE2
+      if (what <> $
+         AND Send(what,@GetRoomNum) = RID_THRONE2)
       {
-         return ghost_name_rsc;
-      }
-
-      propagate;
-   }
-
-   GetApparentName()
-   {
-      return send(self,@GetName);
-   }
-
-   ShowDesc()
-   {
-      if poOwner <> $
-         AND Send(poOwner,@GetRoomNum) = RID_THRONE2
-      {
-         vrDesc = ghost_desc_rsc;
-      }
-      else
-      {
-         vrDesc = ghost_normal_desc_rsc;
+         Send(self,@SetFarNohl,#bFarNohl=TRUE);
       }
 
       propagate;
@@ -277,6 +296,11 @@ messages:
    IsArenaMonster()
    {
       return FALSE;
+   }
+
+   IsFarNohl()
+   {
+      return pbFarNohl;
    }
 
 end

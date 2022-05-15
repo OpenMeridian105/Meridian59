@@ -59,6 +59,26 @@ properties:
 
 messages:
 
+   UpdateDatabaseMobZone()
+   {
+      // Wiki Exports: Additional boss monster.
+      local oMob;
+
+      oMob = Send(SYS,@FindMonsterTemplateByClass,#cClass=&SpiderQueen);
+      if (oMob = $)
+      {
+         Debug("UpdateDatabase() STAT_MONSTER_ZONE export found mob class ",
+            &SpiderQueen, " with $ template, skipping export.");
+      }
+      else
+      {
+         RecordStat(STAT_MONSTER_ZONE, TAG_INT, piRoom_num,
+            TAG_RESOURCE, Send(oMob,@GetName), TAG_INT, -1);
+      }
+
+      propagate;
+   }
+
    Constructed()
    {
       plMonsters = [ [&SpiderBaby, 20], [&Spider, 80] ];

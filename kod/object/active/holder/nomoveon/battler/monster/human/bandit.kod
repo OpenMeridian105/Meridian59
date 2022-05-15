@@ -24,31 +24,19 @@ resources:
    include bandit.lkod
 
    Bandit_name_rsc = "bandit"
-   Bandit_sniper_name_rsc = "bandit sniper"
-   Bandit_captain_name_rsc = "bandit captain"
    Bandit_desc_rsc = \
      "Lawless rogues that are known for their theft and burglary prey upon "
-     "hapless travelers and soldiers alike. "
-   Bandit_sniper_desc_rsc = \
-     "Lawless rogues that are known for their theft and burglary prey upon "
-     "hapless travelers and soldiers alike.  "
-     "Snipers are some of the most dangerous bandits, with accurate aim they "
-     "will take you down from a far."
-   Bandit_captain_desc_rsc = \
-     "Lawless rogues that are known for their theft and burglary prey upon "
-     "hapless travelers and soldiers alike.  "
-     "This bandit is ranked of a captain. It takes a strong, ruthless leader "
-     "to keep a gang of bandits in line."
+     "hapless travelers and soldiers alike."
    Bandit_dead_name_rsc = "dead bandit"
-   
    Bandit_loot_rsc = "~IThe bandit snatches the %s!"
-
+   Bandit_join_rsc = \
+      "Jorgan sent you here?  What are we waiting for, lets go..."
    Bandit_sound_aware = DgSwish1.ogg
-
-   Bandit_join_rsc = "Jorgan sent you here?  What are we waiting for, lets go..."
 
 classvars:
 
+   vrName = Bandit_name_rsc
+   vrDesc = Bandit_desc_rsc
    vrDead_name = Bandit_dead_name_rsc
    vrMercenaryJoin = Bandit_join_rsc
 
@@ -62,10 +50,6 @@ classvars:
    viColorTranslate1 = XLAT_TO_RED     // Shirt
    viColorTranslate2 = XLAT_TO_DGREEN   // Pants
 
-   viBanditChance = 85
-   viSniperChance = 12
-   viCaptainChance = 3
-
    viVisionDistance = 15
 
    viCashMin = 200
@@ -76,26 +60,12 @@ classvars:
 
 properties:
 
-   piBaseLevel = 100
-   piBaseDifficulty = 6
-
-   //Here so they can be set
-   vrIcon = human_male_icon_rsc
-   vrDead_Icon = human_dead_male_icona_rsc
-   vrDead_Legs = human_dead_male_iconb_rsc
-   vrSound_aware = Bandit_sound_aware
-
-   viLevel = 100         // piBaseLevel
-   viDifficulty = 6     // piBaseDifficulty
+   viLevel = 100
+   viDifficulty = 6
    viKarma = 0
-
-   vrName = Bandit_name_rsc
-   vrDesc = Bandit_desc_rsc
 
    ptLootDelay = $
    ptConveyanceTimer = $
-
-   pbCaptain = FALSE
    pbCaughtDisguise = FALSE
 
 messages:
@@ -106,7 +76,7 @@ messages:
 
       propagate;
    }
-   
+
    Delete()
    {
       if ptLootDelay <> $
@@ -114,7 +84,7 @@ messages:
          DeleteTimer(ptLootDelay);
          ptLootDelay = $;
       }
-      
+
       if ptConveyanceTimer <> $
       {
          DeleteTimer(ptConveyanceTimer);
@@ -134,163 +104,56 @@ messages:
 
    SetEquipment()
    {
-      local oArmor, oWeapon, oShield, oHelm, iRandomNumber, iBonusModifier, iRndMax;
+      local oArmor, oWeapon, oShield, oHelm, iRandomNumber;
 
-      iRndMax = viBanditChance + viSniperChance + viCaptainChance;
-      iRandomNumber = Random(1, iRndMax);
-      if iRandomNumber <= viBanditChance // Bandit
+      // Armor
+      iRandomNumber = Random(1, 100);
+      if iRandomNumber <= 70
       {
-         vrName = Bandit_name_rsc;
-         vrDesc = Bandit_desc_rsc;
-         iBonusModifier = 0;
-         viDifficulty = piBaseDifficulty + iBonusModifier;
-         iBonusModifier = 0;
-         viLevel = piBaseLevel + iBonusModifier;
-
-         // Armor
-         iRandomNumber = Random(1, 100);
-         if iRandomNumber <= 70
-         {
-            oArmor = Create(&LeatherArmor);
-         }
-
-         // Weapon
-         iRandomNumber = Random(1, 100);
-         if iRandomNumber <= 25
-         {
-            oWeapon = Create(&Knife);
-         }
-         else if iRandomNumber <= 50
-         {
-            oWeapon = Create(&ShortSword);
-         }
-         else if iRandomNumber <= 75
-         {
-            oWeapon = Create(&Axe);
-         }
-         else
-         {
-            oWeapon = Create(&Kukri);
-         }
-
-         // Shield
-         iRandomNumber = Random(1, 100);
-         if iRandomNumber <= 10
-         {
-            oShield = Create(&WoodenShield);
-         }
-
-         // Helm
-         iRandomNumber = Random(1, 100);
-         if iRandomNumber <= 10
-         {
-            oHelm = Create(&ThornedCirclet);
-         }
-         else if iRandomNumber <= 25
-         {
-            oHelm = Create(&WarHelm);
-         }
-
+         oArmor = Create(&LeatherArmor);
       }
 
-      else if iRandomNumber <= (viSniperChance + viBanditChance) // Sniper
+      // Weapon
+      iRandomNumber = Random(1, 100);
+      if iRandomNumber <= 25
       {
-         vrName = Bandit_sniper_name_rsc;
-         vrDesc = Bandit_sniper_desc_rsc;
-         iBonusModifier = 1;
-         viDifficulty = piBaseDifficulty + iBonusModifier;
-         iBonusModifier = 20;
-         viLevel = piBaseLevel + iBonusModifier;
-
-         // Armor
-         iRandomNumber = Random(1, 100);
-         if iRandomNumber <= 50
-         {
-            oArmor = Create(&LeatherArmor);
-         }
-         else
-         {
-            oArmor = Create(&ChainArmor);
-         }
-
-         // Weapon
-         oWeapon = Create(&ShortBow);
-
-         // Shield - snipers get ammo for their bow instead
-         iRandomNumber = Random(1, 100);
-         if iRandomNumber <= 60
-         {
-            oShield = Create(&Arrow);
-         }
-         else
-         {
-            oShield = Create(&AcidArrow);
-         }
-
-         // Helm
-         iRandomNumber = Random(1, 100);
-         if iRandomNumber <= 10
-         {
-            oHelm = Create(&ThornedCirclet);
-         }
-         else if iRandomNumber <= 25
-         {
-            oHelm = Create(&WarHelm);
-         }
+         oWeapon = Create(&Knife);
+      }
+      else if iRandomNumber <= 50
+      {
+         oWeapon = Create(&ShortSword);
+      }
+      else if iRandomNumber <= 75
+      {
+         oWeapon = Create(&Axe);
+      }
+      else
+      {
+         oWeapon = Create(&Kukri);
       }
 
-      else // Captain
+      // Shield
+      iRandomNumber = Random(1, 100);
+      if iRandomNumber <= 10
       {
-         vrName = Bandit_captain_name_rsc;
-         vrDesc = Bandit_captain_desc_rsc;
-         iBonusModifier = 2;
-         viDifficulty = piBaseDifficulty + iBonusModifier;
-         iBonusModifier = 40;
-         viLevel = piBaseLevel + iBonusModifier;
-         pbCaptain = TRUE;
-
-         // Armor
-         oArmor = Create(&ScaleArmor);
-
-         // Weapon
-         iRandomNumber = Random(1, 100);
-         if iRandomNumber <= 33
-         {
-            oWeapon = Create(&Scimitar);
-         }
-         else if iRandomNumber <= 66
-         {
-            oWeapon = Create(&Hatchet);
-         }
-         else
-         {
-            oWeapon = Create(&Machete);
-         }
-
-         // Helm
-         iRandomNumber = Random(1, 100);
-         if iRandomNumber <= 10
-         {
-            oHelm = Create(&ThornedCirclet);
-         }
-         else if iRandomNumber <= 25
-         {
-            oHelm = Create(&WarHelm);
-         }
-
-         // Guantlets
-         iRandomNumber = Random(1, 100);
-         if iRandomNumber <= 50
-         {
-            Send(self,@AddEquipmentObject,#what=Create(&Gauntlet));
-         }
-
+         oShield = Create(&WoodenShield);
       }
 
-         Send(self,@AddEquipmentObject,#what=oArmor);
-         Send(self,@AddEquipmentObject,#what=oWeapon);
-         Send(self,@AddEquipmentObject,#what=oShield);
-         Send(self,@AddEquipmentObject,#what=oHelm);
+      // Helm
+      iRandomNumber = Random(1, 100);
+      if iRandomNumber <= 10
+      {
+         oHelm = Create(&ThornedCirclet);
+      }
+      else if iRandomNumber <= 25
+      {
+         oHelm = Create(&WarHelm);
+      }
+
+      Send(self,@AddEquipmentObject,#what=oArmor);
+      Send(self,@AddEquipmentObject,#what=oWeapon);
+      Send(self,@AddEquipmentObject,#what=oShield);
+      Send(self,@AddEquipmentObject,#what=oHelm);
 
       return;
    }
@@ -333,41 +196,11 @@ messages:
 
    EnterStateMove()
    {
-      Send(self,@SearchQuestPlayer);
       Send(self,@SearchItemsInRange);
 
       propagate;
    }
 
-   SearchQuestPlayer()
-   {
-      local lActive, lActiveItems, oObj;
-
-      lActiveItems = Send(poOwner,@GetplActive);
-      foreach lActive in lActiveItems
-      {
-         oObj = Send(poOwner,@HolderExtractObject,#data=lActive);
-
-         if IsClass(oObj,&Player)
-         {
-               if pbCaptain
-                  AND Send(oObj,@GetActiveQuestNode,#index=QNT_ID_JIXA_BANDIT) <> $
-                  AND Send(self,@IsAlly,#target=oObj)
-                  AND Send(self,@SquaredDistanceTo,#what=oObj) < 3
-                  AND NOT Send(self,@IsOwnedByPlayer)
-               {
-                   Send(self,@SetMaster,#oMaster=oObj);
-                   Send(self,@FaceLeader);
-                   Send(self,@DoWave);
-                   Send(self,@SayToOne,#target=oObj,#message_rsc=vrMercenaryJoin);
-                   return TRUE;
-               }
-         }
-      }
-
-      return;
-   }
-   
    SearchItemsInRange()
    {
       local lPassive, lPassiveItems, oObj, iRandom,
@@ -394,7 +227,7 @@ messages:
                 Send(self,@TryLootObject,#what=oObj);
                 return TRUE;
             }
-            
+
             // Find the nearest item
             iItemDistance = Send(self,@SquaredDistanceTo,#what=oObj);
             if iItemDistance < iClosestDistance
@@ -407,16 +240,16 @@ messages:
 
       if oClosestItem <> $
       {
-            iRandom = Random(1,100);
-            if iRandom <= MOVE_TO_ITEM_CHANCE 
-            {
-                poObject = oClosestItem;
-            }
+         iRandom = Random(1,100);
+         if iRandom <= MOVE_TO_ITEM_CHANCE 
+         {
+             poObject = oClosestItem;
+         }
       }
 
       return;
    }
-   
+
    TryLootObject(what = $)
    {
       if Send(self,@ReqNewHold,#what=what) AND ptLootDelay = $
@@ -424,7 +257,7 @@ messages:
 
          Send(self,@NewHold,#what=what);
          Send(poOwner,@SomeoneSaid,#what=self,#type=SAY_MESSAGE,
-            #string=Bandit_loot_rsc,#parm1=Send(what,@GetName));
+               #string=Bandit_loot_rsc,#parm1=Send(what,@GetName));
          Send(self,@DoCast);
 
          // Delay this so bandits don't loot everything all at once
@@ -433,27 +266,26 @@ messages:
 
       return;
    }
-   
+
    LootDelay()
    {
       ptLootDelay = $;
+
       return;
    }
-   
+
    ConveyItems()
    {
       local i, each_obj;
-      
-      ptConveyanceTimer = $;
-   
+
       foreach i in plPassive
       {
          each_obj = Send(self,@HolderExtractObject,#data=i);
-         
+
          if NOT FindListElem(plUsing,each_obj)
          {
-             Send(Send(SYS,@FindRoomByNum,#num=RID_BANDIT_CAVE),
-                @BanditDepositItems,#what=each_obj);
+            Send(Send(SYS,@FindRoomByNum,#num=RID_BANDIT_CAVE),
+                     @BanditDepositItems,#what=each_obj);
          }
       }
 

@@ -8,7 +8,6 @@
 
 
 ////////////////////////////////////////////////////////////////////////////////
-
 MockersRoom is Room
 
 constants:
@@ -18,6 +17,7 @@ constants:
 resources:
 
    include mockers.lkod
+
    waterfall_soundmockers = wfall2.ogg
    room_mockers = mockers.roo
    room_name_mockers = "Chamber of the Mocker"
@@ -63,11 +63,11 @@ messages:
    }
 
    SomeoneSaid(what = $,type = $,string = $,parm1 = $,parm2 = $,parm3 = $,
-               parm4 = $, parm5 = $,parm6 = $,parm7 = $,parm8 = $)                       
+               parm4 = $, parm5 = $,parm6 = $,parm7 = $,parm8 = $)
    {
-      local object;
+      local oObj;
 
-      if isClass(what,&DM) AND StringEqual(string,"lock")
+      if IsClass(what,&Admin) AND StringEqual(string,"lock")
       {
          if NOT pbLocked
          {
@@ -81,23 +81,24 @@ messages:
          }
 
          return;
-       }
+      }
 
       if StringEqual(string,"Mocker, in your greatness, reform me in your image! #2341")
-         AND (StringEqual(send(what,@GetName),"Mocker"))
+         AND (StringEqual(Send(what,@GetName),"Mocker"))
          AND IsClass(what,&DM)
       {
-         object = create(&GuildShield);
-         send(object,@ChangeGuildShieldColor,#color1=XLAT_TO_SKIN1,#shape=SHIELDSHAPE_CHECKER,#override=1);
-         send(object,@ChangeGuildInsignia,#insignia=8);
-         send(what,@NewHold,#what=object);
-         send(what,@NewHold,#what=create(&LeatherArmor));
-         send(what,@NewHold,#what=create(&Gauntlet));
-         send(what,@NewHold,#what=create(&PantsC));
-         send(what,@NewHold,#what=create(&Hammer));
-         send(what,@NewHold,#what=create(&Shirt));
+         oObj = Create(&GuildShield);
+         Send(oObj,@ChangeGuildShieldColor,#color1=XLAT_TO_SKIN1,
+               #shape=SHIELDSHAPE_CHECKER,#override=1);
+         Send(oObj,@ChangeGuildInsignia,#insignia=8);
+         Send(what,@NewHold,#what=oObj);
+         Send(what,@NewHold,#what=Create(&LeatherArmor));
+         Send(what,@NewHold,#what=Create(&Gauntlet));
+         Send(what,@NewHold,#what=Create(&PantsC));
+         Send(what,@NewHold,#what=Create(&Hammer));
+         Send(what,@NewHold,#what=Create(&Shirt));
 
-         return;    
+         return;
       }
 
       propagate;
@@ -105,9 +106,8 @@ messages:
 
    CheckLock()
    {
-      return pbLocked; 
+      return pbLocked;
    }
-
 
    CreateStandardExits()
    {
@@ -121,4 +121,3 @@ messages:
 
 end
 ////////////////////////////////////////////////////////////////////////////////
-

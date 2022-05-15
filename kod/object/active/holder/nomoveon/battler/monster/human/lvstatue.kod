@@ -32,6 +32,8 @@ resources:
 
    LivingStatue_desc_rsc = \
       "This statue is the image of some ancient %s.\n\n%r"
+   LivingStatue_default_desc_rsc = \
+      "This statue is the image of some ancient citizen."
 
    LivingStatue_dead_name_rsc = "crumbled living statue"
 
@@ -55,7 +57,6 @@ resources:
 
 classvars:
 
-   vrDesc = LivingStatue_desc_rsc
    vrDead_name = LivingStatue_dead_name_rsc
 
    viTreasure_type = TID_STATUE
@@ -78,6 +79,7 @@ classvars:
 properties:
 
    vrName = LivingStatue_name_rsc
+   vrDesc = LivingStatue_desc_rsc
 
    // Can be set by Human parent class.
    vrSound_death = LivingStatue_sound_death
@@ -122,8 +124,17 @@ properties:
 
 messages:
 
-   Constructor(bIsSoldier=FALSE)
+   Constructor(bIsSoldier=FALSE, template=FALSE)
    {
+      // Template needs to set default name/desc for wiki.
+      if (template)
+      {
+         vrName = LivingStatue_active_name_rsc;
+         vrDesc = LivingStatue_default_desc_rsc;
+
+         propagate;
+      }
+
       // Base 20% chance to be a soldier type statue.
       if Random(1,100) <= SOLDIER_PERCENT
          OR bIsSoldier

@@ -1249,9 +1249,8 @@ messages:
    CalculatePenalties(what=$)
    "'what' is the calling object, i.e. logoff ghost, phase spell."
    {
-      local iPenCount, iEquivDeath, iPointLoss, iItemLoss, oDrop,
-            iXPLoss, iNumItems, iNumSpellPts, iNumSkillPts, oSoldierShield,
-            iHonorLoss;
+      local iPenCount, iEquivDeath, iPointLoss, iItemLoss, oDrop, lItems,
+            iXPLoss, iNumSpellPts, iNumSkillPts, oSoldierShield, iHonorLoss;
 
       // Check if we're eligible for a free pen.
       if (Send(SETTINGS_OBJECT,@GetFreeNoPvPPenActive,
@@ -1329,7 +1328,7 @@ messages:
       // Potentially lose XP
       iXPLoss = Send(self,@PenaltyLoseXP,#iPenCount=iPenCount,
                      #iEquivDeath=iEquivDeath);
-      iNumItems = Send(self,@PenaltyDropItems,#iNumDrop=iItemloss,
+      lItems = Send(self,@PenaltyDropItems,#iNumDrop=iItemLoss,
                         #iPenCount=iPenCount,#iEquivDeath=iEquivDeath,
                         #where=oDrop);
       iNumSpellPts = Send(self,@PenaltyLoseSpellPoints,
@@ -1358,7 +1357,7 @@ messages:
       if (what <> $)
       {
          Send(what,@SendPenaltyInfo,#who=self,#iXPLost=iXPLoss,
-               #iItemsLost=iNumItems,#iSpellPtLost=iNumSpellPts,
+               #lItemsLost=lItems,#iSpellPtLost=iNumSpellPts,
                #iSkillPtLost=iNumSkillPts,#iHonorLost=iHonorLoss);
       }
 
@@ -1505,11 +1504,11 @@ messages:
 
    PenaltyDropItems(iPenCount=0, iEquivDeath=0, iNumDrop=0, where=$)
    {
-      local i, iNumInventory, iNumItemsLeft;
+      local i, iNumInventory, iNumItemsLeft, oItem, lItems;
 
       if (where = $)
       {
-         return 0;
+         return;
       }
 
       iNumInventory = Send(self,@GetNumItemsInInventory);
@@ -1540,8 +1539,10 @@ messages:
          i = 1;
          while i <= iNumDrop
          {
-            if Send(self,@DropItem,#index=i,#targetGhost=where)
+            oItem = Send(self,@FindItemByIndex,#index=i);
+            if Send(self,@DropItem,#droppedItem=oItem,#targetGhost=where,#bPen=TRUE)
             {
+               lItems = Cons(oItem,lItems);
                --iNumDrop;
             }
             else
@@ -1559,17 +1560,21 @@ messages:
          {
             // Try to drop a random item.
             i = Random(1,iNumItemsLeft);
-            if Send(self,@DropItem,#index=i,#targetGhost=where,#bPen=TRUE)
+            oItem = Send(self,@FindItemByIndex,#index=i);
+            if Send(self,@DropItem,#droppedItem=oItem,#targetGhost=where,#bPen=TRUE)
             {
+               lItems = Cons(oItem,lItems);
                --iNumItemsLeft;
             }
             else
             {
                // If the Random drop fails, scan through and drop one.
                i = 1;
+               oItem = Send(self,@FindItemByIndex,#index=i);
                while i <= iNumItemsLeft
-                  AND NOT Send(self,@DropItem,#index=i,#targetGhost=where,#bPen=TRUE)
+                  AND NOT Send(self,@DropItem,#droppedItem=oItem,#targetGhost=where,#bPen=TRUE)
                {
+                  oItem = Send(self,@FindItemByIndex,#index=i);
                   ++i;
                }
 
@@ -1579,12 +1584,12 @@ messages:
                {
                   break;
                }
+               lItems = Cons(oItem,lItems);
             }
          }
       }
 
-      // iNumItemsLeft is still accurate here.
-      return iNumInventory - iNumItemsLeft;
+      return lItems;
    }
 
    PenaltyLoseSpellPoints(iPenCount=0, iEquivDeath=0, iNumPoints=0)
@@ -7544,7 +7549,7 @@ messages:
          }
          else
          {
-            // nested // things as mail
+            // nested % things as mail
             AddPacket(4,user_show_nested_mail);
             j = 1;
             while j <= Length(lMail_strings)

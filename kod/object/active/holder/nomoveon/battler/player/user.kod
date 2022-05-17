@@ -1249,7 +1249,7 @@ messages:
    CalculatePenalties(what=$)
    "'what' is the calling object, i.e. logoff ghost, phase spell."
    {
-      local iPenCount, iEquivDeath, iPointLoss, iItemLoss, oDrop, lItems,
+      local iPenCount, iEquivDeath, iPointLoss, iItemLoss, oDrop, lItems, iRoom,
             iXPLoss, iNumSpellPts, iNumSkillPts, oSoldierShield, iHonorLoss;
 
       // Check if we're eligible for a free pen.
@@ -1338,6 +1338,20 @@ messages:
                            #iNumPoints=iPointLoss,#iPenCount=iPenCount,
                            #iEquivDeath=iEquivDeath);
       iHonorLoss = Send(self,@PenaltyLoseHonor,#where=oDrop);
+
+      // Room ID for recording where the pen happened.
+      if (poOwner <> $)
+      {
+         iRoom = Send(poOwner,@GetRoomNum);
+      }
+      else
+      {
+         iRoom = piSave_Room;
+      }
+
+      RecordStat(STAT_LOGPEN, TAG_RESOURCE, vrName, TAG_INT, iRoom,
+            TAG_INT, iXPLoss, TAG_INT, iHonorLoss, TAG_INT, iNumSpellPts,
+            TAG_INT, iNumSkillPts, TAG_INT, Length(lItems));
 
       // Let the faction shield know of this person's naughtiness if we took a
       // penalty.
@@ -1504,7 +1518,7 @@ messages:
 
    PenaltyDropItems(iPenCount=0, iEquivDeath=0, iNumDrop=0, where=$)
    {
-      local i, iNumInventory, iNumItemsLeft, oItem, lItems;
+      local i, iNum, iNumInventory, iNumItemsLeft, oItem, lItems;
 
       if (where = $)
       {
@@ -1587,6 +1601,20 @@ messages:
                lItems = Cons(oItem,lItems);
             }
          }
+      }
+
+      foreach i in lItems
+      {
+         if (Send(i,@IsStackable))
+         {
+            iNum = Send(i,@GetNumber);
+         }
+         else
+         {
+            iNum = 1;
+         }
+         RecordStat(STAT_LOGPEN_ITEM, TAG_RESOURCE, vrName,
+               TAG_RESOURCE, Send(i,@GetName), TAG_INT, iNum);
       }
 
       return lItems;

@@ -8428,31 +8428,23 @@ messages:
       return;
    }
 
-   BitwiseXOR(value1 = 0, value2 = 0)
-   "Returns the bitwise XOR of the two values."
+   #region Mail Adjustment
+   RemoveMailsBySender(max=10000, what=$, iDays=0)
    {
-      local iDiv, bit1, bit2, retVal;
+      local i, iCount;
 
-      retVal = 0;
-      // iDiv = 2 to the 26th power = the 5th most significant bit.
-      //  Blakod integers use bits 0-3 as type info, then 1 bit for sign.
-      iDiv = 67108864;
+      iCount = 0;
 
-      while iDiv > 0
+      foreach i in plUsers
       {
-         bit1 = value1 & iDiv;
-         bit2 = value2 & iDiv;
-
-         if (bit1 <> 0 OR bit2 <> 0)
-            AND (bit1 = 0 OR bit2 = 0)
+         iCount += Send(i,@RemoveMailBySender,#what=what,#iDays=iDays);
+         if (iCount > max)
          {
-            retVal = retVal + iDiv;
+            break;
          }
-
-         iDiv = iDiv / 2;
       }
 
-      return retVal;
+      return iCount;
    }
 
    RemoveOldMails(max=10000, iDays=180)
@@ -8485,6 +8477,30 @@ messages:
 
       return total;
    }
+
+   ListMailSenders()
+   "Returns a list of each mail sender with a count of how many mails they've "
+   "sent.  Listed in descending order, with a total mail count appended.  "
+   "Useful to find mail that needs to be cleaned up."
+   {
+      local i, iTotal, j, lMail, lSenders, sender;
+
+      iTotal = 0;
+      foreach i in plUsers
+      {
+         lMail = Send(i,@GetMail);
+         foreach j in lMail
+         {
+            ++iTotal;
+            sender = Nth(j,MAIL_SENDER);
+            lSenders = Send(self,@AddToSortedList,#what=sender,#lList=lSenders,
+                              #number=1);
+         }
+      }
+
+      return [lSenders, iTotal];
+   }
+   #endregion Mail Adjustment
 
    GetBanks()
    {

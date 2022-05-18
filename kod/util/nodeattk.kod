@@ -603,7 +603,7 @@ messages:
 
    EndNodeAttack(bFailure=FALSE)
    {
-      local oMonsters, oRoom, oItem, bSevered, iIndex, iNodeNumber, rRoomName;
+      local oMonsters, oRoom, oUser, bSevered, iIndex, iNodeNumber, rRoomName;
 
       // Check timer
       if ptAttack <> $
@@ -642,55 +642,55 @@ messages:
 
          // Run through all people melded with node, checked for severed, then
          //  give them message or mail.
-         foreach oItem in Send(SYS,@GetUsers)
+         foreach oUser in Send(SYS,@GetUsers)
          {
             // Tell everyone they blew it.
-            if Send(oItem,@IsLoggedOn)
+            if Send(oUser,@IsLoggedOn)
             {
-               Send(oItem,@MsgSendUser,#message_rsc=NodeAttack_failure_rsc,
+               Send(oUser,@MsgSendUser,#message_rsc=NodeAttack_failure_rsc,
                     #parm1=Send(oRoom,@GetName));
             }
 
-            if (Send(oItem,@GetNodeList) & Nth(plAttackableNodes,iIndex))
-               AND NOT IsClass(oItem,&DM)
+            if (Send(oUser,@GetNodeList) & Nth(plAttackableNodes,iIndex))
+               AND NOT IsClass(oUser,&DM)
             {
                bSevered = FALSE;
                if (piSeveredChance > 0)
-                  AND Random(1,100) <= piSeveredChance + Send(oItem,@NumManaNodes)
+                  AND Random(1,100) <= piSeveredChance + Send(oUser,@NumManaNodes)
                {
                   iNodeNumber = Send(poAttackedNode,@GetNodeNum);
-                  Send(oItem,@RemoveNodeFromList,#node_num=iNodeNumber);
+                  Send(oUser,@RemoveNodeFromList,#node_num=iNodeNumber);
                   bSevered = TRUE;
                }
 
-               if Send(oItem,@IsLoggedOn)
+               if Send(oUser,@IsLoggedOn)
                {
-                  Send(oItem,@ComputeMaxMana);
+                  Send(oUser,@ComputeMaxMana);
                   if bSevered
                   {
-                     Send(oItem,@MsgSendUser,
+                     Send(oUser,@MsgSendUser,
                            #message_rsc=NodeAttack_severed_rsc,
                            #parm1=Send(oRoom,@GetName));
                   }
                   else
                   {
-                     Send(oItem,@MsgSendUser,#message_rsc=NodeAttack_loss_rsc,
+                     Send(oUser,@MsgSendUser,#message_rsc=NodeAttack_loss_rsc,
                            #parm1=Send(oRoom,@GetName));
                   }
-                  Send(oItem,@WaveSendUser,#wave_rsc=NodeAttack_failure_sound_rsc);
+                  Send(oUser,@WaveSendUser,#wave_rsc=NodeAttack_failure_sound_rsc);
                }
                else if rRoomName <> $
                {
                   if bSevered
                   {
-                     Send(oItem,@receivenestedmail,#from=NodeAttack_keeper,
-                           #dest_list=[oItem],
+                     Send(oUser,@ReceiveNestedMail,#from=NodeAttack_keeper,
+                           #dest_list=[oUser],
                            #nest_list=[4,NodeAttack_severed_mail_rsc,4,rRoomName]);
                   }
-                  else
+                  else if (NOT Send(oUser,@IsUserInactive))
                   {
-                     Send(oItem,@receivenestedmail,#from=NodeAttack_keeper,
-                           #dest_list=[oItem],
+                     Send(oUser,@ReceiveNestedMail,#from=NodeAttack_keeper,
+                           #dest_list=[oUser],
                            #nest_list=[4,NodeAttack_loss_mail_rsc,4,rRoomName]);
                   }
                }
@@ -700,9 +700,9 @@ messages:
       else
       {
          // Not a failure, players succeeded!
-         foreach oItem in Send(SYS,@GetUsersLoggedOn)
+         foreach oUser in Send(SYS,@GetUsersLoggedOn)
          {
-            Send(oItem,@MsgSendUser,#message_rsc=NodeAttack_success_rsc,
+            Send(oUser,@MsgSendUser,#message_rsc=NodeAttack_success_rsc,
                  #parm1=Send(oRoom,@GetName));
          }
       }

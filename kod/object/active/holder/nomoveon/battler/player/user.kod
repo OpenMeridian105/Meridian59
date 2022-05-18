@@ -12516,6 +12516,57 @@ messages:
       return;
    }
 
+   GetMail()
+   {
+      return plNew_mail;
+   }
+
+   RemoveMailBySender(what=$,iDays=0)
+   {
+      local iCutoff_time, iRemoved, iTime, lNew_mail, lRecent_mail, sender;
+
+      if (what = $)
+      {
+         return 0;
+      }
+
+      iCutoff_time =  GetTime() - (iDays * DAY);
+      iRemoved = 0;
+
+      foreach lNew_mail in plNew_mail
+      {
+         // Skip newer mails first if iDays is set.
+         if (iDays > 0)
+         {
+            iTime = Nth(lNew_mail,MAIL_SHORT_TIME); // use GetTime() here
+            if (iTime > iCutoff_time)
+               AND iTime < GetTime()
+            {
+               lRecent_mail = Cons(lNew_mail,lRecent_mail);
+               continue;
+            }
+         }
+         // Mail is old enough, check sender.
+         sender = Nth(lNew_mail,MAIL_SENDER);
+         if (sender <> what)
+         {
+            lRecent_mail = Cons(lNew_mail,lRecent_mail);
+         }
+         else
+         {
+            ++iRemoved;
+         }
+      }
+      if Length(plNew_mail) <> Length(lRecent_mail)
+      {
+         Debug("User",self,vrName,"had",Length(plNew_mail),"now",
+               Length(lRecent_mail));
+      }
+      plNew_mail = lRecent_mail;
+
+      return iRemoved;
+   }
+
    RemoveOldMail(iDays=180)
    {
       local iCutoff_time, lRecent_mail, lNew_mail, iTime, iRemoved;

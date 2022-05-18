@@ -402,8 +402,7 @@ messages:
 
       foreach i in Send(what,@GetPlayerUsing)
       {
-         if Send(i,@ReqLeaveOwner)
-            AND Random(1,3) = 1
+         if (Send(self,@ShouldDropItem,#oItem=i))
          {
             oObj = i;
 
@@ -415,8 +414,7 @@ messages:
       {
          foreach i in Send(what,@GetHolderPassive)
          {
-            if Send(i,@ReqLeaveOwner)
-            AND Random(1,3) = 1
+            if (Send(self,@ShouldDropItem,#oItem=i))
             {
                oObj = i;
 
@@ -484,6 +482,14 @@ messages:
       Send(what,@WaveSendUser,#what=what,#wave_rsc=rWav);
 
       return;
+   }
+
+   ShouldDropItem(oItem=$)
+   {
+      return oItem <> $
+         AND Random(1,3) = 1
+         AND Send(oItem,@ReqLeaveOwner)
+         AND Send(oItem,@DropOnDeath);
    }
 
    TimerMessage1()

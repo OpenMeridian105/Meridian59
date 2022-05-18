@@ -636,17 +636,32 @@ int   port     = 3306;
    )                                                     \
    ENGINE=InnoDB DEFAULT CHARSET=latin1;"
 
-#define SQLQUERY_CREATETABLE_QUESTS                     "\
-   CREATE TABLE wiki_quests                              \
-   (                                                     \
-     quest_name      VARCHAR(63) NOT NULL,               \
-     quest_name_ger  VARCHAR(63) NOT NULL,               \
-     quest_icon      VARCHAR(63) NOT NULL,               \
-     quest_desc      TEXT DEFAULT NULL,                  \
-     quest_desc_ger  TEXT DEFAULT NULL,                  \
-     quest_id        INT(4) DEFAULT NULL,                \
-     PRIMARY KEY(quest_name)                             \
-   )                                                     \
+#define SQLQUERY_CREATETABLE_QUESTS                   "\
+   CREATE TABLE wiki_quests                            \
+   (                                                   \
+     quest_id           INT(4) NOT NULL,               \
+     quest_name         VARCHAR(63) NOT NULL,          \
+     quest_name_ger     VARCHAR(63) NOT NULL,          \
+     quest_icon         VARCHAR(63) NOT NULL,          \
+     quest_icon_group   INT(2) NOT NULL,               \
+     quest_desc         TEXT DEFAULT NULL,             \
+     quest_desc_ger     TEXT DEFAULT NULL,             \
+     quest_recent_time  INT(12) DEFAULT NULL,          \
+     quest_schedule_pct INT(4) DEFAULT NULL,           \
+     quest_est_time     INT(12) DEFAULT NULL,          \
+     quest_est_diff     INT(4) DEFAULT NULL,           \
+     PRIMARY KEY(quest_id)                             \
+   )                                                   \
+   ENGINE=InnoDB DEFAULT CHARSET=latin1;"
+
+
+#define SQLQUERY_CREATETABLE_QUESTGIVERS              "\
+   CREATE TABLE wiki_quest_giver                       \
+   (                                                   \
+     quest_id           INT(4) NOT NULL,               \
+     quest_npc_name     VARCHAR(63) NOT NULL,          \
+     PRIMARY KEY(quest_id, quest_npc_name)             \
+   )                                                   \
    ENGINE=InnoDB DEFAULT CHARSET=latin1;"
 
 #define SQLQUERY_CREATEPROC_MONEYTOTAL      "\
@@ -2035,29 +2050,53 @@ int   port     = 3306;
 
 #define SQLQUERY_CREATEPROC_QUESTS          "\
    CREATE PROCEDURE WriteQuests(             \
-    IN quest_name      VARCHAR(63),          \
-    IN quest_name_ger  VARCHAR(63),          \
-    IN quest_icon      TEXT,                 \
-    IN quest_desc      TEXT,                 \
-    IN quest_desc_ger  TEXT,                 \
-    IN quest_id        INT(4))               \
+    IN quest_id           INT(4),            \
+    IN quest_name         VARCHAR(63),       \
+    IN quest_name_ger     VARCHAR(63),       \
+    IN quest_icon         TEXT,              \
+    IN quest_icon_group   INT(2),            \
+    IN quest_desc         TEXT,              \
+    IN quest_desc_ger     TEXT,              \
+    IN quest_recent_time  INT(4),            \
+    IN quest_schedule_pct INT(4),            \
+    IN quest_est_time     INT(4),            \
+    IN quest_est_diff     INT(4))            \
    BEGIN                                     \
    INSERT INTO wiki_quests                   \
-      (  quest_name,                         \
+      (  quest_id,                           \
+         quest_name,                         \
          quest_name_ger,                     \
          quest_icon,                         \
+         quest_icon_group,                   \
          quest_desc,                         \
          quest_desc_ger,                     \
-         quest_id)                           \
-         VALUES (quest_name,                 \
+         quest_recent_time,                  \
+         quest_schedule_pct,                 \
+         quest_est_time,                     \
+         quest_est_diff)                     \
+         VALUES (quest_id,                   \
+            quest_name,                      \
             quest_name_ger,                  \
             quest_icon,                      \
+            quest_icon_group,                \
             quest_desc,                      \
             quest_desc_ger,                  \
-            quest_id)                        \
-         ON DUPLICATE KEY UPDATE             \
-         quest_desc = quest_desc,            \
-         quest_desc_ger = quest_desc_ger;    \
+            quest_recent_time,               \
+            quest_schedule_pct,              \
+            quest_est_time,                  \
+            quest_est_diff);                 \
+   END"
+
+#define SQLQUERY_CREATEPROC_QUESTGIVER      "\
+   CREATE PROCEDURE WriteQuestGiver(         \
+    IN quest_id           INT(4),            \
+    IN quest_npc_name     VARCHAR(63))       \
+   BEGIN                                     \
+   INSERT INTO wiki_quest_giver              \
+      (  quest_id,                           \
+         quest_npc_name)                     \
+         VALUES (quest_id,                   \
+            quest_npc_name);                 \
    END"
 
 #pragma endregion
@@ -2457,6 +2496,7 @@ void _MySQLVerifySchema()
    MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATETABLE_GEMS, status);
    MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATETABLE_OFFERINGS, status);
    MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATETABLE_QUESTS, status);
+   MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATETABLE_QUESTGIVERS, status);
 
    char buffer[128];
    // Drop existing procedures if present.
@@ -2510,6 +2550,7 @@ void _MySQLVerifySchema()
    MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATEPROC_GEMS, status);
    MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATEPROC_OFFERINGS, status);
    MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATEPROC_QUESTS, status);
+   MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATEPROC_QUESTGIVER, status);
 
    // set state to schema verified
    state = SCHEMAVERIFIED;

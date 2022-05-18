@@ -3162,8 +3162,10 @@ messages:
    }
 
    GetNumItemsInInventory()
+   "NOTE: Includes reagent bag contents."
    {
-      return (length(plActive) + length(plPassive));
+      return (Length(plActive) + Length(plPassive)
+         + Length(Send(self,@GetReagentBagContents)));
    }
 
    DropItem(droppedItem=$, targetGhost=$, dropRoom=$, dropRow=0, dropCol=0,
@@ -3180,8 +3182,11 @@ messages:
       {
          return FALSE;
       }
-
-      oItem = Send(self,@FindItemByIndex,#index=index);
+      else
+      {
+         // Only need to call this if we have an index and droppedItem = $.
+         oItem = Send(self,@FindItemByIndex,#index=index);
+      }
 
       // Can't drop nothing.
       if (oItem = $)
@@ -3251,22 +3256,32 @@ messages:
    }
 
    FindItemByIndex(index = $)
+   "NOTE: Includes reagent bag contents, indexed after active and passive."
    {
-      local lInv;
+      local iLenActive, iLenPassive, iLenBag, lInv;
 
       if index = $
       {
          return $;
       }
 
-      if index <= length(plActive)
+      iLenActive = Length(plActive);
+      iLenPassive = Length(plPassive);
+      iLenBag = Length(Send(self,@GetReagentBagContents));
+
+      if (index <= iLenActive)
       {
          lInv = plActive;
       }
-      else
+      else if (index <= iLenActive + iLenPassive)
       {
          lInv = plPassive;
-         index = index - length(plActive);
+         index -= iLenActive;
+      }
+      else
+      {
+         lInv = Send(self,@GetReagentBagContents);
+         index -= iLenActive + iLenPassive;
       }
 
       if (lInv = $)

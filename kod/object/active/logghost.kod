@@ -33,12 +33,13 @@ resources:
    logoffghost_default_shield = rshield.bgf
 
    logoffghost_penalty_mail_Sender = "Your guardian angel"
-
+   logoffghost_itemslost_one = "  The item you lost was: %r."
+   logoffghost_itemslost_some = "  The items you lost were: %r."
    logoffghost_noflatpenalty_mail = \
       "Subject: Penalties for logging off in an unsafe area\n"
       "You have suffered some penalties for logging off in an unsafe area:\n"
       "You lost %i XP, %i items, %i spell points, %i skill points and %i honor "
-      "points."
+      "points.%s"
       "\n\n"
       "In the future, it would be wise to log off in a safe area such as an "
       "inn, an adventurer's hall, or the interior of your guild's hall."
@@ -72,7 +73,7 @@ resources:
       "Subject: Penalties for logging off in an unsafe area\n"
       "You have suffered some penalties for logging off in an unsafe area:\n"
       "You lost %i XP, %i items, %i spell points, %i skill points and %i honor "
-      "points."
+      "points.%s"
       "\n\n"
       "In the future, it would be wise to log off in a safe area such as an "
       "inn, an adventurer's hall, or the interior of your guild's hall."
@@ -342,10 +343,10 @@ messages:
       return;
    }
 
-   SendPenaltyInfo(iXPLost=0, iItemsLost=0, iSpellPtLost=0, iSkillPtLost=0,
+   SendPenaltyInfo(iXPLost=0, lItemsLost=0, iSpellPtLost=0, iSkillPtLost=0,
                    iHonorLost=0)
    {
-      local rMail;
+      local i, j, iCount, iItemsLost, lAdd, lNestList, rMail, rNum, rSeparator;
 
       // Get the correct mail resource.
       if Send(SETTINGS_OBJECT,@GetFlatPenaltiesEnable,
@@ -358,12 +359,70 @@ messages:
          rMail = logoffghost_noflatpenalty_mail;
       }
 
+      iItemsLost = Length(lItemsLost);
+
+      if (iItemsLost <= 0 OR iItemsLost > 24)
+      {
+         lNestList = [4,rMail, 4,iXPLost, 4,iItemsLost, 4,iSpellPtLost,
+                      4,iSkillPtLost, 4,iHonorLost, 4, system_blank_resource];
+      }
+      else
+      {
+         if (iItemsLost = 1)
+         {
+            rNum = logoffghost_itemslost_one;
+         }
+         else
+         {
+            rNum = logoffghost_itemslost_some;
+         }
+
+         lNestList = [4,rMail, 4,iXPLost, 4,iItemsLost, 4,iSpellPtLost,
+                      4,iSkillPtLost, 4,iHonorLost, 4,rNum,
+                      4,Send(SYS,@AddResourceTemplate,#iNum=iItemsLost)];
+
+         iCount = 1;
+         foreach i in lItemsLost
+         {
+            if (iCount > 1)
+            {
+               if (iCount = iItemsLost)
+               {
+                  rSeparator = object_time_and_rsc;
+               }
+               else
+               {
+                  rSeparator = object_time_comma_rsc;
+               }
+            }
+            else
+            {
+               rSeparator = system_blank_resource;
+            }
+            ++iCount;
+
+            if (Send(i,@IsStackable))
+            {
+               lAdd = [4,object_number_item, 4, rSeparator,
+                       4,Send(i,@GetNumber), 4,Send(i,@GetName)];
+            }
+            else
+            {
+               lAdd = [4,object_normal_item, 4, rSeparator,
+                       4,Send(i,@GetIndef), 4,Send(i,@GetName)];
+            }
+            foreach j in lAdd
+            {
+               lNestList = AppendListElem(j, lNestList);
+            }
+         }
+      }
+
       // Send mail notifying user of penalties incurred
       Send(poGhostedPlayer,@ReceiveNestedMail,
            #from=logoffghost_penalty_mail_Sender,
            #dest_list=[poGhostedPlayer],
-           #nest_list=[4,rMail, 4,iXPLost, 4,iItemsLost, 4,iSpellPtLost,
-                       4,iSkillPtLost, 4,iHonorLost]);
+           #nest_list=lNestList);
 
       return;
    }

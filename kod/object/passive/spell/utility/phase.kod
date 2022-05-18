@@ -39,12 +39,18 @@ resources:
 
    Phase_penned_wav_rsc = logoffghost_poof.ogg
 
+   penalties_inflicted_no_items = \
+      "The torturous experience has cost you %i XP, %i spell "
+      "points, and %i skill points."
+   penalties_inflicted_many_items = \
+      "The torturous experience has cost you %i items, %i XP, %i spell "
+      "points, and %i skill points."
    penalties_inflicted_one_item = \
-      "The torturous experience has cost you %i XP, one item, %i spell "
-      "points, and %i skill points."
-   penalties_inflicted_plural = \
-      "The torturous experience has cost you %i XP, %i items, %i spell "
-      "points, and %i skill points."
+      "The torturous experience has cost you %i XP, %i spell "
+      "points, %i skill points and the following item: %r."
+   penalties_inflicted_some_items = \
+      "The torturous experience has cost you %i XP, %i spell "
+      "points, %i skill points and the following %i items: %r."
 
    no_phasing_in_safe_place_msg = \
       "This place of safety is anchored and calm, and you cannot "
@@ -368,27 +374,91 @@ messages:
       return;
    }
 
-   SendPenaltyInfo(who=$, iXPLost=0, iItemsLost=0, iSpellPtLost=0,
+   SendPenaltyInfo(who=$, iXPLost=0, lItemsLost=0, iSpellPtLost=0,
                    iSkillPtLost=0)
    {
+      local iItemsLost;
+
       if (who = $)
       {
          return;
       }
 
-      if iItemsLost = 1
+      iItemsLost = Length(lItemsLost);
+
+      // Handle 0 items or >24 items here.
+      if (iItemsLost <= 0)
       {
-         Send(who,@MsgSendUser,#message_rsc=penalties_inflicted_one_item,
-               #parm1=iXPLost,#parm2=iSpellPtLost,#parm3=iSkillPtLost);
+      Send(who,@MsgSendUser,#message_rsc=penalties_inflicted_no_items,
+            #parm1=iXPLost,#parm2=iSpellPtLost,#parm3=iSkillPtLost);
+      }
+      else if (iItemsLost > 24)
+      {
+         Send(who,@MsgSendUser,#message_rsc=penalties_inflicted_many_items,
+               #parm1=iItemsLost,#parm2=iXPLost,#parm3=iSpellPtLost,
+               #parm4=iSkillPtLost);
       }
       else
       {
-         Send(who,@MsgSendUser,#message_rsc=penalties_inflicted_plural,
-               #parm1=iXPLost,#parm2=iItemsLost,#parm3=iSpellPtLost,
-               #parm4=iSkillPtLost);
+         // Callback so we can list the items in the user-chosen language.
+         Send(who,@MsgSendUserCallback,#what=self,#parm1=lItemsLost,
+               #parm2=iXPLost,#parm3=iSpellPtLost,#parm4=iSkillPtLost,
+               #sCallBack=SetString($,@SendPenaltyInfoCallback));
       }
 
       return;
+   }
+
+   SendPenaltyInfoCallback(parm1=$,parm2=$,parm3=$,parm4=$)
+   {
+      local i, iItemsLost, iCount, rMain, rSeparator;
+
+      iItemsLost = Length(parm1);
+
+      if (iItemsLost = 1)
+      {
+         AddPacket(4,penalties_inflicted_one_item, 4,parm2, 4,parm3, 4,parm4,
+            4,Send(SYS,@AddResourceTemplate,#iNum=iItemsLost));
+      }
+      else
+      {
+         AddPacket(4,penalties_inflicted_some_items, 4,parm2, 4,parm3, 4,parm4,
+            4,iItemsLost, 4,Send(SYS,@AddResourceTemplate,#iNum=iItemsLost));
+      }
+
+      iCount = 1;
+      foreach i in parm1
+      {
+         if (iCount > 1)
+         {
+            if (iCount = iItemsLost)
+            {
+               rSeparator = object_time_and_rsc;
+            }
+            else
+            {
+               rSeparator = object_time_comma_rsc;
+            }
+         }
+         else
+         {
+            rSeparator = system_blank_resource;
+         }
+         ++iCount;
+
+         if (Send(i,@IsStackable))
+         {
+            AddPacket(4,object_number_item, 4, rSeparator,
+                      4,Send(i,@GetNumber), 4,Send(i,@GetName));
+         }
+         else
+         {
+            AddPacket(4,object_normal_item, 4, rSeparator,
+                      4,Send(i,@GetIndef), 4,Send(i,@GetName));
+         }
+      }
+
+      return TRUE;
    }
 
    SuccessChance()

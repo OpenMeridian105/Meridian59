@@ -96,6 +96,34 @@ int   port     = 3306;
    )                                           \
    ENGINE=InnoDB DEFAULT CHARSET=latin1;"
 
+
+#define SQLQUERY_CREATETABLE_LOGPEN                     "\
+   CREATE TABLE player_logpen                            \
+   (                                                     \
+     player_name      VARCHAR(63) NOT NULL,              \
+     logpen_time      DATETIME NOT NULL,                 \
+     room_id          INT(6),                            \
+     logpen_xp        INT(8) NOT NULL,                   \
+     logpen_hp        INT(8) NOT NULL,                   \
+     logpen_spellpct  INT(6) NOT NULL,                   \
+     logpen_skillpct  INT(6) NOT NULL,                   \
+     logpen_numitems  INT(4) NOT NULL,                   \
+     PRIMARY KEY(player_name, logpen_time)               \
+   )                                                     \
+   ENGINE=InnoDB DEFAULT CHARSET=latin1;"
+
+#define SQLQUERY_CREATETABLE_LOGPEN_ITEMS               "\
+   CREATE TABLE player_logpen_items                      \
+   (                                                     \
+     logpen_item_id   INT(12) NOT NULL AUTO_INCREMENT,   \
+     player_name      VARCHAR(63) NOT NULL,              \
+     logpen_time      DATETIME NOT NULL,                 \
+     item_name        VARCHAR(63) NOT NULL,              \
+     item_number      INT(6) NOT NULL,                   \
+     PRIMARY KEY(logpen_item_id)                         \
+   )                                                     \
+   ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=latin1;"
+
 #define SQLQUERY_CREATETABLE_PLAYER                         "\
    CREATE TABLE player (                                     \
      player_account_id     INT(11) NOT NULL,                 \
@@ -103,8 +131,8 @@ int   port     = 3306;
      player_home           VARCHAR(128) DEFAULT NULL,        \
      player_bind           VARCHAR(128) DEFAULT NULL,        \
      player_guild          VARCHAR(45) DEFAULT NULL,         \
-     player_max_health     INT(4) DEFAULT NULL,              \
-     player_max_mana       INT(4) DEFAULT NULL,              \
+     player_max_health     INT(6) DEFAULT NULL,              \
+     player_max_mana       INT(6) DEFAULT NULL,              \
      player_might          INT(4) DEFAULT NULL,              \
      player_int            INT(4) DEFAULT NULL,              \
      player_myst           INT(4) DEFAULT NULL,              \
@@ -145,7 +173,7 @@ int   port     = 3306;
      spell_mediate_ratio  INT(4) DEFAULT NULL,           \
      spell_exertion       INT(4) DEFAULT NULL,           \
      spell_casttime       INT(4) DEFAULT NULL,           \
-     spell_iflag          INT(4) NOT NULL,               \
+     spell_iflag          INT(8) NOT NULL,               \
      PRIMARY KEY(spell_id)                               \
    )                                                     \
    ENGINE=InnoDB DEFAULT CHARSET=latin1;"
@@ -164,7 +192,7 @@ int   port     = 3306;
      skill_chance         INT(4) DEFAULT NULL,           \
      skill_mediate_ratio  INT(4) DEFAULT NULL,           \
      skill_exertion       INT(4) DEFAULT NULL,           \
-     skill_iflag          INT(4) NOT NULL,               \
+     skill_iflag          INT(8) NOT NULL,               \
      PRIMARY KEY(skill_id)                               \
    )                                                     \
    ENGINE=InnoDB DEFAULT CHARSET=latin1;"
@@ -194,8 +222,8 @@ int   port     = 3306;
    (                                                     \
      treasure_id          INT(4) NOT NULL,               \
      item_name            VARCHAR(63) NOT NULL,          \
-     item_min_amount      INT(4) DEFAULT NULL,           \
-     item_max_amount      INT(4) DEFAULT NULL,           \
+     item_min_amount      INT(8) DEFAULT NULL,           \
+     item_max_amount      INT(8) DEFAULT NULL,           \
      PRIMARY KEY(treasure_id, item_name)                 \
    )                                                     \
    ENGINE=InnoDB DEFAULT CHARSET=latin1;"
@@ -222,10 +250,10 @@ int   port     = 3306;
      monster_karma           INT(4) DEFAULT NULL,        \
      monster_treasure        INT(4) DEFAULT NULL,        \
      monster_speed           INT(4) DEFAULT NULL,        \
-     monster_behavior        INT(4) DEFAULT NULL,        \
+     monster_behavior        INT(10) DEFAULT NULL,        \
      monster_difficulty      INT(4) DEFAULT NULL,        \
      monster_visiondistance  INT(4) DEFAULT NULL,        \
-     monster_iflag           INT(4) DEFAULT NULL,        \
+     monster_iflag           INT(8) DEFAULT NULL,        \
      PRIMARY KEY(monster_name)                           \
    )                                                     \
    ENGINE=InnoDB DEFAULT CHARSET=latin1;"
@@ -233,7 +261,7 @@ int   port     = 3306;
 #define SQLQUERY_CREATETABLE_MONSTER_ZONE               "\
    CREATE TABLE wiki_monster_zone                        \
    (                                                     \
-     monster_rid          INT(4) NOT NULL,               \
+     monster_rid          INT(6) NOT NULL,               \
      monster_name         VARCHAR(63) NOT NULL,          \
      monster_spawnchance  INT(4) DEFAULT NULL,           \
      PRIMARY KEY(monster_rid, monster_name)              \
@@ -249,7 +277,7 @@ int   port     = 3306;
      npc_desc            TEXT DEFAULT NULL,              \
      npc_desc_ger        TEXT DEFAULT NULL,              \
      npc_merchantmarkup  INT(4) DEFAULT NULL,            \
-     npc_iflag           INT(4) DEFAULT NULL,            \
+     npc_iflag           INT(8) DEFAULT NULL,            \
      PRIMARY KEY(npc_name)                               \
    )                                                     \
    ENGINE=InnoDB DEFAULT CHARSET=latin1;"
@@ -264,13 +292,13 @@ int   port     = 3306;
      weapon_color     INT(4) NOT NULL,                   \
      weapon_desc      TEXT DEFAULT NULL,                 \
      weapon_desc_ger  TEXT DEFAULT NULL,                 \
-     weapon_value     INT(4) DEFAULT NULL,               \
+     weapon_value     INT(8) DEFAULT NULL,               \
      weapon_weight    INT(4) DEFAULT NULL,               \
      weapon_bulk      INT(4) DEFAULT NULL,               \
      weapon_range     INT(4) DEFAULT NULL,               \
      weapon_skill     INT(4) DEFAULT NULL,               \
      weapon_prof      INT(4) DEFAULT NULL,               \
-     weapon_iflag     INT(4) DEFAULT NULL,               \
+     weapon_iflag     INT(8) DEFAULT NULL,               \
      PRIMARY KEY(weapon_name)                            \
    )                                                     \
    ENGINE=InnoDB DEFAULT CHARSET=latin1;"
@@ -281,9 +309,9 @@ int   port     = 3306;
      room_name      VARCHAR(63) NOT NULL,                \
      room_name_ger  VARCHAR(63) NOT NULL,                \
      room_roo       VARCHAR(63) NOT NULL,                \
-     room_number    INT(4) NOT NULL,                     \
+     room_number    INT(6) NOT NULL,                     \
      room_region    INT(4) NOT NULL,                     \
-     room_iflag     INT(4) NOT NULL,                     \
+     room_iflag     INT(8) NOT NULL,                     \
      PRIMARY KEY(room_number)                            \
    )                                                     \
    ENGINE=InnoDB DEFAULT CHARSET=latin1;"
@@ -292,7 +320,7 @@ int   port     = 3306;
    CREATE TABLE wiki_npc_zone                            \
    (                                                     \
      npc_name      VARCHAR(63) NOT NULL,                 \
-     npc_roomid    INT(4) NOT NULL,                      \
+     npc_roomid    INT(6) NOT NULL,                      \
      npc_row       INT(4) NOT NULL,                      \
      npc_col       INT(4) NOT NULL,                      \
      PRIMARY KEY(npc_name, npc_roomid, npc_row, npc_col) \
@@ -333,7 +361,7 @@ int   port     = 3306;
      npc_name        VARCHAR(63) NOT NULL,             \
      npc_item_sold   VARCHAR(63) NOT NULL,             \
      item_color      INT(4) NOT NULL,                  \
-     item_price      INT(4) NOT NULL,                  \
+     item_price      INT(8) NOT NULL,                  \
      PRIMARY KEY(npc_name,npc_item_sold, item_color)   \
    )                                                   \
    ENGINE=InnoDB DEFAULT CHARSET=latin1;"
@@ -348,10 +376,10 @@ int   port     = 3306;
      reagent_color     INT(4) NOT NULL,                  \
      reagent_desc      TEXT DEFAULT NULL,                \
      reagent_desc_ger  TEXT DEFAULT NULL,                \
-     reagent_value     INT(4) DEFAULT NULL,              \
+     reagent_value     INT(8) DEFAULT NULL,              \
      reagent_weight    INT(4) DEFAULT NULL,              \
      reagent_bulk      INT(4) DEFAULT NULL,              \
-     reagent_iflag     INT(4) DEFAULT NULL,              \
+     reagent_iflag     INT(8) DEFAULT NULL,              \
      PRIMARY KEY(reagent_name)                           \
    )                                                     \
    ENGINE=InnoDB DEFAULT CHARSET=latin1;"
@@ -366,10 +394,10 @@ int   port     = 3306;
      food_color     INT(4) NOT NULL,                     \
      food_desc      TEXT DEFAULT NULL,                   \
      food_desc_ger  TEXT DEFAULT NULL,                   \
-     food_value     INT(4) DEFAULT NULL,                 \
+     food_value     INT(8) DEFAULT NULL,                 \
      food_weight    INT(4) DEFAULT NULL,                 \
      food_bulk      INT(4) DEFAULT NULL,                 \
-     food_iflag     INT(4) DEFAULT NULL,                 \
+     food_iflag     INT(8) DEFAULT NULL,                 \
      PRIMARY KEY(food_name)                              \
    )                                                     \
    ENGINE=InnoDB DEFAULT CHARSET=latin1;"
@@ -384,10 +412,10 @@ int   port     = 3306;
      ammo_color     INT(4) NOT NULL,                     \
      ammo_desc      TEXT DEFAULT NULL,                   \
      ammo_desc_ger  TEXT DEFAULT NULL,                   \
-     ammo_value     INT(4) DEFAULT NULL,                 \
+     ammo_value     INT(8) DEFAULT NULL,                 \
      ammo_weight    INT(4) DEFAULT NULL,                 \
      ammo_bulk      INT(4) DEFAULT NULL,                 \
-     ammo_iflag     INT(4) DEFAULT NULL,                 \
+     ammo_iflag     INT(8) DEFAULT NULL,                 \
      PRIMARY KEY(ammo_name)                              \
    )                                                     \
    ENGINE=InnoDB DEFAULT CHARSET=latin1;"
@@ -402,10 +430,10 @@ int   port     = 3306;
      armor_color     INT(4) NOT NULL,                    \
      armor_desc      TEXT DEFAULT NULL,                  \
      armor_desc_ger  TEXT DEFAULT NULL,                  \
-     armor_value     INT(4) DEFAULT NULL,                \
+     armor_value     INT(8) DEFAULT NULL,                \
      armor_weight    INT(4) DEFAULT NULL,                \
      armor_bulk      INT(4) DEFAULT NULL,                \
-     armor_iflag     INT(4) DEFAULT NULL,                \
+     armor_iflag     INT(8) DEFAULT NULL,                \
      PRIMARY KEY(armor_name)                             \
    )                                                     \
    ENGINE=InnoDB DEFAULT CHARSET=latin1;"
@@ -420,10 +448,10 @@ int   port     = 3306;
      misc_color     INT(4) NOT NULL,                     \
      misc_desc      TEXT DEFAULT NULL,                   \
      misc_desc_ger  TEXT DEFAULT NULL,                   \
-     misc_value     INT(4) DEFAULT NULL,                 \
+     misc_value     INT(8) DEFAULT NULL,                 \
      misc_weight    INT(4) DEFAULT NULL,                 \
      misc_bulk      INT(4) DEFAULT NULL,                 \
-     misc_iflag     INT(4) DEFAULT NULL,                 \
+     misc_iflag     INT(8) DEFAULT NULL,                 \
      PRIMARY KEY(misc_name)                              \
    )                                                     \
    ENGINE=InnoDB DEFAULT CHARSET=latin1;"
@@ -438,10 +466,10 @@ int   port     = 3306;
      rings_color     INT(4) NOT NULL,                    \
      rings_desc      TEXT DEFAULT NULL,                  \
      rings_desc_ger  TEXT DEFAULT NULL,                  \
-     rings_value     INT(4) DEFAULT NULL,                \
+     rings_value     INT(8) DEFAULT NULL,                \
      rings_weight    INT(4) DEFAULT NULL,                \
      rings_bulk      INT(4) DEFAULT NULL,                \
-     rings_iflag     INT(4) DEFAULT NULL,                \
+     rings_iflag     INT(8) DEFAULT NULL,                \
      PRIMARY KEY(rings_name)                             \
    )                                                     \
    ENGINE=InnoDB DEFAULT CHARSET=latin1;"
@@ -456,10 +484,10 @@ int   port     = 3306;
      rods_color     INT(4) NOT NULL,                     \
      rods_desc      TEXT DEFAULT NULL,                   \
      rods_desc_ger  TEXT DEFAULT NULL,                   \
-     rods_value     INT(4) DEFAULT NULL,                 \
+     rods_value     INT(8) DEFAULT NULL,                 \
      rods_weight    INT(4) DEFAULT NULL,                 \
      rods_bulk      INT(4) DEFAULT NULL,                 \
-     rods_iflag     INT(4) DEFAULT NULL,                 \
+     rods_iflag     INT(8) DEFAULT NULL,                 \
      PRIMARY KEY(rods_name)                              \
    )                                                     \
    ENGINE=InnoDB DEFAULT CHARSET=latin1;"
@@ -474,10 +502,10 @@ int   port     = 3306;
      potion_color     INT(4) NOT NULL,                   \
      potion_desc      TEXT DEFAULT NULL,                 \
      potion_desc_ger  TEXT DEFAULT NULL,                 \
-     potion_value     INT(4) DEFAULT NULL,               \
+     potion_value     INT(8) DEFAULT NULL,               \
      potion_weight    INT(4) DEFAULT NULL,               \
      potion_bulk      INT(4) DEFAULT NULL,               \
-     potion_iflag     INT(4) DEFAULT NULL,               \
+     potion_iflag     INT(8) DEFAULT NULL,               \
      PRIMARY KEY(potion_name)                            \
    )                                                     \
    ENGINE=InnoDB DEFAULT CHARSET=latin1;"
@@ -492,10 +520,10 @@ int   port     = 3306;
      scrolls_color     INT(4) NOT NULL,                  \
      scrolls_desc      TEXT DEFAULT NULL,                \
      scrolls_desc_ger  TEXT DEFAULT NULL,                \
-     scrolls_value     INT(4) DEFAULT NULL,              \
+     scrolls_value     INT(8) DEFAULT NULL,              \
      scrolls_weight    INT(4) DEFAULT NULL,              \
      scrolls_bulk      INT(4) DEFAULT NULL,              \
-     scrolls_iflag     INT(4) DEFAULT NULL,              \
+     scrolls_iflag     INT(8) DEFAULT NULL,              \
      PRIMARY KEY(scrolls_name)                           \
    )                                                     \
    ENGINE=InnoDB DEFAULT CHARSET=latin1;"
@@ -510,10 +538,10 @@ int   port     = 3306;
      wands_color     INT(4) NOT NULL,                    \
      wands_desc      TEXT DEFAULT NULL,                  \
      wands_desc_ger  TEXT DEFAULT NULL,                  \
-     wands_value     INT(4) DEFAULT NULL,                \
+     wands_value     INT(8) DEFAULT NULL,                \
      wands_weight    INT(4) DEFAULT NULL,                \
      wands_bulk      INT(4) DEFAULT NULL,                \
-     wands_iflag     INT(4) DEFAULT NULL,                \
+     wands_iflag     INT(8) DEFAULT NULL,                \
      PRIMARY KEY(wands_name)                             \
    )                                                     \
    ENGINE=InnoDB DEFAULT CHARSET=latin1;"
@@ -528,10 +556,10 @@ int   port     = 3306;
      questitem_color     INT(4) NOT NULL,                \
      questitem_desc      TEXT DEFAULT NULL,              \
      questitem_desc_ger  TEXT DEFAULT NULL,              \
-     questitem_value     INT(4) DEFAULT NULL,            \
+     questitem_value     INT(8) DEFAULT NULL,            \
      questitem_weight    INT(4) DEFAULT NULL,            \
      questitem_bulk      INT(4) DEFAULT NULL,            \
-     questitem_iflag     INT(4) DEFAULT NULL,            \
+     questitem_iflag     INT(8) DEFAULT NULL,            \
      PRIMARY KEY(questitem_name)                         \
    )                                                     \
    ENGINE=InnoDB DEFAULT CHARSET=latin1;"
@@ -546,10 +574,10 @@ int   port     = 3306;
      necklace_color     INT(4) NOT NULL,                 \
      necklace_desc      TEXT DEFAULT NULL,               \
      necklace_desc_ger  TEXT DEFAULT NULL,               \
-     necklace_value     INT(4) DEFAULT NULL,             \
+     necklace_value     INT(8) DEFAULT NULL,             \
      necklace_weight    INT(4) DEFAULT NULL,             \
      necklace_bulk      INT(4) DEFAULT NULL,             \
-     necklace_iflag     INT(4) DEFAULT NULL,             \
+     necklace_iflag     INT(8) DEFAULT NULL,             \
      PRIMARY KEY(necklace_name)                          \
    )                                                     \
    ENGINE=InnoDB DEFAULT CHARSET=latin1;"
@@ -564,10 +592,10 @@ int   port     = 3306;
      instrument_color     INT(4) NOT NULL,               \
      instrument_desc      TEXT DEFAULT NULL,             \
      instrument_desc_ger  TEXT DEFAULT NULL,             \
-     instrument_value     INT(4) DEFAULT NULL,           \
+     instrument_value     INT(8) DEFAULT NULL,           \
      instrument_weight    INT(4) DEFAULT NULL,           \
      instrument_bulk      INT(4) DEFAULT NULL,           \
-     instrument_iflag     INT(4) DEFAULT NULL,           \
+     instrument_iflag     INT(8) DEFAULT NULL,           \
      PRIMARY KEY(instrument_name)                        \
    )                                                     \
    ENGINE=InnoDB DEFAULT CHARSET=latin1;"
@@ -582,10 +610,10 @@ int   port     = 3306;
      gem_color     INT(4) NOT NULL,                      \
      gem_desc      TEXT DEFAULT NULL,                    \
      gem_desc_ger  TEXT DEFAULT NULL,                    \
-     gem_value     INT(4) DEFAULT NULL,                  \
+     gem_value     INT(8) DEFAULT NULL,                  \
      gem_weight    INT(4) DEFAULT NULL,                  \
      gem_bulk      INT(4) DEFAULT NULL,                  \
-     gem_iflag     INT(4) DEFAULT NULL,                  \
+     gem_iflag     INT(8) DEFAULT NULL,                  \
      PRIMARY KEY(gem_name)                               \
    )                                                     \
    ENGINE=InnoDB DEFAULT CHARSET=latin1;"
@@ -600,10 +628,10 @@ int   port     = 3306;
      offering_color     INT(4) NOT NULL,                 \
      offering_desc      TEXT DEFAULT NULL,               \
      offering_desc_ger  TEXT DEFAULT NULL,               \
-     offering_value     INT(4) DEFAULT NULL,             \
+     offering_value     INT(8) DEFAULT NULL,             \
      offering_weight    INT(4) DEFAULT NULL,             \
      offering_bulk      INT(4) DEFAULT NULL,             \
-     offering_iflag     INT(4) DEFAULT NULL,             \
+     offering_iflag     INT(8) DEFAULT NULL,             \
      PRIMARY KEY(offering_name)                          \
    )                                                     \
    ENGINE=InnoDB DEFAULT CHARSET=latin1;"
@@ -695,6 +723,42 @@ int   port     = 3306;
        pdeath_time    = now();          \n\
    END"
 
+#define SQLQUERY_CREATEPROC_LOGPEN             "\
+   CREATE PROCEDURE WriteLogpen(              \n\
+     IN player_name      VARCHAR(63),         \n\
+     IN room_id          INT(6),              \n\
+     IN logpen_xp        INT(8),              \n\
+     IN logpen_hp        INT(8),              \n\
+     IN logpen_spellpct  INT(6),              \n\
+     IN logpen_skillpct  INT(6),              \n\
+     IN logpen_numitems  INT(4))              \n\
+   BEGIN                                      \n\
+     INSERT INTO player_logpen                \n\
+      SET                                     \n\
+       player_name  = player_name,            \n\
+       logpen_time  = now(),                  \n\
+       room_id      = room_id,                \n\
+       logpen_xp    = logpen_xp,              \n\
+       logpen_hp    = logpen_hp,              \n\
+       logpen_spellpct = logpen_spellpct,     \n\
+       logpen_skillpct  = logpen_skillpct,    \n\
+       logpen_numitems = logpen_numitems;     \n\
+   END"
+
+#define SQLQUERY_CREATEPROC_LOGPEN_ITEM    "\
+   CREATE PROCEDURE WriteLogpenItem(      \n\
+     IN player_name     VARCHAR(63),      \n\
+     IN item_name       VARCHAR(63),      \n\
+     IN item_number     INT(6))           \n\
+   BEGIN                                  \n\
+     INSERT INTO player_logpen_items      \n\
+      SET                                 \n\
+       player_name     = player_name,     \n\
+       logpen_time     = now(),           \n\
+       item_name       = item_name,       \n\
+       item_number     = item_number;     \n\
+   END"
+
 #define SQLQUERY_CREATEPROC_PLAYER    "\
    CREATE PROCEDURE WritePlayer(       \
      IN account_id   INT(11),          \
@@ -702,8 +766,8 @@ int   port     = 3306;
      IN home         VARCHAR(128),     \
      IN bind         VARCHAR(128),     \
      IN guild        VARCHAR(45),      \
-     IN max_health   INT(4),           \
-     IN max_mana     INT(4),           \
+     IN max_health   INT(6),           \
+     IN max_mana     INT(6),           \
      IN might        INT(4),           \
      IN p_int        INT(4),           \
      IN myst         INT(4),           \
@@ -816,7 +880,7 @@ int   port     = 3306;
      IN spell_mediate_ratio  INT(4),               \
      IN spell_exertion       INT(4),               \
      IN spell_casttime       INT(4),               \
-     IN spell_iflag          INT(4))               \
+     IN spell_iflag          INT(8))               \
    BEGIN                                           \
      INSERT INTO wiki_spells                       \
       (  spell_id,                                 \
@@ -876,7 +940,7 @@ int   port     = 3306;
      IN skill_chance         INT(4),             \
      IN skill_mediate_ratio  INT(4),             \
      IN skill_exertion       INT(4),             \
-     IN skill_iflag          INT(4))             \
+     IN skill_iflag          INT(8))             \
    BEGIN                                         \
      INSERT INTO wiki_skills                     \
       (  skill_id,                               \
@@ -950,8 +1014,8 @@ int   port     = 3306;
    CREATE PROCEDURE WriteTreasureExtra(      \
      IN treasure_id          INT(4),         \
      IN item_name            VARCHAR(63),    \
-     IN item_min_amount      INT(4),         \
-     IN item_max_amount      INT(4))         \
+     IN item_min_amount      INT(8),         \
+     IN item_max_amount      INT(8))         \
    BEGIN                                     \
    INSERT INTO wiki_treasure_extra           \
       (  treasure_id,                        \
@@ -990,10 +1054,10 @@ int   port     = 3306;
      IN monster_karma           INT(4),                 \
      IN monster_treasure        INT(4),                 \
      IN monster_speed           INT(4),                 \
-     IN monster_behavior        INT(4),                 \
+     IN monster_behavior        INT(10),                \
      IN monster_difficulty      INT(4),                 \
      IN monster_visiondistance  INT(4),                 \
-     IN monster_iflag           INT(4))                 \
+     IN monster_iflag           INT(8))                 \
    BEGIN                                                \
    INSERT INTO wiki_monster                             \
       (  monster_name,                                  \
@@ -1037,7 +1101,7 @@ int   port     = 3306;
 
 #define SQLQUERY_CREATEPROC_MONSTER_ZONE    "\
    CREATE PROCEDURE WriteMonsterZone(        \
-     IN monster_rid          INT(4),         \
+     IN monster_rid          INT(6),         \
      IN monster_name         VARCHAR(63),    \
      IN monster_spawnchance  INT(4))         \
    BEGIN                                     \
@@ -1058,7 +1122,7 @@ int   port     = 3306;
       IN npc_desc            TEXT,              \
       IN npc_desc_ger        TEXT,              \
       IN npc_merchantmarkup  INT(4),            \
-      IN npc_iflag           INT(4))            \
+      IN npc_iflag           INT(8))            \
    BEGIN                                        \
    INSERT INTO wiki_npcs                        \
       (  npc_name,                              \
@@ -1092,13 +1156,13 @@ int   port     = 3306;
      IN weapon_color     INT(4),          \
      IN weapon_desc      TEXT,            \
      IN weapon_desc_ger  TEXT,            \
-     IN weapon_value     INT(4),          \
+     IN weapon_value     INT(8),          \
      IN weapon_weight    INT(4),          \
      IN weapon_bulk      INT(4),          \
      IN weapon_range     INT(4),          \
      IN weapon_skill     INT(4),          \
      IN weapon_prof      INT(4),          \
-     IN weapon_iflag     INT(4))          \
+     IN weapon_iflag     INT(8))          \
    BEGIN                                  \
    INSERT INTO wiki_weapons               \
       (  weapon_name,                     \
@@ -1148,9 +1212,9 @@ int   port     = 3306;
      IN room_name      VARCHAR(63),       \
      IN room_name_ger  VARCHAR(63),       \
      IN room_roo       VARCHAR(63),       \
-     IN room_number    INT(4),            \
+     IN room_number    INT(6),            \
      IN room_region    INT(4),            \
-     IN room_iflag    INT(4))             \
+     IN room_iflag     INT(8))            \
    BEGIN                                  \
    INSERT INTO wiki_rooms                 \
       (  room_name,                       \
@@ -1176,7 +1240,7 @@ int   port     = 3306;
 #define SQLQUERY_CREATEPROC_NPC_ZONE     "\
    CREATE PROCEDURE WriteNpcZone(         \
      IN npc_name      VARCHAR(63),        \
-     IN npc_roomid    INT(4),             \
+     IN npc_roomid    INT(6),             \
      IN npc_row       INT(4),             \
      IN npc_col       INT(4))             \
    BEGIN                                  \
@@ -1235,7 +1299,7 @@ int   port     = 3306;
      IN npc_name       VARCHAR(63),       \
      IN npc_item_sold  VARCHAR(63),       \
      IN item_color     INT(4),            \
-     IN item_price     INT(4))            \
+     IN item_price     INT(8))            \
    BEGIN                                  \
    INSERT INTO wiki_npc_sellcond          \
       (  npc_name,                        \
@@ -1257,10 +1321,10 @@ int   port     = 3306;
      IN reagent_color     INT(4),              \
      IN reagent_desc      TEXT,                \
      IN reagent_desc_ger  TEXT,                \
-     IN reagent_value     INT(4),              \
+     IN reagent_value     INT(8),              \
      IN reagent_weight    INT(4),              \
      IN reagent_bulk      INT(4),              \
-     IN reagent_iflag     INT(4))              \
+     IN reagent_iflag     INT(8))              \
    BEGIN                                       \
    INSERT INTO wiki_reagents                   \
       (  reagent_name,                         \
@@ -1306,10 +1370,10 @@ int   port     = 3306;
      IN food_color     INT(4),            \
      IN food_desc      TEXT,              \
      IN food_desc_ger  TEXT,              \
-     IN food_value     INT(4),            \
+     IN food_value     INT(8),            \
      IN food_weight    INT(4),            \
      IN food_bulk      INT(4),            \
-     IN food_iflag     INT(4))            \
+     IN food_iflag     INT(8))            \
    BEGIN                                  \
    INSERT INTO wiki_food                  \
       (  food_name,                       \
@@ -1354,10 +1418,10 @@ int   port     = 3306;
      IN ammo_color     INT(4),            \
      IN ammo_desc      TEXT,              \
      IN ammo_desc_ger  TEXT,              \
-     IN ammo_value     INT(4),            \
+     IN ammo_value     INT(8),            \
      IN ammo_weight    INT(4),            \
      IN ammo_bulk      INT(4),            \
-     IN ammo_iflag     INT(4))            \
+     IN ammo_iflag     INT(8))            \
    BEGIN                                  \
    INSERT INTO wiki_ammo                  \
       (  ammo_name,                       \
@@ -1402,10 +1466,10 @@ int   port     = 3306;
      IN armor_color     INT(4),           \
      IN armor_desc      TEXT,             \
      IN armor_desc_ger  TEXT,             \
-     IN armor_value     INT(4),           \
+     IN armor_value     INT(8),           \
      IN armor_weight    INT(4),           \
      IN armor_bulk      INT(4),           \
-     IN armor_iflag     INT(4))           \
+     IN armor_iflag     INT(8))           \
    BEGIN                                  \
    INSERT INTO wiki_armor                 \
       (  armor_name,                      \
@@ -1450,10 +1514,10 @@ int   port     = 3306;
      IN misc_color     INT(4),            \
      IN misc_desc      TEXT,              \
      IN misc_desc_ger  TEXT,              \
-     IN misc_value     INT(4),            \
+     IN misc_value     INT(8),            \
      IN misc_weight    INT(4),            \
      IN misc_bulk      INT(4),            \
-     IN misc_iflag     INT(4))            \
+     IN misc_iflag     INT(8))            \
    BEGIN                                  \
    INSERT INTO wiki_miscitems             \
       (  misc_name,                       \
@@ -1498,10 +1562,10 @@ int   port     = 3306;
      IN rings_color     INT(4),           \
      IN rings_desc      TEXT,             \
      IN rings_desc_ger  TEXT,             \
-     IN rings_value     INT(4),           \
+     IN rings_value     INT(8),           \
      IN rings_weight    INT(4),           \
      IN rings_bulk      INT(4),           \
-     IN rings_iflag     INT(4))           \
+     IN rings_iflag     INT(8))           \
    BEGIN                                  \
    INSERT INTO wiki_rings                 \
       (  rings_name,                      \
@@ -1546,10 +1610,10 @@ int   port     = 3306;
      IN rods_color     INT(4),            \
      IN rods_desc      TEXT,              \
      IN rods_desc_ger  TEXT,              \
-     IN rods_value     INT(4),            \
+     IN rods_value     INT(8),            \
      IN rods_weight    INT(4),            \
      IN rods_bulk      INT(4),            \
-     IN rods_iflag     INT(4))            \
+     IN rods_iflag     INT(8))            \
    BEGIN                                  \
    INSERT INTO wiki_rods                  \
       (  rods_name,                       \
@@ -1594,10 +1658,10 @@ int   port     = 3306;
      IN potion_color     INT(4),             \
      IN potion_desc      TEXT,               \
      IN potion_desc_ger  TEXT,               \
-     IN potion_value     INT(4),             \
+     IN potion_value     INT(8),             \
      IN potion_weight    INT(4),             \
      IN potion_bulk      INT(4),             \
-     IN potion_iflag     INT(4))             \
+     IN potion_iflag     INT(8))             \
    BEGIN                                     \
    INSERT INTO wiki_potions                  \
       (  potion_name,                        \
@@ -1642,10 +1706,10 @@ int   port     = 3306;
     IN scrolls_color     INT(4),               \
     IN scrolls_desc      TEXT,                 \
     IN scrolls_desc_ger  TEXT,                 \
-    IN scrolls_value     INT(4),               \
+    IN scrolls_value     INT(8),               \
     IN scrolls_weight    INT(4),               \
     IN scrolls_bulk      INT(4),               \
-    IN scrolls_iflag     INT(4))               \
+    IN scrolls_iflag     INT(8))               \
    BEGIN                                       \
    INSERT INTO wiki_scrolls                    \
       (  scrolls_name,                         \
@@ -1690,10 +1754,10 @@ int   port     = 3306;
     IN wands_color     INT(4),             \
     IN wands_desc      TEXT,               \
     IN wands_desc_ger  TEXT,               \
-    IN wands_value     INT(4),             \
+    IN wands_value     INT(8),             \
     IN wands_weight    INT(4),             \
     IN wands_bulk      INT(4),             \
-    IN wands_iflag     INT(4))             \
+    IN wands_iflag     INT(8))             \
    BEGIN                                   \
    INSERT INTO wiki_wands                  \
       (  wands_name,                       \
@@ -1738,10 +1802,10 @@ int   port     = 3306;
     IN questitem_color     INT(4),                 \
     IN questitem_desc      TEXT,                   \
     IN questitem_desc_ger  TEXT,                   \
-    IN questitem_value     INT(4),                 \
+    IN questitem_value     INT(8),                 \
     IN questitem_weight    INT(4),                 \
     IN questitem_bulk      INT(4),                 \
-    IN questitem_iflag     INT(4))                 \
+    IN questitem_iflag     INT(8))                 \
    BEGIN                                           \
    INSERT INTO wiki_questitems                     \
       (  questitem_name,                           \
@@ -1786,10 +1850,10 @@ int   port     = 3306;
     IN necklace_color     INT(4),                \
     IN necklace_desc      TEXT,                  \
     IN necklace_desc_ger  TEXT,                  \
-    IN necklace_value     INT(4),                \
+    IN necklace_value     INT(8),                \
     IN necklace_weight    INT(4),                \
     IN necklace_bulk      INT(4),                \
-    IN necklace_iflag     INT(4))                \
+    IN necklace_iflag     INT(8))                \
    BEGIN                                         \
    INSERT INTO wiki_necklace                     \
       (  necklace_name,                          \
@@ -1834,10 +1898,10 @@ int   port     = 3306;
     IN instrument_color     INT(4),                   \
     IN instrument_desc      TEXT,                     \
     IN instrument_desc_ger  TEXT,                     \
-    IN instrument_value     INT(4),                   \
+    IN instrument_value     INT(8),                   \
     IN instrument_weight    INT(4),                   \
     IN instrument_bulk      INT(4),                   \
-    IN instrument_iflag     INT(4))                   \
+    IN instrument_iflag     INT(8))                   \
    BEGIN                                              \
    INSERT INTO wiki_instruments                       \
       (  instrument_name,                             \
@@ -1882,10 +1946,10 @@ int   port     = 3306;
     IN gem_color     INT(4),           \
     IN gem_desc      TEXT,             \
     IN gem_desc_ger  TEXT,             \
-    IN gem_value     INT(4),           \
+    IN gem_value     INT(8),           \
     IN gem_weight    INT(4),           \
     IN gem_bulk      INT(4),           \
-    IN gem_iflag     INT(4))           \
+    IN gem_iflag     INT(8))           \
    BEGIN                               \
    INSERT INTO wiki_gems               \
       (  gem_name,                     \
@@ -1930,10 +1994,10 @@ int   port     = 3306;
     IN offering_color     INT(4),               \
     IN offering_desc      TEXT,                 \
     IN offering_desc_ger  TEXT,                 \
-    IN offering_value     INT(4),               \
+    IN offering_value     INT(8),               \
     IN offering_weight    INT(4),               \
     IN offering_bulk      INT(4),               \
-    IN offering_iflag     INT(4))               \
+    IN offering_iflag     INT(8))               \
    BEGIN                                        \
    INSERT INTO wiki_offerings                   \
       (  offering_name,                         \
@@ -2357,6 +2421,8 @@ void _MySQLVerifySchema()
    MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATETABLE_PLAYERLOGINS, status);
    MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATETABLE_PLAYERDAMAGED, status);
    MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATETABLE_PLAYERDEATH, status);
+   MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATETABLE_LOGPEN, status);
+   MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATETABLE_LOGPEN_ITEMS, status);
    MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATETABLE_PLAYER, status);
    MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATETABLE_GUILD, status);
    MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATETABLE_SPELLS, status);
@@ -2406,6 +2472,8 @@ void _MySQLVerifySchema()
    MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATEPROC_PLAYERLOGIN, status);
    MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATEPROC_PLAYERASSESSDAMAGE, status);
    MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATEPROC_PLAYERDEATH, status);
+   MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATEPROC_LOGPEN, status);
+   MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATEPROC_LOGPEN_ITEM, status);
    MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATEPROC_PLAYER, status);
    MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATEPROC_PLAYERSUICIDE, status);
    MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATEPROC_GUILD, status);

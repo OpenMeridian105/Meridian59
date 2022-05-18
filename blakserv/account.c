@@ -619,3 +619,38 @@ void CompactAccounts()
    }
    SetNextAccountID(new_number);
 }
+
+void DumpAccountToDatabsse(account_node *a)
+{
+   int num_expected = 8;
+
+   // Freed in database.c
+   sql_data_node *data = (sql_data_node *)AllocateMemory(MALLOC_ID_SQL,
+      sizeof(sql_data_node) * num_expected);
+
+   data[0].type = TAG_INT;
+   data[0].value.num = a->account_id;
+
+   data[1].type = TAG_STRING;
+   data[1].value.str = MySQLDuplicateString(a->name);
+
+   data[2].type = TAG_STRING;
+   data[2].value.str = MySQLDuplicateString(a->password);
+
+   data[3].type = TAG_STRING;
+   data[3].value.str = MySQLDuplicateString(a->email);
+
+   data[4].type = TAG_INT;
+   data[4].value.num = a->type;
+
+   data[5].type = TAG_INT;
+   data[5].value.num = a->seconds_logged_in;
+
+   data[6].type = TAG_INT;
+   data[6].value.num = a->last_login_time;
+
+   data[7].type = TAG_INT;
+   data[7].value.num = a->suspend_time;
+
+   MySQLRecordGeneric(STAT_ACCOUNTS, num_expected, data);
+}

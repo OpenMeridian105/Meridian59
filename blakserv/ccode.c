@@ -4013,6 +4013,12 @@ int C_RecordStat(int object_id,local_var_type *local_vars,
       return NIL;
    }
 
+   if (!MySQLIsTypeEnabled(stat_type.v.data))
+   {
+      // Silent return since we might have disabled one due to spam.
+      return NIL;
+   }
+
    // Have to allocate it on the heap because this data structure gets placed
    // on a queue in database.c. Memory free handled in database.c unless
    // something goes wrong parsing the values from kod here.

@@ -26,7 +26,7 @@ kod_stack_type stack[MAX_DEPTH];
 kod_statistics kod_stat;      /* actual statistics */
 
 char *bkod;
-int num_interpreted = 0; /* number of instructions in this top level call */
+UINT64 num_interpreted = 0; /* number of instructions in this top level call */
 
 int trace_session_id = INVALID_ID;
 
@@ -99,7 +99,6 @@ void InitProfiling(void)
 
    kod_stat.num_interpreted = 0;
    kod_stat.num_interpreted_highest = 0;
-   kod_stat.billions_interpreted = 0;
    kod_stat.num_messages = 0;
    kod_stat.num_top_level_messages = 0;
    kod_stat.system_start_time = GetTime();
@@ -368,7 +367,7 @@ int SendTopLevelBlakodMessage(int object_id,int message_id,int num_parms,parm_no
    double start_time = 0;
    double interp_time = 0;
    int posts = 0;
-   int accumulated_num_interpreted = 0;
+   UINT64 accumulated_num_interpreted = 0;
 
    if (message_depth != 0)
    {
@@ -427,13 +426,7 @@ int SendTopLevelBlakodMessage(int object_id,int message_id,int num_parms,parm_no
 
    if (num_interpreted > kod_stat.num_interpreted_highest)
       kod_stat.num_interpreted_highest = num_interpreted;
-   
    kod_stat.num_interpreted += num_interpreted;
-   if (kod_stat.num_interpreted > 1000000000L)
-   {
-      kod_stat.num_interpreted -= 1000000000L;
-      kod_stat.billions_interpreted++;
-   }
 
    if (message_depth != 0)
    {

@@ -1340,7 +1340,10 @@ int C_StringEqual(int object_id,local_var_type *local_vars,
 
 void FuzzyCollapseString(char* pTarget, const char* pSource, int len)
 {
-	if (!pTarget || !pSource || len <= 0)
+   if (!pTarget)
+      return;
+
+   if (!pSource || len <= 0)
 	{
 		*pTarget = '\0';
 		return;
@@ -2497,8 +2500,10 @@ int C_CalcUserMovementBucket(int object_id, local_var_type *local_vars,
 
    // Get move-deltas in FINENESS units and scale up further (*256) for precision.
    // Same was done with iMaxMoveRun above. Calculate the squared vector length from the deltas.
-   double iDy = 256.0 * (double)(((row_end.v.data * KODFINENESS) + finerow_end.v.data) - ((row_start.v.data * KODFINENESS) + finerow_start.v.data));
-   double iDx = 256.0 * (double)(((col_end.v.data * KODFINENESS) + finecol_end.v.data) - ((col_start.v.data * KODFINENESS) + finecol_start.v.data));
+   int rowDelta = ((row_end.v.data * KODFINENESS) + finerow_end.v.data) - ((row_start.v.data * KODFINENESS) + finerow_start.v.data);
+   int colDelta = ((col_end.v.data * KODFINENESS) + finecol_end.v.data) - ((col_start.v.data * KODFINENESS) + finecol_start.v.data);
+   double iDy = 256.0 * (double)rowDelta;
+   double iDx = 256.0 * (double)colDelta;
    double iMoveLength = sqrt((iDy * iDy) + (iDx * iDx));
 
    // This move would consume more tokens than we have left -> deny

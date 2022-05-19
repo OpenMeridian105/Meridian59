@@ -27,7 +27,10 @@ DWORD main_thread_id;
 
 #ifdef BLAK_PLATFORM_WINDOWS
 
-int WINAPI WinMain(HINSTANCE hInstance,HINSTANCE hPrev_instance,char *command_line,int how_show)
+int WINAPI WinMain(_In_ HINSTANCE hInstance,
+                   _In_opt_ HINSTANCE hPrev_instance,
+                   _In_ char *command_line,
+                   _In_ int how_show)
 {
 	main_thread_id = GetCurrentThreadId();
 	

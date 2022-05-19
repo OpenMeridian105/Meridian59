@@ -26,6 +26,12 @@ void InitAsyncConnections(void)
     }
 
     maintenance_buffer = (char *)malloc(strlen(ConfigStr(SOCKET_MAINTENANCE_MASK)) + 1);
+    if (maintenance_buffer == NULL)
+    {
+       eprintf("InitAsyncConnections can't allocate maintenance buffer!\n");
+       return;
+    }
+
     strcpy(maintenance_buffer,ConfigStr(SOCKET_MAINTENANCE_MASK));
 
     // now parse out each maintenance ip

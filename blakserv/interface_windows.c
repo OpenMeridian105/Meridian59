@@ -136,6 +136,12 @@ void InitInterface(void)
 
 	hEvent = CreateEvent(NULL,TRUE,FALSE,NULL);
 	
+   if (hEvent == NULL)
+   {
+      lprintf("CreateEvent failed with error code %d", GetLastError());
+      exit(EXIT_FAILURE);
+   }
+
 	hThread = (HANDLE) _beginthread(InterfaceThread,0,0);
 	
 	/* important not to reduce priority because otherwise it holds open

@@ -301,7 +301,7 @@ admin_table_type admin_show_table[] =
 	{ NULL, {N}, F, A|M, admin_showtimer_table,  LEN_ADMIN_SHOWTIMER_TABLE, "timer", "Timer subcommand" },
 	{ AdminShowTimers,        {N},   F, A|M, NULL, 0, "timers",        "Show all timers" },
 	{ AdminShowTransmitted,   {N},   F,A, NULL, 0, "transmitted",      "Show # of bytes transmitted in last minute" },
-   { AdminShowUDP,           {N},   F, A|M, NULL, 0, "udp",           "Show UDP information (e.g. last received time" },
+   { AdminShowUDP,           {N},   F, A|M, NULL, 0, "udp",           "Show UDP information (e.g. last received time)" },
 	{ AdminShowUsage,         {N},   F,A|M,NULL, 0, "usage",           "Show current usage" },
 	{ AdminShowUser,          {R,N}, F, A|M, NULL, 0, "user",          "Show one user by name or object id" },
 	{ AdminShowUsers,         {N},   F, A|M, NULL, 0, "users",         "Show all users" },
@@ -2110,7 +2110,7 @@ void AdminShowOneAccount(account_node *a)
    if (a->suspend_time > 0)
    {
       // Print suspended time left in hours.
-      sprintf(buff, "%7.1fh", (a->suspend_time - GetTime()) / (60.0*60.0));
+      sprintf(buff, "%7.1fh", (a->suspend_time - GetTime()) / (60.0f*60.0f));
    }
    else
    {

@@ -188,6 +188,33 @@ properties:
 
 messages:
 
+   UpdateDatabase()
+   {
+      local i, iQT, iQNT, j, lNPCList, lQNT;
+
+      SendList(plQuestTemplates,QT_QUEST_OBJECT,@UpdateDatabase);
+
+      foreach i in plQuestTemplates
+      {
+         iQT = Nth(i,QT_QST_ID);
+         iQNT = First(Nth(i,QT_QUEST_NODES));
+         lQNT = Send(self,@GetQuestNodeTemplate,#index=iQNT);
+         lNPCList = Nth(lQNT,QNT_NPC_LIST);
+
+         foreach j in lNPCList
+         {
+            if (j = $)
+            {
+               continue;
+            }
+            RecordStat(STAT_QUESTGIVER, TAG_INT, iQT, TAG_RESOURCE,
+                  Send(j,@GetName));
+         }
+      }
+
+      return;
+   }
+
    Constructor()
    {
       Send(self,@Recreate);

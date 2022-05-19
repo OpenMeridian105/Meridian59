@@ -14,7 +14,7 @@
 
 #define SLEEPTIME              10
 #define SLEEPTIMENOCON         1000
-#define MAX_RECORD_QUEUE       5000
+#define MAX_RECORD_QUEUE       15000
 #define RECORD_ENQUEUE_TIMEOUT 60
 #define RECORD_DEQUEUE_TIMEOUT 60
 #define MAX_ITEMS_UNTIL_LOOP   10
@@ -32,6 +32,7 @@ char* user     = 0;
 char* password = 0;
 char* db       = 0;
 int   port     = 3306;
+UINT record_count = 0;
 
 // Calls mysql_query with query 'b' and logs an error if query fails.
 // Doesn't log 'table already exists' error.
@@ -636,18 +637,47 @@ int   port     = 3306;
    )                                                     \
    ENGINE=InnoDB DEFAULT CHARSET=latin1;"
 
-#define SQLQUERY_CREATETABLE_QUESTS                     "\
-   CREATE TABLE wiki_quests                              \
-   (                                                     \
-     quest_name      VARCHAR(63) NOT NULL,               \
-     quest_name_ger  VARCHAR(63) NOT NULL,               \
-     quest_icon      VARCHAR(63) NOT NULL,               \
-     quest_desc      TEXT DEFAULT NULL,                  \
-     quest_desc_ger  TEXT DEFAULT NULL,                  \
-     quest_id        INT(4) DEFAULT NULL,                \
-     PRIMARY KEY(quest_name)                             \
-   )                                                     \
+#define SQLQUERY_CREATETABLE_QUESTS                   "\
+   CREATE TABLE wiki_quests                            \
+   (                                                   \
+     quest_id           INT(4) NOT NULL,               \
+     quest_name         VARCHAR(63) NOT NULL,          \
+     quest_name_ger     VARCHAR(63) NOT NULL,          \
+     quest_icon         VARCHAR(63) NOT NULL,          \
+     quest_icon_group   INT(2) NOT NULL,               \
+     quest_desc         TEXT DEFAULT NULL,             \
+     quest_desc_ger     TEXT DEFAULT NULL,             \
+     quest_recent_time  INT(12) DEFAULT NULL,          \
+     quest_schedule_pct INT(4) DEFAULT NULL,           \
+     quest_est_time     INT(12) DEFAULT NULL,          \
+     quest_est_diff     INT(4) DEFAULT NULL,           \
+     PRIMARY KEY(quest_id)                             \
+   )                                                   \
    ENGINE=InnoDB DEFAULT CHARSET=latin1;"
+
+
+#define SQLQUERY_CREATETABLE_QUESTGIVERS              "\
+   CREATE TABLE wiki_quest_giver                       \
+   (                                                   \
+     quest_id           INT(4) NOT NULL,               \
+     quest_npc_name     VARCHAR(63) NOT NULL,          \
+     PRIMARY KEY(quest_id, quest_npc_name)             \
+   )                                                   \
+   ENGINE=InnoDB DEFAULT CHARSET=latin1;"
+
+
+#define SQLQUERY_CREATETABLE_ACCOUNTS "\
+   CREATE TABLE server_accounts (acct_id INT(8) NOT NULL, acct_name VARCHAR(63) NOT NULL,\
+     acct_password VARCHAR(63) NOT NULL, acct_email VARCHAR(255) NOT NULL, acct_type INT(2) NOT NULL,\
+     acct_loggedin_time INT(12) NOT NULL, acct_last_login INT(12) NOT NULL, acct_suspend_time INT(12) NOT NULL,\
+    PRIMARY KEY(acct_id)) \
+   ENGINE=InnoDB DEFAULT CHARSET=latin1;"
+
+#define SQLQUERY_CREATETABLE_ACCOUNT_CHARS "\
+   CREATE TABLE server_account_chars (entry_id INT(8) NOT NULL AUTO_INCREMENT, acct_id INT(8) NOT NULL,\
+      char_name VARCHAR(63) NOT NULL,\
+    PRIMARY KEY(entry_id)) \
+   ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=latin1;"
 
 #define SQLQUERY_CREATEPROC_MONEYTOTAL      "\
    CREATE PROCEDURE WriteTotalMoney(       \n\
@@ -2035,29 +2065,75 @@ int   port     = 3306;
 
 #define SQLQUERY_CREATEPROC_QUESTS          "\
    CREATE PROCEDURE WriteQuests(             \
-    IN quest_name      VARCHAR(63),          \
-    IN quest_name_ger  VARCHAR(63),          \
-    IN quest_icon      TEXT,                 \
-    IN quest_desc      TEXT,                 \
-    IN quest_desc_ger  TEXT,                 \
-    IN quest_id        INT(4))               \
+    IN quest_id           INT(4),            \
+    IN quest_name         VARCHAR(63),       \
+    IN quest_name_ger     VARCHAR(63),       \
+    IN quest_icon         TEXT,              \
+    IN quest_icon_group   INT(2),            \
+    IN quest_desc         TEXT,              \
+    IN quest_desc_ger     TEXT,              \
+    IN quest_recent_time  INT(4),            \
+    IN quest_schedule_pct INT(4),            \
+    IN quest_est_time     INT(4),            \
+    IN quest_est_diff     INT(4))            \
    BEGIN                                     \
    INSERT INTO wiki_quests                   \
-      (  quest_name,                         \
+      (  quest_id,                           \
+         quest_name,                         \
          quest_name_ger,                     \
          quest_icon,                         \
+         quest_icon_group,                   \
          quest_desc,                         \
          quest_desc_ger,                     \
-         quest_id)                           \
-         VALUES (quest_name,                 \
+         quest_recent_time,                  \
+         quest_schedule_pct,                 \
+         quest_est_time,                     \
+         quest_est_diff)                     \
+         VALUES (quest_id,                   \
+            quest_name,                      \
             quest_name_ger,                  \
             quest_icon,                      \
+            quest_icon_group,                \
             quest_desc,                      \
             quest_desc_ger,                  \
-            quest_id)                        \
-         ON DUPLICATE KEY UPDATE             \
-         quest_desc = quest_desc,            \
-         quest_desc_ger = quest_desc_ger;    \
+            quest_recent_time,               \
+            quest_schedule_pct,              \
+            quest_est_time,                  \
+            quest_est_diff);                 \
+   END"
+
+#define SQLQUERY_CREATEPROC_QUESTGIVER      "\
+   CREATE PROCEDURE WriteQuestGiver(         \
+    IN quest_id           INT(4),            \
+    IN quest_npc_name     VARCHAR(63))       \
+   BEGIN                                     \
+   INSERT INTO wiki_quest_giver              \
+      (  quest_id,                           \
+         quest_npc_name)                     \
+         VALUES (quest_id,                   \
+            quest_npc_name);                 \
+   END"
+
+#define SQLQUERY_CREATEPROC_ACCOUNT         "\
+   CREATE PROCEDURE WriteAccount(IN acct_id INT(8), IN acct_name VARCHAR(63), IN acct_password VARCHAR(63),\
+    IN acct_email VARCHAR(255), IN acct_type INT(2), IN acct_loggedin_time INT(12), IN acct_last_login INT(12),\
+    IN acct_suspend_time INT(12)) \
+   BEGIN \
+   INSERT INTO server_accounts (acct_id, acct_name, acct_password, acct_email, acct_type, acct_loggedin_time,\
+         acct_last_login, acct_suspend_time) \
+      VALUES (acct_id, acct_name, acct_password, acct_email, acct_type, acct_loggedin_time, acct_last_login,\
+               acct_suspend_time)\
+      ON DUPLICATE KEY UPDATE                \
+         acct_name = acct_name, acct_password = acct_password, acct_email = acct_email, acct_type = acct_type,\
+         acct_loggedin_time = acct_loggedin_time, acct_last_login = acct_last_login,\
+         acct_suspend_time = acct_suspend_time;\
+   END"
+
+#define SQLQUERY_CREATEPROC_ACCOUNT_CHAR        "\
+   CREATE PROCEDURE WriteAccountChar(IN acct_id INT(8), IN char_name VARCHAR(63))\
+   BEGIN \
+   INSERT INTO server_account_chars (acct_id, char_name) \
+      VALUES (acct_id, char_name); \
    END"
 
 #pragma endregion
@@ -2154,6 +2230,12 @@ void MySQLEnd()
 };
 
 
+// How many SQL commands have we run/records sent.
+UINT64 MySQLGetRecordCount()
+{
+   return record_count;
+}
+
 /*
  * MySQLTypeNumArgs: Return the number of expected arguments for a given
  *   SQL statistic type.
@@ -2166,6 +2248,30 @@ int MySQLTypeNumArgs(int type)
    bprintf("Unknown type received in MySQLTypeNumArgs: %i", type);
 
    return 0;
+}
+
+bool MySQLIsTypeEnabled(int type)
+{
+   if (type >= STAT_NONE && type <= STAT_MAXSTAT)
+      return Statistics_Table[type].enabled;
+
+   bprintf("Unknown type received in MySQLIsTypeEnabled: %i", type);
+
+   return false;
+}
+
+bool MySQLSetTypeEnabled(int type, bool enabled)
+{
+   if (type >= STAT_NONE && type <= STAT_MAXSTAT)
+   {
+      Statistics_Table[type].enabled = enabled;
+
+      return true;
+   }
+
+   bprintf("Unknown type received in MySQLSetTypeEnabled: %i", type);
+
+   return false;
 }
 
 /*
@@ -2457,6 +2563,9 @@ void _MySQLVerifySchema()
    MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATETABLE_GEMS, status);
    MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATETABLE_OFFERINGS, status);
    MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATETABLE_QUESTS, status);
+   MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATETABLE_QUESTGIVERS, status);
+   MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATETABLE_ACCOUNTS, status);
+   MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATETABLE_ACCOUNT_CHARS, status);
 
    char buffer[128];
    // Drop existing procedures if present.
@@ -2510,6 +2619,9 @@ void _MySQLVerifySchema()
    MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATEPROC_GEMS, status);
    MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATEPROC_OFFERINGS, status);
    MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATEPROC_QUESTS, status);
+   MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATEPROC_QUESTGIVER, status);
+   MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATEPROC_ACCOUNT, status);
+   MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATEPROC_ACCOUNT_CHAR, status);
 
    // set state to schema verified
    state = SCHEMAVERIFIED;
@@ -2672,6 +2784,8 @@ void _MySQLCallProc(char* ProcName, MYSQL_BIND Parameters[], BOOL nullParams = F
       bprintf("MySQL error in mysql_stmt_execute with procedure %s, status code %i: %s",
          ProcName, status, mysql_error(mysql));
    }
+
+   ++record_count;
 
    // close statement
    mysql_stmt_close(stmt);

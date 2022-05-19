@@ -36,6 +36,7 @@ void ForEachUser(void (*callback_func)(user_node *u));
 void ForEachUserByAccountID(void (*callback_func)(user_node *u),int account_id);
 user_node * GetFirstUserByAccountID(int account_id);
 user_node * GetUserByName(char *username);
+void DumpUserToDatabase(user_node *u);
 void ChangeUserAccountID(int account_id, int new_account_id);
 
 #endif

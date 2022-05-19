@@ -117,6 +117,8 @@ void AdminShowResource(int session_id, admin_parm_type parms[], int num_blak_par
 void AdminPrintResource(resource_node *r);
 void AdminShowDynamicResources(int session_id, admin_parm_type parms[], int num_blak_parm, parm_node blak_parm[]);
 void AdminDumpClassInst(int session_id, admin_parm_type parms[], int num_blak_parm, parm_node blak_parm[]);
+void AdminDumpAccountsToDB(int session_id, admin_parm_type parms[], int num_blak_parm, parm_node blak_parm[]);
+void AdminDumpUsersToDB(int session_id, admin_parm_type parms[], int num_blak_parm, parm_node blak_parm[]);
 void AdminShowTimers(int session_id, admin_parm_type parms[], int num_blak_parm, parm_node blak_parm[]);
 void AdminShowTimer(int session_id, admin_parm_type parms[], int num_blak_parm, parm_node blak_parm[]);
 void AdminShowTimerMessageID(int session_id, admin_parm_type parms[], int num_blak_parm, parm_node blak_parm[]);
@@ -149,6 +151,7 @@ void AdminShowReferencesEachTable(int table_id, int parent_id);
 void AdminShowInstances(int session_id, admin_parm_type parms[], int num_blak_parm, parm_node blak_parm[]);
 void AdminShowMatches(int session_id, admin_parm_type parms[], int num_blak_parm, parm_node blak_parm[]);
 void AdminShowProtocol(int session_id, admin_parm_type parms[], int num_blak_parm, parm_node blak_parm[]);
+void AdminShowMySQLTypes(int session_id, admin_parm_type parms[], int num_blak_parm, parm_node blak_parm[]);
 
 void AdminSetClass(int session_id, admin_parm_type parms[], int num_blak_parm, parm_node blak_parm[]);
 void AdminSetObject(int session_id, admin_parm_type parms[], int num_blak_parm, parm_node blak_parm[]);
@@ -220,6 +223,9 @@ void AdminResetUDP(int session_id, admin_parm_type parms[], int num_blak_parm, p
 void AdminDisableSysTimer(int session_id, admin_parm_type parms[], int num_blak_parm, parm_node blak_parm[]);
 void AdminEnableSysTimer(int session_id, admin_parm_type parms[], int num_blak_parm, parm_node blak_parm[]);
 
+void AdminDisableMySQLStat(int session_id, admin_parm_type parms[], int num_blak_parm, parm_node blak_parm[]);
+void AdminEnableMySQLStat(int session_id, admin_parm_type parms[], int num_blak_parm, parm_node blak_parm[]);
+
 void AdminTerminateNoSave(int session_id, admin_parm_type parms[], int num_blak_parm, parm_node blak_parm[]);
 void AdminTerminateSave(int session_id, admin_parm_type parms[], int num_blak_parm, parm_node blak_parm[]);
 
@@ -272,6 +278,7 @@ admin_table_type admin_show_table[] =
 	{ AdminShowMatches,       {S,S,S,S,S,N}, F, A|M, NULL, 0, "matches", "Show all instances of class which match criteria" },
 	{ AdminShowMemory,        {N},   F, A|M, NULL, 0, "memory",        "Show system memory use" },
 	{ AdminShowMessage,       {S,S,N},F,A|M, NULL, 0, "message",       "Show info about class & message" },
+	{ AdminShowMySQLTypes,    {N},    F,A|M, NULL, 0, "mysqltypes",    "Show enabled/disabled status of MySQL record types" },
 	{ AdminShowName,          {R,N}, F, A|M, NULL, 0, "name",          "Show object of user name" },
 	{ AdminShowNameIDs,       {N},   F, A|M, NULL, 0, "nameids",       "Show all name ids (message/parms)" },
 	{ AdminShowObject,        {I,N}, F, A|M, NULL, 0, "object",        "Show one object by id" },
@@ -294,7 +301,7 @@ admin_table_type admin_show_table[] =
 	{ NULL, {N}, F, A|M, admin_showtimer_table,  LEN_ADMIN_SHOWTIMER_TABLE, "timer", "Timer subcommand" },
 	{ AdminShowTimers,        {N},   F, A|M, NULL, 0, "timers",        "Show all timers" },
 	{ AdminShowTransmitted,   {N},   F,A, NULL, 0, "transmitted",      "Show # of bytes transmitted in last minute" },
-   { AdminShowUDP,           {N},   F, A|M, NULL, 0, "udp",           "Show UDP information (e.g. last received time" },
+   { AdminShowUDP,           {N},   F, A|M, NULL, 0, "udp",           "Show UDP information (e.g. last received time)" },
 	{ AdminShowUsage,         {N},   F,A|M,NULL, 0, "usage",           "Show current usage" },
 	{ AdminShowUser,          {R,N}, F, A|M, NULL, 0, "user",          "Show one user by name or object id" },
 	{ AdminShowUsers,         {N},   F, A|M, NULL, 0, "users",         "Show all users" },
@@ -457,18 +464,22 @@ admin_table_type admin_reset_table[] =
 admin_table_type admin_disable_table[] =
 {
 	{ AdminDisableSysTimer,{I,N}, F, A|M, NULL, 0, "systimer","Disable a system timer" },
+   { AdminDisableMySQLStat,{I,N}, F, A | M, NULL, 0, "stat","Disable a MySQL stat type" },
 };
 #define LEN_ADMIN_DISABLE_TABLE (sizeof(admin_disable_table)/sizeof(admin_table_type))
 
 admin_table_type admin_dump_table[] =
 {
    { AdminDumpClassInst,{N}, F, A | M, NULL, 0, "classinstances","Dump a count of instantianted objects by class" },
+   { AdminDumpAccountsToDB,{N}, F, A | M, NULL, 0, "accounts","Dump accounts to database." },
+   { AdminDumpUsersToDB,{N}, F, A | M, NULL, 0, "users","Dump users (acct ID + char name) to database." },
 };
 #define LEN_ADMIN_DUMP_TABLE (sizeof(admin_dump_table)/sizeof(admin_table_type))
 
 admin_table_type admin_enable_table[] =
 {
 	{ AdminEnableSysTimer,{I,N}, F, A|M, NULL, 0, "systimer","Enable a system timer" },
+	{ AdminEnableMySQLStat,{I,N}, F, A|M, NULL, 0, "stat","Enable a MySQL stat type" },
 };
 #define LEN_ADMIN_ENABLE_TABLE (sizeof(admin_enable_table)/sizeof(admin_table_type))
 
@@ -1300,7 +1311,7 @@ void AdminShowStatus(int session_id,admin_parm_type parms[],
 	object_node *o = NULL;
 	class_node *c = NULL;
 	char *m = NULL;
-	int now = GetTime();
+	time_t now = GetTime();
 	
 	aprintf("System Status -----------------------------\n");
 	
@@ -1316,13 +1327,12 @@ void AdminShowStatus(int session_id,admin_parm_type parms[],
 		now - kstat->system_start_time);
 	
 	aprintf("----\n");
-	aprintf("Interpreted %i.%09i billion total instructions in %.2f seconds\n",
-		kstat->billions_interpreted,kstat->num_interpreted,
-		kstat->interpreting_time / 1000000.0);
-	aprintf("Handled %i top level messages, total %i messages\n",
+	aprintf("Interpreted %llu total instructions in %.2f seconds\n",
+		kstat->num_interpreted, kstat->interpreting_time / 1000000.0);
+	aprintf("Handled %llu top level messages, total %llu messages\n",
 		kstat->num_top_level_messages, kstat->num_messages);
 	aprintf("Deepest message call stack is %i calls from top level\n",kstat->message_depth_highest);
-	aprintf("Most instructions on one top level message is %i instructions\n",kstat->num_interpreted_highest);
+	aprintf("Most instructions on one top level message is %llu instructions\n",kstat->num_interpreted_highest);
 	aprintf("Number of top level messages over 1000 milliseconds is %i\n",kstat->interpreting_time_over_second);
 	aprintf("Longest time on one top level message is %i milliseconds\n",(int)(kstat->interpreting_time_highest/1000.0));
 	if (kstat->interpreting_time_object_id != INVALID_ID)
@@ -1348,6 +1358,7 @@ void AdminShowStatus(int session_id,admin_parm_type parms[],
 		GetUsedSessions());
 	
 	aprintf("----\n");
+   aprintf("Performed %llu MySQL DB calls\n", MySQLGetRecordCount());
 	aprintf("Used %i list nodes\n",GetListNodesUsed());
 	aprintf("Used %i tables\n",GetTablesUsed());
 	aprintf("Used %i object nodes\n",GetObjectsUsed());
@@ -1384,38 +1395,36 @@ void AdminShowMemory(int session_id,admin_parm_type parms[],
 	aprintf("-------------------------------------------\n");
 }
 
-static int show_messages_ignore_count;
+static UINT64 show_messages_ignore_count;
 static int show_messages_ignore_id;
-static int show_messages_timed_count;
-static int show_messages_untimed_count;
-static int show_messages_total_count;
+static UINT64 show_messages_timed_count;
+static UINT64 show_messages_untimed_count;
+static UINT64 show_messages_total_count;
 static double show_messages_time;
 static int show_messages_message_id;
 static class_node * show_messages_class;
 void AdminShowCalled(int session_id,admin_parm_type parms[],
                      int num_blak_parm,parm_node blak_parm[])
 {
-   int i;
-
    int num_show;
    num_show = (int)parms[0];
 
    num_show = std::max(1,num_show);
    num_show = std::min(500,num_show);
 
-   aprintf("%4s %-20s %-30s %-11s %s\n", "Rank", "Class", "Message", "Count", "Avg Time(us)");
+   aprintf("%4s %-20s %-30s %-14s %s\n", "Rank", "Class", "Message", "Count", "Avg Time(us)");
 
    show_messages_ignore_count = -1;
    show_messages_ignore_id = -1;
-   for (i=0;i<num_show;i++)
+   for (int i = 0; i < num_show; ++i)
    {
-      show_messages_timed_count = -1;
-      show_messages_untimed_count = -1;
-      show_messages_total_count = -1;
+      show_messages_timed_count = 0;
+      show_messages_untimed_count = 0;
+      show_messages_total_count = 0;
       ForEachClass(AdminShowCalledClass);
-      if (show_messages_total_count <= 0)
+      if (show_messages_total_count == 0)
          break;
-      aprintf("%3i. %-20s %-30s %-11i %.3f\n",i+1,
+      aprintf("%3i. %-20s %-30s %-14llu %.3f\n",i+1,
          (show_messages_class == NULL)?("Unknown"):show_messages_class->class_name,
          GetNameByID(show_messages_message_id), show_messages_total_count, show_messages_time);
       show_messages_ignore_count = show_messages_total_count;
@@ -1425,7 +1434,7 @@ void AdminShowCalled(int session_id,admin_parm_type parms[],
 
 void AdminShowCalledClass(class_node *c)
 {
-   int num_calls;
+   UINT64 num_calls;
    message_node *m;
 
    if (!c->num_messages)
@@ -2101,7 +2110,7 @@ void AdminShowOneAccount(account_node *a)
    if (a->suspend_time > 0)
    {
       // Print suspended time left in hours.
-      sprintf(buff, "%7.1fh", (a->suspend_time - GetTime()) / (60.0*60.0));
+      sprintf(buff, "%7.1fh", (a->suspend_time - GetTime()) / (60.0f*60.0f));
    }
    else
    {
@@ -2202,6 +2211,39 @@ void AdminDumpClassInst(int session_id, admin_parm_type parms[],
                         int num_blak_parm, parm_node blak_parm[])
 {
    DumpClassInstances();
+}
+
+// Dumps accounts to database.
+void AdminDumpAccountsToDB(int session_id, admin_parm_type parms[],
+   int num_blak_parm, parm_node blak_parm[])
+{
+   if (MySQLIsTypeEnabled(STAT_ACCOUNTS))
+   {
+      ForEachAccount(DumpAccountToDatabsse);
+      aprintf("Dumped accounts to database.\n");
+   }
+   else
+   {
+      aprintf("STAT_ACCOUNTS disabled.\n");
+   }
+}
+
+// Dumps users (acct id + char name) to database.
+void AdminDumpUsersToDB(int session_id, admin_parm_type parms[],
+   int num_blak_parm, parm_node blak_parm[])
+{
+   if (MySQLIsTypeEnabled(STAT_ACCOUNT_CHARS))
+   {
+      // Truncate this table first, since we can't update it.
+      MySQLEmptyTable(STAT_ACCOUNT_CHARS);
+      aprintf("Truncated existing users table.\n");
+      ForEachUser(DumpUserToDatabase);
+      aprintf("Dumped users to database.\n");
+   }
+   else
+   {
+      aprintf("STAT_ACCOUNT_CHARS disabled.\n");
+   }
 }
 
 // Keep track of how many timers get printed.
@@ -2571,7 +2613,8 @@ void AdminShowOpcodes(int session_id, admin_parm_type parms[],
 void AdminShowCalls(int session_id,admin_parm_type parms[],
                     int num_blak_parm,parm_node blak_parm[])                    
 {
-   int i, count, ignore_val, max_index, totalCalls;
+   UINT64 ignore_val, totalCalls;
+   int max_index;
 	kod_statistics *kstat;
 	char c_name[50];
 	
@@ -2583,10 +2626,10 @@ void AdminShowCalls(int session_id,admin_parm_type parms[],
 	aprintf("%4s %-23s %-12s %s\n","Rank","Function","Count","Avg Time(us)");
 	
 	ignore_val = -1;
-	for (count=0;count<num_show;count++)
+	for (int count=0; count < num_show; ++count)
 	{
 		max_index = -1;
-		for (i=0;i<MAX_C_FUNCTION;i++)
+		for (int i = 0; i < MAX_C_FUNCTION; ++i)
 		{
          totalCalls = kstat->c_count_timed[i] + kstat->c_count_untimed[i];
          if (ignore_val == -1 || totalCalls < ignore_val)
@@ -2706,7 +2749,7 @@ void AdminShowCalls(int session_id,admin_parm_type parms[],
       double avgTime = 0.0;
       if (kstat->c_count_timed[max_index] > 0)
          avgTime = kstat->ccall_total_time[max_index] / (double)kstat->c_count_timed[max_index];
-      aprintf("%3i. %-23s %-12i %4.3f\n", count + 1, c_name, ignore_val, avgTime);
+      aprintf("%3i. %-23s %-12llu %4.3f\n", count + 1, c_name, ignore_val, avgTime);
 	}
 }
 
@@ -2753,11 +2796,11 @@ void AdminShowMessage(int session_id,admin_parm_type parms[],
 	if (c != found_class)
 		aprintf(" (handled by CLASS %s)",found_class->class_name);
 	aprintf("\n");
-   aprintf("Called count (total): %i\n", m->timed_call_count + m->untimed_call_count);
+   aprintf("Called count (total): %llu\n", m->timed_call_count + m->untimed_call_count);
    if (m->timed_call_count > 0)
       aprintf("Average running time: %8.3f\n", m->total_call_time / (double)m->timed_call_count);
    if (m->untimed_call_count > 0)
-      aprintf("Called count (untimed): %i\n", m->untimed_call_count);
+      aprintf("Called count (untimed): %llu\n", m->untimed_call_count);
 	aprintf("--------------------------------------------------------------\n");
 	aprintf("  Parameters:\n");
 	/* we need to read the first few bytes from the bkod to get the parms */
@@ -2787,6 +2830,17 @@ void AdminShowMessage(int session_id,admin_parm_type parms[],
 	else
 		aprintf("No description\n");
 	aprintf("--------------------------------------------------------------\n");
+}
+
+void AdminShowMySQLTypes(int session_id, admin_parm_type parms[],
+   int num_blak_parm, parm_node blak_parm[])
+{
+   aprintf("--------------------------------------------------------------\n");
+   aprintf("Type | Enabled\n");
+   for (int i = 1; i <= STAT_MAXSTAT; ++i)
+      aprintf(" %-3i |  %s\n", i, MySQLIsTypeEnabled(i) ? "true" : "false");
+
+   aprintf("--------------------------------------------------------------\n");
 }
 
 void AdminShowClass(int session_id,admin_parm_type parms[],
@@ -5420,6 +5474,34 @@ void AdminEnableSysTimer(int session_id,admin_parm_type parms[],
 	else
 		aprintf("Systimer enabled.\n");
 	
+}
+
+void AdminDisableMySQLStat(int session_id, admin_parm_type parms[],
+   int num_blak_parm, parm_node blak_parm[])
+{
+
+   int mysql_type;
+   mysql_type = (int)parms[0];
+
+   if (!MySQLSetTypeEnabled(mysql_type, false))
+      aprintf("Invalid MySQL record type %i.\n", mysql_type);
+   else
+      aprintf("MySQL record type %i disabled.\n", mysql_type);
+
+}
+
+void AdminEnableMySQLStat(int session_id, admin_parm_type parms[],
+   int num_blak_parm, parm_node blak_parm[])
+{
+
+   int mysql_type;
+   mysql_type = (int)parms[0];
+
+   if (!MySQLSetTypeEnabled(mysql_type, true))
+      aprintf("Invalid MySQL record type %i.\n", mysql_type);
+   else
+      aprintf("MySQL record type %i enabled.\n", mysql_type);
+
 }
 
 static char *say_admin_text;

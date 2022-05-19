@@ -335,3 +335,43 @@ void ChangeUserAccountID(int account_id, int new_account_id)
       u = u->next;
    }
 }
+
+void DumpUserToDatabase(user_node *u)
+{
+   int num_expected = 2;
+   val_type name_val, num_val;
+   resource_node *r;
+
+   // Exclude chars that haven't been created yet.
+   num_val.int_val = SendTopLevelBlakodMessage(u->object_id, IS_FIRST_TIME_MSG, 0, NULL);
+   if (num_val.v.data != 0)
+      return;
+
+   name_val.int_val = SendTopLevelBlakodMessage(u->object_id, USER_NAME_MSG, 0, NULL);
+   if (name_val.v.tag != TAG_RESOURCE)
+   {
+      aprintf("Failed to get name for User %i Account %i\n",
+         u->object_id, u->account_id);
+      return;
+   }
+
+   r = GetResourceByID(name_val.v.data);
+   if (r == NULL)
+   {
+      aprintf("Invalid resource id %i for User %i Account %i",
+         name_val.v.data, u->object_id, u->account_id);
+      return;
+   }
+
+   // Freed in database.c
+   sql_data_node *data = (sql_data_node *)AllocateMemory(MALLOC_ID_SQL,
+      sizeof(sql_data_node) * num_expected);
+
+   data[0].type = TAG_INT;
+   data[0].value.num = u->account_id;
+
+   data[1].type = TAG_STRING;
+   data[1].value.str = MySQLDuplicateString(r->resource_val[0]);
+
+   MySQLRecordGeneric(STAT_ACCOUNT_CHARS, num_expected, data);
+}

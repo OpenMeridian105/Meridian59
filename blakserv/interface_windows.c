@@ -136,6 +136,12 @@ void InitInterface(void)
 
 	hEvent = CreateEvent(NULL,TRUE,FALSE,NULL);
 	
+   if (hEvent == NULL)
+   {
+      lprintf("CreateEvent failed with error code %d", GetLastError());
+      exit(EXIT_FAILURE);
+   }
+
 	hThread = (HANDLE) _beginthread(InterfaceThread,0,0);
 	
 	/* important not to reduce priority because otherwise it holds open
@@ -953,20 +959,17 @@ void InterfaceDrawText(HWND hwnd)
 		sprintf(s,"%s",TimeStr(kstat->system_start_time));
 		SetDlgItemText(HWND_STATUS,IDC_STARTED_VALUE,s);
 		
-		sprintf(s,"%-200s",RelativeTimeStr(GetTime()-kstat->system_start_time));
+		sprintf(s,"%-200s",RelativeTimeStr(GetTime_t()-kstat->system_start_time));
 		SetDlgItemText(HWND_STATUS,IDC_UP_FOR_VALUE,s);
 		
 		if (kstat->interpreting_time/1000.0 < 0.01) 
 			sprintf(s,"0/second");
 		else
-			sprintf(s,"%i/second",(int)(kstat->num_interpreted/(kstat->interpreting_time/1000.0)));
+			sprintf(s,"%llu/second",(UINT64)(kstat->num_interpreted/(kstat->interpreting_time/1000.0)));
 		SetDlgItemText(HWND_STATUS,IDC_SPEED_VALUE,s);
-		
-		if (IsGameLocked())
-			SetDlgItemText(hwndMain,IDC_GAME_LOCKED,"The game is locked.");
-		else
-			SetDlgItemText(hwndMain,IDC_GAME_LOCKED,"");
-		
+
+		SetDlgItemText(hwndMain,IDC_GAME_LOCKED, IsGameLocked() ? "The game is locked." : "");
+
 		SetDlgItemInt(HWND_STATUS,IDC_OBJECTS_VALUE,GetObjectsUsed(),FALSE);
 		SetDlgItemInt(HWND_STATUS,IDC_LISTNODES_VALUE,GetListNodesUsed(),FALSE);
 		SetDlgItemInt(HWND_STATUS,IDC_STRINGS_VALUE,GetStringsUsed(),FALSE);

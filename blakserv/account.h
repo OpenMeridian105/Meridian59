@@ -57,7 +57,7 @@ void DeleteAccountAndAssociatedUsersByID(int account_id);
 void DeleteAccountsIfUnused();
 void DeleteAccountIfUnused(account_node *a);
 void CompactAccounts(void);
-
+void DumpAccountToDatabsse(account_node *a);
 Bool SuspendAccountAbsolute(account_node *a, int suspend_time);
 Bool SuspendAccountRelative(account_node *a, int hours);
 int GetActiveAccountCount();

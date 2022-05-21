@@ -12074,7 +12074,7 @@ messages:
       {
          oEnch = Nth(i,2);
 
-         if IsClass(oEnch,&Spell) OR IsClass(oEnch,&Trance)
+         if IsClass(oEnch,&Trance)
          {
             if Length(i) >= ENCHANTMENT_LIST_STATE
             {
@@ -12118,6 +12118,33 @@ messages:
       // Someone may have braced for our attack, tell them
       // that they no longer need to worry.
       Send(First(Nth(state,3)),@ClearAttacker,#who=who);
+
+      return;
+   }
+
+   BreakFragileEffects(event=0,what=$,disruption=0)
+   {
+      local i, oEnch, state;
+
+      foreach i in plEnchantments
+      {
+         oEnch = Nth(i,2);
+
+         if IsClass(oEnch,&Spell)
+         {
+            if Length(i) >= ENCHANTMENT_LIST_STATE
+            {
+               state = Nth(i,3);
+            }
+            else
+            {
+               state = $;
+            }
+
+            Send(oEnch,@BreakFragileEffect,#who=self,#state=state,
+                  #event=event,#what=what,#disruption=disruption);
+         }
+      }
 
       return;
    }

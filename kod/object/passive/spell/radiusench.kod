@@ -103,7 +103,7 @@ classvars:
    viAffectsInnocents = FALSE   // Unaffiliated white characters
    viAffectsNewbies = FALSE     // Angeled characters
 
-   vbTrance = TRUE
+   vbFragile = TRUE
 
 properties:
 
@@ -140,7 +140,7 @@ messages:
                lState = Nth(i,3);
                if First(lState) = who
                {
-                  Send(self,@BreakTrance,#who=who,#state=lState,#event=EVENT_CANCEL);
+                  Send(self,@BreakFragileEffect,#who=who,#state=lState,#event=EVENT_CANCEL);
 
                   return FALSE;
                }
@@ -983,7 +983,7 @@ messages:
    }
 
    // Overrides spell.kod entirely.
-   BreakTrance(who=$,state=$,event=$)
+   BreakFragileEffect(who=$,state=$,event=$)
    {
       local oRoom, bRecheck;
 
@@ -1020,13 +1020,13 @@ messages:
 
       bRecheck = (event = EVENT_REST OR event = EVENT_CANCEL);
 
-      Send(self,@TranceEnding,#who=who,#state=state,#bRecheck=bRecheck);
+      Send(self,@FragileEffectBroken,#who=who,#state=state,#bRecheck=bRecheck);
 
       return TRUE;
    }
 
-   TranceEnding(who=$,state=$,bRecheck=FALSE)
-   "Allow maintained spells to do something when their trance breaks."
+   FragileEffectBroken(who=$,state=$,bRecheck=FALSE)
+   "Overrides default."
    {
       Send(who,@RemoveRadiusEnchantment,#what=self,#state=state,#recheck=bRecheck);
 

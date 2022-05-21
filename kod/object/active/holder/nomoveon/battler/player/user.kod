@@ -1074,7 +1074,7 @@ messages:
       piLastAutologTest = -1;
 
       piTimeLoggedIn = Send(self,@GetTimeLoggedIn);
-      Send(self,@BreakTrance);
+      Send(self,@BreakConcentration);
 
       pbLogged_on = FALSE;
 
@@ -2235,15 +2235,9 @@ messages:
 
          // This is purely for cancelling currently channeled spells.
          // Maintained spells are unaffected.
-         if Send(self,@GetTranceAbility) <> $
+         if piFlags & PFLAG_TRANCE
+            AND Send(self,@BreakTrance,#event=EVENT_CANCEL)
          {
-            oWhat = Send(SYS,@FindSpellByNum,#num=SID_TRANCE);
-
-            // Send this directly to &Trance, not self. We don't want
-            // any other trance effects to be affected.
-            Send(oWhat,@BreakTrance,#event=EVENT_CANCEL,#who=self,
-               #state=Send(self,@GetEnchantedState,#what=oWhat));
-
             bCancel = TRUE;
          }
 
@@ -2404,7 +2398,7 @@ messages:
             ptAttackTimer = $;
             plLastReceived = $;
 
-            Send(self,@BreakTrance);
+            Send(self,@BreakConcentration);
             Send(self,@UserCast,#oSpell=oAbility,
                #lTargets=Nth(client_msg,3));
          }
@@ -7653,14 +7647,15 @@ messages:
    {
       // check if valid, if item, if holding
 
-      if piFlags & PFLAG_TRANCE
+      if (piFlags & PFLAG_TRANCE)
+         AND (NOT Send(self,@BreakTrance,#event=EVENT_USE))
       {
-         if (NOT Send(self,@CanBreakTrance,#event=EVENT_USE))
-         {
-            return;
-         }
+         return;
+      }
 
-         Send(self,@BreakTrance,#event=EVENT_USE);
+      if piFlags & PFLAG_FRAGILE
+      {
+         Send(self,@BreakFragileEffects,#event=EVENT_USE);
       }
 
       if NOT IsClass(what,&Item)
@@ -7675,14 +7670,15 @@ messages:
 
    UserUnuseItem(what = $)
    {
-      if piFlags & PFLAG_TRANCE
+      if (piFlags & PFLAG_TRANCE)
+         AND (NOT Send(self,@BreakTrance,#event=EVENT_USE))
       {
-         if (NOT Send(self,@CanBreakTrance,#event=EVENT_USE))
-         {
-            return;
-         }
+         return;
+      }
 
-         Send(self,@BreakTrance,#event=EVENT_USE);
+      if piFlags & PFLAG_FRAGILE
+      {
+         Send(self,@BreakFragileEffects,#event=EVENT_USE);
       }
 
       if NOT IsClass(what,&Item)
@@ -7734,6 +7730,11 @@ messages:
          {
             return;
          }
+      }
+
+      if piFlags & PFLAG_FRAGILE
+      {
+         Send(self,@BreakFragileEffects,#event=EVENT_ABILITY,#what=oAbility);
       }
 
       // Check whether we are even able to attack someone.
@@ -7793,21 +7794,22 @@ messages:
 
       Send(self,@CancelLift);
 
-      // PFLAG_TRANCE can stem from...
-      // 1) ...&Trance when a spell with cast time is being cast
-      // such as fire wall, or a steered spell like elusion.
-      // 2) ...any kind of maintained spell that can be disrupted,
-      // such as mana focus or a song.
       if piFlags & PFLAG_TRANCE
       {
          // GetTranceAbility returns the spell that &Trance is preparing
-         // to cast. If we are already preparing to cast the same spell,
-         // don't interrupt our cast.
+         // to cast. We don't interrupt our trance...
+         // ...to start the same trance over.
+         // ...if it can't be interrupted.
          if Send(self,@GetTranceAbility) = oSpell
             OR NOT Send(self,@BreakTrance,#event=EVENT_ABILITY,#what=oSpell)
          {
             return;
          }
+      }
+
+      if piFlags & PFLAG_FRAGILE
+      {
+         Send(self,@BreakFragileEffects,#event=EVENT_ABILITY,#what=oSpell);
       }
 
       if ((piFlags & PFLAG_NO_MAGIC)
@@ -7946,6 +7948,11 @@ messages:
          }
       }
 
+      if piFlags & PFLAG_FRAGILE
+      {
+         Send(self,@BreakFragileEffects,#event=EVENT_ABILITY,#what=oSkill);
+      }
+
       if (piFlags & PFLAG_NO_FIGHT)
          OR Send(self,@IsInCannotInteractMode)
       {
@@ -8019,11 +8026,12 @@ messages:
       oCommand = Send(SYS,@FindGuildCommandByNum,#num=Command_num);
 
       // If a player is in a trance, break it
-      if piFlags & PFLAG_TRANCE
+      if (piFlags & PFLAG_TRANCE
          AND (Command_num = GCID_RENOUNCE
-            OR Command_num = GCID_DISBAND)
+            OR Command_num = GCID_DISBAND))
+         AND NOT Send(self,@BreakTrance,#event=EVENT_DISRUPT,#what=oCommand)
       {
-         Send(self,@BreakTrance,#event=EVENT_DISRUPT,#what=oCommand);
+         return;
       }
 
       // Be sure player has guild command.
@@ -9165,8 +9173,14 @@ messages:
    UserApply(what = $,apply_on = $)
    {
       if (piFlags & PFLAG_TRANCE)
+         AND (NOT Send(self,@BreakTrance,#event=EVENT_USE))
       {
-         Send(self,@BreakTrance,#event=EVENT_USE);
+         return;
+      }
+
+      if piFlags & PFLAG_FRAGILE
+      {
+         Send(self,@BreakFragileEffects,#event=EVENT_USE);
       }
 
       if NOT IsClass(what,&Item) 

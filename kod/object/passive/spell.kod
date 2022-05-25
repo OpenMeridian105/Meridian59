@@ -276,7 +276,7 @@ classvars:
    vbCombatOnly = TRUE
 
    // Does this spells ongoing effect constitute a trance?
-   vbTrance = FALSE
+   vbFragile = FALSE
 
    vrCharge_min = spell_charge_min
    vrCharge_low = spell_charge_low
@@ -2296,6 +2296,11 @@ messages:
 
    SetSpellPlayerFlag(who=$)
    {
+      if vbFragile
+      {
+         Send(who,@SetFragileFlag);
+      }
+
       return;
    }
 
@@ -2684,20 +2689,6 @@ messages:
       return;
    }
 
-   BreakTrance(who=$,state=$,event=$)
-   "Determines when a maintained ability (mana focus etc.) can be disrupted."
-   {
-      if (event = EVENT_NO_MANA AND viManaDrain = 0)
-         OR (event = EVENT_NO_VIGOR)
-      {
-         return FALSE;
-      }
-
-      Send(self,@TranceEnding,#who=who,#state=state);
-
-      return vbTrance;
-   }
-
    // Determines if the casting trance (&Trance) can be disrupted.
    CanBreakTrance(who=$,state=$,event=EVENT_NONE,disruption=0)
    {
@@ -2733,14 +2724,30 @@ messages:
       return TRUE;
    }
 
-   TranceEnding()
-   "Spells override this to do spell-ending specific stuff.  Note that this "
+   BreakFragileEffect(who=$,state=$,event=$)
+   "Determines when a maintained ability (mana focus etc.) can be disrupted."
+   {
+      if (event = EVENT_NO_MANA AND viManaDrain = 0)
+         OR (event = EVENT_NO_VIGOR)
+      {
+         return FALSE;
+      }
+
+      Send(self,@FragileEffectBroken,#who=who,#state=state);
+
+      return vbFragile;
+   }
+
+   FragileEffectBroken(who=$,state=$)
+   "Spells can override this to do spell-ending specific stuff.  Note that this "
    "is ONLY called (through BreakTrance) if the spell ends via resting, "
    "out-of-mana etc., and not if the spell ends forcefully (arena match, "
    "RecreateAll, purge/purify).  Ideally spells overriding this add a call "
    "to RemoveEnchantment, which calls RemoveEnchantmentEffects, which calls "
    "EndEnchantment."
    {
+      Send(who,@RemoveEnchantment,#what=self,#state=state);
+
       return;
    }
 

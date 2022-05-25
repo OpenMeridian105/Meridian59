@@ -64,7 +64,7 @@ classvars:
    vbIsMoveSpeedModifier = TRUE
    viFlash = FLASH_NONE
 
-   vbTrance = TRUE
+   vbFragile = TRUE
 
    vbFree_Castable = FALSE
 
@@ -174,15 +174,8 @@ messages:
       propagate;
    }
 
-   SetSpellPlayerFlag(who=$)
-   {
-      Send(who,@SetTranceFlag);
-
-      return;
-   }
-
    DoSpellEffects(who = $, lTargets = $, iSpellPower = 0)
-   // This is the entry point, sets players to trance while they
+   // This is the entry point, sets players to fragile while they
    // focus on casting on the prism.  The prism calls PrismCast()
    // below when it has enough energy from the casters.
    {
@@ -215,9 +208,10 @@ messages:
    }
 
    EndEnchantment(who=$,state=$)
-   "Called when caster breaks trance or runs out of mana (ends involvement inspell)."
+   "Called when caster's concentration breaks or they run out of mana."
+   "This ends the caster's involvement in charging the prism."
    {
-      Send(who,@ClearTranceFlag);
+      Send(who,@ClearFragileFlag);
       Send(who,@AddMovementSpeedPercent,#iSpeed=piMovementSpeedReduction);
       Send(First(state),@CasterBrokeTrance,#who=who);
 
@@ -229,20 +223,15 @@ messages:
       return TRUE;
    }
 
-   BreakTrance(state=$)
+   BreakFragileEffect(who=$,state=$,event=$)
    {
       if NOT IsClass(First(state),&Prism)
       {
+         // Restore fragile flag if effect remains active.
+         Send(who,@SetFragileFlag);
+
          return FALSE;
       }
-
-      propagate;
-   }
-
-   TranceEnding(who=$,state=$)
-   "Allow maintained spells to do something when their trance breaks."
-   {
-      Send(who,@RemoveEnchantment,#what=self,#state=state);
 
       propagate;
    }

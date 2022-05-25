@@ -50,7 +50,7 @@ classvars:
 
    vrSucceed_wav = fade_sound
 
-   vbTrance = TRUE
+   vbFragile = TRUE
 
 properties:
 
@@ -94,10 +94,9 @@ messages:
 
    SetSpellPlayerFlag(who = $)
    {
-      Send(who,@SetTranceFlag);
       Send(who,@SetPlayerFlag,#flag=PFLAG_INVISIBLE,#value=TRUE);
 
-      return;
+      propagate;
    }
 
    GetDuration(iSpellPower = 0)
@@ -133,12 +132,10 @@ messages:
       return TRUE;
    }
 
-   TranceEnding(who=$,state=$)
-   "Allow maintained spells to do something when their trance breaks."
+   FragileEffectBroken(who=$,state=$)
+   "Allow fragile maintained spells to do something when they are forcefully ended."
    {
-      Send(who,@ClearTranceFlag);
       Send(who,@MsgSendUser,#message_rsc=fade_broke_trance);
-      Send(who,@RemoveEnchantment,#what=self,#state=state);
 
       propagate;
    }

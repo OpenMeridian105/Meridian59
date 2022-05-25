@@ -1623,7 +1623,7 @@ messages:
          }
       }
 
-      Send(self,@BreakTrance,#event=EVENT_NEWOWNER);
+      Send(self,@BreakConcentration,#event=EVENT_NEWOWNER);
 
       // Special Case: Inform hunters
       if (piFlags2 & PFLAG2_HUNTED)
@@ -3360,7 +3360,7 @@ messages:
       {
          // Losing 10 percent of our max health causes 100 percent disruption.
          amount = 10*amount/piMax_health;
-         Send(self,@BreakTrance,#event=EVENT_DAMAGE,#disruption=amount);
+         Send(self,@BreakConcentration,#event=EVENT_DAMAGE,#disruption=amount);
       }
 
       propagate;
@@ -10123,7 +10123,7 @@ messages:
       // Okay, we're really dying now.
       // Now we need to determine if it's a 'cheap'
       // death where we don't lose stuff.
-      Send(self,@BreakTrance,#event=EVENT_DEATH);
+      Send(self,@BreakConcentration,#event=EVENT_DEATH);
       Send(self,@RemoveAllEnchantments,#report=FALSE);
       Send(self,@DeleteAllOverTimeEffects);
       bNo_drop_death = FALSE;
@@ -12562,7 +12562,7 @@ messages:
 
    StartResting()
    {
-      Send(self,@BreakTrance,#event=EVENT_REST);
+      Send(self,@BreakConcentration,#event=EVENT_REST);
       piBattlerFlags |= BFLAG_RESTING;
       Send(self,@ResetPlayerFlagList);
       Send(self,@NewVigor);
@@ -12652,16 +12652,18 @@ messages:
       return;
    }
 
+   // Breaks &Trance leading up to a spell cast/skill performance.
    BreakTrance(event = 0, what = $, disruption = 0)
    {
-      local i, oEnch,state, bFound, oYellNum, oYellRoom;
+      local i, oEnch, state, bCanBreak;
 
-      bFound = FALSE;
+      bCanBreak = TRUE;
 
       foreach i in plEnchantments
       {
          oEnch = Nth(i,2);
-         if IsClass(oEnch,&Spell) OR IsClass(oEnch,&Trance)
+
+         if IsClass(oEnch,&Trance)
          {
             if Length(i) >= ENCHANTMENT_LIST_STATE
             {
@@ -12672,11 +12674,62 @@ messages:
                state = $;
             }
 
-            if Send(oEnch,@BreakTrance,#who=self,#state=state,
+            if NOT Send(oEnch,@BreakTrance,#who=self,#state=state,
                   #event=event,#what=what,#disruption=disruption)
             {
-               bFound = TRUE;
+               bCanBreak = FALSE;
             }
+         }
+      }
+
+      return bCanBreak;
+   }
+
+   SetFragileFlag()
+   {
+      piFlags |= PFLAG_FRAGILE;
+
+      return;
+   }
+
+   ClearFragileFlag()
+   {
+      piFlags &= ~PFLAG_FRAGILE;
+
+      return;
+   }
+
+   // Breaks maintained effects that might be fragile to interruption
+   // such as mana focus or radius enchantments.
+   BreakFragileEffects(event = 0, what = $, disruption = 0)
+   {
+      local i, oEnch, state;
+
+      // Unlike unbreakable trances, fragile effects will never stop
+      // us from acting, even if they persist.
+
+      // We clear the fragile flag right here. If one of our fragile
+      // effect happens to remain unaffected, it will restore the flag
+      // on its own.
+      Send(self,@ClearFragileFlag);
+
+      foreach i in plEnchantments
+      {
+         oEnch = Nth(i,2);
+
+         if IsClass(oEnch,&Spell)
+         {
+            if Length(i) >= ENCHANTMENT_LIST_STATE
+            {
+               state = Nth(i,3);
+            }
+            else
+            {
+               state = $;
+            }
+
+            Send(oEnch,@BreakFragileEffect,#who=self,#state=state,
+                  #event=event,#what=what,#disruption=disruption);
          }
       }
 
@@ -12684,32 +12737,17 @@ messages:
       {
          oEnch = Nth(i,2);
          state = Nth(i,3);
-         if (First(state) = self) // Nth(state,RE_STATE_CASTER)
+
+         // Radius enchantments are only broken if the source of the
+         // enchantment is affected.
+         if (First(state) = self)
          {
-            Send(oEnch,@BreakTrance,#who=self,#state=state,#event=event);
+            Send(oEnch,@BreakFragileEffect,#who=self,#state=state,
+                  #event=event,#what=what,#disruption=disruption);
          }
       }
 
-      if event = EVENT_NEWOWNER
-      {
-         foreach oYellNum in Send(poOwner,@GetYellZone)
-         {
-            oYellRoom = Send(SYS,@FindRoomByNum,#num=oYellNum);
-            if Send(oYellRoom,@BreakTrance,#who=self)
-            {
-               bFound = TRUE;
-
-               break;
-            }
-         }
-      }
-
-      if Send(poOwner,@BreakTrance,#who=self,#event=event)
-      {
-         bFound = TRUE;
-      }
-
-      return bFound;
+      return;
    }
 
    RecalcBulkAndWeight()
@@ -14802,7 +14840,7 @@ messages:
          return FALSE;
       }
 
-      Send(self,@BreakTrance,#event=EVENT_REQNEWOWNER);
+      Send(self,@BreakConcentration,#event=EVENT_REQNEWOWNER);
 
       return TRUE;
    }
@@ -16543,7 +16581,7 @@ messages:
    // Ends maintained spells, most likely because we ran out of mana.
    CancelMaintainedSpells()
    {
-     Send(self,@BreakTrance,#event=EVENT_NO_MANA);
+     Send(self,@BreakFragileEffects,#event=EVENT_NO_MANA);
 
      propagate;
    }
@@ -16562,7 +16600,7 @@ messages:
          }
       }
 
-      Send(self,@BreakTrance,#event=EVENT_NO_VIGOR);
+      Send(self,@BreakFragileEffects,#event=EVENT_NO_VIGOR);
 
       return;
    }
@@ -17092,33 +17130,6 @@ messages:
       }
 
       return;
-   }
-
-   CanBreakTrance(event=EVENT_NONE,disruption=0,what=$)
-   "Returns TRUE if player doesn't have a trance active, or if the trance "
-   "can be broken.  Returns FALSE if player has a trance active but the "
-   "trance is unbreakable (e.g. cleave perform trance).  Checks spell trances "
-   "like eavesdrop as well as proper Trance enchantments."
-   {
-      local bCanBreak, lState;
-
-      lState = Send(self,@GetEnchantedState,
-         #what=Send(SYS,@FindSpellByNum,#num=SID_TRANCE));
-      if (lState = $)
-      {
-         bCanBreak = SendListBreak(plEnchantments,2,@CanBreakTrance);
-         if (NOT bCanBreak)
-         {
-            return FALSE;
-         }
-
-         bCanBreak = SendListBreak(plRadiusEnchantments,2,@CanBreakTrance);
-
-         return bCanBreak;
-      }
-
-      return Send(First(lState),@CanBreakTrance,#who=self,#state=lState,
-         #event=event,#disruption=disruption,#what=what);
    }
 
    // Returns the spell that is currently in the process of being cast.

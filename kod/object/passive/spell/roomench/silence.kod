@@ -58,7 +58,7 @@ classvars:
    viHarmful = TRUE
    viNoNewbieOffense = TRUE
 
-   vbTrance = TRUE
+   vbFragile = TRUE
 
 properties:
 
@@ -88,7 +88,7 @@ messages:
       Send(oRoom,@RoomStartEnchantment,#what=self,#state=[who,iSpellPower],
             #time=Send(self,@GetDuration,#iSpellPower=iSpellPower),
             #iSpellPower=iSpellPower,#lastcall=FALSE);
-      Send(who,@SetTranceFlag);
+      Send(who,@SetFragileFlag);
 
       // See if there's a Jala song going on and try to kill it
       // Format of lJalaInfo is: [timer, spell object, state]
@@ -139,7 +139,7 @@ messages:
       return;
    }
 
-   BreakTrance(event=$)
+   BreakFragileEffect(event=$)
    {
       if event = EVENT_ATTACK
       {
@@ -162,8 +162,8 @@ messages:
       return TRUE;
    }
 
-   TranceEnding(who=$,location=$)
-   "Allow maintained spells to do something when their trance breaks."
+   FragileEffectBroken(who=$,location=$)
+   "Overrides default."
    {
       local oRoom;
 
@@ -178,7 +178,7 @@ messages:
 
       Send(oRoom,@RemoveEnchantment,#what=self);
 
-      propagate;
+      return;
    }
 
 end

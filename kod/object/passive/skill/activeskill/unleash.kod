@@ -40,6 +40,8 @@ resources:
 
    Unleash_charge_failed = "You stumble!"
 
+   Unleash_bad_target = "You decide to save your wrath for something better."
+
    Unleash_sound_rsc = unleash.ogg
 
 classvars:
@@ -164,6 +166,18 @@ messages:
    GetNumSkillTargets()
    {
       return 1;
+   }
+
+   CanPayCosts(who=$,lTargets=$)
+   {
+      // Make sure we aren't swinging at a non battler.
+      if NOT IsClass(First(lTargets),&Battler)
+      {
+         Send(who,@MsgSendUser,#message_rsc=Unleash_bad_target);
+         return FALSE;
+      }
+
+      propagate;
    }
 
    GetRequisiteStat(who=$)

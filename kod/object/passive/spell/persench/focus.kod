@@ -53,7 +53,7 @@ classvars:
    vbCanCastOnOthers = FALSE
    vbIsMoveSpeedModifier = TRUE
 
-   vbTrance = TRUE
+   vbFragile = TRUE
 
 properties:
 
@@ -72,14 +72,6 @@ messages:
    {
       plReagents = $;
       plReagents = Cons([&Mushroom,1],plReagents);
-
-      return;
-   }
-
-   SetSpellPlayerFlag(who=$)
-   {
-      Send(who,@SetTranceFlag);
-      Send(who,@SetPlayerFlag,#flag=PFLAG_MANA_FOCUS,#value=TRUE);
 
       return;
    }
@@ -131,7 +123,7 @@ messages:
    {
       if Send(who,@IsEnchanted,#what=self)
       {
-         Send(self,@BreakTrance,#who=who,#event=EVENT_CANCEL,
+         Send(self,@BreakFragileEffect,#who=who,#event=EVENT_CANCEL,
             #state=Send(who,@GetEnchantedState,#what=self));
 
          return FALSE;
@@ -140,21 +132,16 @@ messages:
       propagate;
    }
 
-   BreakTrance(event=$,what=$,state=$)
+   BreakFragileEffect(who=$,event=$,what=$,state=$)
    {
       if event = EVENT_ABILITY
          AND ((what = self) OR IsClass(what,&AttackSpell))
       {
+         // Restore fragile flag if effect remains active.
+         Send(who,@SetFragileFlag);
+
          return FALSE;
       }
-
-      propagate;
-   }
-
-   TranceEnding(who=$,state=$)
-   "Allow maintained spells to do something when their trance breaks."
-   {
-      Send(who,@RemoveEnchantment,#what=self,#state=state);
 
       propagate;
    }

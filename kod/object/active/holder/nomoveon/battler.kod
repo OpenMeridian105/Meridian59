@@ -811,6 +811,21 @@ messages:
       return plEnchantments;
    }
 
+   // Combines breaking trance and breaking maintained effects.
+   BreakConcentration(event = 0, what = $, disruption = 0)
+   {
+      Send(self,@BreakFragileEffects,#event=event,#what=what,
+         #disruption=disruption);
+
+      if NOT Send(self,@BreakTrance,#event=event,#what=what,
+         #disruption=disruption)
+      {
+         return FALSE;
+      }
+
+      return TRUE;
+   }
+
    GetCastPower(what=$)
    "This is used by purge to get the spellpower the personal enchantment was "
    "cast at. Put in Battler instead of Player as we may use this for monster "

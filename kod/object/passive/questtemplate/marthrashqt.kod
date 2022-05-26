@@ -1,0 +1,162 @@
+// Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+// All rights reserved.
+//
+// This software is distributed under a license that is described in
+// the LICENSE file that accompanies it.
+//
+// Meridian is a registered trademark.
+
+
+/////////////////////////////////////////////////////////////////////////////////
+MarionCryptThrashers is QuestTemplate
+// QNT_ID_MAR_THRASHERS_1, QNT_ID_MAR_THRASHERS_2,
+
+// QuestTemplate is
+// [ quest template index
+//   quest template object
+//   number of players,
+//   type of quest,
+//   eligible player restrictions,
+//   quest nodes,
+//   max number active,
+//   currently active quests,
+//   percent chance of scheduling (on timer firing)
+//   special restrictions ]
+
+constants:
+
+   include blakston.khd
+
+resources:
+
+   //include wolfhuntqt.lkod
+
+   // Quest description.
+   MarionCryptThrashers_icon_rsc = res0001a.bgf
+   MarionCryptThrashers_name_rsc = "Thrashing"
+
+   MarionCryptThrashers_desc_rsc = \
+      "The undead situation is growing worse.  "
+      "Beyond the second level of the crypt, Qor awaits. "
+   MarionCryptThrashers_kill_rsc = \
+      "The undead situation is growing worse.  "
+      "Beyond the second level of the crypt, Qor awaits.\n\n"
+      "Currently, you have slain %i out of %i.  "
+      "Complete this task and report back to %s."
+   MarionCryptThrashers_return_rsc = \
+      "Return to %s and let %s know the task has been completed."
+
+   MarionCryptThrashers_completed = \
+      "You have gone thrasher bashing!"
+
+   // Quest resources.
+   MarionCryptThrashers_trigger = "thrasher"
+   MarionCryptThrashers_assign = \
+      "You'll want to find a group if you're venturing "
+      "deep into evil itself."
+
+   MarionCryptThrashers_success = \
+      "Shal'ille protects us."
+
+classvars:
+
+   vrIcon = MarionCryptThrashers_icon_rsc
+   vrName = MarionCryptThrashers_name_rsc
+   vrDesc = MarionCryptThrashers_desc_rsc
+
+   vrKill = MarionCryptThrashers_kill_rsc
+   vrReturn = MarionCryptThrashers_return_rsc
+   vrCompleted = MarionCryptThrashers_completed
+
+   // The QST_ID constant for this quest.
+   viQuestID = QNT_ID_MAR_THRASHERS
+
+properties:
+
+   piNumPlayers = 1
+   piPlayerRestrict = Q_PLAYER_NOTTRIED_RECENTLY
+   plSpecialRestrict = $
+   piMaxPlayers = 30
+   piSchedulePct = 50
+   piTimeLimit = 48 * 3600 // 48 hours.
+
+   piQuestDuration = 60
+   piQuestDifficulty = 10
+
+messages:
+
+   Constructor()
+   {
+      // Quest node - restrictions
+      plSpecialRestrict = [ [Q_R2_HAS_COMPLETED_QUEST_ID, QNT_ID_MAR_STATUES] ];
+
+      // Quest node list to send to QuestEngine.
+      plQuestNodes = [QNT_ID_MAR_THRASHERS_1, QNT_ID_MAR_THRASHERS_2];
+
+      propagate;
+   }
+
+   SendQuestNodeTemplates()
+   {
+      local lNPCs, oNPC, oQE, oLib;
+
+      oQE = Send(SYS,@GetQuestEngine);
+      oLib = Send(SYS,@GetLibrary);
+
+      // QNT_ID_MAR_THRASHERS_1 - kickoff
+      if Send(oQE,@AddQuestNodeTemplate,#questnode_type=QN_TYPE_MESSAGE,
+               #cargolist=[MarionCryptThrashers_trigger],
+               #quest_node_index=QNT_ID_MAR_THRASHERS_1)
+      {
+         Send(oQE,@SetQuestNodeNPCList,#index=QNT_ID_MAR_THRASHERS_1,
+               #new_NPC_list=Send(oLib,@GetOccupationList,
+                                 #cNPC_class=&MarionHealer));
+      }
+      else
+      {
+         Debug("Error building QN: QNT_ID_MAR_THRASHERS_1");
+      }
+
+      // QNT_ID_MAR_THRASHERS_2
+      if Send(oQE,@AddQuestNodeTemplate,#questnode_type=QN_TYPE_MONSTER_MULTIPLE,
+               #NPC_modifier=QN_NPCMOD_SAME,#monsterlist=[ [&Thrasher, 50] ],
+               #timelimit=piTimeLimit,#quest_node_index=QNT_ID_MAR_THRASHERS_2,
+               #prizelist=[ [ [ QN_PRIZETYPE_ITEMCLASS, &WindrootLeaf, 55 ],
+                              [ QN_PRIZETYPE_ITEMCLASS, &WindrootLeaf, 40 ],
+                              [ QN_PRIZETYPE_ITEMCLASS, &TheurgicRemnant, 20 ],
+                              [ QN_PRIZETYPE_ITEMCLASS, &TwinkleCap, 50 ] ] ])
+      {
+         Send(oQE,@SetQuestNodeAssignHint,#index=QNT_ID_MAR_THRASHERS_2,
+               #new_hint=MarionCryptThrashers_assign);
+         Send(oQE,@SetQuestNodeSuccessHint,#index=QNT_ID_MAR_THRASHERS_2,
+               #new_hint=MarionCryptThrashers_success);
+      }
+      else
+      {
+         Debug("Error building QN: QNT_ID_MAR_THRASHERS_2");
+      }
+
+      return;
+   }
+
+   MainDesc(who=$,index=$,oQuestNode=$)
+   {
+      local oMob, oNPC;
+
+      oMob = Send(oQuestNode,@GetQuestMonster);
+      oNPC = Send(oQuestNode,@GetSourceNPC);
+      if oMob = $
+      {
+         AddPacket(4,vrReturn,4,Send(oNPC,@GetName),4,Send(oNPC,@GetHimHer));
+      }
+      else
+      {
+         AddPacket(4,vrKill,4,Send(oQuestNode,@GetNumberMonstersKilled),
+            4,Send(oQuestNode,@GetMonsterKillTarget),4,Send(oNPC,@GetName));
+      }
+
+      return;
+   }
+
+end
+/////////////////////////////////////////////////////////////////////////////////

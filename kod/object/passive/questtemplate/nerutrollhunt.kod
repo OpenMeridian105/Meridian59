@@ -1,0 +1,177 @@
+// Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+// All rights reserved.
+//
+// This software is distributed under a license that is described in
+// the LICENSE file that accompanies it.
+//
+// Meridian is a registered trademark.
+
+
+/////////////////////////////////////////////////////////////////////////////////
+NeruTrollHunt is QuestTemplate
+// QNT_ID_NERUTROLLHUNT_1, QNT_ID_NERUTROLLHUNT_2,
+
+// QuestTemplate is
+// [ quest template index
+//   quest template object
+//   number of players,
+//   type of quest,
+//   eligible player restrictions,
+//   quest nodes,
+//   max number active,
+//   currently active quests,
+//   percent chance of scheduling (on timer firing)
+//   special restrictions ]
+
+constants:
+
+   include blakston.khd
+
+resources:
+
+   //include wolfhuntqt.lkod
+
+   // Quest description.
+   NeruTrollHunt_icon_rsc = jug4.bgf
+   NeruTrollHunt_name_rsc = "nerudite ale"
+
+   NeruTrollHunt_desc_rsc = \
+      "Bartenders are looking to brew a rumored ale with explosive "
+      "taste.  The supposed key ingredient is rare to find."
+   NeruTrollHunt_kill_rsc = \
+      "Bartenders are looking to brew a rumored ale with explosive "
+      "taste.  The supposed key ingredient is rare to find.\n\n"
+      "Locate the Orc Wizard's ingredient. Slain %i out of %i.  "
+      "Complete this task and report back to %s."
+   NeruTrollHunt_return_rsc = \
+      "Return to %s and let %s know the task has been completed."
+
+   NeruTrollHunt_completed = \
+      "Discovered a Nerudite Troll and have slain it."
+
+   // Quest resources.
+   NeruTrollHunt_trigger = "nerudite ale"
+   NeruTrollHunt_assign = \
+      "The other day I had a taste of a drink.. the fellow called it Nerudite "
+      "Ale.  Said he retrieved it from an Orc Wizard.  I'm interested in "
+      "brewing a couple kegs to be put up for sale right here.  Would thou "
+      "hast help me in this quest?"
+
+   NeruTrollHunt_success = \
+      "A Nerudite Troll?  I never knew such a creature even existed.  Those "
+      "Orc wizards do have great taste.  Unfortunately even with all that, "
+      "I am barely able to brew more than a single drink.  Looks "
+      "like this isn't worth it.  Thanks for the help anyways."
+
+classvars:
+
+   vrIcon = NeruTrollHunt_icon_rsc
+   vrName = NeruTrollHunt_name_rsc
+   vrDesc = NeruTrollHunt_desc_rsc
+
+   vrKill = NeruTrollHunt_kill_rsc
+   vrReturn = NeruTrollHunt_return_rsc
+   vrCompleted = NeruTrollHunt_completed
+
+   // The QST_ID constant for this quest.
+   viQuestID = QNT_ID_NERUTROLLHUNT
+
+   viIcon_Animation_start = 1
+
+properties:
+
+   piNumPlayers = 1
+   piPlayerRestrict = Q_PLAYER_NOTTRIED_RECENTLY
+   plSpecialRestrict = $
+   piMaxPlayers = 30
+   piSchedulePct = 100
+   piTimeLimit = 24 * 3600 // 24 hours.
+
+   piQuestDuration = 40
+   piQuestDifficulty = 10
+
+messages:
+
+   Constructor()
+   {
+      // Quest node list to send to QuestEngine.
+      plQuestNodes = [QNT_ID_NERUTROLLHUNT_1, QNT_ID_NERUTROLLHUNT_2];
+
+      propagate;
+   }
+
+   SendQuestNodeTemplates()
+   {
+      local lNPCs, oNPC, oQE, oLib;
+
+      oQE = Send(SYS,@GetQuestEngine);
+      oLib = Send(SYS,@GetLibrary);
+
+      // QNT_ID_NERUTROLLHUNT_1 - kickoff
+      if Send(oQE,@AddQuestNodeTemplate,#questnode_type=QN_TYPE_MESSAGE,
+               #cargolist=[NeruTrollHunt_trigger],
+               #quest_node_index=QNT_ID_NERUTROLLHUNT_1)
+      {
+         lNPCs = $;
+         foreach oNPC in Send(oLib,@GetOccupationList,#cNPC_class=&JasperBartender)
+         {
+            lNPCs = Cons(oNPC, lNPCs);
+         }
+
+         foreach oNPC in Send(oLib,@GetOccupationList,#cNPC_class=&BarloqueBartender)
+         {
+            lNPCs = Cons(oNPC, lNPCs);
+         }
+
+         Send(oQE,@SetQuestNodeNPCList,
+            #index=QNT_ID_NERUTROLLHUNT_1,#new_NPC_list=lNPCs);
+      }
+      else
+      {
+         Debug("Error building QN: QNT_ID_NERUTROLLHUNT_1");
+      }
+
+      // QNT_ID_NERUTROLLHUNT_2
+      if Send(oQE,@AddQuestNodeTemplate,#questnode_type=QN_TYPE_MONSTER_MULTIPLE,
+               #NPC_modifier=QN_NPCMOD_SAME,#monsterlist=[ [&NeruditeTroll, 20] ],
+               #timelimit=piTimeLimit,#quest_node_index=QNT_ID_NERUTROLLHUNT_2,
+               #prizelist=[ [ [ QN_PRIZETYPE_ITEMCLASS, &GhostPepper, 20 ],
+                              [ QN_PRIZETYPE_ITEMCLASS, &Yrxlsap, 20 ],
+                              [ QN_PRIZETYPE_ITEMCLASS, &Firesand, 30 ],
+                              [ QN_PRIZETYPE_ITEMCLASS, &TrollMask, 1 ],
+                              [ QN_PRIZETYPE_ITEMCLASS, &StoneTrollMask, 1 ] ] ])
+      {
+         Send(oQE,@SetQuestNodeAssignHint,#index=QNT_ID_NERUTROLLHUNT_2,
+               #new_hint=NeruTrollHunt_assign);
+         Send(oQE,@SetQuestNodeSuccessHint,#index=QNT_ID_NERUTROLLHUNT_2,
+               #new_hint=NeruTrollHunt_success);
+      }
+      else
+      {
+         Debug("Error building QN: QNT_ID_NERUTROLLHUNT_2");
+      }
+
+      return;
+   }
+
+   MainDesc(who=$,index=$,oQuestNode=$)
+   {
+      local oMob, oNPC;
+
+      oMob = Send(oQuestNode,@GetQuestMonster);
+      oNPC = Send(oQuestNode,@GetSourceNPC);
+      if oMob = $
+      {
+         AddPacket(4,vrReturn,4,Send(oNPC,@GetName),4,Send(oNPC,@GetHimHer));
+      }
+      else
+      {
+         AddPacket(4,vrKill,4,Send(oQuestNode,@GetNumberMonstersKilled),
+            4,Send(oQuestNode,@GetMonsterKillTarget),4,Send(oNPC,@GetName));
+      }
+
+      return;
+   }
+
+end
+/////////////////////////////////////////////////////////////////////////////////

@@ -1,0 +1,161 @@
+// Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+// All rights reserved.
+//
+// This software is distributed under a license that is described in
+// the LICENSE file that accompanies it.
+//
+// Meridian is a registered trademark.
+
+
+/////////////////////////////////////////////////////////////////////////////////
+LivingTreeHunt is QuestTemplate
+// QNT_ID_MAR_ENTS_1, QNT_ID_MAR_ENTS_2,
+
+// QuestTemplate is
+// [ quest template index
+//   quest template object
+//   number of players,
+//   type of quest,
+//   eligible player restrictions,
+//   quest nodes,
+//   max number active,
+//   currently active quests,
+//   percent chance of scheduling (on timer firing)
+//   special restrictions ]
+
+constants:
+
+   include blakston.khd
+
+resources:
+
+   //include wolfhuntqt.lkod
+
+   // Quest description.
+   LivingTreeHunt_icon_rsc = darkber.bgf
+   LivingTreeHunt_name_rsc = "Berry Picking"
+
+   LivingTreeHunt_desc_rsc = \
+      "Tova is in need of an adventurer to help him with his side business."
+   LivingTreeHunt_kill_rsc = \
+      "Tova has requested you clear the forests of Faro'nath.\n\n"
+      "Currently, you have slain %i out of %i living trees.  "
+      "Complete this task and report back to %s."
+   LivingTreeHunt_return_rsc = \
+      "Return to %s and let %s know the task has been completed."
+
+   LivingTreeHunt_completed = \
+      "Cleared out the forests of Faro'nath."
+
+   // Quest resources.
+   LivingTreeHunt_trigger = "living trees"
+   LivingTreeHunt_assign = \
+      "The trees of Faro'nath are good and gentle creatures, but "
+      "their entroot berries are very powerful in the right hands.  "
+      "I'll reward you handsomely for chopping down a few "
+      "and I promise this is between us."
+
+   LivingTreeHunt_success = \
+      "Shal'ille won't be happy about this.  Here is your cut..."
+
+classvars:
+
+   vrIcon = LivingTreeHunt_icon_rsc
+   vrName = LivingTreeHunt_name_rsc
+   vrDesc = LivingTreeHunt_desc_rsc
+
+   vrKill = LivingTreeHunt_kill_rsc
+   vrReturn = LivingTreeHunt_return_rsc
+   vrCompleted = LivingTreeHunt_completed
+
+   // The QST_ID constant for this quest.
+   viQuestID = QNT_ID_MAR_ENTS
+
+   viIcon_Animation_start = 1
+
+properties:
+
+   piNumPlayers = 1
+   piPlayerRestrict = Q_PLAYER_NOTTRIED_RECENTLY
+   plSpecialRestrict = $
+   piMaxPlayers = 30
+   piSchedulePct = 100
+   piTimeLimit = 6 * 3600 // 6 hours.
+
+   piQuestDuration = 15
+   piQuestDifficulty = 2
+
+messages:
+
+   Constructor()
+   {
+      // Quest node list to send to QuestEngine.
+      plQuestNodes = [QNT_ID_MAR_ENTS_1, QNT_ID_MAR_ENTS_2];
+
+      propagate;
+   }
+
+   SendQuestNodeTemplates()
+   {
+      local lNPCs, oNPC, oQE, oLib;
+
+      oQE = Send(SYS,@GetQuestEngine);
+      oLib = Send(SYS,@GetLibrary);
+
+      // QNT_ID_MAR_ENTS_1 - kickoff
+      if Send(oQE,@AddQuestNodeTemplate,#questnode_type=QN_TYPE_MESSAGE,
+               #cargolist=[LivingTreeHunt_trigger],
+               #quest_node_index=QNT_ID_MAR_ENTS_1)
+      {
+         Send(oQE,@SetQuestNodeNPCList,#index=QNT_ID_MAR_ENTS_1,
+               #new_NPC_list=Send(oLib,@GetOccupationList,
+                                 #cNPC_class=&MarionBartender));
+      }
+      else
+      {
+         Debug("Error building QN: QNT_ID_MAR_ENTS_1");
+      }
+
+      // QNT_ID_MAR_ENTS_2
+      if Send(oQE,@AddQuestNodeTemplate,#questnode_type=QN_TYPE_MONSTER_MULTIPLE,
+               #NPC_modifier=QN_NPCMOD_SAME,#monsterlist=[ [&Ent, 50] ],
+               #timelimit=piTimeLimit,#quest_node_index=QNT_ID_MAR_ENTS_2,
+               #prizelist=[ [ [ QN_PRIZETYPE_ITEMCLASS, &EntrootBerry, 20 ],
+                              [ QN_PRIZETYPE_ITEMCLASS, &EntrootBerry, 30 ],
+                              [ QN_PRIZETYPE_ITEMCLASS, &EntrootBerry, 50 ] ] ])
+      {
+               
+         Send(oQE,@SetQuestNodeAssignHint,#index=QNT_ID_MAR_ENTS_2,
+               #new_hint=LivingTreeHunt_assign);
+         Send(oQE,@SetQuestNodeSuccessHint,#index=QNT_ID_MAR_ENTS_2,
+               #new_hint=LivingTreeHunt_success);
+      }
+      else
+      {
+         Debug("Error building QN: QNT_ID_MAR_ENTS_2");
+      }
+
+      return;
+   }
+
+   MainDesc(who=$,index=$,oQuestNode=$)
+   {
+      local oMob, oNPC;
+
+      oMob = Send(oQuestNode,@GetQuestMonster);
+      oNPC = Send(oQuestNode,@GetSourceNPC);
+      if oMob = $
+      {
+         AddPacket(4,vrReturn,4,Send(oNPC,@GetName),4,Send(oNPC,@GetHimHer));
+      }
+      else
+      {
+         AddPacket(4,vrKill,4,Send(oQuestNode,@GetNumberMonstersKilled),
+            4,Send(oQuestNode,@GetMonsterKillTarget),4,Send(oNPC,@GetName));
+      }
+
+      return;
+   }
+
+end
+/////////////////////////////////////////////////////////////////////////////////

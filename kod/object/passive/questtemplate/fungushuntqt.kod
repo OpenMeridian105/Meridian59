@@ -1,0 +1,160 @@
+// Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+// All rights reserved.
+//
+// This software is distributed under a license that is described in
+// the LICENSE file that accompanies it.
+//
+// Meridian is a registered trademark.
+
+
+/////////////////////////////////////////////////////////////////////////////////
+FungusBeastHunt is QuestTemplate
+// QNT_ID_FUNGUSHUNT_1, QNT_ID_FUNGUSHUNT_2,
+
+// QuestTemplate is
+// [ quest template index
+//   quest template object
+//   number of players,
+//   type of quest,
+//   eligible player restrictions,
+//   quest nodes,
+//   max number active,
+//   currently active quests,
+//   percent chance of scheduling (on timer firing)
+//   special restrictions ]
+
+constants:
+
+   include blakston.khd
+
+resources:
+
+   //include wolfhuntqt.lkod
+
+   // Quest description.
+   FungusBeastHunt_icon_rsc = fungbst.bgf
+   FungusBeastHunt_name_rsc = "Just a Fungi"
+
+   FungusBeastHunt_desc_rsc = \
+      "Herbutte is disgusted out by all the fungus beasts,  "
+      "he is requesting someone to clean them up."
+   FungusBeastHunt_kill_rsc = \
+      "Herbutte is disgusted out by all the fungus beasts,  "
+      "he is requesting someone to clean them up.\n\n"
+      "Currently, you have slain %i out of %i.  "
+      "Complete this task and report back to %s."
+   FungusBeastHunt_return_rsc = \
+      "Return to %s and let %s know the task has been completed."
+
+   FungusBeastHunt_completed = \
+      "Eliminated 50 Fungus Beast."
+
+   // Quest resources.
+   FungusBeastHunt_trigger = "Fungus Beast"
+   FungusBeastHunt_assign = \
+      "I'm tired of all of the Fungus Beasts.  Just listen to the name, "
+      "the way your face scowls from saying it.  FUN-GUS.  Even the name is gross.  "
+      "Maybe something like that existing in such great numbers near a "
+      "lesser man like Jonas is alright, but this close to the Princess?  "
+      "I won't have it."
+
+   FungusBeastHunt_success = \
+      "EWW I can smell them on you, here take this other fungus and get out of my sights."
+
+classvars:
+
+   vrIcon = FungusBeastHunt_icon_rsc
+   vrName = FungusBeastHunt_name_rsc
+   vrDesc = FungusBeastHunt_desc_rsc
+
+   vrKill = FungusBeastHunt_kill_rsc
+   vrReturn = FungusBeastHunt_return_rsc
+   vrCompleted = FungusBeastHunt_completed
+
+   // The QST_ID constant for this quest.
+   viQuestID = QNT_ID_FUNGUSHUNT
+
+properties:
+
+   piNumPlayers = 1
+   piPlayerRestrict = Q_PLAYER_NOTTRIED_RECENTLY
+   plSpecialRestrict = $
+   piMaxPlayers = 30
+   piSchedulePct = 100
+   piTimeLimit = 24 * 3600 // 24 hours.
+
+   piQuestDuration = 45
+   piQuestDifficulty = 6
+
+messages:
+
+   Constructor()
+   {
+      // Quest node list to send to QuestEngine.
+      plQuestNodes = [QNT_ID_FUNGUSHUNT_1, QNT_ID_FUNGUSHUNT_2];
+
+      propagate;
+   }
+
+   SendQuestNodeTemplates()
+   {
+      local lNPCs, oNPC, oQE, oLib;
+
+      oQE = Send(SYS,@GetQuestEngine);
+      oLib = Send(SYS,@GetLibrary);
+
+      // QNT_ID_FUNGUSHUNT_1 - kickoff
+      if Send(oQE,@AddQuestNodeTemplate,#questnode_type=QN_TYPE_MESSAGE,
+               #cargolist=[FungusBeastHunt_trigger],
+               #quest_node_index=QNT_ID_FUNGUSHUNT_1)
+      {
+         Send(oQE,@SetQuestNodeNPCList,#index=QNT_ID_FUNGUSHUNT_1,
+               #new_NPC_list=Send(oLib,@GetOccupationList,
+                                 #cNPC_class=&BarloqueMerchant));
+      }
+      else
+      {
+         Debug("Error building QN: QNT_ID_FUNGUSHUNT_1");
+      }
+
+      // QNT_ID_FUNGUSHUNT_2
+      if Send(oQE,@AddQuestNodeTemplate,#questnode_type=QN_TYPE_MONSTER_MULTIPLE,
+               #NPC_modifier=QN_NPCMOD_SAME,#monsterlist=[ [&FungusBeast, 50] ],
+               #timelimit=piTimeLimit,#quest_node_index=QNT_ID_FUNGUSHUNT_2,
+               #prizelist=[ [ [ QN_PRIZETYPE_ITEMCLASS, &InkyCap, 12 ] ] ])
+      {
+               
+         Send(oQE,@SetQuestNodeAssignHint,#index=QNT_ID_FUNGUSHUNT_2,
+               #new_hint=FungusBeastHunt_assign);
+         Send(oQE,@SetQuestNodeSuccessHint,#index=QNT_ID_FUNGUSHUNT_2,
+               #new_hint=FungusBeastHunt_success);
+      }
+      else
+      {
+         Debug("Error building QN: QNT_ID_FUNGUSHUNT_2");
+      }
+
+      return;
+   }
+
+   MainDesc(who=$,index=$,oQuestNode=$)
+   {
+      local oMob, oNPC;
+
+      oMob = Send(oQuestNode,@GetQuestMonster);
+      oNPC = Send(oQuestNode,@GetSourceNPC);
+      if oMob = $
+      {
+         AddPacket(4,vrReturn,4,Send(oNPC,@GetName),4,Send(oNPC,@GetHimHer));
+      }
+      else
+      {
+         AddPacket(4,vrKill,4,Send(oQuestNode,@GetNumberMonstersKilled),
+            4,Send(oQuestNode,@GetMonsterKillTarget),4,Send(oNPC,@GetName));
+      }
+
+      return;
+   }
+
+end
+/////////////////////////////////////////////////////////////////////////////////

@@ -1,0 +1,159 @@
+// Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+// All rights reserved.
+//
+// This software is distributed under a license that is described in
+// the LICENSE file that accompanies it.
+//
+// Meridian is a registered trademark.
+
+
+/////////////////////////////////////////////////////////////////////////////////
+LupoggHunt is QuestTemplate
+// QNT_ID_LUPOGG_HUNT_1, QNT_ID_LUPOGG_HUNT_2,
+
+// QuestTemplate is
+// [ quest template index
+//   quest template object
+//   number of players,
+//   type of quest,
+//   eligible player restrictions,
+//   quest nodes,
+//   max number active,
+//   currently active quests,
+//   percent chance of scheduling (on timer firing)
+//   special restrictions ]
+
+constants:
+
+   include blakston.khd
+
+resources:
+
+   //include wolfhuntqt.lkod
+
+   // Quest description.
+   LupoggHunt_icon_rsc = lupogg.bgf
+   LupoggHunt_name_rsc = "Sewer Poggers"
+
+   LupoggHunt_desc_rsc = \
+      "Meridian sewers are riddled Lupogg.  Zhieu B'hob is "
+      "in need of some assistance."
+ 
+   LupoggHunt_kill_rsc = \
+      "Meridian sewers are riddled Lupogg.  Zhieu B'hob is "
+      "in need of some assistance.\n\n"
+      "Currently, you have slain %i out of %i.  "
+      "Complete this task and report back to %s."
+   LupoggHunt_return_rsc = \
+      "Return to %s and let %s know the task has been completed."
+
+   LupoggHunt_completed = \
+      "Clear the sewers by slaying 50 lupoggs."
+
+   // Quest resources.
+   LupoggHunt_trigger = "help"
+   LupoggHunt_assign = \
+      "Last night I was walking past the sewers when this lupogg snuck right up "
+      "right behind me.  On account of my condition of all, and he bit me right in "
+      "the calf.  It's not that big of a deal, but it's an indication of a larger "
+      "problem.  These lupoggs are running rampant."
+
+   LupoggHunt_success = \
+      "Do you know what you call 50 dead lupoggs? A good start!"
+
+classvars:
+
+   vrIcon = LupoggHunt_icon_rsc
+   vrName = LupoggHunt_name_rsc
+   vrDesc = LupoggHunt_desc_rsc
+
+   vrKill = LupoggHunt_kill_rsc
+   vrReturn = LupoggHunt_return_rsc
+   vrCompleted = LupoggHunt_completed
+
+   // The QST_ID constant for this quest.
+   viQuestID = QNT_ID_LUPOGG_HUNT
+
+properties:
+
+   piNumPlayers = 1
+   piPlayerRestrict = Q_PLAYER_NOTTRIED_RECENTLY
+   plSpecialRestrict = $
+   piMaxPlayers = 30
+   piSchedulePct = 60
+   piTimeLimit = 6 * 3600 // 6 hours.
+
+messages:
+
+   Constructor()
+   {
+      // Quest node list to send to QuestEngine.
+      plQuestNodes = [QNT_ID_LUPOGG_HUNT_1, QNT_ID_LUPOGG_HUNT_2];
+
+      propagate;
+   }
+
+   SendQuestNodeTemplates()
+   {
+      local lNPCs, oNPC, oQE, oLib;
+
+      oQE = Send(SYS,@GetQuestEngine);
+      oLib = Send(SYS,@GetLibrary);
+
+      // QNT_ID_LUPOGG_HUNT_1 - kickoff
+      if Send(oQE,@AddQuestNodeTemplate,#questnode_type=QN_TYPE_MESSAGE,
+               #cargolist=[LupoggHunt_trigger],
+               #quest_node_index=QNT_ID_LUPOGG_HUNT_1)
+      {
+         Send(oQE,@SetQuestNodeNPCList,#index=QNT_ID_LUPOGG_HUNT_1,
+               #new_NPC_list=Send(oLib,@GetOccupationList,
+                                 #cNPC_class=&JasperMerchant));
+      }
+      else
+      {
+         Debug("Error building QN: QNT_ID_LUPOGG_HUNT_1");
+      }
+
+      // QNT_ID_LUPOGG_HUNT_2
+      if Send(oQE,@AddQuestNodeTemplate,#questnode_type=QN_TYPE_MONSTER_MULTIPLE,
+               #NPC_modifier=QN_NPCMOD_SAME,#monsterlist=[ [&Lupogg, 50] ],
+               #timelimit=piTimeLimit,#quest_node_index=QNT_ID_LUPOGG_HUNT_2,
+               #prizelist=[ [ [ QN_PRIZETYPE_ITEMCLASS, &WindrootSeed, 20 ],
+                              [ QN_PRIZETYPE_ITEMCLASS, &DragonflyEye, 50 ],
+                              [ QN_PRIZETYPE_ITEMCLASS, &Key, 1 ] ] ])
+      {
+               
+         Send(oQE,@SetQuestNodeAssignHint,#index=QNT_ID_LUPOGG_HUNT_2,
+               #new_hint=LupoggHunt_assign);
+         Send(oQE,@SetQuestNodeSuccessHint,#index=QNT_ID_LUPOGG_HUNT_2,
+               #new_hint=LupoggHunt_success);
+      }
+      else
+      {
+         Debug("Error building QN: QNT_ID_LUPOGG_HUNT_2");
+      }
+
+      return;
+   }
+
+   MainDesc(who=$,index=$,oQuestNode=$)
+   {
+      local oMob, oNPC;
+
+      oMob = Send(oQuestNode,@GetQuestMonster);
+      oNPC = Send(oQuestNode,@GetSourceNPC);
+      if oMob = $
+      {
+         AddPacket(4,vrReturn,4,Send(oNPC,@GetName),4,Send(oNPC,@GetHimHer));
+      }
+      else
+      {
+         AddPacket(4,vrKill,4,Send(oQuestNode,@GetNumberMonstersKilled),
+            4,Send(oQuestNode,@GetMonsterKillTarget),4,Send(oNPC,@GetName));
+      }
+
+      return;
+   }
+
+end
+/////////////////////////////////////////////////////////////////////////////////

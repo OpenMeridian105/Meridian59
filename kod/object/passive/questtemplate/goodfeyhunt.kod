@@ -1,0 +1,159 @@
+// Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+// All rights reserved.
+//
+// This software is distributed under a license that is described in
+// the LICENSE file that accompanies it.
+//
+// Meridian is a registered trademark.
+
+
+/////////////////////////////////////////////////////////////////////////////////
+GoodFeyHunt is QuestTemplate
+// QNT_ID_FEYHUNT_GOOD_1, QNT_ID_FEYHUNT_GOOD_2,
+
+// QuestTemplate is
+// [ quest template index
+//   quest template object
+//   number of players,
+//   type of quest,
+//   eligible player restrictions,
+//   quest nodes,
+//   max number active,
+//   currently active quests,
+//   percent chance of scheduling (on timer firing)
+//   special restrictions ]
+
+constants:
+
+   include blakston.khd
+
+resources:
+
+   //include wolfhuntqt.lkod
+
+   // Quest description.
+   GoodFeyHunt_icon_rsc = faerie-e.bgf
+   GoodFeyHunt_name_rsc = "Fairy Tale - Qor's Children"
+
+   GoodFeyHunt_desc_rsc = \
+      "Woodland fairies known as the fey dirhai vow war against "
+      "their kinsmen. Help bring down Quilicia wood by defeating the fey elhai."
+ 
+   GoodFeyHunt_kill_rsc = \
+      "Woodland faries known as the fey dirhai vow war against "
+      "their kinsmen. Help bring down Quilicia wood by defeating the fey elhai.\n\n"
+      "Currently, you have slain %i out of %i.  "
+      "Complete this task and report back to %s."
+   GoodFeyHunt_return_rsc = \
+      "Return to %s and let %s know the task has been completed."
+
+   GoodFeyHunt_completed = \
+      "You've battled againest the fey elhai!"
+
+   // Quest resources.
+   GoodFeyHunt_trigger = "Attack Quilicia"
+   GoodFeyHunt_assign = \
+      "You're looking for the power of the vale of sorrows are you?  "
+      "North of the Shal'ille Temple you'll find your way into the "
+      "fairy infested woods.  To reveal the vale of sorrows, you'll want to "
+      "pick a side of their war..."
+
+   GoodFeyHunt_success = \
+      "Hope what you seek was worth it..."
+
+classvars:
+
+   vrIcon = GoodFeyHunt_icon_rsc
+   vrName = GoodFeyHunt_name_rsc
+   vrDesc = GoodFeyHunt_desc_rsc
+
+   vrKill = GoodFeyHunt_kill_rsc
+   vrReturn = GoodFeyHunt_return_rsc
+   vrCompleted = GoodFeyHunt_completed
+
+   // The QST_ID constant for this quest.
+   viQuestID = QNT_ID_FEYHUNT_GOOD
+
+properties:
+
+   piNumPlayers = 1
+   piPlayerRestrict = Q_PLAYER_NOTTRIED_RECENTLY | Q_PLAYER_KARMA_EVIL
+   plSpecialRestrict = $
+   piMaxPlayers = 30
+   piSchedulePct = 100
+   piTimeLimit = 6 * 3600 // 6 hours.
+
+messages:
+
+   Constructor()
+   {
+      // Quest node list to send to QuestEngine.
+      plQuestNodes = [QNT_ID_FEYHUNT_GOOD_1, QNT_ID_FEYHUNT_GOOD_2];
+
+      propagate;
+   }
+
+   SendQuestNodeTemplates()
+   {
+      local lNPCs, oNPC, oQE, oLib;
+
+      oQE = Send(SYS,@GetQuestEngine);
+      oLib = Send(SYS,@GetLibrary);
+
+      // QNT_ID_FEYHUNT_GOOD_1 - kickoff
+      if Send(oQE,@AddQuestNodeTemplate,#questnode_type=QN_TYPE_MESSAGE,
+               #cargolist=[GoodFeyHunt_trigger],
+               #quest_node_index=QNT_ID_FEYHUNT_GOOD_1)
+      {
+         Send(oQE,@SetQuestNodeNPCList,#index=QNT_ID_FEYHUNT_GOOD_1,
+               #new_NPC_list=Send(oLib,@GetOccupationList,
+                                 #cNPC_class=&MarionInnkeeper));
+      }
+      else
+      {
+         Debug("Error building QN: QNT_ID_FEYHUNT_GOOD_1");
+      }
+
+      // QNT_ID_FEYHUNT_GOOD_2
+      if Send(oQE,@AddQuestNodeTemplate,#questnode_type=QN_TYPE_MONSTER_MULTIPLE,
+               #NPC_modifier=QN_NPCMOD_SAME,#monsterlist=[ [&Fairy, 50] ],
+               #timelimit=piTimeLimit,#quest_node_index=QNT_ID_FEYHUNT_GOOD_2,
+               #prizelist=[ [ [ QN_PRIZETYPE_ITEMCLASS, &EssenceDust, 20 ],
+                              [ QN_PRIZETYPE_ITEMCLASS, &EssenceDust, 25 ],
+                              [ QN_PRIZETYPE_ITEMCLASS, &UncutSeraphym, 25 ] ] ])
+      {
+               
+         Send(oQE,@SetQuestNodeAssignHint,#index=QNT_ID_FEYHUNT_GOOD_2,
+               #new_hint=GoodFeyHunt_assign);
+         Send(oQE,@SetQuestNodeSuccessHint,#index=QNT_ID_FEYHUNT_GOOD_2,
+               #new_hint=GoodFeyHunt_success);
+      }
+      else
+      {
+         Debug("Error building QN: QNT_ID_FEYHUNT_GOOD_2");
+      }
+
+      return;
+   }
+
+   MainDesc(who=$,index=$,oQuestNode=$)
+   {
+      local oMob, oNPC;
+
+      oMob = Send(oQuestNode,@GetQuestMonster);
+      oNPC = Send(oQuestNode,@GetSourceNPC);
+      if oMob = $
+      {
+         AddPacket(4,vrReturn,4,Send(oNPC,@GetName),4,Send(oNPC,@GetHimHer));
+      }
+      else
+      {
+         AddPacket(4,vrKill,4,Send(oQuestNode,@GetNumberMonstersKilled),
+            4,Send(oQuestNode,@GetMonsterKillTarget),4,Send(oNPC,@GetName));
+      }
+
+      return;
+   }
+
+end
+/////////////////////////////////////////////////////////////////////////////////

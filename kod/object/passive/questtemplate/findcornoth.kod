@@ -71,12 +71,16 @@ classvars:
 properties:
 
    piNumPlayers = 1
-   piPlayerRestrict = Q_PLAYER_NOTTRIED_RECENTLY
+   piPlayerRestrict = \
+      Q_PLAYER_NOTSUCCEEDED | Q_PLAYER_NOTFAILED_RECENTLY | Q_PLAYER_NEWBIE
    plSpecialRestrict = $
    piMaxPlayers = 30
    piSchedulePct = 100
 
-   piTimeLimit = 2 * 3600 // 2 hours.
+   piTimeLimit = 1 * 3600 // 1 hour.
+
+   piQuestDuration = 5
+   piQuestDifficulty = 1
 
 messages:
 
@@ -104,7 +108,7 @@ messages:
       {
          Send(oQE,@SetQuestNodeNPCList,#index=QNT_ID_FIND_CORNOTH_ONE,
                #new_NPC_list=Send(oLib,@GetOccupationList,
-                                 #cNPC_class=&JasperBartender));
+                                 #cNPC_class=&JasperElder));
       }
       else
       {
@@ -114,6 +118,8 @@ messages:
       // Template #277 is quest
       // QNT_ID_FIND_CORNOTH_TWO
       if Send(oQE,@AddQuestNodeTemplate,#questnode_type=QN_TYPE_SHOWUP,
+               #prizelist=[ [ [ QN_PRIZETYPE_ITEMCLASS, &Book, 1 ],
+                              [ QN_PRIZETYPE_ITEMCLASS, &CookingRecipe, 1 ] ] ],
                #quest_node_index=QNT_ID_FIND_CORNOTH_TWO)
       {
                

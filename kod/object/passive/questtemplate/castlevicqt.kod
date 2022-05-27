@@ -36,19 +36,14 @@ resources:
    CastleVicQuest_name_rsc = "Castle Victoria"
 
    CastleVicQuest_desc_rsc = \
-      "Rumors are circulating about the source of the rising undead in Tos.  "
-      "Valiant warriors beat back the zombies and skeletons at night, but they "
-      "can only hold for so long. "
+      "Castle Victoria was the old seat of the kingdom. Far'Nohl, the King "
+      "in that era, is said to have gone mad after delving too deeply into "
+      "dark magics."
    CastleVicQuest_kill_rsc = \
-      "Paddock has asked you to find the seat of the old kingdom.  It lies "
-      "directly south from Tos, through the Cragged Mountains.  The journey "
-      "will be very dangerous, and you should run past any trolls or black "
-      "spiders you encounter if you are too weak to fight them.  You will have "
-      "to trek through Ukgoth, the Holy Land of Trolls, and find Castle "
-      "Victoria in the northwest corner of that area.  This journey is not "
-      "for the faint of heart.  Battle against the tusked skeletons before "
-      "proceeding to the mad king himself.\n\n"
-      "Currently, you have slain %i out of %i tusked skeletons.  "
+      "Castle Victoria was the old seat of the kingdom. Far'Nohl, the King "
+      "in that era, is said to have gone mad after delving too deeply into "
+      "dark magics.  "
+      "Currently, you have slain %i out of %i ghosts.  "
       "Complete this task and report back to %s."
    CastleVicQuest_return_rsc = \
       "Return to %s and let %s know the task has been completed."
@@ -60,11 +55,15 @@ resources:
    // Quest resources.
    CastleVicQuest_trigger = "Castle Victoria"
    CastleVicQuest_assign = \
-      "Castle Victoria was the old seat of the kingdom. Far'Nohl, the King "
-      "in that era, is said to have gone mad after delving too deeply into "
-      "dark magics.  Hmm... yes. That ~Iwould~I be an important place to "
-      "check.  If there are undead walking the halls of Castle Victoria, "
-      "we'll know for sure."
+      "Hmm... yes. That ~Iwould~I be an important place to check.  "
+      "Find the seat of the old kingdom.  It lies directly "
+      "south from Tos, through the Cragged Mountains.  The journey "
+      "will be very dangerous, and you should run past any trolls or black "
+      "spiders you encounter if you are too weak to fight them.  You will have "
+      "to trek through Ukgoth, the Holy Land of Trolls, and find Castle "
+      "Victoria in the northwest corner of that area.  This journey is not "
+      "for the faint of heart.  Battle against the tusked skeletons before "
+      "proceeding to the mad king himself."
 
    CastleVicQuest_success = \
       "The curse has not been lifted.  Is it possible that Castle Victoria's "
@@ -86,11 +85,14 @@ classvars:
 properties:
 
    piNumPlayers = 1
-   piPlayerRestrict = Q_PLAYER_NOTSUCCEEDED | Q_PLAYER_NOTFAILED_RECENTLY
+   piPlayerRestrict = Q_PLAYER_NOTTRIED_RECENTLY
    plSpecialRestrict = $
    piMaxPlayers = 30
    piSchedulePct = 100
-   piTimeLimit = 48 * 3600 // 48 hours.
+   piTimeLimit = 24 * 3600 // 24 hours.
+
+   piQuestDuration = 40
+   piQuestDifficulty = 10
 
 messages:
 
@@ -119,7 +121,7 @@ messages:
       {
          Send(oQE,@SetQuestNodeNPCList,#index=QNT_ID_CASTLEVIC_1,
                #new_NPC_list=Send(oLib,@GetOccupationList,
-                                 #cNPC_class=&TosInnkeeper));
+                                 #cNPC_class=&BarloqueBlacksmith));
       }
       else
       {
@@ -128,12 +130,11 @@ messages:
 
       // QNT_ID_CASTLEVIC_2
       if Send(oQE,@AddQuestNodeTemplate,#questnode_type=QN_TYPE_MONSTER_MULTIPLE,
-               #NPC_modifier=QN_NPCMOD_SAME,#monsterlist=[ [&TuskedSkeleton, 30] ],
+               #NPC_modifier=QN_NPCMOD_SAME,#monsterlist=[ [&Ghost, 10] ],
                #timelimit=piTimeLimit,#quest_node_index=QNT_ID_CASTLEVIC_2,
-               #prizelist=[ [ [ QN_PRIZETYPE_ITEMCLASS, &Ruby, 50 ],
-                              [ QN_PRIZETYPE_ITEMCLASS, &PolishedSeraphym, 50 ],
-                              [ QN_PRIZETYPE_ITEMCLASS, &InkyCap, 20 ],
-                              [ QN_PRIZETYPE_ITEMCLASS, &FireSand, 50 ] ] ])
+               #prizelist=[ [ [ QN_PRIZETYPE_ITEMCLASS, &Ruby, 30 ],
+                              [ QN_PRIZETYPE_ITEMCLASS, &SpessartineRock, 30 ],
+                              [ QN_PRIZETYPE_ITEMCLASS, &HoldWand, 1 ] ] ])
       {
          Send(oQE,@SetQuestNodeAssignHint,#index=QNT_ID_CASTLEVIC_2,
                #new_hint=CastleVicQuest_assign);

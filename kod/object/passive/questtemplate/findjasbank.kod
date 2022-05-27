@@ -39,7 +39,7 @@ resources:
    FindJasperBank_desc_rsc = \
       "Somewhere within the run-down town of Jasper lies the Royal Bank, "
       "run by Yevitan, a mysterious man of few words. Find the Royal Bank "
-      "among the abandoned buildings and deposit some shillings."
+      "among the abandoned buildings."
    FindJasperBank_completed_rsc = \
       "You have visted the bank of Jasper."
 
@@ -50,12 +50,9 @@ resources:
       "run by Yevitan, a mysterious man of few words. Find the Royal Bank "
       "among the abandoned buildings and deposit some shillings."
    FindJasperBank_success = \
-      "Not bad for a fledgling adventurer. I do hope you plan "
-      "to deposit more than this sum as you grow in strength. Fortunately for you, "
+      "Not bad for a fledgling adventurer.  Fortunately for you, "
       "we're running a new-account special. For doing business with us, "
-      "here's a ten thousand shilling bonus. Be sure to visit our sister branch "
-      "in the city of Tos if you find yourself in that area. As for your gear, "
-      "you'll have to find the vaults across the street to deposit items."
+      "here's a ten thousand shilling bonus."
 
 classvars:
 
@@ -73,12 +70,16 @@ classvars:
 properties:
 
    piNumPlayers = 1
-   piPlayerRestrict = Q_PLAYER_NOTTRIED_RECENTLY
+   piPlayerRestrict = \
+      Q_PLAYER_NOTSUCCEEDED | Q_PLAYER_NOTFAILED_RECENTLY | Q_PLAYER_NEWBIE
    plSpecialRestrict = $
    piMaxPlayers = 30
    piSchedulePct = 100
 
-   piTimeLimit = 2 * 3600 // 2 hours.
+   piTimeLimit = 1 * 3600 // 1 hour.
+
+   piQuestDuration = 5
+   piQuestDifficulty = 1
 
 messages:
 
@@ -106,7 +107,7 @@ messages:
       {
          Send(oQE,@SetQuestNodeNPCList,#index=QNT_ID_FIND_JASPERBANK_ONE,
                #new_NPC_list=Send(oLib,@GetOccupationList,
-                                 #cNPC_class=&RazaElder));
+                                 #cNPC_class=&BarloqueMerchant));
       }
       else
       {
@@ -120,6 +121,8 @@ messages:
       {
                
          Send(oQE,@SetQuestNodeNPCList,#index=QNT_ID_FIND_JASPERBANK_TWO,
+               #prizelist=[ [ [ QN_PRIZETYPE_ITEMCLASS, &ScaleArmor, 1 ],
+                              [ QN_PRIZETYPE_ITEMCLASS, &GoldShield, 1 ] ] ],
                #new_NPC_list=Send(oLib,@GetOccupationList,
                                  #cNPC_class=&JasperBanker));
          Send(oQE,@SetQuestNodeAssignHint,#index=QNT_ID_FIND_JASPERBANK_TWO,

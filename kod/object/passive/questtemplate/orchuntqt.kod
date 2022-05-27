@@ -1,0 +1,165 @@
+// Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+// All rights reserved.
+//
+// This software is distributed under a license that is described in
+// the LICENSE file that accompanies it.
+//
+// Meridian is a registered trademark.
+
+
+/////////////////////////////////////////////////////////////////////////////////
+OrcCaveHunt is QuestTemplate
+// QNT_ID_ORCHUNT_1, QNT_ID_ORCHUNT_2,
+
+// QuestTemplate is
+// [ quest template index
+//   quest template object
+//   number of players,
+//   type of quest,
+//   eligible player restrictions,
+//   quest nodes,
+//   max number active,
+//   currently active quests,
+//   percent chance of scheduling (on timer firing)
+//   special restrictions ]
+
+constants:
+
+   include blakston.khd
+
+resources:
+
+   //include wolfhuntqt.lkod
+
+   // Quest description.
+   OrcCaveHunt_icon_rsc = OrcCave.bgf
+   OrcCaveHunt_name_rsc = "Orc Caves"
+
+   OrcCaveHunt_desc_rsc = \
+      "For centuries Tos has been at war with the Orcs, "
+      "they still continue their raids to this day.  "
+      "Defend Tos from the orcs."
+ 
+   OrcCaveHunt_kill_rsc = \
+      "For centuries Tos has been at war with the Orcs, "
+      "they still continue their raids to this day.  "
+      "Defend Tos from the orcs.\n\n"
+      "Currently, you have slain %i out of %i cave orcs.  "
+      "Complete this task and report back to %s."
+   OrcCaveHunt_return_rsc = \
+      "Return to %s and let %s know the task has been completed."
+
+   OrcCaveHunt_completed = \
+      "Ventured into the orc caves and has defended Tos."
+
+   // Quest resources.
+   OrcCaveHunt_trigger = "orc caves"
+   OrcCaveHunt_assign = \
+      "Why would you ever want to go in the Orc Caves?  I think that place gave "
+      "me Asthma!  Well anyway if you really want to get in there don't be "
+      "fooled by the Chalice at the end of the Caves, the whole wall is an "
+      "illusion!  Once you are in, watch out for the cave orcs.  They are "
+      "stronger than your typical orc in the icky caves."
+
+   OrcCaveHunt_success = \
+      "From all the orcs and undead, I wonder if I should move to Cor Noth."
+
+classvars:
+
+   vrIcon = OrcCaveHunt_icon_rsc
+   vrName = OrcCaveHunt_name_rsc
+   vrDesc = OrcCaveHunt_desc_rsc
+
+   vrKill = OrcCaveHunt_kill_rsc
+   vrReturn = OrcCaveHunt_return_rsc
+   vrCompleted = OrcCaveHunt_completed
+
+   // The QST_ID constant for this quest.
+   viQuestID = QNT_ID_ORCHUNT
+
+properties:
+
+   piNumPlayers = 1
+   piPlayerRestrict = Q_PLAYER_NOTTRIED_RECENTLY
+   plSpecialRestrict = $
+   piMaxPlayers = 30
+   piSchedulePct = 60
+   piTimeLimit = 6 * 3600 // 6 hours.
+
+   piQuestDuration = 35
+   piQuestDifficulty = 6
+
+messages:
+
+   Constructor()
+   {
+      // Quest node list to send to QuestEngine.
+      plQuestNodes = [QNT_ID_ORCHUNT_1, QNT_ID_ORCHUNT_2];
+
+      propagate;
+   }
+
+   SendQuestNodeTemplates()
+   {
+      local lNPCs, oNPC, oQE, oLib;
+
+      oQE = Send(SYS,@GetQuestEngine);
+      oLib = Send(SYS,@GetLibrary);
+
+      // QNT_ID_ORCHUNT_1 - kickoff
+      if Send(oQE,@AddQuestNodeTemplate,#questnode_type=QN_TYPE_MESSAGE,
+               #cargolist=[OrcCaveHunt_trigger],
+               #quest_node_index=QNT_ID_ORCHUNT_1)
+      {
+         Send(oQE,@SetQuestNodeNPCList,#index=QNT_ID_ORCHUNT_1,
+               #new_NPC_list=Send(oLib,@GetOccupationList,
+                                 #cNPC_class=&TosApothecary));
+      }
+      else
+      {
+         Debug("Error building QN: QNT_ID_ORCHUNT_1");
+      }
+
+      // QNT_ID_ORCHUNT_2
+      if Send(oQE,@AddQuestNodeTemplate,#questnode_type=QN_TYPE_MONSTER_MULTIPLE,
+               #NPC_modifier=QN_NPCMOD_SAME,#monsterlist=[ [&CaveOrc, 50] ],
+               #timelimit=piTimeLimit,#quest_node_index=QNT_ID_ORCHUNT_2,
+               #prizelist=[ [ [ QN_PRIZETYPE_ITEMCLASS, &Solagh, 30 ],
+                              [ QN_PRIZETYPE_ITEMCLASS, &Solagh, 20 ],
+                              [ QN_PRIZETYPE_ITEMCLASS, &Solagh, 50 ] ] ])
+      {
+               
+         Send(oQE,@SetQuestNodeAssignHint,#index=QNT_ID_ORCHUNT_2,
+               #new_hint=OrcCaveHunt_assign);
+         Send(oQE,@SetQuestNodeSuccessHint,#index=QNT_ID_ORCHUNT_2,
+               #new_hint=OrcCaveHunt_success);
+      }
+      else
+      {
+         Debug("Error building QN: QNT_ID_ORCHUNT_2");
+      }
+
+      return;
+   }
+
+   MainDesc(who=$,index=$,oQuestNode=$)
+   {
+      local oMob, oNPC;
+
+      oMob = Send(oQuestNode,@GetQuestMonster);
+      oNPC = Send(oQuestNode,@GetSourceNPC);
+      if oMob = $
+      {
+         AddPacket(4,vrReturn,4,Send(oNPC,@GetName),4,Send(oNPC,@GetHimHer));
+      }
+      else
+      {
+         AddPacket(4,vrKill,4,Send(oQuestNode,@GetNumberMonstersKilled),
+            4,Send(oQuestNode,@GetMonsterKillTarget),4,Send(oNPC,@GetName));
+      }
+
+      return;
+   }
+
+end
+/////////////////////////////////////////////////////////////////////////////////

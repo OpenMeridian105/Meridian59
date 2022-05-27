@@ -873,9 +873,37 @@ messages:
       return;
    }
 
-   SetGuild(what = $)
+   GuildDisbanded(what=$)
    {
+      if (what <> $
+         AND poGuild = what)
+      {
+         Send(self,@SetGuild,#what=$);
+      }
+
+      return;
+   }
+
+   SetGuild(what=$)
+   {
+      local oTerritoryGame;
+
+      oTerritoryGame = Send(SYS,@GetTerritoryGame);
+      if (poGuild <> $)
+      {
+         Send(oTerritoryGame,@SubtractGuildTerritory,#oGuild=poGuild,
+               #iFaction=piFaction);
+      }
       poGuild = what;
+      if (what <> $)
+      {
+         Send(oTerritoryGame,@AddGuildTerritory,#oGuild=poGuild,
+               #iFaction=piFaction);
+      }
+
+      Send(oTerritoryGame,@UpdateFlagState,#flag=self);
+
+      // Updates colors.
       Send(self,@UpdateGuildFlag);
 
       return;
@@ -1160,14 +1188,6 @@ messages:
       return poCapturer;
    }
 
-   ResetGuildFlag()
-   {
-      poGuild = $;
-      Send(self,@UpdateGuildFlag);
-
-      return;
-   }
-
    UpdateGuildFlag()
    {
       if (poGuild <> $) AND vbGuildFlag_enabled
@@ -1175,6 +1195,15 @@ messages:
          Send(self,@ChangeGuildFlagColor,#override=TRUE,
                #color1=Send(poGuild,@GetPrimaryGuildColor),
                #color2=Send(poGuild,@GetSecondaryGuildColor));
+      }
+      else
+      {
+         piColor = 0;
+      }
+
+      if poOwner <> $
+      {
+         Send(poOwner,@SomethingChanged,#what=self);
       }
 
       return;

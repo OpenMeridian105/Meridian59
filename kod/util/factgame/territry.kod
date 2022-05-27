@@ -171,6 +171,8 @@ messages:
 
       plFlagCounts = [0, 0, 0, 0];
 
+      plGuildTerritories = $;
+
       if piGameMode = GAME_FULL
       {
          Send(self,@PlaceFlagsFullGame);
@@ -202,6 +204,8 @@ messages:
       {
          Send(self,@UpdateFlagsPartialGame);
       }
+
+      Send(self,@UpdateGuildTerritories);
 
       pbRecreating = FALSE;
 
@@ -490,6 +494,42 @@ messages:
       }
 
       return plFlagStates;
+   }
+
+   UpdateFlagState(flag=$)
+   {
+      local lFlag, oRoom;
+
+      if (flag = $
+         OR NOT IsClass(flag,&Flagpole))
+      {
+         Debug("UpdateFlagState got invalid flagpole ", flag);
+
+         return;
+      }
+
+      oRoom = Send(flag,@GetOwner);
+      if (oRoom = $)
+      {
+         Debug("UpdateFlagState got nil owner for flag ", flag);
+
+         return;
+      }
+
+      lFlag = GetListNode(plFlagStates, 1, Send(oRoom,@GetRoomNum));
+      if (lFlag = $)
+      {
+         Debug("UpdateFlagState couldn't find flag in plFlagStates ",
+            flag, Send(oRoom,@GetRoomNum));
+
+         return;
+      }
+
+      SetNth(lFlag, 2, Send(flag,@GetFaction));
+      SetNth(lFlag, 3, Send(flag,@GetCapturer));
+      SetNth(lFlag, 4, Send(flag,@GetGuild));
+
+      return;
    }
 
    FlagClaimed(flag=$)
@@ -935,6 +975,44 @@ messages:
 
 #region Guild Territory Scoring
 
+   GuildDisbanded(what=$)
+   {
+      local i, oRoom, oFlag;
+
+      if (what = $
+         OR NOT IsClass(what,&Guild))
+      {
+         Debug("GuildDisbanded given invalid guild ", what);
+
+         return;
+      }
+
+      foreach i in plFlagRIDs
+      {
+         oRoom = Send(SYS,@FindRoomByNum,#num=i);
+         if (oRoom = $)
+         {
+            Debug("GuildDisbanded got nil room for RID ", i);
+
+            continue;
+         }
+
+         oFlag = Send(oRoom,@FindHoldingActive,#class=&Flagpole);
+         if oFlag = $
+         {
+            Debug("GuildDisbanded got nil flag in ", Send(oRoom,@GetName));
+
+            continue;
+         }
+
+         Send(oFlag,@GuildDisbanded,#what=what);
+      }
+
+      Send(self,@UpdateGuildTerritories);
+
+      return;
+   }
+
    AddGuildTerritory(oGuild=$, iFaction=0)
    {
       local i, j, lNew, iTotal, bFound;
@@ -1109,48 +1187,6 @@ messages:
    }
 
 #endregion Guild Territory Scoring
-
-   UpdateFixFlags()
-   {
-      local i, oRoom, oFlag, oCapturer, oGuild;
-
-      plFlagStates = $;
-
-      foreach i in plFlagRIDs
-      {
-         oRoom = Send(SYS,@FindRoomByNum,#num=i);
-         if (oRoom = $)
-         {
-            Debug("UpdateFixFlags got nil room for RID ",i);
-
-            continue;
-         }
-
-         oFlag = Send(oRoom,@FindHoldingActive,#class=&Flagpole);
-         if oFlag = $
-         {
-            Debug("UpdateFixFlags got nil flag in ",Send(oRoom,@GetName));
-
-            continue;
-         }
-
-         oCapturer = Send(oFlag,@GetCapturer);
-         if (oCapturer <> $)
-         {
-            oGuild = Send(oCapturer,@GetGuild);
-            Send(oFlag,@SetGuild,#what=oGuild);
-         }
-         else
-         {
-            oGuild = $;
-         }
-
-         plFlagStates = Cons([i, Send(oFlag,@GetFaction), oCapturer, oGuild],
-                           plFlagStates);
-      }
-
-      return;
-   }
 
 end
 ////////////////////////////////////////////////////////////////////////////////

@@ -1,0 +1,77 @@
+// Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+// All rights reserved.
+//
+// This software is distributed under a license that is described in
+// the LICENSE file that accompanies it.
+//
+// Meridian is a registered trademark.
+
+
+/////////////////////////////////////////////////////////////////////////////////////
+HakkaInn is DesertRoom
+
+constants:
+
+   include blakston.khd
+
+resources:
+
+   //include HakkaInn.lkod
+
+   hakkanews_god_name = "Designers' News"
+   hakkanews_god_desc = "Check here for information from the game administrators."
+
+   room_HakkaInn = HakkaInn.roo
+   room_name_HakkaInn = "A Dusty Saloon"
+
+   HakkaInn_music = bar.ogg
+
+classvars:
+
+   vrName = room_name_HakkaInn
+
+   viTeleport_row = 8
+   viTeleport_col = 9
+
+   viTerrain_type = TERRAIN_CITY | TERRAIN_SHOP
+
+properties:
+
+   viPermanent_flags = ROOM_NO_COMBAT | ROOM_SANCTUARY | ROOM_HOMETOWN | ROOM_SAFELOGOFF
+
+   prRoom = room_HakkaInn
+   piRoom_num = RID_HAKKA_INN
+
+   piBaseLight = LIGHT_NICE
+   piOutside_factor = OUTDOORS_SOME
+
+   prMusic = HakkaInn_music
+
+messages:
+
+   CreateStandardExits()
+   {
+      plExits = $;
+      plExits = Cons([ 12, 12, RID_HAKKA, 52, 34, ROTATE_NONE ],plExits);
+
+      propagate;
+   }
+
+   CreateStandardObjects()
+   {
+      local oNews;
+
+      oNews = Send(SYS,@FindNewsByNum,#num=NID_ANNOUNCEMENTS);
+      if oNews = $
+      {
+           oNews = Create(&NewsAnnouncement,#nid=NID_ANNOUNCEMENTS,
+           #name=hakkanews_god_name,#desc=hakkanews_god_desc);
+      }
+
+      Send(self,@NewHold,#what=oNews,#new_row=6,#new_col=8,#fine_row=32,#fine_col=32);
+
+      propagate;
+   }
+
+end
+////////////////////////////////////////////////////////////////////////////////

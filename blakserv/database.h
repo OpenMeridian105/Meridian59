@@ -123,7 +123,9 @@ enum sql_recordtype
    STAT_QUESTGIVER = 44,
    STAT_ACCOUNTS = 45,
    STAT_ACCOUNT_CHARS = 46,
-   STAT_MAXSTAT = 46 // Equal to highest defined stat.
+   STAT_COMPL_QUESTS = 47,
+   STAT_COMPL_QUEST_ITEMS = 48,
+   STAT_MAXSTAT = 48 // Equal to highest defined stat.
 };
 
 // Statistics_Table entries have the format:
@@ -179,7 +181,9 @@ static sql_statistic_type Statistics_Table[] = {
    {STAT_LOGPEN_ITEM,    3, true, "WriteLogpenItem", "player_logpen_items"},
    {STAT_QUESTGIVER,     2, true, "WriteQuestGiver", "wiki_quest_giver"},
    {STAT_ACCOUNTS,       8, true, "WriteAccount", "server_accounts"},
-   {STAT_ACCOUNT_CHARS,  2, true, "WriteAccountChar", "server_account_chars"}
+   {STAT_ACCOUNT_CHARS,  2, true, "WriteAccountChar", "server_account_chars"},
+   {STAT_COMPL_QUESTS,   5, true, "WriteCompletedQuest", "player_completed_quests"},
+   {STAT_COMPL_QUEST_ITEMS, 4, true, "WriteCompQuestRewardItems", "player_quest_reward_items"}
 };
 
 enum sql_worker_state

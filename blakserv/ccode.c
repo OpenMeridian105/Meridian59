@@ -4042,9 +4042,9 @@ int C_RecordStat(int object_id,local_var_type *local_vars,
          {
             val_type check_tag;
             check_tag.v.tag = val_check.v.data;
-            bprintf("Wrong Type of Parameter in C_RecordStat(), expected %s found %s",
-               ((val_check.v.data == RESOURCE_GER) ? "RESOURCE_GER" : GetTagName(check_tag)),
-                  GetTagName(val));
+            bprintf("Wrong Type of Parameter (position %i) in C_RecordStat(), expected %s found %s",
+               i, ((val_check.v.data == RESOURCE_GER) ? "RESOURCE_GER" : GetTagName(check_tag)),
+               GetTagName(val));
             FreeDataNodeMemory(num_expected, count, data);
             return NIL;
          }

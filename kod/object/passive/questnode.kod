@@ -1004,7 +1004,8 @@ messages:
    CompletionCriteriaMet()
    {
       local lQuesters, oQuester, oQuestEngine, lPrize, lPenalty, sSay,
-         oMercenary, oReward, bCompleted, index, oTemplate;
+         oMercenary, oReward, bCompleted, index, oTemplate, lXPTPRewards,
+         iTimeStarted, iTime;
 
       lQuesters = Send(poQuest,@GetQuesters);
 
@@ -1061,12 +1062,33 @@ messages:
          foreach oQuester in lQuesters
          {
             index = Send(poQuest,@GetQuestTemplateIndex);
+
+            // Uses logged-in time, not wall-clock time.
+            iTimeStarted = Send(oQuester,@GetQuestStartTimeLoggedIn,#index=index);
+            iTime = Send(oQuester,@GetTimeLoggedIn);
+            if (iTimeStarted = 0
+               OR iTime <= iTimeStarted)
+            {
+               Debug("Got invalid quest start/end time for ", oQuester,
+                  Send(oQuester,@GetTrueName), " start: ", iTimeStarted,
+                  " now: ", iTime);
+               iTime = 0;
+            }
+            else
+            {
+               iTime -= iTimeStarted;
+            }
+
             Send(oQuester,@AddQuestHistory,#index=index,#success=TRUE);
 
             // Award XP and TP to offer comparable reward to grinding.
             oTemplate = Send(Send(SYS,@GetQuestEngine),@GetQuestTemplateObject,#index=index);
-            Send(oQuester,@AddQuestXTPReward,#template=oTemplate);
+            lXPTPRewards = Send(oQuester,@AddQuestXTPReward,#template=oTemplate);
 
+            // Record the end of the quest here.
+            RecordStat(STAT_COMPL_QUESTS, TAG_INT, index, TAG_RESOURCE,
+                  Send(oQuester,@GetTrueName), TAG_INT, iTime, TAG_INT,
+                  First(lXPTPRewards), TAG_INT, Nth(lXPTPRewards,2));
             oMercenary = Send(oQuester,@GetMercenary);
 
             if (oMercenary <> $
@@ -1413,7 +1435,7 @@ messages:
             {
                oPrize = Create(&DiscipleRobe,#school=SS_KRAANAN);
                Send(oQuester,@NewHold,#what=oPrize);
-               if bCompleted {Send(self,@RewardInfo,#who=oQuester,#what=oPrize,#iAmount=iAmount);}
+               if bCompleted {Send(self,@RewardInfo,#who=oQuester,#what=oPrize);}
             }
             break;
          case QN_PRIZE_ITEM_SHALROBE:
@@ -1421,7 +1443,7 @@ messages:
             {
                oPrize = Create(&DiscipleRobe,#school=SS_SHALILLE);
                Send(oQuester,@NewHold,#what=oPrize);
-               if bCompleted {Send(self,@RewardInfo,#who=oQuester,#what=oPrize,#iAmount=iAmount);}
+               if bCompleted {Send(self,@RewardInfo,#who=oQuester,#what=oPrize);}
             }
             break;
          case QN_PRIZE_ITEM_FARENROBE:
@@ -1429,7 +1451,7 @@ messages:
             {
                oPrize = Create(&DiscipleRobe,#school=SS_FAREN);
                Send(oQuester,@NewHold,#what=oPrize);
-               if bCompleted {Send(self,@RewardInfo,#who=oQuester,#what=oPrize,#iAmount=iAmount);}
+               if bCompleted {Send(self,@RewardInfo,#who=oQuester,#what=oPrize);}
             }
             break;
          case QN_PRIZE_ITEM_QORROBE:
@@ -1437,7 +1459,7 @@ messages:
             {
                oPrize = Create(&DiscipleRobe,#school=SS_QOR);
                Send(oQuester,@NewHold,#what=oPrize);
-               if bCompleted {Send(self,@RewardInfo,#who=oQuester,#what=oPrize,#iAmount=iAmount);}
+               if bCompleted {Send(self,@RewardInfo,#who=oQuester,#what=oPrize);}
             }
             break;
          case QN_PRIZE_ITEM_RIIJAROBE:
@@ -1445,7 +1467,7 @@ messages:
             {
                oPrize = Create(&DiscipleRobe,#school=SS_RIIJA);
                Send(oQuester,@NewHold,#what=oPrize);
-               if bCompleted {Send(self,@RewardInfo,#who=oQuester,#what=oPrize,#iAmount=iAmount);}
+               if bCompleted {Send(self,@RewardInfo,#who=oQuester,#what=oPrize);}
             }
             break;
          case QN_PRIZE_ITEM_JALAROBE:
@@ -1453,7 +1475,7 @@ messages:
             {
                oPrize = Create(&DiscipleRobe,#school=SS_JALA);
                Send(oQuester,@NewHold,#what=oPrize);
-               if bCompleted {Send(self,@RewardInfo,#who=oQuester,#what=oPrize,#iAmount=iAmount);}
+               if bCompleted {Send(self,@RewardInfo,#who=oQuester,#what=oPrize);}
             }
             break;
          case QN_PRIZE_ITEM_DURABLESCIM:
@@ -1463,7 +1485,7 @@ messages:
                Send(Send(SYS,@FindItemAttByNum,#num=IA_DURABLE),@AddToItem,#oItem=oPrize);
                Send(oPrize,@RevealHiddenAttributes);
                Send(oQuester,@NewHold,#what=oPrize);
-               if bCompleted {Send(self,@RewardInfo,#who=oQuester,#what=oPrize,#iAmount=iAmount);}
+               if bCompleted {Send(self,@RewardInfo,#who=oQuester,#what=oPrize);}
             }
             break;
          }
@@ -1858,12 +1880,17 @@ messages:
       return;
    }
 
-   RewardInfo(who=$,what=$,iAmount=0)
+   RewardInfo(who=$,what=$,iAmount=1)
    {
       if what = $
       {
          return;
       }
+
+      // Log the quest prize to database.
+      RecordStat(STAT_COMPL_QUEST_ITEMS, TAG_INT, Send(poQuest,@GetQuestTemplateIndex),
+            TAG_RESOURCE, Send(who,@GetTrueName), TAG_RESOURCE, Send(what,@GetName),
+            TAG_INT, iAmount);
 
       if IsClass(what,&Monster)
       {

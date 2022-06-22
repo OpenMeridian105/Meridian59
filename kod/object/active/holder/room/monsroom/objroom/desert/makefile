@@ -6,6 +6,6 @@
 
 DEPEND = ..\desert.bof
 
-BOFS = desertmaze.bof hakka.bof
+BOFS = desertmaze.bof hakka.bof desert1.bof
 
 !include $(KODDIR)\kod.mak

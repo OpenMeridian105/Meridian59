@@ -33,6 +33,7 @@ void CommandDrop(char *args);
 void CommandGet(char *args);
 void CommandLook(char *args);
 void CommandOffer(char *args);
+void CommandQuest(char *args);
 void CommandCast(char *args);
 void CommandPerform(char *args);
 void CommandWave(char *args);

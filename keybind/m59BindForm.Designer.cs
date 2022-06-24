@@ -168,6 +168,9 @@
             this.buttonOK = new System.Windows.Forms.Button();
             this.buttonCancel = new System.Windows.Forms.Button();
             this.buttonHelp = new System.Windows.Forms.Button();
+            this.buttonQuestMod = new System.Windows.Forms.Button();
+            this.buttonQuest = new System.Windows.Forms.Button();
+            this.label41 = new System.Windows.Forms.Label();
             this.tabControl1.SuspendLayout();
             this.tabPage1.SuspendLayout();
             this.tabPage2.SuspendLayout();
@@ -663,6 +666,9 @@
             // 
             // tabPage3
             // 
+            this.tabPage3.Controls.Add(this.buttonQuestMod);
+            this.tabPage3.Controls.Add(this.buttonQuest);
+            this.tabPage3.Controls.Add(this.label41);
             this.tabPage3.Controls.Add(this.buttonAttackMod);
             this.tabPage3.Controls.Add(this.buttonAttack);
             this.tabPage3.Controls.Add(this.label28);
@@ -1276,6 +1282,23 @@
             this.buttonHelp.UseVisualStyleBackColor = true;
             this.buttonHelp.Click += new System.EventHandler(this.buttonHelp_Click);
             // 
+            // buttonQuestMod
+            // 
+            resources.ApplyResources(this.buttonQuestMod, "buttonQuestMod");
+            this.buttonQuestMod.Name = "buttonQuestMod";
+            this.buttonQuestMod.UseVisualStyleBackColor = true;
+            // 
+            // buttonQuest
+            // 
+            resources.ApplyResources(this.buttonQuest, "buttonQuest");
+            this.buttonQuest.Name = "buttonQuest";
+            this.buttonQuest.UseVisualStyleBackColor = true;
+            // 
+            // label41
+            // 
+            resources.ApplyResources(this.label41, "label41");
+            this.label41.Name = "label41";
+            // 
             // M59Bind
             // 
             resources.ApplyResources(this, "$this");
@@ -1452,6 +1475,9 @@
         private System.Windows.Forms.Button buttonHelp;
         private System.Windows.Forms.Label labelMouselookYScaleValue;
         private System.Windows.Forms.Label labelMouselookXScaleValue;
+        private System.Windows.Forms.Button buttonQuestMod;
+        private System.Windows.Forms.Button buttonQuest;
+        private System.Windows.Forms.Label label41;
     }
 }
 

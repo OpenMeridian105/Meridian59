@@ -310,6 +310,14 @@ void CommandOffer(char *args)
 }
 /************************************************************************/
 /*
+ * CommandQuest: "quest" command
+ */
+void CommandQuest(char *args)
+{
+   PerformAction(A_QUEST, NULL);
+}
+/************************************************************************/
+/*
  * CommandCast: "cast" command; find spell name and cast it
  */
 void CommandCast(char *args)

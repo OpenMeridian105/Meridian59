@@ -1,0 +1,150 @@
+// Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+// All rights reserved.
+//
+// This software is distributed under a license that is described in
+// the LICENSE file that accompanies it.
+//
+// Meridian is a registered trademark.
+
+
+////////////////////////////////////////////////////////////////////////////////
+DesertInnkeeper is Towns
+
+constants:
+
+   include blakston.khd
+
+   PADDOCK_YELL_CHANCE = 30
+
+resources:
+
+   //include tsinnk.lkod
+
+   DesertInnkeeper_name_rsc = "Madame Yaga"
+   DesertInnkeeper_name_alt_rsc = "Madame Amerantha"
+
+   DesertInnkeeper_icon_rsc = qw01i.bgf
+   DesertInnkeeper_desc_rsc = \
+      "Before you stands a woman, neither young nor old.  "
+      "She carries about her a feeling of power and dignity.  "
+      "You find it hard to stare at her for long periods of time."
+   DesertInnkeeper_desc_alt_rsc = \
+      "The twin sister of Madame Yaga.  Through the calm you can see in her eyes "
+      "the turmoil of years in distress, the distant flash of thousands of storms."
+
+
+classvars:
+
+   vrIcon = DesertInnkeeper_icon_rsc
+   viAttributes = \
+      MOB_NOFIGHT | MOB_RECEIVE | MOB_RANDOM | MOB_LISTEN | MOB_NOMOVE \
+      | MOB_SELLER | MOB_LAWFUL
+   viOccupation = MOB_ROLE_INNKEEPER
+   viMerchant_markup = MERCHANT_DISCOUNT
+
+properties:
+
+   vrName = DesertInnkeeper_name_rsc
+   vrDesc = DesertInnkeeper_desc_rsc
+
+   pbAltName = FALSE
+
+messages:
+
+   Constructor(bAltName=FALSE,color=0)
+   {
+      if (bAltName)
+      {
+         Send(self,@SetAlternativeName,#bAltName=bAltName);
+      }
+
+      propagate;
+   }
+
+   NewOwner(what=$)
+   {
+      if (what <> $
+         AND Send(what,@GetRoomNum) = RID_HAKKA_INN)
+      {
+         Send(self,@SetAlternativeName,#bAltName=TRUE);
+      }
+
+      propagate;
+   }
+
+   SetAlternativeName(bAltName=FALSE)
+   {
+      pbAltName = bAltName;
+
+      if (pbAltName)
+      {
+         vrName = DesertInnkeeper_name_alt_rsc;
+         vrDesc = DesertInnkeeper_desc_alt_rsc;
+         piColor_translation = PT_BLUE_TO_LBLUE;
+      }
+      else
+      {
+         vrName = DesertInnkeeper_name_rsc;
+         vrDesc = DesertInnkeeper_desc_rsc;
+         piColor_translation = 0;
+      }
+
+      if (poOwner <> $)
+      {
+         Send(poOwner,@SomethingChanged,#what=self);
+      }
+
+      return;
+   }
+
+   AffectMood(why=$,what=$)
+   {
+
+      if why = MOODMOD_DAWN
+      {
+         Send(self,@SetMood,#new_mood=piMood-3);
+
+         return;
+      }
+
+      if why = MOODMOD_DUSK
+      {
+         Send(self,@SetMood,#new_mood=piMood+3);
+
+         return;
+      }
+
+      return;
+   }
+
+   SetForSale()
+   {
+      plFor_sale = [ 
+         [
+            Create(&LoadoutScroll,#labelled=TRUE),
+            Create(&SetScroll,#labelled=TRUE),
+            Create(&FortuneCookie,#number=1),
+            Create(&Flask)
+         ],
+      $,$,$];
+
+      return;
+   }
+
+   UserEntered(who=$)
+   {
+      if Send(who,@GetAction) = UA_HAPPY
+      {
+         Send(self,@SetMood,#new_mood=piMood+1);
+      }
+      
+      if Send(who,@GetAction) = UA_SAD
+      {
+         Send(self,@SetMood,#new_mood=piMood-1);
+      }
+
+      propagate;
+   }
+
+end
+////////////////////////////////////////////////////////////////////////////////

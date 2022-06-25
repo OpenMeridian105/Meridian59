@@ -593,6 +593,35 @@ void UserWithdraw(void)
    list_delete(bankers);
 }
 /************************************************************************/
+/*
+ * UserAskQuests: Called when user wants to ask NPC for quests.
+ */
+void UserAskQuests(void)
+{
+   list_type sel_list, selections;
+   ID selected;
+
+   // Get any nearby questable NPCs.
+   selections = GetObjects3D(NO_COORD_CHECK, NO_COORD_CHECK,
+      CLOSE_DISTANCE, OF_NPCQUESTABLE, 0, 0, 0);
+
+   if (selections == NULL)
+   {
+      GameMessage(GetString(hInst, IDS_NOQUESTERS));
+      return;
+   }
+
+   sel_list = DisplayLookList(hMain, GetString(hInst, IDS_CHOOSE), selections, LD_SINGLEAUTO);
+
+   if (sel_list != NULL)
+   {
+      selected = ((object_node *)(sel_list->data))->id;
+      RequestNPCQuests(selected);
+   }
+
+   list_delete(selections);
+}
+/************************************************************************/
 void Offered(list_type items)
 {
    info.items = items;

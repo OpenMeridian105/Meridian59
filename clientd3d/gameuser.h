@@ -33,6 +33,7 @@ M59EXPORT void StartApply(ID id);
 void UserBuy(void);
 void UserDeposit(void);
 void UserWithdraw(void);
+void UserAskQuests(void);
 void UserQuit(void);
 void UserLookInside(void);
 void UserActivateMouse(void);

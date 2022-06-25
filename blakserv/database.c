@@ -125,6 +125,32 @@ UINT record_count = 0;
    )                                                     \
    ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=latin1;"
 
+#define SQLQUERY_CREATETABLE_COMPL_QUEST                     "\
+   CREATE TABLE player_completed_quests                       \
+   (                                                          \
+     quest_id             INT(6) NOT NULL,                    \
+     player_name          VARCHAR(63) NOT NULL,               \
+     completion_time      DATETIME NOT NULL,                  \
+     num_seconds_taken    INT(12) NOT NULL,                   \
+     xp_rewarded          INT(6) NOT NULL,                    \
+     tp_rewarded          INT(6) NOT NULL,                    \
+     PRIMARY KEY(quest_id, player_name, completion_time)      \
+   )                                                          \
+   ENGINE=InnoDB DEFAULT CHARSET=latin1;"
+
+#define SQLQUERY_CREATETABLE_COMPL_QUEST_ITEMS               "\
+   CREATE TABLE player_quest_reward_items                     \
+   (                                                          \
+     quest_rewarditem_id  INT(12) NOT NULL AUTO_INCREMENT,    \
+     quest_id             INT(6) NOT NULL,                    \
+     player_name          VARCHAR(63) NOT NULL,               \
+     completion_time      DATETIME NOT NULL,                  \
+     item_name            VARCHAR(63) NOT NULL,               \
+     item_number          INT(6) NOT NULL,                    \
+     PRIMARY KEY(quest_rewarditem_id)                         \
+   )                                                          \
+   ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=latin1;"
+
 #define SQLQUERY_CREATETABLE_PLAYER                         "\
    CREATE TABLE player (                                     \
      player_account_id     INT(11) NOT NULL,                 \
@@ -787,6 +813,23 @@ UINT record_count = 0;
        logpen_time     = now(),           \n\
        item_name       = item_name,       \n\
        item_number     = item_number;     \n\
+   END"
+
+#define SQLQUERY_CREATEPROC_COMPL_QUEST "\
+   CREATE PROCEDURE WriteCompletedQuest(IN quest_id INT(6), IN player_name VARCHAR(63), \
+     IN num_seconds_taken INT(12), IN xp_rewarded INT(6), IN tp_rewarded INT(6)) \
+   BEGIN \
+     INSERT INTO player_completed_quests SET quest_id = quest_id, player_name = player_name, \
+       completion_time = now(), num_seconds_taken = num_seconds_taken, \
+       xp_rewarded = xp_rewarded, tp_rewarded = tp_rewarded; \
+   END"
+
+#define SQLQUERY_CREATEPROC_COMPL_QUEST_ITEMS "\
+   CREATE PROCEDURE WriteCompQuestRewardItems(IN quest_id INT(6), IN player_name VARCHAR(63), \
+     IN item_name VARCHAR(63), IN item_number INT(6)) \
+   BEGIN \
+     INSERT INTO player_quest_reward_items SET quest_id = quest_id, player_name = player_name, \
+       completion_time = now(), item_name = item_name, item_number = item_number;\
    END"
 
 #define SQLQUERY_CREATEPROC_PLAYER    "\
@@ -2529,6 +2572,8 @@ void _MySQLVerifySchema()
    MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATETABLE_PLAYERDEATH, status);
    MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATETABLE_LOGPEN, status);
    MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATETABLE_LOGPEN_ITEMS, status);
+   MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATETABLE_COMPL_QUEST, status);
+   MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATETABLE_COMPL_QUEST_ITEMS, status);
    MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATETABLE_PLAYER, status);
    MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATETABLE_GUILD, status);
    MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATETABLE_SPELLS, status);
@@ -2583,6 +2628,8 @@ void _MySQLVerifySchema()
    MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATEPROC_PLAYERDEATH, status);
    MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATEPROC_LOGPEN, status);
    MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATEPROC_LOGPEN_ITEM, status);
+   MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATEPROC_COMPL_QUEST, status);
+   MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATEPROC_COMPL_QUEST_ITEMS, status);
    MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATEPROC_PLAYER, status);
    MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATEPROC_PLAYERSUICIDE, status);
    MYSQL_QUERY_CHECKED(mysql, SQLQUERY_CREATEPROC_GUILD, status);

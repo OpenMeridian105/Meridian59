@@ -239,6 +239,7 @@
 #define IDS_CONTINUE                    201
 #define IDS_QUESTHELP                   202
 #define IDS_QUESTHELP_TITLE             203
+#define IDS_NOQUESTERS                  204
 #define IDC_PORTNUM                     1000
 #define IDC_HOST                        1001
 #define IDC_ITEMLIST                    1002

@@ -11972,9 +11972,9 @@ messages:
 
    AddCurrentQuest(node = $, template = $)
    "Adds a quest to the user's plActiveQuests list.  Each element in "
-   "this list is a quest template ID followed by the current active "
-   "quest node.  Quests are removed from this list by AddQuestHistory "
-   "when the quest finishes."
+   "this list is a quest template ID, the current active quest node and the "
+   "time the user started the quest (in logged-in time).  Quests are removed "
+   "from this list by AddQuestHistory when the quest finishes."
    {
       local i;
 
@@ -12005,14 +12005,23 @@ messages:
       }
 
       // Add to the end, so quests are displayed in the order given.
-      plActiveQuests = AppendListElem([template,node],plActiveQuests);
+      plActiveQuests = AppendListElem([template,node,Send(self,@GetTimeLoggedIn)]
+                           ,plActiveQuests);
 
-      // Notice for quest log updating (added or advanced quest).
-      Send(self,@WaveSendUser,#what=self,#wave_rsc=user_quest_advance_wav);
-      Send(self,@MsgSendUser,#message_rsc=user_quest_log_updated);
+      // Tells the user they had something quest-related happen.
+      Send(self,@InformQuestAdvance);
 
       // Update the user's quest log.
       Send(self,@ToCliStats,#group=STAT_GROUP_QUESTS);
+
+      return;
+   }
+
+   InformQuestAdvance()
+   {
+      // Notice for quest log updating (added or advanced quest).
+      Send(self,@WaveSendUser,#what=self,#wave_rsc=user_quest_advance_wav);
+      Send(self,@MsgSendUser,#message_rsc=user_quest_log_updated);
 
       return;
    }
@@ -12068,19 +12077,26 @@ messages:
       return $;
    }
 
-   HasQuest(index=$)
+   GetQuestStartTimeLoggedIn(index=$)
    {
       local i;
 
       foreach i in plActiveQuests
       {
-         if First(i) = index
+         if (First(i) = index)
          {
-            return TRUE;
+            return Nth(i,3);
          }
       }
 
-      return FALSE;
+      Debug("Unable to find ",index, " in active quests for ",self, vrName);
+
+      return 0;
+   }
+
+   HasQuest(index=$)
+   {
+      return GetListNode(plActiveQuests, 1, index) <> $;
    }
 
    HasQuestNode(index=$)

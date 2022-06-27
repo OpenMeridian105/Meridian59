@@ -1,0 +1,267 @@
+// Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+// All rights reserved.
+//
+// This software is distributed under a license that is described in
+// the LICENSE file that accompanies it.
+//
+// Meridian is a registered trademark.
+
+
+////////////////////////////////////////////////////////////////////////////////
+MummyLord is Monster
+
+constants:
+
+   include blakston.khd
+   
+   WAKEUP_CHANCE = 100
+
+   // How long are we dormant when someone tries to wake us up?
+   DORMANT_DURATION = 2 * 60 * 1000  // 2 minutes (in ms)
+
+resources:
+
+   //include MummyLord.lkod
+
+   MummyLord_koc_name_rsc = "konapleoc"
+   MummyLord_name_rsc = "mummy lord"
+   MummyLord_icon_rsc = mummylord.bgf
+   MummyLord_desc_rsc = \
+      "Sworn to defend an eternity, the resting place of whom they served in life.  "
+      "A mummy lord's unliving state is the result of a terrible curse or rite designed to "
+      "punish treason, infidelity, or crimes of an even more abhorrent nature."
+
+   MummyLord_dead_icon_rsc = mummylordX.bgf
+   MummyLord_dead_name_rsc = "dead mummy lord"
+
+   MummyLord_sound_hit = mum_atkh.ogg
+   MummyLord_sound_miss = mum_atkm.ogg
+   MummyLord_sound_death = mum_die.ogg
+   MummyLord_sound_aware = mum_awr2.ogg
+
+classvars:
+
+   vrKocName = MummyLord_koc_name_rsc
+   vrIcon = MummyLord_icon_rsc
+   vrDesc = MummyLord_desc_rsc
+
+   vrDead_icon = MummyLord_dead_icon_rsc
+   vrDead_name = MummyLord_dead_name_rsc
+
+   // Standard frames for resting, moving, attacking and getting hit.
+   viRest_frame = 1
+   viLook_start_frame = 2
+   viLook_end_frame = 5
+   viLook_duration = 200      // Duration per frame.
+   viMove_start_frame = 2
+   viMove_end_frame = 5
+   viMove_duration = 200      // Duration per frame.
+   viAttack_start_frame = 6
+   viAttack_end_frame = 9
+   viAttack_duration = 200    // Duration per frame.
+   viHit_start_frame = 3
+   viHit_end_frame = 6
+   viHit_duration = 500       // Maximum total duration of animation.
+
+   viTreasure_type = TID_DESERT_MUMMY
+   viAttributes = 0
+   viLevel = 140
+   viDifficulty = 9
+   viAttack_type = ATK_TYPE_BLUDGEON
+
+   // Larger distance since we want them to seek out the newbies.
+   viVisionDistance = 16
+   viSocial = 1
+   viKarma = 0
+   vbIsUndead = TRUE
+   viDefault_behavior = AI_FIGHT_AGGRESSIVE | AI_FIGHT_LASHOUT | AI_MOVE_FLEE_FRIGHTENERS
+   
+   viNormalSpeed = SPEED_SLIGHTLY_SLOW
+   viCashmin = 150
+   viCashmax = 500
+   vrSound_hit = MummyLord_sound_hit
+   vrSound_miss = MummyLord_sound_miss
+   vrSound_aware = MummyLord_sound_aware
+   vrSound_death = MummyLord_sound_death
+
+   vbCanPoison = FALSE
+   vbCanBleed = FALSE
+   vbCanSiphon = TRUE
+   vbCanFatigue = FALSE
+
+   // Quite used to dark places.
+   viNightVision = 255
+
+properties:
+
+   vrName = MummyLord_name_rsc
+   viSpeed = SPEED_NONE
+   viAttacks = ATTACK_SLASH | ATTACK_SPIN
+
+   piAnimation = ANIM_NONE
+
+   // How long should we remain dormant, unable to be awoken by players?
+   ptRemainDormant = $
+
+   // Used to lock statue into a dormant state
+   pbLockedDormant = FALSE
+
+messages:
+
+   Constructed()
+   {
+      plResistances = [ [-SPL_TYPE_UNHOLY, 20],
+                        [-SPL_TYPE_HOLY, -20],
+                        [-SPL_TYPE_FIRE, -60],
+                        [ATK_TYPE_ALL, -20 ] ];
+      propagate;
+   }
+
+   Delete()
+   {
+      if ptRemainDormant <> $
+      {
+         DeleteTimer(ptRemainDormant);
+         ptRemainDormant = $;
+      }
+
+      propagate;
+   }
+
+   SpellResist(oSpell=$,who=$,iSpellpower=$)
+   {
+      // Ignore sight-based spells and Seduce
+      if IsClass(oSpell,&Blind)
+         OR IsClass(oSpell,&Dazzle)
+         OR IsClass(oSpell,&Seduce)
+      {
+         return TRUE;
+      }
+
+      propagate;
+   }
+
+   SomethingMoved(what = $,new_row = $,new_col = $)
+   {
+      local iDelay;
+
+      // Only care about moving stuff if we're not already moving
+      // Only care about non-immortal players we can see and are "close"
+      if viSpeed = SPEED_NONE
+         AND NOT pbLockedDormant
+         AND what <> $
+         AND IsClass(what,&Player)
+         AND NOT (IsClass(what,&DM) AND Send(what,@PlayerIsImmortal))
+         AND Send(poOwner,@LineOfSight,#obj1=self,#obj2=what)
+         AND Send(self,@CanSee,#what=what)
+      {
+         if Random(1,100) <= WAKEUP_CHANCE
+         {
+            // Set our intruder as our target if we don't have another one.
+            // 25 hatred is pretty low.
+            if Send(self,@GetHatred) <= 25
+            {
+               Send(self,@TargetSwitch,#what=what,#iHatred=25);
+            }
+
+            // Someone walked close enough!  Spring to life!
+            Send(self,@WakeUp);
+         }
+         else
+         {
+            // Don't wake up yet.  Rest a bit longer.
+            pbLockedDormant = TRUE;
+
+            iDelay = DORMANT_DURATION;
+            // Created by an admin?  Probably an invasion.  Don't sleep as long.
+            if (piMonsterFlags & MFLAG_DONT_DISPOSE)
+            {
+               iDelay /= 5;
+            }
+
+            ptRemainDormant = CreateTimer(self,@EndDormantTimer,iDelay);
+         }
+      }
+
+      propagate;
+   }
+
+   EndDormantTimer()
+   {
+      ptRemainDormant = $;
+      pbLockedDormant = FALSE;
+
+      return;
+   }
+
+   TweakBehavior()
+   "Our default behavior it not be noticable as a monster."
+   {
+      if viSpeed = SPEED_NONE
+      {
+         piBehavior = AI_NOMOVE | AI_NOFIGHT | AI_NPC;
+      }
+
+      return;
+   }
+
+   WakeUp()
+   {
+      // Make ourselves mobile!
+      viSpeed = viNormalSpeed;
+
+      piBehavior = piBehavior & ~(AI_NOMOVE | AI_NOFIGHT | AI_NPC);
+      if poOwner <> $
+      {
+         Send(poOwner,@SomethingChanged,#what=self);
+         Send(self,@EnterStateEngage,#target=poTarget,#actnow=TRUE);
+      }
+
+      // Now, fix our name!
+      vrName = MummyLord_name_rsc;
+
+      return;
+   }
+
+   EnterStateMove()
+   {
+      Send(self,@SetTarget);
+      Send(self,@SetState,#bit=STATE_MOVE);
+      Send(self,@ClearBehavior);
+      piHatred = 0;
+
+      // Fall asleep...
+      viSpeed = SPEED_NONE;
+
+      // Change behavior flags...
+      piBehavior = AI_NOMOVE | AI_NOFIGHT | AI_NPC;
+
+      // Change our name...
+      vrName = MummyLord_name_rsc;
+
+      // Should always have an owner when entering state move anyway...
+      if poOwner <> $
+      {
+         Send(poOwner,@SomethingChanged,#what=self);
+      }
+
+      return;
+   }
+
+   IsAlliedClass(what=$)
+   {
+      if Send(what,@IsUndead)
+      {
+         return TRUE;
+      }
+
+      propagate;
+   }
+
+   IsExpansionMonster()
+   {
+      return TRUE;
+   }
+
+end
+////////////////////////////////////////////////////////////////////////////////

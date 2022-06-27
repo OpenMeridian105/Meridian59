@@ -8,7 +8,7 @@ SOURCEDIR = .
 OUTDIR = $(CLIENTRUNDIR)\resource
 OUTDIRSUB = ..\$(OUTDIR)
 
-DIRS =  treeant bullant
+DIRS =  treeant bullant mummylord
 
 all:
    @-for %i in (*.bgf) do @$(CP) %i $(OUTDIR) >nul

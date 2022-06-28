@@ -140,7 +140,8 @@ messages:
                   OR (iTargetRegion <> REGION_KOCATAN
                      AND iCurrentRegion <> REGION_BRAX
                      AND iCurrentRegion <> REGION_ORCCAVES
-                     AND iCurrentRegion <> REGION_KOCATAN))
+                     AND iCurrentRegion <> REGION_KOCATAN
+                     AND iCurrentRegion <> REGION_DESERT))
                {
                   Post(oTargetRoom,@Teleport,#what=who);
 
@@ -164,6 +165,15 @@ messages:
          if iCurrentRegion = REGION_ORCCAVES
          {
             oTargetRoom = Send(SYS,@FindRoomByNum,#num=RID_ORC_CAVE5_EXT);
+            Post(oTargetRoom,@Teleport,#what=who);
+
+            return;
+         }
+
+         // Escaping the desert will take the player to Death Valley Temple
+         if iCurrentRegion = REGION_DESERT
+         {
+            oTargetRoom = Send(SYS,@FindRoomByNum,#num=RID_DVALLEY_TEMPLE);
             Post(oTargetRoom,@Teleport,#what=who);
 
             return;

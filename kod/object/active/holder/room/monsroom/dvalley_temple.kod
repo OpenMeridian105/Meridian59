@@ -18,9 +18,12 @@ resources:
 
    //include DValley_Temple.lkod
 
-   room_DValley_Temple = DValley_Temple.roo
+   room_DValley_Temple = dvalley_temple.roo
    room_name_DValley_Temple = "Pantheon of the Arcane Arts"
    DValley_Temple_music = bridge.ogg
+
+   news_hakka_hall = "General News"
+   news_hakka_hall_desc = "Find out what's happening around Meridian."
 
 classvars:
 
@@ -28,9 +31,14 @@ classvars:
    viTerrain_type = TERRAIN_ROAD | TERRAIN_HILLS
 
    viTeleport_row = 10
-   viTeleport_col = 5
+   viTeleport_col = 25
 
    viWeatherZone = WEATHER_ZONE_DVALLEY
+   viRegion = REGION_DESERT
+
+   viPermanent_flags = ROOM_NO_COMBAT | ROOM_SANCTUARY | ROOM_SAFELOGOFF
+
+   vbIsExpansionRoom = TRUE
 
 properties:
 
@@ -52,10 +60,23 @@ messages:
       return;
    }
 
-
-   SeanceCheck()
+   CreateStandardObjects()
    {
-      return FALSE;
+      local oNews;
+
+      oNews = Send(SYS,@FindNewsByNum,#num=NID_GENERAL);
+      if oNews = $
+      {
+           oNews = Create(&NewsAnnouncement,#nid=NID_GENERAL,
+           #name=news_hakka_hall,#desc=news_hakka_hall_desc);
+      }
+
+      Send(self,@NewHold,#what=oNews,#new_row=13,#new_col=27,#fine_row=32,#fine_col=32);
+
+      Send(self,@NewHold,#what=Create(&DesertInnKeeper),
+           #new_row=20,#new_col=11,#fine_row=0,#fine_col=48,#new_angle=ANGLE_WEST);
+
+      propagate;
    }
 
 end

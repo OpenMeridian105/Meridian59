@@ -62,6 +62,7 @@ classvars:
 
    // For each new item we only have limited inventory
    viBaseStock = 50
+   viWindrootMax = 20
 
    // We sell what other people have given us
    vbSellFromInventory = TRUE
@@ -138,7 +139,7 @@ messages:
    {
       local i, oInventory, lForSale;
 
-      oInventory = Create(&WindrootSeed,#number=viBaseStock);
+      oInventory = Create(&WindrootLeaf,#number=viWindrootMax);
       lForSale = [ oInventory ];
       Send(self,@NewHold,#what=oInventory);
 
@@ -146,10 +147,10 @@ messages:
       {
          oInventory = Send(self,@PickInventory);
 
-         if IsClass(oInventory,&WindrootSeed)
+         if IsClass(oInventory,&WindrootLeaf)
          {
             Send(oInventory,@Delete);
-            oInventory = Create(&WindrootLeaf,#number=viBaseStock);
+            oInventory = Create(&WindrootSeed,#number=viWindrootMax);
          }
 
          lForSale = Cons(oInventory,lForSale);
@@ -193,7 +194,8 @@ messages:
          lInventoryList = [  &PurpleMushroom,
                              &Ruby,
                              &PolishedSeraphym,
-                             &ShamanBlood
+                             &ShamanBlood,
+                             &WindrootLeaf
                           ];
       }
       else if (iRandom < 40)
@@ -224,7 +226,6 @@ messages:
                              &Elderberry,
                              &Snack,
                              &Mushroom,
-                             &WindrootSeed,
                              &Emerald,
                              &RedMushroom
                           ];

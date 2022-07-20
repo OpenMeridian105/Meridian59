@@ -1178,12 +1178,21 @@ messages:
       propagate;
    }
 
+   SendLookAnimation()
+   "Same as object.kod's version, monster.kod now has an override for "
+   "mobs with no overlays."
+   {
+      // Send animation info to user for when the user looks at the object.
+      Send(self,@SendAnimation);
+
+      return;
+   }
+
    SendMoveAnimation()
    {
       local iBody_xlat;
 
-      iBody_xlat = (piBody_translations & HUMAN_TRANSLATION_BODY_MASK)
-                        / HUMAN_TRANSLATION_BODY_MUL;
+      iBody_xlat = Send(self,@GetBodyTranslation);
       if iBody_xlat <> 0
       {
          AddPacket(1,ANIMATE_TRANSLATION,1,iBody_xlat);
@@ -1199,9 +1208,8 @@ messages:
    {
       local iBody_xlat, iTime, iFrame;
 
-      iBody_xlat = (piBody_translations & HUMAN_TRANSLATION_BODY_MASK)
-                        / HUMAN_TRANSLATION_BODY_MUL;
-      if (piBody_translations & HUMAN_TRANSLATION_BODY_MASK) <> 0
+      iBody_xlat = Send(self,@GetBodyTranslation);
+      if (iBody_xlat <> 0)
       {
          AddPacket(1,ANIMATE_TRANSLATION,1,iBody_xlat);
       }

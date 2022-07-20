@@ -11178,9 +11178,8 @@ messages:
       poIcon_set = what;
       vrIcon = new_icon;
 
-      piBody_translations = piBody_translations & ~PLAYER_TRANSLATION_BODY_MASK;
-      piBody_translations = piBody_translations |
-                  (translation * PLAYER_TRANSLATION_BODY_MUL);
+      piBody_translations &= ~PLAYER_TRANSLATION_BODY_MASK;
+      piBody_translations |= (translation * PLAYER_TRANSLATION_BODY_MUL);
 
       if poOwner <> $ AND alldone
       {
@@ -11668,7 +11667,7 @@ messages:
 
    SendAnimation(iAnimation = $)
    {
-      local iDelay, iFrame, iTime;
+      local iBody_xlat, iDelay, iFrame, iTime;
 
       if iAnimation = $
       {
@@ -11703,9 +11702,10 @@ messages:
          return;
       }
 
-      if Send(self,@GetBodyTranslation) <> 0
+      iBody_xlat = Send(self,@GetBodyTranslation);
+      if iBody_xlat <> 0
       {
-         AddPacket(1,ANIMATE_TRANSLATION,1,Send(self,@GetBodyTranslation));
+         AddPacket(1,ANIMATE_TRANSLATION,1,iBody_xlat);
       }
 
       if iAnimation = PANM_WEAPON_ATTACK
@@ -11774,6 +11774,8 @@ messages:
 
    SendMoveAnimation(iAnimation = $)
    {
+      local iBody_xlat;
+
       if iAnimation = $
       {
          if (piFlags2 & PFLAG2_DANCING)
@@ -11793,9 +11795,10 @@ messages:
          return;
       }
 
-      if Send(self,@GetBodyTranslation) <> 0
+      iBody_xlat = Send(self,@GetBodyTranslation);
+      if iBody_xlat <> 0
       {
-         AddPacket(1,ANIMATE_TRANSLATION, 1,Send(self,@GetBodyTranslation));
+         AddPacket(1,ANIMATE_TRANSLATION, 1,iBody_xlat);
       }
 
       if iAnimation = PANM_DANCE

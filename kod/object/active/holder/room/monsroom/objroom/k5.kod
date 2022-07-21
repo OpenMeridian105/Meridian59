@@ -147,14 +147,11 @@ messages:
 
       if lLocation = $
       {
-         if Length(plDeadBrambles) > 0
-         {
-            lLoc = Nth(plDeadBrambles,Random(1,Length(plDeadBrambles)));
-         }
-         else
+         if Length(plDeadBrambles) = 0
          {
             return;
          }
+         lLoc = Nth(plDeadBrambles,Random(1,Length(plDeadBrambles)));
       }
       else
       {
@@ -165,8 +162,8 @@ messages:
       // No duration when creating the Bramble means it doesn't
       // go away, it isn't DestroyDisposable'd.
       oBramble = Create(&Brambles,#seed=[$,piBrambleSpellpower,0,0,0,0,0,0,0]);
-      Send(self,@NewHold,#what=oBramble,#New_row=nth(lLoc,1),
-            #New_col=nth(lLoc,2));
+      Send(self,@NewHold,#what=oBramble,#New_row=First(lLoc),
+            #New_col=Nth(lLoc,2));
 
       return;
    }
@@ -187,23 +184,23 @@ messages:
       {
          Send(SYS,@UtilGoNearSquare,#what=what,
                #where=Send(SYS,@FindRoomByNum,#num=RID_BADLAND1),
-               #new_row=3,#new_col=80,#new_angle=send(what,@GetAngle));
+               #new_row=3,#new_col=80,#new_angle=Send(what,@GetAngle));
 
          return;
       }
 
       propagate;
    }
-  
+
    CreateStandardExits()
-   {         
+   {
       plEdge_exits = $;
       plEdge_Exits = Cons([ LEAVE_EAST, RID_J3_2, 6, 2, ROTATE_NONE ], plEdge_exits);
 
       plExits = $;
       plExits = Cons([ 2, 25, RID_GUILDH16, 52, 30, ROTATE_NONE ],plExits);
       plExits = Cons([ 2, 26, RID_GUILDH16, 52, 30, ROTATE_NONE ],plExits);
-     
+
       propagate;
    }
 

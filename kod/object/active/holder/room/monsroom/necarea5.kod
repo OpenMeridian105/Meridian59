@@ -68,8 +68,8 @@ messages:
 
       plLooping_sounds = [ [Necropolis5_loop, 0, 0, 200, 100] ];
 
-      plMainAreaOne = [675, 1737, 1337, 3487];
-      plMainAreaTwo = [1748, 3300, 3162, 3362];
+      plMainAreaOne = [700, 1713, 1393, 3463];
+      plMainAreaTwo = [1713, 3275, 2987, 3363];
 
       propagate;
    }
@@ -97,8 +97,9 @@ messages:
       plExits = Cons([ 11, 2, RID_NECROAREA4, 7, 49, ROTATE_NONE ],plExits);
       plExits = Cons([ 12, 2, RID_NECROAREA4, 7, 49, ROTATE_NONE ],plExits);
 
+      plExits = Cons([ 32, 30, RID_LICH_MAZE, 2, 45, ROTATE_NONE ],plExits);
+      plExits = Cons([ 32, 31, RID_LICH_MAZE, 2, 45, ROTATE_NONE ],plExits);
       plExits = Cons([ 32, 32, RID_LICH_MAZE, 2, 45, ROTATE_NONE ],plExits);
-      plExits = Cons([ 32, 33, RID_LICH_MAZE, 2, 45, ROTATE_NONE ],plExits);
 
       propagate;
    }
@@ -173,6 +174,19 @@ messages:
          OR Send(self,@IsUserInArea,#who=who,#lArea=plMainAreaTwo));
    }
 
+   IsLocInMainRoom(iRow=0,iCol=0,iFineRow=0,iFineCol=0)
+   {
+      if (iRow = 0 OR iCol = 0)
+      {
+         return FALSE;
+      }
+
+      return (Send(self,@IsUserInArea,#iRow=iRow,#iCol=iCol,#iFineRow=iFineRow,
+                  #iFineCol=iFineCol,#lArea=plMainAreaOne)
+         OR Send(self,@IsUserInArea,#iRow=iRow,#iCol=iCol,#iFineRow=iFineRow,
+                  #iFineCol=iFineCol,#lArea=plMainAreaTwo));
+   }
+
    ReqSomethingAttack(what = $,victim = $,use_weapon = $,stroke_obj = $)
    "Disallow attacks between the two parts of the room. "
    {
@@ -198,7 +212,8 @@ messages:
 
    IsValidSpawnLocation(iRow=0,iCol=0,iFineRow=0,iFineCol=0)
    {
-      if NOT ((iRow > 6) AND (iCol > 13) AND (iRow < 16) AND (iCol < 34))
+      if (NOT Send(self,@IsLocInMainRoom,#iRow=iRow,#iCol=iCol,
+                  #iFineRow=iFineRow,#iFineCol=iFineCol))
       {
          return FALSE;
       }

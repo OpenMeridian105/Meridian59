@@ -15,6 +15,7 @@ constants:
    include blakston.khd
 
    HOURS_PER_TOY = 100
+   HOUR_MILLI = 3600000
 
 resources:
 
@@ -51,6 +52,12 @@ properties:
    poLastFinder = $
    plFinders = $
    plFind = $
+
+   // Ignore these users for chest prizes.
+   // List of [who, timer, hours_left].
+   plIgnoreFinders = $
+   // Timer will be replaced every hour, so 37hr timer limit doesn't apply.
+   piIgnoreHours = 96
 
 messages:
 
@@ -109,7 +116,7 @@ messages:
 
    SomethingTryGo(what = $,row = $,col = $)
    {
-      local find, iNewRow, iNewCol;
+      local find, iNewRow, iNewCol, i, iCount, iLength, iSkip;
 
       if (row = 10) AND (col = 7)
       {
@@ -137,6 +144,7 @@ messages:
          Post(self,@RemovePlayerFromCrate,#who=what);
 
          if what = poLastFinder
+            OR Send(self,@IsInIgnoreFinders,#who=what)
          {
             return TRUE;
          }
@@ -179,6 +187,32 @@ messages:
             if (Length(plFinders) > 150)
             {
                plFinders = Rest(plFinders);
+            }
+
+            // If they get 3 of the last 10 prizes, give them a delay before
+            // they can find another.
+            iLength = Length(plFinders);
+            if (iLength >= 10)
+            {
+               iSkip = 0;
+               iCount = 0;
+               foreach i in plFinders
+               {
+                  if (++iSkip <= iLength - 10)
+                  {
+                     continue;
+                  }
+                  if (i = what)
+                  {
+                     ++iCount;
+                  }
+               }
+
+               if (iCount >= 3)
+               {
+                  Send(self,@AddToIgnoreFinders,#who=what,
+                        #iNumHours=piIgnoreHours);
+               }
             }
 
             if IsClass(find,&Item)
@@ -236,6 +270,109 @@ messages:
       // Port the player off the crate
       Send(SYS,@UtilGoNearSquare,#what=who,#where=self,#new_row=8,#new_col=5);
       Send(who,@MsgSendUser,#message_rsc=dungeon_climb_down_rsc);
+
+      return;
+   }
+
+   IsInIgnoreFinders(who=$)
+   {
+      return GetListNode(plIgnoreFinders,1,who) <> $;
+   }
+
+   AddToIgnoreFinders(who=$,iNumHours=0)
+   "Can call with iNumHours to set a timer, or without for permanent addition."
+   {
+      local lNode, tTimer;
+
+      if (who = $
+         OR NOT IsClass(who,&User))
+      {
+         Debug("Invalid who passed to AddToIgnoreFinders ", who);
+
+         return;
+      }
+
+      lNode = GetListNode(plIgnoreFinders,1,who);
+
+      // If they are already there, refresh or delete the timer.
+      if (lNode <> $)
+      {
+         tTimer = Nth(lNode,2);
+         if (IsTimer(tTimer))
+         {
+            DeleteTimer(tTimer);
+         }
+         if (iNumHours > 0)
+         {
+            SetNth(lNode,2,CreateTimer(self,@RemoveFromIgnoreFinders,HOUR_MILLI));
+            SetNth(lNode,3,iNumHours);
+         }
+         else
+         {
+            SetNth(lNode,2,$);
+         }
+      }
+      else if (iNumHours > 0)
+      {
+         plIgnoreFinders = Cons([who,
+            CreateTimer(self,@RemoveFromIgnoreFinders,HOUR_MILLI),iNumHours],
+            plIgnoreFinders);
+      }
+      else
+      {
+         plIgnoreFinders = Cons([who,$,0],plIgnoreFinders);
+      }
+
+      return;
+   }
+
+   RemoveFromIgnoreFinders(timer=$,who=$)
+   "If called by timer with a set number of hours still to go "
+   "(3rd list element) the timer will be replaced."
+   {
+      local iNumHours, lNode, tTimer;
+
+      if (timer <> $)
+      {
+         lNode = GetListNode(plIgnoreFinders,2,timer);
+         if (lNode = $)
+         {
+            Debug("Couldn't find timer ", timer, " in ignore list!");
+
+            return;
+         }
+
+         // Replace timer if there's still time left.
+         iNumHours = Nth(lNode,3) - 1;
+         if (iNumHours > 0)
+         {
+            SetNth(lNode,2,CreateTimer(self,@RemoveFromIgnoreFinders,HOUR_MILLI));
+            SetNth(lNode,3,iNumHours);
+
+            return;
+         }
+
+         // Finished ignore time, remove.
+         SetNth(lNode,2,$);
+         plIgnoreFinders = DelListElem(plIgnoreFinders,lNode);
+      }
+      else if (who <> $)
+      {
+         lNode = GetListNode(plIgnoreFinders,1,who);
+         if (lNode = $)
+         {
+            Debug("Couldn't find who ", who, " in ignore list!");
+
+            return;
+         }
+         tTimer = Nth(lNode,2);
+         if (IsTimer(tTimer))
+         {
+            DeleteTimer(tTimer);
+         }
+         SetNth(lNode,2,$);
+         plIgnoreFinders = DelListElem(plIgnoreFinders,lNode);
+      }
 
       return;
    }

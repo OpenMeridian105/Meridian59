@@ -2634,6 +2634,44 @@ messages:
       return;
    }
 
+   // Checks for potential doubled entries.
+   CheckDuplicates()
+   {
+      local lInfo, i, j, entityone, entitytwo, rNameOne,
+         rNameTwo;
+
+      foreach i in plInfo
+      {
+         entityone = Nth(i,2);
+
+         if NOT IsObject(entityone)
+         {
+            continue;
+         }
+
+         rNameOne = Send(entityone,@GetTrueName);
+
+         foreach j in plInfo
+         {
+            entitytwo = Nth(j,2);
+
+            if IsObject(entitytwo)
+            {
+               rNameTwo = Send(entitytwo,@GetTrueName);
+
+               if (entityone <> entitytwo)
+                  AND (rNameOne = rNameTwo)
+               {
+                  Debug("Duplicate objects",entityone,entitytwo,rNameOne);
+                  plInfo = DelListElem(plInfo,j);
+               }
+            }
+         }
+      }
+
+      return;
+   }
+
    MercenaryJoinMessage(what=$,bContracted=FALSE)
    {
       if bContracted

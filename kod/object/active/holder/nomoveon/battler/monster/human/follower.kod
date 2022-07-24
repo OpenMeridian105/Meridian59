@@ -2618,17 +2618,37 @@ messages:
    // listed as objects to their corresponding classes.
    ConvertInfo()
    {
-      local lInfo, entity, rName;
+      local oMonster, lInfo, entity, rName, lTemplates;
+
+      lTemplates = Send(SYS,@GetMonsterTemplates);
 
       foreach lInfo in plInfo
       {
+         rName = $;
+
          entity = Nth(lInfo,2);
 
          if IsObject(entity)
          {
             rName = Send(entity,@GetTrueName);
-            SetNth(lInfo,2,rName);
          }
+         else
+         {
+            foreach oMonster in lTemplates
+            {
+               if GetClass(oMonster) = entity
+               {
+                  rName = Send(oMonster,@GetTrueName);
+               }
+            }
+         }
+
+         if rName = $
+         {
+            continue;
+         }
+
+         SetNth(lInfo,2,rName);
       }
 
       return;

@@ -2465,13 +2465,14 @@ messages:
 
    GiveInfo(bRequested=FALSE,iInfo=FALSE)
    {
-      local rIntro, i, rInfo, lInfo, oObject, iTime,cClass;
+      local rIntro, i, rInfo, lInfo, iTime, rName;
 
       rIntro = follower_info_repeat_none;
 
       // No spamming veterans unless requested!
       if (NOT bRequested) AND Send(poLeader,@IsVeteran)
       {
+         poInfo = $;
          return FALSE;
       }
 
@@ -2480,33 +2481,21 @@ messages:
          poInfo = poOwner;
       }
 
+      // We store poInfo's name in plInfo to avoid spamming
+      // info on identical objects and to make sure we don't
+      // keep zombie objects around during garbage collection.
+      rName = Send(poInfo,@GetTrueName);
+
       // Check if we have recently mentioned the info object...
       if plInfo <> $
       {
-         if IsClass(poInfo,&Monster)
+         foreach i in plInfo
          {
-            cClass = GetClass(poInfo);
-
-            foreach i in plInfo
+            if (Nth(i,2) = rName)
+               AND (Nth(i,3) = iInfo)
             {
-               if (Nth(i,2) = cClass)
-                  AND (Nth(i,3) = iInfo)
-               {
-                  lInfo = i;
-                  break;
-               }
-            }
-         }
-         else
-         {
-            foreach i in plInfo
-            {
-               if (Nth(i,2) = poInfo)
-                  AND (Nth(i,3) = iInfo)
-               {
-                  lInfo = i;
-                  break;
-               }
+               lInfo = i;
+               break;
             }
          }
 
@@ -2525,6 +2514,7 @@ messages:
             // No one cares. Let's not be repetitive.
             else
             {
+               poInfo = $;
                return FALSE;
             }
 
@@ -2550,6 +2540,10 @@ messages:
       // We have an object and we'd like to talk about it. What though?
       rInfo = Send(poInfo,@GetFollowerInfo,#who=poLeader,#iInfo=iInfo);
 
+      // Set our info object to nil again to make sure we don't obstruct garbage
+      // collection.
+      poInfo = $;
+
       // Looks like we have nothing to say about that object. Awkward...
       if rInfo = $
       {
@@ -2566,15 +2560,8 @@ messages:
          }
       }
 
-      // You are not so different, you and the exactly identical creature next to you...
-      // It's probably good enough if we inform our leader once per monsterclass.
-      if IsClass(poInfo,&Monster)
-      {
-         poInfo = GetClass(poInfo);
-      }
-
       // Since we're gonna say something on the matter, let's keep track of it.
-      plInfo = Cons([GetTime(),poInfo,iInfo],plInfo);
+      plInfo = Cons([GetTime(),rName,iInfo],plInfo);
 
       Send(self,@MercenarySayToOne,#target=poLeader,#message_rsc=follower_info,
          #parm1=rIntro,#parm2=rInfo);
@@ -2627,6 +2614,84 @@ messages:
       return;
    }
 
+   // Needs to be called manually once to convert entries formerly
+   // listed as objects to their corresponding classes.
+   ConvertInfo()
+   {
+      local oMonster, lInfo, entity, rName, lTemplates;
+
+      lTemplates = Send(SYS,@GetMonsterTemplates);
+
+      foreach lInfo in plInfo
+      {
+         rName = $;
+
+         entity = Nth(lInfo,2);
+
+         if IsObject(entity)
+         {
+            rName = Send(entity,@GetTrueName);
+         }
+         else
+         {
+            foreach oMonster in lTemplates
+            {
+               if GetClass(oMonster) = entity
+               {
+                  rName = Send(oMonster,@GetTrueName);
+               }
+            }
+         }
+
+         if rName = $
+         {
+            continue;
+         }
+
+         SetNth(lInfo,2,rName);
+      }
+
+      return;
+   }
+
+   // Checks for potential doubled entries.
+   CheckDuplicates()
+   {
+      local lInfo, i, j, entityone, entitytwo, rNameOne,
+         rNameTwo;
+
+      foreach i in plInfo
+      {
+         entityone = Nth(i,2);
+
+         if NOT IsObject(entityone)
+         {
+            continue;
+         }
+
+         rNameOne = Send(entityone,@GetTrueName);
+
+         foreach j in plInfo
+         {
+            entitytwo = Nth(j,2);
+
+            if IsObject(entitytwo)
+            {
+               rNameTwo = Send(entitytwo,@GetTrueName);
+
+               if (entityone <> entitytwo)
+                  AND (rNameOne = rNameTwo)
+               {
+                  Debug("Duplicate objects",entityone,entitytwo,rNameOne);
+                  plInfo = DelListElem(plInfo,j);
+               }
+            }
+         }
+      }
+
+      return;
+   }
+
    MercenaryJoinMessage(what=$,bContracted=FALSE)
    {
       if bContracted
@@ -2639,15 +2704,19 @@ messages:
 
    GreetLeader(bRequested=FALSE)
    {
-      local lInfo, rGreet, rEnd, iTime;
+      local lInfo, rGreet, rEnd, rName, iTime;
 
       rEnd = follower_greet_leader_end_a;
+
+      // Keep our leader's name ready. Would be kinda embarrassing
+      // if we had forgot that.
+      rName = Send(poLeader,@GetTrueName);
 
       // Check if we have recently exchanged pleasantries.
       // We simply use our plInfo list and check for our leader.
       if plInfo <> $
       {
-         lInfo = GetListNode(plInfo,2,poLeader);
+         lInfo = GetListNode(plInfo,2,rName);
 
          // Looks like we have. How recently?
          if lInfo <> $
@@ -2693,10 +2762,10 @@ messages:
       }
 
       Send(self,@MercenarySayToOne,#target=poLeader,#message_rsc=follower_greet_leader_template,
-         #parm1=rGreet,#parm2=Send(poLeader,@GetTrueName),#parm3=rEnd);
+         #parm1=rGreet,#parm2=rName,#parm3=rEnd);
 
       // We said hello. Let's keep track of it.
-      plInfo = Cons([GetTime(),poLeader,FALSE],plInfo);
+      plInfo = Cons([GetTime(),rName,FALSE],plInfo);
 
       return;
    }
@@ -3323,7 +3392,7 @@ messages:
          return;
       }
 
-      if Send(self,@ChatTimer) AND NOT Send(self,@GiveInfo,#iInfo=iInfo)
+      if Send(self,@ChatTimer)
       {
          switch(Random(1,4))
          {

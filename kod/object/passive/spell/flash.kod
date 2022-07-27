@@ -49,6 +49,9 @@ classvars:
 
 properties:
 
+   // Row/col fine units
+   piFlashRange = 28 * FINENESS
+
 messages:
 
    ResetReagents()
@@ -67,13 +70,19 @@ messages:
    GetTargets(who=$,lTargets=$)
    "This returns a list of valid targets in the room."
    {
-      local oRoom, i, each_obj, lFinalTargets;
+      local oRoom, i, iRange, each_obj, lFinalTargets;
+
+      iRange = piFlashRange * piFlashRange;
 
       oRoom = Send(who,@GetOwner);
       foreach i in Send(oRoom,@GetHolderActive)
       {
-         each_obj = Send(oRoom,@HolderExtractObject,#data=i);
+         each_obj = First(i);
+         // Must be a battler, must have line of sight and be within the
+         // specified range.
          if IsClass(each_obj,&Battler)
+            AND Send(who,@SquaredFineDistanceTo3D,#what=each_obj) <= iRange
+            AND Send(oRoom,@LineOfSight,#obj1=who,#obj2=each_obj)
          {
             lFinalTargets = Cons(each_obj,lFinalTargets);
          }
@@ -84,12 +93,14 @@ messages:
 
    DoSpellEffects(who=$, lTargets = $, iSpellPower=0)
    {
-      local oRoom, i, iChance, oHold;
+      local oRoom, i, iChance, iRange, oHold;
 
       oRoom = Send(who,@GetOwner);
 
+      iRange = piFlashRange * piFlashRange;
+
       // What's our chance to affect the target?
-      iChance = 33 + ((2 * iSpellPower) / 3);
+      iChance = 33 + iSpellPower / 3;
 
       // Find the hold spell to temporarily hold monsters
       oHold = Send(SYS,@FindSpellByNum,#num=SID_HOLD);
@@ -101,22 +112,23 @@ messages:
 
       foreach i in lTargets
       {
-         if Random(1,100) > iChance
-         {
-            continue;
-         }
+         // Have to be careful to avoid integer overflow here.
+         // Contributes 1/3 disruption chance (0-33).
+         iChance += ((iRange - Send(who,@SquaredFineDistanceTo3D,#what=i))
+                     / (iRange / 100)) / 3;
 
          if IsClass(i,&Player)
          {
             if Send(i,@CheckPlayerFlag,#flag=PFLAG_TRANCE)
                OR Send(i,@CheckPlayerFlag,#flag=PFLAG_FRAGILE)
             {
-               Send(i,@BreakConcentration,#event=EVENT_DISRUPT);
+               Send(i,@BreakConcentration,#event=EVENT_DAMAGE,#disruption=iChance);
             }
 
             Send(i,@EffectSendUserDuration,#effect=EFFECT_WHITEOUT,#duration=750);
          }
-         else
+         // Monsters have a chance to just ignore the flash.
+         else if Random(1,100) < Bound(iChance,0,75)
          {
             // Is a monster, stun it.
             Send(oHold,@DoSpellEffects,#who=who,#lTargets=[i],#iDuration=1000,

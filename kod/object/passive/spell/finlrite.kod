@@ -68,6 +68,9 @@ properties:
    piCast_time = 10000
    viOutlaw = TRUE
 
+   // Row/col fine units
+   piFinalRitesRange = 12 * FINENESS
+
 messages:
 
    Constructor()
@@ -95,16 +98,19 @@ messages:
    }
 
    GetTargets(who=$,lTargets=$)
-   "This returns a list of undead targets."
+   "Undead targets who are closeby, plus the caster."
    {
-      local oRoom, i, each_obj, lFinalTargets;
+      local oRoom, i, iRange, each_obj, lFinalTargets;
 
+      iRange = piFinalRitesRange * piFinalRitesRange;
       oRoom = Send(who,@GetOwner);
       foreach i in Send(oRoom,@GetHolderActive)
       {
-         each_obj = Send(oRoom,@HolderExtractObject,#data=i);
-         if IsClass(each_obj,&Battler)
-            AND Send(each_obj,@IsUndead)
+         each_obj = First(i);
+         if each_obj = who
+            OR (IsClass(each_obj,&Battler)
+               AND Send(each_obj,@IsUndead)
+               AND Send(who,@SquaredFineDistanceTo3D,#what=each_obj) <= iRange)
          {
             lFinalTargets = Cons(each_obj,lFinalTargets);
          }
@@ -115,7 +121,7 @@ messages:
 
    DoSpellEffects(who=$, lTargets = $, iSpellPower=0)
    {
-      local oUndead, iDamage, oRoom, bKilled;
+      local oUndead, iDamage, iRange, oRoom, bKilled;
 
       oRoom = Send(who,@GetOwner);
       Send(who,@MsgSendUser,#message_rsc=FinalRites_success);
@@ -124,9 +130,21 @@ messages:
            #string=FinalRites_success_others,
            #parm1=Send(who,@GetDef),#parm2=Send(who,@GetName));
 
+     iRange = piFinalRitesRange * piFinalRitesRange;
+
       foreach oUndead in lTargets
       {
          bKilled = FALSE;
+
+         // Valid targets must be undead and reasonably close.
+         // These were checked earlier but check again since things move.
+         // Note that this excludes the caster, unless they are undead.
+         if (NOT Send(oUndead,@IsUndead)
+            OR Send(who,@SquaredFineDistanceTo3D,#what=oUndead) > iRange)
+         {
+            continue;
+         }
+
          if IsClass(oUndead,&Player)
          {
             Send(oUndead,@MsgSendUser,#message_rsc=FinalRites_hurt_necro,
@@ -174,6 +192,15 @@ messages:
    GetScrollClass()
    {
       return &FinalRitesScroll;
+   }
+
+   TranceFailed(who=$,iSpellPower=SPELLPOWER_MINIMUM)
+   "Still cast the spell if the trance fails, but do so with "
+   "just the caster as a target."
+   {
+      Post(self,@CastSpell,#who=who,#lTargets=[who],#iSpellPower=iSpellPower);
+
+      return;
    }
 
 end

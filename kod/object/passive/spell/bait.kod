@@ -12,6 +12,8 @@ Bait is Spell
 
 constants:
 
+   // From brain.kod
+   TS_BAIT = 8
    include blakston.khd
 
 resources:
@@ -69,13 +71,14 @@ messages:
 
    DoSpellEffects(who = $,iSpellPower=0)
    {
-      local i, iAggro, iDropOff, oBrain, oMonster, iMonsterFaction;
+      local i, iAggro, iDropOff, iRange, oBrain, oMonster, iMonsterFaction;
 
       Send(who,@MsgSendUser,#message_rsc=Bait_success);
 
       iAggro = iSpellPower * iSpellPower / 2;
+      iRange = piBaitRange * piBaitRange;
 
-      foreach i in Send(send(who,@GetOwner),@GetHolderActive)
+      foreach i in Send(Send(who,@GetOwner),@GetHolderActive)
       {
          oMonster = First(i);
 
@@ -94,7 +97,7 @@ messages:
          // Avoid faction problems, don't make it work on aligned people.
          iMonsterFaction = Send(oMonster,@GetFaction);
          if NOT (iMonsterFaction = FACTION_NEUTRAL)
-            AND (send(who,@GetFaction) = iMonsterFaction)
+            AND (Send(who,@GetFaction) = iMonsterFaction)
          {
             continue;
          }
@@ -106,11 +109,12 @@ messages:
          }
 
          // Effect fades with increased range. Scales from full effect at 0 range
-         // to zero effect at double spell range.
-         iDropOff = iAggro * (4 * piBaitRange * piBaitRange - Send(who,@SquaredDistanceTo,#what=oMonster));
-         iDropOff = iDropOff / (piBaitRange*piBaitRange);
+         // to zero effect at spell range.
+         iDropOff = iAggro *
+            (iRange - Send(who,@SquaredFineDistanceTo3D,#what=oMonster) / FINENESS_SQUARED);
+         iDropOff = iDropOff / iRange;
          iDropOff -= Random(0,2500);
-         iDropOff = bound(iDropOff,0,iAggro);
+         iDropOff = Bound(iDropOff,0,iAggro);
 
          // Human mobs and minions fall for bait less often.
          if IsClass(oMonster,&Human)
@@ -127,7 +131,7 @@ messages:
          oBrain = Send(oMonster,@GetBrain);
          Send(oMonster,@AddHurtMeRecently,#who=who,#amount=iDropOff);
 
-         if Send(oBrain,@AttemptTargetSwitch,#mob=oMonster,#what=who,#event=8)
+         if Send(oBrain,@AttemptTargetSwitch,#mob=oMonster,#what=who,#event=TS_BAIT)
          {
             Send(oMonster,@EnterStateEngage,#target=who,#actnow=TRUE);
          }

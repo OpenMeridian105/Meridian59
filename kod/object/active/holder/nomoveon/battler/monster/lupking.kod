@@ -814,10 +814,16 @@ messages:
 
    AngeredByWallElement(what=$)
    {
-      local i, oSpell, lFinalTargets, iTime;
+      local i, oSpell, lFinalTargets, iTime, iTimeDiff;
 
       iTime = GetTickCount();
-      if (iTime - piLastEQTime < viSecondsBetweenQuakes * 1000)
+      iTimeDiff = iTime - piLastEQTime;
+
+      // Have to handle the case where GetTickCount() rolls over, e.g.
+      // piLastEQTime = 134,000,000, iTime will return <134m for 37hr and
+      // iTimeDiff will stay negative even when pogg king should quake again.
+      if (iTimeDiff >= 0
+         AND iTimeDiff < viSecondsBetweenQuakes * 1000)
       {
          return;
       }

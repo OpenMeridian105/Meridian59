@@ -18,15 +18,15 @@ BOFS = shaldiscqt.bof krandiscqt.bof farendiscqt.bof qordiscqt.bof \
        aphrodisiacqt.bof necrowarnevilqt.bof necrowarngoodqt.bof taxqt.bof \
        barrestockqt.bof cateringqt.bof apothecaryqt.bof kocweaponqt.bof \
        kocaleqt.bof warletterqt.bof idpotionqt.bof idwandqt.bof \
-       jalanecklaceqt.bof murderqt.bof abstainpvp.bof mananodeqt.bof \
+       jalanecklaceqt.bof murderqt.bof abstainpvpqt.bof mananodeqt.bof \
        razamumqt.bof ratkingqt.bof nerugolemqt.bof swamphuntqt.bof \
        firegolemqt.bof eastloversqt.bof dangelqt.bof wendigohuntqt.bof \
        bergkingpoliticsqt.bof bergkingspdrqt.bof wolfhuntqt.bof \
-       jixainnescort.bof escortassassination.bof jixabanditqt.bof \
+       jixainnescort.bof escortassnqt.bof jixabanditqt.bof \
        spinebeastbossqt.bof monstercharmqt.bof resignqt.bof \
-       findjasbank.bof findcornoth.bof tosgraveqt.bof marmummiesqt.bof \
+       findjasbankqt.bof findcornothqt.bof tosgraveqt.bof marmummiesqt.bof \
        marstatuesqt.bof castlevicqt.bof marentqt.bof fungushuntqt.bof \
-       marthrashqt.bof orchuntqt.bof goodfeyhunt.bof evfeyhunt.bof \
-       molluskhunt.bof nerutrollhunt.bof lupogghunt.bof
+       marthrashqt.bof orchuntqt.bof goodfeyhuntqt.bof evfeyhuntqt.bof \
+       molluskhuntqt.bof nerutrollhuntqt.bof lupogghuntqt.bof
 
 !include $(KODDIR)\kod.mak

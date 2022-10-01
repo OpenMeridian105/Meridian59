@@ -12,7 +12,7 @@ DIRS = holyblaze martyrsgrace wdshield bleed poison siphon fatigue burn anvil ma
        lullaby freeze electrify frostwall flamewave arcticbreath meteor \
        nimble tough sharp strong cleave nyrphling spinebeast wendigo apple \
        flagpole masteryband resign touch strike slash thrust stab povbow \
-       povpunch povtouch unleash crushingblows sprint
+       povpunch povtouch unleash crushingblows sprint gamos bentu
 
 all:
    @-for %i in (*.bgf) do @$(CP) %i $(OUTDIR) >nul

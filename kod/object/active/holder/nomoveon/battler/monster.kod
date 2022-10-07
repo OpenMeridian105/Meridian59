@@ -531,6 +531,21 @@ classvars:
    vrMinion_trouble = minion_trouble
    vrMinion_kill = minion_kill
 
+   vrVaultman_nogold = vaultman_nogold
+   vrVaultman_nocursed = vaultman_nocursed
+   vrVaultman_fullvault = vaultman_fullvault
+   vrVaultman_thanks_amount = vaultman_thanks_amount
+   vrVaultman_dont_have = vaultman_dont_have
+   vrVaultman_no_room = vaultman_no_room
+   vrVaultman_deposit_thanks = vaultman_deposit_thanks
+   vrVaultman_thanks = vaultman_thanks
+   vrVaultman_withdraw_failed = vaultman_withdraw_failed
+   vrVaultman_nowithdraw_cash = vaultman_nowithdraw_cash
+   vrVaultman_nodeposit_cash = vaultman_nodeposit_cash
+   vrVaultman_cant_part = vaultman_cant_part
+   vrVaultman_noaccount = vaultman_noaccount
+   vrVaultman_not_enough = vaultman_not_enough
+
    vrIllusionPoison = monster_illusion_poison
    vrIllusionBleed = monster_illusion_bleed
    vrIllusionSiphon = monster_illusion_siphon
@@ -6319,7 +6334,7 @@ messages:
          // Can't store anything without any bulk, such as gold
          if Send(i,@GetBulk) <= 0 
          {
-            Send(self,@SayToOne,#message_rsc=vaultman_nogold,#target=who,
+            Send(self,@SayToOne,#message_rsc=vrVaultman_nogold,#target=who,
                  #parm1=Send(i,@GetDef),#parm2=Send(i,@GetName));
 
             return FALSE;
@@ -6327,7 +6342,7 @@ messages:
 
          if NOT Send(who,@ReqLeaveHold,#what=i)
          {
-            Send(self,@SayToOne,#message_rsc=vaultman_nocursed,#target=who,
+            Send(self,@SayToOne,#message_rsc=vrVaultman_nocursed,#target=who,
                  #parm1=Send(i,@GetDef),#parm2=Send(i,@GetName));
 
             return FALSE;
@@ -6335,7 +6350,7 @@ messages:
 
          if NOT Send(i,@CanBeStoredInVault)
          {
-            Send(self,@SayToOne,#message_rsc=vaultman_cant_part,#target=who,
+            Send(self,@SayToOne,#message_rsc=vrVaultman_cant_part,#target=who,
                  #parm1=Send(i,@GetName));
 
             return FALSE;
@@ -6357,7 +6372,7 @@ messages:
 
       if iCash < iFee AND iFee <> 0
       {
-         Send(self,@SayToOne,#target=who,#message_rsc=vaultman_nodeposit_cash,
+         Send(self,@SayToOne,#target=who,#message_rsc=vrVaultman_nodeposit_cash,
               #parm1=iFee);
 
          return;
@@ -6366,7 +6381,7 @@ messages:
       // this checks bulk of deposited items.
       if NOT Send(oVault,@CanDepositItems,#who=who,#lItems=lItems)
       {
-         Send(self,@SayToOne,#message_rsc=vaultman_fullvault,#target=who);
+         Send(self,@SayToOne,#message_rsc=vrVaultman_fullvault,#target=who);
 
          return FALSE;
       }
@@ -6377,12 +6392,12 @@ messages:
       if iFee <> 0
       {
          Send(oMoney,@SubtractNumber,#number=iFee);
-         Send(self,@SayToOne,#message_rsc=vaultman_Thanks_amount,#target=who,
+         Send(self,@SayToOne,#message_rsc=vrVaultman_thanks_amount,#target=who,
               #parm1=iFee);
       }
       else
       {
-         Send(self,@SayToOne,#message_rsc=vaultman_deposit_thanks,#target=who);
+         Send(self,@SayToOne,#message_rsc=vrVaultman_deposit_thanks,#target=who);
       }
 
       Send(self,@AffectMood,#why=MOODMOD_VAULT_DEPOSIT);
@@ -6428,7 +6443,7 @@ messages:
 
       if oSafeBox = $
       {
-         Send(self,@SayToOne,#target=what,#message_rsc=vaultman_noAccount);
+         Send(self,@SayToOne,#target=what,#message_rsc=vrVaultman_noaccount);
 
          return;
       }
@@ -6462,7 +6477,7 @@ messages:
                if Nth(number_list,iCount) > Send(j,@GetNumber)
                {
                   Send(self,@SayToOne,#target=what,
-                        #message_rsc=vaultman_not_enough,
+                        #message_rsc=vrVaultman_not_enough,
                         #parm1=Send(i,@GetName));
 
                   return;
@@ -6474,7 +6489,7 @@ messages:
 
          if NOT bFound
          {
-            Post(self,@SayToOne,#target=what,#message_rsc=vaultman_dont_have,
+            Post(self,@SayToOne,#target=what,#message_rsc=vrVaultman_dont_have,
                  #parm1=Send(i,@getindef),#parm2=Send(i,@GetName));
 
             return;
@@ -6499,7 +6514,7 @@ messages:
       if iCash < iFee AND iFee <> 0
       {
          Send(self,@SayToOne,#target=what,
-              #message_rsc=vaultman_nowithdraw_cash);
+              #message_rsc=vrVaultman_nowithdraw_cash);
 
          return;
       }
@@ -6507,7 +6522,7 @@ messages:
       //if Send(what, @GetBulkMax) <> $ AND
       //   (iBulk + Send(what,@GetBulkHold)) > Send(what,@GetBulkMax)
       //{
-      //   Send(self,@SayToOne,#target=what,#message_rsc=vaultman_no_room);
+      //   Send(self,@SayToOne,#target=what,#message_rsc=vrVaultman_no_room);
       //
       //   return;
       //}
@@ -6551,11 +6566,11 @@ messages:
          Send(oMoney,@SubtractNumber,#number=iFee);
          if bFailed
          {
-            Send(self,@SayToOne,#target=what,#message_rsc=vaultman_withdraw_failed);
+            Send(self,@SayToOne,#target=what,#message_rsc=vrVaultman_withdraw_failed);
          }
          else
          {
-            Send(self,@SayToOne,#message_rsc=vaultman_Thanks_amount,#target=what,
+            Send(self,@SayToOne,#message_rsc=vrVaultman_thanks_amount,#target=what,
                   #parm1=iFee);
          }
       }
@@ -6563,11 +6578,11 @@ messages:
       {
          if bFailed
          {
-            Send(self,@SayToOne,#target=what,#message_rsc=vaultman_withdraw_failed);
+            Send(self,@SayToOne,#target=what,#message_rsc=vrVaultman_withdraw_failed);
          }
          else
          {
-            Send(self,@SayToOne,#target=what,#message_rsc=vaultman_thanks);
+            Send(self,@SayToOne,#target=what,#message_rsc=vrVaultman_thanks);
          }
       }
 

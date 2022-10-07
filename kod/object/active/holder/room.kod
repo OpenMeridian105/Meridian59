@@ -1935,6 +1935,25 @@ messages:
       return;
    }
 
+   SetDisposeTimer(iSeconds=60)
+   {
+      if (iSeconds <= 0 OR iSeconds > MAX_INT / 1000)
+      {
+         Debug("Invalid value ", iSeconds, " passed to SetDisposeTimer.");
+
+         return;
+      }
+
+      if (ptDispose <> $)
+      {
+         DeleteTimer(ptDispose);
+      }
+
+      ptDispose = CreateTimer(self,@DisposeTimer,iSeconds * 1000);
+
+      return;
+   }
+
    DisposeTimer()
    {
       local iTime, i, oEachObj, count, delete_index,

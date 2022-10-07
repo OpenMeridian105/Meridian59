@@ -14815,7 +14815,8 @@ messages:
       oRoom = Send(SYS,@FindRoomByNum,#num=RID);
       if oRoom = $
       {
-         Debug("Got an invalid room!");
+         Debug(self, vrName, " tried to enter an invalid room: ",RID);
+
          return FALSE;
       }
 
@@ -14835,15 +14836,11 @@ messages:
          return FALSE;
       }
 
-      if Send(oRoom,@IsExpansionRoom)
-         AND NOT Send(SETTINGS_OBJECT,@IsExpansionEnabled)
+      if (Send(oRoom,@IsExpansionRoom)
+         AND NOT (Send(SETTINGS_OBJECT,@IsExpansionEnabled)
+            OR (IsClass(self,&DM)
+               AND Send(SETTINGS_OBJECT,@CanDMsTPToExpRooms))))
       {
-         if IsClass(self,&DM)
-            AND Send(SETTINGS_OBJECT,@CanDMsTPToExpRooms)
-         {
-            return TRUE;
-         }
-
          Send(self,@MsgSendUser,#message_rsc=player_no_east);
          Send(self,@WaveSendUser,#wave_rsc=player_no_east_snd);
          Send(self,@EffectSendUserDuration,#effect=EFFECT_WHITEOUT,#duration=600);

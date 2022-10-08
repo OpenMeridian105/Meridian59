@@ -9408,6 +9408,16 @@ messages:
          Send(self,@ToCliObject,#what=what,#show_type=SHOW_INVENTORY);
          SendPacket(poSession);
 
+         // So items at this point (i.e. the point at which we are drawing it
+         // in our inventory) are still owned by the previous owner. Given a
+         // slow enough server, the player will physically see the item while
+         // it still has the old owner server-side. This is not ideal because
+         // ToCliObject (including object flags) assume the old owner. Fix this
+         // by asking for item flags again, but posted. Ugh. Longer term the
+         // NewHoldObject call should probably be Posted, but this is more
+         // likely to have bad effects given everything is written assuming
+         // it works the way it does.
+         Post(self,@SomethingChangedFlags,#what=what);
          Post(self,@DrawCapacity);
          Post(self,@DrawBulk);
       }

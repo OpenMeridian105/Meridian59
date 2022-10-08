@@ -335,12 +335,15 @@ void UserPut(void)
 
    /* If there are no containers around, don't ask for object to put */
    square_list = GetObjects3D(NO_COORD_CHECK, NO_COORD_CHECK,
-			      CLOSE_DISTANCE, OF_CONTAINER, 0, 0, 0);
+      CLOSE_DISTANCE, OF_CONTAINER, 0, 0, 0);
    if (square_list == NULL)
+   {
+      GameMessage(GetString(hInst, IDS_NOPUT));
       return;
-   
-   sel_list = DisplayLookList(hMain, GetString(hInst, IDS_PUT1), 
-			      player.inventory, LD_MULTIPLESEL | LD_AMOUNTS | LD_SINGLEAUTO);
+   }
+
+   sel_list = DisplayLookList(hMain, GetString(hInst, IDS_PUT1),
+      player.inventory, LD_MULTIPLESEL | LD_AMOUNTS | LD_SINGLEAUTO);
    if (sel_list == NULL)
       return;
 
@@ -353,10 +356,10 @@ void UserPut(void)
       return;
    }
 
-   container_id = ((room_contents_node *) (container_list->data))->obj.id; 
+   container_id = ((room_contents_node *)(container_list->data))->obj.id;
    for (l = sel_list; l != NULL; l = l->next)
-      RequestPut((object_node *) (l->data), container_id);
-   
+      RequestPut((object_node *)(l->data), container_id);
+
    ObjectListDestroy(sel_list);
    ObjectListDestroy(container_list);
 }

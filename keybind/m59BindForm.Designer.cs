@@ -171,6 +171,12 @@
             this.buttonQuestMod = new System.Windows.Forms.Button();
             this.buttonQuest = new System.Windows.Forms.Button();
             this.label41 = new System.Windows.Forms.Label();
+            this.buttonPutMod = new System.Windows.Forms.Button();
+            this.buttonPut = new System.Windows.Forms.Button();
+            this.label42 = new System.Windows.Forms.Label();
+            this.buttonActivateMod = new System.Windows.Forms.Button();
+            this.buttonActivate = new System.Windows.Forms.Button();
+            this.label43 = new System.Windows.Forms.Label();
             this.tabControl1.SuspendLayout();
             this.tabPage1.SuspendLayout();
             this.tabPage2.SuspendLayout();
@@ -666,6 +672,12 @@
             // 
             // tabPage3
             // 
+            this.tabPage3.Controls.Add(this.buttonActivateMod);
+            this.tabPage3.Controls.Add(this.buttonActivate);
+            this.tabPage3.Controls.Add(this.label43);
+            this.tabPage3.Controls.Add(this.buttonPutMod);
+            this.tabPage3.Controls.Add(this.buttonPut);
+            this.tabPage3.Controls.Add(this.label42);
             this.tabPage3.Controls.Add(this.buttonQuestMod);
             this.tabPage3.Controls.Add(this.buttonQuest);
             this.tabPage3.Controls.Add(this.label41);
@@ -699,6 +711,57 @@
             resources.ApplyResources(this.tabPage3, "tabPage3");
             this.tabPage3.Name = "tabPage3";
             this.tabPage3.UseVisualStyleBackColor = true;
+            // 
+            // buttonActivateMod
+            // 
+            resources.ApplyResources(this.buttonActivateMod, "buttonActivateMod");
+            this.buttonActivateMod.Name = "buttonActivateMod";
+            this.buttonActivateMod.UseVisualStyleBackColor = true;
+            // 
+            // buttonActivate
+            // 
+            resources.ApplyResources(this.buttonActivate, "buttonActivate");
+            this.buttonActivate.Name = "buttonActivate";
+            this.buttonActivate.UseVisualStyleBackColor = true;
+            // 
+            // label43
+            // 
+            resources.ApplyResources(this.label43, "label43");
+            this.label43.Name = "label43";
+            // 
+            // buttonPutMod
+            // 
+            resources.ApplyResources(this.buttonPutMod, "buttonPutMod");
+            this.buttonPutMod.Name = "buttonPutMod";
+            this.buttonPutMod.UseVisualStyleBackColor = true;
+            // 
+            // buttonPut
+            // 
+            resources.ApplyResources(this.buttonPut, "buttonPut");
+            this.buttonPut.Name = "buttonPut";
+            this.buttonPut.UseVisualStyleBackColor = true;
+            // 
+            // label42
+            // 
+            resources.ApplyResources(this.label42, "label42");
+            this.label42.Name = "label42";
+            // 
+            // buttonQuestMod
+            // 
+            resources.ApplyResources(this.buttonQuestMod, "buttonQuestMod");
+            this.buttonQuestMod.Name = "buttonQuestMod";
+            this.buttonQuestMod.UseVisualStyleBackColor = true;
+            // 
+            // buttonQuest
+            // 
+            resources.ApplyResources(this.buttonQuest, "buttonQuest");
+            this.buttonQuest.Name = "buttonQuest";
+            this.buttonQuest.UseVisualStyleBackColor = true;
+            // 
+            // label41
+            // 
+            resources.ApplyResources(this.label41, "label41");
+            this.label41.Name = "label41";
             // 
             // buttonAttackMod
             // 
@@ -1282,23 +1345,6 @@
             this.buttonHelp.UseVisualStyleBackColor = true;
             this.buttonHelp.Click += new System.EventHandler(this.buttonHelp_Click);
             // 
-            // buttonQuestMod
-            // 
-            resources.ApplyResources(this.buttonQuestMod, "buttonQuestMod");
-            this.buttonQuestMod.Name = "buttonQuestMod";
-            this.buttonQuestMod.UseVisualStyleBackColor = true;
-            // 
-            // buttonQuest
-            // 
-            resources.ApplyResources(this.buttonQuest, "buttonQuest");
-            this.buttonQuest.Name = "buttonQuest";
-            this.buttonQuest.UseVisualStyleBackColor = true;
-            // 
-            // label41
-            // 
-            resources.ApplyResources(this.label41, "label41");
-            this.label41.Name = "label41";
-            // 
             // M59Bind
             // 
             resources.ApplyResources(this, "$this");
@@ -1478,6 +1524,12 @@
         private System.Windows.Forms.Button buttonQuestMod;
         private System.Windows.Forms.Button buttonQuest;
         private System.Windows.Forms.Label label41;
+        private System.Windows.Forms.Button buttonPutMod;
+        private System.Windows.Forms.Button buttonPut;
+        private System.Windows.Forms.Label label42;
+        private System.Windows.Forms.Button buttonActivateMod;
+        private System.Windows.Forms.Button buttonActivate;
+        private System.Windows.Forms.Label label43;
     }
 }
 

@@ -171,6 +171,9 @@
             this.buttonQuestMod = new System.Windows.Forms.Button();
             this.buttonQuest = new System.Windows.Forms.Button();
             this.label41 = new System.Windows.Forms.Label();
+            this.buttonPutMod = new System.Windows.Forms.Button();
+            this.buttonPut = new System.Windows.Forms.Button();
+            this.label42 = new System.Windows.Forms.Label();
             this.tabControl1.SuspendLayout();
             this.tabPage1.SuspendLayout();
             this.tabPage2.SuspendLayout();
@@ -666,6 +669,9 @@
             // 
             // tabPage3
             // 
+            this.tabPage3.Controls.Add(this.buttonPutMod);
+            this.tabPage3.Controls.Add(this.buttonPut);
+            this.tabPage3.Controls.Add(this.label42);
             this.tabPage3.Controls.Add(this.buttonQuestMod);
             this.tabPage3.Controls.Add(this.buttonQuest);
             this.tabPage3.Controls.Add(this.label41);
@@ -1299,6 +1305,23 @@
             resources.ApplyResources(this.label41, "label41");
             this.label41.Name = "label41";
             // 
+            // buttonPutMod
+            // 
+            resources.ApplyResources(this.buttonPutMod, "buttonPutMod");
+            this.buttonPutMod.Name = "buttonPutMod";
+            this.buttonPutMod.UseVisualStyleBackColor = true;
+            // 
+            // buttonPut
+            // 
+            resources.ApplyResources(this.buttonPut, "buttonPut");
+            this.buttonPut.Name = "buttonPut";
+            this.buttonPut.UseVisualStyleBackColor = true;
+            // 
+            // label42
+            // 
+            resources.ApplyResources(this.label42, "label42");
+            this.label42.Name = "label42";
+            // 
             // M59Bind
             // 
             resources.ApplyResources(this, "$this");
@@ -1478,6 +1501,9 @@
         private System.Windows.Forms.Button buttonQuestMod;
         private System.Windows.Forms.Button buttonQuest;
         private System.Windows.Forms.Label label41;
+        private System.Windows.Forms.Button buttonPutMod;
+        private System.Windows.Forms.Button buttonPut;
+        private System.Windows.Forms.Label label42;
     }
 }
 

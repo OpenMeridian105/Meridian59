@@ -65,6 +65,7 @@ namespace m59bind
             buttonWithdraw.Text = m59BindProgram.GetIni(configFile, "keys", "withdraw", "o+shift");
             buttonAttack.Text = m59BindProgram.GetIni(configFile, "keys", "attack", "e+any");
             buttonQuest.Text = m59BindProgram.GetIni(configFile, "keys", "quest", "q+ctrl");
+            buttonPut.Text = m59BindProgram.GetIni(configFile, "keys", "put", "p+ctrl");
 
             // Targeting Tab
             buttonTargetNext.Text = m59BindProgram.GetIni(configFile, "keys", "targetnext", "]");
@@ -164,6 +165,7 @@ namespace m59bind
             buttonWithdraw.Text = "o+shift";
             buttonAttack.Text = "e+any";
             buttonQuest.Text = "q+ctrl";
+            buttonPut.Text = "p+ctrl";
 
             // Targeting Tab
             buttonTargetNext.Text = "]";
@@ -234,6 +236,7 @@ namespace m59bind
             m59BindProgram.WriteIni(configFile, "keys", "withdraw", buttonWithdraw.Text);
             m59BindProgram.WriteIni(configFile, "keys", "attack", buttonAttack.Text);
             m59BindProgram.WriteIni(configFile, "keys", "quest", buttonQuest.Text);
+            m59BindProgram.WriteIni(configFile, "keys", "put", buttonPut.Text);
 
             // Targeting Tab
             m59BindProgram.WriteIni(configFile, "keys", "targetnext", buttonTargetNext.Text);
@@ -1488,9 +1491,38 @@ namespace m59bind
       }
       #endregion
 
-      #region Target Next Keybind
-      // Target Next Keybind
-      private void buttonTargetNext_KeyDown(object sender, KeyEventArgs e)
+      #region Put Keybind
+      // Put Keybind
+      private void buttonPut_KeyDown(object sender, KeyEventArgs e)
+      {
+         buttonPut.Text = handleKeyDown(e);
+      }
+
+      private void buttonPut_MouseDown(object sender, MouseEventArgs e)
+      {
+         buttonPut.Text = handleMouseDown(e);
+      }
+
+      private void buttonPut_PreviewKeyDown(object sender, PreviewKeyDownEventArgs e)
+      {
+         previewKeySetIsInputKey(e);
+      }
+
+      private void buttonPutMod_Click(object sender, EventArgs e)
+      {
+         KeyModForm modForm = new KeyModForm(buttonPut);
+         Point position = Cursor.Position;
+         position.Y -= 115;
+
+         modForm.StartPosition = FormStartPosition.Manual;
+         modForm.Location = position;
+         modForm.ShowDialog(this);
+      }
+      #endregion
+
+        #region Target Next Keybind
+        // Target Next Keybind
+        private void buttonTargetNext_KeyDown(object sender, KeyEventArgs e)
         {
             buttonTargetNext.Text = handleKeyDown(e);
         }

@@ -536,6 +536,7 @@ static action_label	gActionLabels[] =
 	{"deposit",			A_DEPOSIT,			NULL},
 	{"withdraw",		A_WITHDRAW,			NULL},
 	{"quest",		A_QUEST,			NULL},
+	{"put",		A_PUT,			NULL},
 	{"mousetarget",		A_ATTACK,			NULL},
 	{"targetnext",		A_TARGETNEXT,		NULL},
 	{"targetprevious",	A_TARGETPREVIOUS,	NULL},
@@ -594,6 +595,7 @@ keymap	gCustomKeys[] =
 	{(WORD)-1,				(WORD)-1,				A_DEPOSIT,			NULL},
 	{(WORD)-1,				(WORD)-1,				A_WITHDRAW,			NULL},
 	{(WORD)-1,				(WORD)-1,				A_QUEST, 			NULL},
+	{(WORD)-1,				(WORD)-1,				A_PUT,				NULL},
 	{(WORD)-1,				(WORD)-1,				A_ATTACK,			NULL},
 	{(WORD)-1,				(WORD)-1,				A_TARGETNEXT,		NULL},
 	{(WORD)-1,				(WORD)-1,				A_TARGETPREVIOUS,	NULL},
@@ -827,6 +829,7 @@ void CustomConfigInit(void)
 
 		WritePrivateProfileString("keys", "withdraw", "w+shift", "./config.ini");
 		WritePrivateProfileString("keys", "quest", "q+ctrl", "./config.ini");
+		WritePrivateProfileString("keys", "put", "p+ctrl", "./config.ini");
 		WritePrivateProfileString("keys", "targetnext", "]", "./config.ini");
 		WritePrivateProfileString("keys", "targetprevious", "[", "./config.ini");
 		WritePrivateProfileString("keys", "emote", ";", "./config.ini");
@@ -851,6 +854,15 @@ void CustomConfigInit(void)
    if (0 != strcmp(string0, "TRUE"))
    {
       WritePrivateProfileString("keys", "quest", "q+ctrl", "./config.ini");
+   }
+
+   // Check for new put option, add if missing
+   GetPrivateProfileString(keys, "put", "error\n", string0,
+      255, file);
+   strupr(string0);
+   if (0 != strcmp(string0, "TRUE"))
+   {
+      WritePrivateProfileString("keys", "put", "p+ctrl", "./config.ini");
    }
 
 	// attack on target

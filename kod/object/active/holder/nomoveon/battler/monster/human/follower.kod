@@ -1857,16 +1857,10 @@ messages:
       return FALSE;
    }
 
-   EnterStateMove(bResume = FALSE)
+   EnterStateMove()
    {
       local oObject, i, oEnch, state, oInfo, iInfo, iRowDiff, iColDiff,
          iAbsRow, iAbsCol, iLeaderRow, iLeaderCol, iHeight;
-
-      // We need a moment to get our strength back.
-      if (piState & STATE_REST) AND NOT bResume
-      {
-         return;
-      }
 
       // The following is only relevant if we have a leader.
       // If we don't, chances are we have just been fired and are trying
@@ -2070,14 +2064,8 @@ messages:
       propagate;
    }
 
-   EnterStateEngage( target = $, actnow = TRUE, delay = 0, bResume = FALSE)
+   EnterStateEngage( target = $, actnow = TRUE, delay = 0)
    {
-      // We need a moment to get our strength back.
-      if (piState & STATE_REST) AND NOT bResume
-      {
-         return;
-      }
-
       // Can't engage against the leader...
       if (poLeader <> $
          AND poLeader = target)

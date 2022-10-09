@@ -1893,6 +1893,11 @@ messages:
       return;
    }
 
+   GetNaturalVigorRegeneration()
+   {
+      return viNaturalVigorRegeneration;
+   }
+
    CalculateVigorPerTick()
    {
       local iNatural, iExertion, iVigorPerTick, iHaste, iStamina, iBonus,
@@ -1912,7 +1917,7 @@ messages:
       // if we aren't suffering from a vigor curse.
       if (NOT (piBattlerFlags & BFLAG_VIGOR_CURSE))
       {
-         iNatural += viNaturalVigorRegeneration;
+         iNatural += Send(self,@GetNaturalVigorRegeneration);
 
          iStamina = Send(self,@GetStamina);
 
@@ -1994,7 +1999,7 @@ messages:
          }
       }
 
-      // Vigor below limit, proceed as normal - unless we are a monster.
+      // Vigor below limit, proceed as normal.
       if (iVigor < iLimit)
       {
          iVigorPerTick = iNatural;

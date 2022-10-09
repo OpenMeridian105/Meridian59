@@ -445,6 +445,10 @@ classvars:
    // Unsocial monsters will also not come to their allies help.
    viSocial = 50
 
+   // Monsters have a default regeneration of 1 point of vigor per second.
+   // This value is modified by their stamina.
+   viNaturalVigorRegeneration = 200
+
    // Some monsters classes may inherently have higher (or lower) stats.
    viBonusAgility = 0
    viBonusAim = 0
@@ -11363,14 +11367,27 @@ messages:
       return;
    }
 
-   ZeroVigor()
-   "Uh oh! Are we in trouble?"
+   LoseVigor(amount=0,precision=FALSE)
    {
-      Send(self,@EnterStateRest,#target=poTarget,
-            #delay=Bound(10000-100*piStamina,5000,10000));
-      Send(self,@GainVigor,#amount=piVigor_rest_threshold);
+      if NOT precision
+      {
+         amount *= 100;
+      }
+
+      piVigor -= amount;
+
+      // Tough monsters will never fall below 50% of their resting vigor.
+      // Weak monsters can drop all the way to 5% of their resting vigor.
+      piVigor = Bound(piVigor,piVigor_rest_threshold*viDifficulty*5,$);
+
+      Send(self,@NewVigor);
 
       return;
+   }
+
+   GetNaturalVigorRegeneration()
+   {
+      return viNaturalVigorRegeneration*piStamina/50;
    }
 
    // This message is used to modify responsiveness of resource

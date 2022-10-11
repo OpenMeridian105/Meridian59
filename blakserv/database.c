@@ -89,7 +89,7 @@ UINT record_count = 0;
    CREATE TABLE player_death (                 \
      pdeath_victim VARCHAR(45) NOT NULL,       \
      pdeath_killer VARCHAR(45) NOT NULL,       \
-     pdeath_room   VARCHAR(45) NOT NULL,       \
+     pdeath_room   VARCHAR(63) NOT NULL,       \
      pdeath_attack VARCHAR(45) NOT NULL,       \
      pdeath_ispvp  INT(1) NOT NULL,            \
      pdeath_time   DATETIME NOT NULL,          \
@@ -765,7 +765,7 @@ UINT record_count = 0;
    CREATE PROCEDURE WritePlayerDeath(   \n\
      IN victim  VARCHAR(45),            \n\
      IN killer  VARCHAR(45),            \n\
-     IN room    VARCHAR(45),            \n\
+     IN room    VARCHAR(63),            \n\
      IN attack  VARCHAR(45),            \n\
      IN ispvp   INT(1))                 \n\
    BEGIN                                \n\

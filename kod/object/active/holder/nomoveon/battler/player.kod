@@ -3860,6 +3860,13 @@ messages:
          }
 
          iTime = First(i);
+         
+         // Mark, cast by us so no timer.
+         if (IsClass(oSpell,&Mark)
+            AND iTime = $)
+         {
+            continue;
+         }
           // Skip always active timers (e.g. boons).
          if (IsTimer(iTime))
          {
@@ -12702,57 +12709,6 @@ messages:
       return;
    }
 
-   // Breaks maintained effects that might be fragile to interruption
-   // such as mana focus or radius enchantments.
-   BreakFragileEffects(event = 0, what = $, disruption = 0)
-   {
-      local i, oEnch, state;
-
-      // Unlike unbreakable trances, fragile effects will never stop
-      // us from acting, even if they persist.
-
-      // We clear the fragile flag right here. If one of our fragile
-      // effect happens to remain unaffected, it will restore the flag
-      // on its own.
-      Send(self,@ClearFragileFlag);
-
-      foreach i in plEnchantments
-      {
-         oEnch = Nth(i,2);
-
-         if IsClass(oEnch,&Spell)
-         {
-            if Length(i) >= ENCHANTMENT_LIST_STATE
-            {
-               state = Nth(i,3);
-            }
-            else
-            {
-               state = $;
-            }
-
-            Send(oEnch,@BreakFragileEffect,#who=self,#state=state,
-                  #event=event,#what=what,#disruption=disruption);
-         }
-      }
-
-      foreach i in plRadiusEnchantments
-      {
-         oEnch = Nth(i,2);
-         state = Nth(i,3);
-
-         // Radius enchantments are only broken if the source of the
-         // enchantment is affected.
-         if (First(state) = self)
-         {
-            Send(oEnch,@BreakFragileEffect,#who=self,#state=state,
-                  #event=event,#what=what,#disruption=disruption);
-         }
-      }
-
-      return;
-   }
-
    RecalcBulkAndWeight()
    {
       return;
@@ -14523,56 +14479,13 @@ messages:
          Send(self,@MsgSendUser,#message_rsc=player_unfactioned);
       }
 
-      // Decrease the max number of loyalty quests by one
       if piFaction = FACTION_PRINCESS
       {
-         oQuest = Send(oQuestEngine,@GetQuestTemplate,
-                       #index=QST_ID_PRINCESS_SERVICE);
-         numMembers = Nth(oQuest,QT_MAX_NUM_ACTIVE);
-         if numMembers > 0
-         {
-            Send(oQuestEngine,@SetQuestMaxActive,
-                 #index=QST_ID_PRINCESS_SERVICE,
-                 #new_max=(numMembers-1));
-         }
-         else
-         {
-            Debug("ResignFaction miscounted number of Princess faction members!");
-         }
          Post(self,@DrawDefense);
       }
 
-      if piFaction = FACTION_DUKE
+      else if piFaction = FACTION_REBEL
       {
-         oQuest = Send(oQuestEngine,@GetQuestTemplate,
-                       #index=QST_ID_DUKE_SERVICE);
-         numMembers = Nth(oQuest,QT_MAX_NUM_ACTIVE);
-
-         if numMembers > 0
-         {
-            Send(oQuestEngine,@SetQuestMaxActive,#index=QST_ID_DUKE_SERVICE,
-                 #new_max=(numMembers-1));
-         }
-         else
-         {
-            Debug("ResignFaction miscounted number of Duke faction members!");
-         }
-      }
-
-      if piFaction = FACTION_REBEL
-      {
-         oQuest = Send(oQuestEngine,@GetQuestTemplate,
-                       #index=QST_ID_REBEL_SERVICE);
-         numMembers = Nth(oQuest,QT_MAX_NUM_ACTIVE);
-         if numMembers > 0
-         {
-            Send(oQuestEngine,@SetQuestMaxActive,#index=QST_ID_REBEL_SERVICE,
-                 #new_max=(numMembers-1));
-         }
-         else
-         {
-            Debug("ResignFaction miscounted number of Rebel faction members!");
-         }
          Post(self,@DrawOffense);
       }
 
@@ -16584,14 +16497,6 @@ messages:
       }
 
       propagate;
-   }
-
-   // Ends maintained spells, most likely because we ran out of mana.
-   CancelMaintainedSpells()
-   {
-     Send(self,@BreakFragileEffects,#event=EVENT_NO_MANA);
-
-     propagate;
    }
 
    ZeroVigor()

@@ -11992,23 +11992,6 @@ messages:
       return FALSE;
    }
 
-   CancelMaintainedSpells()
-   {
-      local i, oEnch, state;
-
-      foreach i in plRadiusEnchantments
-      {
-         oEnch = Nth(i,2);
-         state = Nth(i,3);
-         if (Send(oEnch,@GetCaster,#state=state) = self)
-         {
-            Send(oEnch,@BreakTrance,#who=self,#state=state,#event=EVENT_NO_MANA);
-         }
-      }
-
-      propagate;
-   }
-
    GetHitSound()
    {
       return vrSound_miss;
@@ -12136,33 +12119,6 @@ messages:
       // Someone may have braced for our attack, tell them
       // that they no longer need to worry.
       Send(First(Nth(state,3)),@ClearAttacker,#who=who);
-
-      return;
-   }
-
-   BreakFragileEffects(event=0,what=$,disruption=0)
-   {
-      local i, oEnch, state;
-
-      foreach i in plEnchantments
-      {
-         oEnch = Nth(i,2);
-
-         if IsClass(oEnch,&Spell)
-         {
-            if Length(i) >= ENCHANTMENT_LIST_STATE
-            {
-               state = Nth(i,3);
-            }
-            else
-            {
-               state = $;
-            }
-
-            Send(oEnch,@BreakFragileEffect,#who=self,#state=state,
-                  #event=event,#what=what,#disruption=disruption);
-         }
-      }
 
       return;
    }

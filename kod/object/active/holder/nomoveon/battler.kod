@@ -826,6 +826,69 @@ messages:
       return TRUE;
    }
 
+   // Breaks maintained effects that might be fragile to interruption
+   // such as mana focus or radius enchantments.
+   BreakFragileEffects(event = 0, what = $, disruption = 0)
+   {
+      local i, oEnch, state;
+
+      // Unlike unbreakable trances, fragile effects will never stop
+      // us from acting, even if they persist.
+
+      // We clear the fragile flag right here. If one of our fragile
+      // effect happens to remain unaffected, it will restore the flag
+      // on its own.
+      Send(self,@ClearFragileFlag);
+
+      foreach i in plEnchantments
+      {
+         oEnch = Nth(i,2);
+
+         if IsClass(oEnch,&Spell)
+         {
+            if Length(i) >= ENCHANTMENT_LIST_STATE
+            {
+               state = Nth(i,3);
+            }
+            else
+            {
+               state = $;
+            }
+
+            Send(oEnch,@BreakFragileEffect,#who=self,#state=state,
+                  #event=event,#what=what,#disruption=disruption);
+         }
+      }
+
+      foreach i in plRadiusEnchantments
+      {
+         oEnch = Nth(i,2);
+         state = Nth(i,3);
+
+         // Radius enchantments are only broken if the source of the
+         // enchantment is affected.
+         if (First(state) = self)
+         {
+            Send(oEnch,@BreakFragileEffect,#who=self,#state=state,
+                  #event=event,#what=what,#disruption=disruption);
+         }
+      }
+
+      return;
+   }
+
+   SetFragileFlag()
+   "Do nothing for mobs, Player has an override."
+   {
+      return;
+   }
+
+   ClearFragileFlag()
+   "Do nothing for mobs, Player has an override."
+   {
+      return;
+   }
+
    GetCastPower(what=$)
    "This is used by purge to get the spellpower the personal enchantment was "
    "cast at. Put in Battler instead of Player as we may use this for monster "
@@ -4809,9 +4872,12 @@ messages:
       return 0;
    }
 
+   // Ends maintained spells, most likely because we ran out of mana.
    CancelMaintainedSpells()
    {
       local i;
+
+      Send(self,@BreakFragileEffects,#event=EVENT_NO_MANA);
 
       foreach i in plControlledMinions
       {

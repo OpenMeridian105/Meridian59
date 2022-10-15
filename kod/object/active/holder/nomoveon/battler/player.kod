@@ -8142,27 +8142,32 @@ messages:
          iSwing = Send(SETTINGS_OBJECT, @GetKillKarmaSwingPlayer);
       }
 
+      // NOTE: due to a bug (present since pre-open source) this never
+      // worked because bIsMob was never sent. Emulate the expected behavior
+      // and don't adjust karma in this way.
       // Okay, let's give them a break if they are moving towards
       // neutrality, and they've just killed a monster.  This happens,
       // for example, if a player with 20 karma kills a monster with
       // -10.  It moves the player towards 10, but at a slower pace.
-
-      if bIsMob
+      /*if bIsMob
       {
          if (karma_killer > 0) <> (karma_victim > 0)
             AND (abs(karma_killer) > abs(karma_victim))
          {
             iSwing = Send(SETTINGS_OBJECT, @GetKillKarmaSwingNeutral);
          }
-      }
+      }*/
 
       iChange = Send(self,@CalculateKarmaChangeFromAct,#karma_doer = karma_killer,
                      #karma_act = -(karma_victim),#swing_factor = iSwing);
 
-      if bIsMob
+      // NOTE: due to a bug (present since pre-open source) this never
+      // worked because bIsMob was never sent. Emulate the expected behavior
+      // and don't adjust karma in this way.
+      /* if bIsMob
       {
          iChange = Bound(iChange,-150,150);
-      }
+      }*/
 
       return iChange;
    }

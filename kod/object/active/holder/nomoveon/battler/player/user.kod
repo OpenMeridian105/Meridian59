@@ -1058,6 +1058,9 @@ messages:
    {
       local i, iTime;
 
+      // Clear last received commands.
+      plLastReceived = $;
+
       // Autolog time check.
       if (piLastAutologTest >= 0)
       {
@@ -2646,6 +2649,14 @@ messages:
       local iAction;
 
       ptAttackTimer = $;
+
+      if (poOwner = $)
+      {
+         // Logged out with action timer running,
+         // do nothing & clear plLastReceived just in case.
+         plLastReceived = $;
+         return;
+      }
 
       // Redraw our defense if we had our guard down.
       if Send(self,@GuardRecovery)

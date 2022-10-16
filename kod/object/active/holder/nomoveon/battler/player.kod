@@ -17940,27 +17940,30 @@ messages:
       // Nope.
       if oAbility = $
       {
-         // Check if we have been hit during a vulnerable cooldown period.
-         if (piCombatState = COMBAT_STATE_OFF_GUARD)
-            OR (piCombatState = COMBAT_STATE_BAD_STANCE)
+         if Send(SETTINGS_OBJECT,@IsExposedStateEnabled)
          {
-            // We were left exposed by performing unleash.
-            // Let the skill handle any potential fallout.
-            oAbility = Send(SYS,@FindSkillByNum,#num=SKID_UNLEASH);
-            Send(oAbility,@CaughtOffGuard,#who=self);
+            // Check if we have been hit during a vulnerable cooldown period.
+            if (piCombatState = COMBAT_STATE_OFF_GUARD)
+               OR (piCombatState = COMBAT_STATE_BAD_STANCE)
+            {
+               // We were left exposed by performing unleash.
+               // Let the skill handle any potential fallout.
+               oAbility = Send(SYS,@FindSkillByNum,#num=SKID_UNLEASH);
+               Send(oAbility,@CaughtOffGuard,#who=self);
 
-            // Tell them about it.
-            Send(self,@MsgSendUser,#message_rsc=player_off_guard,
-               #parm1=Send(what,@GetCapDef),#parm2=Send(what,@GetName));
+               // Tell them about it.
+               Send(self,@MsgSendUser,#message_rsc=player_off_guard,
+                  #parm1=Send(what,@GetCapDef),#parm2=Send(what,@GetName));
 
-            // Restore their 3rd person animation state to default.
-            // That also means that we can't stack penalties.
-            // Window overlay doesn't change until timer is up.
-            piAnimation = PANM_NONE;
-            Send(poOwner,@SomethingChanged,#what=self);
+               // Restore their 3rd person animation state to default.
+               // That also means that we can't stack penalties.
+               // Window overlay doesn't change until timer is up.
+               piAnimation = PANM_NONE;
+               Send(poOwner,@SomethingChanged,#what=self);
 
-            // This shifts combat state from vulnerable to hit.
-            ++piCombatState;
+               // This shifts combat state from vulnerable to hit.
+               ++piCombatState;
+            }
          }
       }
       // Yep. Let's check if that has any consequences.

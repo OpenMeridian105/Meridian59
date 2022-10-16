@@ -6336,12 +6336,12 @@ messages:
 
       if oWeapon <> $
       {
-         Send(oWeapon,@DamageItem);
+         Send(oWeapon,@DamageItem,#bAttack=TRUE);
       }
 
       foreach i in plAttack_modifiers
       {
-         Send(i,@DamageItem);
+         Send(i,@DamageItem,#bAttack=TRUE);
       }
 
       if Send(self,@GetSkillAbility,#Skill_num=SKID_DISARM) > 0
@@ -6571,14 +6571,12 @@ messages:
       if (use_weapon <> $)
          AND IsClass(use_weapon,&Weapon)
       {
-         Send(use_weapon,@DamageItem);
+         Send(use_weapon,@DamageItem,#bAttack=TRUE);
       }
 
       // Some stuff only applies when we have killed ourselves.
       if oMinion = $
       {
-         SendList(plAttack_modifiers,0,@DamageItem);
-
          // Let our follower know if we have one. It'll make their day!
          // Also gotta do this first, to avoid complications... (They're crazy jealous!)
          if (Send(self,@HasActiveFollower)
@@ -6593,7 +6591,7 @@ messages:
             AND (IsClass(stroke_obj,&Skill)
                OR IsClass(stroke_obj,&TouchAttackSpell))
          {
-            SendList(plAttack_modifiers,0,@DamageItem);
+            SendList(plAttack_modifiers,0,@DamageItem,#bAttack=TRUE);
          }
 
          // Send text message - a stroke may want to provide it's own.

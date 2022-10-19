@@ -204,19 +204,18 @@ messages:
       return prBowTop;
    }
 
-   SendOverlayInformation(iAnimation = $)
+   SendOverlayInformation(iAnimation = $, iDelay = 1)
    {
       if iAnimation <> $
          AND (piUsed = ATTACKING
             OR iAnimation = PANM_BOW_FIRE)
       {
-         AddPacket(4,prBowTop);
-         AddPacket(1,HS_TOP_BOW);
-         Send(self,@SendSecondaryOverlayAnimation,#iAnimation=iAnimation);
+         AddPacket(4,prBowTop, 1,HS_TOP_BOW);
+         Send(self,@SendSecondaryOverlayAnimation,#iAnimation=iAnimation,
+               #iDelay=iDelay);
 
-         AddPacket(4,prBowBottom);
-         AddPacket(1,HS_BOTTOM_BOW);
-         Send(self,@SendOverlayAnimation,#iAnimation=iAnimation);
+         AddPacket(4,prBowBottom, 1,HS_BOTTOM_BOW);
+         Send(self,@SendOverlayAnimation,#iAnimation=iAnimation,#iDelay=iDelay);
       }
       else
       {
@@ -226,7 +225,7 @@ messages:
       return;
    }
 
-   SendSecondaryOverlayAnimation(iAnimation = $)
+   SendSecondaryOverlayAnimation(iAnimation = $, iDelay = 1)
    {
       if (piItem_flags & ITEM_PALETTE_MASK) <> 0
       {
@@ -237,7 +236,7 @@ messages:
          AND (piUsed = ATTACKING
             OR iAnimation = PANM_BOW_FIRE)
       {
-         AddPacket(1,ANIMATE_ONCE,4,1200,2,1,2,1,2,2);
+         AddPacket(1,ANIMATE_ONCE,4,1200*iDelay/1200,2,1,2,1,2,2);
 
          return;
       }
@@ -251,7 +250,7 @@ messages:
       return;
    }
 
-   SendOverlayAnimation(ianimation = $)
+   SendOverlayAnimation(iAnimation = $, iDelay = 1)
    {
       if (piItem_flags & ITEM_PALETTE_MASK) <> 0
       {
@@ -262,7 +261,7 @@ messages:
          AND (piUsed = ATTACKING
             OR iAnimation = PANM_BOW_FIRE)
       {
-         AddPacket(1,ANIMATE_ONCE,4,1200,2,1,2,1,2,2);
+         AddPacket(1,ANIMATE_ONCE,4,1200*iDelay/1200,2,1,2,1,2,2);
       }
       else if iAnimation = PANM_HIT 
       {

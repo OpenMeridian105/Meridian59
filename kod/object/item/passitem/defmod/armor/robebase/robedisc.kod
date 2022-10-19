@@ -311,7 +311,7 @@ messages:
       return HS_EMBLEM;
    }
 
-   SendOverlayAnimation(iAnimation = $)
+   SendOverlayAnimation(iAnimation = $, iDelay = 1)
    {
       if (piItem_flags & ITEM_PALETTE_MASK) <> 0
       {
@@ -320,21 +320,21 @@ messages:
 
       if iAnimation = PANM_WEAPON_ATTACK
       {
-         AddPacket(1,ANIMATE_ONCE,4,300,2,2,2,4,2,1);
+         AddPacket(1,ANIMATE_ONCE,4,300*iDelay/1200,2,2,2,4,2,1);
 
          return;
       }
 
       if iAnimation = PANM_FIST_ATTACK
       {
-         AddPacket(1,ANIMATE_ONCE,4,600,2,3,2,4,2,1);
+         AddPacket(1,ANIMATE_ONCE,4,600*iDelay/1200,2,3,2,4,2,1);
 
          return;
       }
 
       if iAnimation = PANM_BOW_FIRE
       {
-         AddPacket(1,ANIMATE_ONCE,4,1200,2,5,2,5,2,1);
+         AddPacket(1,ANIMATE_ONCE,4,1200*iDelay/1200,2,5,2,5,2,1);
 
          return;
       }
@@ -444,11 +444,10 @@ messages:
       return;
    }
 
-   SendOverlayInformation(ianimation = $)
+   SendOverlayInformation(ianimation = $, iDelay = 1)
    {
-      AddPacket(4,Send(self,@GetOverlay));
-      AddPacket(1,Send(self,@GetOverlayHotspot));
-      Send(self,@SendOverlayAnimation,#iAnimation=iAnimation);
+      AddPacket(4,Send(self,@GetOverlay), 1,Send(self,@GetOverlayHotspot));
+      Send(self,@SendOverlayAnimation,#iAnimation=iAnimation,#iDelay=iDelay);
 
       return;
    }

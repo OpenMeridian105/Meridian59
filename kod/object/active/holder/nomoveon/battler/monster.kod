@@ -3510,7 +3510,13 @@ messages:
 
       // We allow a small fudge factor of 2 so it becomes a bit harder to
       // simply run out of range.
-      if NOT Send(self,@CanReach,#what=oTarget,#squaredrange=4*squaredrange)
+      squaredrange *= 4;
+      // Check for overflow, e.g. evil twin w/ a long bow.
+      if (squaredrange < 0)
+      {
+         squaredrange = MAX_INT;
+      }
+      if NOT Send(self,@CanReach,#what=oTarget,#squaredrange=squaredrange)
       {
          if IsClass(oTarget,&Player)
          {

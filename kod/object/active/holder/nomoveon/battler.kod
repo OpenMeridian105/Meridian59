@@ -3026,13 +3026,6 @@ messages:
       return;
    }
 
-   SetAnimation(animation=ANIM_NONE)
-   {
-      piAnimation = animation;
-
-      return;
-   }
-
    GetDamageDesc(damage=0, type=0)
    "This returns the severity of damage by type.  Gives a verb descriptor."
    {
@@ -4626,6 +4619,46 @@ messages:
          // Use the 'ByClass' call since we're sending Delete.
          SendListByClass(plApparitionList,0,&Monster,@Delete);
          plApparitionList = $;
+      }
+
+      return;
+   }
+
+   EquippedItem(what = $)
+   "Called at the end of equipping the item 'what'."
+   {
+      local i;
+
+      // Tell any ET/reflections that we have changed equipment
+      // so they can refresh.
+      if (poEvilTwin <> $)
+      {
+         Send(poEvilTwin,@OriginalEquipChanged,#what=what);
+      }
+
+      foreach i in Send(SYS,@GetReflections,#who=self)
+      {
+         Send(i,@OriginalEquipChanged,#what=what);
+      }
+
+      return;
+   }
+
+   UnequippedItem(what = $)
+   "Called at the end of unequipping the item 'what'."
+   {
+      local i;
+
+      // Tell any ET/reflections that we have changed equipment
+      // so they can refresh.
+      if (poEvilTwin <> $)
+      {
+         Send(poEvilTwin,@OriginalEquipChanged,#what=what);
+      }
+
+      foreach i in Send(SYS,@GetReflections,#who=self)
+      {
+         Send(i,@OriginalEquipChanged,#what=what);
       }
 
       return;

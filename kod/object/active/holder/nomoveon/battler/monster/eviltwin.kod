@@ -92,11 +92,14 @@ properties:
    piSpellpower = 1
    poArrow = $
 
+   // Is original using morph or illusionary form.
+   pbOriginalIllusioned = FALSE
+
 messages:
 
    Constructor(iSpellPower=1,oMaster=$,oTarget=$)
    {
-      local i;
+      local i, oWeapon, iRange;
 
       if oMaster <> $
       {
@@ -121,6 +124,24 @@ messages:
 
                // Zero vigor cost.
                SetNth(i,3,0);
+            }
+         }
+         else
+         {
+            plActions = [[SKID_MINIMUM,0,0,MAX_KOD_INT,50,1,99,COMBAT_ACTION_NEUTRAL]];
+
+            oWeapon = Send(poOriginal,@GetWeapon);
+            iRange = Send(oWeapon,@GetRange);
+            iRange *= iRange;
+
+            if IsClass(oWeapon,&RangedWeapon)
+               OR IsClass(oWeapon,&ThrownWeapon)
+            {
+               plActions = Cons([SKID_FIRE,0,0,iRange,100,1,99,COMBAT_ACTION_HARM],plActions);
+            }
+            else
+            {
+               plActions = Cons([SKID_SLASH,0,0,iRange,100,1,99,COMBAT_ACTION_HARM],plActions);
             }
          }
       }
@@ -700,7 +721,7 @@ messages:
 
    GetAttackRange()
    {
-      local iWeapon;
+      local oWeapon;
 
       if poOriginal = $
       {
@@ -709,11 +730,15 @@ messages:
 
       if IsClass(poOriginal,&User)
       {
-         iWeapon = Send(poOriginal,@GetWeapon);
+         oWeapon = Send(poOriginal,@GetWeapon);
 
-         if iWeapon <> $
+         if oWeapon <> $
          {
-            return Send(iWeapon,@GetRange);
+            if (IsClass(oWeapon,&Monster))
+            {
+               return Send(oWeapon,@GetAttackRange);
+            }
+            return Send(oWeapon,@GetRange);
          }
       }
       else
@@ -784,7 +809,15 @@ messages:
 
       propagate;
    }
-
+   // Notes about SomethingChanged-type calls and ETs:
+   // Reacting to a SomethingChanged from the original by immediately calling
+   // our own SomethingChanged isn't necessarily good - SomethingChanged is
+   // used to change animation states, e.g. playing a swing animation and if
+   // both we and the original are swinging, our SomethingChanged would cut
+   // off our own swing animation. Basically we need to only react to visual
+   // changes - equipping/unequipping an item, flag changes, drawing effect
+   // changes & ignore the rest. Objects that can equip/unequip items MUST
+   // ensure that ET get the OriginalEquipChanged call.
    SomethingChangedFlags(what=$)
    {
       if (what = poOriginal)
@@ -802,38 +835,29 @@ messages:
 
    SomethingChanged(what=$)
    {
-      local oWeapon, iRange, i, iDrawfx, bChanged;
+      local iDrawfx, bIllusioned, bChanged;
 
       if what = poOriginal
       {
          iDrawfx = piDrawfx;
-
          piDrawfx = Send(self,@GetDrawingEffects);
-
          bChanged = (iDrawfx <> piDrawfx);
 
-         // Gotta get the evil twin's correct action list.
-         if IsClass(poOriginal,&User)
+         // If human mobs get morph or illusionary form, this has to change.
+         if (IsClass(poOriginal,&User))
          {
-            // Reset plActions.
-            plActions = [[SKID_MINIMUM,0,0,MAX_KOD_INT,50,1,99,COMBAT_ACTION_NEUTRAL]];
-
-            oWeapon = Send(poOriginal,@GetWeapon);
-
-            iRange = Send(oWeapon,@GetRange);
-            iRange *= iRange;
-
-            if IsClass(oWeapon,&RangedWeapon)
-               OR IsClass(oWeapon,&ThrownWeapon)
+            bIllusioned = pbOriginalIllusioned;
+            pbOriginalIllusioned = Send(poOriginal,@IsMorphedOrIllusioned);
+            if (bIllusioned <> pbOriginalIllusioned)
             {
-               plActions = Cons([SKID_FIRE,0,0,iRange,100,1,99,COMBAT_ACTION_HARM],plActions);
-            }
-            else
-            {
-               plActions = Cons([SKID_SLASH,0,0,iRange,100,1,99,COMBAT_ACTION_HARM],plActions);
-            }
+               // Morph/ill form requires Post.
+               if (poOwner <> $)
+               {
+                  Post(poOwner,@SomethingChanged,#what=self);
+               }
 
-            bChanged = TRUE;
+               propagate;
+            }
          }
 
          if (poOwner <> $)
@@ -844,6 +868,50 @@ messages:
       }
 
       propagate;
+   }
+
+   OriginalEquipChanged(what = $)
+   {
+      if (IsClass(what,&Weapon))
+      {
+         Send(self,@OriginalWeaponChanged);
+      }
+      else if (poOwner <> $)
+      {
+         Send(poOwner,@SomethingChanged,#what=self);
+      }
+
+      return;
+   }
+
+   OriginalWeaponChanged()
+   {
+      local oWeapon, iRange, bChanged;
+
+      // Reset plActions.
+      plActions = [[SKID_MINIMUM,0,0,MAX_KOD_INT,50,1,99,COMBAT_ACTION_NEUTRAL]];
+
+      oWeapon = Send(poOriginal,@GetWeapon);
+
+      iRange = Send(oWeapon,@GetRange);
+      iRange *= iRange;
+
+      if IsClass(oWeapon,&RangedWeapon)
+         OR IsClass(oWeapon,&ThrownWeapon)
+      {
+         plActions = Cons([SKID_FIRE,0,0,iRange,100,1,99,COMBAT_ACTION_HARM],plActions);
+      }
+      else
+      {
+         plActions = Cons([SKID_SLASH,0,0,iRange,100,1,99,COMBAT_ACTION_HARM],plActions);
+      }
+
+      if poOwner <> $
+      {
+         Send(poOwner,@SomethingChanged,#what=self);
+      }
+
+      return;
    }
 
    DoWave()
@@ -1089,28 +1157,14 @@ messages:
 
    SendAnimation()
    {
-      // Inject our animation into the original.
-      Send(poOriginal,@SetAnimation,#animation=piAnimation);
-
-      // Get the required packets.
-      Send(poOriginal,@SendAnimation);
-
-      // Reset the original's animation.
-      Send(poOriginal,@SetAnimation);
+      Send(poOriginal,@SendAnimation,#iAnimation=piAnimation);
 
       return;
    }
 
    SendOverlays()
    {
-      // Inject our animation into the original.
-      Send(poOriginal,@SetAnimation,#animation=piAnimation);
-
-      // Get the required packets.
-      Send(poOriginal,@SendOverlays);
-
-      // Reset the original's animation.
-      Send(poOriginal,@SetAnimation);
+      Send(poOriginal,@SendOverlays,#iAnimation=piAnimation);
 
       return;
    }

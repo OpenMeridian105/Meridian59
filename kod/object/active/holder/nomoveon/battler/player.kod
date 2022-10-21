@@ -906,9 +906,6 @@ properties:
    poGuild = $
    piGuildRejoinTimestamp = 0
 
-   // Evil twin object
-   poEvilTwin = $
-
    // list of spells we know, in the form of a 3-part compound
    plSpells = $
 
@@ -4658,6 +4655,8 @@ messages:
                Post(self,@DrawResistances);
             }
 
+            // Tell anything copying us that we unused an item.
+
             return TRUE;
          }
       }
@@ -7236,6 +7235,16 @@ messages:
    IsUsingA(class=$)
    {
       return GetListElemByClass(plUsing,class) <> $;
+   }
+
+   IsUsing(what=$)
+   {
+      if (what = $)
+      {
+         return FALSE;
+      }
+
+      return FindListElem(plUsing,what);
    }
 
    FindUsing(class=$)
@@ -12310,7 +12319,7 @@ messages:
 
       foreach i in plOverlays
       {
-         Send(i,@SendOverlayInformation,#iAnimation=iAnimation);
+         Send(i,@SendOverlayInformation,#iAnimation=iAnimation,#iDelay=iDelay);
       }
 
       return;
@@ -14355,7 +14364,7 @@ messages:
          {
             if IsClass(i,&Token)
             {
-               Send(i,@NewUnused);
+               Send(i,@NewUnused,#what=self);
 
                break;
             }

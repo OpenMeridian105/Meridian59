@@ -145,9 +145,7 @@ messages:
 
    SendLookOverlays()
    {
-      AddPacket(1,1);
-
-      AddPacket(4,vrLeaves, 1,HS_HEAD);
+      AddPacket(1,1, 4,vrLeaves, 1,HS_HEAD);
 
       if piColor_Translation <> 0
       {
@@ -155,16 +153,14 @@ messages:
       }
 
       AddPacket(1,ANIMATE_CYCLE, 4,viLook_duration,
-         2,viLook_start_frame, 2,viLook_end_frame);
+                2,viLook_start_frame, 2,viLook_end_frame);
 
       return;
    }
 
    SendMoveOverlays()
    {
-      AddPacket(1,1);
-
-      AddPacket(4,vrLeaves, 1,HS_HEAD);
+      AddPacket(1,1, 4,vrLeaves, 1,HS_HEAD);
 
       if piColor_Translation <> 0
       {
@@ -172,35 +168,38 @@ messages:
       }
 
       AddPacket(1,ANIMATE_CYCLE, 4,viMove_duration,
-         2,viMove_start_frame, 2,viMove_end_frame);
+                2,viMove_start_frame, 2,viMove_end_frame);
 
       return;
    }
 
-   SendOverlays()
+   SendOverlays(iAnimation = $)
    {
       local iStart, iEnd, iTime;
 
-      // Send overlay bitmap info to user.
-      AddPacket(1,1);
+      if (iAnimation = $)
+      {
+         iAnimation = piAnimation;
+      }
 
-      AddPacket(4,vrLeaves, 1,HS_HEAD);
+      // Send overlay bitmap info to user.
+      AddPacket(1,1, 4,vrLeaves, 1,HS_HEAD);
 
       if piColor_Translation <> 0
       {
          AddPacket(1,ANIMATE_TRANSLATION,1,piColor_Translation);
       }
 
-      if piAnimation = ANIM_ATTACK
+      if iAnimation = ANIM_ATTACK
       {
          AddPacket(1,ANIMATE_ONCE, 4,viAttack_duration,
-            2,viAttack_start_frame, 2,viAttack_end_frame,
-            2,viRest_frame);
+                   2,viAttack_start_frame, 2,viAttack_end_frame,
+                   2,viRest_frame);
 
          return;
       }
 
-      if piAnimation = ANIM_HIT
+      if iAnimation = ANIM_HIT
       {
          Send(self,@SendHitAnimation,#startframe=viHit_start_frame,
             #endframe=viHit_end_frame,#restframe=viRest_frame,
@@ -209,11 +208,11 @@ messages:
          return;
       }
 
-      if piAnimation
+      if iAnimation
       {
          AddPacket(1,ANIMATE_ONCE, 4,viAttack_duration,
-            2,viAttack_start_frame, 2,viAttack_end_frame,
-            2,viRest_frame);
+                   2,viAttack_start_frame, 2,viAttack_end_frame,
+                   2,viRest_frame);
 
          return;
       }

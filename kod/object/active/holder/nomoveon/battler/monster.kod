@@ -1625,6 +1625,17 @@ messages:
       propagate;
    }
 
+   // Illusionary form/morph use this to set the animation on the system
+   // monster templates so SendAnimation() can be used. Note that this
+   // shouldn't be used to set the animations of anything that doesn't
+   // have a $ owner.
+   SetAnimation(animation = $)
+   {
+      piAnimation = animation;
+
+      return;
+   }
+
    //// Enchantments of Monsters
 
    EnchantmentTimer(timer = $)
@@ -1851,6 +1862,7 @@ messages:
          // take a moment to cool off. This also allows us to finish
          // unresolved animations.
          if piAction <> SKID_MINIMUM
+            AND piAction <> 0
          {
             // Our delay is decided by intellect and agility.
             iDelay = Send(self,@GetPostFightDelay);
@@ -3499,7 +3511,13 @@ messages:
 
       // We allow a small fudge factor of 2 so it becomes a bit harder to
       // simply run out of range.
-      if NOT Send(self,@CanReach,#what=oTarget,#squaredrange=4*squaredrange)
+      squaredrange *= 4;
+      // Check for overflow, e.g. evil twin w/ a long bow.
+      if (squaredrange < 0)
+      {
+         squaredrange = MAX_INT;
+      }
+      if NOT Send(self,@CanReach,#what=oTarget,#squaredrange=squaredrange)
       {
          if IsClass(oTarget,&Player)
          {
@@ -12189,42 +12207,47 @@ messages:
       return;
    }
 
-   SendAnimation()
+   SendAnimation(iAnimation=$)
    {
+      if (iAnimation = $)
+      {
+         iAnimation = piAnimation;
+      }
+
       // Check for a color translation first.
       if (piColor_Translation <> 0)
       {
          AddPacket(1,ANIMATE_TRANSLATION,1,piColor_Translation);
       }
 
-      if piAnimation = ANIM_ATTACK
+      if iAnimation = ANIM_ATTACK
       {
          Send(self,@SendAttackAnimation);
       }
-      else if piAnimation = ANIM_HIT
+      else if iAnimation = ANIM_HIT
       {
          Send(self,@SendHitAnimation);
       }
-      else if piAnimation = ANIM_CAST
+      else if iAnimation = ANIM_CAST
       {
          Send(self,@SendCastAnimation);
       }
-      else if piAnimation = ANIM_SPECIAL
+      else if iAnimation = ANIM_SPECIAL
       {
          Send(self,@SendSpecialAnimation);
       }
-      else if piAnimation = ANIM_FIRE
+      else if iAnimation = ANIM_FIRE
       {
          Send(self,@SendFireAnimation);
       }
-      else if piAnimation
+      else if iAnimation
       {
          Send(self,@SendAttackAnimation);
       }
       else
       {
          Send(self,@SendNoAnimation);
-      }      
+      }
 
       return;
    }

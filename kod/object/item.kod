@@ -1076,7 +1076,7 @@ messages:
       return TRUE;
    }
 
-   NewUsed()
+   NewUsed(what=$)
    {
       local i, iNum, iSpeed;
 
@@ -1095,6 +1095,15 @@ messages:
       }
 
       viObject_flags |= OF_EQUIPPED;
+
+      // Item completely equipped, let the owner know in case
+      // anything has to be done afterwards. Handles reflections
+      // and ETs who need to handle item equipping.
+      // Use 'Equip' vs 'Use' here to distinguish from using a consumable.
+      if (what <> $)
+      {
+         Send(what,@EquippedItem,#what=self);
+      }
 
       return;
    }
@@ -1149,7 +1158,7 @@ messages:
       return TRUE;
    }
 
-   NewUnused()
+   NewUnused(what=$)
    {
       local i, iNum, iSpeed;
 
@@ -1168,6 +1177,15 @@ messages:
          AND IsClass(poOwner,&Player))
       {
          Send(poOwner,@SomethingChangedFlags,#what=self);
+      }
+
+      // Item completely removed, let the old owner know in case
+      // anything has to be done afterwards. Handles reflections
+      // and ETs who need to handle item removal.
+      // Use 'Equip' vs 'Use' here to distinguish from using a consumable.
+      if (what <> $)
+      {
+         Send(what,@UnequippedItem,#what=self);
       }
 
       return;

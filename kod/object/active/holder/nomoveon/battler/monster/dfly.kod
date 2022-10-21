@@ -207,8 +207,7 @@ messages:
 
    SendLookAnimation()
    {
-      AddPacket(1,ANIMATE_NONE);
-      AddPacket(2,viRest_frame);
+      AddPacket(1,ANIMATE_NONE, 2,viRest_frame);
 
       return;
    }
@@ -222,18 +221,18 @@ messages:
 
    SendMoveAnimation()
    {
-      AddPacket(1,ANIMATE_CYCLE,4,viMove_duration,2,viMove_start_frame,2,viMove_end_frame);
+      AddPacket(1,ANIMATE_CYCLE, 4,viMove_duration,
+                2,viMove_start_frame, 2,viMove_end_frame);
 
       return;
    }
 
-   SendmoveOverlays()
+   SendMoveOverlays()
    {
-      AddPacket(1,1);
-      AddPacket(4,vrWings,1,HS_WINGS);
-      AddPacket(1,ANIMATE_EFFECT,1,DRAWFX_TRANSLUCENT_25-DRAWFX_TRANSLUCENT_25+1);
-      AddPacket(1,ANIMATE_CYCLE,4,viMove_duration,
-            2,(viMove_start_frame - 1),2,(viMove_end_frame - 1) );
+      AddPacket(1,1, 4,vrWings, 1,HS_WINGS, 1,ANIMATE_EFFECT,
+                1,DRAWFX_TRANSLUCENT_25-DRAWFX_TRANSLUCENT_25+1,
+                1,ANIMATE_CYCLE,4,viMove_duration,
+                2,(viMove_start_frame - 1), 2,(viMove_end_frame - 1));
 
       return;
    }
@@ -242,20 +241,19 @@ messages:
    {
       if piAnimation = ANIM_HOVER
       {
-         AddPacket(1,1);
-         AddPacket(4,vrWings,1,HS_WINGS);
-         AddPacket(1,ANIMATE_EFFECT,1,DRAWFX_TRANSLUCENT_25-DRAWFX_TRANSLUCENT_25+1);
-         AddPacket(1,ANIMATE_CYCLE,4,viSpecial_duration,
-               2,(viSpecial_start_frame - 1),2,(viSpecial_end_frame - 1) );
+         AddPacket(1,1, 4,vrWings,1,HS_WINGS, 1,ANIMATE_EFFECT,
+                   1,DRAWFX_TRANSLUCENT_25-DRAWFX_TRANSLUCENT_25+1,
+                   1,ANIMATE_CYCLE, 4,viSpecial_duration,
+                   2,(viSpecial_start_frame - 1), 2,(viSpecial_end_frame - 1));
 
          return;
       }
 
       if piAnimation = ANIM_HIT
       {
-         AddPacket(1,1);              /// uses normal body speed for attack
-         AddPacket(4,vrWings,1,HS_WINGS);
-         AddPacket(1,ANIMATE_EFFECT,1,DRAWFX_TRANSLUCENT_25-DRAWFX_TRANSLUCENT_25+1);
+         /// uses normal body speed for attack
+         AddPacket(1,1, 4,vrWings, 1,HS_WINGS, 1,ANIMATE_EFFECT,
+                   1,DRAWFX_TRANSLUCENT_25-DRAWFX_TRANSLUCENT_25+1);
          Send(self,@SendHitAnimation,#startframe=viHit_start_frame - 1,
             #endframe=viHit_end_frame - 1,#restframe=viSpecial_end_frame - 1,
             #duration=viHit_duration);
@@ -265,11 +263,12 @@ messages:
 
       if piAnimation
       {
-         AddPacket(1,1);              /// uses normal body speed for attack
-         AddPacket(4,vrWings,1,HS_WINGS);
-         AddPacket(1,ANIMATE_EFFECT,1,DRAWFX_TRANSLUCENT_25-DRAWFX_TRANSLUCENT_25+1);
-         AddPacket(1,ANIMATE_ONCE,4,viAttack_duration,2,(viAttack_start_frame - 1),
-               2,(viAttack_end_frame - 1),2,(viSpecial_end_frame - 1) );
+         /// uses normal body speed for attack
+         AddPacket(1,1, 4,vrWings, 1,HS_WINGS, 1,ANIMATE_EFFECT,
+                   1,DRAWFX_TRANSLUCENT_25-DRAWFX_TRANSLUCENT_25+1,
+                   1,ANIMATE_ONCE, 4,viAttack_duration,
+                   2,(viAttack_start_frame - 1),
+                   2,(viAttack_end_frame - 1), 2,(viSpecial_end_frame - 1));
 
          return;
       }
@@ -277,9 +276,14 @@ messages:
      propagate;
    }
 
-   SendAnimation()
+   SendAnimation(iAnimation = $)
    {
-      if piAnimation = ANIM_HOVER
+      if iAnimation = $
+      {
+         iAnimation = piAnimation;
+      }
+
+      if iAnimation = ANIM_HOVER
       {
          AddPacket(1,ANIMATE_CYCLE,4,viSpecial_duration,2,viSpecial_start_frame,
                2,viSpecial_end_frame);
@@ -287,7 +291,7 @@ messages:
          return;
       }
 
-      if piAnimation = ANIM_HIT
+      if iAnimation = ANIM_HIT
       {
          Send(self,@SendHitAnimation,#startframe=viHit_start_frame,
             #endframe=viHit_end_frame,#restframe=viSpecial_end_frame,
@@ -296,10 +300,10 @@ messages:
          return;
       }
 
-      if piAnimation
+      if iAnimation
       {
-         AddPacket(1,ANIMATE_ONCE,4,viAttack_duration,2,viAttack_start_frame,
-               2,viAttack_end_frame,2,viSpecial_end_frame);
+         AddPacket(1,ANIMATE_ONCE, 4,viAttack_duration, 2,viAttack_start_frame,
+               2,viAttack_end_frame, 2,viSpecial_end_frame);
 
          return;
       }
@@ -308,13 +312,9 @@ messages:
       propagate;
    }
 
-   StaticAnimation()
-   "Static animation to avoid frame glitch during unanimated knockback."
+   GetStaticAnimation()
    {
-      piAnimation = ANIM_HOVER;
-      Send(poOwner,@SomethingChanged,#what=self);
-
-      return;
+      return ANIM_HOVER;
    }
 
    Delete()

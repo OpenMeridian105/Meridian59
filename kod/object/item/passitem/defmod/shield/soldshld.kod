@@ -608,8 +608,8 @@ messages:
       iDamageReduce = 0;
       if piDamage_reduce <> 0
       {
-         iDamageReduce = random(piDamage_reduce*33,piDamage_reduce*100);
-         iDamageReduce = bound(iDamageReduce,0,(damage-100));
+         iDamageReduce = Random(piDamage_reduce*33,piDamage_reduce*100);
+         iDamageReduce = Bound(iDamageReduce,0,(damage-100));
       }
 
       if stype <> 0
@@ -689,19 +689,17 @@ messages:
       return 1;
    }
 
-   SendOverlayInformation(iAnimation = $)
+   SendOverlayInformation(iAnimation = $, iDelay = 1)
    {
-      AddPacket(4,vrShield_Overlay);
-      AddPacket(1,piOverlayHotspot);
-      Send(self,@SendHeldAnimation,#iAnimation=iAnimation);
+      AddPacket(4,vrShield_Overlay, 1,piOverlayHotspot);
+      Send(self,@SendHeldAnimation,#iAnimation=iAnimation,#iDelay=iDelay);
 
       if piOverlayHotspot = HS_LEFT_WEAPON
       {
          if prShield_emblem_held <> $
          {
-            AddPacket(4,prShield_emblem_held);
-            AddPacket(1,piOverlayHotspot);
-            AddPacket(1,ANIMATE_NONE, 2,1);
+            AddPacket(4,prShield_emblem_held, 1,piOverlayHotspot,
+                      1,ANIMATE_NONE, 2,1);
          }
       }
       else
@@ -711,12 +709,11 @@ messages:
          {
             // Shields slung on the back use a different hotspot for the emblem
             //  due to overlay priorities.
-            AddPacket(4,prShield_emblem_back);
-            AddPacket(1,piOverlayHotspot);
+            AddPacket(4,prShield_emblem_back, 1,piOverlayHotspot);
             if iAnimation = PANM_BOW_FIRE
             {
                // Uses group 2 for animation
-               AddPacket(1,ANIMATE_ONCE, 4,1200, 2,2, 2,2, 2,1);
+               AddPacket(1,ANIMATE_ONCE, 4,1200*iDelay/1200, 2,2, 2,2, 2,1);
             }
             else
             {
@@ -729,7 +726,7 @@ messages:
       return;
    }
 
-   SendHeldAnimation(iAnimation=$)
+   SendHeldAnimation(iAnimation=$,iDelay=1)
    {
       local XLAT;
 
@@ -746,7 +743,7 @@ messages:
          if iAnimation = PANM_BOW_FIRE
          {
             // Uses group 5 for animation
-            AddPacket(1,ANIMATE_ONCE,4,1200,2,5,2,5,2,1);
+            AddPacket(1,ANIMATE_ONCE,4,1200*iDelay/1200,2,5,2,5,2,1);
          }
          else
          {
@@ -792,8 +789,7 @@ messages:
    {
       if prShield_emblem_drop <> $
       {
-         AddPacket(1,1);
-         AddPacket(4,prShield_emblem_drop, 1,1, 1,ANIMATE_NONE, 2,2);
+         AddPacket(1,1, 4,prShield_emblem_drop, 1,1, 1,ANIMATE_NONE, 2,2);
       }
       else
       {
@@ -808,9 +804,8 @@ messages:
       local XLAT;
 
       XLAT = Send(self,@GetPaletteTranslation);
-      AddPacket(1,ANIMATE_TRANSLATION,1,XLAT);
-
-      AddPacket(1,ANIMATE_NONE, 2,viInventory_group);
+      AddPacket(1,ANIMATE_TRANSLATION,1,XLAT,
+                1,ANIMATE_NONE, 2,viInventory_group);
 
       return;
    }
@@ -819,8 +814,7 @@ messages:
    {
       if prShield_emblem_drop <> $
       {
-         AddPacket(1,1);
-         AddPacket(4,prShield_emblem_drop, 1,1, 1,ANIMATE_NONE, 2,1);
+         AddPacket(1,1, 4,prShield_emblem_drop, 1,1, 1,ANIMATE_NONE, 2,1);
       }
       else
       {

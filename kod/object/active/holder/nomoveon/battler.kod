@@ -3017,18 +3017,17 @@ messages:
       return FALSE;
    }
 
+   GetStaticAnimation()
+   "Override used by Dragonfly."
+   {
+      return ANIM_NONE;
+   }
+
    StaticAnimation()
    "Static animation to avoid frame glitch during unanimated knockback."
    {
-      piAnimation = ANIM_NONE;
+      piAnimation = Send(self,@GetStaticAnimation);
       Send(poOwner,@SomethingChanged,#what=self);
-
-      return;
-   }
-
-   SetAnimation(animation=ANIM_NONE)
-   {
-      piAnimation = animation;
 
       return;
    }
@@ -4626,6 +4625,46 @@ messages:
          // Use the 'ByClass' call since we're sending Delete.
          SendListByClass(plApparitionList,0,&Monster,@Delete);
          plApparitionList = $;
+      }
+
+      return;
+   }
+
+   EquippedItem(what = $)
+   "Called at the end of equipping the item 'what'."
+   {
+      local i;
+
+      // Tell any ET/reflections that we have changed equipment
+      // so they can refresh.
+      if (poEvilTwin <> $)
+      {
+         Send(poEvilTwin,@OriginalEquipChanged,#what=what);
+      }
+
+      foreach i in Send(SYS,@GetReflections,#who=self)
+      {
+         Send(i,@OriginalEquipChanged,#what=what);
+      }
+
+      return;
+   }
+
+   UnequippedItem(what = $)
+   "Called at the end of unequipping the item 'what'."
+   {
+      local i;
+
+      // Tell any ET/reflections that we have changed equipment
+      // so they can refresh.
+      if (poEvilTwin <> $)
+      {
+         Send(poEvilTwin,@OriginalEquipChanged,#what=what);
+      }
+
+      foreach i in Send(SYS,@GetReflections,#who=self)
+      {
+         Send(i,@OriginalEquipChanged,#what=what);
       }
 
       return;

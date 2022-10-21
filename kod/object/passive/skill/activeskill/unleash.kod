@@ -170,10 +170,15 @@ messages:
 
    CanPayCosts(who=$,lTargets=$)
    {
+      local oTarget;
+
+      oTarget = First(lTargets);
       // Make sure we aren't swinging at a non battler.
-      if NOT IsClass(First(lTargets),&Battler)
+      if NOT IsClass(oTarget,&Battler)
+         OR oTarget = who
       {
          Send(who,@MsgSendUser,#message_rsc=Unleash_bad_target);
+
          return FALSE;
       }
 
@@ -205,7 +210,6 @@ messages:
          Send(who,@SetCombatState,#state=COMBAT_STATE_OFF_GUARD);
       }
 
-
       oTarget = First(lTargets);
 
       iDefended = Send(oTarget,@IsBlocked,#who=who);
@@ -221,6 +225,7 @@ messages:
             #parm3=Send(self,@GetName));
          Send(oTarget,@ClearAllAttackers);
          Send(who,@SetAttackTime,#time=piBlocked_penalty,#bAdd=TRUE);
+
          return;
       }
       else if iDefended = ACTIVE_PARRY
@@ -233,6 +238,7 @@ messages:
             #parm3=Send(self,@GetName));
          Send(oTarget,@ClearAllAttackers);
          Send(who,@SetAttackTime,#time=piParried_penalty,#bAdd=TRUE);
+
          return;
       }
       else if iDefended = ACTIVE_DODGE
@@ -245,6 +251,7 @@ messages:
             #parm3=Send(self,@GetName));
          Send(oTarget,@ClearAllAttackers);
          Send(who,@SetAttackTime,#time=piDodged_penalty,#bAdd=TRUE);
+
          return;
       }
 

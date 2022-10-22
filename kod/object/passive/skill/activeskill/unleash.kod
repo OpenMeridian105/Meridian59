@@ -84,6 +84,8 @@ classvars:
 
    viCooldownSID = SID_COOLDOWN_UNLEASH
 
+   viRegularImproveChance = 20
+
 properties:
 
    plPrerequisites = $
@@ -190,11 +192,11 @@ messages:
       return (Send(who,@GetAgility)+Send(who,@GetMight)+Send(who,@GetAim))/3;
    }
 
-   PerformSkill(who=$,lTargets=$)
+   PerformSkill(who=$,lTargets=$,iSkillPower=0)
    {
       local oWeapon, stroke_obj, iPower, iBonus, oTarget, iType,
          iDefended, iMultiAttack, bAmbush, iDamage, iStagger,
-         bGuaranteed;
+         bGuaranteed, oSpell, bImprove;
 
       // Let's check what kind of weapon we have here.
       oWeapon = Send(who,@GetWeapon);
@@ -255,6 +257,9 @@ messages:
          return;
       }
 
+      // Play a matching sound four our attack.
+      Send(self,@PlaySkillSound,#room_obj=Send(who,@GetOwner),#what=who);
+
       // Now that we have dealt with that, let's get a bit more info.
       stroke_obj = Send(who,@GetStrokeObject);
       iMultiAttack = Send(oWeapon,@GetMultiAttack);
@@ -271,10 +276,11 @@ messages:
 
          if iBonus < 100
          {
-            iBonus = (10000 - iBonus*iBonus)/100;
+            iBonus = (10000 - iBonus*iBonus)/50;
+            iBonus = iBonus - 100;
          }
 
-         iBonus = (iBonus*piLunge_max_bonus/100) - 50;
+         iBonus = Bound(iBonus,$,piLunge_max_bonus);
       }
       else if iType = UNLEASH_SLAM
       {
@@ -293,22 +299,6 @@ messages:
          // Weak attack that leaves a strong bleed.
          iBonus = piGut_max_bonus;
          iPower = viBonus + iBonus + Send(self,@GetSkillPower,#who=who);
-
-         while (iMultiAttack >= 0)
-         {
-            iDamage = Send(who,@TryAttack,#what=oTarget,#stroke_obj=stroke_obj,
-               #use_weapon=oWeapon,#ambush=bAmbush,#factor=iPower,
-               #bCheck=FALSE,#bReturnDamage=TRUE,#bGuaranteed=bGuaranteed);
-
-            if iDamage <> $ AND iDamage > 0
-            {
-               Send(self,@GutTarget,#who=who,#what=oTarget,#damage=iDamage);
-            }
-
-            --iMultiAttack;
-         }
-
-         propagate;
       }
       else if iType = UNLEASH_AMBUSH
       {
@@ -332,19 +322,46 @@ messages:
       iPower = viBonus + iBonus + Send(self,@GetSkillPower,#who=who);
       iPower = Bound(iPower,0,$);
 
+      bImprove = FALSE;
+
       while (iMultiAttack >= 0)
       {
-         if NOT Send(who,@TryAttack,#what=oTarget,#stroke_obj=stroke_obj,
+         iDamage = Send(who,@TryAttack,#what=oTarget,#stroke_obj=stroke_obj,
             #use_weapon=oWeapon,#ambush=bAmbush,#factor=iPower,
-            #bCheck=FALSE,#crush=iStagger,#bGuaranteed=bGuaranteed)
-            AND (iType = UNLEASH_CHARGE)
-         {
-            // Charges get punished if they fail to reach their target to make
-            // charging away from the target in order to flee less attractive.
-            Send(Send(SYS,@FindSpellByNum,#num=SID_SPIDER_WEB),@DoHold,#what=who,
-            #oTarget=who,#duration=piCharge_penalty,#report=FALSE);
+            #bCheck=FALSE,#crush=iStagger,#bGuaranteed=bGuaranteed,
+            #bReturnDamage=TRUE);
 
-            Send(who,@MsgSendUser,#message_rsc=Unleash_charge_failed);
+         // We dealt a killing blow. That's worth a chance to improve!
+         if iDamage = $
+         {
+            bImprove = TRUE;
+         }
+         // We failed to attack. Pretty sad.
+         else if NOT iDamage
+         {
+            if (iType = UNLEASH_CHARGE)
+            {
+               // Charges get punished if they fail to reach their target to make
+               // charging away from the target in order to flee less attractive.
+               Send(Send(SYS,@FindSpellByNum,#num=SID_SPIDER_WEB),@DoHold,#what=who,
+               #oTarget=who,#duration=piCharge_penalty,#report=FALSE);
+
+               Send(who,@MsgSendUser,#message_rsc=Unleash_charge_failed);
+            }
+         }
+         // We dealt at least one point of damage.
+         else if iDamage > 99
+         {
+            if (iType = UNLEASH_GUT)
+            {
+               Send(self,@GutTarget,#who=who,#what=oTarget,#damage=iDamage);
+            }
+
+            // Regular attacks don't grant a chance to improve as often as killing blows.
+            if Random(0,99) < viRegularImproveChance
+            {
+               bImprove = TRUE;
+            }
          }
 
          --iMultiAttack;
@@ -357,7 +374,13 @@ messages:
          Send(oTarget,@ClearAllAttackers);
       }
 
-      propagate;
+      // No chance to improve unless we had a successful attack.
+      if bImprove
+      {
+         Send(self,@ImproveAbility,#who=who,#target=oTarget);
+      }
+
+      return;
    }
 
    // Unleash is almost an auto attack. Don't spam messages.

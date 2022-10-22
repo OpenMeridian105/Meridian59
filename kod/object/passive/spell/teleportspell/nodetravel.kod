@@ -71,6 +71,7 @@ classvars:
    viFlash = FLASH_GOOD
 
 properties:
+
    pbCanCastFromAnywhere = FALSE
 
 messages:
@@ -104,18 +105,21 @@ messages:
       if oNode = $
       {
          Send(who,@MsgSendUser,#message_rsc=NodeTravel_no_node);
-            return FALSE;
+
+         return FALSE;
       }
 
       if (Send(who,@SquaredDistanceTo,#what=oNode) > 3)
       {
          Send(who,@MsgSendUser,#message_rsc=NodeTravel_too_far);
+
          return FALSE;
       }
 
       if Send(self,@GetLocations,#target=who) = $
       {
          Send(who,@MsgSendUser,#message_rsc=NodeTravel_no_location);
+
          return FALSE;
       }
 
@@ -175,7 +179,7 @@ messages:
             AND (who <> oObject)
          {
             oTarget = $;
-            if length(lTargets) > 0
+            if Length(lTargets) > 0
             {
                oTarget = First(lTargets);
             }
@@ -258,12 +262,11 @@ messages:
 
    GetLocations(target=$)
    {
-      local count, oNode, iNodeList, lLocations, iNumLocations, oRoom;
+      local count, oNode, iNodeList, lLocations, oRoom;
 
       iNodeList = Send(target, @GetNodeList);
-      count = 1;
 
-      while iNodeList >= 1
+      for (count = 1; iNodeList >= 1; count *= 2, iNodeList /= 2)
       {
          if ((iNodeList/2)*2) <> iNodeList
          {
@@ -273,14 +276,13 @@ messages:
                oRoom = Send(oNode,@GetOwner);
 
                // Don't display same node as the one you're using
-               if oRoom <> Send(target, @GetOwner)
+               if oRoom <> $
+                  AND oRoom <> Send(target,@GetOwner)
                {
                   lLocations = Cons(oRoom,lLocations);
                }
             }
          }
-         count = count * 2;
-         iNodeList = iNodeList / 2;
       }
 
       return lLocations;

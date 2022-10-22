@@ -149,10 +149,12 @@ messages:
 
    CapQueens()
    {
-      local iNumDel, i, oObject;
+      local iNumDel, iSkip, i, oObject;
 
       iNumDel = Send(self,@CountHoldingHowMany,#class=&DragonFlyQueen)
                      - MAX_QUEENS;
+
+      iSkip = 0;
 
       // Delete ones inside the pen first.
       foreach i in plActive
@@ -163,12 +165,18 @@ messages:
          }
 
          oObject = Send(self,@HolderExtractObject,#data=i);
-         
+
          if IsClass(oObject,&DragonFlyQueen)
             AND Send(self,@InPen,#iRow=Send(oObject,@GetRow),
                      #iCol=Send(oObject,@GetCol))
          {
-            iNumDel = iNumDel - 1;
+            // Skip the first one so we don't delete the one just placed here.
+            if (iSkip++ = 0)
+            {
+               continue;
+            }
+
+            --iNumDel;
             Send(oObject,@Delete);
          }
       }
@@ -185,7 +193,7 @@ messages:
 
          if IsClass(oObject,&DragonFlyQueen)
          {
-            iNumDel = iNumDel - 1;
+            --iNumDel;
             Send(oObject,@Delete);
          }
       }

@@ -998,7 +998,8 @@ messages:
             foreach oUserObject in lItems
             {
                if (IsClass(oUserObject,cReagentClass)
-                  OR IsClass(oUserObject,cSubReagentClass))
+                  OR (cSubReagentClass <> $ // Might not exist e.g. heartstones.
+                     AND IsClass(oUserObject,cSubReagentClass)))
                {
                   if Send(oUserObject,@IsStackable)
                   {
@@ -1009,12 +1010,12 @@ messages:
                      }
                      else
                      {
-                        iNumNeeded = iNumNeeded - iNum;
+                        iNumNeeded -= iNum;
                      }
                   }
                   else
                   {
-                     iNumNeeded = iNumNeeded - 1;
+                     --iNumNeeded;
                   }
 
                   if iNumNeeded = 0
@@ -1728,11 +1729,22 @@ messages:
 
             if NOT (iLeftover = iNumNeeded)
             {
-               iNumNeeded = iNumNeeded - iLeftover;
+               iNumNeeded -= iLeftover;
             }
 
-            Send(self,@PayReagent,#who=who,
-               #cReagentClass=cReagentClass,#iAmount=iNumNeeded);
+            if (cReagentClass <> $)
+            {
+               Send(self,@PayReagent,#who=who,
+                     #cReagentClass=cReagentClass,#iAmount=iNumNeeded);
+            }
+            else
+            {
+               // Shouldn't be able to get to this point since CanPayReagents
+               // should fail the spell cast if not enough reagents exist. Log
+               // a debug message if we do get here though.
+               Debug("ALERT: Tried to substitute for a reagent that has no sub! ",
+                     "Reagent is ",Send(oReg,@GetName));
+            }
          }
       }
 
@@ -1756,14 +1768,19 @@ messages:
                if Send(oUserObject,@IsStackable)
                {
                   // SubtractNumber will return anything left over
-                  iLeftover = Send(oUserObject,@SubtractNumber,#number=iAmount);
-                  return iLeftover;
+                  iLeftover = Send(oUserObject,@SubtractNumber,#number=iLeftover);
+                  if (iLeftOver <= 0)
+                  {
+                     return iLeftover;
+                  }
                }
                else
                {
                   Send(oUserObject,@Delete);
-                  iLeftover--;
-                  return iLeftover;
+                  if (--iLeftOver <= 0)
+                  {
+                     return iLeftover;
+                  }
                }
             }
          }

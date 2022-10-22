@@ -43,6 +43,7 @@ properties:
    piOutside_factor = 0
 
    piDirectional_percent = DIRECTIONAL_PERCENT_OUTDOORS
+   piMaxDflyQueens = 4
 
 messages:
 
@@ -81,19 +82,17 @@ messages:
 
    LastUserLeft()
    {
-      local i,iFlys,oObj;
+      local i, iFlys, oObj;
 
       iFlys = 0;
 
+      // Limit number of dflies in the room so players
+      // don't try to farm them into here for the quest.
       foreach i in plActive
       {
-         oObj = Send(self,@HolderExtractObject,#Data=i);
-         if IsClass(oObj,&DragonFlyQueen)
-         {
-            iFlys = iFlys + 1;
-         }
-
-         if iFlys > 4
+         oObj = First(i);
+         if (IsClass(oObj,&DragonFlyQueen)
+            AND ++iFlys > piMaxDflyQueens)
          {
             Send(oObj,@Delete);
          }

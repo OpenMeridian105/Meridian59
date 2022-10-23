@@ -1059,38 +1059,46 @@ messages:
       piStatus = QN_STATUS_COMPLETED;
       if bCompleted
       {
+         index = Send(poQuest,@GetQuestTemplateIndex);
+         oTemplate = Send(Send(SYS,@GetQuestEngine),@GetQuestTemplateObject,#index=index);
+
          foreach oQuester in lQuesters
          {
-            index = Send(poQuest,@GetQuestTemplateIndex);
-
-            // Uses logged-in time, not wall-clock time.
-            iTimeStarted = Send(oQuester,@GetQuestStartTimeLoggedIn,#index=index);
-            iTime = Send(oQuester,@GetTimeLoggedIn);
-            if (iTimeStarted = 0
-               OR iTime <= iTimeStarted)
+            // Must have more than one quest node to get XP/TP.
+            if (Send(oTemplate,@NumQuestNodes) > 1)
             {
-               Debug("Got invalid quest start/end time for ", oQuester,
-                  Send(oQuester,@GetTrueName), " start: ", iTimeStarted,
-                  " now: ", iTime);
-               iTime = 0;
+               // Uses logged-in time, not wall-clock time.
+               iTimeStarted = Send(oQuester,@GetQuestStartTimeLoggedIn,#index=index);
+               iTime = Send(oQuester,@GetTimeLoggedIn);
+
+               if (iTimeStarted = 0
+                  OR iTime <= iTimeStarted)
+               {
+                  Debug("Got invalid quest start/end time for ", oQuester,
+                     Send(oQuester,@GetTrueName), " start: ", iTimeStarted,
+                     " now: ", iTime);
+                  iTime = 0;
+               }
+               else
+               {
+                  iTime -= iTimeStarted;
+               }
+               // Award XP and TP to offer comparable reward to grinding.
+               lXPTPRewards = Send(oQuester,@AddQuestXTPReward,#template=oTemplate);
             }
             else
             {
-               iTime -= iTimeStarted;
+               lXPTPRewards = [0, 0];
             }
 
             Send(oQuester,@AddQuestHistory,#index=index,#success=TRUE);
-
-            // Award XP and TP to offer comparable reward to grinding.
-            oTemplate = Send(Send(SYS,@GetQuestEngine),@GetQuestTemplateObject,#index=index);
-            lXPTPRewards = Send(oQuester,@AddQuestXTPReward,#template=oTemplate);
 
             // Record the end of the quest here.
             RecordStat(STAT_COMPL_QUESTS, TAG_INT, index, TAG_RESOURCE,
                   Send(oQuester,@GetTrueName), TAG_INT, iTime, TAG_INT,
                   First(lXPTPRewards), TAG_INT, Nth(lXPTPRewards,2));
-            oMercenary = Send(oQuester,@GetMercenary);
 
+            oMercenary = Send(oQuester,@GetMercenary);
             if (oMercenary <> $
                AND IsObject(oMercenary)
                AND IsClass(oMercenary,&Follower))
@@ -1198,6 +1206,67 @@ messages:
       // should never reach here
       Debug("QN_PRIZETYPE_ACTIVATE_QUEST: no quests of type",Nth(prize,2),
             "waiting for activation!");
+
+      return;
+   }
+
+   AwardPrizeOrPenaltyDeactivateQuest(prize=$,recipients=$,oQuestEngine=$)
+   {
+      local lActiveQuests, oQuest, iQuestID, oRecipient;
+
+      // format for a prize entry of this type:
+      //     [ QN_PRIZETYPE_DEACTIVATE_QUEST, quest id]
+      //
+      // Deactivates a quest of the given id for the recipient(s).
+      // Assumes that the recipient(s) don't have multiple quests of
+      // this type active.
+      iQuestID = Nth(prize,2);
+
+      // make sure this is a valid quest id
+      if NOT Send(oQuestEngine,@IsValidQuestTemplate,#index=iQuestID)
+      {
+         Debug("Tried to QN_PRIZETYPE_DEACTIVATE_QUEST with an invalid quest id",
+                iQuestID);
+
+         return;
+      }
+
+      lActiveQuests = Send(oQuestEngine,@GetActiveQuests,#index=iQuestID);
+
+      if lActiveQuests = $
+      {
+         // This is fine, since we might want to deactivate quests that
+         // have already been completed. Use case is the Truth quest which
+         // may or may not have the 'good' branch completed.
+
+         return;
+      }
+
+      foreach oQuest in lActiveQuests
+      {
+         foreach oRecipient in recipients
+         {
+            if (Send(oQuest,@IsQuester,#who=oRecipient)
+               OR Send(oQuest,@IsQuestForPlayer,#who=oRecipient))
+            {
+               Send(oQuest,@Cancel);
+
+               if Send(oQuestEngine,@GetDebugStatus) > 1
+               {
+                  Debug("Deactivated quest of type: ", iQuestID);
+               }
+
+               return;
+            }
+         }
+      }
+
+      // Possible if quest already deactivated.
+      if Send(oQuestEngine,@GetDebugStatus) > 1
+      {
+         Debug("QN_PRIZETYPE_DEACTIVATE_QUEST: no quests of type",Nth(prize,2),
+               "waiting for activation!");
+      }
 
       return;
    }
@@ -1701,6 +1770,13 @@ messages:
       if iPrizeType = QN_PRIZETYPE_ACTIVATE_QUEST
       {
          return Send(self,@AwardPrizeOrPenaltyActivateQuest,
+                     #prize=prize,#recipients=recipients,
+                     #oQuestEngine=oQuestEngine);
+      }
+
+      if iPrizeType = QN_PRIZETYPE_DEACTIVATE_QUEST
+      {
+         return Send(self,@AwardPrizeOrPenaltyDeactivateQuest,
                      #prize=prize,#recipients=recipients,
                      #oQuestEngine=oQuestEngine);
       }

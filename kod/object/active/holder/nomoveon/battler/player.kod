@@ -1426,7 +1426,7 @@ messages:
 
    ResetPlayerFlagList(bFlagsOnly=FALSE)
    {
-      local i;
+      local i, oSpell, oSpell1, oSpell2;
 
       Send(self,@ResetPlayerDrawfx,#SendSomethingChanged=FALSE);
 
@@ -1440,9 +1440,25 @@ messages:
          piFlags = piFlags | PFLAG_NO_MAGIC;
       }
 
+      // Do detect invis first if present.
+      oSpell1 = Send(SYS,@FindSpellByNum,#num=SID_DETECT_INVISIBLE);
+      if (Send(self,@IsEnchanted,#what=oSpell1))
+      {
+         Send(oSpell1,@SetSpellPlayerFlag,#who=self);
+      }
+      oSpell2 = Send(SYS,@FindSpellByNum,#num=SID_DM_DETECT_INVISIBLE);
+      if (Send(self,@IsEnchanted,#what=oSpell2))
+      {
+         Send(oSpell2,@SetSpellPlayerFlag,#who=self);
+      }
+
       foreach i in plEnchantments
       {
-         Send(Nth(i,2),@SetSpellPlayerFlag,#who=self);
+         oSpell = Nth(i,2);
+         if (oSpell <> oSpell1) AND (oSpell <> oSpell2)
+         {
+            Send(oSpell,@SetSpellPlayerFlag,#who=self);
+         }
       }
 
       foreach i in plUsing

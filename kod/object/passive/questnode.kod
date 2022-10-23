@@ -1210,6 +1210,67 @@ messages:
       return;
    }
 
+   AwardPrizeOrPenaltyDeactivateQuest(prize=$,recipients=$,oQuestEngine=$)
+   {
+      local lActiveQuests, oQuest, iQuestID, oRecipient;
+
+      // format for a prize entry of this type:
+      //     [ QN_PRIZETYPE_DEACTIVATE_QUEST, quest id]
+      //
+      // Deactivates a quest of the given id for the recipient(s).
+      // Assumes that the recipient(s) don't have multiple quests of
+      // this type active.
+      iQuestID = Nth(prize,2);
+
+      // make sure this is a valid quest id
+      if NOT Send(oQuestEngine,@IsValidQuestTemplate,#index=iQuestID)
+      {
+         Debug("Tried to QN_PRIZETYPE_DEACTIVATE_QUEST with an invalid quest id",
+                iQuestID);
+
+         return;
+      }
+
+      lActiveQuests = Send(oQuestEngine,@GetActiveQuests,#index=iQuestID);
+
+      if lActiveQuests = $
+      {
+         // This is fine, since we might want to deactivate quests that
+         // have already been completed. Use case is the Truth quest which
+         // may or may not have the 'good' branch completed.
+
+         return;
+      }
+
+      foreach oQuest in lActiveQuests
+      {
+         foreach oRecipient in recipients
+         {
+            if (Send(oQuest,@IsQuester,#who=oRecipient)
+               OR Send(oQuest,@IsQuestForPlayer,#who=oRecipient))
+            {
+               Send(oQuest,@Cancel);
+
+               if Send(oQuestEngine,@GetDebugStatus) > 1
+               {
+                  Debug("Deactivated quest of type: ", iQuestID);
+               }
+
+               return;
+            }
+         }
+      }
+
+      // Possible if quest already deactivated.
+      if Send(oQuestEngine,@GetDebugStatus) > 1
+      {
+         Debug("QN_PRIZETYPE_DEACTIVATE_QUEST: no quests of type",Nth(prize,2),
+               "waiting for activation!");
+      }
+
+      return;
+   }
+
    AwardPrizeOrPenaltyQuestRestrict2(prize=$,recipients=$,oQuestEngine=$)
    {
       local iPrizeRestrictParm1, iPrizeRestrictParm2, n1, n2, n3, i, oQuester;
@@ -1709,6 +1770,13 @@ messages:
       if iPrizeType = QN_PRIZETYPE_ACTIVATE_QUEST
       {
          return Send(self,@AwardPrizeOrPenaltyActivateQuest,
+                     #prize=prize,#recipients=recipients,
+                     #oQuestEngine=oQuestEngine);
+      }
+
+      if iPrizeType = QN_PRIZETYPE_DEACTIVATE_QUEST
+      {
+         return Send(self,@AwardPrizeOrPenaltyDeactivateQuest,
                      #prize=prize,#recipients=recipients,
                      #oQuestEngine=oQuestEngine);
       }

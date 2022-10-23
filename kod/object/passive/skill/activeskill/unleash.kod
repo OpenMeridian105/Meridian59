@@ -122,9 +122,10 @@ properties:
    // 4500ms CD: damage depends on position, guaranteed crit on full back attack
    piAmbush_post_perform_time = 350
    piAmbush_preperation_time = 150
-   piAmbush_max_bonus = 120
-   // What percentage of the bonus damage is required for a guaranteed crit?
-   piAmbush_bonus_threshold = 70
+   piAmbush_regular_bonus = -30
+   piAmbush_max_bonus = 100
+   // What percentage of the positional bonus is required for a guaranteed crit?
+   piAmbush_bonus_threshold = 50
 
    //// CHARGE
    // 800ms CD: spammable, fast attack with bonus movement speed, briefly roots 
@@ -274,13 +275,18 @@ messages:
          // More effective against low health and max health targets.
          iBonus = Send(oTarget,@GetHealthPercentage);
 
+         // This results in a bonus between -100 and 100.
          if iBonus < 100
          {
             iBonus = (10000 - iBonus*iBonus)/50;
             iBonus = iBonus - 100;
          }
 
-         iBonus = Bound(iBonus,$,piLunge_max_bonus);
+         // If our bonus is actually positive, scale it.
+         if iBonus > 0
+         {
+            iBonus = iBonus * piLunge_max_bonus / 100;
+         }
       }
       else if iType = UNLEASH_SLAM
       {
@@ -305,13 +311,21 @@ messages:
          // Regular and reasonably fast attack that deals more damage from behind
          // and less damage from the front.
          iBonus = Send(self,@GetAmbushPercentage,#who=who,#what=oTarget);
+
          if iBonus >= piAmbush_bonus_threshold
          {
+            // Damage is doubled. Guaranteed hit.
             bAmbush = TRUE;
             bGuaranteed = TRUE;
-         }
 
-         iBonus = (iBonus*piAmbush_max_bonus/100) - 50;
+            iBonus = iBonus - piAmbush_bonus_threshold;
+            iBonus = iBonus*100/(100-piAmbush_bonus_threshold);
+            iBonus = -50 + iBonus*piAmbush_max_bonus/200;
+         }
+         else
+         {
+            iBonus = piAmbush_regular_bonus;
+         }
       }
       else if iType = UNLEASH_CHARGE
       {

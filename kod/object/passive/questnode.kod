@@ -1439,7 +1439,7 @@ messages:
    {
       local i, iPrizeStat, iPrizeType, cPrizeClass, oPrize, iAmount, iDays,
             oBoon, iBoonNum, iPrizeBoon, iPrizeFaction, oQuestEngine, oQuester,
-            oQuestTemplate, iRID, iRow, iCol;
+            oQuestTemplate, iRID, iRow, iCol, oNecBal;
 
       if prize = $
          OR recipients = $
@@ -1894,7 +1894,16 @@ messages:
          // format for a prize entry of this type:
          //     [ QN_PRIZETYPE_SPAWN_LICH ]
 
-         Send(Send(SYS,@GetNecromancerBalance),@SpawnLich);
+         oNecBal = Send(SYS,@GetNecromancerBalance);
+         Send(oNecBal,@SpawnLich,#oRaisedBy=oQuester);
+
+         foreach oQuester in recipients
+         {
+            if Send(oNecBal,@IsNecromancer,#who=oQuester)
+            {
+               Send(oNecBal,@SetNecromancersLeader,#who=oQuester);
+            }
+         }
 
          return;
       }

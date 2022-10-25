@@ -617,8 +617,6 @@ messages:
    "Creates all necessary game objects on initial server startup (no savegame)."
    "Called by blakserv itself after all builtin objects are created."
    {
-      Send(self,@RecreateNecromancerBalance);
-
       Send(self,@RecreateAllBrains);
       Send(self,@RecreateLibrary);
       Send(self,@RecreateLore);
@@ -645,6 +643,7 @@ messages:
       Send(self,@RecreateAllRooms);
       Send(self,@RecreateNodeAttack);
       Send(self,@RecreateParliament);
+      Send(self,@RecreateNecromancerBalance);
 
       Send(self,@RecreateMonsterTemplates);
       Send(self,@RecreateItemTemplates);
@@ -725,7 +724,6 @@ messages:
 
       Send(self,@CreateUserTable);
 
-      Send(self,@RecreateNecromancerBalance);
       Send(self,@RecreateClearQuests);
       Send(self,@CreateAllBanksIfNew);
       Send(self,@CreateAllVaultsIfNew);
@@ -737,8 +735,9 @@ messages:
       // The following two lines are handled in Parliament
       // Send(self,@RecreateTerritoryGame);
       // Send(self,@RecreateTokenGame);
-      Send(self,@RecreateParliament);
       Send(self,@RecreateNodeAttack);
+      Send(self,@RecreateParliament);
+      Send(self,@RecreateNecromancerBalance);
       Send(self,@RecreateRentableRoomMaintenance);
       Send(self,@RecreateSurvivalRoomMaintenance);
       Send(self,@RecreateWarEvent);
@@ -2017,8 +2016,8 @@ messages:
          AND IsClass(killer,&User)
       {
          // Could be a war kill.  Check for it.
-         Send(Send(SYS,@GetWarEvent),@RecordWarKill,#who=killer,#victim=what);
-         Send(poNecromancerBalance,@RecordWarKill,#who=killer,#victim=what);
+         Send(Send(self,@GetWarEvent),@RecordWarKill,#who=killer,#victim=what);
+         Send(Send(self,@GetNecromancerBalance),@RecordWarKill,#who=killer,#victim=what);
 
           // PvP flag set to TRUE.
          RecordStat(STAT_PLAYERDEATH, TAG_RESOURCE, Send(what,@GetTrueName),
@@ -5606,6 +5605,11 @@ messages:
 
    GetNecromancerBalance()
    {
+      if poNecromancerBalance = $
+      {
+         Send(self,@RecreateNecromancerBalance);
+      }
+
       return poNecromancerBalance;
    }
 

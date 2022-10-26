@@ -24,9 +24,12 @@ resources:
 
    Duke3_music = area01.ogg
 
-   duke3_West_Door = "The Duke shouts angrily at you as you attempt to open the door.  You wisely put your efforts to a halt."
-   duke3_East_Door = "The Duke would have your head if you entered his quarters.  You decide you'd rather keep it and leave the door alone."
-
+   duke3_West_Door = \
+      "The Duke shouts angrily at you as you attempt to open the door.  "
+      "You wisely put your efforts to a halt."
+   duke3_East_Door = \
+      "The Duke would have your head if you entered his quarters.  "
+      "You decide you'd rather keep it and leave the door alone."
 
 classvars:
 
@@ -49,51 +52,35 @@ properties:
    piBaseLight = LIGHT_NICE
    piOutside_factor = 8
 
-
    prMusic = Duke3_music
 
    pbSnowGroundTexture = TRUE
 
 messages:
 
-
    CreateStandardExits()
    {
       plExits = $;
-
 
       plExits = Cons([ 37, 32, RID_DUKE2, 3, 15, ROTATE_NONE ],plExits);
       plExits = Cons([ 37, 33, RID_DUKE2, 3, 15, ROTATE_NONE ],plExits);
       plExits = Cons([ 37, 34, RID_DUKE2, 3, 15, ROTATE_NONE ],plExits);
       plExits = Cons([ 37, 35, RID_DUKE2, 3, 15, ROTATE_NONE ],plExits);
 
-
+      plExits = Cons([ 32, 29, ROOM_LOCKED_DOOR, duke3_West_Door ],plExits);
+      plExits = Cons([ 32, 30, ROOM_LOCKED_DOOR, duke3_West_Door ],plExits);
+      plExits = Cons([ 33, 29, ROOM_LOCKED_DOOR, duke3_West_Door ],plExits);
+      plExits = Cons([ 33, 30, ROOM_LOCKED_DOOR, duke3_West_Door ],plExits);
+      plExits = Cons([ 32, 38, ROOM_LOCKED_DOOR, duke3_East_Door ],plExits);
+      plExits = Cons([ 32, 39, ROOM_LOCKED_DOOR, duke3_East_Door ],plExits);
+      plExits = Cons([ 33, 38, ROOM_LOCKED_DOOR, duke3_East_Door ],plExits);
+      plExits = Cons([ 33, 39, ROOM_LOCKED_DOOR, duke3_East_Door ],plExits);
 
       propagate;
    }
 
-   SomethingTryGo(what = $,row = $,col = $)
-   {
-   if row = 32 or row = 33
-      {
-      if col = 29 or col = 30
-         {
-         send(what,@MsgSendUser,#message_rsc = duke3_West_Door);
-         return True;
-         }
-      if col = 39 or col = 38
-         {
-         send(what,@MsgSendUser,#message_rsc = duke3_East_Door);
-         return True;
-         }
-      }
-
-   propagate;
-   }
-
    CreateStandardObjects()
    {
-
       Send(self,@NewHold,#what=Create(&Brazier),#new_row=25,#new_col=32,
            #fine_row=48,#fine_col=48);
       Send(self,@NewHold,#what=Create(&Brazier),#new_row=25,#new_col=36,
@@ -135,8 +122,9 @@ messages:
             #new_row=13,#new_col=27,#fine_row=0,#fine_col=0);
       Send(self,@NewHold,#what=Create(&OrnamentalObject,#type=OO_MIDTREE4),
             #new_row=9,#new_col=31,#fine_row=0,#fine_col=0);
-      Send(self,@NewHold,#what=Create(&OrnamentalObject,#type=OO_MIDTREE2),
-            #new_row=13,#new_col=3,#fine_row=0,#fine_col=0);
+      // 13,3 is not in the map, but tree should go somewhere?
+      //Send(self,@NewHold,#what=Create(&OrnamentalObject,#type=OO_MIDTREE2),
+      //      #new_row=13,#new_col=3,#fine_row=0,#fine_col=0);
 
       Send(self,@NewHold,#what=Create(&GuildTerritorySign),
            #new_row=28,#new_col=30,#fine_row=32, #fine_col=32,#new_angle=ANGLE_EAST);

@@ -520,7 +520,7 @@ messages:
    TestRoomExits()
    {
       local i, iRoom, oRoom, iQflags, iRflags, iHeightF, iHeightFWD, iHeightC,
-            iServerID;
+            iServerID, j, k, bInside;
 
       iQflags = LIQ_GET_SECTORINFO;
 
@@ -542,7 +542,7 @@ messages:
                OR NOT (iRflags & LIR_SECTOR_HASFTEX))
             {
                Debug("Invalid edge exit going from ",Send(self,@GetName), " to ",
-                     Send(oRoom,@GetName));
+                     Send(oRoom,@GetName), " exit coords ", Nth(i,3), Nth(i,4));
             }
          }
       }
@@ -550,19 +550,64 @@ messages:
       foreach i in plExits
       {
          iRoom = Nth(i,3);
+         if (iRoom <> ROOM_LOCKED_DOOR)
+         {
+            oRoom = Send(SYS,@FindRoomByNum,#num=iRoom);
+            if (oRoom = $)
+            {
+               Debug("Room ",Send(self,@GetName)," has invalid room ",
+                  iRoom, " in exit list!");
+
+               continue;
+            }
+         }
+
+         // Test the exit point in this room.
+         bInside = FALSE;
+         foreach j in [0, FINENESS_HALF, FINENESS - 1]
+         {
+            foreach k in [0, FINENESS_HALF, FINENESS - 1]
+            {
+               if (GetLocationInfoBSP(Send(self,@GetRoomData), iQflags,
+                     First(i),Nth(i,2), j, k,
+                     *iRflags, *iHeightF, *iHeightFWD, *iHeightC, *iServerID))
+               {
+                  if ((iRflags & LIR_SECTOR_INSIDE)
+                     AND (iRflags & LIR_SECTOR_HASFTEX))
+                  {
+                     bInside = TRUE;
+                     break;
+                  }
+               }
+            }
+            if (bInside)
+            {
+               break;
+            }
+         }
+
+         if (NOT bInside)
+         {
+            if (iRoom = ROOM_LOCKED_DOOR)
+            {
+               Debug("Invalid exit coords in origin room ",Send(self,@GetName),
+                     "going to locked door with coords ", First(i), Nth(i,2));
+            }
+            else
+            {
+               Debug("Invalid exit coords in origin room going from ",
+                     Send(self,@GetName), " to ", Send(oRoom,@GetName),
+                     " coords ", First(i), Nth(i,2));
+            }
+         }
+
+         // No destination to check for locked doors.
          if (iRoom = ROOM_LOCKED_DOOR)
          {
             continue;
          }
 
-         oRoom = Send(SYS,@FindRoomByNum,#num=iRoom);
-         if (oRoom = $)
-         {
-            Debug("Room ",Send(self,@GetName)," has invalid room in exit list!");
-
-            continue;
-         }
-
+         // Text entrance coordinates in the destination room.
          if (GetLocationInfoBSP(Send(oRoom,@GetRoomData), iQflags,
                   Nth(i,4),Nth(i,5),FINENESS_HALF,FINENESS_HALF,
                   *iRflags, *iHeightF, *iHeightFWD, *iHeightC, *iServerID))
@@ -570,8 +615,9 @@ messages:
             if (NOT (iRflags & LIR_SECTOR_INSIDE)
                OR NOT (iRflags & LIR_SECTOR_HASFTEX))
             {
-               Debug("Invalid exit going from ",Send(self,@GetName), " to ",
-                     Send(oRoom,@GetName));
+               Debug("Invalid entrance coords in destination room going from ",
+                     Send(self,@GetName), " to ", Send(oRoom,@GetName),
+                     " coords ", Nth(i,4), Nth(i,5));
             }
          }
       }

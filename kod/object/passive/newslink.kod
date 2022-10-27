@@ -22,6 +22,11 @@ resources:
    newslink_icon_rsc = news.bgf
    newslink_desc_rsc = "You are looking at a public posting device."
 
+   newslink_god_name = "Designers' News"
+   newslink_god_desc = "Check here for information from the game administrators."
+   newslink_advhall_name = "General News"
+   newslink_advhall_desc = "Find out the latest gossip around Meridian."
+
 classvars:
 
 properties:
@@ -41,10 +46,18 @@ messages:
       {
          vrName = name;
       }
+      else
+      {
+         vrName = Send(self,@GetDefaultName,#nid=nid);
+      }
 
       if desc <> $
       {
          vrDesc = desc;
+      }
+      else
+      {
+         vrDesc = Send(self,@GetDefaultDesc,#nid=nid);
       }
 
       if icon <> $
@@ -55,6 +68,32 @@ messages:
       piNews = nid;
 
       propagate;
+   }
+
+   GetDefaultName(nid=0)
+   {
+      switch (nid)
+      {
+         case NID_ANNOUNCEMENTS: return newslink_god_name;
+         case NID_TOS_HALL: return newslink_advhall_name;
+      }
+
+      Debug("Couldn't get default name for NewsLink with NID = ", nid);
+
+      return newslink_name_rsc;
+   }
+
+   GetDefaultDesc(nid=0)
+   {
+      switch (nid)
+      {
+         case NID_ANNOUNCEMENTS: return newslink_god_desc;
+         case NID_TOS_HALL: return newslink_advhall_desc;
+      }
+
+      Debug("Couldn't get default desc for NewsLink with NID = ", nid);
+
+      return newslink_desc_rsc;
    }
 
    TryLook(what = $)

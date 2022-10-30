@@ -116,14 +116,20 @@ messages:
             // We have the same actions at our disposal as the original.
             plActions = ListCopy(Send(poOriginal,@GetActions));
 
-            // However, we get to cast them for free!
+            // Well, almost...
             foreach i in plActions
             {
-               // Zero mana cost.
-               SetNth(i,2,0);
-
-               // Zero vigor cost.
-               SetNth(i,3,0);
+               if First(i) < SKID_MINIMUM
+               {
+                  // We don't get any spells.
+                  plActions = DelListElem(plActions,i);
+               }
+               else
+               {
+                  // But at least our skills don't cost resources.
+                  SetNth(i,2,0);
+                  SetNth(i,3,0);
+               }
             }
          }
          else

@@ -74,6 +74,12 @@ properties:
    // How much does a crushing blow delay a monster?
    piDelay_monster = 2000
 
+   // This throttles improvements. At 100, players with 50 might
+   // will get a chance to improve every time.
+   // At 200, these players will have a chance every second swing.
+   // At 300, these players will have a chance every third swing etc.
+   // At 50, even 1 might characters will have a chance to improve every time.
+   piImprovement_throttle = 200
 messages:
 
    GetRequisiteStat(who=$)
@@ -171,10 +177,10 @@ messages:
       return piDelay_monster;
    }
 
-   // About a 1 in 20 chance to get a roll to improve at 50 might.
+   // About a 1 in 2 chance to improve at 50 might with default settings.
    ImproveAbility(who=$)
    {
-      if Random(1,1000) > Send(who,@GetMight)
+      if Random(1,100)*piImprovement_throttle/100 > 50 + Send(who,@GetMight)
       {
          return;
       }

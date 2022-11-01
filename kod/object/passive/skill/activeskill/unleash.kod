@@ -723,11 +723,14 @@ messages:
    }
 
    // Make sure we stand tight again.
-   TranceFailed(who=$)
+   TranceFailed(who=$,state=$)
    {
       Send(who,@GuardRecovery);
 
-      return;
+      // Also remove ourselves from the target's list of attackers.
+      Send(First(Nth(state,3)),@ClearAttacker,#who=who);
+
+      propagate;
    }
 
 end

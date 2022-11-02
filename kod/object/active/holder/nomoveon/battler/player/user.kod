@@ -581,6 +581,10 @@ properties:
    // Moves are accepted unless there is not enough tokens in the bucket left.
    piMovementBucket = 0
 
+   // Most recent user move speeds. Server-calculated, not client. Used to
+   // avoid bouncing when changing move speed from high->low.
+   plUserSpeedEntries = $
+
    // Keeps track of when mobs have last been alerted of our presence.
    piLastMoveNotification = 0
 
@@ -1060,6 +1064,9 @@ messages:
 
       // Clear last received commands.
       plLastReceived = $;
+
+      // Clear recent movement speeds.
+      plUserSpeedEntries = $;
 
       // Autolog time check.
       if (piLastAutologTest >= 0)
@@ -5191,6 +5198,13 @@ messages:
       return;
    }
 
+   ClearUserSpeedEntries()
+   {
+      plUserSpeedEntries = $;
+
+      return;
+   }
+
    GetSpeedMax()
    "Returns the maximum possible move speed according to the current situation of the user"
    "and its active limitations like PFLAG_NO_MOVE, low vigor, deep water or others."
@@ -5254,7 +5268,7 @@ messages:
       local iCurrentTime, iDelta, iAngle, iRow, iCol, iFineRow, 
             iFineCol, iRoomNum, iDx, iDy, iMoveLength, iMaxMoveRun, 
             iQflags, iRflags, iHeightF, iHeightFWD, iHeightC, iServerID,
-            iSpeedMax, iNewBucket, bBucketMoveAllowed;
+            iSpeedMax, iNewBucket, bBucketMoveAllowed, i;
 
       ////////////////////////////////////////////////////////////////////////////////////////
       // 1 - INIT AND SILENT DISCARDS
@@ -5345,6 +5359,23 @@ messages:
       //  Important: This must be the upper bound on the tokens we add to the bucket below.
       //  Continously exceeding the current max. will cause rubberbanding
       iSpeedMax = Send(self, @GetSpeedMax);
+
+      // Keep track of recent move speeds, so we can give some leeway
+      // when dropping sprint or other drastic speed changes. Use the
+      // largest value when determining max move speed.
+      plUserSpeedEntries = AppendListElem(iSpeedMax, plUserSpeedEntries);
+      if (Length(plUserSpeedEntries) > Send(SETTINGS_OBJECT,@GetUserSpeedEntries))
+      {
+         plUserSpeedEntries = Rest(plUserSpeedEntries);
+      }
+
+      foreach i in plUserSpeedEntries
+      {
+         if (i > iSpeedMax)
+         {
+            iSpeedMax = i;
+         }
+      }
 
       // 2.2.2 Move validity/token use calculated in C due to kod int overflows.
       // Returns the new value for piMovementBucket in iNewBucket.

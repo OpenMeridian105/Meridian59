@@ -9662,10 +9662,11 @@ messages:
 
    DestroyDisposable()
    {
+      // Deletes apparitions but not player-owned reflections etc.
       if (viAttributes & MOB_LISTEN)
          OR (piBehavior & AI_NPC)
-         OR poMaster <> $
          OR (piMonsterFlags & MFLAG_DONT_DISPOSE)
+         OR (poMaster <> $ AND Send(self,@IsOwnedByPlayer))
       {
          return;
       }

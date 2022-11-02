@@ -136,7 +136,8 @@ properties:
    // Adjusts user speed during wind up.
    piCharge_speed_bonus = 100
    // Held for this many ms if you fail to reach your target.
-   piCharge_penalty = 1000
+   piCharge_penalty_time = 2500
+   piCharge_penalty_slow = 70
    piCharge_crush_bonus = 0
 
    //// STAGGER
@@ -357,8 +358,9 @@ messages:
             {
                // Charges get punished if they fail to reach their target to make
                // charging away from the target in order to flee less attractive.
-               Send(Send(SYS,@FindSpellByNum,#num=SID_SPIDER_WEB),@DoHold,#what=who,
-               #oTarget=who,#duration=piCharge_penalty,#report=FALSE);
+               Send(Send(SYS,@FindSpellByNum,#num=SID_SLOW),@DoSpellEffects,#who=who,
+               #lTargets=[who],#iDuration=piCharge_penalty_time,#report=FALSE,
+               #iSpeedPercent=-piCharge_penalty_slow);
 
                Send(who,@MsgSendUser,#message_rsc=Unleash_charge_failed);
             }

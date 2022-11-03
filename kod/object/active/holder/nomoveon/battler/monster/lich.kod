@@ -19,9 +19,6 @@ constants:
    MAGIC_RESIST = 60
    WALL_DURATION = 60000
 
-   // Run the LichHunger call in necbal.kod when piHunger reaches this value
-   HUNGER_INTERVAL = 3
-
    LICH_MOVE = 0
    LICH_CAST = -1
    LICH_MELEE = 1
@@ -205,7 +202,6 @@ properties:
    piReputationGroup = REP_LICH
 
    piNecromancerTroop = 0
-   piHunger = 0
 
 messages:
 
@@ -1279,10 +1275,8 @@ messages:
       propagate;
    }
 
-
    NewOwner(what=$)
    {
-
       if what <> $
          AND NOT IsClass(what,&GuildHall15)
       {
@@ -1334,26 +1328,6 @@ messages:
       }
 
       return;
-   }
-
-   DestroyDisposable()
-   "Called every two minutes"
-   {
-      local oNecBal;
-
-      oNecBal = Send(SYS,@GetNecromancerBalance);
-
-      if Send(poOwner,@GetRoomNum) = RID_GUILDH15
-         AND piHunger = HUNGER_INTERVAL
-      {
-         // have this message run every 6 minutes.
-         Send(oNecBal,@LichHunger);
-         piHunger = 0;
-      }
-
-      piHunger++;
-
-      propagate;
    }
 
    GetProjectileIcon()

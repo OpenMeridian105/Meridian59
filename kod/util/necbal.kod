@@ -105,6 +105,9 @@ properties:
    piLichHungerDue = 0
    piLichHungerCounter = 0
 
+   ptLichHungerTimer = $
+   piLichHungerInterval = 6000 * 6 // every 6 minutes
+
    // Item hunger interval, default 1 minute.
    piHungerInterval = 6000
    piHungerFactor = 1000
@@ -219,6 +222,11 @@ messages:
       {
          DeleteTimer(ptPlaceNecromancerTreasure);
          ptPlaceNecromancerTreasure = $;
+      }
+
+      if ptLichHungerTimer <> $
+      {
+         ptLichHungerTimer = $;
       }
 
       polich = $;
@@ -1319,6 +1327,8 @@ messages:
          return TRUE;
       }
 
+      ptLichHungerTimer = CreateTimer(self,@LichHunger,piLichHungerInterval);
+
       Send(SYS,@SystemBroadcast,#what=$,#type=SAY_MESSAGE,#string=necbal_spawnlich);
 
       Send(SYS,@AdminEnableSpell,#num=SID_SHADOW_RIFT);
@@ -1335,6 +1345,12 @@ messages:
       if pbScenarioActivated = FALSE
       {
          return;
+      }
+
+      if ptLichHungerTimer <> $
+      {
+         DeleteTimer(ptLichHungerTimer);
+         ptLichHungerTimer = $;
       }
 
       Debug("Lich Queen was killed!");
@@ -1423,6 +1439,8 @@ messages:
    LichHunger()
    {
       local iHunger, i, hourhours, oLich;
+
+      ptLichHungerTimer = $;
 
       if piLichHungerDue < 1
       {

@@ -228,18 +228,17 @@ messages:
       propagate;
    }
 
-   NewOwner(what = $)
+   SetMobEquipment()
+   "Called from monster.kod Constructed.  Stats have been set at this point, "
+   "but human mobs need to redo those after setting equipment and potentially "
+   "adjusting difficulty/level."
    {
-      if (poOwner = $
-         AND what <> $)
-      {
-         Send(self,@SetEquipment);
-         // Have to redo stats since they might be based on what equip we have.
-         Send(self,@CreateStats);
-         Send(self,@SetResources);
-      }
+      Send(self,@SetEquipment);
+      // Have to redo stats since they might be based on what equip we have.
+      Send(self,@CreateStats);
+      Send(self,@SetResources);
 
-      propagate;
+      return;
    }
 
    // Child classes override these.

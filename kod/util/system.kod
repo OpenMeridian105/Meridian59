@@ -4954,7 +4954,7 @@ messages:
    "Returns error codes for failure depending on the cause. Zero return (CC_OK) "
    "indicates success, failure is > 0."
    {
-      local i, lBadNameContain, lBadNameIs, oLookup;
+      local i, lBadNameContain, lBadNameIs, oLookup, iLen;
 
       if sName = $
          OR StringLength(sName) < MIN_CHAR_NAME_LEN
@@ -4966,7 +4966,18 @@ messages:
          }
          else
          {
+            // TODO: Break this into 3 errors (no name, short name, long name)
+            // and consolidate the strlen calls above.
+            iLen = StringLength(sName);
             Debug("Got char name length out of range for user ", oUser);
+            if (iLen < 500)
+            {
+               Debug("Name out of range: ", sName);
+            }
+            else
+            {
+               Debug("ALERT: Name was excessively long: ", iLen, " chars.");
+            }
          }
 
          return CC_NAME_TOO_LONG;

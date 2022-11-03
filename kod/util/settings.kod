@@ -194,6 +194,10 @@ properties:
    // Maximum amount of tokens in the movement bucket
    piMovementBucketMax = 15000000
 
+   // Amount of moves from which to keep track of the speed to provide
+   // some leeway when losing a lot of movement speed (e.g. end of sprint).
+   piUserSpeedEntries = 5
+
    // Minutes between tests.
    piAutologTestScheduleMin = 10
    piAutologTestScheduleMax = 720
@@ -761,6 +765,27 @@ messages:
    GetMovementBucketMax()
    {
       return piMovementBucketMax;
+   }
+
+   GetUserSpeedEntries()
+   {
+      return piUserSpeedEntries;
+   }
+
+   SetUserSpeedEntries(value = 0)
+   {
+      // Bound at reasonable values.
+      if (value < 0 OR value > 16)
+      {
+         Debug("Bad value in SetUserSpeedEntries ", value,
+               " using default value of 5.");
+         value = 5;
+      }
+      piUserSpeedEntries = value;
+      // Clear the entries for logged on users.
+      SendList(Send(SYS,@GetUsersLoggedOn),0,@ClearUserSpeedEntries);
+
+      return;
    }
 
    GetAutologTestScheduleMin()

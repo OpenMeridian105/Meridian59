@@ -384,6 +384,9 @@ messages:
       // If this Battler has Apparitions attacking it, delete them.
       Send(self,@RemoveAllApparitions);
 
+      // Remove any created reflections;
+      Send(self,@RemoveAllReflections);
+
       foreach i in plHurtMeRecently
       {
          if IsTimer(Nth(i,3))
@@ -4586,6 +4589,21 @@ messages:
          // Use the 'ByClass' call since we're sending Delete.
          SendListByClass(plEvilTwins,0,&EvilTwin,@Delete);
          plEvilTwins = $;
+      }
+
+      return;
+   }
+
+   RemoveAllReflections()
+   {
+      local i;
+
+      foreach i in plControlledMinions
+      {
+         if IsClass(i,&Reflection)
+         {
+            Send(i,@Delete);
+         }
       }
 
       return;

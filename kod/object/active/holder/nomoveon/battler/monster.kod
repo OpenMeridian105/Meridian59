@@ -772,14 +772,16 @@ messages:
       return;
    }
 
-   Constructor(template=FALSE,color=0,piSurvivalLevel=0,iBrain=0,bEvent=FALSE)
+   Constructor(template=FALSE,color=0,iSurvivalLevel=0,iBrain=0,bEvent=FALSE)
    "Simple enough, we create a monster. If they are questworthy, we note it."
    {
+      piBoostedLevel = iSurvivalLevel;
+
       // Creates stats based on a mobs viDifficulty and randomization.
       Send(self,@CreateStats,#template=template);
 
       // Sets a mobs derived stats such as resources based on stats.
-      Send(self,@SetResources,#piSurvivalLevel=piSurvivalLevel);
+      Send(self,@SetResources);
 
       if Send(self,@MobIsSeller)
       {
@@ -844,6 +846,7 @@ messages:
    }
 
    CreateStats(template=FALSE)
+   "NOTE: this can be called outside of Constructor."
    {
       local iStatPoints, iRandom, iTotal, iDiff, lTemp, lStats, i;
 
@@ -931,11 +934,12 @@ messages:
       return;
    }
 
-   SetResources(piSurvivalLevel=0)
+   SetResources()
+   "NOTE: this can be called outside of Constructor."
    {
       // Health
       piMax_health = viLevel * Bound(80 + piStamina,$,120) / 100
-                     + piSurvivalLevel * viDifficulty + viBonusHealth;
+                     + piBoostedLevel * viDifficulty + viBonusHealth;
       piMax_health = Bound(piMax_health,1,$);
       piHealth = piMax_health * 100;
 
@@ -951,17 +955,16 @@ messages:
       piMeleeRange = viMeleeRange;
       piFireRange = viFireRange * (75 + piAim) / 100;
       piSpellPower = Bound((piIntellect + piMysticism) / 2, 25, 50) + viSpellPower;
-      piVisionDistance = viVisionDistance + piSurvivalLevel + (piIntellect + piAim) / 20;
+      piVisionDistance = viVisionDistance + piBoostedLevel + (piIntellect + piAim) / 20;
       piChanceToPatrol = 50 + piAgility + piStamina;
-      piBoostedLevel = piSurvivalLevel;
 
-      if piSurvivalLevel > 0
+      if piBoostedLevel > 0
       {
-         piOffense = Send(self,@GetOffense) + piSurvivalLevel * viDifficulty;
-         piDefense = Send(self,@GetDefense) + piSurvivalLevel * viDifficulty;
-         piMinDamage = viLevel / 15 + piSurvivalLevel / 2;
-         piMaxDamage = viLevel / 10 + piSurvivalLevel / 2;
-         piArmor = piSurvivalLevel / 5;
+         piOffense = Send(self,@GetOffense) + piBoostedLevel * viDifficulty;
+         piDefense = Send(self,@GetDefense) + piBoostedLevel * viDifficulty;
+         piMinDamage = viLevel / 15 + piBoostedLevel / 2;
+         piMaxDamage = viLevel / 10 + piBoostedLevel / 2;
+         piArmor = piBoostedLevel / 5;
       }
 
       return;
@@ -9665,10 +9668,11 @@ messages:
 
    DestroyDisposable()
    {
+      // Deletes apparitions but not player-owned reflections etc.
       if (viAttributes & MOB_LISTEN)
          OR (piBehavior & AI_NPC)
-         OR poMaster <> $
          OR (piMonsterFlags & MFLAG_DONT_DISPOSE)
+         OR (poMaster <> $ AND Send(self,@IsOwnedByPlayer))
       {
          return;
       }

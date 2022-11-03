@@ -846,7 +846,6 @@ messages:
    }
 
    CreateStats(template=FALSE)
-   "NOTE: this can be called outside of Constructor."
    {
       local iStatPoints, iRandom, iTotal, iDiff, lTemp, lStats, i;
 
@@ -935,7 +934,6 @@ messages:
    }
 
    SetResources()
-   "NOTE: this can be called outside of Constructor."
    {
       // Health
       piMax_health = viLevel * Bound(80 + piStamina,$,120) / 100
@@ -1034,7 +1032,16 @@ messages:
          piBehavior |= AI_SOCIALIZER;
       }
 
+      // Set up any equipment the mob needs to have, mostly for human mobs.
+      Send(self,@SetMobEquipment);
+
       propagate;
+   }
+
+   // Most mobs don't need equipment.
+   SetMobEquipment()
+   {
+      return;
    }
 
    CheckMonsterFlag(flag=0)

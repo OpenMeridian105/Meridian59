@@ -214,6 +214,14 @@ messages:
       oAbility = First(state);
       bHeld = Send(oAbility,@IsHeld);
 
+      // Hacky, allows item use while sprinting.
+      // Return TRUE here but don't break the trance.
+      if (event = EVENT_USE
+         AND IsClass(oAbility,&Sprint))
+      {
+         return TRUE;
+      }
+
       if NOT Send(oAbility,@CanBreakTrance,#who=who,#state=state,#event=event,
          #disruption=disruption,#what=what)
       {

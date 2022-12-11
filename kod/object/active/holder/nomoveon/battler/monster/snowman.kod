@@ -1,0 +1,154 @@
+// Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+// All rights reserved.
+//
+// This software is distributed under a license that is described in
+// the LICENSE file that accompanies it.
+//
+// Meridian is a registered trademark.
+
+
+////////////////////////////////////////////////////////////////////////////////
+Snowman is Monster
+
+constants:
+
+   include blakston.khd
+
+resources:
+
+   Snowman_name_rsc = "snowman"
+   Snowman_icon_rsc = Msnowman.bgf
+   Snowman_desc_rsc = \
+      "At first glance this snowy statue seems like an ordinary snowman, but "
+      "as you notice a few lost weapons sunk into the snow the snow notices you..."
+
+   Snowman_dead_icon_rsc = MsnowmanX.bgf
+   Snowman_dead_name_rsc = "dead snowman"
+
+   Snowman_sound_hit = ice_atkh.ogg
+   Snowman_sound_miss = ice_atkm.ogg
+   Snowman_sound_death = ice_dth.ogg
+   Snowman_sound_aware = ice_awr.ogg
+
+   Snowman_Snowball = snowball.bgf
+
+classvars:
+
+   vrName = Snowman_name_rsc
+   vrIcon = Snowman_icon_rsc
+   vrDesc = Snowman_desc_rsc
+
+   viIndefinite = ARTICLE_AN
+
+   vrDead_icon = Snowman_dead_icon_rsc
+   vrDead_name = Snowman_dead_name_rsc
+
+   viSpeed = SPEED_FAST
+   viAttack_type = ATK_TYPE_BITE
+   viLevel = 400
+   viDifficulty = 9
+   viVisionDistance = 30
+   viKarma = 0
+   viCashmin = 10000
+   viCashmax = 30000
+   viDefault_behavior = AI_FIGHT_AGGRESSIVE
+   viAttributes = MOB_SPASM
+   
+   viMeleeRange = 192
+   viFireRange = 640
+
+   viMeleePriority = 500
+   viMovePriority = 550
+   viFirePriority = 600
+
+   viTreasure_type = TID_WIMPY_MEDIUM
+
+   vrSound_hit = Snowman_sound_hit
+   vrSound_miss = Snowman_sound_miss
+   vrSound_aware = Snowman_sound_aware
+   vrSound_death = Snowman_sound_death
+
+   vbCanBleed = FALSE
+   vbCanSiphon = FALSE
+
+properties:
+
+   piAnimation = ANIM_NONE
+
+messages:
+
+   Constructed()
+   {
+      plResistances = [ [ATK_TYPE_ALL, 90],
+                        [SPL_TYPE_COLD, 99],
+                        [SPL_TYPE_SHOCK, 80],
+                        [SPL_TYPE_HOLY, 80],
+                        [SPL_TYPE_UNHOLY, 80],
+                        [SPL_TYPE_ACID, 80],
+                        [SPL_TYPE_QUAKE, 80],
+                        [SPL_TYPE_FIRE, -40] ];
+
+      plActions = [   [SID_EXPLOSIVE_FROST,350,0,99],
+                      [SID_ICE_NOVA,350,0,99] ];
+                      
+      propagate;
+   }
+
+   SendMoveAnimation()
+   {
+      AddPacket(1,ANIMATE_CYCLE, 4,150, 2,1, 2,4);
+
+      return;
+   }
+
+   SendLookAnimation()
+   {
+      AddPacket(1,ANIMATE_CYCLE, 4,150, 2,1, 2,4);
+
+      return;
+   }
+
+   SendAnimation()
+   {
+      if piAnimation = ANIM_ATTACK
+      {
+         AddPacket(1,ANIMATE_ONCE, 4,200, 2,5, 2,8, 2,1);
+
+         return;
+      }
+
+      // if no body animation
+      AddPacket(1,ANIMATE_NONE,2,1);
+
+      return;
+   }
+   
+   DoMissileAnimation()
+   {
+      piAnimation = ANIM_ATTACK;
+      Send(poOwner,@SomethingChanged,#what=self);
+      piAnimation = ANIM_NONE;
+      Send(poOwner,@SomethingShot,#who=self,#target=poTarget,#projectile=self);
+
+      return;
+   }
+
+   GetProjectileSpeed()
+   {
+      return 15;
+   }
+
+   SendProjectileAnimation()
+   {
+      AddPacket(1,ANIMATE_NONE,2,1);
+
+      return;
+   }
+
+   GetProjectileIcon()
+   {
+      return Snowman_Snowball;
+   }
+
+end
+////////////////////////////////////////////////////////////////////////////////

@@ -1,0 +1,113 @@
+// Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+// All rights reserved.
+//
+// This software is distributed under a license that is described in
+// the LICENSE file that accompanies it.
+//
+// Meridian is a registered trademark.
+
+
+////////////////////////////////////////////////////////////////////////////////
+WallofIce is ActiveWallElement
+
+constants:
+
+   include blakston.khd
+
+resources:
+
+   WallofIce_name_rsc = "wall of ice"
+   WallofIce_icon_rsc = woice.bgf
+   WallofIce_desc_rsc = \
+      "A wall of ice raises from the ground, freezing the air around it."
+
+   WallofIce_damage0 = "You traverse the ice unscathed."
+   WallofIce_damage5 = "You feel a bit chilled from the ice."
+   WallofIce_damage10 = "The air around you chills, it's hard to catch your breath."
+   WallofIce_damage15 = "You are freezing!  Get away from the ice."
+   WallofIce_damage20 = "Ouch, thats really cold!"
+   WallofIce_dissipates = "A bit of the ice melts."
+
+classvars:
+
+   vrName = WallofIce_name_rsc
+   vrIcon = WallofIce_icon_rsc
+   vrdesc = WallofIce_desc_rsc
+
+   viObject_flags = OF_NOEXAMINE
+
+   vrDissipateMessage = WallofIce_dissipates
+   vrUnaffectedMessage = WallofIce_damage0
+
+   // How many ms should the effect last at max spellpower?
+   viEffectDuration = 2500
+
+   // How much damage (10^[-3]) should the effect do per second at max spellpower?
+   viEffectDamage = 8000
+
+properties:
+
+messages:
+
+   DoEffect(what = $)
+   {
+      local oEffect, iSpellpower, iStrength, rMessage, bReport;
+
+      oEffect = Send(SYS,@FindSpellByNum,#num=SID_FREEZE);
+
+      iSpellpower = Nth(plSeed,2);
+
+      iStrength = iSpellpower*viEffectDamage/100;
+
+      bReport = Send(oEffect,@StartBurn,#who=what,#source=poCaster,
+         #strength=iStrength,#duration=viEffectDuration);
+
+      if bReport
+      {
+         Send(poOwner,@SomethingAttacked,#what=poCaster,#victim=what,
+               #use_weapon=self,#stroke_obj=self);
+
+         if IsClass(poCaster,&Player)
+         {
+            Send(poCaster,@SetPlayerFlag,#flag=PFLAG_DID_DAMAGE,#value=TRUE);
+         }
+
+         if IsClass(what,&Player)
+         {
+            if iSpellpower = 0
+            {
+               rMessage = WallofIce_damage0;
+            }
+            else if iSpellpower < 25
+            {
+               rMessage = WallofIce_damage5;
+            }
+            else if iSpellpower < 50
+            {
+               rMessage = WallofIce_damage10;
+            }
+            else if iSpellpower < 75
+            {
+               rMessage = WallofIce_damage15;
+            }
+            else
+            {
+               rMessage = WallofIce_damage20;
+            }
+
+            Send(what,@MsgSendUser,#message_rsc=rMessage);
+         }
+      }
+
+      propagate;
+   }
+
+   SendAnimation()
+   {
+      AddPacket(1,ANIMATE_ONCE, 4,600, 2,1, 2,2, 2,3);
+
+      return;
+   }
+
+end
+////////////////////////////////////////////////////////////////////////////////

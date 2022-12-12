@@ -7,6 +7,6 @@
 DEPEND = ..\walspell.bof
 BOFS = brmblwll.bof summpfog.bof summweb.bof summfog.bof ifirewal.bof \
        firewall.bof ltngwall.bof rngflame.bof sporbrst.bof flamewave.bof \
-       arcticbreath.bof meteor.bof
+       arcticbreath.bof meteor.bof icewall.bof
 
 !include $(KODDIR)\kod.mak

@@ -50,6 +50,8 @@ resources:
    guildshield_kraanan_over = gshkrov.bgf
    guildshield_jala = gshja.bgf
    guildshield_jala_over = gshjaov.bgf
+   guildshield_qormas = gshqm.bgf
+   guildshield_qormas_over = gshqmov.bgf
    guildshield_window_overlay_rsc = povshldE.bgf
    guildshield_desc_rsc = \
       "Heavy metal shields of this style are decorated in the standards "
@@ -87,6 +89,7 @@ resources:
    guildshield_insig_duke = "The bold seal of Akardius is affixed. "
    guildshield_insig_shalille = "The ankh of Shal'ille's blessing is afaced. "
    guildshield_insig_rebel = "The rebel flag of Jonas is displayed proudly. "
+   guildshield_insig_qormas = "This shield is decorated with a festive Qormas wreath. "
    guildshield_insig_none = ""
 
 classvars:
@@ -308,6 +311,7 @@ messages:
       else if piInsigniaType = INSIG_SHALILLE { AddPacket(4,guildshield_insig_shalille); }
       else if piInsigniaType = INSIG_REBEL { AddPacket(4, guildshield_insig_rebel); }
       else if piInsigniaType = INSIG_KALIOR { AddPacket(4, guildshield_insig_old_duke); }
+      else if piInsigniaType = INSIG_QORMAS { AddPacket(4, guildshield_insig_qormas); }
       else { AddPacket(4,guildshield_insig_none); }
 
       return;
@@ -399,6 +403,11 @@ messages:
       {
          prShield_emblem_held = guildshield_old_duke_over;
          prShield_emblem_drop = guildshield_old_duke;
+      }
+      else if insignia = INSIG_QORMAS
+      {
+         prShield_emblem_held = guildshield_qormas_over;
+         prShield_emblem_drop = guildshield_qormas;
       }
 
       piInsigniaType = insignia;
@@ -675,12 +684,32 @@ messages:
          return Random(3,7);
       }
 
+      if piInsigniaType = INSIG_QORMAS
+      {
+         return 10;
+      }
+      
       return 0;
    }
 
    CanDyeItem()
    {
       return FALSE;
+   }
+
+   CanPlayerChangeInsignia()
+   "Don't let players remove the Qormas wreath/insignia."
+   {
+      return piInsigniaType <> INSIG_QORMAS;
+   }
+
+   SetQormas()
+   {
+      Send(self,@ChangeGuildShieldColor,#color1=XLAT_TO_GREEN,
+            #color2=XLAT_TO_RED,#override=TRUE);
+      Send(self,@ChangeGuildInsignia,#insignia=INSIG_QORMAS);
+
+      return;
    }
 
 end

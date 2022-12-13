@@ -8,7 +8,7 @@
 
 
 ////////////////////////////////////////////////////////////////////////////////
-PilgrimHat is FaceMask
+WarBonnet is FaceMask
 
 constants:
 
@@ -16,22 +16,25 @@ constants:
 
 resources:
 
-   pilgrimhat_name_rsc = "pilgrim hat"
-   pilgrimhat_icon_male_rsc = pilgrimhat.bgf
-   pilgrimhat_icon_female_rsc = pilgrimhatF.bgf
-   pilgrimhat_desc_rsc = "A pilgrim's hat."
+   warbonnet_name_rsc = "war bonnet"
+   warbonnet_icon_male_rsc = warbonnet.bgf
+   warbonnet_icon_female_rsc = warbonnetF.bgf
+   warbonnet_desc_rsc = \
+      "A tribal headdress, used both for ceremony and to strike fear into "
+      "one's enemies."
 
 classvars:
 
-   vrName = pilgrimhat_name_rsc
-   vrDesc = pilgrimhat_desc_rsc
-   vrIcon = pilgrimhat_icon_male_rsc
+   vrName = warbonnet_name_rsc
+   vrDesc = warbonnet_desc_rsc
+   vrIcon = warbonnet_icon_male_rsc
 
-   vrMaleIcon = pilgrimhat_icon_male_rsc
-   vrFemaleIcon = pilgrimhat_icon_female_rsc
+   vrMaleIcon = warbonnet_icon_male_rsc
+   vrFemaleIcon = warbonnet_icon_female_rsc
 
 properties:
 
+   prOrigToupee = $
    piThanksgivingYear = 0
 
 messages:
@@ -54,7 +57,11 @@ messages:
 
    NewUsed()
    {
-      Send(poOwner,@RemoveHair,#what=self);
+      prOrigToupee = Send(poOwner,@GetHairRsc);
+      if (prOrigToupee <> charinfo_hair_bald_icon)
+      {
+         Send(poOwner,@SetHairRsc,#what=charinfo_hair_cd_icon);
+      }
       Send(poOwner,@SomethingChanged,#what=self);
 
       propagate;
@@ -62,8 +69,12 @@ messages:
 
    NewUnused()
    {
-      Send(poOwner,@ResetHair,#what=self);
-      Send(poOwner,@SomethingChanged,#what=self);
+      if (prOrigToupee <> charinfo_hair_bald_icon)
+      {
+         Send(poOwner,@SetHairRsc,#what=prOrigToupee);
+         Send(poOwner,@SomethingChanged,#what=self);
+      }
+      prOrigToupee = $;
 
       propagate;
    }

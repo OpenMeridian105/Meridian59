@@ -30,7 +30,7 @@ resources:
    Snowman_sound_death = ice_dth.ogg
    Snowman_sound_aware = ice_awr.ogg
 
-   Snowman_Snowball = snowball.bgf
+   Snowman_Snowball = snowproj.bgf
 
 classvars:
 
@@ -45,7 +45,7 @@ classvars:
 
    viSpeed = SPEED_FAST
    viAttack_type = ATK_TYPE_BITE
-   viLevel = 400
+   viLevel = 200
    viDifficulty = 9
    viVisionDistance = 30
    viKarma = 0
@@ -55,7 +55,7 @@ classvars:
    viAttributes = MOB_SPASM
    
    viMeleeRange = 192
-   viFireRange = 640
+   viFireRange = 480
 
    viMeleePriority = 500
    viMovePriority = 550
@@ -75,10 +75,20 @@ properties:
 
    piAnimation = ANIM_NONE
 
+   piProjectileSpeed = 15
+   piHealthFactor = 7
+
 messages:
 
    Constructed()
    {
+      if (piHealthFactor > 0)
+      {
+         piMax_Health *= piHealthFactor;
+      }
+      // piHealth uses high-precision numbers, so multiply by 100.
+      piHealth = piMax_Health * 100;
+
       plResistances = [ [ATK_TYPE_ALL, 90],
                         [SPL_TYPE_COLD, 99],
                         [SPL_TYPE_SHOCK, 80],
@@ -135,7 +145,7 @@ messages:
 
    GetProjectileSpeed()
    {
-      return 15;
+      return piProjectileSpeed;
    }
 
    SendProjectileAnimation()

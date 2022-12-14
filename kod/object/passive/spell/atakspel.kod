@@ -37,6 +37,7 @@ classvars:
    vrKilled_Self = attack_spell_killed_self
    vrCast = attack_spell_cast_rsc
    vrHit = attack_spell_hit_rsc
+   vrProjectile_Icon = $
 
    viAttack_type = 0
    viSpell_type = SPL_TYPE_ALL
@@ -48,6 +49,16 @@ classvars:
 
    vbIsRangedAttack = FALSE
    vbSelfHarming = FALSE
+
+   viProjectileFlag = PROJ_FLAG_LIGHT_SOURCE
+
+   // Projectile lighting information.
+   viProjectileLightFlags = LIGHT_FLAG_ON | LIGHT_FLAG_DYNAMIC
+   // Medium light range, out of 255.
+   viProjectileLightIntensity = 75
+   // Default color is lightning.
+   viProjectileLightColor = LIGHT_LIGHTNING
+   viProjectileSpeed = 5
 
 properties:
 
@@ -233,6 +244,13 @@ messages:
       //  attack messages.
       foreach i in lTargets
       {
+         if oRoom <> who
+            AND vrProjectile_Icon <> $
+         {
+            Send(oRoom,@SomethingShot,#who=who,#target=i,#projectile=self,
+                  #flags=viProjectileFlag);
+         }
+
          if IsClass(who,&Player)
          {
             Send(who,@SetKillTarget,#target=i);
@@ -476,6 +494,40 @@ messages:
       }
 
       propagate;
+   }
+
+   // Return the icon used to display a spell shooting through the air.
+   GetProjectileIcon()
+   {
+      return vrProjectile_Icon;
+   }
+
+   // Return the speed at which a particular spell should appear to shoot through the air.
+   GetProjectileSpeed()
+   {
+      return viProjectileSpeed;
+   }
+
+   SendProjectileAnimation()
+   {
+      AddPacket(1, ANIMATE_CYCLE, 4, 40, 2, 2, 2, 3);   // 40ms between animations
+
+      return;
+   }
+
+   GetProjectileLightFlags()
+   {
+      return viProjectileLightFlags;
+   }
+
+   GetProjectileLightIntensity()
+   {
+      return viProjectileLightIntensity;
+   }
+
+   GetProjectileLightColor()
+   {
+      return viProjectileLightColor;
    }
 
 end

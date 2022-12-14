@@ -1,0 +1,119 @@
+// Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+// All rights reserved.
+//
+// This software is distributed under a license that is described in
+// the LICENSE file that accompanies it.
+//
+// Meridian is a registered trademark.
+
+
+////////////////////////////////////////////////////////////////////////////////
+IceWall is WallSpell
+
+constants:
+
+   include blakston.khd
+
+resources:
+
+   IceWall_name_rsc = "icewall"
+   IceWall_icon_rsc = iwallice.bgf
+   IceWall_desc_rsc = \
+      "Creates a wall of ice in front of the caster."
+
+   IceWall_cast_rsc = "Chilling spikes of ice appear before you!"
+   IceWall_sound = faren.ogg
+
+classvars:
+
+   vrName = IceWall_name_rsc
+   vrIcon = IceWall_icon_rsc
+   vrDesc = IceWall_desc_rsc
+
+   viSpell_num = SID_ICEWALL
+   viSchool = SS_FAREN
+   viSpell_level = 4
+   viMana = 15
+   viSpellExertion = 3
+   viMeditate_ratio = 30
+
+   viCast_time = 1000
+   vrSucceed_wav = IceWall_sound
+   vrSuccess = IceWall_cast_rsc
+
+   viHarmful = TRUE
+
+   //// Seed parameters
+   viElementStep = 40
+
+properties:
+
+messages:
+
+   ResetReagents()
+   {
+      plReagents = $;
+      plReagents = Cons([&RedMushroom,3],plReagents);
+      plReagents = Cons([&Firesand,2], plReagents);
+
+      return;
+   }
+
+   PlaceWallElements(seed = $)
+   {
+      local lSeed, lSeeda, lSeedb, lSecondarySeeda, lSecondarySeedb,
+         oRoom, oCaster, iXFineStep, iYFineStep, iXFineStepA, iYFineStepA,
+         iXFineStepB, iYFineStepB, iSpellPower, iDuration, iCharges, iSpeed,
+         iAngle, iStep, iNoise, iCurl;
+
+      oCaster = First(seed);
+      oRoom = Send(oCaster,@GetOwner);
+      iSpellPower = Nth(seed,2);
+      iDuration = Nth(seed,3);
+      iCharges = Nth(seed,4);
+      iSpeed = Nth(seed,5);
+      iAngle = Nth(seed,6);
+      iStep = Nth(seed,7);
+      iNoise = Nth(seed,8);
+      iCurl = Nth(seed,9);
+
+      iXFineStep = Send(oRoom,@GetXFineStep,#angle=iAngle);
+      iYFineStep = Send(oRoom,@GetYFineStep,#angle=iAngle);
+
+      lSecondarySeeda = [oCaster,iSpellPower,iDuration,iCharges,
+         iSpeed,3*MAX_ANGLE/4,iStep,iNoise,-iCurl];
+      lSecondarySeedb = [oCaster,iSpellPower,iDuration,iCharges,
+         iSpeed,MAX_ANGLE/4,iStep,iNoise,iCurl];
+
+      lSeed = [oCaster,iSpellPower,iDuration,iCharges/2+1,
+         iSpeed,iAngle,iStep,iNoise,0];
+      lSeeda = [oCaster,iSpellPower,iDuration,iCharges/2+1,
+         iSpeed,iAngle,iStep,iNoise,iCurl,lSecondarySeeda];
+      lSeedb = [oCaster,iSpellPower,iDuration,iCharges/2+1,
+         iSpeed,iAngle,iStep,iNoise,-iCurl,lSecondarySeedb];
+
+      Send(self,@SpawnElement,#seed=lSeed,#who=oCaster,
+         #xfineoffset=iXFineStep,#yfineoffset=iYFineStep,
+         #walltype=&WallofIce);
+
+      iXFineStepA = iXFineStep + Send(oRoom,@GetXFineStep,
+         #angle=(iAngle+3*MAX_ANGLE/4) % MAX_ANGLE)*iStep/FINENESS;
+      iYFineStepA = iYFineStep + Send(oRoom,@GetYFineStep,
+         #angle=(iAngle+3*MAX_ANGLE/4) % MAX_ANGLE)*iStep/FINENESS;
+      Send(self,@SpawnElement,#seed=lSeeda,#who=oCaster,
+         #xfineoffset=iXFineStepA,#yfineoffset=iYFineStepA,
+         #walltype=&WallofIce);
+
+      iXFineStepB = iXFineStep + Send(oRoom,@GetXFineStep,
+         #angle=(iAngle+MAX_ANGLE/4) % MAX_ANGLE)*iStep/FINENESS;
+      iYFineStepB = iYFineStep + Send(oRoom,@GetYFineStep,
+         #angle=(iAngle+MAX_ANGLE/4) % MAX_ANGLE)*iStep/FINENESS;
+      Send(self,@SpawnElement,#seed=lSeedb,#who=oCaster,
+         #xfineoffset=iXFineStepB,#yfineoffset=iYFineStepB,
+         #walltype=&WallofIce);
+
+      propagate;
+   }
+
+end
+////////////////////////////////////////////////////////////////////////////////

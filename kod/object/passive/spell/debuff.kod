@@ -50,6 +50,7 @@ classvars:
    viOutlaw = TRUE
    viHarmful = TRUE
    viNoNewbieOffense = TRUE
+   vbBreaksTrance = FALSE
 
 properties:
 
@@ -166,6 +167,13 @@ messages:
             Send(oTarget,@MsgSendUser,#message_rsc=debuff_display_duration,
                #parm1=Send(self,@GetName),#parm2=iDuration);
          }
+      }
+
+      // If the debuff can break trances or concentration, do that here.
+      // Handles blind/hold/dazzle stopping swings & casts.
+      if (vbBreaksTrance)
+      {
+         Send(First(lTargets),@BreakTrance,#event=EVENT_DEBUFF);
       }
 
       return TRUE;

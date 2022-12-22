@@ -7755,7 +7755,7 @@ messages:
 
    UserAttack(what=$)
    {
-      local i, oTarget, lFinalTargets, oAbility, oWeapon;
+      local i, oTarget, lFinalTargets, oAbility;
 
       Send(self,@CancelLift);
 
@@ -7816,16 +7816,6 @@ messages:
       // Check if our target can even be attacked.
       if IsClass(what,&User)
          AND Send(what,@IsOfflineOrCannotInteract)
-      {
-         return;
-      }
-
-      oWeapon = Send(self,@GetWeapon);
-
-      // Check if target is within sight and range.
-      if NOT Send(self,@TargetWithinSightAndRange,#oTarget=what,
-         #iRange=Send(oAbility,@GetRange,#weapon_used=oWeapon,#who=self),
-         #use_weapon=oWeapon,#stroke_obj=oAbility)
       {
          return;
       }

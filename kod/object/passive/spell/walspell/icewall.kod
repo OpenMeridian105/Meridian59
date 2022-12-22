@@ -53,64 +53,27 @@ messages:
    ResetReagents()
    {
       plReagents = $;
-      plReagents = Cons([&RedMushroom,3],plReagents);
-      plReagents = Cons([&Firesand,2], plReagents);
+      plReagents = Cons([&TwinkleCap,1],plReagents);
 
       return;
    }
 
-   PlaceWallElements(seed = $)
+   PlaceWallElements(seed = $, lTargets = $)
    {
-      local lSeed, lSeeda, lSeedb, lSecondarySeeda, lSecondarySeedb,
-         oRoom, oCaster, iXFineStep, iYFineStep, iXFineStepA, iYFineStepA,
-         iXFineStepB, iYFineStepB, iSpellPower, iDuration, iCharges, iSpeed,
-         iAngle, iStep, iNoise, iCurl;
+      local oTarget, lSeed;
 
-      oCaster = First(seed);
-      oRoom = Send(oCaster,@GetOwner);
-      iSpellPower = Nth(seed,2);
-      iDuration = Nth(seed,3);
-      iCharges = Nth(seed,4);
-      iSpeed = Nth(seed,5);
-      iAngle = Nth(seed,6);
-      iStep = Nth(seed,7);
-      iNoise = Nth(seed,8);
-      iCurl = Nth(seed,9);
+      oTarget = First(seed);
 
-      iXFineStep = Send(oRoom,@GetXFineStep,#angle=iAngle);
-      iYFineStep = Send(oRoom,@GetYFineStep,#angle=iAngle);
+      if lTargets <> $
+      {
+         oTarget = First(lTargets);
+      }
 
-      lSecondarySeeda = [oCaster,iSpellPower,iDuration,iCharges,
-         iSpeed,3*MAX_ANGLE/4,iStep,iNoise,-iCurl];
-      lSecondarySeedb = [oCaster,iSpellPower,iDuration,iCharges,
-         iSpeed,MAX_ANGLE/4,iStep,iNoise,iCurl];
+      lSeed = ListCopy(seed);
+      SetNth(lSeed,6,0);
 
-      lSeed = [oCaster,iSpellPower,iDuration,iCharges/2+1,
-         iSpeed,iAngle,iStep,iNoise,0];
-      lSeeda = [oCaster,iSpellPower,iDuration,iCharges/2+1,
-         iSpeed,iAngle,iStep,iNoise,iCurl,lSecondarySeeda];
-      lSeedb = [oCaster,iSpellPower,iDuration,iCharges/2+1,
-         iSpeed,iAngle,iStep,iNoise,-iCurl,lSecondarySeedb];
-
-      Send(self,@SpawnElement,#seed=lSeed,#who=oCaster,
-         #xfineoffset=iXFineStep,#yfineoffset=iYFineStep,
-         #walltype=&WallofIce);
-
-      iXFineStepA = iXFineStep + Send(oRoom,@GetXFineStep,
-         #angle=(iAngle+3*MAX_ANGLE/4) % MAX_ANGLE)*iStep/FINENESS;
-      iYFineStepA = iYFineStep + Send(oRoom,@GetYFineStep,
-         #angle=(iAngle+3*MAX_ANGLE/4) % MAX_ANGLE)*iStep/FINENESS;
-      Send(self,@SpawnElement,#seed=lSeeda,#who=oCaster,
-         #xfineoffset=iXFineStepA,#yfineoffset=iYFineStepA,
-         #walltype=&WallofIce);
-
-      iXFineStepB = iXFineStep + Send(oRoom,@GetXFineStep,
-         #angle=(iAngle+MAX_ANGLE/4) % MAX_ANGLE)*iStep/FINENESS;
-      iYFineStepB = iYFineStep + Send(oRoom,@GetYFineStep,
-         #angle=(iAngle+MAX_ANGLE/4) % MAX_ANGLE)*iStep/FINENESS;
-      Send(self,@SpawnElement,#seed=lSeedb,#who=oCaster,
-         #xfineoffset=iXFineStepB,#yfineoffset=iYFineStepB,
-         #walltype=&WallofIce);
+      Send(self,@SpawnElement,#seed=lSeed,#who=oTarget,#walltype=&WallOfIce,
+         #yfineoffset=FINENESS_HALF*5/2,#xfineoffset=FINENESS_HALF*3/2);
 
       propagate;
    }

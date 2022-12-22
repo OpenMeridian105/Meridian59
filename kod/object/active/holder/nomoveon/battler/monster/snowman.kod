@@ -14,16 +14,26 @@ constants:
 
    include blakston.khd
 
+   MAGIC_RESIST = 60 
+
 resources:
+
+   include snowman.lkod
 
    Snowman_name_rsc = "snowman"
    Snowman_icon_rsc = Msnowman.bgf
    Snowman_desc_rsc = \
-      "At first glance this snowy statue seems like an ordinary snowman, but "
-      "as you notice a few lost weapons sunk into the snow the snow notices you..."
+      "This evil snowman is a formidable figure made entirely of snow and ice, "
+      "with a twisted grin and malevolent eyes. It has a sharp, carrot nose and "
+      "coal buttons, and it wears a tattered top hat and a scarf to protect "
+      "itself from the cold.  This snowman monster has the ability to control the "
+      "elements of snow and ice, using them to create deadly blizzards and freeze "
+      "its victims. It is feared for its ruthless nature and its love for causing "
+      "destruction and chaos. This snowman of Qor is the embodiment of Jack Frost, "
+      "bringing terror and misery to all who cross its path. "
 
    Snowman_dead_icon_rsc = MsnowmanX.bgf
-   Snowman_dead_name_rsc = "dead snowman"
+   Snowman_dead_name_rsc = "melted snowman"
 
    Snowman_sound_hit = ice_atkh.ogg
    Snowman_sound_miss = ice_atkm.ogg
@@ -38,13 +48,13 @@ classvars:
    vrIcon = Snowman_icon_rsc
    vrDesc = Snowman_desc_rsc
 
-   viIndefinite = ARTICLE_AN
+   viIndefinite = ARTICLE_A
 
    vrDead_icon = Snowman_dead_icon_rsc
    vrDead_name = Snowman_dead_name_rsc
 
    viSpeed = SPEED_FAST
-   viAttack_type = ATK_TYPE_BITE
+   viAttacks = ATTACK_CLAW | ATTACK_SPIN
    viLevel = 200
    viDifficulty = 9
    viVisionDistance = 30
@@ -61,7 +71,7 @@ classvars:
    viMovePriority = 550
    viFirePriority = 600
 
-   viTreasure_type = TID_WIMPY_MEDIUM
+   viTreasure_type = TID_SNOWMAN
 
    vrSound_hit = Snowman_sound_hit
    vrSound_miss = Snowman_sound_miss
@@ -76,7 +86,7 @@ properties:
    piAnimation = ANIM_NONE
 
    piProjectileSpeed = 15
-   piHealthFactor = 7
+   piHealthFactor = 8
 
 messages:
 
@@ -86,21 +96,20 @@ messages:
       {
          piMax_Health *= piHealthFactor;
       }
+
       // piHealth uses high-precision numbers, so multiply by 100.
       piHealth = piMax_Health * 100;
 
-      plResistances = [ [ATK_TYPE_ALL, 90],
-                        [SPL_TYPE_COLD, 99],
+      plResistances = [ [SPL_TYPE_COLD, 99],
                         [SPL_TYPE_SHOCK, 80],
-                        [SPL_TYPE_HOLY, 80],
                         [SPL_TYPE_UNHOLY, 80],
-                        [SPL_TYPE_ACID, 80],
                         [SPL_TYPE_QUAKE, 80],
                         [SPL_TYPE_FIRE, -40] ];
 
-      plActions = [   [SID_EXPLOSIVE_FROST,350,0,99],
-                      [SID_ICE_NOVA,350,0,99] ];
-                      
+      plActions = [ [SID_EXPLOSIVE_FROST], [SID_ICE_NOVA],
+                    [SID_ARCTIC_BREATH,0,0,MAX_KOD_INT,600,75,99,COMBAT_ACTION_HARM],
+                    [SID_ICEWALL,0,0,MAX_KOD_INT,1200,20,99,COMBAT_ACTION_HARM] ];
+
       propagate;
    }
 
@@ -158,6 +167,81 @@ messages:
    GetProjectileIcon()
    {
       return Snowman_Snowball;
+   }
+
+   IsArenaMonster()
+   {
+      return FALSE;
+   }
+
+   CanBeWebbed()
+   {
+      return FALSE;
+   }
+
+   CanEvilTwin()
+   {
+      return FALSE;
+   }
+
+   CanMorphTo()
+   {
+      return FALSE;
+   }
+
+   SpellResist(oSpell=$,who=$,iSpellpower=$)
+   {
+      local iResistChance;
+
+      if IsClass(who,&DM)
+      {
+         return FALSE;
+      }
+
+      if Send(oSpell,@IsHarmful)
+      {
+         // Unaffected by Qor spells.  Period.
+         if Send(oSpell,@GetSchool) = SS_QOR
+         {
+            return TRUE;
+         }
+
+         iResistChance = MAGIC_RESIST;
+         if IsClass(oSpell,&Dazzle)
+         {
+            // Extra 75% chance to resist.
+            iResistChance = (iResistChance * 175) / 100;
+         }
+
+         if iSpellPower < 30
+            OR Random(0,100) < iResistChance
+         {
+            // Unsuccessful spells make the snowman more likely to cast.
+            if IsClass(oSpell,&AttackSpell)
+            {
+               Send(self,@AdjustActionPriority,#num=SID_EXPLOSIVE_FROST,#amount=1000);
+            }
+            else
+            {
+               Send(self,@AdjustActionPriority,#num=SID_ARCTIC_BREATH,#amount=1000);
+            }
+
+            // Unsuccessful spells may incur the Snowman's's wrath.
+            if Random(1,3) = 1
+            {
+               Send(self,@TargetSwitch,#what=who,#iHatred=10);
+            }
+
+            return TRUE;
+         }
+         else
+         {
+            // Successful spells will definitely incur the Snowman's wrath.
+            Send(self,@TargetSwitch,#what=who,#iHatred=100);
+         }
+      }
+
+      return FALSE;
    }
 
 end

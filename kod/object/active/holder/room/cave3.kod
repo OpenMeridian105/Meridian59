@@ -39,6 +39,8 @@ resources:
 
    cave3_key_disappears = "Your key disappears into thin air!"
    cave3_locked_door = "The door appears to be firmly locked."
+   cave3_enterbrax = \
+      "~kThe ghostly door ~rsmirks~k, as it grants approval for your access."
 
    cave3_sound_rsc = wtemple1.ogg
    waterfall_soundCave3 = wfall2.ogg
@@ -87,7 +89,7 @@ messages:
    {
       if isClass(what,&User) AND new_row < 69
       {
-         send(SYS,@UtilGoNearSquare,#what=what,#where=self,#new_row=74,#new_col=34);
+         Send(SYS,@UtilGoNearSquare,#what=what,#where=self,#new_row=74,#new_col=34);
       }
 
       propagate;
@@ -95,61 +97,60 @@ messages:
 
    SomethingTryGo(what=$,row=$,col=$)
    {
-      local i, lPassive, each_obj;
+      local i, lPassive, each_obj, oNecBal;
       
       if isClass(what,&User) AND NOT pbDoorOpen
       {
          if row = 68 AND (col=37 OR col=38)
          {
-            lPassive = send(what,@GetHolderPassive);
+            lPassive = Send(what,@GetHolderPassive);
             foreach i in lPassive
             {
-               each_obj = send(what,@HolderExtractObject,#data=i);
+               each_obj = Send(what,@HolderExtractObject,#data=i);
                if isClass(each_obj,&Key)
                {
-                  send(each_obj,@Delete);
-                  send(what,@MsgSendUser,#message_rsc=cave3_key_disappears);
-                  send(self,@SomethingWaveRoom,#wave_rsc=cave3_sound_rsc);
+                  Send(each_obj,@Delete);
+                  Send(what,@MsgSendUser,#message_rsc=cave3_key_disappears);
+                  Send(self,@SomethingWaveRoom,#wave_rsc=cave3_sound_rsc);
                   pbDoorOpen = TRUE;
-                  send(self,@CreateJewel);
-                  send(self,@RaiseTemple);
+                  Send(self,@CreateJewel);
+                  Send(self,@RaiseTemple);
 
                   return TRUE ;
                }
             }
 
-            send(what,@MsgSendUser,#message_rsc=cave3_locked_door);
+            Send(what,@MsgSendUser,#message_rsc=cave3_locked_door);
 
             return TRUE;
          }
       }
 
-   // Brax enterance
-   //   if IsClass(what,&Player)
-   //   {
-   //      if row = 28 AND col=73
-   //      {
-   //         lPassive = send(what,@GetHolderPassive);
-   //         foreach i in lPassive
-   //         {
-   //            each_obj = send(what,@HolderExtractObject,#data=i);
-   //            if isClass(each_obj,&SanctuaryKey)
-   //            {
-   //               send(each_obj,@Delete);
-   //               send(what,@MsgSendUser,#message_rsc=cave3_key_disappears);
-   //               Send(SYS,@UtilGoNearSquare,#what=what,
-   //               #where=Send(SYS,@FindRoomByNum,#num=RID_NECROAREA1),
-   //               #new_row=3,#new_col=43,#new_angle=ANGLE_WEST);
-   //
-   //               return TRUE;
-   //            }
-   //         }
-   //
-   //         send(what,@MsgSendUser,#message_rsc=cave3_locked_door);
-   //
-   //         return TRUE;
-   //      }
-   //   }
+     // Brax enterance
+     if IsClass(what,&Player)
+     {
+        if row = 28 AND col = 73
+        {
+           oNecBal = Send(SYS,@GetNecromancerBalance);
+
+           if Send(oNecBal,@IsNecromancer,#who=what) 
+              OR Send(oNecBal,@IsHunter,#who=what)
+           {
+                 Send(what,@MsgSendUser,#message_rsc=cave3_enterbrax);
+                 Send(what,@WaveSendUser,#wave_rsc=Send(self,@GetDoorSound));
+
+                 Send(SYS,@UtilGoNearSquare,#what=what,
+                  #where=Send(SYS,@FindRoomByNum,#num=RID_NECROAREA1),
+                  #new_row=3,#new_col=43,#new_angle=ANGLE_WEST);
+           }
+           else
+           {
+             Send(what,@MsgSendUser,#message_rsc=cave3_locked_door);
+           }
+
+           return TRUE;
+        }
+     }
    
       propagate;
    }
@@ -158,23 +159,23 @@ messages:
    {
       local lPassive, i, each_obj;
       
-      lPassive = send(self,@GetHolderPassive);
+      lPassive = Send(self,@GetHolderPassive);
 
       foreach i in lPassive
       {
-         each_obj = send(self,@HolderExtractObject,#data=i);
+         each_obj = Send(self,@HolderExtractObject,#data=i);
          if isClass(each_obj,&JewelOfFroz)
          {
             return;
          }
       }
 
-      send(self,@Newhold,#what=Create(&JewelOfFroz),
+      Send(self,@Newhold,#what=Create(&JewelOfFroz),
            #new_row=37,#new_col=38,#fine_row=16,#fine_col=0);
 
       // Create a light on the jewel, too.
       poLight = Create(&DynamicLight,#iColor=LIGHT_RED,#iIntensity=30);
-      send(self,@NewHold,#what=poLight,#new_row=37,#new_col=38,#fine_row=16,#fine_col=0);
+      Send(self,@NewHold,#what=poLight,#new_row=37,#new_col=38,#fine_row=16,#fine_col=0);
 
       return;
    }
@@ -182,33 +183,33 @@ messages:
    RaiseTemple()
    {
       // Door
-      send(self,@SetSector,#sector=SECTOR_DOOR,#animation=ANIMATE_FLOOR_LIFT,
+      Send(self,@SetSector,#sector=SECTOR_DOOR,#animation=ANIMATE_FLOOR_LIFT,
            #height=260,#speed=150);
 
       // Temple
-      send(self,@SetSector,#sector=SECTOR_TEMPLE1,#animation=ANIMATE_FLOOR_LIFT,
+      Send(self,@SetSector,#sector=SECTOR_TEMPLE1,#animation=ANIMATE_FLOOR_LIFT,
            #height=300,#speed=10);
-      send(self,@SetSector,#sector=SECTOR_TEMPLE2,#animation=ANIMATE_FLOOR_LIFT,
+      Send(self,@SetSector,#sector=SECTOR_TEMPLE2,#animation=ANIMATE_FLOOR_LIFT,
            #height=308,#speed=10);
-      send(self,@SetSector,#sector=SECTOR_TEMPLE3,#animation=ANIMATE_FLOOR_LIFT,
+      Send(self,@SetSector,#sector=SECTOR_TEMPLE3,#animation=ANIMATE_FLOOR_LIFT,
            #height=444,#speed=10);
-      send(self,@SetSector,#sector=SECTOR_TEMPLE4,#animation=ANIMATE_FLOOR_LIFT,
+      Send(self,@SetSector,#sector=SECTOR_TEMPLE4,#animation=ANIMATE_FLOOR_LIFT,
            #height=372,#speed=10);
-      send(self,@SetSector,#sector=SECTOR_TEMPLE5,#animation=ANIMATE_FLOOR_LIFT,
+      Send(self,@SetSector,#sector=SECTOR_TEMPLE5,#animation=ANIMATE_FLOOR_LIFT,
            #height=332,#speed=10);
-      send(self,@SetSector,#sector=SECTOR_TEMPLE6,#animation=ANIMATE_FLOOR_LIFT,
+      Send(self,@SetSector,#sector=SECTOR_TEMPLE6,#animation=ANIMATE_FLOOR_LIFT,
            #height=324,#speed=10);
 
       // Stairs
-      send(self,@SetSector,#sector=SECTOR_STAIR1,#animation=ANIMATE_FLOOR_LIFT,
+      Send(self,@SetSector,#sector=SECTOR_STAIR1,#animation=ANIMATE_FLOOR_LIFT,
            #height=244,#speed=20);
-      send(self,@SetSector,#sector=SECTOR_STAIR2,#animation=ANIMATE_FLOOR_LIFT,
+      Send(self,@SetSector,#sector=SECTOR_STAIR2,#animation=ANIMATE_FLOOR_LIFT,
            #height=260,#speed=20);
-      send(self,@SetSector,#sector=SECTOR_STAIR3,#animation=ANIMATE_FLOOR_LIFT,
+      Send(self,@SetSector,#sector=SECTOR_STAIR3,#animation=ANIMATE_FLOOR_LIFT,
            #height=276,#speed=20);
-      send(self,@SetSector,#sector=SECTOR_STAIR4,#animation=ANIMATE_FLOOR_LIFT,
+      Send(self,@SetSector,#sector=SECTOR_STAIR4,#animation=ANIMATE_FLOOR_LIFT,
            #height=292,#speed=20);
-      send(self,@SetSector,#sector=SECTOR_STAIR5,#animation=ANIMATE_FLOOR_LIFT,
+      Send(self,@SetSector,#sector=SECTOR_STAIR5,#animation=ANIMATE_FLOOR_LIFT,
            #height=300,#speed=20);
 
       return;
@@ -217,33 +218,33 @@ messages:
    LowerTemple()
    {
       // Door
-      send(self,@SetSector,#sector=SECTOR_DOOR,#animation=ANIMATE_FLOOR_LIFT,
+      Send(self,@SetSector,#sector=SECTOR_DOOR,#animation=ANIMATE_FLOOR_LIFT,
            #height=336,#speed=150);
       
       // Temple
-      send(self,@SetSector,#sector=SECTOR_TEMPLE1,#animation=ANIMATE_FLOOR_LIFT,
+      Send(self,@SetSector,#sector=SECTOR_TEMPLE1,#animation=ANIMATE_FLOOR_LIFT,
            #height=208,#speed=10);
-      send(self,@SetSector,#sector=SECTOR_TEMPLE2,#animation=ANIMATE_FLOOR_LIFT,
+      Send(self,@SetSector,#sector=SECTOR_TEMPLE2,#animation=ANIMATE_FLOOR_LIFT,
            #height=208,#speed=10);
-      send(self,@SetSector,#sector=SECTOR_TEMPLE3,#animation=ANIMATE_FLOOR_LIFT,
+      Send(self,@SetSector,#sector=SECTOR_TEMPLE3,#animation=ANIMATE_FLOOR_LIFT,
            #height=208,#speed=10);
-      send(self,@SetSector,#sector=SECTOR_TEMPLE4,#animation=ANIMATE_FLOOR_LIFT,
+      Send(self,@SetSector,#sector=SECTOR_TEMPLE4,#animation=ANIMATE_FLOOR_LIFT,
            #height=208,#speed=10);
-      send(self,@SetSector,#sector=SECTOR_TEMPLE5,#animation=ANIMATE_FLOOR_LIFT,
+      Send(self,@SetSector,#sector=SECTOR_TEMPLE5,#animation=ANIMATE_FLOOR_LIFT,
            #height=208,#speed=10);
-      send(self,@SetSector,#sector=SECTOR_TEMPLE6,#animation=ANIMATE_FLOOR_LIFT,
+      Send(self,@SetSector,#sector=SECTOR_TEMPLE6,#animation=ANIMATE_FLOOR_LIFT,
            #height=208,#speed=10);
       
       // Stairs
-      send(self,@SetSector,#sector=SECTOR_STAIR1,#animation=ANIMATE_FLOOR_LIFT,
+      Send(self,@SetSector,#sector=SECTOR_STAIR1,#animation=ANIMATE_FLOOR_LIFT,
            #height=208,#speed=20);
-      send(self,@SetSector,#sector=SECTOR_STAIR2,#animation=ANIMATE_FLOOR_LIFT,
+      Send(self,@SetSector,#sector=SECTOR_STAIR2,#animation=ANIMATE_FLOOR_LIFT,
            #height=208,#speed=20);
-      send(self,@SetSector,#sector=SECTOR_STAIR3,#animation=ANIMATE_FLOOR_LIFT,
+      Send(self,@SetSector,#sector=SECTOR_STAIR3,#animation=ANIMATE_FLOOR_LIFT,
            #height=208,#speed=20);
-      send(self,@SetSector,#sector=SECTOR_STAIR4,#animation=ANIMATE_FLOOR_LIFT,
+      Send(self,@SetSector,#sector=SECTOR_STAIR4,#animation=ANIMATE_FLOOR_LIFT,
            #height=208,#speed=20);
-      send(self,@SetSector,#sector=SECTOR_STAIR5,#animation=ANIMATE_FLOOR_LIFT,
+      Send(self,@SetSector,#sector=SECTOR_STAIR5,#animation=ANIMATE_FLOOR_LIFT,
            #height=208,#speed=20);
       
       return;
@@ -252,8 +253,8 @@ messages:
    LastUserLeft()
    {
       pbDoorOpen = FALSE;
-      send(self,@LowerTemple);
-      send(self,@DeleteLight);
+      Send(self,@LowerTemple);
+      Send(self,@DeleteLight);
 
       propagate;
    }
@@ -263,7 +264,7 @@ messages:
       // If the Froz jewel is picked up, delete it's light.
       if IsClass(what,&JewelOfFroz)
       {
-         send(self,@DeleteLight);
+         Send(self,@DeleteLight);
       }
 
       propagate;
@@ -274,7 +275,7 @@ messages:
    {
       if poLight <> $
       {
-         send(poLight,@Delete);
+         Send(poLight,@Delete);
          poLight = $;
       }
 

@@ -1,0 +1,454 @@
+// Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+// All rights reserved.
+//
+// This software is distributed under a license that is described in
+// the LICENSE file that accompanies it.
+//
+// Meridian is a registered trademark.
+
+
+////////////////////////////////////////////////////////////////////////////////
+JolineNPC is Wanderer
+
+constants:
+
+   include blakston.khd
+
+resources:
+
+   include joline.lkod
+
+   JolineNPC_name_rsc = "Joline"
+   JolineNPC_icon_rsc = qw04i.bgf
+   JolineNPC_desc_rsc =  \
+    "This once beautiful woman has been altered, her body is that of a giant snake.  "
+    "Venomous and her eyes seem as cold as death yet burn with intellignce.  "
+    "Her words issue with a disturbing whispery hiss.  "
+    "She seeks for a token and the power it grants the Necromancer Army.  "
+    "Those that aid her will be rewarded.  Those that oppose her will be disposed."
+
+   JolineNPC_projectile_icon = spblast.bgf
+
+   JolineNPC_sound_hit = cnt_atkh.ogg
+   JolineNPC_sound_aware = cnt_awr.ogg
+   JolineNPC_sound_death = lich_die.ogg
+
+   JolineNPC_relic = \
+      "Queen will be pleased when I destroy a flagpole."
+
+classvars:
+
+   vrName = JolineNPC_name_rsc
+   vrIcon = JolineNPC_icon_rsc
+   vrDesc = JolineNPC_desc_rsc
+
+   vrSound_hit = JolineNPC_sound_hit
+   vrSound_miss = JolineNPC_sound_hit
+   vrSound_aware = JolineNPC_sound_aware
+   vrSound_death = JolineNPC_sound_death
+
+   viAttributes = MOB_RECEIVE | MOB_SELLER | MOB_SPASM
+   viOccupation = MOB_ROLE_WIZARD
+   viDefault_behavior = 0
+
+   viLevel = 300
+   viAttack_type = ANIM_ATTACK
+   viSpeed = SPEED_VERY_FAST
+   viDifficulty = 7
+   viVisionDistance = 60
+   viMeleeRange = 128
+   viFireRange = 256
+   viAttacks = ATTACK_BITE | ATTACK_SPIT | ATTACK_SNARE
+
+   viMeleePriority = 600
+   viFirePriority = 400
+   viMovePriority = 300
+
+   vbCanBleed = FALSE
+   vbCanBurn = FALSE
+
+   viNightVision = 255
+
+   viBonusXP = 1000
+   viBonusTP = 50
+
+properties:
+
+   piNameColor = NC_NPC
+   pbEventMode = FALSE
+   pbAttackMode = FALSE
+   poInvasionEvent = $
+
+   ptLeaveTimer = $
+
+   piMonsterFlags = MFLAG_DONT_DISPOSE
+   piReputationGroup = REP_UNDEAD
+
+   piHealthFactor = 7
+
+messages:
+
+   Constructor()
+   {
+      plResistances = [ [-SPL_TYPE_ALL, 60],
+                        [ATK_TYPE_ALL, 60],
+                        [ATK_TYPE_NERUDITE, -20 ],
+                        [ATK_TYPE_BLUDGEON, -20 ],
+                        [ATK_TYPE_SILVER, -60 ],
+                        [-SPL_TYPE_COLD, 90],
+                        [-SPL_TYPE_UNHOLY, 90 ],
+                        [-SPL_TYPE_ACID, 90 ],
+                        [-SPL_TYPE_SHOCK, -20],
+                        [-SPL_TYPE_FIRE, -20 ],
+                        [-SPL_TYPE_HOLY, -40 ],
+                        [-SPL_TYPE_HUNTERSWORD, -90 ]
+                      ];
+
+      plActions =  [ [SID_REFLECTION], [SID_HOLD],
+                     [SID_BLIND,500,0,MAX_KOD_INT,0,1200,99,COMBAT_ACTION_HARM],
+                     [SID_POISON_FOG,200,0,16384,0,600,99,COMBAT_ACTION_HARM],
+                     [SID_SHALILLEBANE,0,0,MAX_KOD_INT,1000,0,99,COMBAT_ACTION_NEUTRAL] ];
+
+      plWantedItems = [&Token];
+
+      propagate;
+   }
+
+   Constructed()
+   {
+      if (piHealthFactor > 0)
+      {
+         piMax_Health *= piHealthFactor;
+      }
+      // piHealth uses high-precision numbers, so multiply by 100.
+      piHealth = piMax_Health * 100;
+
+      propagate;
+   }
+
+   Delete()
+   {
+      if ptLeaveTimer <> $
+      {
+         DeleteTimer(ptLeaveTimer);
+         ptLeaveTimer = $;
+      }
+
+      propagate;
+   }
+
+   SetForSale()
+   {
+      plFor_sale = [$, $,[ SID_GAZE_OF_THE_BASILISK ], $];
+
+      return;
+   }
+
+   UserEntered(who=$)
+   {
+      local iAction;
+
+      iAction = Send(who,@GetAction);
+
+      if iAction = UA_SAD
+      {
+         Send(self,@SetMood,#new_mood=piMood+1);
+      }
+      else if iAction = UA_HAPPY
+      {
+         Send(self,@SetMood,#new_mood=piMood-1);
+      }
+      else if iAction = UA_WRY
+      {
+         Send(self,@SetMood,#new_mood=piMood+2);
+      }
+
+      propagate;
+   }
+
+   CreateDestinationList()
+   {
+      plDestinations = [ [RID_NECROAREA5, 8, 15], [RID_NECROAREA3A, 6, 9],
+                         [RID_NECROAREA3B, 1, 7], [RID_NECHALLWAY, 3, 6],
+                         [RID_NECHALLWAY, 3, 6], [RID_NECROAREA6, 31, 9],
+                         [RID_CAVE3, 34, 69], [RID_DUKE1, 14, 60],
+                         [RID_DUKE1, 57, 16], [RID_DUKE2, 37, 18],
+                         [RID_TOS_SMUGGLERS_WAY, 12, 12], [RID_TOS_OLD_TAVERN, 9, 2],
+                         [RID_CASTLE2A, 2, 20], [RID_CASTLE2D, 23, 13],
+                         [RID_MOCKERS_ROOM, 23, 13] ] ;
+      return;
+   }
+
+   CheckWhyWanted(obj=$,who=$)
+   {
+      local oGame;
+
+      oGame = Send(SYS,@GetTokenGame);
+
+      if NOT pbEventMode
+         AND IsClass(obj,&Token)
+         AND oGame <> $
+         AND Send(oGame,@IsTokenReal,#obj=obj)
+      {
+         Send(oGame,@IncreaseScandalChance);
+         
+         Send(self,@SayToOne,#target=who,#message_rsc=JolineNPC_relic);
+         Send(self,@EnableEventMode);
+         ptLeaveTimer = CreateTimer(self,@TriggerEvent,Random(2500,5000));
+
+         return TRUE;
+      }
+
+      propagate;
+   }
+
+   TriggerEvent(timer = $)
+   {
+      if (ptLeaveTimer <> $
+         AND ptLeaveTimer <> timer)
+      {
+         DeleteTimer(ptLeaveTimer);
+      }
+
+      ptLeaveTimer = $;
+
+      piHealth = piMax_Health * 100;
+      Send(SYS,@StartEvent,#event_type=&NecromancerInvasion);
+
+      return;
+   }
+
+   EnableEventMode(bEnabled=TRUE,what=$)
+   {
+      pbEventMode = bEnabled;
+
+      if pbEventMode
+      {
+         poInvasionEvent = what;
+         piNameColor = NC_EVENTCHAR;
+         Send(self,@SetWandering,#value=FALSE);
+         // SomethingChangedFlags goes here because EnableAttackMode also calls it.
+         if poOwner <> $
+         {
+            Send(poOwner,@SomethingChangedFlags,#what=self);
+         }
+      }
+      else
+      {
+         piNameColor = NC_NPC;
+         Send(self,@SetWandering,#value=TRUE);
+         Send(self,@EnableAttackMode,#bEnabled=FALSE);
+         // Reset Joline health.
+         piHealth = piMax_Health * 100;
+      }
+
+      return;
+   }
+
+   EnableAttackMode(bEnabled=TRUE)
+   {
+      local oTarget;
+
+      pbAttackMode = bEnabled;
+
+      Send(self,@ResetBehaviorFlags);
+
+      if pbAttackMode
+      {
+         oTarget = Send(self,@GetClosestEnemy);
+         if (oTarget = $)
+         {
+            Send(self,@EnterStateMove,#actnow=TRUE);
+         }
+         else
+         {
+            Send(self,@TargetSwitch,#what=oTarget,#iHatred=100);
+            Send(self,@EnterStateEngage,#target=oTarget,#actnow=TRUE);
+         }
+      }
+
+      if poOwner <> $
+      {
+         Send(poOwner,@SomethingChangedFlags,#what=self);
+      }
+
+      return;
+   }
+
+   SetInvasionEventObject(what=$)
+   {
+      poInvasionEvent = what;
+
+      return;
+   }
+
+   GetObjectFlags(what=$)
+   {
+      local iFlags;
+
+      iFlags = viObject_flags | piDrawEffectFlag;
+
+      if (pbEventMode)
+      {
+         iFlags &= ~OF_BUYABLE | ~OF_OFFERABLE;
+      }
+      else
+      {
+         iFlags |= OF_BUYABLE | OF_OFFERABLE;
+      }
+
+      if (NOT pbAttackMode)
+      {
+         iFlags &= ~OF_ATTACKABLE;
+      }
+
+      return iFlags;
+   }
+
+   DMCanArmageddon()
+   {
+      return FALSE;
+   }
+
+   CanEvilTwin()
+   {
+      return FALSE;
+   }
+
+   GetProjectileIcon()
+   {
+      return JolineNPC_projectile_icon;
+   }
+
+   SendProjectileAnimation()
+   {
+      AddPacket(1, ANIMATE_CYCLE, 4, 40, 2, 2, 2, 2);  // 40ms between animations
+
+      return;
+   }
+
+   GetProjectileSpeed()
+   {
+      return 20;
+   }
+
+   GetProjectileRange()
+   {
+      return 100;
+   }
+
+   GetProjectileLightFlags()
+   {
+      return PROJ_FLAG_LIGHT_SOURCE | PROJ_FLAG_TRANSPARENT50;
+   }
+
+   GetProjectileLightIntensity()
+   {
+      return 10;
+   }
+
+   GetProjectileLightColor()
+   {
+      return LIGHT_DPURPLE;
+   }
+
+   AssessDamage(what=$)
+   {
+      // Only possible to do damage while it is in "attack mode"
+      if NOT pbAttackMode
+      {
+         return 0;
+      }
+      else if NOT Send(what,@CanPlayerPvP)
+      {
+          return 1;
+      }
+
+      propagate;
+   }
+
+   Killed(what=$)
+   {
+      local oTreasure, lTreasure, bComma, oItemAtt;
+
+      oItemAtt = Send(SYS,@FindItemAttByNum,#num=IA_RESTRICTED_LOOT);
+
+      Debug("Joline killed! Reward is: ");
+      ClearTempString();
+      bComma = FALSE;
+      foreach lTreasure in [plActive, plPassive]
+      {
+         foreach oTreasure in lTreasure
+         {
+            if Send(oTreasure,@DropOnDeath)
+            {
+               if (bComma)
+               {
+                  AppendTempString(", ");
+               }
+               else
+               {
+                  bComma = TRUE;
+               }
+               if IsClass(oTreasure,&NumberItem)
+               {
+                  AppendTempString(Send(oTreasure,@GetNumber));
+                  AppendTempString(" ");
+               }
+               AppendTempString(Send(oTreasure,@GetName));
+
+               // Only allow event participants to grab loot for the 1st minute.
+               Send(oItemAtt,@AddToItem,#oItem=oTreasure,#timer_duration=60000,
+                     #state1=Send(poInvasionEvent,@GetParticipants));
+
+               Send(poOwner,@NewHold,#what=oTreasure,
+                  #new_row=piRow,#new_col=piCol,
+                  #fine_row=piFine_row,#fine_col=piFine_col,
+                  #new_angle=Send(self,@GetAngle));
+            }
+         }
+      }
+      Debug(GetTempString());
+
+      // Set room dispose to 5 minutes so players can pick everything up.
+      Send(poOwner,@SetDisposeTimer,#iSeconds=300);
+
+      Send(self,@EnableEventMode,#bEnabled=FALSE);
+      Send(self,@NextDest);
+
+      return;
+   }
+
+   NewHoldObject(what=$)
+   {
+      // Override to allow this class to hold objects; used for dropping loot when killed.
+      Send(self,@HolderAddNode,#node=what);
+
+      return;
+   }
+
+   TweakBehavior()
+   {
+      if pbAttackMode
+      {
+         piBehavior |= AI_MOVE_OPTIMAL_RANGE | AI_FIGHT_SWITCHALOT
+            | AI_FIGHT_HYPERAGGRESSIVE | AI_FIGHT_LASHOUT;
+      }
+      else
+      {
+         piBehavior = AI_NPC | AI_NOMOVE | AI_NOFIGHT;
+      }
+
+      return;
+   }
+
+   ZeroVigor()
+   "Joline has endless energy, and doesn't need to rest."
+   {
+      Send(self,@GainVigor,#amount=piVigor_rest_threshold);
+
+      return;
+   }
+
+end
+////////////////////////////////////////////////////////////////////////////////

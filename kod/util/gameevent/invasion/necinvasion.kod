@@ -1,0 +1,450 @@
+// Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+// All rights reserved.
+//
+// This software is distributed under a license that is described in
+// the LICENSE file that accompanies it.
+//
+// Meridian is a registered trademark.
+
+
+////////////////////////////////////////////////////////////////////////////////
+NecromancerInvasion is Invasion
+
+constants:
+
+   include blakston.khd
+
+resources:
+
+   include necinvasion.lkod
+
+   NecromancerInvasion_start_msg = \
+      "~B~k[Event]~n ~B~v A dark portal opens up to reveal an army of undead "
+      "warriors from the city of Brax.  Leading them is the snake queen, "
+      "as she sets her sights on the flagpole of %s."
+
+   NecromancerInvasion_end_msg = \
+      "~B~k[Event]~n ~B~v A portal spasms and collapses with a burst of dark energy, "
+      "as Joline and the necromancers are forced to retreat back to the city of Brax. "
+      "The flagpole of %s remains standing, thanks to the bravery of its defenders "
+      "who fought off the invading forces of darkness."
+
+   NecromancerInvasion_Qor_sound = qor.ogg
+   NecromancerInvasion_Shalille_sound = shalille.ogg
+
+classvars:
+
+   vrStartMessage = NecromancerInvasion_start_msg
+   vrEndMessage = NecromancerInvasion_end_msg
+   vrStartSound = NecromancerInvasion_Qor_sound
+   vrEndSound = NecromancerInvasion_Shalille_sound
+
+   vbAnnounce = TRUE
+
+properties:
+
+   plEventRooms = $
+   plEventMonsters = $
+
+   poJoline = $
+
+   plRewards_High = $
+   plRewards_Medium = $
+   plRewards_Common = $
+   plRewards_Super = $
+   plRewards_Special = $
+
+   piActiveRoom = 0
+   piPhase = 0
+
+   plParticipants = $ 
+   piMaxParticipants = 10
+
+   plScore = $ //[user object, score]
+
+messages:
+
+   Constructor(iActiveRoom=0)
+   {
+      // Only take place at select flagpole locations - avoid the ones near Raza
+      plEventRooms = [ RID_E2, RID_F2, RID_F3, RID_H3, RID_I3, RID_J3, RID_C4,
+                     RID_D4, RID_E4, RID_F4, RID_G4, RID_H4, RID_C5, RID_D5,
+                     RID_G5, RID_H5, RID_B6, RID_C6, RID_D6E6, RID_F6,
+                     RID_G6, RID_H6, RID_I6, RID_D7, RID_E7, RID_F7,
+                     RID_H7, RID_I7, RID_F8 ];
+
+      if iActiveRoom = 0
+      {
+         piActiveRoom = Nth(plEventRooms, Random(1,Length(plEventRooms)));
+      }
+      else
+      {
+         piActiveRoom = iActiveRoom;
+      }
+
+      plRewards_Super = [ &WindrootLeaf, &SpessartineRock, &EssenceDust,
+                          &TwinkleCap, &TheurgicRemnant ];
+
+      plRewards_High = [ &InkyCap ];
+
+      plRewards_Medium = [ &AcidArrow, &IceArrow, &FireArrow];
+
+      plRewards_Common = [ &WindrootSeed ];
+
+      plRewards_Special = [ &SpecialGift, &SpecialGiftTwo, &GoldSword, &LongSword, 
+                            &NeruditeSword, &Scimitar, &Hammer, &Axe,
+                            &ShortSword, &MysticSword, &ThornedCirclet ];
+
+      plEventMonsters = [ [&NecromancerTroop, 10], [&NecromancerMage, 5], 
+                          [&Necromancer, 1], [&NecromancerMage, 10] ];
+
+      propagate;
+   }
+
+   StartEvent()
+   {
+      local oRoom, oFlag;
+
+      oRoom = Send(SYS,@FindRoomByNum,#num=piActiveRoom);
+
+      oFlag = Send(oRoom,@FindHoldingActive,#class=&Flagpole);
+
+      if oFlag <> $
+      {
+         Send(oFlag,@SetClaimable,#claimable=FALSE);
+      }
+      else
+      {
+         Debug("Flagpole missing, aborting Necromancer Invasion!");
+
+         return;
+      }
+
+      if vbAnnounce
+      {
+         Send(SYS,@SystemBroadcast,#type=SAY_MESSAGE,#string=vrStartMessage,
+            #parm1=Send(oRoom,@GetName),#rSound=vrStartSound);
+      }
+
+      poJoline = First(Send(Send(SYS,@GetLibrary),@GetOccupationList,
+                        #cNPC_class=&JolineNPC));
+
+      if Send(oRoom,@ReqNewHold,#what=poJoline,
+         #new_row=Send(oRoom,@GetTeleportRow),#new_col=Send(oRoom,@GetTeleportCol))
+      {
+         Send(oRoom,@NewHold,#what=poJoline,
+               #new_row=Send(oRoom,@GetTeleportRow)-1,
+               #new_col=Send(oRoom,@GetTeleportCol)-1);
+         Post(poJoline,@UpdateHeight);
+      }
+
+      Send(poJoline,@EnableEventMode,#bEnabled=TRUE,#what=self);
+
+      Debug("Joline event started at ", Send(oRoom,@GetName));
+
+      return piActiveRoom;
+   }
+
+   EndEvent()
+   {
+      local oRoom, oFlag;
+
+      oRoom = Send(SYS,@FindRoomByNum,#num=piActiveRoom);
+
+      oFlag = Send(oRoom,@FindHoldingActive,#class=&Flagpole);
+      if oFlag <> $
+      {
+         Send(oFlag,@SetClaimable,#claimable=TRUE);
+      }
+
+      if vbAnnounce
+      {
+         Send(SYS,@SystemBroadcast,#type=SAY_MESSAGE,#string=vrEndMessage,
+            #parm1=Send(oRoom,@GetName),#rSound=vrEndSound);
+      }
+
+      // Sets Joline's event object to $.
+      Post(poJoline,@SetInvasionEventObject);
+
+      return;
+   }
+
+   Update()
+   {
+      local oRoom, iDebug, oObj;
+
+      oRoom = Send(SYS,@FindRoomByNum,#num=piActiveRoom);
+
+      if (oRoom = $)
+      {
+         propagate;
+      }
+
+      Send(self,@ClearTroops,#oRoom=oRoom);
+
+      if piPhase = 0
+      {
+         Send(self,@SpawnMonsters,#iWave=1);
+         piPhase++;
+      }
+      else if piPhase = 1
+       AND Send(oRoom,@CountMonstersWithMonsterFlag,#flag=MFLAG_EVENT) = 0
+      {
+         Send(self,@AddToJolineTreasure);
+         Send(self,@SpawnMonsters,#iWave=1);
+         Send(self,@SpawnMonsters,#iWave=2);
+         piPhase++;
+      }
+      else if piPhase = 2
+         AND Send(oRoom,@CountMonstersWithMonsterFlag,#flag=MFLAG_EVENT) = 0
+      {
+
+         Send(self,@AddToJolineTreasure);
+         Send(self,@SpawnMonsters,#iWave=1);
+         Send(self,@SpawnMonsters,#iWave=2);
+         Send(self,@SpawnMonsters,#iWave=3);
+         piPhase++;
+      }
+      else if piPhase = 3
+         AND Send(oRoom,@CountMonstersWithMonsterFlag,#flag=MFLAG_EVENT) = 0
+      {
+
+         Send(self,@AddToJolineTreasure);
+         Send(self,@SpawnMonsters,#iWave=3);
+         Send(self,@SpawnMonsters,#iWave=4);
+         piPhase++;
+      }
+      else if piPhase = 4
+         AND Send(oRoom,@CountMonstersWithMonsterFlag,#flag=MFLAG_EVENT) = 0
+      {
+
+         piPhase++;
+         Send(self,@AddToJolineTreasure);
+         Send(poJoline,@EnableAttackMode);
+      }
+      else if poJoline = $
+         OR Send(oRoom,@CountHoldingHowMany,#class=&JolineNPC) = 0
+      {
+         Send(self,@PrintParticipantsToDebug);
+         Send(self,@NotifyEngineEndEvent);
+      }
+
+      propagate;
+   }
+
+   ClearTroops(oRoom=$)
+   {
+      local i, oObj, oSpell;
+
+      if poJoline = $
+      {
+         return;
+      }
+
+      foreach i in Send(oRoom,@GetHolderActive)
+      {
+         oObj = First(i);
+         if IsClass(oObj,&FactionTroop)
+            AND NOT (IsClass(oObj,&NecromancerTroop)
+               OR IsClass(oObj,&NecromancerMage))
+         {
+            oSpell = Send(SYS,@FindSpellByNum,#num=SID_SMITE);
+            Send(oSpell,@CastSpell,#who=poJoline,#lTargets=[oObj],#iSpellPower=99);
+         }
+      }
+
+      return;
+   }
+
+   SpawnMonsters(iWave=0)
+   {
+      local oMonster, lSpawnPoint, i, oRoom, iRow, iCol;
+
+      if iWave = 0
+         OR iWave > 4
+      {
+         return FALSE;
+      }
+
+      i = Nth(Nth(plEventMonsters,iWave),2);
+      oRoom = Send(SYS,@FindRoomByNum,#num=piActiveRoom);
+
+      while (i > 0)
+      {
+         oMonster = Create(First(Nth(plEventMonsters,iWave)),#bEvent=TRUE);
+         
+         // Flag used to identify event mobs.
+         Send(oMonster,@SetMonsterFlag,#flag=MFLAG_EVENT | MFLAG_DONT_DISPOSE,
+               #value=TRUE);
+
+         iRow = Send(poJoline,@GetRow) + Random(-1,1);
+         iCol = Send(poJoline,@GetCol) + Random(-2,2);
+
+         Send(Send(SYS,@FindRoomByNum,#num=piActiveRoom),@NewHold,
+            #what=oMonster,#new_row=iRow,#new_col=iCol);
+
+         i--;
+      }
+
+      return TRUE;
+   }
+
+   MonsterKilled(dead_monster=$,killing_player=$,corpse=$)
+   {
+      local oRoom, oReward, iAmount, lRewards;
+
+      // When each event monster is killed, add common reagents to the Harbinger's treasure drop.
+      // Scale this with the number of participants in the room. This is also capped by piMaxParticipants.
+      if Send(dead_monster,@CheckMonsterFlag,#flag=MFLAG_EVENT)
+      {
+         if piPhase = 1
+         {
+            lRewards = plRewards_Common;
+         }
+         else
+         {
+            lRewards = plRewards_Medium;
+         }
+
+         oReward = Create(Nth(lRewards,Random(1,Length(lRewards))));
+
+         if Send(oReward,@IsStackable)
+         {
+            iAmount = Send(SETTINGS_OBJECT,@GetHarbingerRewards) / 100;
+            Send(oReward,@AddNumber,#number=iAmount);
+         }
+
+         Send(poJoline,@NewHold,#what=oReward);
+
+         if plParticipants <> $
+            AND (FindListElem(plParticipants,killing_player) > 0)
+         {
+            // Don't do this if they're already at the top
+            if NOT (First(plParticipants) = killing_player)
+            {
+               plParticipants = DelListElem(plParticipants,killing_player);
+               plParticipants = Cons(killing_player,plParticipants);
+            }
+         }
+         else if (Length(plParticipants) < piMaxParticipants)
+         {
+            // Player not already in list, check size and delete if needed.
+            plParticipants = Cons(killing_player,plParticipants);
+         }
+         else
+         {
+            plParticipants = DelListElem(plParticipants,Last(plParticipants));
+            plParticipants = Cons(killing_player,plParticipants);
+         }
+      }
+
+      return;
+   }
+
+   AddToJolineTreasure()
+   {
+      local oRoom, oParticipant, oReward, lRewards, iAmount, ItemAtt;
+
+      if plParticipants = $
+      {
+         return;
+      }
+
+      // Rewards scale based on number of number of participants in the room.
+      // Treasure is added after the completion of a wave
+      foreach oParticipant in plParticipants
+      {
+         oRoom = Send(oParticipant,@GetOwner);
+         if oRoom = $
+            OR oRoom <> Send(SYS,@FindRoomByNum,#num=piActiveRoom)
+         {
+            continue;
+         }
+
+         if piPhase = 1
+         {
+            lRewards = plRewards_Medium;
+         }
+         else if piPhase = 2
+         {
+            lRewards = plRewards_High;
+         }
+         else
+         {
+            lRewards = plRewards_Super;
+         }
+
+         oReward = Create(Nth(lRewards,Random(1,Length(lRewards))));
+
+         if Send(oReward,@IsStackable)
+         {
+            iAmount = ((piPhase * 10) + Length(plParticipants)) *
+               Send(SETTINGS_OBJECT,@GetHarbingerRewards) / 100;
+
+            Send(oReward,@AddNumber,#number=iAmount);
+         }
+
+         Send(poJoline,@NewHold,#what=oReward);
+      }
+
+      if piPhase > 4
+      {
+         oReward = Create(Nth(plRewards_Special,Random(1,Length(plRewards_Special))));
+
+         if IsClass(oReward,&Weapon)
+         {
+            switch(Random(1,10))
+            {
+               case 1: ItemAtt = WA_SLOW; break;
+               case 2: ItemAtt = WA_BLINDER; break;
+               case 3: ItemAtt = WA_PARALYZER; break;
+               case 4: ItemAtt = WA_VAMPER; break;
+               case 5: ItemAtt = WA_SPELLCASTER; break;
+               case 6: ItemAtt = WA_PURGER; break;
+               case 7: ItemAtt = WA_SIPHON; break;
+               case 8: ItemAtt = WA_BURN; break;
+               case 9: ItemAtt = WA_BLEED; break;
+               case 10: ItemAtt = WA_FATIGUE; break;
+               default: ItemAtt = WA_CURSED;
+            }
+
+            Send(Send(SYS,@FindItemAttByNum,#Num=ItemAtt),@AddToItem,#oItem=oReward);
+         }
+
+         Send(poJoline,@NewHold,#what=oReward);
+      }
+
+      return;
+   }
+
+   GetParticipants()
+   {
+      return plParticipants;
+   }
+
+   PrintParticipantsToDebug()
+   {
+      local i, bComma;
+
+      Debug("Joline killed in room ", piActiveRoom, "by:");
+      ClearTempString();
+      bComma = FALSE;
+      foreach i in plParticipants
+      {
+         if (bComma)
+         {
+            AppendTempString(", ");
+         }
+         else
+         {
+            bComma = TRUE;
+         }
+         AppendTempString(Send(i,@GetTrueName));
+      }
+      Debug(GetTempString());
+
+      return;
+   }
+
+end
+////////////////////////////////////////////////////////////////////////////////

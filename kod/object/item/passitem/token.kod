@@ -50,6 +50,9 @@ resources:
    token_was_delivered_rsc = \
       "~IAll hail %s%s who has returned %s%s to the Meridian Council.~n"
 
+   token_necromancers_rsc = \
+      "~IDarkness falls as %s%s presents %s%s to Queen Joline.~n"
+
    tok_faction_too_strong = \
       "I am sorry, but my current followers provide all the support I need. "
       "Perhaps if you were to try again later, I will have need of you."
@@ -420,7 +423,9 @@ messages:
 
    TokenDelivered(who=$,mob=$)
    {
-      local i;
+      local i, rMessage;
+
+      rMessage = token_was_delivered_rsc;
 
       foreach i in Send(SYS,@GetUsersLoggedOn)
       {
@@ -429,9 +434,15 @@ messages:
             continue;
          }
 
+         // Token was given to the snake queen
+         if IsClass(mob,&JolineNPC)
+         {
+            rMessage = token_necromancers_rsc;
+         }
+
          if i <> who
          {
-            Send(i,@MsgSendUser,#message_rsc=token_was_delivered_rsc,
+            Send(i,@MsgSendUser,#message_rsc=rMessage,
                   #parm1=Send(who,@GetIndef),#parm2=Send(who,@GetName),
                   #parm3=Send(self,@GetIndef),#parm4=Send(self,@GetName));
          }

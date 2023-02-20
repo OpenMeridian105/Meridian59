@@ -5,6 +5,7 @@
 !include $(TOPDIR)\common.mak
 
 DEPEND = ..\invasion.bof
-BOFS = ratinvasion.bof orcinvasion.bof easterinvasion.bof triggeredinvasion.bof
+BOFS = ratinvasion.bof orcinvasion.bof easterinvasion.bof triggeredinvasion.bof \
+	necinvasion.bof
 
 !include $(KODDIR)\kod.mak

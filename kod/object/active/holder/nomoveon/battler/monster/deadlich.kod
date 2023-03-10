@@ -196,22 +196,10 @@ messages:
       return;
    }
 
-   Delete(lichswapout=FALSE)
+   Delete()
    {
-      local iQNTindex, oQE, oQ;
 
-      if lichswapout
-      {
-         oQE = Send(SYS,@GetQuestEngine);
-
-         // Swap the quest NPC to the new Lich, so that this dead Lich gets
-         // cleaned up by garbage collection. If the new Lich dies, the quest
-         // NPC is set back to the new dead Lich.
-         iQNTindex = First(Nth(Send(oQE,@GetQuestTemplate,
-                           #index=QST_ID_SPAWN_LICH),QT_QUEST_NODES));
-         Send(oQE,@SetQuestNodeNPCList,#index=iQNTindex,#new_NPC_list=[poLich]);
-      }
-      else if poLich <> $
+      if poLich <> $
       {
          Send(poLich,@Delete);
          poLich = $;

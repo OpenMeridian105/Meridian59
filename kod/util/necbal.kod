@@ -23,6 +23,9 @@ constants:
    // Default percent of ao3 and soth. 100 for only ao3s, 0 for only soths
    NECBAL_DEFAULT = 50
 
+   LICH_STATE_DEAD = 0
+   LICH_STATE_ALIVE = 1
+
 resources:
 
    include necbal.lkod
@@ -35,6 +38,9 @@ resources:
       "Subject: The Order is no more\n"
       "The Order of the Necromancers has vanished into the night.  "
       "I sleep once more, my pets."
+
+   necbal_spawnlich = \
+      "~BVenya'cyr, Queen of Brax, has returned along with the Order of Necromancers."
 
    necbal_lich_hunger_nonpayment = \
       "~BYour dark queen has perished from starvation.  "
@@ -67,6 +73,13 @@ resources:
       "while the hunters have defeated a total of %i Necromancers."
    necbal_snd = assassin.ogg
 
+   necbal_reward = "~BA Ring of Far'nohl appears, deeming you worthy of its power."
+   necbal_reward_snd = gst_awr.ogg
+
+   necroguildquest_desc_rsc = ""
+   necroguildquest_nodethree_rsc = ""
+   necroguild_trigger_2 = ""
+
 properties:
 
    pbScenarioActivated = FALSE
@@ -85,11 +98,15 @@ properties:
    plSwordLocations = $
 
    poLich = $
+   piLichState = LICH_STATE_DEAD
 
    // Two kills a day - units of piHunger * 10000.
    piLichHunger = 167
    piLichHungerDue = 0
    piLichHungerCounter = 0
+
+   ptLichHungerTimer = $
+   piLichHungerInterval = 6000 * 6 // every 6 minutes
 
    // Item hunger interval, default 1 minute.
    piHungerInterval = 6000
@@ -148,6 +165,13 @@ properties:
    piPkPercentDueToScenario = 0
    plArchivedPkPercents = $
 
+   poNecromancersLeader = $
+   poHuntersLeader = $
+
+   poNecromancerRing = $
+   poHunterRing = $
+   piRingReward = 10 // Recharge reagent rings
+
 messages:
 
    Constructor()
@@ -200,7 +224,17 @@ messages:
          ptPlaceNecromancerTreasure = $;
       }
 
+      if ptLichHungerTimer <> $
+      {
+         ptLichHungerTimer = $;
+      }
+
       polich = $;
+      poNecromancersLeader = $;
+      poHuntersLeader = $;
+
+      poNecromancerRing = $;
+      poHunterRing = $;
 
       propagate;
    }
@@ -235,21 +269,48 @@ messages:
 
       plNecromancerTreasure = $;
 
+      if pbScenarioActivated
+      {
+         Send(self,@CleanupScenario);
+         Send(self,@ActivateScenario,#bRecreate=TRUE);
+      }
+
       return;
    }
 
-   ActivateScenario()
-   "Admin supported. Enable the necromancer / hunter scenario"
+   FlipScenario()
+   "Admin supported. Toggle the necromancer / hunter scenario"
    {
       if pbScenarioActivated
       {
-         Debug("Tried to activate Necromancer/Hunter Scenario more than once!");
+         Send(self,@DeactivateScenario);
+      }
+      else
+      {
+         Send(self,@ActivateScenario);
+      }
 
-         return;
+      return;
+   }
+
+   ActivateScenario(bRecreate=FALSE)
+   "Admin supported. Enable the necromancer / hunter scenario"
+   {
+      local oQE, iQNTindex;
+
+      Debug("Activating necromancer / hunter scenario...");
+
+      if bRecreate
+         AND Send(self,@GetLichState) = LICH_STATE_ALIVE
+      {
+         Send(self,@SpawnLich);
+      }
+      else
+      {
+         Send(self,@SpawnDeadLich);
       }
 
       pbScenarioActivated = TRUE;
-      Send(self,@SpawnLich);
 
       if ptTriggerAmuletGeneration <> $
       {
@@ -274,6 +335,8 @@ messages:
    {
       local i;
 
+      Debug("Deactivating necromancer / hunter scenario...");
+
       if NOT pbScenarioActivated 
       { 
          Debug("Tried to deactivate Necromancer/Hunter Scenario without it active!");
@@ -282,6 +345,15 @@ messages:
       }
 
       pbScenarioActivated = FALSE;
+
+      Send(self,@CleanupScenario);
+
+      return;
+   }
+
+   CleanupScenario()
+   {
+      local i;
 
       foreach i in plNecromancer_Amulets
       {
@@ -314,6 +386,16 @@ messages:
       {
          DeleteTimer(ptTriggerSwordGeneration);
          ptTriggerSwordGeneration = $;
+      }
+
+      if poNecromancerRing <> $
+      {
+         Send(poNecromancerRing,@Delete);
+      }
+
+      if poHunterRing <> $
+      {
+         Send(poHunterRing,@Delete);
       }
 
       return;
@@ -350,6 +432,29 @@ messages:
       if piDays = 30
       {
          Send(self,@GetScores);
+
+         // Reward leaders with a special ring
+         if poHunterRing = $
+         {
+            poHunterRing = Create(&ReagentRing);
+         }
+
+         if poNecromancerRing = $
+         {
+            poNecromancerRing = Create(&ReagentRing);
+         }
+
+         if poHuntersLeader <> $
+         {
+            Send(self,@GiveLeaderReward,#who=poHuntersLeader,
+               #oRewardRing=poHunterRing);
+         }
+
+         if poNecromancersLeader <> $
+         {
+            Send(self,@GiveLeaderReward,#who=poNecromancersLeader,
+               #oRewardRing=poNecromancerRing);
+         }
 
          piDays = 0;
          plArchived_Kills = Cons(piKills_Total,plArchived_Kills);
@@ -404,7 +509,7 @@ messages:
 
       if NOT Send(self,@IsNecromancer,#who=who)
       {
-         Debug("New Necromancer: ",Send(who,@GetName));
+         Debug("New Necromancer: ",Send(who,@GetTrueName));
 
          plNecromancers = Cons(who,plNecromancers);
          Send(who,@WaveSendUser,#wave_rsc=necbal_snd);
@@ -438,7 +543,7 @@ messages:
       {
          if i = who
          {
-            Debug("Removed from the order ",Send(who,@GetName));
+            Debug("Removed from the order ",Send(who,@GetTrueName));
 
             plNecromancers = DelListElem(plNecromancers,i);
 
@@ -509,7 +614,7 @@ messages:
 
       if NOT Send(self,@IsHunter,#who=who)
       {
-         Debug("New Hunter: ",Send(who,@GetName));
+         Debug("New Hunter: ",Send(who,@GetTrueName));
 
          plHunters = Cons(who,plHunters);
          Send(who,@WaveSendUser,#wave_rsc=necbal_snd);
@@ -543,7 +648,7 @@ messages:
       {
          if i = who
          {
-            Debug("Removed from hunters ",Send(who,@GetName));
+            Debug("Removed from hunters ",Send(who,@GetTrueName));
 
             plHunters = DelListElem(plHunters,i);
 
@@ -601,6 +706,8 @@ messages:
 
    RecordWarKill(who=$,victim=$)
    {
+      local oKillerItem, oVictimItem, iKillerRank, iVictimRank;
+
       // Bail for missing info, if victim isn't a player.
       if who = $ OR victim = $
          OR NOT IsClass(victim,&Player)
@@ -608,20 +715,112 @@ messages:
          return FALSE;
       }
 
-      if Send(victim,@IsUsingA,#class=&NecromancerAmulet)
+      // Determine special items used
+      oKillerItem = Send(who,@FindHoldingActive,#class=&NecromancerAmulet);
+      if oKillerItem = $
       {
+         oKillerItem = Send(who,@FindHoldingActive,#class=&HunterSword);
+      }
+
+      oVictimItem = Send(victim,@FindHoldingActive,#class=&NecromancerAmulet);
+      if oVictimItem = $
+      {
+         oVictimItem = Send(who,@FindHoldingActive,#class=&HunterSword);
+      }
+
+      iKillerRank = Send(oKillerItem,@GetRank);
+      iVictimRank = Send(oVictimItem,@GetRank);
+
+      Send(oVictimItem,@SetRank,#iRank=RANK_APPRENTICE);
+
+      if iVictimRank = RANK_MASTER
+         AND iKillerRank >= RANK_LIEUTENANT
+      {
+         if Send(self,@IsNecromancer,#who=who)
+         {
+            Send(self,@SetNecromancersLeader,#who=who);
+            Send(self,@GiveLeaderReward,#who=who);
+         }
+         else if Send(self,@IsHunter,#who=who)
+            AND Send(self,@IsNecromancer,#who=victim)
+         {
+            Send(self,@SetHuntersLeader,#who=who);
+            Send(self,@GiveLeaderReward,#who=who);
+         }
+      }
+      else if IsClass(oKillerItem,&NecromancerAmulet)
+         AND IsClass(oVictimItem,&NecromancerAmulet)
+      {
+         // Necromancer killed another necromancer, promote within
+         if iVictimRank < iKillerRank
+         {
+            Send(oKillerItem,@SetRank,#iRank=iVictimRank);
+         }
+         else if (iVictimRank + iKillerRank) = RANK_SIR
+         {
+            Send(oKillerItem,@SetRank,#iRank=RANK_SIR);
+         }
+
+      }
+      else if IsClass(oKillerItem,&NecromancerAmulet)
+         AND IsClass(oVictimItem,&HunterSword)
+      {
+         Send(self,@ScenarioKillEnemy,
+            #oKillerItem=oKillerItem,#oVictimItem=oVictimItem);
+
+         piNecromancer_Kills++;
+      }
+      else if IsClass(oKillerItem,&HunterSword)
+         AND IsClass(oVictimItem,&NecromancerAmulet)
+      {
+         Send(self,@ScenarioKillEnemy,
+            #oKillerItem=oKillerItem,#oVictimItem=oVictimItem);
+
          piHunter_Kills++;
       }
-      else if (Send(victim,@FindHoldingActive,#class=&HunterSword) <> $)
+      else if IsClass(oKillerItem,&HunterSword)
+         AND IsClass(oVictimItem,&HunterSword)
       {
-         piNecromancer_Kills++;
+         // A hunter killing another hunter loses their rank
+         Send(oKillerItem,@SetRank,#iRank=RANK_APPRENTICE);
       }
 
       piKills++;
 
       return;
    }
-   
+
+   ScenarioKillEnemy(oKillerItem=$,oVictimItem=$)
+   {
+      local iKillerRank, iVictimRank;
+
+      if oKillerItem = $ 
+         OR oVictimItem = $
+      {
+         return;
+      }
+
+      iKillerRank = Send(oKillerItem,@GetRank);
+      iVictimRank = Send(oVictimItem,@GetRank);
+
+      if iKillerRank = RANK_APPRENTICE
+      {
+         Send(oKillerItem,@SetRank,#iRank=RANK_SIR);
+      }
+      else if iKillerRank = RANK_SIR
+         AND iVictimRank = iKillerRank
+      {
+         Send(oKillerItem,@SetRank,#iRank=RANK_LORD);
+      }
+      else if iKillerRank = RANK_LORD
+         AND iVictimRank = RANK_MASTER
+      {
+         Send(oKillerItem,@SetRank,#iRank=RANK_LIEUTENANT);
+      }
+
+      return;
+   }
+
    #region Artifact Hunger
    
    GetHungerInterval()
@@ -1040,15 +1239,77 @@ messages:
       return poLich;
    }
 
-   SpawnLich()
+   GetLichState()
+   {
+      if poLich <> $
+         AND IsClass(poLich,&Lich)
+      {
+         piLichState = LICH_STATE_ALIVE;
+      }
+      else
+      {
+         piLichState = LICH_STATE_DEAD;
+      }
+
+      return piLichState;
+   }
+
+   SpawnDeadLich()
+   {
+      local oLich, oLichHall;
+
+      piAmuletPercentOfArtifacts = NECBAL_DEFAULT;
+      oLichHall = Send(SYS,@FindRoomByNum,#num=RID_GUILDH15);
+
+      if oLichHall = $
+      {
+         Debug("Tried to spawn lich with necromancer hall missing!");
+
+         return;
+      }
+
+      if Send(oLichHall,@CountHoldingHowMany,#class=&DeadLich) = 0
+      {
+         poLich = Create(&DeadLich);
+
+         Send(self,@AssignLichQuest);
+
+         Send(oLichHall,@NewHold,#what=poLich,#new_row=13,#new_col=49,
+            #fine_row=16,#fine_col=0,#new_angle=ANGLE_WEST);
+
+         oLich = Send(oLichHall,@FindHoldingActive,#class=&Lich);
+         if oLich <> $
+         {
+            Send(oLich,@Delete);
+         }
+
+         return TRUE;
+      }
+
+      Send(SYS,@AdminDisableSpell,#num=SID_SHADOW_RIFT);
+
+      Send(Send(oLichHall,@GetNecromancersChest),@LockChest,#bLocked=FALSE);
+
+      return poLich;
+   }
+
+   SpawnLich(oRaisedBy=$)
    {
       local oDeadLich, oLichHall;
 
       piAmuletPercentOfArtifacts = NECBAL_DEFAULT;
       oLichHall = Send(SYS,@FindRoomByNum,#num=RID_GUILDH15);
-      Send(Send(oLichHall,@GetNecromancersChest),@LockChest,#bLocked=TRUE);
 
-      Send(SYS,@AdminEnableSpell,#num=SID_SHADOW_RIFT);
+      if oLichHall = $
+      {
+         Debug("Tried to spawn lich with necromancer hall missing!");
+
+         return;
+      }
+      else if oRaisedBy <> $
+      {
+         Debug("Lich was raised by ",Send(oRaisedBy,@GetTrueName));
+      }
 
       if Send(oLichHall,@CountHoldingHowMany,#class=&Lich) = 0
       {
@@ -1060,13 +1321,21 @@ messages:
          oDeadLich = Send(oLichHall,@FindHoldingActive,#class=&DeadLich);
          if oDeadLich <> $
          {
-            Send(oDeadLich,@Delete,#lichswapout=TRUE);
+            Send(oDeadLich,@Delete);
          }
 
          return TRUE;
       }
 
-      return;
+      ptLichHungerTimer = CreateTimer(self,@LichHunger,piLichHungerInterval);
+
+      Send(SYS,@SystemBroadcast,#what=$,#type=SAY_MESSAGE,#string=necbal_spawnlich);
+
+      Send(SYS,@AdminEnableSpell,#num=SID_SHADOW_RIFT);
+     
+      Send(Send(oLichHall,@GetNecromancersChest),@LockChest,#bLocked=TRUE);
+
+      return poLich;
    }
 
    LichKilled()
@@ -1078,14 +1347,22 @@ messages:
          return;
       }
 
+      if ptLichHungerTimer <> $
+      {
+         DeleteTimer(ptLichHungerTimer);
+         ptLichHungerTimer = $;
+      }
+
+      Debug("Lich Queen was killed!");
+
       Send(SYS,@AdminDisableSpell,#num=SID_SHADOW_RIFT);
 
       oLichHall = Send(SYS,@FindRoomByNum,#num=RID_GUILDH15);
       poLich = Send(oLichHall,@FindHoldingActive,#class=&DeadLich);
       Send(Send(oLichHall,@GetNecromancersChest),@LockChest,#bLocked=FALSE);
 
-      // Amulets no longer spawn without the queen
-      piAmuletPercentOfArtifacts = 0;
+      // Amulets lower spawn without the queen
+      piAmuletPercentOfArtifacts = NECBAL_DEFAULT / 2;
 
       Send(Send(SYS,@FindRoomByNum,#num=RID_LICH_MAZE),@RandomizeLeverEffects);
       Send(Send(SYS,@FindRoomByNum,#num=RID_G9),@RandomizeLeverEffects);
@@ -1162,6 +1439,8 @@ messages:
    LichHunger()
    {
       local iHunger, i, hourhours, oLich;
+
+      ptLichHungerTimer = $;
 
       if piLichHungerDue < 1
       {
@@ -1297,6 +1576,114 @@ messages:
       Send(SYS,@SystemBroadcast,#type=SAY_MESSAGE,#string=necbal_scores,
          #parm1=piNecromancer_Kills_Total,#parm2=piHunter_Kills_Total,
          #rSound=necbal_snd);
+
+      return;
+   }
+
+   SetNecromancersLeader(who=$)
+   {
+      local oItem;
+
+      if who = $
+      {
+         return;
+      }
+
+      if poNecromancersLeader <> $
+      {
+         oItem = Send(poNecromancersLeader,@FindHoldingActive,#class=&NecromancerAmulet);
+         Send(oItem,@SetRank,#iRank=RANK_APPRENTICE);
+      }
+
+      oItem = Send(who,@FindHoldingActive,#class=&NecromancerAmulet);
+
+      if oItem <> $
+      {
+         Send(oItem,@SetRank,#iRank=RANK_MASTER);
+         poNecromancersLeader = who;
+      }
+
+      return;
+   }
+
+   GetNecromancersLeader()
+   {
+      return poNecromancersLeader;
+   }
+
+   SetHuntersLeader(who=$)
+   {
+      local oItem;
+
+      if who = $
+      {
+         return;
+      }
+
+      if poHuntersLeader <> $
+      {
+         oItem = Send(poNecromancersLeader,@FindHoldingActive,#class=&HunterSword);
+         Send(oItem,@SetRank,#iRank=RANK_APPRENTICE);
+      }
+
+      oItem = Send(who,@FindHoldingActive,#class=&HunterSword);
+
+      if oItem <> $
+      {
+         Send(oItem,@SetRank,#iRank=RANK_MASTER);
+         poHuntersLeader = who;
+      }
+
+      return;
+   }
+
+   GetHuntersLeader()
+   {
+      return poHuntersLeader;
+   }
+
+   GiveLeaderReward(who=$,oRewardRing=$)
+   {
+      local oRing;
+
+      if who = $
+      {
+         return;
+      }
+
+      oRing = Send(who,@FindHolding,#class=&ReagentRing);
+
+      if oRing <> $
+      {
+         Send(oRing,@SetCharge,#iCharges=piRingReward);
+      }
+      else if oRewardRing <> $
+      {
+         Send(who,@NewHold,#what=oRewardRing);
+         Send(who,@MsgSendUser,#message_rsc=necbal_reward);
+         Send(who,@WaveSendUser,#wave_rsc=necbal_reward_snd);
+      }
+
+      return;
+   }
+
+   AssignLichQuest()
+   {
+      local oQE, iQNTindex, lQT, oQ, iResult;
+
+      oQE = Send(SYS,@GetQuestEngine);
+      lQT = Send(oQE,@GetQuestTemplate,#index=QST_ID_SPAWN_LICH);
+
+      // Get rid of any active quests so any new ones get scheduled with new poLich
+      foreach oQ in Nth(lQT,QT_ACTIVE_QUESTS)
+      {
+         Send(oQ,@DeadlineExpired);
+      }
+
+      iQNTindex = First(Nth(lQT,QT_QUEST_NODES));
+      Send(oQE,@SetQuestNodeNPCList,#index=iQNTindex,#new_NPC_list=[poLich]);
+
+      Send(oQE,@ScheduleQuest,#index=QST_ID_SPAWN_LICH);
 
       return;
    }

@@ -42,6 +42,8 @@ resources:
       "every now and then out of the corner of your eye you almost catch "
       "it blinking."
 
+   hunter_rank_rsc = "\n\nYour rank within the hunters is: %s."
+
    HunterSword_window_overlay_rsc = povhunts.bgf
    HunterSword_player_overlay = huntswov.bgf
 
@@ -90,6 +92,13 @@ resources:
       "Your unworthiness has offended your sword of the hunt.  Writhing "
       "violently in your hands for a few moments, the sword suddenly "
       "springs up and away out of sight."
+
+   hunt_rank_5 = "Juggernaut"
+   hunt_rank_4 = "Paladin"
+   hunt_rank_3_male = "Huntsman"
+   hunt_rank_3_female = "Huntress"
+   hunt_rank_2 = "Fellow"
+   hunt_rank_1 = "Apprentice"
 
 classvars:
 
@@ -147,12 +156,27 @@ properties:
    // At piHunger = 0 and Karma = 65, piArtifactPower = 50
    piArtifactPower = 0
 
+   piRank = RANK_APPRENTICE
+
 messages:
 
    Constructor()
    {
-      Send(Send(SYS,@GetNecromancerBalance),@AddHunterSword,#what=self);
-      Send(self,@AdjustColor);
+      local oNecBal;
+
+      oNecBal = Send(SYS,@GetNecromancerBalance);
+
+      if oNecBal = $
+      {
+         Debug("Tried to create hunter sword while necbal doesn't exist.");
+         Send(self,@Delete);
+         return;
+      }
+      else
+      {
+         Send(oNecBal,@AddHunterSword,#what=self);
+         Send(self,@AdjustColor);
+      }
 
       propagate;
    }
@@ -162,7 +186,15 @@ messages:
       local oNecBal;
 
       oNecBal = Send(SYS,@GetNecromancerBalance);
-      Send(oNecBal,@RemoveHunterSword,#what=self);
+
+      if oNecBal = $
+      {
+         Debug("Removed hunter sword while necbal doesn't exist.");
+      }
+      else
+      {
+         Send(oNecBal,@RemoveHunterSword,#what=self);
+      }
 
       if poOwner <> $
          AND IsClass(poOwner,&Player)
@@ -277,6 +309,8 @@ messages:
       if what <> $
          AND IsClass(what,&User)
       {
+         Send(self,@SetRank,#iRank=RANK_APPRENTICE);
+
          Post(self,@HoldingDamageTrigger);
 
          if Send(self,@CheckPlayerWorthy,#who=what)
@@ -783,6 +817,67 @@ messages:
       }
 
       return 0;
+   }
+
+   GetRankRsc(who=$,iRank=0)
+   {
+      local oNecBal;
+
+      oNecBal = Send(SYS,@GetNecromancerBalance);
+
+      if who <> $
+         AND IsClass(who,&Player)
+      {
+         if Send(who,@GetGender) = GENDER_FEMALE
+            AND iRank = RANK_LORD
+         {
+            return hunt_rank_3_female;
+         }
+         else
+         {
+            switch(iRank)
+            {
+               case(1): return hunt_rank_1;
+               case(2): return hunt_rank_2;
+               case(3): return hunt_rank_3_male;
+               case(4): return hunt_rank_4;
+               case(5): return hunt_rank_5;
+
+               default: return hunt_rank_1;
+            }
+         }
+      }
+
+      return;
+   }
+
+   AppendDesc()
+   {
+      local oNecBal;
+
+      oNecBal = Send(SYS,@GetNecromancerBalance);
+
+      if poOwner <> $
+         AND IsClass(poOwner,&Player)
+         AND Send(oNecBal,@IsHunter,#who=poOwner)
+      {
+            AddPacket(4,hunter_rank_rsc,
+               4,Send(self,@GetRankRsc,#who=poOwner,#iRank=piRank));
+      }
+
+      propagate;
+   }
+
+   SetRank(iRank=RANK_APPRENTICE)
+   {
+      piRank = iRank;
+
+      return;
+   }
+
+   GetRank()
+   {
+      return piRank;
    }
 
 end

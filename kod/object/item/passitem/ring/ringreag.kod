@@ -164,5 +164,31 @@ messages:
       return FALSE;
    }
 
+   SetCharge(iCharges=0)
+   {
+      piCharges = iCharges;
+
+      return;
+   }
+
+   SomethingChanged(what=$)
+   {
+      local oNecBal;
+
+      if what = poOwner
+         AND IsClass(what,&Player)
+      {
+         oNecBal = Send(SYS,@GetNecromancerBalance);
+         if Send(oNecBal,@GetNecromancersLeader) <> what
+            OR Send(oNecBal,@GetHuntersLeader) <> what
+         {
+            // Reserved for the Necromancer/Hunter leaders
+            Send(self,@Delete);
+         }
+      }
+
+      propagate;
+   }
+
 end
 ////////////////////////////////////////////////////////////////////////////////

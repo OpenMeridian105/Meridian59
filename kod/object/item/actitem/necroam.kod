@@ -36,6 +36,8 @@ resources:
       "look at it in the corner of your eye, you can almost see the evil "
       "pouring forth from it."
 
+   necamlet_rank_rsc = "\n\nYour rank within the order is: %s."
+
    necamulet_newbie_pickup_good = \
       "Your guardian angel says, \"That amulet is a thing of great "
       "evil.  Even holding it in your possession would corrupt your soul, "
@@ -139,6 +141,13 @@ resources:
       "As your essence dissolves away from this plane of existence, the "
       "amulet slips out of your hands and drops to the ground."
 
+   nec_rank_5 = "Supreme Necromancer"
+   nec_rank_4 = "Deathmage"
+   nec_rank_3_male = "Warlock"
+   nec_rank_3_female = "Witch"
+   nec_rank_2 = "Initiate"
+   nec_rank_1 = "Fledgling"
+
 classvars:
 
    viIndefinite = ARTICLE_AN
@@ -182,6 +191,8 @@ properties:
    // At piHunger = 0 and Karma = 65, piArtifactPower = 50
    piArtifactPower = 0
 
+   piRank = RANK_APPRENTICE
+
 messages:
 
    UpdateDatabase()
@@ -201,7 +212,20 @@ messages:
 
    Constructor()
    {
-      Send(Send(SYS,@GetNecromancerBalance),@AddNecroAmulet,#what=self);
+      local oNecBal;
+
+      oNecBal = Send(SYS,@GetNecromancerBalance);
+
+      if oNecBal = $
+      {
+         Debug("Tried to create necro amulet while necbal doesn't exist.");
+         Send(self,@Delete);
+         return;
+      }
+      else
+      {
+         Send(oNecBal,@AddNecroAmulet,#what=self);
+      }
 
       propagate;
    }
@@ -211,7 +235,15 @@ messages:
       local oNecBal;
 
       oNecBal = Send(SYS,@GetNecromancerBalance);
-      Send(oNecBal,@RemoveNecroAmulet,#what=self);
+
+      if oNecBal = $
+      {
+         Debug("Removed necro amulet while necbal doesn't exist.");
+      }
+      else
+      {
+         Send(oNecBal,@RemoveNecroAmulet,#what=self);
+      }
 
       if poOwner <> $
          AND IsClass(poOwner,&Player)
@@ -327,6 +359,7 @@ messages:
       if what <> $
          AND IsClass(what,&User)
       {
+         Send(self,@SetRank,#iRank=RANK_APPRENTICE);
          Post(self,@HoldingDamageTrigger);
       }
 
@@ -1025,6 +1058,67 @@ messages:
       }
 
       return 0;
+   }
+
+   GetRankRsc(who=$,iRank=0)
+   {
+      local oNecBal;
+
+      oNecBal = Send(SYS,@GetNecromancerBalance);
+
+      if who <> $
+         AND IsClass(who,&Player)
+      {
+         if Send(who,@GetGender) = GENDER_FEMALE
+            AND iRank = RANK_LORD
+         {
+            return nec_rank_3_female;
+         }
+         else
+         {
+            switch(iRank)
+            {
+               case(1): return nec_rank_1;
+               case(2): return nec_rank_2;
+               case(3): return nec_rank_3_male;
+               case(4): return nec_rank_4;
+               case(5): return nec_rank_5;
+
+               default: return nec_rank_1;
+            }
+         }
+      }
+
+      return;
+   }
+
+   AppendDesc()
+   {
+      local oNecBal;
+
+      oNecBal = Send(SYS,@GetNecromancerBalance);
+
+      if poOwner <> $
+         AND IsClass(poOwner,&Player)
+         AND Send(oNecBal,@IsNecromancer,#who=poOwner)
+      {
+         AddPacket(4,necamlet_rank_rsc,
+            4,Send(self,@GetRankRsc,#who=poOwner,#iRank=piRank));
+      }
+
+      propagate;
+   }
+
+   SetRank(iRank=RANK_APPRENTICE)
+   {
+      piRank = iRank;
+
+      return;
+   }
+
+   GetRank()
+   {
+      return piRank;
    }
 
 end

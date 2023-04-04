@@ -7,6 +7,6 @@
 DEPEND = ..\hstone.bof
 BOFS = hstonred.bof hstonblu.bof hstonsky.bof hstonbrn.bof \
        hstongre.bof hstonblk.bof hstonwht.bof hstondkgre.bof \
-       hstonpurp.bof
+       hstonpurp.bof emberfused.bof
 
 !include $(KODDIR)\kod.mak

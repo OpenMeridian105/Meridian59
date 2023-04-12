@@ -1,0 +1,232 @@
+// Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+// All rights reserved.
+//
+// This software is distributed under a license that is described in
+// the LICENSE file that accompanies it.
+//
+// Meridian is a registered trademark.
+
+
+/////////////////////////////////////////////////////////////////////////////////
+BergCryptQuest is QuestTemplate
+// QNT_ID_BERG_CRYPT_1, QNT_ID_BERG_CRYPT_2,
+// QNT_ID_BERG_CRYPT_3, QNT_ID_BERG_CRYPT_4
+
+// QuestTemplate is
+// [ quest template index
+//   quest template object
+//   number of players,
+//   type of quest,
+//   eligible player restrictions,
+//   quest nodes,
+//   max number active,
+//   currently active quests,
+//   percent chance of scheduling (on timer firing)
+//   special restrictions ]
+
+constants:
+
+   include blakston.khd
+
+resources:
+
+   // Quest description.
+   BergCryptQuest_icon_rsc = vitkhul.bgf
+   BergCryptQuest_name_rsc = "Requiem"
+
+   BergCryptQuest_desc_rsc = \
+       "The people of Berg believe that their ancestors are buried in a crypt hidden somewhere in the mountains.  "
+       "You have been tasked to find the crypt and uncover its secrets."
+
+   BergCryptQuest_node1_rsc = \
+        "Find Harold, treasurer to the King of Berg."
+
+   BergCryptQuest_completed = \
+        "You have successfully uncovered the secrets of the Berg Crypt."
+
+   // Quest resources.
+   BergCryptQuest_trigger = "king"
+   BergCryptQuest_assign_2 = \
+      "The King once entrusted me with an egg to protect.  "
+      "I cared for it for months until it hatched into a spider baby.  "
+      "It became my loyal companion, and I spent years training it to be a formidable ally.  "
+      "But the King had one final test for me - I had to let go of...everything.  "
+      "I realized that there was more to the King than he let on.  "
+      "Berg is said to be haunted, and rumors abound of an ancient crypt hidden within its depths.  "
+      "I suggest seeking my father, who happens to be the treasurer of the King."
+   BergCryptQuest_node2_rsc = \
+      "Your next step is to seek out Harold, the treasurer to the King of Berg.  "
+      "He may have valuable information about the crypt and its location."
+   BergCryptQuest_failure_2 = \
+      "Subject: Crypt Inquiry\n"
+      "Greetings adventurer, have you made any progress in finding my father, Harold? "
+      "He is the treasurer to the King of Berg and holds valuable information regarding the crypt. "
+      "Please update me on your progress as soon as possible."
+
+   BergCryptQuest_assign_3 = \
+      "Berg is said to be haunted, and rumors abound of an ancient crypt hidden within its depths.  "
+      "However, finding this crypt won't be easy, "
+      "as its location is shrouded in mystery and known only to a select few.  "
+      "I can offer you a clue that might aid you in breaking the seal of the crypt's entrance.  "
+      "You'll come across a door and a ring of seven torches.  "
+      "Lighting any new torches will cause the others to blackout, "
+      "but dropping a special artifact will release the seal and light all the torches at once.  "
+      "Seek out the Jala Priestess, she may have more information on the crypt's whereabouts."
+   BergCryptQuest_node3_rsc = \
+      "Proceed to the Jala Priestess and inquire about the crypt."
+
+   BergCryptQuest_failure_3 = \
+      "Subject: Jala Priestess Inquiry\n"
+      "Have you made any progress with the Jala Priestess regarding the crypt?"
+
+   BergCryptQuest_assign_4 = \
+      "If you're brave enough to enter the crypt, "
+      "you must first face the powerful creature of darkness known as Vitkhul. "
+      "Travel to the death valley and listen closely to the stones, "
+      "as they may reveal the whereabouts of their lair.  "
+      "Then, play a requiem in front of the sealed entrance to the crypt."
+      "However, be warned that you will need to solve a final puzzle to open the sealed door. "
+      "Once you break the seal, the crypt will be open to you, "
+      "revealing the long-forgotten resting place of Berg's ancestors."
+    BergCryptQuest_node4_rsc = \
+      "Jala Priestess has heard of your bravery and skill, and believes that you can help her defeat the Vitkhul, "
+      "a powerful monster that has been terrorizing the people of Berg.  "
+      "Return to the Jala Priestess after defeating a Vitkhul."
+   BergCryptQuest_failure_4 = \
+      "Subject: Crypt in Berg\n"
+      "Were you able to break the seal of the crypt?"
+
+   BergCryptQuest_success = \
+      "King Aaron Leone once had a fourth child, a son who tragically passed away before birth.  "
+      "Heartbroken and desperate, the king ventured into the desert where he encountered a "
+      "mysterious figure from the little-known kingdom of Hakka.  In exchange for a favor, "
+      "the stranger granted the king the power to bring his son back to life.  "
+      "But this power came with a terrible cost.  The revived son, known as the Vitkhul, "
+      "brought with him an army of undead warriors that King Leone used to win a great battle.  "
+      "However, the power of the undead proved too great and threatened to consume the kingdom.  "
+      "In a desperate attempt to stop the Vitkhul and his army, the goddess Jala herself sealed them beneath the king's castle."
+
+classvars:
+
+   vrIcon = BergCryptQuest_icon_rsc
+   vrName = BergCryptQuest_name_rsc
+   vrDesc = BergCryptQuest_desc_rsc
+   vrCompleted = BergCryptQuest_completed
+
+   // The QST_ID constant for this quest.
+   viQuestID = QNT_ID_BERG_CRYPT
+
+   vrReturn = BergCryptQuest_node1_rsc
+   vrNode2 = BergCryptQuest_node2_rsc
+   vrNode3 = BergCryptQuest_node3_rsc
+   vrNode4 = BergCryptQuest_node4_rsc
+
+properties:
+
+   piNumPlayers = 1
+   piPlayerRestrict = Q_PLAYER_NOTSUCCEEDED | Q_PLAYER_NOTFAILED_RECENTLY
+   plSpecialRestrict = $
+   piMaxPlayers = 30
+   piSchedulePct = 100
+   piTimeLimit = 24 * 3600 // 24 hours.
+
+messages:
+
+   Constructor()
+   {
+      // Quest node - restrictions
+      plSpecialRestrict = [ [Q_R2_HAS_FAILED_QUEST_ID, QNT_ID_BERG_KING_SPIDER_QUEST] ];
+
+      // Quest node list to send to QuestEngine.
+      plQuestNodes = [ QNT_ID_BERG_CRYPT_1, QNT_ID_BERG_CRYPT_2,
+                       QNT_ID_BERG_CRYPT_3, QNT_ID_BERG_CRYPT_4  ];
+
+      //Quest nodes with matching descriptions for the player.
+      plQuestNodeDesc = [ 
+                          [QNT_ID_BERG_CRYPT_2, vrNode2],
+                          [QNT_ID_BERG_CRYPT_3, vrNode3],
+                          [QNT_ID_BERG_CRYPT_4, vrNode4]
+                        ];
+
+      propagate;
+   }
+
+   SendQuestNodeTemplates()
+   {
+      local lNPCs, oQE, oLib, oNPC;
+
+      oQE = Send(SYS,@GetQuestEngine);
+      oLib = Send(SYS,@GetLibrary);
+
+      // QNT_ID_BERG_CRYPT_1 - kickoff
+      if Send(oQE,@AddQuestNodeTemplate,#questnode_type=QN_TYPE_MESSAGE,
+               #cargolist=[BergCryptQuest_trigger],
+               #quest_node_index=QNT_ID_BERG_CRYPT_1)
+      {
+         Send(oQE,@SetQuestNodeNPCList,#index=QNT_ID_BERG_CRYPT_1,
+               #new_NPC_list=Send(oLib,@GetOccupationList,
+                                 #cNPC_class=&BergBanker));
+      }
+      else
+      {
+         Debug("Error building QN: QNT_ID_BERG_CRYPT_1");
+      }
+
+      // QNT_ID_BERG_CRYPT_2 - go to BergAucM
+      if Send(oQE,@AddQuestNodeTemplate,#questnode_type=QN_TYPE_SHOWUP,
+               #timelimit=piTimeLimit,#quest_node_index=QNT_ID_BERG_CRYPT_2)
+      {
+         Send(oQE,@SetQuestNodeNPCList,#index=QNT_ID_BERG_CRYPT_2,
+               #new_NPC_list=Send(oLib,@GetOccupationList,
+                                 #cNPC_class=&BergAucM));
+
+         Send(oQE,@SetQuestNodeAssignHint,#index=QNT_ID_BERG_CRYPT_2,
+               #new_hint=BergCryptQuest_assign_2);
+         Send(oQE,@SetQuestNodeFailureHint,#index=QNT_ID_BERG_CRYPT_2,
+               #new_hint=BergCryptQuest_failure_2);
+      }
+      else
+      {
+         Debug("Error building QN: QNT_ID_BERG_CRYPT_2");
+      }
+
+      // QNT_ID_BERG_CRYPT_3 - find the Jala Priestess
+      if Send(oQE,@AddQuestNodeTemplate,#questnode_type=QN_TYPE_SHOWUP,
+               #timelimit=piTimeLimit,#quest_node_index=QNT_ID_BERG_CRYPT_3)
+      {
+         Send(oQE,@SetQuestNodeNPCList,#index=QNT_ID_BERG_CRYPT_3,
+               #new_NPC_list=Send(oLib,@GetOccupationList,
+                                 #cNPC_class=&JalaPriestess));
+         Send(oQE,@SetQuestNodeAssignHint,#index=QNT_ID_BERG_CRYPT_3,
+               #new_hint=BergCryptQuest_assign_3);
+         Send(oQE,@SetQuestNodeFailureHint,#index=QNT_ID_BERG_CRYPT_3,
+               #new_hint=BergCryptQuest_failure_3);
+      }
+      else
+      {
+         Debug("Error building QN: QNT_ID_BERG_CRYPT_3");
+      }
+
+      // QNT_ID_BERG_CRYPT_4 - go kill Vitkhul
+      if Send(oQE,@AddQuestNodeTemplate,#questnode_type=QN_TYPE_MONSTER,
+               #NPC_modifier=QN_NPCMOD_SAME,#monsterlist=[&Vitkhul],
+               #timelimit=piTimeLimit,#quest_node_index=QNT_ID_BERG_CRYPT_4,
+               #prizelist=[ [ QN_PRIZETYPE_ITEMCLASS,&Lyre, 1] ])
+      {
+         Send(oQE,@SetQuestNodeAssignHint,#index=QNT_ID_BERG_CRYPT_4,
+               #new_hint=BergCryptQuest_assign_4);
+         Send(oQE,@SetQuestNodeSuccessHint,#index=QNT_ID_BERG_CRYPT_4,
+               #new_hint=BergCryptQuest_success);
+         Send(oQE,@SetQuestNodeFailureHint,#index=QNT_ID_BERG_CRYPT_4,
+               #new_hint=BergCryptQuest_failure_4);
+      }
+      else
+      {
+         Debug("Error building QN: QNT_ID_BERG_CRYPT_4");
+      }
+
+      return;
+   }
+
+end
+/////////////////////////////////////////////////////////////////////////////////

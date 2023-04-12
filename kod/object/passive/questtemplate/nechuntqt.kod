@@ -1,0 +1,176 @@
+// Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+// All rights reserved.
+//
+// This software is distributed under a license that is described in
+// the LICENSE file that accompanies it.
+//
+// Meridian is a registered trademark.
+
+
+/////////////////////////////////////////////////////////////////////////////////
+NecromancerHuntQuest is QuestTemplate
+// QNT_ID_NECHUNT_1, QNT_ID_NECHUNT_2,
+
+// QuestTemplate is
+// [ quest template index
+//   quest template object
+//   number of players,
+//   type of quest,
+//   eligible player restrictions,
+//   quest nodes,
+//   max number active,
+//   currently active quests,
+//   percent chance of scheduling (on timer firing)
+//   special restrictions ]
+
+constants:
+
+   include blakston.khd
+
+resources:
+
+   //include NECHUNTqt.kod
+
+   NecromancerHuntQuest_icon_rsc = gskelhed4.bgf
+   NecromancerHuntQuest_name_rsc = "The Necromancer of Brax"
+
+   NecromancerHuntQuest_desc_rsc = \
+      "The city of Brax was destroyed long ago, but rumors  persist of an undead presence "
+      "there.  Recently, a giant skeleton has been seen near the ruins of the city. "
+      "Your task is to investigate the source of the undead in Brax and put an end to it, "
+      "starting with the giant skeleton.  But be warned, the necromancer who controls "
+      "the undead is a powerful foe."
+
+   NecromancerHuntQuest_kill_rsc = \
+      "The giant skeleton in Brax is just the beginning of the undead presence there. "
+      "You must fight your way through the ruins and find the necromancer responsible "
+      "for the undead.  Be on your guard, as the necromancer is a powerful foe who will "
+      "not give up easily.\n\n"
+      "You have defeated %i out of %i giant daemon skeletons in Brax.  "
+      "Return to %s when the task is done."
+
+   NecromancerHuntQuest_return_rsc = \
+      "Return to the councilor, %s who sits outside Castle Victoria and let %s know "
+      "that the giant skeletons in Brax have been defeated."
+
+   NecromancerHuntQuest_completed = \
+      "Thanks to the bravery of the adventurers who took on the giant skeletons in Brax, "
+      "the city is once again free from the scourge of the undead.  The people of Meridian "
+      "can rest easy knowing that another threat has been dealt with."
+
+   // Quest resources.
+   NecromancerHuntQuest_trigger = "undead"
+   NecromancerHuntQuest_assign = \
+      "We have received troubling reports of undead activity in the ruins of Brax, "
+      "a city known to be owned by the necromancers.  Such a threat cannot be "
+      "ignored by the council, and we require your expertise to investigate and "
+      "eliminate the source of the undead menace.  Your first target is the giant skeleton, "
+      "a powerful and intimidating foe."
+
+   NecromancerHuntQuest_success = \
+      "Brax is an undead city that is rumored to be controlled by powerful necromancers, "
+      "who are said to be led by a mysterious figure known only as the lich.  "
+      "Be on your guard, for her power is said to be immense."
+
+classvars:
+
+   vrIcon = NecromancerHuntQuest_icon_rsc
+   vrName = NecromancerHuntQuest_name_rsc
+   vrDesc = NecromancerHuntQuest_desc_rsc
+
+   vrKill = NecromancerHuntQuest_kill_rsc
+   vrReturn = NecromancerHuntQuest_return_rsc
+   vrCompleted = NecromancerHuntQuest_completed
+
+   // The QST_ID constant for this quest.
+   viQuestID = QNT_ID_NECHUNT
+
+properties:
+
+   piNumPlayers = 1
+   piPlayerRestrict = Q_PLAYER_NOTTRIED_RECENTLY
+   plSpecialRestrict = $
+   piMaxPlayers = 30
+   piSchedulePct = 100
+   piTimeLimit = 24 * 3600 // 24 hours.
+
+   piQuestDuration = 40
+   piQuestDifficulty = 10
+
+messages:
+
+   Constructor()
+   {
+      // Quest node - restrictions
+      plSpecialRestrict = [ [Q_R2_HAS_COMPLETED_QUEST_ID, QNT_ID_CASTLEVIC] ];
+
+      // Quest node list to send to QuestEngine.
+      plQuestNodes = [QNT_ID_NECHUNT_1, QNT_ID_NECHUNT_2];
+
+      propagate;
+   }
+
+   SendQuestNodeTemplates()
+   {
+      local lNPCs, oNPC, oQE, oLib;
+
+      oQE = Send(SYS,@GetQuestEngine);
+      oLib = Send(SYS,@GetLibrary);
+
+      // QNT_ID_NECHUNT_1 - kickoff
+      if Send(oQE,@AddQuestNodeTemplate,#questnode_type=QN_TYPE_MESSAGE,
+               #cargolist=[NecromancerHuntQuest_trigger],
+               #quest_node_index=QNT_ID_NECHUNT_1)
+      {
+         Send(oQE,@SetQuestNodeNPCList,#index=QNT_ID_NECHUNT_1,
+               #new_NPC_list=Send(oLib,@GetOccupationList,
+                                 #cNPC_class=&FourCouncilor));
+      }
+      else
+      {
+         Debug("Error building QN: QNT_ID_NECHUNT_1");
+      }
+
+      // QNT_ID_NECHUNT_2
+      if Send(oQE,@AddQuestNodeTemplate,#questnode_type=QN_TYPE_MONSTER_MULTIPLE,
+               #NPC_modifier=QN_NPCMOD_SAME,#monsterlist=[ [&GiantDaemonSkeleton, 15] ],
+               #timelimit=piTimeLimit,#quest_node_index=QNT_ID_NECHUNT_2,
+               #prizelist=[ [ [ QN_PRIZETYPE_ITEMCLASS, &WindrootLeaf, 55 ],
+                              [ QN_PRIZETYPE_ITEMCLASS, &WindrootLeaf, 40 ],
+                              [ QN_PRIZETYPE_ITEMCLASS, &TheurgicRemnant, 20 ],
+                              [ QN_PRIZETYPE_ITEMCLASS, &TwinkleCap, 50 ] ] ])
+      {
+         Send(oQE,@SetQuestNodeAssignHint,#index=QNT_ID_NECHUNT_2,
+               #new_hint=NecromancerHuntQuest_assign);
+         Send(oQE,@SetQuestNodeSuccessHint,#index=QNT_ID_NECHUNT_2,
+               #new_hint=NecromancerHuntQuest_success);
+      }
+      else
+      {
+         Debug("Error building QN: QNT_ID_NECHUNT_2");
+      }
+
+      return;
+   }
+
+   MainDesc(who=$,index=$,oQuestNode=$)
+   {
+      local oMob, oNPC;
+
+      oMob = Send(oQuestNode,@GetQuestMonster);
+      oNPC = Send(oQuestNode,@GetSourceNPC);
+      if oMob = $
+      {
+         AddPacket(4,vrReturn,4,Send(oNPC,@GetName),4,Send(oNPC,@GetHimHer));
+      }
+      else
+      {
+         AddPacket(4,vrKill,4,Send(oQuestNode,@GetNumberMonstersKilled),
+            4,Send(oQuestNode,@GetMonsterKillTarget),4,Send(oNPC,@GetName));
+      }
+
+      return;
+   }
+
+end
+/////////////////////////////////////////////////////////////////////////////////

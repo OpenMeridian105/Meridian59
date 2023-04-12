@@ -1,0 +1,144 @@
+// Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+// All rights reserved.
+//
+// This software is distributed under a license that is described in
+// the LICENSE file that accompanies it.
+//
+// Meridian is a registered trademark.
+
+
+/////////////////////////////////////////////////////////////////////////////////
+FindBergAucQuest is QuestTemplate
+// Quest template QNT_ID_FIND_BERGAUCTION
+// QNT_ID_FIND_BERGAUCTION_ONE, QNT_ID_FIND_BERGAUCTION_ONE
+
+// QuestTemplate is
+// [ quest template index
+//   quest template object
+//   number of players,
+//   type of quest,
+//   eligible player restrictions,
+//   quest nodes,
+//   max number active,
+//   currently active quests,
+//   percent chance of scheduling (on timer firing)
+//   special restrictions ]
+
+constants:
+
+   include blakston.khd
+
+resources:
+
+   //include jixainnescort.lkod
+
+   // Quest description.
+   FindBergAucQuest_icon_rsc = bergauc.bgf
+   FindBergAucQuest_name_rsc = "Beyond the Mountains"
+   FindBergAucQuest_desc_rsc = \
+      "For generations, the people of Berg have been cut off from the outside world.  "
+      "The barrier has been torn down, and the new world of Berg is open for exploration.  "
+      "Alzahakar, has asked for your help in visiting the auction house in the east. "
+      "Will you assist him?"
+
+   FindBergAucQuest_completed_rsc = \
+      "Congratulations! You have successfully visited Berg's auction house."
+
+   // Quest resources.
+   FindBergAucQuest_trigger = "quest"
+   FindBergAucQuest_assign = \
+      "I have a proposition for you.  There is an auction house in the east where I wish "
+      "to sell my wares, but I'm unable to leave my current location.  "
+      "I would like you to visit the auction house on my behalf?"
+
+   FindBergAucQuest_success = \
+      "Thank you for visiting my auction house, adventurer.  "
+      "Don't hesitate to come back in the future if you're ever in the market "
+      "for some high-quality goods."
+
+classvars:
+
+   vrIcon = FindBergAucQuest_icon_rsc
+   vrName = FindBergAucQuest_name_rsc
+   vrDesc = FindBergAucQuest_desc_rsc
+
+   vrCompleted = FindBergAucQuest_completed_rsc
+
+   // The QST_ID constant for this quest.
+   viQuestID = QNT_ID_FIND_BERGAUCTION
+
+   viIcon_Animation_start = 1
+
+properties:
+
+   piNumPlayers = 1
+   piPlayerRestrict = \
+      Q_PLAYER_NOTSUCCEEDED | Q_PLAYER_NOTFAILED_RECENTLY
+   plSpecialRestrict = $
+   piMaxPlayers = 30
+   piSchedulePct = 100
+
+   piTimeLimit = 1 * 3600 // 1 hour.
+
+   piQuestDuration = 5
+   piQuestDifficulty = 1
+
+messages:
+
+   Constructor()
+   {
+      // Quest node list to send to QuestEngine.
+      plQuestNodes = [QNT_ID_FIND_BERGAUCTION_ONE,
+                      QNT_ID_FIND_BERGAUCTION_TWO ];
+
+      propagate;
+   }
+
+   SendQuestNodeTemplates()
+   {
+      local oQE, oLib, oNPC, lNPCs;
+
+      oQE = Send(SYS,@GetQuestEngine);
+      oLib = Send(SYS,@GetLibrary);
+
+      // kickoff
+      // QNT_ID_FIND_BERGAUCTION_ONE
+      if Send(oQE,@AddQuestNodeTemplate,#questnode_type=QN_TYPE_MESSAGE,
+            #cargolist=[FindBergAucQuest_trigger],
+            #quest_node_index=QNT_ID_FIND_BERGAUCTION_ONE)
+      {
+         Send(oQE,@SetQuestNodeNPCList,#index=QNT_ID_FIND_BERGAUCTION_ONE,
+               #new_NPC_list=Send(oLib,@GetOccupationList,
+                                 #cNPC_class=&OneCouncilor));
+      }
+      else
+      {
+         Debug("Error building QN: QNT_ID_FIND_BERGAUCTION_ONE");
+      }
+      
+      // Template #277 is quest
+      // QNT_ID_FIND_BERGAUCTION_TWO
+      if Send(oQE,@AddQuestNodeTemplate,#questnode_type=QN_TYPE_SHOWUP,
+               #quest_node_index=QNT_ID_FIND_BERGAUCTION_TWO)
+      {
+               
+         Send(oQE,@SetQuestNodeNPCList,#index=QNT_ID_FIND_BERGAUCTION_TWO,
+               #prizelist=[ [ [ QN_PRIZETYPE_ITEMCLASS, &ScaleArmor, 1 ],
+                              [ QN_PRIZETYPE_ITEMCLASS, &GoldShield, 1 ] ] ],
+               #new_NPC_list=Send(oLib,@GetOccupationList,
+                                 #cNPC_class=&BergAucM));
+         Send(oQE,@SetQuestNodeAssignHint,#index=QNT_ID_FIND_BERGAUCTION_TWO,
+               #new_hint=FindBergAucQuest_assign);
+         Send(oQE,@SetQuestNodeSuccessHint,#index=QNT_ID_FIND_BERGAUCTION_TWO,
+               #new_hint=FindBergAucQuest_success);
+      }
+      else
+      {
+         Debug("Error building QN: QNT_ID_FIND_BERGAUCTION_TWO");
+      }
+
+      return;
+   }
+
+end
+/////////////////////////////////////////////////////////////////////////////////

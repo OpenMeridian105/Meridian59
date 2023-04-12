@@ -24,9 +24,10 @@ BOFS = shaldiscqt.bof krandiscqt.bof farendiscqt.bof qordiscqt.bof \
        bergkingpoliticsqt.bof bergkingspdrqt.bof wolfhuntqt.bof \
        jixainnescort.bof escortassnqt.bof jixabanditqt.bof \
        spinebeastbossqt.bof monstercharmqt.bof resignqt.bof \
-       findjasbankqt.bof findcornothqt.bof tosgraveqt.bof marmummiesqt.bof \
+       findbergaucqt.bof findjixaqt.bof tosgraveqt.bof marmummiesqt.bof \
        marstatuesqt.bof castlevicqt.bof marentqt.bof fungushuntqt.bof \
        marthrashqt.bof orchuntqt.bof goodfeyhuntqt.bof evfeyhuntqt.bof \
-       molluskhuntqt.bof nerutrollhuntqt.bof lupogghuntqt.bof
+       molluskhuntqt.bof nerutrollhuntqt.bof lupogghuntqt.bof nechuntqt.bof \
+       killlichqt.bof bergcryptqt.bof
 
 !include $(KODDIR)\kod.mak

@@ -6591,6 +6591,11 @@ messages:
          Send(use_weapon,@DamageItem,#bAttack=TRUE);
       }
 
+      // Use the room the victim died in to determine if there are penalties
+      // for this kill. Otherwise we can get away with it in rare instances.
+      // Victim's room is still the one they died in.
+      oVictimRoom = Send(what,@GetOwner);
+
       // Some stuff only applies when we have killed ourselves.
       if oMinion = $
       {
@@ -6633,8 +6638,8 @@ messages:
          // We only take karma hits for our own kills. Totally unfair really.
          // Inciting the violence is just as bad really!
          if NOT (Send(what,@IsIllusion)
-               OR Send(poOwner,@IsArena)
-               OR Send(poOwner,@GetChaosZone))
+               OR Send(oVictimRoom,@IsArena)
+               OR Send(oVictimRoom,@GetChaosZone))
          {
             Send(self,@AddKarma,#amount=Send(self,@CalculateKarmaChangeFromKill,
                   #karma_victim=Send(what,@GetKarma),
@@ -6664,11 +6669,6 @@ messages:
       if IsClass(what,&User)
          AND what <> self
       {
-         // Use the room the victim died in to determine if there are penalties
-         // for this kill. Otherwise we can get away with it in rare instances.
-         // Victim's room is still the one they died in.
-         oVictimRoom = Send(what,@GetOwner);
-
          if (oVictimRoom = $
             OR NOT Send(oVictimRoom,@SafePlayerAttack))
             AND NOT Send(oVictimRoom,@GetChaosZone)

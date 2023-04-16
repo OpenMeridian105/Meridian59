@@ -6,6 +6,6 @@
 
 DEPEND = ..\armor.bof
 BOFS = chain.bof plate.bof leather.bof scale.bof robebase.bof neruarmr.bof \
-       rubarmr.bof
+       rubarmr.bof blackamr.bof mysticamr.bof
 
 !include $(KODDIR)\kod.mak

@@ -599,7 +599,11 @@ properties:
    // keep track of how much this player triggers flood protection
    piFloodCount = 0
 
-   // Checks for actual changes before drawing. Removes flicker.
+   // Checks for actual changes before drawing. Removes flicker (in stats?).
+   // Has 7 elements:
+   // [ current_health, max_health,
+   //   current_mana, max_mana,
+   //   current_vigor, max_vigor, vigor_rest_threshold ]
    plDraw = $
 
    // Keeps track of the most recent steps a user has taken.
@@ -891,7 +895,7 @@ messages:
       piLastLoginTime = GetTime();
 
       // Reset draw list to make sure we load our vitals.
-      plDraw = [-1,-1,-1,-1,-1,-1];
+      plDraw = [-1,-1,-1,-1,-1,-1,-1];
 
       // Gotta load interface early!
       Send(self,@UserLoadModule,#module=user_interface_module);
@@ -1194,6 +1198,9 @@ messages:
             }
          }
       }
+
+      // Gets re-initialised when we log on next.
+      plDraw = $;
 
       poSession = $;
 
@@ -10595,14 +10602,20 @@ messages:
 
    DrawVigor()
    {
+      local iRestThreshold;
+
+      iRestThreshold = Send(self,@GetVigorRestThreshold,#base=FALSE);
       if pbLogged_on
-      AND (Nth(plDraw,5)/100 - piVigor/100 OR Nth(plDraw,6) - piMax_vigor)
+         AND (Nth(plDraw,5)/100 - piVigor/100
+            OR Nth(plDraw,6) - piMax_vigor
+            OR Nth(plDraw,7) - iRestThreshold)
       {
          AddPacket(1,BP_STAT, 1,1);
          Send(self,@SendStatVigor);
          SendPacket(poSession);
          SetNth(plDraw,5,piVigor);
          SetNth(plDraw,6,piMax_vigor);
+         SetNth(plDraw,7,iRestThreshold);
       }
 
       return;
@@ -12594,6 +12607,23 @@ messages:
       }
 
       return piSave_Angle;
+   }
+
+   FixDrawList()
+   "Adjusts for the addition of the 7th element in the draw list (vigor rest "
+   "threshold). Message can be deleted after use on 105 and 112."
+   {
+      if pbLogged_on
+         AND Length(plDraw) = 6
+      {
+         plDraw = AppendListElem(-1, plDraw);
+      }
+      else
+      {
+         plDraw = $;
+      }
+
+      return;
    }
 
    FixMailTimestamps()

@@ -1,4 +1,4 @@
-Meridian 59 v2.0, February 2016
+Meridian 59 v3.0, September 2023
 Andrew Kirmse and Chris Kirmse
 
 Copyright 1994-2012 Andrew Kirmse and Chris Kirmse

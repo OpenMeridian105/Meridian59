@@ -24,6 +24,7 @@ constants:
    COLOR_BLUE = 1
    COLOR_GREEN = 2
    COLOR_YELLOW = 3
+   COLOR_PURPLE = 4
 
 resources:
 
@@ -698,18 +699,11 @@ messages:
       iFlags = viObject_flags | piDrawEffectFlag;
 
       if piColor = COLOR_GREEN
+         OR piColor = COLOR_PURPLE
+         OR piColor = COLOR_BLUE
+         OR piColor = COLOR_YELLOW
       {
-         iFlags = iFlags | OF_DISPLAY_NAME;
-      }
-
-      if piColor = COLOR_BLUE
-      {
-         iFlags = iFlags | OF_DISPLAY_NAME;
-      }
-
-      if piColor = COLOR_YELLOW
-      {
-         iFlags = iFlags | OF_DISPLAY_NAME;
+         iFlags |= OF_DISPLAY_NAME;
       }
 
       return iFlags;
@@ -717,50 +711,35 @@ messages:
 
    GetPlayerNameColor()
    {
-      local iFlags;
-
-      iFlags = 0;
-
-      if piColor = COLOR_GREEN
+      switch (piColor)
       {
-         iFlags = iFlags | NC_SUPER;
+         case COLOR_GREEN:
+            return NC_SUPER;
+         case COLOR_BLUE:
+            return NC_DM;
+         case COLOR_YELLOW:
+            return NC_CREATOR;
+         case COLOR_PURPLE:
+            return NC_PURPLE;
       }
 
-      if piColor = COLOR_BLUE
-      {
-         iFlags = iFlags | NC_DM;
-      }
-
-      if piColor = COLOR_YELLOW
-      {
-         iFlags = iFlags | NC_CREATOR;
-      }
-
-      return iFlags;
+      return 0;
    }
 
    GetClientObjectType()
    {
-      local iFlags;
-
-      iFlags = 0;
-
-      if piColor = COLOR_GREEN
+      switch (piColor)
       {
-         iFlags = iFlags | OT_SUPER;
+         case COLOR_GREEN:
+         case COLOR_PURPLE:
+            return OT_SUPER;
+         case COLOR_BLUE:
+            return OT_DM;
+         case COLOR_YELLOW:
+            return OT_CREATOR;
       }
 
-      if piColor = COLOR_BLUE
-      {
-         iFlags = iFlags | OT_DM;
-      }
-
-      if piColor = COLOR_YELLOW
-      {
-         iFlags = iFlags | OT_CREATOR;
-      }
-
-      return iFlags;
+      return 0;
    }
 
    GetMoveOnType()

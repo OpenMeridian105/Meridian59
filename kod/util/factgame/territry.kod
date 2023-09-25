@@ -37,6 +37,8 @@ resources:
    TerritoryGame_Marion = "Marion"
    TerritoryGame_CorNoth = "Cor Noth"
    TerritoryGame_Raza = "Raza"
+   TerritoryGame_Berg = "Berg"
+   TerritoryGame_Jixa = "Jixa"
 
    TerritoryGame_lost_hometown = \
       "~IHaving lost %s home city, %s relinquishes all claimed territories."
@@ -51,6 +53,8 @@ properties:
    plCorNothRIDs = $
    plBarloqueRIDs = $
    plRazaRIDs = $
+   plBergRIDs = $
+   plJixaRIDs = $
    plFlagRIDs = $
    plFlagCounts = $
    piGameMode = GAME_FULL
@@ -148,15 +152,19 @@ messages:
       plCorNothRIDs =  [ RID_CORNOTH, RID_G4, RID_G5 ];
       plBarloqueRIDs =  [ RID_BAR_NORTH, RID_I3, RID_H3, RID_J3 ];
       plRazaRIDs = [ RID_RAZA, RID_RAZA_FOREST, RID_FAROL_WEST ];
+      plBergRIDs = [ RID_BERG_CITY, RID_BERG_MG, RID_BERG_1, RID_BERG_2,
+                    RID_BERG_3, RID_BERG_4, RID_BERG_5 ];
+      plJixaRIDs = [ RID_JIXA, RID_JIXA_4 ];
       plFlagRIDs = [ RID_E2, RID_F2, RID_F3, RID_H3, RID_I3, RID_J3, RID_C4,
                      RID_D4, RID_E4, RID_F4, RID_G4, RID_H4, RID_C5, RID_D5,
                      RID_G5, RID_H5, RID_B6, RID_C6, RID_D6E6, RID_F6,
                      RID_G6, RID_H6, RID_I6, RID_C7, RID_D7, RID_E7, RID_F7,
-                     RID_H7, RID_I7, RID_F8, RID_RAZA_FOREST, RID_FAROL_WEST
-                   ];
+                     RID_H7, RID_I7, RID_F8, RID_RAZA_FOREST, RID_FAROL_WEST,
+                     RID_J3_1, RID_BERG_MG, RID_BERG_1, RID_BERG_2, RID_BERG_3,
+                     RID_BERG_4, RID_BERG_5, RID_JIXA_4 ];
 
       foreach i in [ RID_RAZA, RID_TOS, RID_MARION, RID_JASWEST,
-                     RID_CORNOTH, RID_BAR_NORTH ]
+                     RID_CORNOTH, RID_BAR_NORTH, RID_BERG_CITY, RID_JIXA ]
       {
          plFlagRIDs = Cons(i,plFlagRIDs);
       }
@@ -256,7 +264,8 @@ messages:
       // placing the other flags yet.  So we do this in two passes:
       // 1) Create and place all flags
       // 2) Set flags' factions
-      foreach lRIDs in [plTosRIDs, plMarionRIDs, plJasperRIDs, plCorNothRIDs, plBarloqueRIDs, plRazaRIDs]
+      foreach lRIDs in [plTosRIDs, plMarionRIDs, plJasperRIDs, plCorNothRIDs, 
+                        plBarloqueRIDs, plRazaRIDs, plBergRIDs, plJixaRIDs]
       {
          foreach iRID in lRIDs
          {
@@ -264,7 +273,8 @@ messages:
          }
       }
 
-      foreach lRIDs in [plTosRIDs, plMarionRIDs, plJasperRIDs, plCorNothRIDs, plBarloqueRIDs, plRazaRIDs]
+      foreach lRIDs in [plTosRIDs, plMarionRIDs, plJasperRIDs, plCorNothRIDs, 
+                        plBarloqueRIDs, plRazaRIDs, plBergRIDs, plJixaRIDs]
       {
          foreach iRID in lRIDs
          {
@@ -392,6 +402,28 @@ messages:
          }
 
          iLocation = FindListElem(plRazaRIDs,iRID);
+         if iLocation
+         {
+            Send(oFlag,@SetFaction,#faction=FACTION_NEUTRAL);
+            if iLocation = 1
+            {
+               // town flag
+               Send(oFlag,@SetClaimable,#claimable=FALSE);
+            }
+         }
+
+         iLocation = FindListElem(plBergRIDs,iRID);
+         if iLocation
+         {
+            Send(oFlag,@SetFaction,#faction=FACTION_NEUTRAL);
+            if iLocation = 1
+            {
+               // town flag
+               Send(oFlag,@SetClaimable,#claimable=FALSE);
+            }
+         }
+
+         iLocation = FindListElem(plJixaRIDs,iRID);
          if iLocation
          {
             Send(oFlag,@SetFaction,#faction=FACTION_NEUTRAL);
@@ -600,7 +632,8 @@ messages:
    {
       local lRIDs, iRID, oRoom, oFlagpole, lFlagCounts, iFaction;
 
-      foreach lRIDs in [plTosRIDs, plMarionRIDs, plJasperRIDs, plCorNothRIDs, plBarloqueRIDs, plRazaRIDs]
+      foreach lRIDs in [plTosRIDs, plMarionRIDs, plJasperRIDs, plCorNothRIDs, 
+                        plBarloqueRIDs, plRazaRIDs, plBergRIDs, plJixaRIDs]
       {
          lFlagCounts = [0, 0, 0, 0];
          foreach iRID in lRIDs
@@ -699,6 +732,14 @@ messages:
       else if town = plRazaRIDs
       {
          AddPacket(4,TerritoryGame_Raza);
+      }
+      else if town = plBergRIDs
+      {
+         AddPacket(4,TerritoryGame_Berg);
+      }
+      else if town = plJixaRIDs
+      {
+         AddPacket(4,TerritoryGame_Jixa);
       }
       else
       {
@@ -860,7 +901,7 @@ messages:
       iTotalPower = iPrincesspower + iDukePower + iNeutralPower;
       iTotalFlags = Length(plTosRIDs) + Length(plMarionRIDs) + Length(plJasperRIDs)
                     + Length(plCorNothRIDs) + Length(plBarloqueRIDs)
-                    + Length(plRazaRIDs) - 6;
+                    + Length(plRazaRIDs) + Length(plBergRIDs) + Length(plJixaRIDs) - 8;
       iPrincessFlags = ((iPrincesspower * iTotalFlags) / iTotalPower);
       iDukeFlags = ((iDukePower * iTotalFlags) / iTotalPower);
       iNeutralFlags = (iTotalFlags - iPrincessFlags - iDukeFlags);
@@ -868,7 +909,8 @@ messages:
       // Next, distribute the flags accordingly
 
       //  First, clear all to neutral
-      foreach lRIDs in [plTosRIDs, plMarionRIDs, plJasperRIDs, plCorNothRIDs, plBarloqueRIDs, plRazaRIDs]
+      foreach lRIDs in [plTosRIDs, plMarionRIDs, plJasperRIDs, plCorNothRIDs, 
+                        plBarloqueRIDs, plRazaRIDs, plBergRIDs, plJixaRIDs]
       {
          foreach iRID in lRIDs
          {
@@ -880,7 +922,8 @@ messages:
       }
 
       //  Then place duke flags
-      foreach lRIDs in [plTosRIDs, plMarionRIDs, plJasperRIDs, plCorNothRIDs, plBarloqueRIDs, plRazaRIDs]
+      foreach lRIDs in [plTosRIDs, plMarionRIDs, plJasperRIDs, plCorNothRIDs, 
+                        plBarloqueRIDs, plRazaRIDs, plBergRIDs, plJixaRIDs]
       {
          foreach iRID in lRIDs
          {
@@ -896,7 +939,8 @@ messages:
       }
 
       //  And finally princess flags
-      foreach lRIDs in [plBarloqueRIDs, plCorNothRIDs, plJasperRIDs, plMarionRIDs, plTosRIDs, plRazaRIDs]
+      foreach lRIDs in [plTosRIDs, plMarionRIDs, plJasperRIDs, plCorNothRIDs, 
+                        plBarloqueRIDs, plRazaRIDs, plBergRIDs, plJixaRIDs]
       {
          foreach iRID in lRIDs
          {

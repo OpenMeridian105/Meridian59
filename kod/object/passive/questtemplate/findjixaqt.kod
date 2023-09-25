@@ -1,0 +1,143 @@
+// Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+// All rights reserved.
+//
+// This software is distributed under a license that is described in
+// the LICENSE file that accompanies it.
+//
+// Meridian is a registered trademark.
+
+
+/////////////////////////////////////////////////////////////////////////////////
+FindJixaQuest is QuestTemplate
+// Quest template QNT_ID_FIND_JIXA
+// QNT_ID_FIND_JIXA_ONE, QNT_ID_FIND_JIXA_ONE
+
+// QuestTemplate is
+// [ quest template index
+//   quest template object
+//   number of players,
+//   type of quest,
+//   eligible player restrictions,
+//   quest nodes,
+//   max number active,
+//   currently active quests,
+//   percent chance of scheduling (on timer firing)
+//   special restrictions ]
+
+constants:
+
+   include blakston.khd
+
+resources:
+
+   //include jixainnescort.lkod
+
+   // Quest description.
+   FindJixa_icon_rsc = book1.bgf
+   FindJixa_name_rsc = \
+      "Jixa Exploration"
+   FindJixa_desc_rsc = \
+      "The village of Jixa is full of wonders and secrets, "
+      "and you have been tasked with discovering them. "
+   FindJixa_completed_rsc = \
+      "Your knowledge of the village and its inhabitants will be "
+      "invaluable in future dealings with Jixa."
+
+   // Quest resources.
+   FindJixa_trigger = "jixa"
+   FindJixa_assign = \
+      "I encourage you to visit the city and learn as much as "
+      "you can about its people and culture."
+      "The locals are wary of outsiders, but with your skills and charm, "
+      "you should be able to gain their trust. "
+
+   FindJixa_success = \
+      "I've heard that you're new in town and haven't had a "
+      "chance to experience the nightlife of Jixa yet. "
+
+classvars:
+
+   vrIcon = FindJixa_icon_rsc
+   vrName = FindJixa_name_rsc
+   vrDesc = FindJixa_desc_rsc
+
+   vrCompleted = FindJixa_completed_rsc
+
+   // The QST_ID constant for this quest.
+   viQuestID = QNT_ID_FIND_JIXA
+
+   viIcon_Animation_start = 1
+
+properties:
+
+   piNumPlayers = 1
+   piPlayerRestrict = \
+      Q_PLAYER_NOTSUCCEEDED | Q_PLAYER_NOTFAILED_RECENTLY
+   plSpecialRestrict = $
+   piMaxPlayers = 30
+   piSchedulePct = 100
+
+   piTimeLimit = 1 * 3600 // 1 hour.
+
+   piQuestDuration = 5
+   piQuestDifficulty = 1
+
+messages:
+
+   Constructor()
+   {
+      // Quest node list to send to QuestEngine.
+      plQuestNodes = [QNT_ID_FIND_JIXA_ONE,
+                      QNT_ID_FIND_JIXA_TWO ];
+
+      propagate;
+   }
+
+   SendQuestNodeTemplates()
+   {
+      local oQE, oLib, oNPC, lNPCs;
+
+      oQE = Send(SYS,@GetQuestEngine);
+      oLib = Send(SYS,@GetLibrary);
+
+      // kickoff
+      // QNT_ID_FIND_JIXA_ONE
+      if Send(oQE,@AddQuestNodeTemplate,#questnode_type=QN_TYPE_MESSAGE,
+            #cargolist=[FindJixa_trigger],
+            #quest_node_index=QNT_ID_FIND_JIXA_ONE)
+      {
+         Send(oQE,@SetQuestNodeNPCList,#index=QNT_ID_FIND_JIXA_ONE,
+               #new_NPC_list=Send(oLib,@GetOccupationList,
+                                 #cNPC_class=&TwoCouncilor));
+      }
+      else
+      {
+         Debug("Error building QN: QNT_ID_FIND_JIXA_ONE");
+      }
+      
+      // Template #277 is quest
+      // QNT_ID_FIND_JIXA_TWO
+      if Send(oQE,@AddQuestNodeTemplate,#questnode_type=QN_TYPE_SHOWUP,
+               #prizelist=[ [ [ QN_PRIZETYPE_ITEMCLASS, &Book, 1 ],
+                              [ QN_PRIZETYPE_ITEMCLASS, &CookingRecipe, 1 ] ] ],
+               #quest_node_index=QNT_ID_FIND_JIXA_TWO)
+      {
+               
+         Send(oQE,@SetQuestNodeNPCList,#index=QNT_ID_FIND_JIXA_TWO,
+               #new_NPC_list=Send(oLib,@GetOccupationList,
+                                 #cNPC_class=&JixaInnkeeper));
+         Send(oQE,@SetQuestNodeAssignHint,#index=QNT_ID_FIND_JIXA_TWO,
+               #new_hint=FindJixa_assign);
+         Send(oQE,@SetQuestNodeSuccessHint,#index=QNT_ID_FIND_JIXA_TWO,
+               #new_hint=FindJixa_success);
+      }
+      else
+      {
+         Debug("Error building QN: QNT_ID_FIND_JIXA_TWO");
+      }
+
+      return;
+   }
+
+end
+/////////////////////////////////////////////////////////////////////////////////

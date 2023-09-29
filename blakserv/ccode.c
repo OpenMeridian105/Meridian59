@@ -3116,22 +3116,29 @@ int C_Last(int object_id,local_var_type *local_vars,
 }
 
 int C_Nth(int object_id,local_var_type *local_vars,
-		  int num_normal_parms,parm_node normal_parm_array[],
-		  int num_name_parms,parm_node name_parm_array[])
+          int num_normal_parms,parm_node normal_parm_array[],
+          int num_name_parms,parm_node name_parm_array[])
 {
-	val_type n_val,list_val;
-	
+   val_type n_val,list_val;
+
    RETRIEVEVALUELIST(list_val, 0, NIL);
-
-	if (!IsListNodeByID(list_val.v.data))
-	{
-		bprintf("C_Nth can't take Nth of an invalid list %i,%i in obj:%i %s\n",
-			list_val.v.tag,list_val.v.data, object_id, GetClassNameByObjectID(object_id));
-		return NIL;
-	}
-
    RETRIEVEVALUEINT(n_val, 1, NIL);
 
+   if (!IsListNodeByID(list_val.v.data))
+   {
+      bprintf("C_Nth can't take Nth %i of an invalid list %i,%i in obj:%i %s\n",
+         n_val.v.data, list_val.v.tag,list_val.v.data, object_id,
+         GetClassNameByObjectID(object_id));
+
+      return NIL;
+   }
+
+   if (n_val.v.data < 1 && ConfigBool(DEBUG_WARN_NTH_LESS_1))
+   {
+      bprintf("Warning: C_Nth taking %ith value and returning 1st value " \
+         "with list %i,%i in obj:%i %s\n", n_val.v.data, list_val.v.tag,
+         list_val.v.data, object_id, GetClassNameByObjectID(object_id));
+   }
 	return Nth(n_val.v.data,list_val.v.data);
 }
 

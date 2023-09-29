@@ -32,6 +32,7 @@ resources:
 
    Statue_name_rsc = "statue"
    Statue_desc_rsc = "This is a statue of %q, a great adventurer."
+   Statue_desc_empty_rsc = "A statue of an unknown adventurer."
 
    statue_default_male_icon = bta.bgf
    statue_default_male_larm = bla.bgf
@@ -104,8 +105,14 @@ messages:
 
    ShowDesc()
    {
-      AddPacket(4,vrDesc);
-      AddPacket(STRING_RESOURCE,Send(poOriginal,@GetTrueName));
+      if (poOriginal <> $)
+      {
+         AddPacket(4,vrDesc, STRING_RESOURCE,Send(poOriginal,@GetTrueName));
+      }
+      else
+      {
+         AddPacket(4,vrDesc);
+      }
 
       return;
    }
@@ -173,7 +180,7 @@ messages:
    Constructor(original = $, bDefault = FALSE,desc = $,special=FALSE,
                specialname = $, specialgender = GENDER_MALE)
    {
-      local i;
+      local i, lUsers;
 
       if special
       {
@@ -183,24 +190,36 @@ messages:
          propagate;
       }
 
-      if desc <> $
-      {
-         vrDesc = desc;
-      }
-
+      // Just grab first player.
       if bDefault
       {
-         if Send(SYS,@GetUsers) <> $
+         lUsers = Send(SYS,@GetUsers);
+         if lUsers <> $
          {
-            original = First(Send(SYS,@GetUsers));
+            original = First(lUsers);
          }
       }
 
-      if original <> $
+      // Set to a random player for overlays, but use default name/desc.
+      // Different from bDefault since this one might not be overwritten
+      // after creation.
+      if (original = $)
       {
-         Send(self,@SetStatue,#Original=original);
-         vrName = Statue_name_rsc;
-         piGender = Send(original,@GetGender);
+         lUsers = Send(SYS,@GetUsers);
+         original = Nth(lUsers,Random(1,Length(lUsers)));
+         if (desc = $)
+         {
+            desc = Statue_desc_empty_rsc;
+         }
+      }
+
+      Send(self,@SetStatue,#Original=original);
+      vrName = Statue_name_rsc;
+      piGender = Send(original,@GetGender);
+
+      if desc <> $
+      {
+         vrDesc = desc;
       }
 
       propagate;
@@ -469,12 +488,17 @@ messages:
 
       if original = $ OR NOT IsClass(original,&User)
       {
+         vrDesc = Statue_desc_empty_rsc;
          return;
       }
 
       poOriginal = original;
       piPose = Random(1,4);
       vrName = Statue_name_rsc;
+      if (vrDesc = Statue_desc_empty_rsc)
+      {
+         vrDesc = Statue_desc_rsc;
+      }
 
       vrIcon = Send(poOriginal,@GetIcon,#trueicon=TRUE);
       prLeft_arm = Send(poOriginal,@GetLeftArmRsc);
@@ -603,10 +627,10 @@ messages:
 
       /// face
       iSkin_xlat = piSkin_translation;
-      AddPacket(4,prHead,1,HS_HEAD,1,ANIMATE_TRANSLATION,1,iSkin_xlat,1,ANIMATE_NONE,2,1);
-      AddPacket(4,prMouth,1,HS_MOUTH,1,ANIMATE_TRANSLATION,1,iSkin_xlat,1,ANIMATE_NONE,2,piExpression);
-      AddPacket(4,prEyes,1,HS_EYES,1,ANIMATE_TRANSLATION,1,iSkin_xlat,1,ANIMATE_NONE,2,piExpression);
-      AddPacket(4,prNose,1,HS_NOSE,1,ANIMATE_TRANSLATION,1,iSkin_xlat,1,ANIMATE_NONE,2,1);
+      AddPacket(4,prHead,1,HS_HEAD,1,ANIMATE_TRANSLATION,1,iSkin_xlat,1,ANIMATE_NONE,2,1,
+                4,prMouth,1,HS_MOUTH,1,ANIMATE_TRANSLATION,1,iSkin_xlat,1,ANIMATE_NONE,2,piExpression);
+      AddPacket(4,prEyes,1,HS_EYES,1,ANIMATE_TRANSLATION,1,iSkin_xlat,1,ANIMATE_NONE,2,piExpression,
+                4,prNose,1,HS_NOSE,1,ANIMATE_TRANSLATION,1,iSkin_xlat,1,ANIMATE_NONE,2,1);
 
       // Hair or helm.
       if (prHair_remove = $)
@@ -653,8 +677,7 @@ messages:
                AddPacket(1,ANIMATE_TRANSLATION,1,piWeapon_translation);
             }
 
-            AddPacket(1,ANIMATE_NONE,2,piWeapon_frame);
-            AddPacket(4,prBowTop,1,HS_TOP_BOW);
+            AddPacket(1,ANIMATE_NONE,2,piWeapon_frame, 4,prBowTop, 1,HS_TOP_BOW);
 
             if piWeapon_translation <> 0
             {

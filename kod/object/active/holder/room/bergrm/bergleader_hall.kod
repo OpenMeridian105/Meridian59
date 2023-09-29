@@ -382,101 +382,72 @@ messages:
 
    CreateStatues()
    {
-      local oStatue;
+      local i, lStatues, oStatue;
 
       plStatues = $;
 
-      oStatue = Create(&Statue,#bDefault=TRUE);
-      plStatues = Cons(oStatue,plStatues);
-      Send(self,@NewHold,#what=oStatue,#new_angle=ANGLE_SOUTH,
-            #new_row=5,#new_col=20,#fine_row=48,#fine_col=28);
+      // List set up so the final list starts with statues closest to leader.
+      lStatues = [ [22, 5, 48, 32, ANGLE_NORTH],  [5, 5, 48, 32, ANGLE_SOUTH],
+                   [22, 9, 48, 8, ANGLE_NORTH],   [5, 9, 48, 16, ANGLE_SOUTH],
+                   [22, 12, 48, 52, ANGLE_NORTH], [5, 12, 48, 64, ANGLE_SOUTH],
+                   [22, 16, 48, 42, ANGLE_NORTH], [5, 16, 48, 48, ANGLE_SOUTH],
+                   [22, 20, 48, 28, ANGLE_NORTH], [5, 20, 48, 28, ANGLE_SOUTH]
+      ];
 
-      oStatue = Create(&Statue,#bDefault=TRUE);
-      plStatues = Cons(oStatue,plStatues);
-      Send(self,@NewHold,#what=oStatue,#new_angle=ANGLE_SOUTH,
-            #new_row=5,#new_col=16,#fine_row=48,#fine_col=48);
-
-      oStatue = Create(&Statue,#bDefault=TRUE);
-      plStatues = Cons(oStatue,plStatues);
-      Send(self,@NewHold,#what=oStatue,#new_angle=ANGLE_SOUTH,
-            #new_row=5,#new_col=12,#fine_row=48,#fine_col=64);
-
-      oStatue = Create(&Statue,#bDefault=TRUE);
-      plStatues = Cons(oStatue,plStatues);
-      Send(self,@NewHold,#what=oStatue,#new_angle=ANGLE_SOUTH,
-            #new_row=5,#new_col=9,#fine_row=48,#fine_col=16);
-
-      oStatue = Create(&Statue,#bDefault=TRUE);
-      plStatues = Cons(oStatue,plStatues);
-      Send(self,@NewHold,#what=oStatue,#new_angle=ANGLE_NORTH,
-            #new_row=22,#new_col=16,#fine_row=48,#fine_col=42);
-
-      oStatue = Create(&Statue,#bDefault=TRUE);
-      plStatues = Cons(oStatue,plStatues);
-      Send(self,@NewHold,#what=oStatue,#new_angle=ANGLE_NORTH,
-            #new_row=22,#new_col=12,#fine_row=48,#fine_col=52);
-
-      oStatue = Create(&Statue,#bDefault=TRUE);
-      plStatues = Cons(oStatue,plStatues);
-      Send(self,@NewHold,#what=oStatue,#new_angle=ANGLE_NORTH,
-            #new_row=22,#new_col=20,#fine_row=48,#fine_col=28);
-
-      oStatue = Create(&Statue,#bDefault=TRUE);
-      plStatues = Cons(oStatue,plStatues);
-      Send(self,@NewHold,#what=oStatue,#new_angle=ANGLE_NORTH,
-            #new_row=22,#new_col=9,#fine_row=48,#fine_col=8);
-
-      oStatue = Create(&Statue,#bDefault=TRUE);
-      plStatues = Cons(oStatue,plStatues);
-      Send(self,@NewHold,#what=oStatue,#new_angle=ANGLE_SOUTH,
-            #new_row=5,#new_col=5,#fine_row=48,#fine_col=32);
-
-      oStatue = Create(&Statue,#bDefault=TRUE);
-      plStatues = Cons(oStatue,plStatues);
-      Send(self,@NewHold,#what=oStatue,#new_angle=ANGLE_NORTH,
-            #new_row=22,#new_col=5,#fine_row=48,#fine_col=32);
+      foreach i in lStatues
+      {
+         oStatue = Create(&Statue);
+         plStatues = Cons(oStatue,plStatues);
+         Send(self,@NewHold,#what=oStatue,#new_angle=Nth(i,5),#new_row=First(i),
+               #new_col=Nth(i,2),#fine_row=Nth(i,3),#fine_col=Nth(i,4));
+      }
 
       return;
    }
 
    UpdateStatues()
    {
-      local lData, i, index, oPlayer;
+      local i, iCount, iMax, lData, oPlayer;
+
+      if plStatues = $
+      {
+         return;
+      }
 
       lData = Send(SYS,@GetHonorList);
       if lData = $
          OR NOT Send(SETTINGS_OBJECT,@HonorSystemActive)
       {
+         // Clears all statues.
+         Send(plStatues,@SetStatue);
 
          return;
       }
 
-      if plStatues = $
-      {
-         // Statues haven't been created yet.  No one has entered yet.
-         return;
-      }
+      // Take the top 10 players, or less if there are less than 10 players.
+      iMax = Bound(Length(lData), 1, Length(plStatues));
+      iCount = 1;
 
-      index = 0;
       foreach i in plStatues
       {
-         ++index;
-         oPlayer = First(Nth(lData,index));
-         if oPlayer <> $
-            AND Send(i,@GetOriginal) <> oPlayer
+         if (iCount > iMax)
          {
-            Send(i,@SetStatue,#original=oPlayer);
+            Send(i,@SetStatue);
          }
+         else
+         {
+            oPlayer = First(Nth(lData,iCount));
+            if oPlayer <> $
+               AND Send(i,@GetOriginal) <> oPlayer
+            {
+               Send(i,@SetStatue,#original=oPlayer);
+            }
+         }
+
+         ++iCount;
       }
 
       return;
-   }
-
-   FirstUserEntered()
-   {
-      Post(self,@UpdateStatues);
-
-      propagate;
    }
 
    SomeoneSaid(what = $,type = $,string = $)

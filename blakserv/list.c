@@ -245,22 +245,21 @@ int Length(int list_id)
 
 int Nth(int n,int list_id)
 {
-	int i;
 	list_node *l;
 	
 	l = GetListNodeByID(list_id);
-	for (i=1;i<n;i++)
+	for (int i = 1; i < n; ++i)
 	{
 		if (!l)
 		{
-			bprintf("Nth found invalid list node somewhere in list %i\n",
-				list_id);
+			bprintf("Nth found invalid list node somewhere in list %i, %ith element, index %i\n",
+            list_id, n, i);
 			return NIL;
 		}
 		if (l->rest.v.tag != TAG_LIST)
 		{
-			bprintf("Nth can't go past end of list %i,%i\n",
-				l->rest.v.tag,l->rest.v.data);
+			bprintf("Nth can't go past end of list %i,%i in list %i, %ith element, index %i\n",
+				l->rest.v.tag,l->rest.v.data, list_id, n, i);
 			return NIL;
 		}
 		l = GetListNodeByID(l->rest.v.data);

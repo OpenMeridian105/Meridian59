@@ -1,0 +1,72 @@
+// Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+// All rights reserved.
+//
+// This software is distributed under a license that is described in
+// the LICENSE file that accompanies it.
+//
+// Meridian is a registered trademark.
+
+
+////////////////////////////////////////////////////////////////////////////////
+PilgrimHat is FaceMask
+
+constants:
+
+   include blakston.khd
+
+resources:
+
+   pilgrimhat_name_rsc = "pilgrim hat"
+   pilgrimhat_icon_male_rsc = pilgrimhat.bgf
+   pilgrimhat_icon_female_rsc = pilgrimhatF.bgf
+   pilgrimhat_desc_rsc = "A pilgrim's hat."
+
+classvars:
+
+   vrName = pilgrimhat_name_rsc
+   vrDesc = pilgrimhat_desc_rsc
+   vrIcon = pilgrimhat_icon_male_rsc
+
+   vrMaleIcon = pilgrimhat_icon_male_rsc
+   vrFemaleIcon = pilgrimhat_icon_female_rsc
+
+properties:
+
+   piThanksgivingYear = 0
+
+messages:
+
+   Constructed()
+   {
+      piThanksgivingYear = Send(REALTIME_OBJECT,@GetYear);
+
+      propagate;
+   }
+
+   DoBaseDesc()
+   "Items can override this to provide a more detailed base description."
+   {
+      AddPacket(4,Send(SYS,@AddResourceTemplate,#num=2), 4,vrDesc,
+                4,FaceMask_thanksgiving_rsc, 4, piThanksgivingYear);
+
+      return;
+   }
+
+   NewUsed()
+   {
+      Send(poOwner,@RemoveHair,#what=self);
+      Send(poOwner,@SomethingChanged,#what=self);
+
+      propagate;
+   }
+
+   NewUnused()
+   {
+      Send(poOwner,@ResetHair,#what=self);
+      Send(poOwner,@SomethingChanged,#what=self);
+
+      propagate;
+   }
+
+end
+////////////////////////////////////////////////////////////////////////////////

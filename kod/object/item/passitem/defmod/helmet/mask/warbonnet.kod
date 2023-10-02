@@ -1,0 +1,83 @@
+// Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+// All rights reserved.
+//
+// This software is distributed under a license that is described in
+// the LICENSE file that accompanies it.
+//
+// Meridian is a registered trademark.
+
+
+////////////////////////////////////////////////////////////////////////////////
+WarBonnet is FaceMask
+
+constants:
+
+   include blakston.khd
+
+resources:
+
+   warbonnet_name_rsc = "war bonnet"
+   warbonnet_icon_male_rsc = warbonnet.bgf
+   warbonnet_icon_female_rsc = warbonnetF.bgf
+   warbonnet_desc_rsc = \
+      "A tribal headdress, used both for ceremony and to strike fear into "
+      "one's enemies."
+
+classvars:
+
+   vrName = warbonnet_name_rsc
+   vrDesc = warbonnet_desc_rsc
+   vrIcon = warbonnet_icon_male_rsc
+
+   vrMaleIcon = warbonnet_icon_male_rsc
+   vrFemaleIcon = warbonnet_icon_female_rsc
+
+properties:
+
+   prOrigToupee = $
+   piThanksgivingYear = 0
+
+messages:
+
+   Constructed()
+   {
+      piThanksgivingYear = Send(REALTIME_OBJECT,@GetYear);
+
+      propagate;
+   }
+
+   DoBaseDesc()
+   "Items can override this to provide a more detailed base description."
+   {
+      AddPacket(4,Send(SYS,@AddResourceTemplate,#num=2), 4,vrDesc,
+                4,FaceMask_thanksgiving_rsc, 4, piThanksgivingYear);
+
+      return;
+   }
+
+   NewUsed()
+   {
+      prOrigToupee = Send(poOwner,@GetHairRsc);
+      if (prOrigToupee <> charinfo_hair_bald_icon)
+      {
+         Send(poOwner,@SetHairRsc,#what=charinfo_hair_cd_icon);
+      }
+      Send(poOwner,@SomethingChanged,#what=self);
+
+      propagate;
+   }
+
+   NewUnused()
+   {
+      if (prOrigToupee <> charinfo_hair_bald_icon)
+      {
+         Send(poOwner,@SetHairRsc,#what=prOrigToupee);
+         Send(poOwner,@SomethingChanged,#what=self);
+      }
+      prOrigToupee = $;
+
+      propagate;
+   }
+
+end
+////////////////////////////////////////////////////////////////////////////////

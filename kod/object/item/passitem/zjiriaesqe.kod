@@ -1,0 +1,224 @@
+// Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+// All rights reserved.
+//
+// This software is distributed under a license that is described in
+// the LICENSE file that accompanies it.
+//
+// Meridian is a registered trademark.
+
+
+////////////////////////////////////////////////////////////////////////////////
+Zjiriaesqe is PassiveItem
+
+constants:
+
+   include blakston.khd
+
+resources:
+
+   //include gem.lkod
+
+   Zjiriaesqe_name_rsc = "Zjiriaesqe"
+   Zjiriaesqe_icon_rsc = zjiriaesqe.bgf
+   Zjiriaesqe_desc = \
+      "A mesmerizing artifact resembling a die with several faces, "
+      "the Zjiriaesqe gravitates towards your items.  "
+      "Once affixed to an item, its enchantment is irreversible, "
+      "bestowing the object with newfound abilities."
+
+   Zjiriaesqe_sound = spell_trance_complete.ogg
+
+   Zjiriaesqe_apply = "Your %s fuses with your %s, now enhanced with new abilities."
+
+   Zjiriaesqe_cant = "You can't apply %s to %s%s."
+   Zjiriaesqe_too_strong = \
+      "You cannot fuse your %s to %s%s which already has such strong power."
+
+classvars:
+
+   vrName = Zjiriaesqe_name_rsc
+   vrIcon = Zjiriaesqe_icon_rsc
+   vrDesc = Zjiriaesqe_desc
+
+   viUse_type = ITEM_SINGLE_USE
+
+   viWeight = 100
+   viBulk = 100
+
+properties:
+
+   viObject_flags = OF_GETTABLE | OF_APPLYABLE
+
+   piItemAttribute = 0
+
+messages:
+
+   Constructed(iItemAttribute=0)
+   {
+      if iItemAttribute = 0
+      {
+         iItemAttribute = Random(WA_BLINDER, WA_SPELLCASTER);
+
+         if iItemAttribute = WA_SPELLCASTER
+         {
+            iItemAttribute = Random(WA_PURGER, WA_SLOW);
+         }
+      }
+
+      Send(self,@SetItemAttribute,#iItemAttribute=iItemAttribute);
+
+      propagate;
+   }
+
+   ChangeColor(xlat = 0)
+   {
+      piItem_flags = piItem_flags & ITEM_INVERSE_PALETTE_MASK;
+
+      piItem_flags = piItem_flags | xlat;
+      if poOwner <> $
+      {
+         Send(poOwner,@SomethingChanged,#what=self);
+      }
+
+      return;
+   }
+
+   SetItemAttribute(iItemAttribute=0)
+   {
+      local type, color;
+
+      type = iItemAttribute;
+      color = 0;
+
+      if type = WA_BLINDER
+      {
+         color = PT_GRAY_TO_BLACK;
+      }
+      else if type = WA_PARALYZER
+      {
+         color = PT_GRAY_TO_PURPLE;
+      }
+      else if type = WA_BONKER
+      {
+         color = PT_GRAY_TO_DBLUE;
+      }
+      else if type = WA_VAMPER
+      {
+         color = PT_GRAY_TO_RED;
+      }
+      else if type = WA_TWISTER
+      {
+         color = PT_GRAY_TO_BGREEN;
+      }
+      else if type = WA_PURGER
+      {
+         color = PT_GRAY_TO_GOLD;
+      }
+      else if type = WA_SIPHON
+      {
+         color = PT_GRAY_TO_KBGREEN;
+      }
+      else if type = WA_BURN
+      {
+         color = PT_GRAY_TO_KRED;
+      }
+      else if type = WA_BLEED
+      {
+         color = PT_GRAY_TO_KRED;
+      }
+      else if type = WA_FATIGUE
+      {
+         color = PT_GRAY_TO_BLOND;
+      }
+      else if type = WA_SLOW
+      {
+         color = PT_GRAY_TO_KGRAY;
+      }
+      else
+      {
+         color = PT_GRAY_TO_BLACK;
+      }
+
+      Send(self,@ChangeColor,#xlat=color);
+      piItemAttribute = iItemAttribute;
+
+      return;
+   }
+
+   ReqNewApply(what = $,apply_on = $)
+   {
+      local oItemAtt;
+      
+      if NOT Send(apply_on,@CanUserAddSpecialAttributes)
+      {
+         Send(what,@MsgSendUser,#message_rsc=Zjiriaesqe_too_strong,
+               #parm1=Send(self,@GetName),#parm2=Send(apply_on,@GetIndef),
+               #parm3=Send(apply_on,@GetName));
+         return FALSE;
+      }
+
+      oItemAtt = Send(SYS,@FindItemAttByNum,#num=piItemAttribute);
+      if IsClass(oItemAtt,&WeaponAttribute)
+            AND IsClass(apply_on,&Weapon)
+      {
+         return TRUE;
+      }
+      else if NOT IsClass(oItemAtt,&WeaponAttribute)
+            AND IsClass(apply_on,&DefenseModifier)
+      {
+         return TRUE;
+      }
+
+      Send(what,@MsgSendUser,#message_rsc=Zjiriaesqe_cant,
+            #parm1=Send(self,@GetName),#parm2=Send(apply_on,@GetDef),
+            #parm3=Send(apply_on,@GetName));
+      return FALSE;
+   }
+
+   NewApplied(what=$,apply_on=$)
+   {
+      local oItemAtt, oRoom;
+
+      oRoom = Send(what,@GetOwner);
+      if (oRoom <> $) AND IsClass(oRoom,&Room)
+      {
+         Send(oRoom,@SomethingWaveRoom,#what=apply_on,#wave_rsc=Zjiriaesqe_sound);
+      }
+
+      if (what <> $) AND IsClass(what,&User)
+      {
+         oItemAtt = Send(SYS,@FindItemAttByNum,#num=piItemAttribute);
+
+         if Send(oItemAtt,@AddSelfToRandomItem,#oItem=apply_on,#who=what)
+         {
+            Send(what,@MsgSendUser,#message_rsc=Zjiriaesqe_apply,
+                  #parm1=Send(self,@GetName),#parm2=Send(apply_on,@GetName));
+         }
+
+         Send(what,@SendLook,#what=apply_on,#bShow_All=TRUE);
+      }
+
+      Send(self,@Delete);
+
+      return;
+   }
+
+   SendAnimation()
+   {
+      if (piItem_flags & ITEM_PALETTE_MASK) <> 0
+      {
+         AddPacket(1,ANIMATE_TRANSLATION,1,piItem_flags & ITEM_PALETTE_MASK);
+      }
+      AddPacket(1,ANIMATE_NONE,2,1);
+
+      return;
+   }
+
+   GetMinimapDotFlags()
+   {
+      // Special item, add minimap dot.
+      return MM_RARE_ITEM;
+   }
+
+end
+////////////////////////////////////////////////////////////////////////////////

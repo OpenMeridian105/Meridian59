@@ -34,10 +34,10 @@ classvars:
    vrIcon = Machete_icon_rsc
    vrDesc = Machete_desc_rsc
 
-   viWeaponType = WEAPON_TYPE_THRUST
+   viWeaponType = WEAPON_TYPE_SLASH
    viWeaponQuality = WEAPON_QUALITY_HIGH
 
-   viProficiency_Needed = SKID_PROFICIENCY_SHORTSWORD
+   viProficiency_Needed = SKID_PROFICIENCY_SCIMITAR
    viDefault_stroke_number = SKID_SLASH
 
    viValue_average = 250
@@ -51,17 +51,31 @@ classvars:
    viInventory_group = 3
    viBroken_group = 2
    
+   viUnleash_type = UNLEASH_GUT
+
    viRange = 2 * FINENESS
 
 properties:
 
-   piAttack_type = ATK_TYPE_NONMAGIC+ATK_TYPE_THRUST
+   piAttack_type = ATK_TYPE_NONMAGIC+ATK_TYPE_SLASH
 
 messages:
 
    IsExpansionItem()
    {
       return TRUE;
+   }
+
+   HitSideEffect(what=$,who=$,amount=0,stroke_obj=$)
+   {
+      // Cleave bramble with machete
+      if IsClass(what,&Brambles)
+      {
+         Send(Send(SYS,@FindSkillByNum,#num=SKID_CLEAVE),@DoSkill,#who=self,
+               #oTarget=what,#oWeapon=stroke_obj);
+      }
+
+      propagate;
    }
 
 end

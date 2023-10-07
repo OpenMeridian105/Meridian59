@@ -47,7 +47,7 @@
 #define IDS_DMSCHOOL                    262
 #define IDS_WEAPONCRAFT                 263
 #define IDS_DMSKILL                     264
-#define IDS_ROGUE                       265
+#define IDS_ROGUECRAFT                  265
 #define IDC_DESCRIPTION                 1000
 #define IDC_FACE                        1001
 #define IDC_PLACEHOLDER                 1002

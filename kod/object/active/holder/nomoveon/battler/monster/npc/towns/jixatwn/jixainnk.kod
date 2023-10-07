@@ -39,11 +39,11 @@ classvars:
       | MOB_LISTEN | MOB_RECEIVE | MOB_TEACHER | MOB_COND_SELLER
    viOccupation = MOB_ROLE_INNKEEPER
    viMerchant_markup = MERCHANT_DISCOUNT
+   viQuestID = QNT_ID_JIXA_BANDIT
 
 properties:
 
 messages:
-
    
    SetForSale()
    {
@@ -54,9 +54,23 @@ messages:
             Create(&Pear,#number=3),
             Create(&WineGoblet)
          ],
-      $,$,$];
+         [
+            SKID_STAB, SKID_PROFICIENCY_KNIFE, 
+            SKID_THROW, SKID_PROFICIENCY_THROW_WEAPON
+         ],
+      $,$];
 
       return;
+   }
+
+   CanAddSkill(who=$,num=0)
+   {
+      if NOT Send(self,@HasDoneLearnQuest,#who=who)
+      {
+         return FALSE;
+      }
+
+      propagate;
    }
 
    UserEntered(who=$)

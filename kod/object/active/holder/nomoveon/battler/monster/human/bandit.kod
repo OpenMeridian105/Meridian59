@@ -296,12 +296,27 @@ messages:
 
    IsMatchingColors(target=$)
    {
+      local iColor_red1, iColor_red2, iColor_green, iColor_dgreen;
+
+      iColor_red1 = Send(SYS,@EncodeTwoColorXLAT,
+                  #color1=XLAT_TO_RED,#color2=XLAT_TO_SKIN1);
+
+      iColor_red2 = Send(SYS,@EncodeTwoColorXLAT,
+                  #color1=XLAT_TO_RED,#color2=XLAT_TO_SKIN4);
+
+      iColor_dgreen = Send(SYS,@EncodeTwoColorXLAT,
+                  #color1=XLAT_TO_DGREEN,#color2=XLAT_TO_SKIN1);
+
+      iColor_green = Send(SYS,@EncodeTwoColorXLAT,
+                  #color1=XLAT_TO_GREEN,#color2=XLAT_TO_SKIN1);
+      
       // hardcoded for red shirt and green pants
-      if Send(target,@GetCurrentShirtColor) = 136
+      if Send(target,@GetCurrentShirtColor) >= iColor_red1
+         AND Send(target,@GetCurrentShirtColor) <= iColor_red2
       {
 
-         if Send(target,@GetCurrentPantsColor) = 122
-            OR Send(target,@GetCurrentPantsColor) = 12
+         if Send(target,@GetCurrentPantsColor) = iColor_dgreen
+            OR Send(target,@GetCurrentPantsColor) = iColor_green
          {
             return TRUE;
          }

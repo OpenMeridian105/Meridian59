@@ -5,6 +5,6 @@
 !include $(TOPDIR)\common.mak
 
 DEPEND = ..\thrownweapon.bof
-BOFS = snowball.bof
+BOFS = snowball.bof throwaxe.bof
 
 !include $(KODDIR)\kod.mak

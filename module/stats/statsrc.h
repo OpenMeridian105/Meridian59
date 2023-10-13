@@ -49,6 +49,7 @@
 #define IDC_CHAR_GRAPH11                1032
 #define IDC_CHAR_GRAPH12                1033
 #define IDC_CHAR_GRAPH13                1034
+#define IDC_CHAR_GRAPH14                1035
 #define IDC_BUTTON_NEXT                 1102
 #define IDC_BUTTON_BACK                 1103
 #define IDC_MODIFYCOMBO                 1106

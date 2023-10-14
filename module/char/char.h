@@ -93,8 +93,8 @@ typedef enum {
    SS_JALA = 6,
    SS_DM_COMMAND = 7,
    SKS_WEAPONCRAFT = 10,
-   SKS_DM = 11,
-   SKS_ROGUECRAFT = 12,
+   SKS_ROGUECRAFT = 11,
+   SKS_DM = 12,
 } School;
 
 // Info on each available spell

@@ -28,7 +28,10 @@ static handler_struct handler_table[] = {
 
 // Client message table
 client_message msg_table[] = {
-{ BP_CHANGED_STATS,      { PARAM_BYTE, PARAM_BYTE,  PARAM_BYTE, PARAM_BYTE, PARAM_BYTE, PARAM_BYTE, PARAM_BYTE, PARAM_BYTE,  PARAM_BYTE, PARAM_BYTE, PARAM_BYTE, PARAM_BYTE, PARAM_BYTE, PARAM_END }, },
+{ BP_CHANGED_STATS,      { PARAM_BYTE, PARAM_BYTE, PARAM_BYTE, PARAM_BYTE,
+                           PARAM_BYTE, PARAM_BYTE, PARAM_BYTE, PARAM_BYTE,
+                           PARAM_BYTE, PARAM_BYTE, PARAM_BYTE, PARAM_BYTE,
+                           PARAM_BYTE, PARAM_BYTE, PARAM_END }, },
 { 0,                       { PARAM_END }, },
 };
 
@@ -81,7 +84,7 @@ Bool HandleStatChangeRequest(char *ptr, long len)
 {
    BYTE might, intellect, stamina, agility, mysticism, aim = 0;
    BYTE shalille_level, qor_level, kraanan_level, faren_level, riija_level, jala_level;
-   BYTE weaponcraft_level;
+   BYTE weaponcraft_level, roguecraft_level;
 
    Extract(&ptr, &might, 1);	
    Extract(&ptr, &intellect, 1);
@@ -96,13 +99,15 @@ Bool HandleStatChangeRequest(char *ptr, long len)
    Extract(&ptr, &riija_level, 1);
    Extract(&ptr, &jala_level, 1);
    Extract(&ptr, &weaponcraft_level, 1);
+   Extract(&ptr, &roguecraft_level, 1);
 
    int myStats[] = {might, intellect, stamina, agility, mysticism, aim};
-   int myLevels[] = {shalille_level, qor_level, kraanan_level, faren_level, riija_level, jala_level, weaponcraft_level};
+   int myLevels[] = {shalille_level, qor_level, kraanan_level, faren_level,
+      riija_level, jala_level, weaponcraft_level, roguecraft_level};
 
    MakeStats(myStats, myLevels);
 
-   return true;
+   return True;
 }
 /****************************************************************************/
 Bool WINAPI EventStateChanged(int old_state, int new_state)

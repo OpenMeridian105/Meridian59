@@ -337,10 +337,10 @@ char *GetSchoolString(School school_id)
       return GetString(hInst, IDS_DMSCHOOL);
    case SKS_WEAPONCRAFT:
       return GetString(hInst, IDS_WEAPONCRAFT);
-   case SKS_DM:
-      return GetString(hInst, IDS_DMSKILL);
    case SKS_ROGUECRAFT:
       return GetString(hInst, IDS_ROGUECRAFT);
+   case SKS_DM:
+      return GetString(hInst, IDS_DMSKILL);
    }
 
    return "Unknown";

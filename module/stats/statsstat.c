@@ -48,6 +48,7 @@ static School schools[] = {
 { 0,   6,   0,   0,   1,   NULL },       // Riija
 { 0,   6,   0,   0,   1,   NULL },       // Jala
 { 0,   6,   0,   0,   1,   NULL },       // Weaponcraft
+{ 0,   6,   0,   0,   1,   NULL },       // Roguecraft
 };
 
 static int  stat_points = STAT_POINTS_INITIAL;   // # of stat points remaining
@@ -271,7 +272,8 @@ void CharStatsGraphChanging(HWND hDlg, WPARAM wParam, LPARAM lParam)
        (HWND) wParam == GetDlgItem(hDlg, IDC_CHAR_GRAPH10) ||
        (HWND) wParam == GetDlgItem(hDlg, IDC_CHAR_GRAPH11) ||
        (HWND) wParam == GetDlgItem(hDlg, IDC_CHAR_GRAPH12) ||
-       (HWND) wParam == GetDlgItem(hDlg, IDC_CHAR_GRAPH13))
+       (HWND) wParam == GetDlgItem(hDlg, IDC_CHAR_GRAPH13) ||
+       (HWND) wParam == GetDlgItem(hDlg, IDC_CHAR_GRAPH14))
    {
       sc = CharFindSchoolControl((HWND) wParam);
       if (sc == NULL)

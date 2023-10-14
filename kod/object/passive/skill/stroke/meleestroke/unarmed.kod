@@ -90,7 +90,7 @@ messages:
    // Tough question... Is it... me? - Yes, it is!
    GetStroke(who=$)
    {
-      local iStroke, iStat;
+      local iStroke, iStat, iCompetency;
 
       iStroke = 0;
 
@@ -161,6 +161,33 @@ messages:
    GetMultiAttack()
    {
       return FALSE;
+   }
+
+   GetCompetencySkillNum(who=$)
+   {
+      return SKID_COMPETENCY_UNARMED;
+   }
+
+   DetermineCompetency(who=$)
+   {
+      local iCompetency, oCompetency, iStat;
+
+      iCompetency = (Send(who,@GetSkillAbility,#skill_num=SKID_COMPETENCY_UNARMED)+1)/2;
+
+      oCompetency = Send(SYS,@FindSkillByNum,#num=SKID_COMPETENCY_UNARMED);
+      iStat = Send(oCompetency,@GetRequisiteStat,#who=who);
+
+      iCompetency += Bound(iStat,0,iCompetency+20);
+
+      return iCompetency;
+   }
+
+   ImproveCompetency(who=$,target=$,bonus=0)
+   {
+      Send(Send(SYS,@FindSkillbyNum,#num=SKID_COMPETENCY_UNARMED),
+         @ImproveAbility,#who=who,#target=target,#bonus=bonus);
+
+      return;
    }
 
 end

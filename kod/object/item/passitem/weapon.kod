@@ -632,7 +632,7 @@ messages:
 
    ImproveProficiency(who=$,target=$,bonus=0)
    {
-      Send(Send(SYS,@findSkillbynum,#num=viProficiency_needed),@ImproveAbility,
+      Send(Send(SYS,@FindSkillbyNum,#num=viProficiency_needed),@ImproveAbility,
             #who=who,#target=target,#bonus=bonus);
 
       return;
@@ -1283,6 +1283,48 @@ messages:
    CanCrushEnemy()
    {
       return vbCrush_enemies;
+   }
+
+   GetCompetencySkillNum(who=$)
+   {
+      if viWeaponType = WEAPON_TYPE_BLUDGEON
+      {
+         return SKID_COMPETENCY_BLUNT;
+      }
+      else if viWeaponType = WEAPON_TYPE_SLASH
+      {
+         return SKID_COMPETENCY_SWORD;
+      }
+
+      return 0;
+   }
+
+   ImproveCompetency(who=$,target=$,bonus=0)
+   {
+      local iNum;
+
+      iNum = Send(self,@GetCompetencySkillNum,#who=who);
+
+      if iNum <> 0
+      {
+         Send(Send(SYS,@FindSkillbyNum,#num=iNum),
+            @ImproveAbility,#who=who,#target=target,#bonus=bonus);
+      }
+
+      return;
+   }
+
+   DetermineCompetency(who=$)
+   {
+      local iNum; 
+
+      iNum = Send(self,@GetCompetencySkillNum,#who=who);
+      if iNum <> 0
+      {
+         return Send(who,@GetSkillAbility,#skill_num=iNum);
+      }
+
+      return 0;
    }
 
 end

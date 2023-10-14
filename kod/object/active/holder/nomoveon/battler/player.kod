@@ -5741,7 +5741,7 @@ messages:
    // This returns the battler's ability to-hit.  Ranges from 1 to 1000
    GetOffense(what = $, stroke_obj=$)
    {
-      local i, oWeapon, iStroke, iProficiency, iAim, iOffense, oMonster;
+      local i, oWeapon, iStroke, iProficiency, iAim, iOffense, oMonster, iCompetency;
 
       // Morphed?
       oMonster = Send(self,@GetIllusionForm);
@@ -5759,6 +5759,22 @@ messages:
          // Get weapon's numbers.
          iStroke = Send(oWeapon,@GetStroke,#who=self);
          iProficiency = Send(oWeapon,@GetProf,#who=self);
+
+         // Competency skills are used for Roguecraft, combining stroke and proficiency.
+         // Roguecraft proficiencies are usually not good as Weaponcraft.
+         iCompetency = (Send(oWeapon,@DetermineCompetency,#who=self) * 
+                           Send(SETTINGS_OBJECT,@GetRoguecraftCompetency)) / 100;
+
+         // check competency; if superior, rely on that instead 
+         if iCompetency > iStroke
+         {
+            iStroke = iCompetency;
+         }
+
+         if iCompetency > iProficiency
+         {
+            iProficiency = iCompetency;
+         }
 
          iAim = Send(self,@GetAim);
          iOffense = (iStroke*2) + (iProficiency*2) + (iAim*8) +

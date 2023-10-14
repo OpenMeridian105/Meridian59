@@ -122,23 +122,47 @@ messages:
 
    ImproveStroke(who=$,use_weapon=$,target=$)
    {
-      local prof, target_level;
+      local prof, target_level, iCompetency, bNonStroke, iRoll;
 
       target_level = Send(target,@GetLevel);
       prof = Send(use_weapon,@GetProfNumber);
+      iCompetency = Send(use_weapon,@GetCompetencySkillNum);
+      iRoll = Random(1,100);
 
-      if Random(1,100) > 60
-         OR NOT Send(who,@HasSkill,#num=prof)
+      bNonStroke = prof;
+
+      if iRoll > 60
       {
-         // checking for stroke advancement
-         Send(self,@ImproveAbility,#who=who,#target=target,
-               #bonus=Send(who,@GetWeaponSwingBonus));
-      }
-      else
-      {
-         // checking for weapon proficiency advancement
-         Send(use_weapon,@ImproveProficiency,#who=who,#target=target,
-               #bonus=Send(who,@GetWeaponSwingBonus));
+         if NOT bNonStroke 
+         { 
+            // checking for stroke advancement
+            Send(self,@ImproveAbility,#who=who,#target=target,
+                  #bonus=Send(who,@GetWeaponSwingBonus));
+         }
+         else
+         {
+            // 50% chance to improve competency over proficiency
+            if (iCompetency <> 0)
+            {
+               iRoll = Random(1,2);
+            }
+
+            if  Send(who,@HasSkill,#num=iCompetency)
+               AND iRoll = 1
+            {
+               // check for Roguecraft competency
+               Send(use_weapon,@ImproveCompetency,#who=who,#target=target,
+                  #bonus=Send(who,@GetWeaponSwingBonus));
+
+               return;
+            }
+            else if Send(who,@HasSkill,#num=prof)
+            {
+               // checking for weapon proficiency advancement
+               Send(use_weapon,@ImproveProficiency,#who=who,#target=target,
+                     #bonus=Send(who,@GetWeaponSwingBonus));
+            }
+         }
       }
 
      return;
@@ -176,18 +200,34 @@ messages:
    DamageFactors(damage=0, who=$, weapon_used = $)
    "Different skills/strokes are affected by stats differently."
    {
-      local iDamage, iMight, iStat, weapProf, profAbility, bonusPercentage;
+      local iDamage, iMight, iStat, weapProf, rogueProf, profAbility, bonusPercentage, iCompetency;
 
       iDamage = damage;
       if weapon_used <> $
       {
          weapProf = Send(SYS,@FindSkillByNum,#num=Send(weapon_used,@GetProfNumber));
          profAbility = Send(weapon_used,@GetProf,#who=who)+1;
+         iCompetency = (Send(weapon_used,@DetermineCompetency,#who=who) * 
+                           Send(SETTINGS_OBJECT,@GetRoguecraftCompetency)) / 100;
       }
       else
       {
          weapProf = Send(SYS,@FindSkillByNum,#num=SKID_BRAWLING);
          profAbility = Send(who,@GetSkillAbility,#skill_num=SKID_BRAWLING)+1;
+
+         rogueProf = Send(SYS,@FindSkillByNum,#num=SKID_COMPETENCY_UNARMED);
+         iCompetency = Send(who,@GetSkillAbility,#skill_num=SKID_COMPETENCY_UNARMED)+1;
+      }
+
+      // Substitute for Roguecraft based on competency
+      if iCompetency > profAbility
+      {
+         profAbility = iCompetency;
+
+         if rogueProf <> $
+         {
+            weapProf = rogueProf;
+         }
       }
 
       // Add a portion of the proficiency damage based on skill level. 

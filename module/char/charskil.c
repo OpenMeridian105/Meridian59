@@ -73,7 +73,7 @@ void CharSkillsInit(HWND hDlg)
  */
 void CharSkillsCommand(HWND hwnd, int id, HWND hwndCtl, UINT codeNotify)
 {
-   int index1, index2, i, iCount;
+   int index1, index2, i, iCount,  school;
    Skill *s;
    char temp[MAXAMOUNT + 1];
 
@@ -124,14 +124,16 @@ void CharSkillsCommand(HWND hwnd, int id, HWND hwndCtl, UINT codeNotify)
       // Removal of this skill may result in the removal of dependent skills.
       if (s->cost == 10)
       {
-         // Let's see how many rank 1 spells of this school are left.
+         school = s->school;
+
+         // Let's see how many rank 1 skills of this school are left.
          iCount = 0;
 
          for (i = 0; i < ListBox_GetCount(hList2); ++i)
          {
             s = (Skill *) ListBox_GetItemData(hList2, i);
 
-            if (s->cost == 10)
+            if (school == s->school && s->cost == 10)
                ++iCount;
          }
 
@@ -142,7 +144,7 @@ void CharSkillsCommand(HWND hwnd, int id, HWND hwndCtl, UINT codeNotify)
             {
                s = (Skill *) ListBox_GetItemData(hList2, i);
 
-               if (s->cost == 25)
+               if (school == s->school && s->cost == 25)
                {
                   spell_points += s->cost;
                   SendMessage(hPoints, GRPH_POSSET, 0, spell_points);
@@ -199,30 +201,27 @@ void CharSkillsCommand(HWND hwnd, int id, HWND hwndCtl, UINT codeNotify)
 
 /********************************************************************/
 /*
- * MaybeEnableAddButton: Enable/disable the "add spell" button
- *   depending on whether the currently selected spell in the available
+ * MaybeEnableAddButton: Enable/disable the "add skill" button
+ *   depending on whether the currently selected skill in the available
  *   list box can be chosen.
  */
 void MaybeEnableAddButton(HWND hDlg)
 {
-   int i;
    int iCount = 0;
-   Skill *s;
    BOOL enable = TRUE;
    int index = ListBox_GetCurSel(hList1);
 
    if (index != LB_ERR)
    {
+      Skill *s = (Skill *) ListBox_GetItemData(hList1, index);
       // Count how many level 1 skills we have.
-      for (i = 0; i < ListBox_GetCount(hList2); ++i)
+      for (int i = 0; i < ListBox_GetCount(hList2); ++i)
       {
-         s = (Skill *) ListBox_GetItemData(hList2, i);
+         Skill *t = (Skill *) ListBox_GetItemData(hList2, i);
 
-         if (s->cost == 10)
+         if (t->school == s->school && t->cost == 10)
             ++iCount;
       }
-
-      s = (Skill *) ListBox_GetItemData(hList1, index);
 
       // If we don't have the required level 1 skills, disable button
       if (s->cost == 25 && iCount < 2)

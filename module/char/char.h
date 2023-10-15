@@ -104,7 +104,7 @@ typedef struct {
    ID   desc_res;       // Resource ID of spell description string
    int  cost;           // Cost of choosing spell
    Bool chosen;         // True when user has chosen spell
-   School spell_school; // School of spell
+   School school;       // School of spell
    char *list_str;      // School + level + name in list
 } Spell;
 
@@ -115,6 +115,7 @@ typedef struct {
    ID   desc_res;       // Resource ID of skill description string
    int  cost;           // Cost of choosing skill
    Bool chosen;         // True when user has chosen skill
+   School school;       // School of skill
    char *list_str;      // School + level + name in list
 } Skill;
 

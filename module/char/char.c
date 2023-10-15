@@ -210,12 +210,12 @@ Bool HandleCharInfo(char *ptr, long len)
       Extract(&ptr, &s->desc_res, SIZE_ID);
       Extract(&ptr, &s->cost, 4);
       Extract(&ptr, &byte, 1);
-      s->spell_school = (School) byte;
+      s->school = (School) byte;
       s->chosen = False;
 
       // Create the string displayed to user in
       // character creation spell selection.
-      list_str.assign(GetSchoolString(s->spell_school));
+      list_str.assign(GetSchoolString(s->school));
       if (s->cost < 25)
          list_str.append(" 1: ");
       else
@@ -237,13 +237,13 @@ Bool HandleCharInfo(char *ptr, long len)
       Extract(&ptr, &s->name_res, SIZE_ID);
       Extract(&ptr, &s->desc_res, SIZE_ID);
       Extract(&ptr, &s->cost, 4);
+      Extract(&ptr, &byte, 1);
+      s->school = (School) byte;
       s->chosen = False;
 
-      // Create the string displayed to user in character creation
-      // skill selection. School hardcoded to weaponcraft until
-      // alternatives are available, due to incompatibility
-      // with existing protocol (school not sent for skills).
-      list_str.assign(GetSchoolString(SKS_WEAPONCRAFT));
+      // Create the string displayed to user in
+      // character creation skill selection.
+      list_str.assign(GetSchoolString(s->school));
       if (s->cost < 25)
          list_str.append(" 1: ");
       else

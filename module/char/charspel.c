@@ -127,7 +127,7 @@ void CharSpellsCommand(HWND hwnd, int id, HWND hwndCtl, UINT codeNotify)
       // Removal of this spell may result in the removal of dependent spells.
       if (s->cost == 10)
       {
-         school = s->spell_school;
+         school = s->school;
 
          // Let's see how many rank 1 spells of this school are left.
          iCount = 0;
@@ -136,7 +136,7 @@ void CharSpellsCommand(HWND hwnd, int id, HWND hwndCtl, UINT codeNotify)
          {
             s = (Spell *) ListBox_GetItemData(hList2, i);
 
-            if (school == s->spell_school && s->cost == 10)
+            if (school == s->school && s->cost == 10)
                ++iCount;
          }
 
@@ -147,7 +147,7 @@ void CharSpellsCommand(HWND hwnd, int id, HWND hwndCtl, UINT codeNotify)
             {
                s = (Spell *) ListBox_GetItemData(hList2, i);
 
-               if (school == s->spell_school && s->cost == 25)
+               if (school == s->school && s->cost == 25)
                {
                   spell_points += s->cost;
                   SendMessage(hPoints, GRPH_POSSET, 0, spell_points);
@@ -229,17 +229,17 @@ void MaybeEnableAddButton(HWND hDlg)
       {
          t = (Spell *) ListBox_GetItemData(hList2, i);
 
-         if (t->spell_school == SS_QOR || t->spell_school == SS_SHALILLE)
-            school = t->spell_school;
+         if (t->school == SS_QOR || t->school == SS_SHALILLE)
+            school = t->school;
 
-         if (t->spell_school == s->spell_school && t->cost == 10)
+         if (t->school == s->school && t->cost == 10)
             ++iCount;
       }
 
       // If school of selected spell conflicts or we don't have the required
       // level 1 spells, disable button
-      if (school == SS_QOR && s->spell_school == SS_SHALILLE ||
-         school == SS_SHALILLE && s->spell_school == SS_QOR ||
+      if (school == SS_QOR && s->school == SS_SHALILLE ||
+         school == SS_SHALILLE && s->school == SS_QOR ||
          s->cost == 25 && iCount < 2)
          enable = FALSE;
    }

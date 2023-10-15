@@ -37,6 +37,13 @@ resources:
       "people if he appointed the young bard straight to the position of priestess so "
       "that she might teach others the secrets of the lute."
 
+   jalapriestess_already_have_spell = "You already know the %s spell."
+
+   jalapriestess_teach_quest_needed = \
+      "Ah, my fellow seeker of melodies and tales!  I believe every aspiring bard "
+      "has their own unique journey.  When your spirit is ripe for learning, my "
+      "guidance will be yours.  Until then, may inspiration grace your every step!"
+
 classvars:
 
    vrName = jalapriestess_name_rsc
@@ -47,6 +54,8 @@ classvars:
       MOB_NOFIGHT | MOB_LISTEN | MOB_RANDOM | \
       MOB_RECEIVE | MOB_TEACHER | MOB_COND_SELLER
    viOccupation = MOB_ROLE_PRIESTESS
+
+   viQuestID = QNT_ID_DARK_ANGEL
 
 messages:
 
@@ -65,6 +74,66 @@ messages:
      $];
 
       return;
+   }
+
+   CanAddSpell(who=$,num=0,report=FALSE)
+   {
+      if NOT Send(self,@SpecialTeachChecks,#report=report,#who=who,#num=num)
+         AND num = SID_NODE_TRAVEL
+      {
+         return FALSE;
+      }
+
+      propagate;
+   }
+
+   CanDoTeach(who=$,sid=0)
+   {
+      if sid = SID_NODE_TRAVEL
+      {
+         if NOT Send(self,@SpecialTeachChecks,#report=TRUE,#who=who,#num=sid)
+         {
+            return FALSE;
+         }
+      }
+
+      propagate;
+   }
+
+   SpecialTeachChecks(who=$,num=0,report=FALSE)
+   {
+      if who = $ or num = 0
+      {
+         Debug("Called CanAddSpell with bad parameters!");
+
+         return FALSE;
+      }
+
+      if Send(who,@HasSpell,#num=num)
+      {
+         if report
+         {
+            Post(self,@SayToOne,#target=who,
+                  #message_rsc=jalapriestess_already_have_spell,
+                  #parm1=Send(Send(SYS,@FindSpellByNum,#num=num),@GetName));
+         }
+
+         return FALSE;
+      }
+
+      if num = SID_NODE_TRAVEL
+         AND NOT Send(self,@HasDoneLearnQuest,#who=who)
+      {
+         if report
+         {
+            Post(self,@SayToOne,#target=who,
+                  #message_rsc=jalapriestess_teach_quest_needed);
+         }
+
+         return FALSE;
+      }
+
+      return TRUE;
    }
 
    IsExpansionNPC()

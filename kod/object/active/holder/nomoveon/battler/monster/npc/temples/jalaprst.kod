@@ -25,12 +25,12 @@ resources:
       "of song gives you a long and pensive look before breaking into a genial smile.  "
       "Dressed in expensive robes tailored from fine silk and dyed in the traditional "
       "colors of her trade, Themala's appearance does little to reveal the amount of hard "
-      "work and effort she has put into holding the position she does.  "
+      "work and effort she has put into holding the position she does.\n\n"
       "Despite being born to noble parents and taught about the arts, music and courtly "
       "etiquette since early childhood, Themala nonetheless decided to earn her place in "
       "society through brave deeds and hard work alone, enrolling in the local guard at "
       "the age of fifteen and hoping to one day work her way up to become a royal bard "
-      "in the service of King Aaron.  "
+      "in the service of King Aaron.\n\n"
       "Her extraordinary ability to inspire her allies in battle with her rousing songs "
       "did not go unnoticed and when word of her gift traveled all the way to the throne, "
       "it didn't take the king long to realize that it would be of great benefit to his "
@@ -55,17 +55,16 @@ classvars:
       MOB_RECEIVE | MOB_TEACHER | MOB_COND_SELLER
    viOccupation = MOB_ROLE_PRIESTESS
 
-   viQuestID = QNT_ID_DARK_ANGEL
+   // TODO: Add a simple bard-related quest here
+   viQuestID = 0
 
 messages:
 
    SetForSale()
    {
-
       plFor_Sale = [
          $,$,
          [
-            SID_LULLABY,
             SID_DISSONANCE,
             SID_CREATE_SCROLL,
             SID_NODE_TRAVEL,
@@ -78,8 +77,8 @@ messages:
 
    CanAddSpell(who=$,num=0,report=FALSE)
    {
-      if NOT Send(self,@SpecialTeachChecks,#report=report,#who=who,#num=num)
-         AND num = SID_NODE_TRAVEL
+      if num = SID_NODE_TRAVEL
+         AND NOT Send(self,@SpecialTeachChecks,#report=report,#who=who,#num=num)
       {
          return FALSE;
       }
@@ -90,11 +89,9 @@ messages:
    CanDoTeach(who=$,sid=0)
    {
       if sid = SID_NODE_TRAVEL
+         AND NOT Send(self,@SpecialTeachChecks,#report=TRUE,#who=who,#num=sid)
       {
-         if NOT Send(self,@SpecialTeachChecks,#report=TRUE,#who=who,#num=sid)
-         {
-            return FALSE;
-         }
+         return FALSE;
       }
 
       propagate;
@@ -122,7 +119,7 @@ messages:
       }
 
       if num = SID_NODE_TRAVEL
-         AND NOT Send(self,@HasDoneLearnQuest,#who=who)
+         AND NOT Send(who,@HasCompletedQuest,#index=QST_ID_DARK_ANGEL)
       {
          if report
          {

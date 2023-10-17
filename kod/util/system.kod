@@ -387,6 +387,7 @@ properties:
    plSpells = $
    plNewCharSpells = $
    plSkills = $
+   plNewCharSkills = $
    plItem_Attributes = $
    plItemAttTreasure = $
    plNodes = $
@@ -2514,19 +2515,10 @@ messages:
          AddPacket(1, Send(i, @GetSchool));
       }
 
-      iCount = 0;
-      foreach i in plSkills
-      {
-         if Send(i,@GetLevel) <= 2
-         {
-            iCount = iCount + 1;
-         }
-      }
-
       ////// Skills
-      AddPacket(4,iCount);
+      AddPacket(4,Length(plNewCharSkills));
 
-      foreach i in plSkills
+      foreach i in plNewCharSkills
       {
          if Send(i,@GetLevel) > 2
          {
@@ -4136,7 +4128,7 @@ messages:
 
    CreateOneSkillIfNew(num = $,class = $)
    {
-      local oSkill;
+      local oSkill, iSchool;
 
       if Send(self,@FindSkillByNum,#num=num) = $
       {
@@ -4147,8 +4139,20 @@ messages:
 
             return;
          }
+
          AddTableEntry(phSkills,Send(oSkill,@GetSkillNum),oSkill);
          plSkills = Cons(oSkill,plSkills);
+
+         // Check if we should add this skill to new char skill list.
+         if (IsClass(oSkill,&Skill)
+            AND Send(oSkill,@OfferToNewCharacters))
+         {
+            iSchool = Send(oSkill,@GetSchool);
+            if (iSchool >= SKS_WEAPONCRAFT AND iSchool <= SKS_ROGUECRAFT)
+            {
+               plNewCharSkills = Cons(oSkill,plNewCharSkills);
+            }
+         }
       }
 
       return;
@@ -4220,6 +4224,9 @@ messages:
          plSkills = $;
       }
 
+         // Clear new char skills. Skills objects already deleted above.
+      plNewCharSkills = $;
+
       Send(self,@CreateSkillTable);
 
       Send(self,@CreateAllSkillsIfNew);
@@ -4241,6 +4248,12 @@ messages:
    "Called by the skill when it is deleted, so we can remove it from our list of skills."
    {
       local i;
+
+      if (plNewCharSkills <> $
+         AND FindListElem(plNewCharSkills,what))
+      {
+         plNewCharSkills = DelListElem(plNewCharSkills,what);
+      }
 
       // any time a skill is deleted, clear its enchantment on all logged in users
       // just in case they have this skill

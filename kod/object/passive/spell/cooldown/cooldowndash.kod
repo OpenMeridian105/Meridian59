@@ -1,0 +1,77 @@
+// Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+// All rights reserved.
+//
+// This software is distributed under a license that is described in
+// the LICENSE file that accompanies it.
+//
+// Meridian is a registered trademark.
+
+
+////////////////////////////////////////////////////////////////////////////////
+CooldownDash is Cooldown
+
+constants:
+
+   include blakston.khd
+
+resources:
+
+   //include cooldowndash.lkod
+
+   cooldown_dash_name_rsc = "dash cooldown"
+   cooldown_dash_icon_rsc = isprintCD.bgf
+
+classvars:
+
+   vrName = cooldown_dash_name_rsc
+   vrIcon = cooldown_dash_icon_rsc
+   viSpell_num = SID_COOLDOWN_DASH
+   vbIsSkillCooldown = TRUE
+   vbReport = FALSE
+
+properties:
+
+   piBaseDuration = 700
+   piMinDuration = 7000
+   piCombatpenalty = 10000
+   piSpellPowerModifier = 80
+
+messages:
+
+   DoSpellEffect(who = $, iDuration = $, oAbility = $)
+   {
+      if NOT vbReport
+      {
+         return;
+      }
+
+      propagate;
+   }
+
+   UndoSpellEffect(who = $, oAbility = $)
+   {
+      if NOT vbReport
+      {
+         return;
+      }
+
+      propagate;
+   }
+
+   GetDuration(who=$,iSpellPower=0)
+   {
+      local iDuration;
+
+      iDuration = piBaseDuration - iSpellPower * piSpellPowerModifier;
+      iDuration = Bound(iDuration,piMinDuration,$);
+
+      if NOT Send(who,@CanHelpPlayerStrict)
+      {
+         iDuration += piCombatpenalty;
+      }
+
+      return iDuration;
+   }
+
+end
+////////////////////////////////////////////////////////////////////////////////

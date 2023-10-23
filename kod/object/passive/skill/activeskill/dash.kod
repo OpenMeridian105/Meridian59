@@ -1,0 +1,183 @@
+// Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+// All rights reserved.
+//
+// This software is distributed under a license that is described in
+// the LICENSE file that accompanies it.
+//
+// Meridian is a registered trademark.
+
+
+////////////////////////////////////////////////////////////////////////////////
+Dash is ActiveSkill
+
+constants:
+
+   include blakston.khd
+
+resources:
+
+   //include dash.lkod
+
+   Dash_name_rsc = "dash"
+   Dash_icon_rsc = isprint.bgf
+   Dash_desc_rsc = \
+      "Grants the dashing rogue an exceptional burst of speed, "
+      "enabling swift maneuvering in the shadows. "
+      "However, it demands a toll, leaving the user "
+      "panting for breath at an accelerated pace."
+      "\n\nNOTE: This is an 'active' skill, which must be performed manually "
+      "using the 'perform dash' command, or using a hotkey."
+
+   Dash_start = "You begin to dash!"
+   Dash_end = "You stop running."
+   Dash_exhaust = "You are too exhausted to dash!"
+
+   Dash_sound_rsc = sprint.ogg
+   Dash_end_sound_rsc = sprintend.ogg
+
+classvars:
+
+   vrName = Dash_name_rsc
+   vrIcon = Dash_icon_rsc
+   vrDesc = Dash_desc_rsc
+   vrSkill_tired = Dash_exhaust
+
+   // Dash handles sounds a bit differently.
+   // Set regular sound resources nil.
+   vrTrance_begin
+   vrTrance_break
+   vrTrance_cancel
+
+   viIndefinite = ARTICLE_NONE
+   viDefinite = ARTICLE_NONE
+
+   viSkill_num = SKID_DASH
+   viSchool = SKS_ROGUECRAFT
+   viSkill_level = 3
+   viChance_to_Increase = 15
+   viMeditate_ratio = 50
+
+   viSkillExertion = 500
+   vbCheck_exertion = TRUE
+
+   vbAutomatic = FALSE
+
+   vbReportTrance = FALSE
+   vbCanBreakTrance = FALSE
+
+   vbFixedTrance = TRUE
+
+   viPreperation_time = 1500
+   viPostPerform_time = 0
+
+   viCooldownSID = SID_COOLDOWN_DASH
+
+   vbShowIcon = TRUE
+
+properties:
+
+   plPrerequisites = $
+   
+   piTranceMovementSpeedReduction = -500
+
+   pbKey_hold = FALSE
+
+messages:
+
+   GetRequisiteStat(who=$)
+   {
+      return (2*Send(who,@GetAgility)+Send(who,@GetStamina))/3;
+   }
+
+   SuccessChance()
+   {
+      return TRUE;
+   }
+
+   GetTranceTime(iSkillPower=0)
+   {
+      return (viPreperation_time*iSkillPower)/100;
+   }
+
+   BeginPerformPreparation(who=$,lTargets=$,bSuccess=TRUE)
+   {
+      local iSkillPower;
+
+      iSkillPower = Send(self,@GetSkillPower,#who=who);
+
+      Send(Send(who,@GetOwner),@SomethingWaveRoom,#what=who,
+         #wave_rsc=Dash_sound_rsc);
+         
+      Send(who,@MsgSendUser,#message_rsc=Dash_start);
+
+      Send(Send(SYS,@FindSpellByNum,#num=SID_TRANCE),@BeginTrance,
+         #what=self,#who=who,#power=iSkillPower,#iHold=pbKey_hold,
+         #time=Send(self,@GetTranceTime,#iSkillPower=iSkillPower));
+
+      return;
+   }
+
+   // Not much going on...
+   PerformSkill(who=$,lTargets=$)
+   {
+      return;
+   }
+
+   TranceCompleted(who=$,state=$)
+   {
+      // Check for advancement conditions.
+      if Abs(Send(who,@GetLastMoveUpdate) - GetTickCount()) < 1000
+      {
+         Send(self,@ImproveAbility,#who=who);
+      }
+
+      propagate;
+   }
+
+   TranceEnded(who=$,state=$)
+   {
+      // Handles post use effects.
+      Send(self,@DashEnded,#who=who,#state=state);
+
+      propagate;
+   }
+
+   DashEnded(who=$,state=$)
+   {
+      local iPower, oSpell;
+
+      iPower = Nth(state,7);
+      Send(who,@MsgSendUser,#message_rsc=Dash_end);
+
+      Send(who,@WaveSendUser,#wave_rsc=Dash_end_sound_rsc);
+
+      oSpell = Send(SYS,@FindSpellByNum,#num=viCooldownSID);
+ 
+      Send(oSpell,@CastSpell,#who=self,#oTarget=who,
+         #iSpellPower=iPower);
+ 
+      return;
+   }
+
+   GetMovementSpeedReduction(state=$)
+   {
+      return -Nth(state,7)/2;
+   }
+
+   GetPeriodicSound()
+   {
+      return;
+   }
+
+   GetPeriodicSoundEnd()
+   {
+      return;
+   }
+
+   GetPeriodicSoundDuration()
+   {
+      return;
+   }
+
+end
+////////////////////////////////////////////////////////////////////////////////

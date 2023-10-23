@@ -1,0 +1,31 @@
+name: Check File Encoding on Changed Files
+
+on:
+  pull_request:  # PR opened, added to, re-opened
+    paths:
+      - '**.*kod'
+      - '**.khd'
+      - '**.rc'
+jobs:
+  check-encoding:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Get list of Changed Files
+        id: changed-files
+        uses: tj-actions/changed-files@v40
+
+      - name: Check file encoding
+        run: |
+          for file in ${{ steps.changed-files.outputs.all_changed_files }}; do
+            if [[ -f "$file" ]]; then
+              if [[ $(file -i "$file" | grep 'charset=utf-8') ]]; then
+                FOUND_UTF8=1
+                echo "::error::UTF-8 encoded file found: $file"
+              fi
+            fi
+          done
+          if [[ "$FOUND_UTF8" ]]; then
+            exit 1
+          fi

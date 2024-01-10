@@ -1,0 +1,132 @@
+// Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+// All rights reserved.
+//
+// This software is distributed under a license that is described in
+// the LICENSE file that accompanies it.
+//
+// Meridian is a registered trademark.
+
+
+////////////////////////////////////////////////////////////////////////////////
+WeapAttPoison is WeaponAttribute
+
+///////////////////////////////////////////////////////////////////////
+//
+//
+//   Form is:
+//
+//      [ WA_POISON ]
+//
+///////////////////////////////////////////////////////////////////////
+
+constants:
+
+   include blakston.khd
+
+resources:
+
+   include wapoison.lkod
+
+   WeapAttPoison_desc = \
+      "  The blade of this weapon is infused with a secret formula "
+      "and seeps with a colorless toxin."
+   Poison_dm = "poison"
+   Poison_worked_target = \
+      "%s%s suffers from the venomous effects of your weapon!"
+   Poison_info_desc = "%i%% chance to inflict poison on hit\n"
+
+classvars:
+
+   vrDesc = WeapAttPoison_desc
+   vrInfoDesc = Poison_info_desc
+   viItem_Att_Num = WA_POISON
+   vrDM_trigger = Poison_dm
+   vbProcRequirement = TRUE
+
+properties:
+
+   // Modify the object's price by percent
+   piValue_modifier = 200
+
+   piValue_power_modifier = 10
+
+   // Percent chance the effect procs
+   piEffect_percent = 15
+
+   piPoisonStrength = 1000
+   piPoisonDuration = 30000
+   piPoisonHealth = 100
+   piPoisonVigor = 50
+   piPoisonMana = 0
+
+messages:
+
+   SetItemsToAttribute()
+   {
+      plItems_to_attribute = [ [ &Knife, 25 ],
+                               [ &Dagger, 25 ],
+                               [ &Kukri, 15 ],
+                               [ &ShortSword, 15 ],
+                               [ &Longsword, 13 ],
+                               [ &Machete, 4 ],
+                               [ &Hatchet, 3 ]
+                             ];
+      return;
+   }
+
+   // Effect Functions
+
+   ModifyDamage(damage=0,target=$,wielder=$,lData=$)
+   {
+      local oEffect;
+
+      if target = $
+         OR wielder = $
+      {
+         return damage;
+      }
+
+      if Random(1,100) < piEffect_percent
+         AND Send(target,@CanPoison)
+      {
+         oEffect = Send(SYS,@FindSpellByNum,#num=SID_POISON);
+
+         if (Send(oEffect,@StartPoison,
+               #who=target,#source=wielder, #duration=piPoisonDuration,
+               #healthloss=piPoisonStrength * piPoisonHealth / 100,
+               #manaloss=piPoisonStrength * piPoisonMana / 100,
+               #vigorloss=piPoisonStrength * piPoisonVigor / 100))
+               {
+                    Send(wielder,@MsgSendUser,#message_rsc=Poison_worked_target,
+                        #parm1=Send(target,@GetCapDef),#parm2=Send(target,@GetName));
+
+               }
+      }
+
+      return Damage;
+   }
+
+   // Add the spell name to the description.
+   AppendDescInfo(oItem = $,compound = $, bShowAll = FALSE)
+   {
+      if (bShowAll
+         OR Send(oItem,@GetIDStatusFromCompound,#compound=compound))
+      {
+         AddPacket(4,vrInfoDesc, 4,piEffect_percent);
+      }
+      else
+      {
+         // Not identified, add nothing (blank resource).
+         AddPacket(4,system_blank_resource);
+      }
+
+      return;
+   }
+
+   IsMagicalEffect()
+   {
+      return TRUE;
+   }
+
+end
+////////////////////////////////////////////////////////////////////////////////

@@ -45,10 +45,37 @@ classvars:
    viWeight = 20
    viValue_average = 40
 
+   viColor = PT_GRAY_TO_PURPLE
+
 properties:
 
 
 messages:
+
+   Constructor(iColor=0)
+   {
+      Post(self,@SetColor,#xlat=viColor);
+
+      propagate;
+   }
+
+   SetColor(xlat=0)
+   {
+      local iColor;
+
+      if xlat <> 0
+      {
+         iColor = xlat;
+      }
+
+      if poOwner <> $
+      {
+         piItem_flags = (piItem_flags & ~ITEM_PALETTE_MASK) | iColor;
+         Send(poOwner,@SomethingChanged,#what=self);
+      }
+
+      return;
+   }
 
    ReqNewApply(what = $,apply_on = $)
    {

@@ -1,0 +1,92 @@
+// Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+// All rights reserved.
+//
+// This software is distributed under a license that is described in
+// the LICENSE file that accompanies it.
+//
+// Meridian is a registered trademark.
+
+
+////////////////////////////////////////////////////////////////////////////////
+Flanking is Skill
+
+constants:
+
+   include blakston.khd
+
+resources:
+
+   include flanking.lkod
+
+   flanking_name_rsc = "flanking"
+   flanking_icon_rsc = iflanking.bgf
+   flanking_desc_rsc = "Flanking is the ability to exploit superior positoning in battle, allowing you "
+      "to strike vulnerable spots more reliably when attacking from the side or the back."
+
+classvars:
+
+   vrName = flanking_name_rsc
+   vrIcon = flanking_icon_rsc
+   vrDesc = flanking_desc_rsc
+
+   viIndefinite = ARTICLE_NONE
+   viDefinite = ARTICLE_NONE
+
+   viSkill_num = SKID_FLANKING
+   viSchool = SKS_ROGUECRAFT
+   viSkill_Level = 3
+   viChance_to_Increase = 15
+   viMeditate_ratio = 50
+
+   viSkillExertion = 0
+   vbCheck_exertion = FALSE
+
+   vbAutomatic = TRUE
+
+properties:
+
+   // Determines how difficult it is to trigger an ImproveAbility.
+   // 100 means that only perfect positoning grants a chance to improve.
+   // 0 means that even attacks from the front will allow for improvement.
+   piAdvancementHurdle = 65
+
+   piFlankingEffectiveness = 50
+
+   piMinImproveHighResDamage = 400
+
+messages:
+
+   ModifyDamage(who=$,what=$,damage=$,damage_max=$)
+   {
+      local i, iAbility, iMin, iMax, iFlankingPercentage;
+
+         iFlankingPercentage = Send(who,@GetFlankingPercentage,#attacker=what);
+
+         // Determine min and max damage.
+         i = (damage_max * iFlankingPercentage) / 100 - damage ;
+         iAbility = Send(self,@GetAbility,#who=who) + 1;
+         iMin = damage + (i * iAbility / 100);
+
+         damage = Random(iMin, damage_max);
+
+      return damage;
+   }
+
+   // Just for advancement.
+   DoSkill(who=$,oTarget=$,damage=0)
+   {
+      local iFlankingPercentage;
+
+      iFlankingPercentage = Send(who,@GetFlankingPercentage,#attacker=oTarget);
+
+      if Random(0,iFlankingPercentage) > piAdvancementHurdle*piFlankingEffectiveness/100
+         AND damage > piMinImproveHighResDamage // High res damage
+      {
+         Send(self,@ImproveAbility,#who=who,#target=oTarget);
+      }
+
+      return;
+   }
+
+end
+////////////////////////////////////////////////////////////////////////////////

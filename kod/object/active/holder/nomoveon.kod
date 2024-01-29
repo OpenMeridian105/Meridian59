@@ -927,5 +927,54 @@ messages:
       return iResult;
    }
 
+   GetFlankingPercentage(attacker=$)
+   {
+      local iFlankingPercentage, iDifference, iAngle, iRelativeAngle;
+
+      // We want to check if the victim is facing the direction
+      // the attack is coming from. Flanking percentage increases
+      // the further the victim is turned away flanking equals 100 for backstab,
+      // 50 for side on attack, and flanking of 0 when victim faces the attacker
+
+      if attacker <> $
+         AND Send(attacker,@GetOwner) = poOwner
+      {
+         iRelativeAngle = Send(poOwner,@GetAngleBetween,#who=self,#what=attacker);
+      }
+      else
+      {
+         return 0;
+      }
+
+      // Battlers are at the exact same location.
+      if iRelativeAngle = $
+      {
+         return 0;
+      }
+
+      iAngle = Send(poOwner,@GetRoomAngle,#what=attacker);
+      if iAngle < iRelativeAngle
+      {
+         iDifference = iRelativeAngle - iAngle;
+         if iDifference > MAX_ANGLE/2
+         {
+            iDifference = MAX_ANGLE - iDifference; 
+         }
+      }
+      else
+      {
+         iDifference = iAngle - iRelativeAngle;
+
+         if iDifference > MAX_ANGLE/2
+         {
+            iDifference = MAX_ANGLE - iDifference; 
+         }
+      }
+
+      iFlankingPercentage = 100-(200*iDifference/MAX_ANGLE);
+
+      return iFlankingPercentage;
+   }
+
 end
 ////////////////////////////////////////////////////////////////////////////////

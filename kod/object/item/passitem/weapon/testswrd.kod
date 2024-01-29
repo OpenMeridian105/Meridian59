@@ -77,26 +77,36 @@ messages:
 
    GetDamage(target=$)
    {
-      local iDamage, i, oWeapAtt;
+      local iDamage, i, oWeapAtt, oSkill, iMax;
 
       // First, get base damage.
-      iDamage = send(self,@GetBaseDamage,#who=poOwner,#target=target);
+      iDamage = Send(self,@GetBaseDamage,#who=poOwner,#target=target);
+      iMax = iDamage + 3;
+
+      // Flanking increases the minimum damage based on position
+      oSkill = Send(SYS,@FindSkillByNum,#num=SKID_FLANKING);
+      if Send(poOwner,@GetSkillAbility,#Skill_num=SKID_FLANKING) > 0
+      {
+         iDamage = Send(oSkill,@ModifyDamage,#who=poOwner,#what=target,
+                     #damage=iDamage,#damage_max=iMax);
+      }
 
       // Then check weapon attributes
       //  Weapon Attributes in general should only + or - damage - no multipliers!
       foreach i in plItem_Attributes
       {
-         oWeapAtt = send(SYS,@FindItemAttByNum,#num=send(self,@GetNumFromCompound,#compound=first(i)));
-         if isClass(oWeapAtt,&WeaponAttribute)
+         oWeapAtt = Send(SYS,@FindItemAttByNum,
+               #num=Send(self,@GetNumFromCompound,#compound=First(i)));
+         if IsClass(oWeapAtt,&WeaponAttribute)
          {
-            iDamage = send(oWeapAtt,@ModifyDamage,#damage=iDamage,#wielder=poOwner,
-                           #target=target,#lData=i);
+            iDamage = Send(oWeapAtt,@ModifyDamage,#damage=iDamage,
+                        #wielder=poOwner,#target=target,#lData=i);
          }
       }
 
-      iDamage = iDamage + piDamageBonus;
+      iDamage += piDamageBonus;
 
-      // send(send(poOwner,@getOwner),@SomeoneSaid,#what=self,#type=SAY_RESOURCE,
+      // Send(Send(poOwner,@getOwner),@SomeoneSaid,#what=self,#type=SAY_RESOURCE,
       //      #string=weapon_do_damage,#parm1=iDamage,#parm2=baseDamage);
 
       return iDamage;

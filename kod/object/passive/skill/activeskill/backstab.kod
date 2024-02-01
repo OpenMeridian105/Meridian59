@@ -1,0 +1,233 @@
+// Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+// All rights reserved.
+//
+// This software is distributed under a license that is described in
+// the LICENSE file that accompanies it.
+//
+// Meridian is a registered trademark.
+
+
+////////////////////////////////////////////////////////////////////////////////
+Backstab is ActiveSkill
+
+constants:
+
+   include blakston.khd
+
+resources:
+
+   include backstab.lkod
+
+   Backstab_name_rsc = "backstab"
+   Backstab_icon_rsc = bckstbico.bgf
+   Backstab_desc_rsc = \
+      "Backstab is a lethal technique favored by stealthy assassins.  "
+      "It involves swiftly striking vulnerable points from the shadows, "
+      "dealing precise and devastating damage.  "
+      "\n\nNOTE: This is an 'active' skill, which must be performed manually "
+      "using the 'perform backstab' command, or using a hotkey."
+
+   Backstab_bad_target = "You decide to save your backstab for something better."
+
+   Backstab_cannot = "This weapon is unsuitable for backstabbing."
+
+   Backstab_sound_rsc = unleash.ogg
+
+classvars:
+
+   vrName = Backstab_name_rsc
+   vrIcon = Backstab_icon_rsc
+   vrDesc = Backstab_desc_rsc
+
+   viIndefinite = ARTICLE_NONE
+   viDefinite = ARTICLE_NONE
+
+   viSkill_num = SKID_BACKSTAB
+   viSchool = SKS_ROGUECRAFT
+   viSkill_level = 4
+   viChance_to_Increase = 2
+   viMeditate_ratio = 50
+   
+   viSkillExertion = 40
+   vbCheck_exertion = TRUE
+
+   vbAutomatic = FALSE
+
+   vbIsMeleeAttack = TRUE
+   vbIsMartialAttack = TRUE
+
+   vbReportTrance = FALSE
+   vbCanBreakTrance = FALSE
+   vbIsAreaEffect = TRUE
+
+   vbFixedTrance = TRUE
+   vbCheckTargetsPreTrance = FALSE
+
+   viRegularImproveChance = 20
+
+properties:
+
+   plPrerequisites = $
+
+   piBackstab_bleed_strength = 200
+   piBackstab_bleed_min_damage = 700
+   piBackstab_bleed_max_damage = 1900
+   piBackstab_bleed_duration = 8000
+
+messages:
+
+   GetNumSkillTargets()
+   {
+      return 1;
+   }
+
+   CanPayCosts(who=$,lTargets=$)
+   {
+      local oTarget;
+
+      oTarget = First(lTargets);
+      // Make sure we aren't swinging at a non battler.
+      if NOT IsClass(oTarget,&Battler)
+         OR oTarget = who
+      {
+         Send(who,@MsgSendUser,#message_rsc=Backstab_bad_target);
+
+         return FALSE;
+      }
+
+      propagate;
+   }
+
+   GetRequisiteStat(who=$)
+   {
+      return (Send(who,@GetAgility)+Send(who,@GetMight)+Send(who,@GetAim))/3;
+   }
+
+   PerformSkill(who=$,lTargets=$,iSkillPower=0)
+   {
+      local oTarget, oWeapon, stroke_obj, iFlanking, iDamage,
+            bAmbush, bGuaranteed, bImprove;
+
+      oTarget = First(lTargets);      
+      stroke_obj = Send(who,@GetStrokeObject);
+      bAmbush = FALSE;
+      bGuaranteed = FALSE;
+
+      // Let's check what kind of weapon we have here.
+      oWeapon = Send(who,@GetWeapon);
+      if Send(oWeapon,@CanBackstab,#who=who)
+      {
+        Send(oWeapon,@WeaponUnleash,#what=oTarget);
+        Send(oTarget,@SwingHasEnded,#who=who);
+      }
+      else
+      {
+          Send(who,@MsgSendUser,#message_rsc=Backstab_cannot);
+
+          return;
+      }
+
+      iFlanking = Send(who,@GetFlankingPercentage,#attacker=oTarget);
+
+      // Aligned for a backstab
+      if iFlanking >= 75
+      {
+        // Play a matching sound for our attack.
+        Send(self,@PlaySkillSound,#room_obj=Send(who,@GetOwner),#what=who);
+
+        // Perectly aligned for an ambush
+        if iFlanking = 100
+        {
+            bAmbush = TRUE;
+            bGuaranteed = TRUE;
+        }
+
+        iDamage = Send(who,@TryAttack,#what=oTarget,#stroke_obj=stroke_obj,
+            #use_weapon=oWeapon,#ambush=bAmbush,#factor=Send(self,@GetSkillPower,#who=who),
+            #bCheck=FALSE,#crush=FALSE,#bGuaranteed=bGuaranteed,#bReturnDamage=TRUE);
+        
+        // We dealt a killing blow. That's worth a chance to improve!
+        if iDamage = $
+        {
+            bImprove = TRUE;
+        }
+        else if iDamage > 99
+        {
+             // We dealt at least one point of damage.
+            Send(self,@BackstabTarget,#who=who,#what=oTarget,#damage=iDamage);
+        }
+
+        // Regular attacks don't grant a chance to improve as often as killing blows.
+        if Random(0,99) < viRegularImproveChance
+        {
+            bImprove = TRUE;
+        }
+      }
+      else
+      {
+          Send(self,@SkillFailed,#who=who);
+      }
+
+      // No chance to improve unless we had a successful attack.
+      if bImprove
+      {
+         Send(self,@ImproveAbility,#who=who,#target=oTarget);
+      }
+
+      return;
+   }
+
+   // No need to frustrate players with fails.
+   SuccessChance(who=$,modifier=0,lTargets=$)
+   {
+      return TRUE;
+   }
+
+   BackstabTarget(who=$,what=$,damage=0)
+   {
+      local oEffect;
+
+      oEffect = Send(SYS,@FindSpellByNum,#num=SID_BLEED);
+
+      damage = damage*piBackstab_bleed_strength/100;
+      damage = Bound(damage,piBackstab_bleed_min_damage,piBackstab_bleed_max_damage);
+
+      Send(oEffect,@StartBleed,#who=what,#source=who,#strength=damage,
+            #duration=Random(piBackstab_bleed_duration*4/5,piBackstab_bleed_duration*6/5));
+
+      return;
+   }
+
+   DoPreTranceEffects(who=$,lTargets=$,power=0)
+   {
+      local oSpell;
+
+      // Adds us to the victims attack list, allowing them to parry, block or dodge.
+      Send(First(lTargets),@AddAttacker,#who=who);
+
+      // Do the animation.
+      Post(Send(who,@GetWeapon),@WeaponUnleash,#who=who);
+
+      Send(Send(who,@GetOwner),@SomethingWaveRoom,#what=who,
+         #wave_rsc=Backstab_sound_rsc);
+
+      // Add a cooldown if applicable.
+      if IsClass(who,&Battler)
+      {
+         if viCooldownSID > 0
+         {
+            oSpell = Send(SYS,@FindSpellByNum,#num=viCooldownSID);
+
+            if (oSpell <> $)
+            {
+               Send(oSpell,@CastSpell,#who=self,#oTarget=who,
+                  #iSpellPower=power);
+            }
+         }
+      }
+
+      propagate;
+   }
+
+end
+////////////////////////////////////////////////////////////////////////////////

@@ -1,0 +1,83 @@
+// Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+// All rights reserved.
+//
+// This software is distributed under a license that is described in
+// the LICENSE file that accompanies it.
+//
+// Meridian is a registered trademark.
+
+
+////////////////////////////////////////////////////////////////////////////////
+Sneak is Skill
+
+constants:
+
+   include blakston.khd
+
+resources:
+
+   include sneak.lkod
+   
+   Sneak_name_rsc = "sneak"
+   Sneak_icon_rsc = isprint.bgf
+   Sneak_desc_rsc = \ 
+      "Enables the rogue to move stealthily in any direction.  "
+      "Cloaked in the shadows avoiding different dangers while walking.  "
+      "Moving back blocks an attack, moving sideways evades an attack, "
+      "and moving forward parries an attack."
+      "\n\nTo use this skill, hold shift to walk while moving in any "
+      "direction to activate your defense."
+
+classvars:
+
+   vrName = Sneak_name_rsc
+   vrIcon = Sneak_icon_rsc
+   vrDesc = Sneak_desc_rsc
+
+   viIndefinite = ARTICLE_NONE
+   viDefinite = ARTICLE_NONE
+
+   viSkill_num = SKID_SNEAK
+   viSchool = SKS_ROGUECRAFT
+   viSkill_Level = 1
+   viChance_to_Increase = 5
+   viMeditate_ratio = 30
+
+   viSkillExertion = 0
+   vbCheck_exertion = FALSE
+
+   vbAutomatic = TRUE
+
+properties:
+
+messages:
+
+   CanPayCosts(who=$,oTarget=$)
+   {
+      // No sneaking if you aren't moving.
+      if Send(who,@CheckPlayerFlag,#flag=PFLAG_NO_MOVE)
+      {
+         return 0;
+      }
+
+      propagate;
+   }
+
+   DoSkill(who=$)
+   {
+      local iStealth;
+
+      iStealth = Send(who,@GetStealth,#what=who);
+
+      // Check for advancement conditions
+      if Random(iStealth,300) = 300
+         AND Random(1,100) <= viChance_To_Increase
+      {
+         Send(self,@ImproveAbility,#who=who);
+      }
+
+      return;
+   }
+
+end
+////////////////////////////////////////////////////////////////////////////////

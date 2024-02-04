@@ -87,7 +87,11 @@ resources:
    assassin_reset_game = "reset game"
    assassin_start_game = "start game"
    assassin_accept_mode = "accept mode"
-   
+
+   assassin_not_ready_skill = \
+      "The Roguecraft arts demand stealth and silence.  "
+      "But before you can vanish in the dark, you must know the art of dodging."
+
 classvars:
 
    vrName = assassin_name_rsc
@@ -364,13 +368,66 @@ messages:
    SetForSale()
    {
       plFor_sale = [
-         $,$,
+         $,
+         [
+            SKID_SNEAK
+         ],
          [ 
             SID_EAVESDROP
          ],
       $];
        
       return;
+   }
+
+   CanAddSkill(who=$,num=0,report=TRUE)
+   {
+      if num = SKID_SNEAK
+         AND NOT Send(self,@SpecialTeachChecks,#report=report,#who=who,#num=num)
+      {
+         return FALSE;
+      }
+
+      propagate;
+   }
+
+   CanDoTeach(who=$,sid=0)
+   {
+      if sid = SKID_SNEAK
+         AND NOT Send(self,@SpecialTeachChecks,#report=TRUE,#who=who,#num=sid)
+      {
+         return FALSE;
+      }
+
+      propagate;
+   }
+
+   SpecialTeachChecks(who=$,num=0,report=FALSE)
+   {
+      if who = $ or num = 0
+      {
+         return FALSE;
+      }
+
+      if Send(who,@HasSkill,#num=num)
+      {
+         return FALSE;
+      }
+
+      // Sneak requires Weaponcraft knowledge
+      if num = SKID_SNEAK
+         AND NOT Send(who,@HasSkill,#num=SKID_DODGE)
+      {
+         if report
+         {
+            Post(self,@SayToOne,#target=who,
+                  #message_rsc=assassin_not_ready_skill);
+         }
+
+         return FALSE;
+      }
+
+      return TRUE;
    }
 
 end

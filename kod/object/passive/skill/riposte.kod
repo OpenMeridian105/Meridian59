@@ -19,12 +19,15 @@ resources:
    //include Riposte.lkod
 
    Riposte_name_rsc = "riposte"
-   Riposte_icon_rsc = idisarm.bgf
+   Riposte_icon_rsc = fenceico.bgf
    Riposte_desc_rsc = \
       "Avoiding various dangers while sneaking.  "
-      "Rogue can parry an attack and strike back with a powerful riposte.  "
+      "Rogue can parry an attack and strike back with a counterattack.  "
       "\n\nTo use this skill, press and hold shift while moving forward "
       "to parry and counterattack."
+
+   Riposte_use_rsc = "You counter with %s%s striking %s%s for ~k~B%i~B ~k~qdamage."
+   Riposte_use_target_rsc = "%s%s counters with their %s!"
 
 classvars:
 
@@ -37,7 +40,7 @@ classvars:
 
    viSkill_num = SKID_RIPOSTE
    viSchool = SKS_ROGUECRAFT
-   viSkill_level = 3
+   viSkill_level = 5
    viChance_to_Increase = 20
 
    viSkillExertion = 200
@@ -58,11 +61,43 @@ properties:
 
 messages:
 
-   DoSkill(who=$)
+   DoSkill(who=$,oTarget=$)
    {
-      local iStealth;
+      local iStealth, iDamage, oWeapon, oRoom;
+
+      if oTarget = $
+      {
+        return FALSE;
+      }
 
       iStealth = Send(who,@GetStealth,#what=who);
+
+      oWeapon = Send(who,@GetWeapon);
+      oRoom = Send(who,@GetOwner);
+
+      iDamage = Send(oWeapon,@GetDamage,#target=oTarget);
+      iDamage *= Send(self,@GetSkillAbility,#who=who) / 100;
+
+      //Send(who,@DoHitMessageSound,#what=oTarget,#damage=iDamage,#stroke_obj=self);
+      Send(oRoom,@SomethingAttacked,#what=who,#victim=oTarget,#use_weapon=oWeapon);
+
+      if Send(oTarget,@AssessDamage,#what=who,#damage=iDamage,#report=FALSE) = $
+      {
+        Send(who,@KilledSomething,#what=oTarget,#use_weapon=oWeapon);
+      }
+
+      Send(who,@MsgSendUser,#message_rsc=Riposte_use_rsc,
+        #parm1=Send(oWeapon,@LookupArticle,#article_num=ARTICLE_YOUR),
+        #parm2=Send(oWeapon,@GetName),#parm3=Send(oTarget,@GetInDef),
+        #parm4=Send(oTarget,@GetName),#parm5=iDamage);
+            
+      if IsClass(oTarget,&Player)
+      {
+        Send(oTarget,@MsgSendUser,#message_rsc=Riposte_use_target_rsc,
+            #parm1=Send(who,@GetCapDef),
+            #parm2=Send(who,@GetName),
+            #parm3=Send(oWeapon,@GetName));
+      }
 
       // Check for advancement conditions
       if Random(iStealth,300) = 300

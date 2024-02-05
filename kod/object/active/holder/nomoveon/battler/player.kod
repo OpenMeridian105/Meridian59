@@ -17911,24 +17911,26 @@ messages:
 
    ActiveBlock()
    {
-      local oSkill, iAbility, iChance, iVigor;
+      local oSkill, iAbility, iChance;
 
-      oSkill = Send(SYS,@FindSkillByNum,#num=SKID_BLOCK);
-      iAbility = Send(self,@GetSkillAbility,#Skill_num=SKID_BLOCK);
+      oSkill = Send(SYS,@FindSkillByNum,#num=SKID_SHIELD_BASH);
+      iAbility = Send(self,@GetSkillAbility,#Skill_num=SKID_SHIELD_BASH);
 
       iChance = Send(oSkill,@GetActiveBlockChance,#ability=iAbility,#who=self);
 
-      iVigor = Send(oSkill,@GetActiveBlockCost);
-
-      if NOT Send(self,@HasVigor,#amount=iVigor,#precision=TRUE)
+      if NOT Send(oSkill,@CanPayCosts,#who=self)
       {
          return FALSE;
       }
-
-      Send(self,@LoseVigor,#amount=iVigor,#precision=TRUE);
+      else
+      {
+         Send(oSkill,@PayCosts,#who=self);
+      }
 
       if iChance > Random(0,99)
       {
+         Send(oSkill,@DoSkill,#who=self,#oTarget=Send(self,@GetTarget));
+
          return TRUE;
       }
 
@@ -17937,24 +17939,26 @@ messages:
 
    ActiveParry()
    {
-      local oSkill, iAbility, iChance, iVigor;
+      local oSkill, iAbility, iChance;
 
-      oSkill = Send(SYS,@FindSkillByNum,#num=SKID_PARRY);
-      iAbility = Send(self,@GetSkillAbility,#Skill_num=SKID_PARRY);
+      oSkill = Send(SYS,@FindSkillByNum,#num=SKID_RIPOSTE);
+      iAbility = Send(self,@GetSkillAbility,#Skill_num=SKID_RIPOSTE);
 
       iChance = Send(oSkill,@GetActiveParryChance,#ability=iAbility,#who=self);
 
-      iVigor = Send(oSkill,@GetActiveParryCost);
-
-      if NOT Send(self,@HasVigor,#amount=iVigor,#precision=TRUE)
+      if NOT Send(oSkill,@CanPayCosts,#who=self)
       {
          return FALSE;
       }
-
-      Send(self,@LoseVigor,#amount=iVigor,#precision=TRUE);
+      else
+      {
+         Send(oSkill,@PayCosts,#who=self);
+      }
 
       if iChance > Random(0,99)
       {
+         Send(oSkill,@DoSkill,#who=self);
+
          return TRUE;
       }
 

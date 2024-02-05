@@ -8,7 +8,7 @@
 
 
 ////////////////////////////////////////////////////////////////////////////////
-Dodge is Skill
+Evade is Skill
 
 constants:
 
@@ -16,34 +16,38 @@ constants:
 
 resources:
 
-   include dodge.lkod
-   dodge_name_rsc = "dodge"
-   dodge_icon_rsc = dodgeico.bgf
-   dodge_desc_rsc = "Dodge is a basic skill, allowing people to avoid blows in combat."
+   //include evade.lkod
 
-   dodge_skill_intro = "Weaponcraft Lv. 2: The ability to avoid blows in combat, and thus stay alive longer."
+   Evade_name_rsc = "evade"
+   Evade_icon_rsc = dodgeico.bgf
+   Evade_desc_rsc = \
+      "Cloaked in the shadows avoiding different dangers while sneaking.  "
+      "Side stepping in combat evades an attack.  "
+      "\n\nTo use this skill, hold shift to walk while moving sideways "
+      "to activate your defense."
 
 classvars:
 
-   vrName = dodge_name_rsc
-   vrIcon = dodge_icon_rsc
-   vrDesc = dodge_desc_rsc
-
-   vrSkill_intro = dodge_skill_intro
+   vrName = Evade_name_rsc
+   vrIcon = Evade_icon_rsc
+   vrDesc = Evade_desc_rsc
 
    viIndefinite = ARTICLE_NONE
    viDefinite = ARTICLE_NONE
 
-   viSkill_num = SKID_DODGE
-   viSchool = SKS_WEAPONCRAFT
+   viSkill_num = SKID_EVADE
+   viSchool = SKS_ROGUECRAFT
    viSkill_Level = 2
    viChance_to_Increase = 20
    viMeditate_ratio = 30
 
-   viSkillExertion = 0
+   viSkillExertion = 200
    vbCheck_exertion = FALSE
 
    vbAutomatic = TRUE
+
+   piEvade_base_chance = 50
+   piEvade_ability_factor = 50
 
    piSuccess_time = 1500
    piFail_time = 1500
@@ -53,15 +57,30 @@ properties:
 
 messages:
 
-   CanPayCosts(who=$,oTarget=$)
+   DoSkill(who=$)
    {
-      // No dodging if you aren't moving.
-      if Send(who,@CheckPlayerFlag,#flag=PFLAG_NO_MOVE)
+      local iStealth;
+
+      iStealth = Send(who,@GetStealth,#what=who);
+
+      // Check for advancement conditions
+      if Random(iStealth,300) = 300
+         AND Random(1,100) <= viChance_To_Increase
+      {
+         Send(self,@ImproveAbility,#who=who);
+      }
+
+      return;
+   }
+
+   GetActiveDodgeChance(who=$,ability=0)
+   {
+      if NOT ability
       {
          return 0;
       }
 
-      propagate;
+      return piEvade_base_chance*Send(who,@GetAgility)/50 + ability*piEvade_ability_factor/100;
    }
 
    // How much does a successful active defense delay us?

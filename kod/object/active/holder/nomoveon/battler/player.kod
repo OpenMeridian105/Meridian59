@@ -842,7 +842,7 @@ resources:
 
    player_active_block_failed = "You thrust out your shield, but fail to block the attack."
    player_active_parry_failed = "You thrust out your weapon, but fail to parry the attack."
-   player_active_dodge_failed = "You try to move out of the way of the attack, but fail to dodge it."
+   player_active_dodge_failed = "You try to step out of the way of the attack, but failed to evade it."
 
    // Caught during unleash post swing delay.
    player_off_guard = "%s%s has caught you off-guard!"
@@ -17746,7 +17746,7 @@ messages:
 
       if iDifference > MAX_ANGLE/2
       {
-         iDifference = MAX_ANGLE - iDifference; 
+         iDifference = MAX_ANGLE - iDifference;
       }
 
       if iDifference > MAX_ANGLE / 3
@@ -17852,7 +17852,7 @@ messages:
 
       if NOT iNum
       {
-         iNum = SKID_DODGE;
+         iNum = SKID_EVADE;
 
          if NOT bLate
          {
@@ -17963,24 +17963,26 @@ messages:
 
    ActiveDodge()
    {
-      local oSkill, iAbility, iChance, iVigor;
+      local oSkill, iAbility, iChance;
 
-      oSkill = Send(SYS,@FindSkillByNum,#num=SKID_DODGE);
-      iAbility = Send(self,@GetSkillAbility,#Skill_num=SKID_DODGE);
+      oSkill = Send(SYS,@FindSkillByNum,#num=SKID_EVADE);
+      iAbility = Send(self,@GetSkillAbility,#Skill_num=SKID_EVADE);
 
       iChance = Send(oSkill,@GetActiveDodgeChance,#ability=iAbility,#who=self);
 
-      iVigor = Send(oSkill,@GetActiveDodgeCost);
-
-      if NOT Send(self,@HasVigor,#amount=iVigor,#precision=TRUE)
+      if NOT Send(oSkill,@CanPayCosts,#who=self)
       {
          return FALSE;
       }
-
-      Send(self,@LoseVigor,#amount=iVigor,#precision=TRUE);
+      else
+      {
+         Send(oSkill,@PayCosts,#who=self);
+      }
 
       if iChance > Random(0,99)
       {
+         Send(oSkill,@DoSkill,#who=self);
+
          return TRUE;
       }
 

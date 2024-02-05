@@ -90,7 +90,7 @@ resources:
 
    assassin_not_ready_skill = \
       "The Roguecraft arts demand stealth and silence.  "
-      "But before you can vanish in the dark, you must know the art of dodging."
+      "But before you can vanish in the dark, you must know the art of sneak."
 
 classvars:
 
@@ -370,7 +370,7 @@ messages:
       plFor_sale = [
          $,
          [
-            SKID_SNEAK
+            SKID_EVADE
          ],
          [ 
             SID_EAVESDROP
@@ -382,7 +382,7 @@ messages:
 
    CanAddSkill(who=$,num=0,report=TRUE)
    {
-      if num = SKID_SNEAK
+      if num = SKID_EVADE
          AND NOT Send(self,@SpecialTeachChecks,#report=report,#who=who,#num=num)
       {
          return FALSE;
@@ -414,9 +414,9 @@ messages:
          return FALSE;
       }
 
-      // Sneak requires Weaponcraft knowledge
-      if num = SKID_SNEAK
-         AND NOT Send(who,@HasSkill,#num=SKID_DODGE)
+      // Evade requires prior Roguecraft knowledge
+      if num = SKID_EVADE
+         AND NOT Send(who,@HasSkill,#num=SKID_SNEAK)
       {
          if report
          {

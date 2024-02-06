@@ -22,11 +22,11 @@ resources:
    Riposte_icon_rsc = fenceico.bgf
    Riposte_desc_rsc = \
       "Avoiding various dangers while sneaking.  "
-      "Rogue can parry an attack and strike back with a counterattack.  "
+      "Rogue can parry an attack and strike back with a powerful riposte.  "
       "\n\nTo use this skill, press and hold shift while moving forward "
-      "to parry and counterattack."
+      "to activate your defenses."
 
-   Riposte_use_rsc = "You counter with %s%s striking %s%s for ~k~B%i~B ~k~qdamage."
+   Riposte_use_rsc = "You riposte with %s%s, striking %s%s for ~k~B%i~B ~k~qdamage."
    Riposte_use_target_rsc = "%s%s counters with their %s!"
 
 classvars:
@@ -40,7 +40,7 @@ classvars:
 
    viSkill_num = SKID_RIPOSTE
    viSchool = SKS_ROGUECRAFT
-   viSkill_level = 5
+   viSkill_level = 6
    viChance_to_Increase = 20
 
    viSkillExertion = 200
@@ -76,7 +76,7 @@ messages:
       oRoom = Send(who,@GetOwner);
 
       iDamage = Send(oWeapon,@GetDamage,#target=oTarget);
-      iDamage *= Send(self,@GetSkillAbility,#who=who) / 100;
+      iDamage = iDamage + Send(self,@GetAbility,#who=who) / 100;
 
       //Send(who,@DoHitMessageSound,#what=oTarget,#damage=iDamage,#stroke_obj=self);
       Send(oRoom,@SomethingAttacked,#what=who,#victim=oTarget,#use_weapon=oWeapon);
@@ -88,7 +88,7 @@ messages:
 
       Send(who,@MsgSendUser,#message_rsc=Riposte_use_rsc,
         #parm1=Send(oWeapon,@LookupArticle,#article_num=ARTICLE_YOUR),
-        #parm2=Send(oWeapon,@GetName),#parm3=Send(oTarget,@GetInDef),
+        #parm2=Send(oWeapon,@GetName),#parm3=Send(oTarget,@GetDef),
         #parm4=Send(oTarget,@GetName),#parm5=iDamage);
             
       if IsClass(oTarget,&Player)

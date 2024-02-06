@@ -26,7 +26,9 @@ resources:
       "\n\nTo use this skill, press and hold shift while moving forward "
       "to parry and counter-attack."
 
-   Riposte_use_rsc = "You riposte with %s%s, striking %s%s for ~k~B%i~B ~k~qdamage."
+   Riposte_fumble_rsc = "Your clumsy attempt to strike leaves you momentarily imbalanced."
+
+   Riposte_use_rsc = "You riposte with %s%s, striking %s%s for ~k~B%i~B ~kdamage."
    Riposte_use_target_rsc = "%s%s counters with their %s!"
 
 classvars:
@@ -63,45 +65,82 @@ messages:
 
    DoSkill(who=$,oTarget=$)
    {
-      local iStealth, iDamage, oWeapon, oRoom;
+      local oWeapon, stroke_obj, iFactor, iModifier, bImprove, iDamage, iStealth;
 
       if oTarget = $
       {
         return FALSE;
       }
 
-      iStealth = Send(who,@GetStealth,#what=who);
+      // Reset our attack time so we can react.
+      Send(who,@SetAttackTime);
 
-      oWeapon = Send(who,@GetWeapon);
-      oRoom = Send(who,@GetOwner);
+      iFactor = (Send(oTarget,@GetTimeAttacked) - GetTickCount())/10;
+      iFactor = Bound(iFactor,-100,0) + 100;
 
-      iDamage = Send(oWeapon,@GetDamage,#target=oTarget);
-      iDamage = iDamage + Send(self,@GetAbility,#who=who) / 100;
-
-      Send(who,@PlayHitSound,#what=oTarget,#stroke_obj=self,#use_weapon=oWeapon,#damage=iDamage);
-      Send(oRoom,@SomethingAttacked,#what=who,#victim=oTarget,#use_weapon=oWeapon);
-
-      if Send(oTarget,@AssessDamage,#what=who,#damage=iDamage,#report=FALSE) = $
+      // We failed hard and reacted late or tried to open with a riposte. No cigar.
+      if NOT iFactor
       {
-        Send(who,@KilledSomething,#what=oTarget,#use_weapon=oWeapon);
+         // Lock ourselves out of any action for 3 secs.
+         Send(who,@IsOkayAttackTime,#time=3000);
+
+         // Tell us about how we are SUCH a disappointment.
+         Send(who,@MsgSendUser,#message_rsc=Riposte_fumble_rsc);
+
+         // We are unworthy of an improvement check. Return in shame.
+         return;
+      }
+      // We timed our attack correctly. Land a guaranteed hit and enjoy the benefits.
+      else
+      {
+         oWeapon = Send(who,@GetWeapon);
+         stroke_obj = Send(who,@GetStrokeObject);
+
+         iModifier = Send(self,@GetRequisiteStat,#who=who)*2;
+         iModifier += Send(who,@GetSkillAbility,#Skill_num=viSkill_num)+1;
+
+         iFactor = iFactor * iModifier / 200;
+
+         iDamage = Send(who,@TryAttack,#what=oTarget,#stroke_obj=stroke_obj,
+                     #use_weapon=oWeapon,#factor=iFactor+50,#bGuaranteed=TRUE,
+                     #bReturnDamage=TRUE);
+
+         // We dealt a killing blow. That's worth a chance to improve!
+         if iDamage = $
+         {
+            bImprove = TRUE;
+         }
+         // We dealt at least one point of damage.
+         else if iDamage > 99
+         {
+            iDamage = iDamage / 100;
+         }
       }
 
       Send(who,@MsgSendUser,#message_rsc=Riposte_use_rsc,
         #parm1=Send(oWeapon,@LookupArticle,#article_num=ARTICLE_YOUR),
         #parm2=Send(oWeapon,@GetName),#parm3=Send(oTarget,@GetDef),
-        #parm4=Send(oTarget,@GetName),#parm5=iDamage);
+        #parm4=Send(oTarget,@GetName),#parm5=Bound(iDamage,1,$));
             
       if IsClass(oTarget,&Player)
       {
         Send(oTarget,@MsgSendUser,#message_rsc=Riposte_use_target_rsc,
             #parm1=Send(who,@GetCapDef),
             #parm2=Send(who,@GetName),
-            #parm3=Send(oWeapon,@GetName));
+            #parm3=Send(oWeapon,@GetName),
+            #parm4=iDamage);
       }
 
       // Check for advancement conditions
+      iStealth = Send(who,@GetStealth,#what=who);
+
       if Random(iStealth,300) = 300
          AND Random(1,100) <= viChance_To_Increase
+      {
+         bImprove = TRUE;
+      }
+
+      if bImprove
       {
          Send(self,@ImproveAbility,#who=who);
       }
@@ -146,6 +185,11 @@ messages:
    GetFeintTime()
    {
       return piFeint_time;
+   }
+
+   GetRequisiteStat(who=$)
+   {
+      return Send(who,@GetAim);
    }
 
 end

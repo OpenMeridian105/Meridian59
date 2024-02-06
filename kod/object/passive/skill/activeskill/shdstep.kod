@@ -1,0 +1,160 @@
+// Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+// All rights reserved.
+//
+// This software is distributed under a license that is described in
+// the LICENSE file that accompanies it.
+//
+// Meridian is a registered trademark.
+
+
+////////////////////////////////////////////////////////////////////////////////
+ShadowStep is ActiveSkill
+
+constants:
+
+   include blakston.khd
+
+resources:
+
+   //include ShadowStep.lkod
+
+   ShadowStep_name_rsc = "shadow step"
+   ShadowStep_icon_rsc = iswap.bgf
+   ShadowStep_desc_rsc = \
+      "A dark and deadly technique that allows the rogue to bend the shadows "
+      "to their will and blink behind an enemy within a short distance.  "
+      "\n\nNOTE: This is an 'active' skill, which must be performed manually "
+      "using the 'perform shadow step' command, or using a hotkey."
+   ShadowStep_use = "You deftly step behind your target!"
+   ShadowStep_fail_rsc = "There is not enough space to step behind your target."
+   ShadowStep_target_rsc = "Somehow, you feel outmaneuvered."
+
+   ShadowStep_wav = shadowstep.ogg
+
+classvars:
+
+   vrName = ShadowStep_name_rsc
+   vrIcon = ShadowStep_icon_rsc
+   vrDesc = ShadowStep_desc_rsc
+
+   viIndefinite = ARTICLE_NONE
+   viDefinite = ARTICLE_NONE
+
+   viSkill_num = SKID_SHADOW_STEP
+   viSchool = SKS_ROGUECRAFT
+   viSkill_level = 6
+   viChance_to_Increase = 10
+   viMeditate_ratio = 75
+
+   viSkillExertion = 3000
+   vbCheck_exertion = TRUE
+
+   vbAutomatic = FALSE
+
+   viPostPerform_time = 2000
+
+properties:
+
+   plPrerequisites = $
+
+messages:
+
+   GetNumSkillTargets()
+   {
+      return 1;
+   }
+
+   GetRequisiteStat(who=$)
+   {
+      return Send(who,@GetAim);
+   }
+
+   PerformSkill(who=$,lTargets=$)
+   {
+      local oSpell, oElement, oRoom, iRow, iCol, iFineRow, iFineCol,
+         iNewRow, iNewCol, iAngle, oTarget, iTargetRow, iTargetCol,
+         iTargetFineRow, iTargetFineCol, iNewFineRow, iNewFineCol,
+         prmRoom;
+
+      oTarget = First(lTargets);
+      oRoom = Send(who,@GetOwner);
+      prmRoom = Send(oRoom,@GetRoomData);
+
+      iRow = Send(who,@GetRow);
+      iCol = Send(who,@GetCol);
+      iFineRow = Send(who,@GetFineRow);
+      iFineCol = Send(who,@GetFineCol);
+
+      iTargetRow = Send(oTarget,@GetRow);
+      iTargetCol = Send(oTarget,@GetCol);
+      iTargetFineRow = Send(oTarget,@GetFineRow);
+      iTargetFineCol = Send(oTarget,@GetFineCol);
+
+      // Teleport to the other side of our target and turn 180 angle.
+      iNewRow = 2*(iTargetRow*FINENESS + iTargetFineRow) -
+         (iRow*FINENESS + iFineRow);
+      iNewFineRow = iNewRow % FINENESS;
+      iNewRow = iNewRow / FINENESS;
+
+      iNewCol = 2*(iTargetCol*FINENESS + iTargetFineCol) -
+         (iCol*FINENESS + iFineCol);
+      iNewFineCol = iNewCol % FINENESS;
+      iNewCol = iNewCol / FINENESS;
+
+      if CanMoveInRoomBSP(prmRoom,iRow,iCol,iFineRow,iFineCol,
+               Send(who,@GetHeight),iNewRow,iNewCol,iNewFineRow,
+               iNewFineCol,USER_RUNNING_SPEED,who,
+               CANMOVE_IS_PLAYER | CANMOVE_IGNORE_BLOCKERS)
+      {
+         Send(SYS,@UtilGoNearSquare,#what=who,#where=oRoom,
+            #new_row=iNewRow,#new_col=iNewCol,
+            #fine_row=iNewFineRow,#fine_col=iNewFineCol,
+            #new_angle=(Send(who,@GetAngle) + MAX_ANGLE/2) % MAX_ANGLE);
+
+         // Leave a little puff of smoke behind for style.
+         oElement = Create(&FogCloud,#seed=[who,99,3000,0,0,0,0,0,0]);
+         Send(oRoom,@NewHold,#what=oElement,#new_row=iRow,#new_col=iCol,
+              #fine_row=iFineRow,#fine_col=iFineCol);
+
+        // Hold target in place for a brief moment.
+         oSpell = Send(SYS,@FindSpellByNum,#num=SID_HOLD);
+         Send(oSpell,@DoSpellEffects,#who=who,#lTargets=[oTarget],
+            #iDuration=1500,#report=FALSE);
+
+         // Play fancy sound. Read fancy message.
+         Send(who,@WaveSendUser,#wave_rsc=ShadowStep_wav);
+         Send(who,@MsgSendUser,#message_rsc=ShadowStep_use);
+
+         if IsClass(oTarget,&Player)
+         {
+            Send(oTarget,@WaveSendUser,#wave_rsc=ShadowStep_wav);
+            Send(oTarget,@MsgSendUser,#message_rsc=ShadowStep_target_rsc);
+         }
+      }
+      else
+      {
+         Send(who,@MsgSendUser,#message_rsc=ShadowStep_fail_rsc);
+      }
+
+      propagate;
+   }
+
+   CanPayCosts(who=$,lTargets=$)
+   {
+      local use_weapon, stroke_obj, iRange;
+
+      use_weapon = Send(who,@GetWeapon);
+      stroke_obj = Send(who,@GetStrokeObject);
+      iRange = Send(stroke_obj,@GetRange,#weapon_used=use_weapon);
+
+      if NOT Send(who,@TargetWithinSightAndRange,#oTarget=First(lTargets),
+         #iRange=iRange,#use_weapon=use_weapon,#stroke_obj=stroke_obj)
+      {
+         return FALSE;
+      }
+
+      propagate;
+   }
+
+end
+////////////////////////////////////////////////////////////////////////////////

@@ -41,6 +41,8 @@ classvars:
       | MOB_NOMOVE | MOB_TEACHER
    viOccupation = MOB_ROLE_ROYALTY
 
+   viQuestID = QST_ID_BERG_KING_POLITCS
+
 properties:
 
 messages:
@@ -60,6 +62,17 @@ messages:
    {
       Post(who,@SomeoneSaid,#what=self,#string=bergleaderm_entry_welcome,
             #type=SAY_RESOURCE);
+
+      propagate;
+   }
+
+   CanAddSkill(who=$,num=0)
+   "We require that a quest be done before one of the skills can be learned"
+   {
+      if NOT Send(self,@HasDoneLearnQuest,#who=who)
+      {
+         return FALSE;
+      }
 
       propagate;
    }

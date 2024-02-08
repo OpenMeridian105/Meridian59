@@ -31,6 +31,10 @@ resources:
    Riposte_use_rsc = "You riposte with %s%s, striking %s%s for ~k~B%i~B ~ndamage."
    Riposte_use_target_rsc = "%s%s counters with their %s!"
 
+   Riposte_kill = \
+      "You parry your enemy's attack and swiftly counter with a fatal thrust, "
+      "ending their life with a riposte."
+
 classvars:
 
    vrName = Riposte_name_rsc
@@ -65,7 +69,7 @@ messages:
 
    DoSkill(who=$,oTarget=$)
    {
-      local oWeapon, stroke_obj, iFactor, iModifier, bImprove, iDamage, iStealth;
+      local oWeapon, stroke_obj, iFactor, iModifier, bImprove, iDamage;
 
       if oTarget = $
       {
@@ -109,40 +113,39 @@ messages:
          if iDamage = $
          {
             bImprove = TRUE;
+
+            //Send(who,@MsgSendUser,#message_rsc=Riposte_kill);
          }
          // We dealt at least one point of damage.
          else if iDamage > 99
          {
             iDamage = iDamage / 100;
+
+            Send(who,@MsgSendUser,#message_rsc=Riposte_use_rsc,
+               #parm1=Send(oWeapon,@LookupArticle,#article_num=ARTICLE_YOUR),
+               #parm2=Send(oWeapon,@GetName),#parm3=Send(oTarget,@GetDef),
+               #parm4=Send(oTarget,@GetName),#parm5=Bound(iDamage,1,$));
+         }
+
+         if IsClass(oTarget,&Player)
+         {
+            Send(oTarget,@MsgSendUser,#message_rsc=Riposte_use_target_rsc,
+               #parm1=Send(who,@GetCapDef),
+               #parm2=Send(who,@GetName),
+               #parm3=Send(oWeapon,@GetName),
+               #parm4=iDamage);
          }
       }
 
-      Send(who,@MsgSendUser,#message_rsc=Riposte_use_rsc,
-        #parm1=Send(oWeapon,@LookupArticle,#article_num=ARTICLE_YOUR),
-        #parm2=Send(oWeapon,@GetName),#parm3=Send(oTarget,@GetDef),
-        #parm4=Send(oTarget,@GetName),#parm5=Bound(iDamage,1,$));
-            
-      if IsClass(oTarget,&Player)
-      {
-        Send(oTarget,@MsgSendUser,#message_rsc=Riposte_use_target_rsc,
-            #parm1=Send(who,@GetCapDef),
-            #parm2=Send(who,@GetName),
-            #parm3=Send(oWeapon,@GetName),
-            #parm4=iDamage);
-      }
-
       // Check for advancement conditions
-      iStealth = Send(who,@GetStealth,#what=who);
-
-      if Random(iStealth,300) = 300
-         AND Random(1,100) <= viChance_To_Increase
+      if Random(1,100) <= viChance_To_Increase
       {
          bImprove = TRUE;
       }
 
       if bImprove
       {
-         Send(self,@ImproveAbility,#who=who);
+         Send(self,@ImproveAbility,#who=who,#target=oTarget);
       }
 
       return;

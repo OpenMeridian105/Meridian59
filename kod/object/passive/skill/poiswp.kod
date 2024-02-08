@@ -1,0 +1,132 @@
+// Meridian 59, Copyright 1994-2012 Andrew Kirmse and Chris Kirmse.
+// All rights reserved.
+//
+// This software is distributed under a license that is described in
+// the LICENSE file that accompanies it.
+//
+// Meridian is a registered trademark.
+
+
+////////////////////////////////////////////////////////////////////////////////
+ApplyPoison is ActiveSkill
+
+constants:
+
+   include blakston.khd
+
+resources:
+
+   include poiswp.lkod
+
+   ApplyPoison_name_rsc = "apply poison"
+   ApplyPoison_icon_rsc = ipoistch.bgf
+   ApplyPoison_desc_rsc = \
+      "A cunning and lethal skill that allows the rogue to apply a "
+      "deadly poison to their weapon in hand.  "
+      "The skill consumes a flask of poison.  "
+
+   ApplyPoison_use = \
+      "You open the cork of the flask and apply poison to %s%s."
+
+   ApplyPoison_no_flask = "You don't have the ingredients to apply poison."
+   ApplyPoison_no_weapon = "You need to wield a weapon to apply poison."
+   ApplyPoison_fail_rsc = "You fail to apply poison."
+
+   ApplyPoison_wav = shadowstep.ogg
+
+classvars:
+
+   vrName = ApplyPoison_name_rsc
+   vrIcon = ApplyPoison_icon_rsc
+   vrDesc = ApplyPoison_desc_rsc
+
+   viIndefinite = ARTICLE_NONE
+   viDefinite = ARTICLE_NONE
+
+   viSkill_num = SKID_APPLY_POISON
+   viSchool = SKS_ROGUECRAFT
+   viSkill_level = 3
+   viChance_to_Increase = 40
+   viMeditate_ratio = 50
+
+   viSkillExertion = 10
+   vbCheck_exertion = FALSE
+
+   vbAutomatic = FALSE
+
+   viPostPerform_time = 2000
+
+properties:
+
+   plPrerequisites = $
+
+messages:
+
+   GetRequisiteStat(who=$)
+   {
+      return Send(who,@GetIntellect);
+   }
+
+   PerformSkill(who=$,lTargets=$)
+   {
+      local oWeapon, oFlask, iEnchanted, oWeapAtt;
+
+      oWeapon = Send(who,@LookupPlayerWeapon);
+      oFlask = Send(who,@FindHolding,#class=&Arsenic);
+
+      if oFlask = $
+      {
+        Send(who,@MsgSendUser,#message_rsc=ApplyPoison_no_flask);
+
+        return FALSE;
+      }
+
+      if oWeapon = $
+      {
+        Send(who,@MsgSendUser,#message_rsc=ApplyPoison_no_weapon);
+
+        return FALSE;
+      }
+      else if NOT Send(oWeapon,@CanEnchant,#oSpell=self)
+      {
+        Send(who,@MsgSendUser,#message_rsc=spell_resists,
+               #parm1=Send(oWeapon,@GetCapDef),#parm2=Send(oWeapon,@GetName));
+
+         return FALSE;
+      }
+
+      // To Do:
+      // Skill Ability - factor poison strength 
+
+      // Remove any existing poisons before we go on.
+      oWeapAtt = Send(SYS,@FindItemAttByNum,#num=WA_POISON);
+
+      iEnchanted = Send(oWeapon,@GetAttributeData,#ItemAtt=WA_POISON);
+      if iEnchanted <> $
+      {
+         Send(oWeapAtt,@RemoveFromItem,#oItem=oWeapon);
+      }
+
+      Send(oWeapAtt,@AddToItem,#oItem=oWeapon,#random_gen=FALSE);
+
+      Send(who,@MsgSendUser,#message_rsc=ApplyPoison_use,
+        #parm1=Send(oWeapon,@LookupArticle,#article_num=ARTICLE_YOUR),
+        #parm2=Send(oWeapon,@GetName));
+
+      // Consume a flask
+      Send(oFlask,@Delete);
+
+      Send(Send(who,@GetOwner),@SomethingWaveRoom,#what=who,
+         #wave_rsc=ApplyPoison_wav);
+
+      // Check for advancement conditions
+      if Random(1,100) <= viChance_To_Increase
+      {
+         Send(self,@ImproveAbility,#who=who);
+      }
+
+      propagate;
+   }
+
+end
+////////////////////////////////////////////////////////////////////////////////

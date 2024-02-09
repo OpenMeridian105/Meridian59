@@ -55,7 +55,8 @@ classvars:
    vrDesc = bergmerchant_desc_rsc
    viAttributes = \
       MOB_NOFIGHT | MOB_RANDOM | MOB_LISTEN \
-      | MOB_NOMOVE | MOB_BUYER | MOB_SELLER
+      | MOB_NOMOVE | MOB_BUYER | MOB_SELLER \
+      | MOB_TEACHER
    viOccupation = MOB_ROLE_MERCHANT
    viMerchant_markup = MERCHANT_FLAT
    viGender = GENDER_FEMALE
@@ -66,6 +67,8 @@ classvars:
 
    // We sell what other people have given us
    vbSellFromInventory = TRUE
+
+   viQuestID = QST_ID_ESCORT_ASSASSINATION
 
 properties:
 
@@ -157,7 +160,7 @@ messages:
          Send(self,@NewHold,#what=oInventory);
       }
 
-      plFor_sale = [lForSale, $, $, $];
+      plFor_sale = [lForSale, [ SKID_APPLY_POISON ], $, $];
 
       return;
    }
@@ -205,7 +208,7 @@ messages:
                              &Firesand,
                              &UncutSeraphym,
                              &Lantern,
-                             &Flask
+                             &Dagger
                           ];
       }
       else if (iRandom < 75)
@@ -357,6 +360,17 @@ messages:
 
       Post(who,@SomeoneSaid,#what=self,#string=BergMerch_entry_welcome,
             #type=SAY_RESOURCE);
+
+      propagate;
+   }
+
+   CanAddSkill(who=$,num=0)
+   "We require that a quest be done before one of the skills can be learned"
+   {
+      if NOT Send(self,@HasDoneLearnQuest,#who=who)
+      {
+         return FALSE;
+      }
 
       propagate;
    }

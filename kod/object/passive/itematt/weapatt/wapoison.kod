@@ -15,7 +15,10 @@ WeapAttPoison is WeaponAttribute
 //
 //   Form is:
 //
-//      [ WA_POISON ]
+//      [ WA_POISON, timer ]
+//
+//      timer::the length of time, from 1 to 25 realtime hours,
+//      that the enchantment lasts (depending on skill factors).
 //
 ///////////////////////////////////////////////////////////////////////
 
@@ -126,6 +129,19 @@ messages:
    IsMagicalEffect()
    {
       return TRUE;
+   }
+
+   HasTimer(lData=$)
+   {
+      return TRUE;
+   }
+
+   TimerExpired(oItem=$,lData=$)
+   {
+      SetNth(lData,2,$);   /// timer is gone, now remove reference
+      Send(self,@RemoveFromItem,#oItem=oItem,#lData=lData);
+
+      return;
    }
 
 end

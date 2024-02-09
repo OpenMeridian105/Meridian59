@@ -69,7 +69,7 @@ messages:
 
    PerformSkill(who=$,lTargets=$)
    {
-      local oWeapon, oFlask, iEnchanted, oWeapAtt;
+      local oWeapon, oFlask, iEnchanted, oWeapAtt, iDuration;
 
       oWeapon = Send(who,@LookupPlayerWeapon);
       oFlask = Send(who,@FindHolding,#class=&Arsenic);
@@ -95,9 +95,6 @@ messages:
          return FALSE;
       }
 
-      // To Do:
-      // Skill Ability - factor poison strength 
-
       // Remove any existing poisons before we go on.
       oWeapAtt = Send(SYS,@FindItemAttByNum,#num=WA_POISON);
 
@@ -107,7 +104,12 @@ messages:
          Send(oWeapAtt,@RemoveFromItem,#oItem=oWeapon);
       }
 
-      Send(oWeapAtt,@AddToItem,#oItem=oWeapon,#random_gen=FALSE);
+      // Duration: 1 - 37 hours.
+      iDuration = Random(1,4) + (Send(who,@GetSkillAbility,#num=viSkill_num)/3);
+      iDuration = iDuration * 1000 * 60 * 60;
+   
+      Send(oWeapAtt,@AddToItem,#oItem=oWeapon,
+         #random_gen=FALSE,#timer_duration=iDuration);
 
       Send(who,@MsgSendUser,#message_rsc=ApplyPoison_use,
         #parm1=Send(oWeapon,@LookupArticle,#article_num=ARTICLE_YOUR),

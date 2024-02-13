@@ -44,6 +44,11 @@ resources:
       "has their own unique journey.  When your spirit is ripe for learning, my "
       "guidance will be yours.  Until then, may inspiration grace your every step!"
 
+   jalapriestess_forget_potion_sale = \
+      "I do sell %s%s which is very potent.  You will remember none of "
+      "those rogue skills if you quaff it."
+   
+
 classvars:
 
    vrName = jalapriestess_name_rsc
@@ -71,6 +76,18 @@ messages:
             SID_SOUL_BIND
          ],
      $];
+
+      return;
+   }
+
+   InitCondSale()
+   {
+      local oObj;
+
+      oObj=Create(&ForgetPotionRoguecraft);
+      Send(Send(SYS,@GetLibrary),@AddToMobLib,#mob=self,
+            #triggers=[Send(oObj,@GetName)],
+            #action=[LIBACT_CONDITIONAL,oObj,2500,jalapriestess_forget_potion_sale]);
 
       return;
    }

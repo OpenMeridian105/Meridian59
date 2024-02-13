@@ -40,6 +40,7 @@ resources:
    forgetpotion_nothing_happens = \
       "The disorientation passes.  Nothing seems to have happened."
    forgetpotion_forget_spell = "The art of casting '%s' slips from your mind!"
+   forgetpotion_forget_skill = "The art of '%s' slips from your mind!"
    forgetpotion_forget_wrong = \
       "The accursed potion has stricken all memory of '%s' from you!"
    forgetpotion_lose_intellect = "You suddenly feel a little... stupider..."
@@ -66,7 +67,6 @@ properties:
 
    poApply_target = $
    ptQuaff = $
-   piCount = 0
 
    pbWarned = FALSE
 
@@ -114,8 +114,11 @@ messages:
 
       if viForget_school = SKS_WEAPONCRAFT
       {
-         // This is the "Weaponcraft" string.
          sSchoolName = skill_school_weaponcraft;
+      }
+      else if viForget_School = SKS_ROGUECRAFT
+      {
+         sSchoolName = skill_school_roguecraft;
       }
       else
       {
@@ -134,44 +137,27 @@ messages:
 
    QuaffTimer()
    {
-      local i, oSpell, iSpellnum;
+      local bFound;
 
       ptQuaff = $;
 
-      piCount = 0;
-
-      foreach i in Send(poApply_target,@GetSpellList)
+      if viForget_school = SKS_WEAPONCRAFT
+         OR viForget_School = SKS_ROGUECRAFT
       {
-         iSpellNum = Send(poApply_target,@DecodeSpellNum,#compound=i);
-         oSpell = Send(SYS,@FindSpellByNum,#num=iSpellNum);
-
-         if Send(oSpell,@GetSchool) = viForget_School
-            AND Send(oSpell,@CanForget)  // Don't wipe starting spells.
-         {
-            Send(poApply_target,@RemoveSpell,#num=iSpellNum);
-            Send(poApply_target,@MsgSendUser,#message_rsc=forgetpotion_forget_spell,
-                 #parm1=Send(oSpell,@GetName));
-            ++piCount;
-         }
-      }
-
-      if piCount = 0
-      {
-         Send(poApply_target,@MsgSendUser,#message_rsc=forgetpotion_nothing_happens);
+         bFound = Send(self,@ForgetSkills);
       }
       else
       {
-         Send(self,@DoSideEffects);
+         bFound = Send(self,@ForgetSpells);
       }
 
+      if NOT bFound
+      {
+         Send(poApply_target,@MsgSendUser,#message_rsc=forgetpotion_nothing_happens);
+      }
+   
       Send(self,@Delete);
 
-      return;
-   }
-
-   DoSideEffects()
-   "No longer any side-effects."
-   {
       return;
    }
 
@@ -190,6 +176,51 @@ messages:
    "You can't swap a forget potion to or from someone!"
    {
       return FALSE;
+   }
+
+   ForgetSpells()
+   {
+      local i, iSpellNum, oSpell, bFound;
+   
+      foreach i in Send(poApply_target,@GetSpellList)
+      {
+         iSpellNum = Send(poApply_target,@DecodeSpellNum,#compound=i);
+         oSpell = Send(SYS,@FindSpellByNum,#num=iSpellNum);
+
+         if Send(oSpell,@GetSchool) = viForget_School
+            AND Send(oSpell,@CanForget)  // Don't wipe starting spells.
+         {
+            Send(poApply_target,@RemoveSpell,#num=iSpellNum);
+            Send(poApply_target,@MsgSendUser,#message_rsc=forgetpotion_forget_spell,
+                 #parm1=Send(oSpell,@GetName));
+
+            bFound = TRUE;
+         }
+      }
+
+      return bFound;
+   }
+
+   ForgetSkills()
+   {
+      local i, iSkillNum, oSkill, bFound;
+
+      foreach i in Send(poApply_target,@GetSkillList)
+      {
+         iSkillNum = Send(poApply_target,@DecodeSkillNum,#compound=i);
+         oSkill = Send(SYS,@FindSkillByNum,#num=iSkillNum);
+
+         if Send(oSkill,@GetSchool) = viForget_School
+         {
+            Send(poApply_target,@RemoveSkill,#num=iSkillNum);
+            Send(poApply_target,@MsgSendUser,#message_rsc=forgetpotion_forget_skill,
+                 #parm1=Send(oSkill,@GetName));
+
+            bFound = TRUE;
+         }
+      }
+
+      return bFound;
    }
 
 end

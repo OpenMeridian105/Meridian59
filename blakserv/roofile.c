@@ -641,7 +641,7 @@ template <bool USE3D, int MINDIST, int MINDIST2> bool BSPCanMoveInRoomTree(const
                      V2SCALE(&normal, -1.0f);
                   }
 
-                  V2SCALE(&normal, fabs(distE)); // set length of normal to distance to line
+                  V2SCALE(&normal, fabsf(distE)); // set length of normal to distance to line
                   V2ADD(&q, E, &normal);         // q=E moved along the normal onto the line
                }
 
@@ -2363,10 +2363,10 @@ bool BSPLoadRoom(char *fname, room_type *room)
    // from the 4 bbox points shown in roomedit (defined by 2 vertices)
    // 1) Pick the left-bottom one as minimum (and scale to ROO fineness)
    // 2) Pick the right-up one as maximum (and scale to ROO fineness)
-   room->ThingsBox.Min.X = FINENESSKODTOROO(fmin(x0, x1));
-   room->ThingsBox.Min.Y = FINENESSKODTOROO(fmin(y0, y1));
-   room->ThingsBox.Max.X = FINENESSKODTOROO(fmax(x0, x1));
-   room->ThingsBox.Max.Y = FINENESSKODTOROO(fmax(y0, y1));
+   room->ThingsBox.Min.X = FINENESSKODTOROO(fminf(x0, x1));
+   room->ThingsBox.Min.Y = FINENESSKODTOROO(fminf(y0, y1));
+   room->ThingsBox.Max.X = FINENESSKODTOROO(fmaxf(x0, x1));
+   room->ThingsBox.Max.Y = FINENESSKODTOROO(fmaxf(y0, y1));
 
    // when roomedit saves the ROO, it translates the origin (0/0)
    // into one boundingbox point, so that origin in ROO (0/0)

@@ -17721,6 +17721,26 @@ messages:
       return;
    }
 
+   GetLastAttacker()
+   {
+      local oAttacker;
+
+      if plHurtMeRecently = $
+      {
+         return;
+      }
+      else if Length(plHurtMeRecently) > 1
+      {
+         return First(Last(plHurtMeRecently));
+      }
+      else
+      {
+         return First(First(plHurtMeRecently));
+      }
+
+      return oAttacker;
+   }
+
    ActiveDefense(iRow=$,iCol=$,iAngle=$,bLate=FALSE)
    {
       local i, iColDiff, iRowDiff, iOldCol, iOldRow, iTargetRow, iTargetCol,
@@ -17911,7 +17931,7 @@ messages:
 
    ActiveBlock()
    {
-      local oSkill, iAbility, iChance;
+      local oSkill, iAbility, iChance, lAttackers;
 
       oSkill = Send(SYS,@FindSkillByNum,#num=SKID_SHIELD_BASH);
       iAbility = Send(self,@GetSkillAbility,#Skill_num=SKID_SHIELD_BASH);
@@ -17929,7 +17949,7 @@ messages:
 
       if iChance > Random(0,99)
       {
-         Send(oSkill,@DoSkill,#who=self,#oTarget=Send(self,@GetTarget));
+         Send(oSkill,@DoSkill,#who=self,#oTarget=Send(self,@GetLastAttacker));
 
          return TRUE;
       }
@@ -17957,7 +17977,7 @@ messages:
 
       if iChance > Random(0,99)
       {
-         Send(oSkill,@DoSkill,#who=self,#oTarget=Send(self,@GetTarget));
+         Send(oSkill,@DoSkill,#who=self,#oTarget=Send(self,@GetLastAttacker));
 
          return TRUE;
       }

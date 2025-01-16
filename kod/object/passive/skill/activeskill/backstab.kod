@@ -45,7 +45,7 @@ classvars:
    viSkill_num = SKID_BACKSTAB
    viSchool = SKS_ROGUECRAFT
    viSkill_level = 4
-   viChance_to_Increase = 2
+   viChance_to_Increase = 60
    viMeditate_ratio = 50
    
    viSkillExertion = 40
@@ -62,8 +62,6 @@ classvars:
 
    vbFixedTrance = TRUE
    vbCheckTargetsPreTrance = FALSE
-
-   viRegularImproveChance = 20
 
 properties:
 
@@ -107,6 +105,11 @@ messages:
    {
       local oTarget, oWeapon, stroke_obj, iFlanking, iDamage,
             bAmbush, bGuaranteed, bImprove;
+
+      if lTargets = $
+      {
+         return;
+      }
 
       oTarget = First(lTargets);      
       stroke_obj = Send(who,@GetStrokeObject);
@@ -158,7 +161,7 @@ messages:
         }
 
         // Regular attacks don't grant a chance to improve as often as killing blows.
-        if Random(0,99) < viRegularImproveChance
+        if Random(0,99) < viChance_to_Increase
         {
             bImprove = TRUE;
         }

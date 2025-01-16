@@ -8,6 +8,9 @@
 
 #ifndef _ASYNC_WINDOWS_H
 #define _ASYNC_WINDOWS_H
+#define DNS_TIMEOUT_MS 5000
+#define MAX_DNS_BUFFER 256
+
 void StartAsyncSocketAccept(SOCKET sock,int connection_type);
 void StartAsyncSocketUDPRead(SOCKET sock);
 HANDLE StartAsyncNameLookup(char *peer_addr,char *buf);

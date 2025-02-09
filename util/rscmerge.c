@@ -9,6 +9,7 @@
 #include <windows.h>
 #include "rscload.h"
 #include <vector>
+#include <string>
 
 typedef std::vector<std::string> StringVector;
 

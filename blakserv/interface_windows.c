@@ -544,18 +544,52 @@ void StartAsyncSocketUDPRead(SOCKET sock)
       eprintf("StartAsyncSocketUDPRead got error %i\n", val);
 }
 
-/* this is executed in our thread, actually.
-   this needs modifications to work with IPv6 */
-HANDLE StartAsyncNameLookup(char *peer_addr,char *buf)
+HANDLE StartAsyncNameLookup(char* peer_addr, char* buf)
 {
-	HANDLE ret_val;
-	
-	ret_val = WSAAsyncGetHostByAddr(hwndMain,WM_BLAK_SOCKET_NAME_LOOKUP,
-		peer_addr,4,PF_INET,buf,MAXGETHOSTSTRUCT);
-	if (ret_val == 0)
-		eprintf("StartAsyncNameLookup got error %s\n",GetLastErrorStr());
-	
-	return ret_val;
+	SOCKADDR_IN6* addr6 = (SOCKADDR_IN6*)peer_addr;
+	char hostname[NI_MAXHOST];
+	int result;
+	char ip_str[INET6_ADDRSTRLEN];
+	int addr_len;
+
+	// Get the IP string first for fallback
+	if (IN6_IS_ADDR_V4MAPPED(&addr6->sin6_addr))
+	{
+		struct in_addr ipv4_addr;
+		memcpy(&ipv4_addr, ((char*)&addr6->sin6_addr) + 12, sizeof(ipv4_addr));
+		inet_ntop(AF_INET, &ipv4_addr, ip_str, sizeof(ip_str));
+		addr_len = sizeof(SOCKADDR_IN);
+	}
+	else
+	{
+		inet_ntop(AF_INET6, &addr6->sin6_addr, ip_str, sizeof(ip_str));
+		addr_len = sizeof(SOCKADDR_IN6);
+	}
+
+	// Store IP as initial value
+	strncpy(buf, ip_str, MAXGETHOSTSTRUCT - 1);
+	buf[MAXGETHOSTSTRUCT - 1] = '\0';
+
+	// Try DNS lookup with minimal flags to allow internet resolution
+	result = getnameinfo((struct sockaddr*)addr6,
+		addr_len,
+		hostname,
+		NI_MAXHOST,
+		NULL,
+		0,
+		0);  // No flags to allow all types of lookups
+
+	if (result == 0)
+	{
+		strncpy(buf, hostname, MAXGETHOSTSTRUCT - 1);
+		buf[MAXGETHOSTSTRUCT - 1] = '\0';
+		lprintf("DNS lookup successful: %s\n", buf);
+		return (HANDLE)1;
+	}
+
+	// DNS lookup failed - already have IP in buf
+	lprintf("DNS lookup failed for %s: %s\n", ip_str, gai_strerror(result));
+	return 0;
 }
 
 /* this is executed in the main, non-interface thread */

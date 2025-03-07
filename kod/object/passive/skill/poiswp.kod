@@ -22,7 +22,7 @@ resources:
    ApplyPoison_icon_rsc = ipoistch.bgf
    ApplyPoison_desc_rsc = \
       "A cunning and lethal skill that allows the rogue to apply a "
-      "deadly poison to their weapon in hand.  "
+      "deadly poison to their wielded weapon.  "
       "The skill consumes a flask of arsenic.  "
       "\n\nNOTE: This is an 'active' skill, which must be performed manually "
       "using the 'perform apply poison' command, or using a hotkey."
@@ -84,14 +84,16 @@ messages:
       }
 
       if oWeapon = $
+         OR NOT IsClass(oWeapon,&Weapon)
       {
-        Send(who,@MsgSendUser,#message_rsc=ApplyPoison_no_weapon);
+         Send(who,@MsgSendUser,#message_rsc=ApplyPoison_no_weapon);
 
-        return FALSE;
+         return FALSE;
       }
-      else if NOT Send(oWeapon,@CanEnchant,#oSpell=self)
+
+      if NOT Send(oWeapon,@CanEnchant)
       {
-        Send(who,@MsgSendUser,#message_rsc=spell_resists,
+         Send(who,@MsgSendUser,#message_rsc=spell_resists,
                #parm1=Send(oWeapon,@GetCapDef),#parm2=Send(oWeapon,@GetName));
 
          return FALSE;
@@ -108,20 +110,20 @@ messages:
 
       // Duration: 1 - 37 hours.
       iDuration = Random(1,4) + (Send(who,@GetSkillAbility,#num=viSkill_num)/3);
-      iDuration = iDuration * 1000 * 60 * 60;
-   
+      iDuration *= 1000 * 60 * 60;
+
       Send(oWeapAtt,@AddToItem,#oItem=oWeapon,
-         #random_gen=FALSE,#timer_duration=iDuration);
+            #random_gen=FALSE,#timer_duration=iDuration);
 
       Send(who,@MsgSendUser,#message_rsc=ApplyPoison_use,
-        #parm1=Send(oWeapon,@LookupArticle,#article_num=ARTICLE_YOUR),
-        #parm2=Send(oWeapon,@GetName));
+            #parm1=Send(oWeapon,@LookupArticle,#article_num=ARTICLE_YOUR),
+            #parm2=Send(oWeapon,@GetName));
 
       // Consume a flask
       Send(oFlask,@Delete);
 
       Send(Send(who,@GetOwner),@SomethingWaveRoom,#what=who,
-         #wave_rsc=ApplyPoison_wav);
+            #wave_rsc=ApplyPoison_wav);
 
       // Check for advancement conditions
       if Random(1,100) <= viChance_To_Increase

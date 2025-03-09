@@ -30,11 +30,7 @@ resources:
       "With no location specified your elusion attempt fails."
    Elusion_Success = "The world folds in on itself."
    Elusion_Location_list = \
-      "The world shimmers and secret paths are revealed, leading "
-      "to %s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s."
-   elusion_loc_list_comma = ", "
-   elusion_loc_list_and = "and "
-   elusion_loc_list_blank = ""
+      "The world shimmers and secret paths are revealed, leading to %r."
    Elusion_fail = "That is not a valid destination."
    Elusion_cant_cast_here = \
        "You may only elude from a place you can elude to."
@@ -69,8 +65,13 @@ properties:
    // If true, can cast elusion from any room.  Otherwise it's limited.
    pbCanCastFromAnywhere = TRUE
 
-   // Includes Jixa and Berg
+   // Whether the spell enables players to access Jixa & Berg.
+   // Also requires expansion to be enabled in settings.
    pbCanEludeToEast = FALSE
+
+   // Players must visit a a 'new' city (i.e. not in the original 7)
+   // before they can elude to it.
+   pbMustVisitNewCitiesFirst = TRUE
 
 messages:
 
@@ -252,7 +253,7 @@ messages:
 
    GetLocations(iSpellpower=$,target=$)
    {
-      local lLocations, lAvailable, iNumLocations, oRoom, oHall;
+      local lLocations, oRoom, iDeficit;
 
       lLocations = [Send(SYS,@FindRoomByNum,#num=RID_TOS),
                     Send(SYS,@FindRoomByNum,#num=RID_MARION),
@@ -261,64 +262,60 @@ messages:
                     Send(SYS,@FindRoomByNum,#num=RID_JASPER),
                     Send(SYS,@FindRoomByNum,#num=RID_RAZA)];
 
-      // Include expansion towns if they are enabled
+      // Include expansion/new cities.
       if pbCanEludeToEast
          AND Send(SETTINGS_OBJECT,@IsExpansionEnabled)
       {
-         lAvailable = Cons(Send(SYS,@FindRoomByNum,#num=RID_JIXA),lLocations);
-         lAvailable = Cons(Send(SYS,@FindRoomByNum,#num=RID_BERG_CITY),lLocations);
+         if NOT pbMustVisitNewCitiesFirst
+            OR Send(target,@CheckPlayerFlag,#flag=PFLAG3_VISITED_JIXA,#flagset=3)
+         {
+            lLocations = Cons(Send(SYS,@FindRoomByNum,#num=RID_JIXA),lLocations);
+         }
+         if NOT pbMustVisitNewCitiesFirst
+            OR Send(target,@CheckPlayerFlag,#flag=PFLAG3_VISITED_BERG,#flagset=3)
+         {
+            lLocations = Cons(Send(SYS,@FindRoomByNum,#num=RID_BERG_CITY),lLocations);
+         }
       }
 
-      // 84 spellpower for Island (7 divide by 12)
-      iNumLocations = Bound(iSpellPower/12,1,7);
-
-      // Special bonus!  Warp to guild hall with high enough spellpower.
-      // Spellpower has to be high enough that you were already going to 5
-      // or more places.
-      if iNumLocations >= 5
+      // 84% or over gets all base locations, otherwise subtract 1 for each
+      // 12% less in power to a base of 3.
+      iDeficit = 84 - iSpellPower;
+      while (iDeficit > 0 and Length(lLocations) > 3)
       {
-         oHall = Send(target,@GetGuildHall);
+         lLocations = DelListElem(lLocations,Nth(lLocations,Random(1,Length(lLocations))));
+         iDeficit -= 12;
+      }
 
-         if oHall <> $
-            AND Send(target,@CanPlayerPvP)
+      // Can elude to guild hall if over 50% power & PvP enabled.
+      if iSpellPower >= 50
+      {
+         oRoom = Send(target,@GetGuildHall);
+
+         if oRoom <> $ AND Send(target,@CanPlayerPvP)
          {
-            lAvailable = Cons(oHall,lAvailable);
+            lLocations = Cons(oRoom,lLocations);
          }
 
          // Necromancers also can elude to their base
          if Send(target,@IsUsingA,#class=&NecromancerAmulet)
          {
-            lAvailable = Cons(Send(SYS,@FindRoomByNum,
-               #num=RID_GUILDH15),lAvailable);
+            lLocations = Cons(Send(SYS,@FindRoomByNum,#num=RID_GUILDH15),lLocations);
          }
       }
-
+      // Kocatan added if player is already in the region, or sp >=84%.
       if Send(Send(target,@GetOwner),@GetRegion) = REGION_KOCATAN
-         OR iNumLocations = 7
+         OR iSpellPower >= 84
       {
-         lAvailable = Cons(Send(SYS,@FindRoomByNum,
-                           #num=RID_KOC_INN),lAvailable);
-         --iNumLocations;
+         lLocations = Cons(Send(SYS,@FindRoomByNum,#num=RID_KOC_INN),lLocations);
       }
 
-      while iNumLocations > 0
-      {
-         // Make these completely random, since we're just escaping
-         // to somewhere ...anywhere... else.
-
-         oRoom = Nth(lLocations,Random(1,Length(lLocations)));
-         lAvailable = Cons(oRoom,lAvailable);
-         lLocations = DelListElem(lLocations,oRoom);
-
-         --iNumLocations;
-      }
-
-      return lAvailable;
+      return lLocations;
    }
 
    SendElusionLocations(parm1=$)
    {
-      local i, iNumRooms, iNumRsc, iCounter, lLocations;
+      local i, iNumRooms, iCounter, lLocations;
 
       if parm1 = $
       {
@@ -329,40 +326,28 @@ messages:
       AddPacket(4,Elusion_Location_list);
       lLocations = parm1;
 
-      iCounter = 0;
-      iNumRsc = 0;
-
       iNumRooms = Length(lLocations);
+      if iNumRooms = 1
+      {
+         AddPacket(4,Send(i,@GetName));
+         return TRUE;
+      }
 
+      // Get a template with the right number of resources.
+      AddPacket(4,Send(SYS,@AddResourceTemplate,#iNum=iNumRooms * 2));
+
+      iCounter = 0;
       foreach i in lLocations
       {
-         ++iCounter;
-
-         if iNumRooms > 1
+         // Last?
+         if ++iCounter = iNumRooms
          {
-            if iCounter = iNumRooms
-            {
-               iNumRsc += 2;
-               AddPacket(4,elusion_loc_list_and, 4,Send(i,@GetName));
-            }
-            else
-            {
-               iNumRsc += 2;
-               AddPacket(4,Send(i,@GetName), 4,elusion_loc_list_comma);
-            }
+            AddPacket(4,system_and_space_rsc, 4,Send(i,@GetName));
          }
          else
          {
-            ++iNumRsc;
-            AddPacket(4,Send(i,@GetName));
+            AddPacket(4,Send(i,@GetName), 4,system_comma_space_rsc);
          }
-      }
-
-      // If we didn't add enough location resources, make up for it
-      // with blank ones.
-      while iNumRsc++ < 18
-      {
-         AddPacket(4,elusion_loc_list_blank);
       }
 
       return TRUE;

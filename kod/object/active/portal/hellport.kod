@@ -48,6 +48,7 @@ properties:
    vrDesc = hellportal_desc_rsc
    piDest_room = RID_TOS_INN
    plPossibleLocations = $
+   plEastLocations = $
    ptLocations = $
    piDrawFx = DRAWFX_TRANSLUCENT_75
 
@@ -59,9 +60,19 @@ messages:
    {
       plPossibleLocations = [ RID_TOS_INN, RID_COR_INN, RID_BAR_INN,
                               RID_JAS_INN, RID_MAR_INN, RID_RAZA_INN ];
+      plEastLocations = [ RID_JIXA_INN, RID_BERG_INN ];
 
-      // Set up the locations timer.
-      Send(self,@LocationsTimer);
+      propagate;
+   }
+
+   NewOwner(what=$)
+   "Start the location timer on getting an owner."
+   {
+      if (what <> $
+         AND ptLocations = $)
+      {
+         Send(self,@LocationsTimer);
+      }
 
       propagate;
    }
@@ -79,26 +90,29 @@ messages:
 
    SwapLocations()
    {
-      local iNum, iChosen, oRoom, lLocations;
+      local iNormal, iMax, iChosen, iRandom, oRoom;
 
-      iNum = Length(plPossibleLocations);
+      iNormal = Length(plPossibleLocations);
+      iMax = iNormal;
+      // Include expansion towns if they are enabled
+      if pbIncludeEast
+         AND Send(SETTINGS_OBJECT,@IsExpansionEnabled)
+      {
+         iMax += Length(plEastLocations);
+      }
 
       iChosen = piDest_Room;
       while iChosen = piDest_room
       {
-         // Include expansion towns if they are enabled
-         if pbIncludeEast
-            AND Send(SETTINGS_OBJECT,@IsExpansionEnabled)
+         iRandom = Random(1,iMax);
+         if iRandom > iNormal
          {
-            lLocations = Cons(RID_BERG_INN,lLocations);
-            lLocations = Cons(RID_JIXA_INN,lLocations);
+            iChosen = Nth(plEastLocations, iRandom - iNormal);
          }
          else
          {
-            lLocations = plPossibleLocations;
+            iChosen = Nth(plPossibleLocations,iRandom);
          }
-
-         iChosen = Nth(lLocations,Random(1,iNum));
       }
 
       oRoom = Send(SYS,@FindRoomByNum,#num=iChosen);

@@ -119,9 +119,12 @@ messages:
 
    DoPreTranceEffects(who=$,lTargets=$)
    {
-      local oFollower;
+      local oFollower, oRoom;
+
+      oRoom = Send(who,@GetOwner);
 
       if NOT Send(who,@HasActiveFollower)
+         OR NOT Send(oRoom,@IsAccessibleForFollowers)
       {
          propagate;
       }
@@ -132,7 +135,7 @@ messages:
          AND (Send(oFollower,@GetCorpse) = $)
       {
          Send(who,@MsgSendUser,#message_rsc=Mark_follower_call);
-         Send(Send(who,@GetOwner),@SomethingWaveRoom,#what=who,#wave_rsc=Mark_call_sound_rsc);
+         Send(oRoom,@SomethingWaveRoom,#what=who,#wave_rsc=Mark_call_sound_rsc);
          Send(oFollower,@FollowerReturn,#bSummoned=TRUE);
       }
 
@@ -141,7 +144,7 @@ messages:
 
    PerformSkill(who=$,lTargets=$)
    {
-      local oFollower, oTarget, iPower, oState;
+      local oFollower, oRoom, oTarget, iPower, oState;
 
       if lTargets = $
       {
@@ -151,16 +154,16 @@ messages:
       }
 
       oTarget = First(lTargets);
+      oRoom = Send(who,@GetOwner);
 
       // Sanity check.
-      if (Send(who,@GetOwner) <> Send(oTarget,@GetOwner))
+      if (oRoom <> Send(oTarget,@GetOwner))
       {
          Send(who,@MsgSendUser,#message_rsc=Mark_bad_target);
 
          return;
       }
 
-      oFollower = Send(who,@GetMercenary);
       iPower = Send(self,@GetSkillPower,#who=who);
 
       // First off, remove any marks that may have been put by others.
@@ -194,8 +197,10 @@ messages:
       Send(oTarget,@CreateMarker,#who=who);
 
       // Also send in our follower to join the fight.
-      if (oFollower <> $)
+      oFollower = Send(who,@GetMercenary);
+      if oFollower <> $
          AND IsObject(oFollower)
+         AND Send(oRoom,@IsAccessibleForFollowers)
          AND (Send(oFollower,@GetCorpse) = $)
          AND NOT Send(oFollower,@CheckMonsterFlag,#flag=MFLAG_STAYING)
       {
@@ -276,7 +281,7 @@ messages:
    CanPayCosts(who=$,lTargets=$)
    {
       local oState, oTarget, oFollower;
-      
+
       // Check attack timer without setting a timer.
       // Setting the timer is done in PerformSkill().
       if NOT Send(who,@CheckAttackTimer)

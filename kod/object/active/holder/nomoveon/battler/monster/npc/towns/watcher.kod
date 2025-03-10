@@ -104,6 +104,8 @@ resources:
       "defeated or reneged."
    watcher_new_combat_style = \
       "The name of the game is: %s.  Now, would any warrior be our champion?"
+   watcher_champion_unneeded = \
+      "We have no need of a Champion for this style of combat."
 
    // Fight styles.
    watcher_style_one_on_one = "traditional"
@@ -268,6 +270,7 @@ classvars:
    vrMustAcceptChallenge = watcher_must_accept
    vrChampionSurrenders = watcher_champ_reneges
    vrMustChooseStyle = watcher_must_choose_style
+   vrNoChampionInStyle = watcher_champion_unneeded
    vrFightInProgress = watcher_fight_in_progress
    vrNeedChampion = watcher_need_champion
    vrNotAcceptingChallengers = watcher_dont_need_challenger
@@ -1883,6 +1886,13 @@ messages:
       if piCombat_style = STYLE_NO_FIGHT
       {
          Send(self,@Say,#message_rsc=vrMustChooseStyle);
+
+         return;
+      }
+
+      if piCombat_Style = STYLE_MONSTER_ARENA
+      {
+         Send(self,@SayToOne,#target=what,#message_rsc=vrNoChampionInStyle);
 
          return;
       }

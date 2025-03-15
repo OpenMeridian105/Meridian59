@@ -12,20 +12,27 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - name: Get list of Changed Files
+      - name: List changed files
         id: changed-files
-        uses: tj-actions/changed-files@v40
+        run: |
+          # Fetch the base branch to ensure we have the base commit
+          git fetch origin ${{ github.event.pull_request.base.ref }} --depth=1
+          # List changed files between the base commit and the current commit
+          echo "all_changed_files<<EOF" >> $GITHUB_OUTPUT
+          git diff --name-only ${{ github.event.pull_request.base.sha }} ${{ github.sha }} >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
 
       - name: Check file encoding
         run: |
-          for file in ${{ steps.changed-files.outputs.all_changed_files }}; do
-            if [[ -f "$file" ]]; then
+          FOUND_UTF8=0
+          while read -r file; do
+            if [[ -n "$file" && -f "$file" ]]; then
               if [[ $(file -i "$file" | grep 'charset=utf-8') ]]; then
                 FOUND_UTF8=1
                 echo "::error::UTF-8 encoded file found: $file"
               fi
             fi
-          done
-          if [[ "$FOUND_UTF8" ]]; then
+          done < <(echo "${{ steps.changed-files.outputs.all_changed_files }}")
+          if [[ "$FOUND_UTF8" -eq 1 ]]; then
             exit 1
           fi

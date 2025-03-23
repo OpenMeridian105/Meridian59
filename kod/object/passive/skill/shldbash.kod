@@ -27,9 +27,6 @@ resources:
       "\n\nTo use this skill, press and hold shift while moving backwards "
       "to raise your shield and defend yourself."
 
-   ShieldBash_use_rsc = "You slam %s%s into %s%s for ~k~B%i~B ~k~ndamage."
-   ShieldBash_use_target_rsc = "%s%s bashes their %s into you!"
-
 classvars:
 
    vrName = ShieldBash_name_rsc
@@ -73,35 +70,31 @@ messages:
 
       oRoom = Send(who,@GetOwner);
       oShield = Send(who,@LookupPlayerShield);
-    
+
       iDamage = Send(self,@GetDamage,#who=who,#oShield=oShield);
+      iDamage = Send(oTarget,@AssessDamage,#what=who,
+                     #damage=iDamage,#report=FALSE);
 
-      Send(who,@PlayHitSound,#what=oTarget,#stroke_obj=self,#use_weapon=oShield,#damage=iDamage);
-      Send(oRoom,@SomethingAttacked,#what=who,#victim=oTarget,#use_weapon=oShield);
-
-      if Send(oTarget,@AssessDamage,#what=who,#damage=iDamage,#report=FALSE) = $
+      if IsClass(who,&Battler)
       {
-        Send(who,@KilledSomething,#what=oTarget,#use_weapon=oShield);
-      }
+         Send(who,@AssessHit,#what=oTarget,#damage=iDamage,#use_weapon=oShield);
 
-      Post(who,@MsgSendUser,#message_rsc=ShieldBash_use_rsc,
-        #parm1=Send(oShield,@LookupArticle,#article_num=ARTICLE_YOUR),
-        #parm2=Send(oShield,@GetName),#parm3=Send(oTarget,@GetDef),
-        #parm4=Send(oTarget,@GetName),#parm5=iDamage);
-            
-      if IsClass(oTarget,&Player)
-      {
-        Post(oTarget,@MsgSendUser,#message_rsc=ShieldBash_use_target_rsc,
-            #parm1=Send(who,@GetCapDef),
-            #parm2=Send(who,@GetName),
-            #parm3=Send(oShield,@GetName));
-            
-        // Chance to disrupt.
-        if Send(self,@GetSkillPower,#who=who) > Random(1,100)
-        {
+         if iDamage = $
+         {
+            Send(who,@KilledSomething,#what=oTarget,#use_weapon=oShield);
+         }
+         else if Send(self,@GetSkillPower,#who=who) > Random(1,100)
+         {
+            // Chance to disrupt.
             Send(oTarget,@BreakTrance,#event=EVENT_DISRUPT);
-        }
+         }
+
+         // Tell everyone else about the transgression...
+         Send(oRoom,@SomethingAttacked,#what=who,
+               #victim=oTarget,#use_weapon=oShield);
       }
+      Send(who,@PlayHitSound,#what=oTarget,#stroke_obj=self,
+            #use_weapon=oShield,#damage=iDamage);
 
       // Check for advancement conditions
       if Random(iStealth,300) > 100

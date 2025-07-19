@@ -21,16 +21,15 @@ resources:
    BergBanker_name_rsc = "Michael d'Adue"
    BergBanker_icon_rsc = bergbankerm.bgf
    BergBanker_desc_rsc = \
-      "In front of you stands a young man with pale skin and a slightly "
-      "rounded, bloated body.  His engaging smile immediately lets you "
-      "forget the faint handshake, even if it never reaches his eyes.  "
-      "The money of his customers is safely stored behind heavy iron "
-      "bars, and he gives the impression as if he also wants to know "
-      "the last of their shillings in his lockers."
+      "A young man with pale skin and a slightly rounded figure stands before "
+      "you.  His friendly smile almost makes you overlook his weak handshake, "
+      "though it never quite reaches his eyes.  He keeps his customers' money "
+      "securely behind heavy iron bars, and you get the sense he wants to know "
+      "that every last one of their coins is in his grasp."
 
    BergBanker_entry_welcome = \
-      "Welcome to the Bank of Berg. Come closer and tell me how many "
-      "coins do you want to deposit today?"
+      "Welcome to the Bank of Berg.  Step up and let me know how many "
+      "coins you'd like to deposit today."
 
 classvars:
 
@@ -38,8 +37,8 @@ classvars:
    vrDesc = BergBanker_desc_rsc
    vrIcon = BergBanker_icon_rsc
    viAttributes = \
-      MOB_NOFIGHT | MOB_BANKER | MOB_NOMOVE | MOB_LISTEN \
-      | MOB_RANDOM | MOB_RECEIVE | MOB_TEACHER
+      MOB_NOFIGHT | MOB_SELLER | MOB_RANDOM | MOB_LISTEN \
+      | MOB_NOMOVE | MOB_RECEIVE | MOB_BANKER
    viOccupation = MOB_ROLE_BANKER
    viBank = BID_TOS
 
@@ -65,18 +64,14 @@ messages:
       {
          Send(self,@SetMood,#new_mood=piMood+3);
       }
+      else if Send(who,@CheckPlayerFlag,#flag=PFLAG_MURDERER)
+      {
+         Send(self,@SetMood,#new_mood=piMood+3);
+      }
       else
       {
-         if Send(who,@CheckPlayerFlag,#flag=PFLAG_MURDERER)
-         {
-            Send(self,@SetMood,#new_mood=piMood+3);
-         }
-         else
-         {
-            Send(self,@SetMood,#new_mood=piMood-3);
-         }
+         Send(self,@SetMood,#new_mood=piMood-3);
       }
-
 
       if Send(who,@GetHomeRoom) = RID_BERG_INN
       {

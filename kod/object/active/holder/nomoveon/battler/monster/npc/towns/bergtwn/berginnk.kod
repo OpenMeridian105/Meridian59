@@ -21,14 +21,14 @@ resources:
    BergInnkeep_name_rsc = "Bastiane d'Ile"
    BergInnkeep_icon_rsc = berginnk.bgf
    BergInnkeep_desc_rsc = \
-      "The Barkeeper gives the impression that he does not fit into his own pub.  "
-      "His fine clothing seems to be older and was probably tailor-made for him "
-      "in younger and leaner years.  The stench of beer and booze overcomes you "
-      "as you step closer as he washes out a pitcher with shaky hands and glassy eyes."
+      "The barkeeper seems out of place in his own pub.  His fine clothes are "
+      "worn and were likely tailored for him in younger, slimmer days.  As you "
+      "approach, the strong smell of booze fills the air while he rinses a "
+      "pitcher with trembling hands and glassy eyes."
 
    Berg_entry_welcome = \
-      "Hey hey, %s%s! K-k-come and walk inside, gnihihihi! Drink! Driiiink, I tell you! "
-      "S-sit down and tell <hicks> your Ssh-stories, he-hee-heee!"
+      "Hey hey, %s%s!  C-c-come on in, gnihihihi! Drink! Driiiink, I say!  "
+      "S-sit down and share <hick> your s-stories, he-hee-heee!"
 
 classvars:
 
@@ -45,7 +45,6 @@ properties:
 
 messages:
 
-   
    SetForSale()
    {
       plFor_sale = [ 
@@ -62,31 +61,35 @@ messages:
 
    UserEntered(who=$)
    {
+      local iVar;
+
       Post(who,@SomeoneSaid,#what=self,#string=Berg_entry_welcome,
             #type=SAY_RESOURCE,
             #parm1=Send(who,@GetDef),#parm2=Send(who,@GetName));
 
-      if Send(who,@GetHomeRoom) = RID_JAS_INN
+      iVar = Send(who,@GetHomeRoom);
+
+      if iVar = RID_JAS_INN
       {
          Send(self,@SetMood,#new_mood=piMood-2);
       }
 
-      if Send(who,@GetHomeRoom) = RID_COR_INN
+      if iVar = RID_COR_INN
       {
          Send(self,@SetMood,#new_mood=piMood+2);
       }
 
-      if Send(who,@GetFaction) = FACTION_DUKE
+      iVar = Send(who,@GetFaction);
+
+      if iVar = FACTION_DUKE
       {
          Send(self,@SetMood,#new_mood=piMood+2);
       }
-
-      if Send(who,@GetFaction) = FACTION_PRINCESS
+      else if iVar = FACTION_PRINCESS
       {
          Send(self,@SetMood,#new_mood=piMood-3);
       }
-
-      if Send(who,@GetFaction) = FACTION_REBEL
+      else if iVar = FACTION_REBEL
       {
          Send(self,@SetMood,#new_mood=piMood-10);
       }

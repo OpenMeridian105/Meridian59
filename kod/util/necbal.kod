@@ -1675,13 +1675,15 @@ messages:
       lQT = Send(oQE,@GetQuestTemplate,#index=QST_ID_SPAWN_LICH);
 
       // Get rid of any active quests so any new ones get scheduled with new poLich
-      foreach oQ in Nth(lQT,QT_ACTIVE_QUESTS)
+      if lQT <> $
       {
-         Send(oQ,@DeadlineExpired);
+         foreach oQ in Nth(lQT,QT_ACTIVE_QUESTS)
+         {
+            Send(oQ,@DeadlineExpired);
+         }
+         iQNTindex = First(Nth(lQT,QT_QUEST_NODES));
+         Send(oQE,@SetQuestNodeNPCList,#index=iQNTindex,#new_NPC_list=[poLich]);
       }
-
-      iQNTindex = First(Nth(lQT,QT_QUEST_NODES));
-      Send(oQE,@SetQuestNodeNPCList,#index=iQNTindex,#new_NPC_list=[poLich]);
 
       Send(oQE,@ScheduleQuest,#index=QST_ID_SPAWN_LICH);
 

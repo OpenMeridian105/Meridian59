@@ -129,6 +129,8 @@ resources:
       "Your Location is: `bRow: `k`B%i`n `bCol: `k`B%i`n `bfRow: `k`B%i`n "
       "`bfCol: `k`B%i`n `bHeight: `k`B%i`n `bAngle: `k`B%i`n."
 
+   dm_ips = "There are %i individual players online. "
+   
    // dm_disguise_command uses StringSubstitute, do not add separate language
    // string for this resource as it won't be substituted correctly.
    dm_disguise_command = "disguise"
@@ -150,6 +152,9 @@ resources:
    dm_get_potions_command = "get potions"
    dm_get_scrolls_command = "get scrolls"
    dm_get_masks_command = "get masks"
+   dm_get_offerings_command = "get offerings"
+   dm_get_prisms_command = "get prism"
+
    dm_hidden_command = "hidden"
    dm_blank_command = "blank"
 
@@ -1402,6 +1407,13 @@ messages:
       if StringEqual(string,"get damned")
       {
          Send(self,@DMSayGetDamned);
+
+         return;
+      }
+      
+      if StringEqual(string,"get ips")
+      {
+         Send(self,@MsgSendUser,#message_rsc=dm_ips,#parm1=Send(SYS,@GetUniqueIPs));
 
          return;
       }
@@ -4039,6 +4051,21 @@ messages:
       else if StringEqual(string,dm_get_money_command)
       {
          Send(self,@GetOneOfEach,#type=ITEMTYPE_MONEY);
+      }
+      else if StringEqual(string,dm_get_offerings_command)
+      {
+         Send(self,@NewHold,#what=Create(&OfferingFaren));
+         Send(self,@NewHold,#what=Create(&OfferingJala));
+         Send(self,@NewHold,#what=Create(&OfferingKraanan));
+         Send(self,@NewHold,#what=Create(&OfferingQor));
+         Send(self,@NewHold,#what=Create(&OfferingRiija));
+         Send(self,@NewHold,#what=Create(&OfferingShalille));
+      }
+      else if StringEqual(string,dm_get_prisms_command)
+      {
+         Send(self,@NewHold,#what=Create(&Prism,#numSides=3));
+         Send(self,@NewHold,#what=Create(&Prism,#numSides=5));
+         Send(self,@NewHold,#what=Create(&Prism,#numSides=7));
       }
       else
       {

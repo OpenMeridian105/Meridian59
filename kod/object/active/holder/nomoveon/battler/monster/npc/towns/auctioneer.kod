@@ -323,33 +323,37 @@ messages:
 
    AuctionItemExpired(lAuctionItem=$)
    {
-      local iPrice, oBuyer, oSeller, oAuctionItem, oSystem, i, j;
+      local iPrice, oBuyer, oSeller, oAuctionItem, oSystem, i;
 
       iPrice = Nth(lAuctionItem,4);
       oBuyer = Nth(lAuctionItem,3);
       oSeller = Nth(lAuctionItem,2);
       oAuctionItem = First(lAuctionItem);
 
-      // Transfer funds
-      oSystem = Send(SYS,@FindBankByNum,#num=viBank);
-      i = Send(oSystem,@WithdrawAccount,#what=oBuyer,#amount=iPrice);
-      j = Send(oSystem,@DepositAccount,#what=oSeller,#amount=iPrice);
-
-      // Didn't have enough to pay, void transaction
-      if i < iPrice
-      {
-         Send(oSystem,@DepositAccount,#what=oBuyer,#amount=i);
-         Send(oSystem,@WithdrawAccount,#what=oSeller,#amount=j);
-
-         // Return to seller
-         oBuyer = oSeller;
-      }
-
       // No one bid on this, return to seller
       if oBuyer = $
       {
          oBuyer = oSeller;
       }
+
+      // Transfer funds only if buyer is not seller
+      if oBuyer <> oSeller
+      {
+         oSystem = Send(SYS,@FindBankByNum,#num=viBank);
+         i = Send(oSystem,@WithdrawAccount,#what=oBuyer,#amount=iPrice);
+         // Didn't have enough to pay, void transaction
+         if i < iPrice
+         {
+            Send(oSystem,@DepositAccount,#what=oBuyer,#amount=i);
+            // Return to seller
+            oBuyer = oSeller;
+         }
+         else
+         {
+            Send(oSystem,@DepositAccount,#what=oSeller,#amount=i);
+         }
+      }
+
 
       // Send auction item to vault
       oSystem = Send(SYS,@FindVaultByNum,#num=viVault);

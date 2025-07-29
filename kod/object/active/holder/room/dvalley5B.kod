@@ -64,6 +64,13 @@ properties:
 
 messages:
 
+   Delete()
+   {
+      Send(self,@ClearIgnoreFinders);
+
+      propagate;
+   }
+
    CreateStandardExits()
    {
       plExits = $;
@@ -387,6 +394,24 @@ messages:
          SetNth(lNode,2,$);
          plIgnoreFinders = DelListElem(plIgnoreFinders,lNode);
       }
+
+      return;
+   }
+
+   ClearIgnoreFinders()
+   {
+      local i, tTimer;
+
+      foreach i in plIgnoreFinders
+      {
+         tTimer = Nth(i,2);
+         if (IsTimer(tTimer))
+         {
+            DeleteTimer(tTimer);
+            SetNth(i,2,$);
+         }
+      }
+      plIgnoreFinders = $;
 
       return;
    }

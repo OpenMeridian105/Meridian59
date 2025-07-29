@@ -158,39 +158,37 @@ messages:
       return;
    }
 
-   GlyphRespawnTimer()
+   GlyphRespawnTimer(timer=$)
    {
-      local i, bFound;
+      local i;
 
+      if (timer = $)
+         AND (ptGlyph_respawn <> $)
+      {
+         DeleteTimer(ptGlyph_respawn);
+      }
       ptGlyph_respawn = $;
 
-      bFound = FALSE;
       foreach i in plActive
       {
          if IsClass(First(i),&DesertGlyph)
          {
-            bFound = TRUE;
-
-            break;
+            // Don't make more than one glyph at a time.
+            return;
          }
       }
 
-      if NOT bFound
-      {
-         Send(self,@RaiseGlyph);
-         poGlyph = Create(&DesertGlyph);
-         Send(self,@NewHold,#what=poGlyph,#new_row=9,#new_col=22,
+      Send(self,@RaiseGlyph);
+      poGlyph = Create(&DesertGlyph);
+      Send(self,@NewHold,#what=poGlyph,#new_row=9,#new_col=22,
             #fine_row=40,#fine_col=40,#new_angle=ANGLE_SOUTH);
-      }
-
-      ptGlyph_respawn = CreateTimer(self,@GlyphRespawnTimer,viGlyph_RespawnTime);
 
       return;
    }
 
    SomethingKilled(what=$,victim=$)
    {
-      local oDValley4;
+      local oDValley2;
 
       if IsClass(victim,&DesertGlyph)
       {
@@ -199,13 +197,12 @@ messages:
          if IsClass(what,&User)
          {
             Send(what,@MsgSendUser,#message_rsc=dvalley4_glyth_killed);
-         }
-
-         oDValley4 = Send(SYS,@FindRoomByNum,#num=RID_DVALLEY_4);
-         if ((Send(oDValley4,@GetGlyph) = $)
-            AND IsClass(what,&User))
-         {
-            Send(what,@AddTrainingPoints,#points=piTrainingPointsReward,#report=TRUE);
+            // Reward for killing both glyphs.
+            oDValley2 = Send(SYS,@FindRoomByNum,#num=RID_DVALLEY_2);
+            if (Send(oDValley2,@GetGlyph) = $)
+            {
+               Send(what,@AddTrainingPoints,#points=piTrainingPointsReward,#report=TRUE);
+            }
          }
       }
 
@@ -223,7 +220,10 @@ messages:
       Send(self,@SetSector,#sector=SEC_GLYPH_C,
             #animation=ANIMATE_FLOOR_LIFT,#height=730,#speed=30);
 
-      Send(self,@GlyphRespawnTimer);
+      if ptGlyph_respawn = $
+      {
+         ptGlyph_respawn = CreateTimer(self,@GlyphRespawnTimer,viGlyph_RespawnTime);
+      }
 
       return;
    }

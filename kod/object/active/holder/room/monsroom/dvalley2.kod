@@ -158,32 +158,30 @@ messages:
       return;
    }
 
-   GlyphRespawnTimer()
+   GlyphRespawnTimer(timer=$)
    {
-      local i, bFound;
+      local i;
 
+      if (timer = $)
+         AND (ptGlyph_respawn <> $)
+      {
+         DeleteTimer(ptGlyph_respawn);
+      }
       ptGlyph_respawn = $;
 
-      bFound = FALSE;
       foreach i in plActive
       {
          if IsClass(First(i),&DesertGlyph)
          {
-            bFound = TRUE;
-
-            break;
+            // Don't make more than one glyph at a time.
+            return;
          }
       }
 
-      if NOT bFound
-      {
-         Send(self,@RaiseGlyph);
-         poGlyph = Create(&DesertGlyph);
-         Send(self,@NewHold,#what=poGlyph,
+      Send(self,@RaiseGlyph);
+      poGlyph = Create(&DesertGlyph);
+      Send(self,@NewHold,#what=poGlyph,
             #new_row=10,#new_col=26,#fine_row=4,#fine_col=60);
-      }
-
-      ptGlyph_respawn = CreateTimer(self,@GlyphRespawnTimer,viGlyph_RespawnTime);
 
       return;
    }
@@ -199,13 +197,12 @@ messages:
          if IsClass(what,&User)
          {
             Send(what,@MsgSendUser,#message_rsc=dvalley2_glyth_killed);
-         }
-
-         oDValley4 = Send(SYS,@FindRoomByNum,#num=RID_DVALLEY_4);
-         if ((Send(oDValley4,@GetGlyph) = $)
-            AND IsClass(what,&User))
-         {
-            Send(what,@AddTrainingPoints,#points=piTrainingPointsReward,#report=TRUE);
+            // Reward for killing both glyphs.
+            oDValley4 = Send(SYS,@FindRoomByNum,#num=RID_DVALLEY_4);
+            if (Send(oDValley4,@GetGlyph) = $)
+            {
+               Send(what,@AddTrainingPoints,#points=piTrainingPointsReward,#report=TRUE);
+            }
          }
       }
 
@@ -221,7 +218,10 @@ messages:
       Send(self,@SetSector,#sector=SEC_GLYPH_B,
             #animation=ANIMATE_FLOOR_LIFT,#height=740,#speed=30);
 
-      Send(self,@GlyphRespawnTimer);
+      if ptGlyph_respawn = $
+      {
+         ptGlyph_respawn = CreateTimer(self,@GlyphRespawnTimer,viGlyph_RespawnTime);
+      }
 
       return;
    }

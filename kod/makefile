@@ -13,7 +13,7 @@ BOFS = util.bof object.bof
 
 .SUFFIXES : .kod
 
-BCFLAGS = -d -R -I $(KODINCLUDEDIR) -B -K $(KODDIR)\kodbase.txt -O $(BLAKSERVRUNDIR)
+BCFLAGS = -d -R -I $(KODINCLUDEDIR) -K $(KODDIR)\kodbase.txt -O $(BLAKSERVRUNDIR)
 
 all :
 	$(BC) $(BCFLAGS) $(KODDIR)

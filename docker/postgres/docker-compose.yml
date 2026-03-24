@@ -1,0 +1,28 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: m59-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: blakserv
+      POSTGRES_PASSWORD: blaks3kr1t
+      POSTGRES_DB: meridian59
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: m59-pgadmin
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@meridian59.de
+      PGADMIN_DEFAULT_PASSWORD: admin
+    ports:
+      - "5050:80"
+    depends_on:
+      - postgres
+
+volumes:
+  pgdata:

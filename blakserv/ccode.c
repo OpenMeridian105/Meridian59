@@ -230,7 +230,11 @@ int C_LoadGame(int object_id, local_var_type *local_vars,
       return NIL;
    }
 
+#ifdef BLAK_PLATFORM_WINDOWS
    MessagePost(main_thread_id, WM_BLAK_MAIN_LOAD_GAME, 0, save_time);
+#else
+   LoadFromKod(save_time);
+#endif
 
    return NIL;
 }
@@ -3995,7 +3999,6 @@ int C_RecordStat(int object_id,local_var_type *local_vars,
 				int num_normal_parms,parm_node normal_parm_array[],
 				int num_name_parms,parm_node name_parm_array[])
 {
-#ifdef BLAK_PLATFORM_WINDOWS
    val_type stat_type, val, val_check;
    resource_node *rsc_node;
    session_node *session;
@@ -4123,7 +4126,7 @@ int C_RecordStat(int object_id,local_var_type *local_vars,
 
    // All types okay, try insert it.
    MySQLRecordGeneric(stat_type.v.data, count, data);
-#endif
+
    return NIL;
 }
 
@@ -4131,7 +4134,6 @@ int C_EmptyStatTable(int object_id, local_var_type *local_vars,
    int num_normal_parms, parm_node normal_parm_array[],
    int num_name_parms, parm_node name_parm_array[])
 {
-#ifdef BLAK_PLATFORM_WINDOWS
    val_type stat_type;
 
    // Don't do anything if SQL isn't enabled.
@@ -4158,7 +4160,7 @@ int C_EmptyStatTable(int object_id, local_var_type *local_vars,
    }
 
    MySQLEmptyTable(stat_type.v.data);
-#endif
+
    return NIL;
 }
 

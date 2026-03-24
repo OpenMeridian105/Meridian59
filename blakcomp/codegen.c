@@ -197,7 +197,12 @@ void codegen_filename(char *filename)
 
    if (directory_mode)
    {
-      char *fname = strrchr(filename, '\\') + 1;
+#ifdef BLAK_PLATFORM_LINUX
+      char *fname = strrchr(filename, '/');
+#else
+      char *fname = strrchr(filename, '\\');
+#endif
+      fname = fname ? fname + 1 : filename;
       len = strlen(fname);
       memcpy(&(codegen_buffer[codegen_buffer_position]), fname, len);
       codegen_buffer_position += len;
@@ -1429,8 +1434,13 @@ void codegen(char *kod_fname, char *bof_fname)
       write_resources(temp);
 
       // Copy bof to output dir (like old instbofrsc.bat).
+#ifdef BLAK_PLATFORM_LINUX
+      dircompile_copy_files(bof_fname, temp, strrchr(bof_fname, '/'),
+         strrchr(temp, '/'));
+#else
       dircompile_copy_files(bof_fname, temp, strrchr(bof_fname, '\\'),
          strrchr(temp, '\\'));
+#endif
    }
 
    if (!directory_mode)

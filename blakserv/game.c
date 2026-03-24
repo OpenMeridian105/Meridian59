@@ -606,7 +606,6 @@ void GameStartUser(session_node *s,user_node *u)
    name_val.int_val = SendTopLevelBlakodMessage(s->game->object_id,USER_NAME_MSG,0,NULL);
    r = GetResourceByID(name_val.v.data);
 
-#ifdef BLAK_PLATFORM_WINDOWS
    if (r && r->resource_val[0])
    {
       // Strings and sql_data_node freed in database.c.
@@ -619,7 +618,6 @@ void GameStartUser(session_node *s,user_node *u)
       data[2].value.str = MySQLDuplicateString(s->conn.name);
       MySQLRecordGeneric(STAT_PLAYERLOGIN, 3, data);
    }
-#endif
 
    SetSessionTimer(s, SESSION_POLL_TIME);
 }

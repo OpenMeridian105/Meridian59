@@ -49,9 +49,12 @@ void LeaveServerLock()
 
 void SetQuit()
 {
-   EnterCriticalSection(&csQuit);   
+   EnterCriticalSection(&csQuit);
    quit = True;
+#ifdef BLAK_PLATFORM_WINDOWS
    MessagePost(main_thread_id,WM_QUIT,0,0);
+#endif
+   // On Linux, RunMainLoop checks GetQuit() each iteration
    LeaveCriticalSection(&csQuit);
 }
 
@@ -68,5 +71,8 @@ Bool GetQuit()
 
 void SignalSession(int session_id)
 {
+#ifdef BLAK_PLATFORM_WINDOWS
    MessagePost(main_thread_id,WM_BLAK_MAIN_READ,0,session_id);
+#endif
+   // On Linux, sessions are polled in RunMainLoop via PollSessions()
 }

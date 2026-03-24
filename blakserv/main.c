@@ -21,9 +21,11 @@
 #include "blakserv.h"
 
 /* local function prototypes */
-void MainUsage();
+void MainServer(void);
+void MainExitServer(void);
 
 DWORD main_thread_id;
+static bool in_main_loop = false;
 
 #ifdef BLAK_PLATFORM_WINDOWS
 
@@ -32,32 +34,155 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance,
                    _In_ char *command_line,
                    _In_ int how_show)
 {
-	main_thread_id = GetCurrentThreadId();
-	
-	StoreInstanceData(hInstance,how_show);
-
-	MainServer();
-
-	return 0;
+   main_thread_id = GetCurrentThreadId();
+   StoreInstanceData(hInstance, how_show);
+   MainServer();
+   return 0;
 }
 
 #else
 
 int main(int argc, char **argv)
 {
-    main_thread_id = pthread_self();
-
-    return MainServer(argc,argv);
+   MainServer();
+   return 0;
 }
 
 #endif
 
-// This function keeps the necessary calls to reset and reinit game data
-// in one place, to reduce the chance of errors if modifying it. Used by
-// the interface and admin reload commands.
-void MainReloadGameData()
+#ifdef BLAK_PLATFORM_LINUX
+Bool InMainLoop(void)
 {
-   // Reset data.
+   return in_main_loop;
+}
+
+// On Windows, MainServer() is in main_windows.c
+// On Linux, it's here with RunMainLoop() instead of ServiceTimers()
+void MainServer(void)
+{
+   InitInterfaceLocks();
+   InitInterface();
+
+   InitMemory();
+   InitConfig();
+   LoadConfig();
+
+   InitDebug();
+   InitChannelBuffer();
+   OpenDefaultChannels();
+
+   if (ConfigBool(MYSQL_ENABLED))
+   {
+#ifdef BLAK_PLATFORM_WINDOWS
+      lprintf("Starting MySQL writer\n");
+#else
+      lprintf("Starting PostgreSQL writer\n");
+#endif
+      MySQLInit(ConfigStr(MYSQL_HOST), ConfigInt(MYSQL_CPORT), ConfigStr(MYSQL_USERNAME),
+         ConfigStr(MYSQL_PASSWORD), ConfigStr(MYSQL_DB));
+   }
+
+   lprintf("Starting %s\n", BlakServLongVersionString());
+
+   InitClass();
+   InitMessage();
+   InitObject();
+   InitList();
+   InitTimer();
+   InitSession();
+   InitResource();
+   AStarInit();
+   InitRooms();
+   InitString();
+   InitUser();
+   InitAccount();
+   InitNameID();
+   InitDLlist();
+   InitSysTimer();
+   InitMotd();
+   InitLoadBof();
+   InitTime();
+   InitGameLock();
+   InitBkodInterpret();
+   InitBufferPool();
+   InitTables();
+   AddBuiltInDLlist();
+   LoadMotd();
+   LoadBof();
+   LoadRsc();
+   LoadKodbase();
+   LoadAdminConstants();
+   PauseTimers();
+
+   if (LoadAll() == True)
+   {
+      SendTopLevelBlakodMessage(GetSystemObjectID(), LOADED_GAME_MSG, 0, NULL);
+      DoneLoadAccounts();
+   }
+
+   InitCommCli();
+   InitParseClient();
+   InitProfiling();
+   InitAsyncConnections();
+   UpdateSecurityRedbook();
+   UnpauseTimers();
+
+   StartupComplete();
+   InterfaceUpdate();
+
+   lprintf("Status: %i accounts\n", GetNextAccountID());
+   lprintf("-----------------------------------------------------------------------------------------------\n");
+   dprintf("-----------------------------------------------------------------------------------------------\n");
+   eprintf("-----------------------------------------------------------------------------------------------\n");
+   gprintf("-----------------------------------------------------------------------------------------------\n");
+
+   in_main_loop = true;
+
+   AsyncSocketStart();
+
+#ifdef BLAK_PLATFORM_WINDOWS
+   SetWindowText(hwndMain, ConfigStr(CONSOLE_CAPTION));
+   ServiceTimers();
+#else
+   RunMainLoop();
+#endif
+
+   MainExitServer();
+}
+
+void MainExitServer(void)
+{
+   lprintf("ExitServer terminating server\n");
+
+   ExitAsyncConnections();
+   CloseAllSessions();
+   CloseDefaultChannels();
+
+   ResetLoadMotd();
+   ResetLoadBof();
+   ResetTables();
+   ResetBufferPool();
+   ResetSysTimer();
+   ResetDLlist();
+   ResetNameID();
+   ResetAccount();
+   ResetUser();
+   ResetString();
+   ExitRooms();
+   AStarShutdown();
+   ResetResource();
+   ResetTimer();
+   ResetList();
+   ResetObject();
+   ResetMessage();
+   ResetClass();
+   ResetConfig();
+   DeleteAllBlocks();
+}
+#endif // BLAK_PLATFORM_LINUX
+
+void MainReloadGameData(void)
+{
    ResetAdminConstants();
    ResetUser();
    ResetString();
@@ -74,7 +199,6 @@ void MainReloadGameData()
    ResetMessage();
    ResetClass();
 
-   // Reload data.
    InitNameID();
    LoadMotd();
    LoadBof();
@@ -85,22 +209,16 @@ void MainReloadGameData()
    LoadAdminConstants();
 }
 
+#ifdef BLAK_PLATFORM_WINDOWS
 char * GetLastErrorStr()
 {
-#ifdef BLAK_PLATFORM_WINDOWS
+   char *error_str;
 
-	char *error_str;
-	
-	error_str = "No error string"; /* in case the call  fails */
-	
-	FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM,
-		NULL,GetLastError(),MAKELANGID(LANG_ENGLISH,SUBLANG_ENGLISH_US),
-		(LPTSTR) &error_str,0,NULL);
-	return error_str;
-   
-#else
+   error_str = "No error string";
 
-   return strerror(errno);
-   
-#endif
+   FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM,
+      NULL,GetLastError(),MAKELANGID(LANG_ENGLISH,SUBLANG_ENGLISH_US),
+      (LPTSTR) &error_str,0,NULL);
+   return error_str;
 }
+#endif

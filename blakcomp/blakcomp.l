@@ -606,8 +606,13 @@ void add_include_directory(char *dirname)
 */
 void check_output_directory(char *dirname)
 {
+#ifdef BLAK_PLATFORM_LINUX
+   sprintf(bof_output_dir, "%s/loadkod", dirname);
+   sprintf(rsc_output_dir, "%s/rsc", dirname);
+#else
    sprintf(bof_output_dir, "%s\\loadkod", dirname);
    sprintf(rsc_output_dir, "%s\\rsc", dirname);
+#endif
 
    if (access(dirname, 4) != 0)
    {
@@ -780,12 +785,14 @@ int main(int argc, char **argv)
       }
    }
 
-#ifdef BLAK_PLATFORM_WINDOWS
    if (directory_mode)
       compile_directory_mode();
    else
-#endif
+#ifdef BLAK_PLATFORM_LINUX
+   compile_file_list("./", file_list);
+#else
    compile_file_list(".\\", file_list);
+#endif
 
    return !generate_code;
 }

@@ -139,13 +139,29 @@ void StartAsyncSocketAccept(SOCKET sock, int connection_type)
 void StartAsyncSession(session_node *s)
 {
    struct epoll_event ee;
-   ee.events = EPOLLIN | EPOLLOUT | EPOLLET;
+   ee.events = EPOLLIN;
    ee.data.fd = s->conn.socket;
    if (epoll_ctl(fd_epoll, EPOLL_CTL_ADD, s->conn.socket, &ee) != 0)
    {
       eprintf("StartAsyncSession error adding socket %s\n", GetLastErrorStr());
       return;
    }
+}
+
+void EnableSendEvents(SOCKET sock)
+{
+   struct epoll_event ee;
+   ee.events = EPOLLIN | EPOLLOUT;
+   ee.data.fd = sock;
+   epoll_ctl(fd_epoll, EPOLL_CTL_MOD, sock, &ee);
+}
+
+void DisableSendEvents(SOCKET sock)
+{
+   struct epoll_event ee;
+   ee.events = EPOLLIN;
+   ee.data.fd = sock;
+   epoll_ctl(fd_epoll, EPOLL_CTL_MOD, sock, &ee);
 }
 
 void StartAsyncSocketUDPRead(SOCKET sock)
@@ -245,6 +261,17 @@ int AsyncSocketAccept(SOCKET sock, int event, int error, int connection_type)
 
    conn.type = CONN_SOCKET;
    conn.socket = new_sock;
+
+   // Set TCP_NODELAY and non-blocking on accepted socket
+   // Linux accept() does not inherit socket options from listen socket
+   {
+      int nodelay = 1;
+      int flags;
+      setsockopt(new_sock, IPPROTO_TCP, TCP_NODELAY, (char *)&nodelay, sizeof(nodelay));
+      flags = fcntl(new_sock, F_GETFL, 0);
+      if (fcntl(new_sock, F_SETFL, flags | O_NONBLOCK) < 0)
+         eprintf("AsyncSocketAccept error setting non-blocking on socket\n");
+   }
 
    s = CreateSession(conn);
    if (s != NULL)

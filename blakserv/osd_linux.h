@@ -106,6 +106,8 @@ int GetLastError();
 char *GetLastErrorStr();
 
 void RunMainLoop(void);
+void EnableSendEvents(SOCKET sock);
+void DisableSendEvents(SOCKET sock);
 
 void InitInterface(void);
 int GetUsedSessions(void);

@@ -259,15 +259,24 @@ void AsyncSocketWrite(SOCKET sock)
       }
       else
       {
-         if (bytes != bn->len_buf)
-            dprintf("async write wrote %i/%i bytes\n",bytes,bn->len_buf);
-			
-         transmitted_bytes += bn->len_buf;
-			
+         transmitted_bytes += bytes;
+
+         if (bytes < bn->len_buf)
+         {
+            // Partial write - advance buffer pointer, keep buffer in send_list
+            bn->buf += bytes;
+            bn->len_buf -= bytes;
+            break;
+         }
+
          s->send_list = bn->next;
          DeleteBuffer(bn);
       }
    }
+#ifdef BLAK_PLATFORM_LINUX
+   if (s->send_list == NULL)
+      DisableSendEvents(s->conn.socket);
+#endif
    if (!MutexRelease(s->muxSend))
       eprintf("File %s line %i release of non-owned mutex\n",__FILE__,__LINE__);
 }

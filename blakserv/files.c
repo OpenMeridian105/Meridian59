@@ -40,6 +40,8 @@ bool FindMatchingFiles(const char *path, std::vector<std::string> *files)
    std::string sext = spath.substr(last_found+2);
    spath = spath.substr(0,last_found);
 
+   files->clear();
+
    DIR *dir = opendir(spath.c_str());
    if (dir == NULL)
       return false;

@@ -5,96 +5,95 @@
 ```bash
 sudo dpkg --add-architecture i386
 sudo apt-get update
-sudo apt-get install gcc-multilib g++-multilib flex bison \
+sudo apt-get install make gcc-multilib g++-multilib flex bison \
     libjansson-dev libjansson-dev:i386 \
     libpq-dev libpq-dev:i386 \
-    ncat python3
+    python3
 ```
 
 ## Build
+
+Build everything (server, compiler, KOD, resources, utilities):
 
 ```bash
 make -f makefile.linux
 ```
 
-Builds: blakserv, blakcomp, rscmerge, all KOD/BOF/RSC/RSB files, copies rooms.
+This builds:
+- `blakserv` - the game server (copied to `run/server/`)
+- `bc` - the KOD compiler (copied to `bin/`)
+- `rscmerge` - resource merge tool (copied to `bin/`)
+- All `.bof`, `.rsc`, `.rsb` files (copied to `run/server/rsc/` and `run/server/memmap/`)
+- Room files (copied to `run/server/rooms/`)
+
+To clean all build artifacts:
+
+```bash
+make -f makefile.linux clean
+```
 
 ## Configuration
 
 ```bash
 cd run/server
 cp blakserv.cfg-linux blakserv.cfg
-mkdir -p savegame
 ```
 
-Edit `blakserv.cfg` - important settings:
-```ini
-[Path]
-Rooms                rooms/
+Edit `blakserv.cfg` as needed. Key settings:
 
+```ini
 [Socket]
+Port                 5959
+MaintenancePort      9998
 MaintenanceMask      ::ffff:127.0.0.1;::1
 
-[Channel]
-Flush                Yes
-
-[Memory]
-SizeClassHash        199999
-
 [Resource]
-RscSpec              *.rsb
+Language             1
 
 [MySQL]
-Enabled     Yes
-Host        127.0.0.1
-Port        5432
-Username    blakserv
-Password    blaks3kr1t
-Database    meridian59
+Enabled     No
 ```
 
-Set `[MySQL] Enabled No` to run without database.
-
-## PostgreSQL Setup
-
-```bash
-cd docker/postgres
-docker compose up -d
-```
-
-This starts a PostgreSQL 16 container on port 5432. The server creates all ~46 tables automatically on first connect.
-
-Test with:
-```bash
-docker exec m59-postgres psql -U blakserv -d meridian59 -c "\dt"
-```
+Set `[MySQL] Enabled Yes` if using a database (see Database section below).
 
 ## Run
 
 ```bash
 cd run/server
-./blakserv &        # background
 ./blakserv          # foreground (Ctrl+C to stop)
+./blakserv &        # background
 ```
 
-Ports: **5959** (game), **9998** (admin maintenance)
+Default ports: **5959** (game), **9998** (admin maintenance)
 
 ## Admin Commands
 
-```bash
-bash blakadmin.sh show status
-bash blakadmin.sh show accounts
-bash blakadmin.sh who
-bash blakadmin.sh save game
-bash blakadmin.sh send o 0 updatedatabase
-bash blakadmin.sh send o 0 getuniqueips
-bash blakadmin.sh create account admin username password email
-bash blakadmin.sh shutdown          # save + stop server
+Via the admin script:
 
-# Interactive:
-bash blakadmin.sh
+```bash
+./blakadmin.sh show status
+./blakadmin.sh show accounts
+./blakadmin.sh who
+./blakadmin.sh save game
+./blakadmin.sh garbage
+./blakadmin.sh "send o 0 updatedatabase"
+./blakadmin.sh create account admin username password email
+./blakadmin.sh shutdown
+```
+
+Interactive mode:
+
+```bash
+./blakadmin.sh
 blakadm> show status
 blakadm> bye
+```
+
+Or via telnet/netcat directly:
+
+```bash
+telnet 127.0.0.1 9998
+echo "show status" | nc 127.0.0.1 9998
 ```
 
 ## Logs
@@ -105,13 +104,36 @@ tail -f run/server/channel/*.txt
 
 Files: `debug.txt`, `error.txt`, `log.txt`, `god.txt`, `admin.txt`
 
+## Database (Optional)
+
+The server can optionally log game statistics (player logins, deaths, damage, money,
+wiki data, etc.) to a PostgreSQL database. This is not required for the server to run.
+
+To enable, install PostgreSQL and configure:
+
+```ini
+[MySQL]
+Enabled     Yes
+Host        127.0.0.1
+Port        5432
+Username    blakserv
+Password    your_password
+Database    meridian59
+```
+
+Note: The config section is named `[MySQL]` for compatibility with the Windows version,
+but on Linux it connects to PostgreSQL via libpq.
+
+The server creates all required tables automatically on first connect.
+
 ## Architecture
 
-Single-threaded epoll main loop (based on vanilla Meridian59 repo), with a separate
-PostgreSQL writer thread for async database operations.
+Single-threaded epoll main loop with a separate PostgreSQL writer thread
+for async database operations.
 
-- `osd_linux.c/h` - OS-dependent types and stubs
-- `osd_epoll.c` - Main loop (epoll socket multiplexing + timers)
-- `database_pg.c/h` - PostgreSQL database layer (replaces MySQL)
-- `main.c` - Unified Windows/Linux main with `#ifdef`
-- Admin via maintenance port only (no console `-i` mode)
+Key Linux-specific files:
+- `blakserv/osd_linux.c/h` - OS-dependent types and stubs
+- `blakserv/osd_epoll.c` - Main loop (epoll socket multiplexing + timer wakeup via eventfd)
+- `blakserv/database_pg.c/h` - PostgreSQL database layer (replaces MySQL)
+- `blakserv/main.c` - Unified Windows/Linux main with `#ifdef`
+- `util/rscmerge.c` - Resource merge with deterministic file sorting

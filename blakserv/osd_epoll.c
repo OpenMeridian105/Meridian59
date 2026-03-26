@@ -14,8 +14,10 @@
 
 #include "blakserv.h"
 #include <sys/epoll.h>
+#include <sys/eventfd.h>
 
 int fd_epoll;
+static int fd_wakeup = -1;  // eventfd for timer wakeup
 
 #define MAX_MAINTENANCE_MASKS 15
 static char *maintenance_masks[MAX_MAINTENANCE_MASKS];
@@ -72,6 +74,14 @@ void RunMainLoop(void)
          if (notify_events[i].events == 0)
             continue;
 
+         // Timer wakeup eventfd - just drain it and let TimerActivate run
+         if (notify_events[i].data.fd == fd_wakeup)
+         {
+            uint64_t val;
+            read(fd_wakeup, &val, sizeof(val));
+            continue;
+         }
+
          // UDP socket handling
          if (notify_events[i].data.fd == GetUDPSocket())
          {
@@ -121,6 +131,31 @@ void RunMainLoop(void)
 void StartupComplete(void)
 {
    fd_epoll = epoll_create(1);
+
+   // Create eventfd for timer wakeup - allows TimerAddNode to
+   // wake the epoll loop immediately when a new earliest timer is added.
+   fd_wakeup = eventfd(0, EFD_NONBLOCK);
+   if (fd_wakeup >= 0)
+   {
+      struct epoll_event ee;
+      ee.events = EPOLLIN;
+      ee.data.fd = fd_wakeup;
+      if (epoll_ctl(fd_epoll, EPOLL_CTL_ADD, fd_wakeup, &ee) != 0)
+         eprintf("StartupComplete error adding wakeup eventfd: %s\n", GetLastErrorStr());
+      else
+         dprintf("Timer wakeup eventfd initialized (fd=%d)\n", fd_wakeup);
+   }
+   else
+      eprintf("StartupComplete error creating wakeup eventfd: %s\n", GetLastErrorStr());
+}
+
+void WakeupMainLoop(void)
+{
+   if (fd_wakeup >= 0)
+   {
+      uint64_t val = 1;
+      write(fd_wakeup, &val, sizeof(val));
+   }
 }
 
 void StartAsyncSocketAccept(SOCKET sock, int connection_type)

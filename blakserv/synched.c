@@ -527,14 +527,27 @@ void VerifyLogin(session_node *s)
    }
    else
    {
-      // RSB hash check disabled for Linux server compatibility.
-      // Linux rscmerge produces different file ordering than Windows,
-      // resulting in different MD5 hashes for identical resource content.
-      // This matches the vanilla server behavior which has no RSB check.
       str = GetRsbMD5();
-      dprintf("RSB hash check SKIPPED (Linux compat): server='%s' client='%s'\n",
-         str, s->rsb_hash);
-      SynchedDoMenu(s);
+      dprintf("RSB hash check: server='%s' client='%s'\n", str, s->rsb_hash);
+      if (*str != 0
+         && s->rsb_hash[0] != 0
+         && strcmp(s->rsb_hash, str) != 0)
+      {
+         if (s->version_major == 50)
+         {
+            dprintf("SENDING PATCH: RSB hash mismatch\n");
+            SynchedSendClientPatchClassic(s);
+         }
+         else if (s->version_major == 90)
+            SynchedSendClientPatchOgre(s);
+         InterfaceUpdateSession(s);
+         /* set timeout real long, since they're downloading */
+         SetSessionTimer(s, 60 * ConfigInt(INACTIVE_TRANSFER));
+      }
+      else
+      {
+         SynchedDoMenu(s);
+      }
    }
 }
 

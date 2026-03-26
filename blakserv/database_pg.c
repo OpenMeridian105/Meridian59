@@ -31,56 +31,57 @@ static pthread_t db_thread;
 #define MAX_ITEMS_PER_LOOP 10
 
 // Statistics table - maps STAT_TYPE to table name and expected field count
+// timestamp_pos: 0 = no auto-timestamp, 1 = NOW() as first value, -1 = NOW() as last value
 static sql_statistic_type Statistics_Table[] = {
-   {STAT_NONE,             0, false, NULL},
-   {STAT_TOTALMONEY,       1, true,  "money_total"},
-   {STAT_MONEYCREATED,     1, true,  "money_created"},
-   {STAT_PLAYERLOGIN,      3, true,  "player_logins"},
-   {STAT_ASSESS_DAM,       7, true,  "player_damaged"},
-   {STAT_PLAYERDEATH,      5, true,  "player_death"},
-   {STAT_PLAYER,          13, true,  "player"},
-   {STAT_PLAYERSUICIDE,    2, true,  "player"},
-   {STAT_GUILD,            4, true,  "guild"},
-   {STAT_GUILDDISBAND,     1, true,  "guild"},
-   {STAT_SPELLS,          14, true,  "wiki_spells"},
-   {STAT_SPELL_REAGENT,    3, true,  "wiki_spell_reagent"},
-   {STAT_TREASURE_GEN,     3, true,  "wiki_treasure_gen"},
-   {STAT_MONSTER,         13, true,  "wiki_monster"},
-   {STAT_MONSTER_ZONE,     3, true,  "wiki_monster_zone"},
-   {STAT_NPCS,             7, true,  "wiki_npcs"},
-   {STAT_WEAPONS,         14, true,  "wiki_weapons"},
-   {STAT_ROOMS,            6, true,  "wiki_rooms"},
-   {STAT_NPC_ZONE,         4, true,  "wiki_npc_zone"},
-   {STAT_NPC_SELLITEM,     3, true,  "wiki_npc_sellitem"},
-   {STAT_NPC_SELLSKILL,    2, true,  "wiki_npc_sellskill"},
-   {STAT_NPC_SELLSPELL,    2, true,  "wiki_npc_sellspell"},
-   {STAT_REAGENTS,        11, true,  "wiki_reagents"},
-   {STAT_FOOD,            11, true,  "wiki_food"},
-   {STAT_AMMO,            11, true,  "wiki_ammo"},
-   {STAT_ARMOR,           11, true,  "wiki_armor"},
-   {STAT_MISCITEMS,       11, true,  "wiki_miscitems"},
-   {STAT_RINGS,           11, true,  "wiki_rings"},
-   {STAT_RODS,            11, true,  "wiki_rods"},
-   {STAT_POTIONS,         11, true,  "wiki_potions"},
-   {STAT_SCROLLS,         11, true,  "wiki_scrolls"},
-   {STAT_WANDS,           11, true,  "wiki_wands"},
-   {STAT_QUESTITEMS,      11, true,  "wiki_questitems"},
-   {STAT_SKILLS,          12, true,  "wiki_skills"},
-   {STAT_NECKLACE,        11, true,  "wiki_necklace"},
-   {STAT_INSTRUMENTS,     11, true,  "wiki_instruments"},
-   {STAT_GEMS,            11, true,  "wiki_gems"},
-   {STAT_OFFERINGS,       11, true,  "wiki_offerings"},
-   {STAT_QUESTS,          11, true,  "wiki_quests"},
-   {STAT_TREASURE_EXTRA,   4, true,  "wiki_treasure_extra"},
-   {STAT_TREASURE_MAGIC,   3, true,  "wiki_treasure_magic"},
-   {STAT_NPC_SELLCOND,     4, true,  "wiki_npc_sellcond"},
-   {STAT_LOGPEN,           7, true,  "player_logpen"},
-   {STAT_LOGPEN_ITEM,      3, true,  "player_logpen_items"},
-   {STAT_QUESTGIVER,       2, true,  "wiki_quest_giver"},
-   {STAT_ACCOUNTS,         8, true,  "server_accounts"},
-   {STAT_ACCOUNT_CHARS,    2, true,  "server_account_chars"},
-   {STAT_COMPL_QUESTS,     5, true,  "player_completed_quests"},
-   {STAT_COMPL_QUEST_ITEMS,4, true,  "player_quest_reward_items"}
+   {STAT_NONE,             0, false, NULL,                        0},
+   {STAT_TOTALMONEY,       1, true,  "money_total",               1},
+   {STAT_MONEYCREATED,     1, true,  "money_created",             1},
+   {STAT_PLAYERLOGIN,      3, true,  "player_logins",            -1},
+   {STAT_ASSESS_DAM,       7, true,  "player_damaged",           -1, true},
+   {STAT_PLAYERDEATH,      5, true,  "player_death",             -1},
+   {STAT_PLAYER,          13, true,  "player",                    0},
+   {STAT_PLAYERSUICIDE,    2, true,  "player",                    0},
+   {STAT_GUILD,            4, true,  "guild",                     0},
+   {STAT_GUILDDISBAND,     1, true,  "guild",                     0},
+   {STAT_SPELLS,          14, true,  "wiki_spells",               0},
+   {STAT_SPELL_REAGENT,    3, true,  "wiki_spell_reagent",        0},
+   {STAT_TREASURE_GEN,     3, true,  "wiki_treasure_gen",         0},
+   {STAT_MONSTER,         13, true,  "wiki_monster",              0},
+   {STAT_MONSTER_ZONE,     3, true,  "wiki_monster_zone",         0},
+   {STAT_NPCS,             7, true,  "wiki_npcs",                 0},
+   {STAT_WEAPONS,         14, true,  "wiki_weapons",              0},
+   {STAT_ROOMS,            6, true,  "wiki_rooms",                0},
+   {STAT_NPC_ZONE,         4, true,  "wiki_npc_zone",             0},
+   {STAT_NPC_SELLITEM,     3, true,  "wiki_npc_sellitem",         0},
+   {STAT_NPC_SELLSKILL,    2, true,  "wiki_npc_sellskill",        0},
+   {STAT_NPC_SELLSPELL,    2, true,  "wiki_npc_sellspell",        0},
+   {STAT_REAGENTS,        11, true,  "wiki_reagents",             0},
+   {STAT_FOOD,            11, true,  "wiki_food",                 0},
+   {STAT_AMMO,            11, true,  "wiki_ammo",                 0},
+   {STAT_ARMOR,           11, true,  "wiki_armor",                0},
+   {STAT_MISCITEMS,       11, true,  "wiki_miscitems",            0},
+   {STAT_RINGS,           11, true,  "wiki_rings",                0},
+   {STAT_RODS,            11, true,  "wiki_rods",                 0},
+   {STAT_POTIONS,         11, true,  "wiki_potions",              0},
+   {STAT_SCROLLS,         11, true,  "wiki_scrolls",              0},
+   {STAT_WANDS,           11, true,  "wiki_wands",                0},
+   {STAT_QUESTITEMS,      11, true,  "wiki_questitems",           0},
+   {STAT_SKILLS,          12, true,  "wiki_skills",               0},
+   {STAT_NECKLACE,        11, true,  "wiki_necklace",             0},
+   {STAT_INSTRUMENTS,     11, true,  "wiki_instruments",          0},
+   {STAT_GEMS,            11, true,  "wiki_gems",                 0},
+   {STAT_OFFERINGS,       11, true,  "wiki_offerings",            0},
+   {STAT_QUESTS,          11, true,  "wiki_quests",               0},
+   {STAT_TREASURE_EXTRA,   4, true,  "wiki_treasure_extra",       0},
+   {STAT_TREASURE_MAGIC,   3, true,  "wiki_treasure_magic",       0},
+   {STAT_NPC_SELLCOND,     4, true,  "wiki_npc_sellcond",         0},
+   {STAT_LOGPEN,           7, true,  "player_logpen",             0},
+   {STAT_LOGPEN_ITEM,      3, true,  "player_logpen_items",       0},
+   {STAT_QUESTGIVER,       2, true,  "wiki_quest_giver",          0},
+   {STAT_ACCOUNTS,         8, true,  "server_accounts",           0},
+   {STAT_ACCOUNT_CHARS,    2, true,  "server_account_chars",      0},
+   {STAT_COMPL_QUESTS,     5, true,  "player_completed_quests",   0},
+   {STAT_COMPL_QUEST_ITEMS,4, true,  "player_quest_reward_items", 0}
 };
 
 /******************************************************************************/
@@ -647,15 +648,29 @@ static void PgWriteNode(sql_queue_node *node)
    }
 
    // Build INSERT query with $1, $2, ... placeholders
+   // Handle auto-columns: SERIAL (DEFAULT) and TIMESTAMP (NOW())
+   int ts_pos = Statistics_Table[type].timestamp_pos;
+   bool has_serial = Statistics_Table[type].has_serial;
    char sql[4096];
    char placeholders[1024];
    placeholders[0] = 0;
+
+   if (has_serial)
+      strcat(placeholders, "DEFAULT,");
+
+   if (ts_pos == 1)
+      strcat(placeholders, "NOW(),");
+
    for (int i = 0; i < nParams; i++)
    {
       char ph[8];
       snprintf(ph, sizeof(ph), "%s$%d", i > 0 ? "," : "", i + 1);
       strcat(placeholders, ph);
    }
+
+   if (ts_pos == -1)
+      strcat(placeholders, ",NOW()");
+
    snprintf(sql, sizeof(sql), "INSERT INTO %s VALUES (%s) ON CONFLICT DO NOTHING", table, placeholders);
 
    PGresult *res = PQexecParams(pg_conn, sql, nParams, NULL,

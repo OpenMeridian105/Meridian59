@@ -22,6 +22,7 @@
 #include "rscload.h"
 #include <vector>
 #include <string>
+#include <algorithm>
 
 typedef std::vector<std::string> StringVector;
 
@@ -92,6 +93,7 @@ bool FindMatchingFiles(char *path, std::vector<std::string> *files)
    } while (FindNextFile(hFindFile, &search_data));
    FindClose(hFindFile);
 
+   std::sort(files->begin(), files->end());
    return true;
 
 #elif defined(BLAK_PLATFORM_LINUX)
@@ -121,6 +123,7 @@ bool FindMatchingFiles(char *path, std::vector<std::string> *files)
 
    closedir(dir);
 
+   std::sort(files->begin(), files->end());
    return true;
 
 #else
@@ -268,6 +271,17 @@ bool LoadRscFiles(int num_files, char **foldername)
 #else
          sprintf(file_load_path, "%s\\%s", *foldername, it->c_str());
 #endif
+
+         // Skip empty .rsc files (classes with no resources)
+         FILE *fcheck = fopen(file_load_path, "rb");
+         if (fcheck)
+         {
+            fseek(fcheck, 0, SEEK_END);
+            long fsize = ftell(fcheck);
+            fclose(fcheck);
+            if (fsize == 0)
+               continue;
+         }
 
          if (!RscFileLoad(file_load_path, EachRscCallback))
          {

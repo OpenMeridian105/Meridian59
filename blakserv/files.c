@@ -60,7 +60,8 @@ bool FindMatchingFiles(const char *path, std::vector<std::string> *files)
    }
    
    closedir(dir);
-   
+
+   std::sort(files->begin(), files->end());
    return true;
    
  #else

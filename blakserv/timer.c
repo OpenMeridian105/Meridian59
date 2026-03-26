@@ -126,8 +126,9 @@ __forceinline void TimerAddNode(timer_node *t)
       // have changed, so have it break out of loop and recalibrate
 #ifdef BLAK_PLATFORM_WINDOWS
       MessagePost(main_thread_id, WM_BLAK_MAIN_RECALIBRATE, 0, 0);
+#elif defined(BLAK_PLATFORM_LINUX)
+      WakeupMainLoop();
 #endif
-      // On Linux, RunMainLoop recalculates wait time each iteration
    }
 
    // Start node off at end of heap.

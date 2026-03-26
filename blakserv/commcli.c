@@ -169,15 +169,6 @@ void SecurePacketBufferList(int session_id, buffer_node *bl)
       return;
    }
 
-   {
-      unsigned char raw = (unsigned char)bl->buf[0];
-      unsigned char xor_val = (unsigned char)(s->secure_token & 0xFF);
-      unsigned char result = raw ^ xor_val;
-      dprintf("SEC_DBG: raw=%u xor=%u result=%u token=%u sliding=%s\n",
-         raw, xor_val, result, s->secure_token,
-         s->sliding_token ? "yes" : "no");
-   }
-
    bl->buf[0] ^= (unsigned char)(s->secure_token & 0xFF);
    pRedbook = GetSecurityRedbook();
    if (s->sliding_token && pRedbook)

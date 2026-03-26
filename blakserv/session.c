@@ -977,15 +977,17 @@ unsigned short __inline GetCRC16BufferList(buffer_node *blist)
 	return (unsigned short)(0xffff & crc32);
 }
 
+static int _dbg_pkt_count = 0;
+
 void SendGameClientBufferList(session_node *s,buffer_node *blist,char seqno)
 {
 	buffer_node *bn;
 	unsigned short crc16;
 	unsigned int len;
-	
+
 	if (blist == NULL)
 		return;
-	
+
 	len = 0;
 	bn = blist;
 	while (bn != NULL)
@@ -993,28 +995,43 @@ void SendGameClientBufferList(session_node *s,buffer_node *blist,char seqno)
 		len += bn->len_buf;
 		bn = bn->next;
 	}
-	
-	/* dprintf("SendClientBufferList %i bytes\n",len); */
-	
+
 	crc16 = GetCRC16BufferList(blist);
-	
-	
+
+	// Debug: log msg type and hex dump for key messages
+	if (_dbg_pkt_count < 80)
+	{
+		unsigned char msgtype = (unsigned char)blist->buf[0];
+		dprintf("PKT_DBG #%d: msgtype=%u len=%u seqno=%d session=%d state=%d\n",
+			_dbg_pkt_count, msgtype, len, (int)(unsigned char)seqno,
+			s->session_id, s->state);
+		// Hex dump first 80 bytes of BP_CHARINFO(140), BP_CHARACTERS(139), BP_LOAD_MODULE(58)
+		if (msgtype == 140 || msgtype == 139 || msgtype == 58)
+		{
+			buffer_node *dbn = blist;
+			int dumped = 0;
+			while (dbn != NULL && dumped < 80)
+			{
+				int to_dump = dbn->len_buf < (80 - dumped) ? dbn->len_buf : (80 - dumped);
+				char hex[256] = {0};
+				for (int di = 0; di < to_dump && di < 80; di++)
+					sprintf(hex + di*3, "%02X ", (unsigned char)dbn->buf[di]);
+				dprintf("PKT_HEX #%d [%d]: %s\n", _dbg_pkt_count, to_dump, hex);
+				dumped += to_dump;
+				dbn = dbn->next;
+			}
+		}
+		_dbg_pkt_count++;
+	}
+
 	memcpy(blist->prebuf,&len,LENBYTES);
 	memcpy(blist->prebuf + LENBYTES,&crc16,CRCBYTES);
 	memcpy(blist->prebuf + LENBYTES + CRCBYTES,&len,LENBYTES);
 	blist->prebuf[LENBYTES*2 + CRCBYTES] = seqno;
-	
+
 	blist->buf = blist->prebuf;
 	blist->len_buf += HEADERBYTES;
-	/*
-	bn = NULL;
-	bn = AddToBufferList(bn,&len,LENBYTES);
-	bn = AddToBufferList(bn,&crc16,CRCBYTES);
-	bn = AddToBufferList(bn,&len,LENBYTES);
-	bn = AddToBufferList(bn,&seqno,1);
-	
-	  bn->next = blist;
-	*/ 
+
 	SendBufferList(s,blist);
 	
 }

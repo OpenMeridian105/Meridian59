@@ -153,7 +153,7 @@ void SecurePacketBufferList(int session_id, buffer_node *bl)
    session_node *s = GetSessionByID(session_id);
    char* pRedbook;
 
-   if (!session_id || !s || !s->account || !s->account->account_id ||
+   if (!s || !s->account || !s->account->account_id ||
        s->conn.type == CONN_CONSOLE)
    {
       //dprintf("SecurePacketBufferList cannot find session %i", session_id);
@@ -169,7 +169,14 @@ void SecurePacketBufferList(int session_id, buffer_node *bl)
       return;
    }
 
-//   dprintf("Securing msg %u with %u", (unsigned char)bl->buf[0], (unsigned char)(s->secure_token & 0xFF));
+   {
+      unsigned char raw = (unsigned char)bl->buf[0];
+      unsigned char xor_val = (unsigned char)(s->secure_token & 0xFF);
+      unsigned char result = raw ^ xor_val;
+      dprintf("SEC_DBG: raw=%u xor=%u result=%u token=%u sliding=%s\n",
+         raw, xor_val, result, s->secure_token,
+         s->sliding_token ? "yes" : "no");
+   }
 
    bl->buf[0] ^= (unsigned char)(s->secure_token & 0xFF);
    pRedbook = GetSecurityRedbook();

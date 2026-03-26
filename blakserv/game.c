@@ -412,6 +412,9 @@ void GameEchoPing(session_node *s)
 
    s->secure_token = token;
    s->sliding_token = GetSecurityRedbook();
+
+   dprintf("REDBOOK_DBG: token=%u seeds0=%u redbook_id=%d redbook='%s'\n",
+      token, s->seeds[0], GetSecurityRedbookID(), GetSecurityRedbook());
 }
 
 void GameProtocolParse(session_node *s, client_msg *msg)

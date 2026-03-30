@@ -42,8 +42,42 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance,
 
 #else
 
+static bool interactive_mode = false;
+
+static void Daemonize(void)
+{
+   pid_t pid;
+
+   pid = fork();
+   if (pid < 0)
+   {
+      fprintf(stderr, "Error: failed to fork\n");
+      exit(1);
+   }
+   if (pid > 0)
+      exit(0);  // parent exits
+
+   setsid();
+
+   int fd = open("/dev/null", O_RDWR, 0);
+   if (fd != -1)
+   {
+      dup2(fd, STDIN_FILENO);
+      dup2(fd, STDOUT_FILENO);
+      dup2(fd, STDERR_FILENO);
+      if (fd > 2)
+         close(fd);
+   }
+}
+
 int main(int argc, char **argv)
 {
+   for (int i = 1; i < argc; i++)
+   {
+      if (strcmp(argv[i], "-i") == 0)
+         interactive_mode = true;
+   }
+
    MainServer();
    return 0;
 }
@@ -61,7 +95,9 @@ Bool InMainLoop(void)
 void MainServer(void)
 {
    InitInterfaceLocks();
-   InitInterface();
+
+   if (!interactive_mode)
+      Daemonize();
 
    InitMemory();
    InitConfig();
@@ -128,6 +164,14 @@ void MainServer(void)
    UnpauseTimers();
 
    StartupComplete();
+
+   if (interactive_mode)
+   {
+      InitInterface();
+      printf("%s\n", BlakServLongVersionString());
+      printf("Status: %i accounts, %i timers\n", GetNextAccountID(), GetNumActiveTimers());
+   }
+
    InterfaceUpdate();
 
    lprintf("Status: %i accounts\n", GetNextAccountID());
@@ -139,6 +183,9 @@ void MainServer(void)
    in_main_loop = true;
 
    AsyncSocketStart();
+
+   if (interactive_mode)
+      printf("Server ready. Type 'quit' to shut down.\n");
 
 #ifdef BLAK_PLATFORM_WINDOWS
    SetWindowText(hwndMain, ConfigStr(CONSOLE_CAPTION));

@@ -15,7 +15,6 @@ void InitInterface(void);
 void* InterfaceMainLoop(void*);
 
 void StartupPrintf(const char *fmt,...);
-void StartupComplete(void);
 
 int GetUsedSessions(void);
 

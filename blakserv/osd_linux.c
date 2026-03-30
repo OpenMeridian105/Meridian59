@@ -17,8 +17,6 @@
 #include <vector>
 #include <utility>
 
-static int sessions_logged_on = 0;
-
 typedef std::pair<int, int> fd_conn_type;
 static std::vector<fd_conn_type> accept_sockets;
 
@@ -70,77 +68,10 @@ char *GetLastErrorStr()
    return strerror(errno);
 }
 
-void InitInterface(void)
-{
-   // No console interface on Linux - admin via maintenance port
-}
-
-int GetUsedSessions(void)
-{
-   return sessions_logged_on;
-}
-
-void StartupPrintf(const char *fmt, ...)
-{
-   char s[200];
-   va_list marker;
-
-   va_start(marker, fmt);
-   vsnprintf(s, sizeof(s), fmt, marker);
-   va_end(marker);
-
-   if (strlen(s) > 0)
-   {
-      if (s[strlen(s)-1] == '\n')
-         s[strlen(s)-1] = 0;
-   }
-
-   printf("Startup: %s\n", s);
-}
-
-void InterfaceUpdate(void)
-{
-}
-
-void InterfaceLogon(session_node *s)
-{
-   sessions_logged_on++;
-}
-
-void InterfaceLogoff(session_node *s)
-{
-   sessions_logged_on--;
-}
-
-void InterfaceUpdateSession(session_node *s)
-{
-}
-
-void InterfaceUpdateChannel(void)
-{
-}
-
-void InterfaceSendBufferList(buffer_node *blist)
-{
-   // No console admin on Linux - admin responses go via maintenance port
-   DeleteBufferList(blist);
-}
-
-void InterfaceSendBytes(char *buf, int len_buf)
-{
-   // No console admin on Linux
-}
-
 HANDLE StartAsyncNameLookup(char *peer_addr, char *buf)
 {
    // DNS reverse lookup not implemented on Linux
    return 0;
-}
-
-void FatalErrorShow(const char *filename, int line, const char *str)
-{
-   fprintf(stderr, "FATAL ERROR: File %s line %i\n%s\n", filename, line, str);
-   exit(1);
 }
 
 // Mutex implementation using pthread recursive mutex

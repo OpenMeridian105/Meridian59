@@ -110,16 +110,7 @@ void EnableSendEvents(SOCKET sock);
 void DisableSendEvents(SOCKET sock);
 void WakeupMainLoop(void);
 
-void InitInterface(void);
-int GetUsedSessions(void);
-
-void StartupPrintf(const char *fmt,...);
 void StartupComplete(void);
-
-void InterfaceUpdate(void);
-void InterfaceUpdateChannel(void);
-
-void InterfaceSendBytes(char *buf,int len_buf);
 
 void StartAsyncSocketAccept(SOCKET sock,int connection_type);
 void StartAsyncSocketUDPRead(SOCKET sock);

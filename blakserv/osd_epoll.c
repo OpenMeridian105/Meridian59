@@ -99,8 +99,10 @@ void RunMainLoop(void)
             }
             else
             {
+               EnterServerLock();
                AsyncSocketAccept(notify_events[i].data.fd, FD_ACCEPT, 0,
                   GetAcceptingSocketConnectionType(notify_events[i].data.fd));
+               LeaveServerLock();
             }
          }
          else

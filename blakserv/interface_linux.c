@@ -8,84 +8,21 @@
 
 #include "blakserv.h"
 
-int sessions_logged_on;
-int console_session_id;
-pthread_t interface_thread;
+static int sessions_logged_on = 0;
+static int console_session_id = INVALID_ID;
+static pthread_t interface_thread;
 
 #define ADMIN_RESPONSE_SIZE (256 * 1024)
 
-char admin_response_buf[ADMIN_RESPONSE_SIZE+1];
-int len_admin_response_buf;
+static char admin_response_buf[ADMIN_RESPONSE_SIZE+1];
+static int len_admin_response_buf;
 
-void InterfaceAddAdminBuffer(char *buf,int len_buf);
+static void InterfaceAddAdminBuffer(char *buf, int len_buf);
 
+// InitInterface: called late (after StartupComplete) only in interactive mode.
+// Creates the console admin session and starts the console input thread.
 void InitInterface(void)
 {
-   int err;
-
-   err = pthread_create(&interface_thread, NULL, &InterfaceMainLoop, NULL);
-
-   if (err != 0)
-   {
-      eprintf("Unable to start interface! %s",strerror(err));
-   }
-   else
-   {
-      dprintf("interface thread started");
-   }
-}
-
-void* InterfaceMainLoop(void* arg)
-{
-   char *line = (char*) malloc(200);
-   size_t size;
-   //char buf[200];
-
-   while (strcmp(line,"quit") != 0)
-   {
-      printf("blakadm> ");
-      if (getline(&line, &size, stdin) != -1)
-      {
-      
-         EnterServerLock();
-
-         // TODO: in windows this uses a set char array of size 200, no bounds checking
-         // is being done here yet
-         //TryAdminCommand(console_session_id,buf);
-         TryAdminCommand(console_session_id,line);
-
-         LeaveServerLock();
-
-      }
-   }
-
-   free(line);
-   MessagePost(main_thread_id,WM_QUIT,0,0);
-}
-
-void StartupPrintf(const char *fmt,...)
-{
-   char s[200];
-   va_list marker;
-
-   va_start(marker,fmt);
-   vsprintf(s,fmt,marker);
-
-   if (strlen(s) > 0)
-   {
-      if (s[strlen(s)-1] == '\n') /* ignore \n char at the end of line */
-      s[strlen(s)-1] = 0;
-   }
-
-   va_end(marker);
-
-   // TODO: Actually print something to stdout
-}
-
-// XXX: identical to windows version
-void StartupComplete(void)
-{
-   char str[200];
    connection_node conn;
    session_node *s;
 
@@ -94,13 +31,70 @@ void StartupComplete(void)
    conn.type = CONN_CONSOLE;
    s = CreateSession(conn);
    if (s == NULL)
-   FatalError("Interface can't make session for console");
+      FatalError("Interface can't make session for console");
    s->account = GetConsoleAccount();
-   InitSessionState(s,STATE_ADMIN);
+   InitSessionState(s, STATE_ADMIN);
    console_session_id = s->session_id;
+
+   int err = pthread_create(&interface_thread, NULL, &InterfaceMainLoop, NULL);
+   if (err != 0)
+      eprintf("Unable to start interface thread: %s\n", strerror(err));
+   else
+      dprintf("Interface console thread started\n");
 }
 
-// XXX: identical to windows version
+void* InterfaceMainLoop(void* arg)
+{
+   char *line = (char*) malloc(200);
+   size_t size;
+
+   for (;;)
+   {
+      printf("blakadm> ");
+      fflush(stdout);
+      if (getline(&line, &size, stdin) == -1)
+         break;
+
+      // Strip trailing newline from getline
+      size_t len = strlen(line);
+      if (len > 0 && line[len - 1] == '\n')
+         line[len - 1] = '\0';
+
+      if (strcmp(line, "quit") == 0)
+         break;
+
+      if (strlen(line) == 0)
+         continue;
+
+      EnterServerLock();
+      TryAdminCommand(console_session_id, line);
+      LeaveServerLock();
+   }
+
+   free(line);
+   SetQuit();
+
+   return NULL;
+}
+
+void StartupPrintf(const char *fmt, ...)
+{
+   char s[200];
+   va_list marker;
+
+   va_start(marker, fmt);
+   vsnprintf(s, sizeof(s), fmt, marker);
+   va_end(marker);
+
+   if (strlen(s) > 0)
+   {
+      if (s[strlen(s)-1] == '\n')
+         s[strlen(s)-1] = 0;
+   }
+
+   printf("Startup: %s\n", s);
+}
+
 int GetUsedSessions(void)
 {
    return sessions_logged_on;
@@ -108,31 +102,26 @@ int GetUsedSessions(void)
 
 void InterfaceUpdate(void)
 {
-    // TODO: stub
 }
 
 void InterfaceLogon(session_node *s)
 {
-    // TODO: stub
+   sessions_logged_on++;
 }
 
 void InterfaceLogoff(session_node *s)
 {
-    // TODO: stub
+   sessions_logged_on--;
 }
 
 void InterfaceUpdateSession(session_node *s)
 {
-    // TODO: stub
 }
 
 void InterfaceUpdateChannel(void)
 {
-    // TODO: stub
 }
 
-// called in main thread
-// XXX: identical to windows version
 void InterfaceSendBufferList(buffer_node *blist)
 {
    buffer_node *bn;
@@ -140,42 +129,36 @@ void InterfaceSendBufferList(buffer_node *blist)
    bn = blist;
    while (bn != NULL)
    {
-      InterfaceAddAdminBuffer(bn->buf,bn->len_buf);
+      InterfaceAddAdminBuffer(bn->buf, bn->len_buf);
       bn = bn->next;
    }
 
    DeleteBufferList(blist);
 }
 
-// called in main thread
-// XXX: identical to windows version
-void InterfaceSendBytes(char *buf,int len_buf)
+void InterfaceSendBytes(char *buf, int len_buf)
 {
-   InterfaceAddAdminBuffer(buf,len_buf);
+   InterfaceAddAdminBuffer(buf, len_buf);
 }
 
-// in main thread called by InterfaceSendBytes
-void InterfaceAddAdminBuffer(char *buf,int len_buf)
+static void InterfaceAddAdminBuffer(char *buf, int len_buf)
 {
    if (len_buf > ADMIN_RESPONSE_SIZE)
       len_buf = ADMIN_RESPONSE_SIZE;
 
    if (len_admin_response_buf + len_buf > ADMIN_RESPONSE_SIZE)
-   {
       len_admin_response_buf = 0;
-   }
-   memcpy(admin_response_buf+len_admin_response_buf,buf,len_buf);
+
+   memcpy(admin_response_buf + len_admin_response_buf, buf, len_buf);
    len_admin_response_buf += len_buf;
    admin_response_buf[len_admin_response_buf] = 0;
 
-   // supposedly writing to stdout is thread safe although the threads
-   // are going to clobber each others output.  there is probably a better
-   // way but for now output is sent directly to stdout
-   printf(admin_response_buf);
+   printf("%s", admin_response_buf);
+   len_admin_response_buf = 0;
 }
 
-void FatalErrorShow(const char *filename,int line,const char *str)
+void FatalErrorShow(const char *filename, int line, const char *str)
 {
-    // TODO: stub
+   fprintf(stderr, "FATAL ERROR: File %s line %i\n%s\n", filename, line, str);
+   exit(1);
 }
-

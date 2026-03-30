@@ -283,8 +283,9 @@ char * GetLastErrorStr();
 
 #ifdef BLAK_PLATFORM_WINDOWS
 #include "interface_windows.h"
+#else
+#include "interface_linux.h"
 #endif
-// Linux interface functions declared in osd_linux.h
 
 #include "intrlock.h"
 #include "chanbuf.h"

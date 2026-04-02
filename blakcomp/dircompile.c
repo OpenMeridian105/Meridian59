@@ -260,6 +260,8 @@ void fill_lists_from_makefile(char *full_path, int recompiled_parent)
    int at_bofs = False;
    while (fgets(temp, 256, makefile) != NULL)
    {
+      temp[strcspn(temp, "\r\n")] = '\0';
+
       // Our line must be greater than 6 characters
       if (strlen(temp) <= 6 || temp[0] == '#')
          continue;
@@ -306,7 +308,7 @@ void fill_lists_from_makefile(char *full_path, int recompiled_parent)
                // Next line.
                break;
             }
-            else if (*tmpptr == '\n')
+            else if (*tmpptr == '\n' || *tmpptr == '\0')
             {
                done = True;
                break;

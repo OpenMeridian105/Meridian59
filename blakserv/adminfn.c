@@ -5583,7 +5583,8 @@ void AdminRead(int session_id,admin_parm_type parms[],
 	
 	while (fgets(line,sizeof(line)-1,fptr))
 	{
-		ptr = strtok(line,"\n");
+		line[strcspn(line, "\r\n")] = '\0';
+		ptr = line;
 		if (ptr)
 		{
 			while (*ptr == ' ' || *ptr == '\t')

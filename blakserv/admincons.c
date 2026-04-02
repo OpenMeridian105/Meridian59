@@ -84,8 +84,9 @@ void LoadAdminConstants(void)
    while (fgets(line, MAX_CONSTANTS_LINE, constantsfile))
    {
       lineno++;
+      line[strcspn(line, "\r\n")] = '\0';
 
-      name_str = strtok(line, "= \t\n");
+      name_str = strtok(line, "= \t");
 
       /* ignore blank lines */
       if (name_str == NULL)

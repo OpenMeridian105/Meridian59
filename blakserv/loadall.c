@@ -176,9 +176,10 @@ Bool LoadControlFile(int *last_save_time)
 	while (fgets(line,MAX_SAVE_CONTROL_LINE,loadfile))
 	{
 		lineno++;
-		
-		t1 = strtok(line," \n");
-		t2 = strtok(NULL," \n");
+		line[strcspn(line, "\r\n")] = '\0';
+
+		t1 = strtok(line," ");
+		t2 = strtok(NULL," ");
 		
 		if (t1 == NULL)	/* ignore blank lines */
 			continue;

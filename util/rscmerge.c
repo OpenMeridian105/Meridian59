@@ -123,7 +123,10 @@ bool FindMatchingFiles(char *path, std::vector<std::string> *files)
 
    closedir(dir);
 
-   std::sort(files->begin(), files->end());
+   std::sort(files->begin(), files->end(),
+      [](const std::string &a, const std::string &b) {
+         return strcasecmp(a.c_str(), b.c_str()) < 0;
+      });
    return true;
 
 #else

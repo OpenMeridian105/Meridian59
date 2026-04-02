@@ -202,6 +202,7 @@ void MainExitServer(void)
    lprintf("ExitServer terminating server\n");
 
    ExitAsyncConnections();
+   MySQLEnd();
    CloseAllSessions();
    CloseDefaultChannels();
 

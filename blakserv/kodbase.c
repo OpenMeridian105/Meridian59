@@ -52,7 +52,11 @@ void LoadKodbase(void)
    while (fgets(line, MAX_LINE, kodbase))
    {
       lineno++;
-      line[strcspn(line, "\r\n")] = '\0';
+      // Strip \r but keep \n - the custom parser on line 78 uses \n as terminator
+      {
+         char *cr = strchr(line, '\r');
+         if (cr) *cr = '\n';
+      }
 
       type_char = strtok(line, " \t");
       if (type_char == NULL || strlen(type_char) != 1)

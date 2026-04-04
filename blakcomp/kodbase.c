@@ -425,9 +425,9 @@ int build_superclasses(list_type classes)
    while (l != NULL)
    {
       class_type c = (class_type) l->data;
-      if ( (int) c->superclass != NO_SUPERCLASS)
+      if ( (intptr_t) c->superclass != NO_SUPERCLASS)
       {
-	 superclass_idnum = (int) c->superclass;
+	 superclass_idnum = (intptr_t) c->superclass;
 	 /* Search through classes looking for parent */
 	 temp = classes;
 	 while (temp != NULL)

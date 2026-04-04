@@ -15,6 +15,7 @@
 #ifndef _OSD_LINUX_H
 #define _OSD_LINUX_H
 
+#include <stdint.h>
 #include <ctype.h>
 #include <dirent.h>
 #include <errno.h>
@@ -60,7 +61,7 @@ typedef int SOCKET;
 typedef unsigned char BYTE;
 typedef unsigned short WORD;
 #define MAKEWORD(low, high) ((WORD)((((WORD)(high)) << 8) | ((BYTE)(low))))
-typedef unsigned long DWORD;
+typedef uint32_t DWORD;
 typedef long long INT64;
 typedef void* PVOID;
 typedef void* LPVOID;
@@ -72,7 +73,7 @@ typedef unsigned int UINT;
 typedef bool BOOL;
 #define TRUE 1
 #define FALSE 0
-typedef unsigned long LPARAM;
+typedef uint32_t LPARAM;
 typedef unsigned int WPARAM;
 typedef const char* LPCSTR;
 typedef LPCSTR LPCTSTR;

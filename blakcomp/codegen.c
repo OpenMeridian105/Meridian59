@@ -701,7 +701,7 @@ int codegen_switch(switch_stmt_type s, int numlocals)
 
    /* Backpatch continue statements in loop body */
    for (p = current_loop->for_continue_list; p != NULL; p = p->next)
-      BackpatchGotoUnconditional(outfile, (int)p->data, FileCurPos(outfile));
+      BackpatchGotoUnconditional(outfile, (intptr_t)p->data, FileCurPos(outfile));
 
    /* Go back and fill in destination address for unconditional goto */
    if (!default_stmt)
@@ -744,12 +744,12 @@ void codegen_exit_loop(void)
 
    /* Backpatch break statements to jump to end of loop */
    for (p = current_loop->break_list; p != NULL; p = p->next)
-      BackpatchGotoUnconditional(outfile, (int) p->data, FileCurPos(outfile));
+      BackpatchGotoUnconditional(outfile, (intptr_t) p->data, FileCurPos(outfile));
    current_loop->break_list = list_delete(current_loop->break_list);
 
    /* Backpatch conditional goto statements to jump to end of loop */
    for (p = current_loop->conditional_goto_list; p != NULL; p = p->next)
-      BackpatchGotoConditional(outfile, (int)p->data, FileCurPos(outfile));
+      BackpatchGotoConditional(outfile, (intptr_t)p->data, FileCurPos(outfile));
    current_loop->conditional_goto_list = list_delete(current_loop->conditional_goto_list);
 
    /* Remove current list from loop "stack" */
@@ -823,7 +823,7 @@ int codegen_dowhile(while_stmt_type s, int numlocals)
    
    /* Backpatch continue statements in loop body */
    for (p = current_loop->for_continue_list; p != NULL; p = p->next)
-      BackpatchGotoUnconditional(outfile, (int)p->data, FileCurPos(outfile));
+      BackpatchGotoUnconditional(outfile, (intptr_t)p->data, FileCurPos(outfile));
 
    numtemps = codegen_conditional_goto(s->condition, numlocals, &sourceval);
    if (numtemps > our_maxlocal)
@@ -896,7 +896,7 @@ int codegen_for(for_stmt_type s, int numlocals)
 
    /* Backpatch continue statements in loop body */
    for (p = current_loop->for_continue_list; p != NULL; p = p->next)
-      BackpatchGotoUnconditional(outfile, (int)p->data, FileCurPos(outfile));
+      BackpatchGotoUnconditional(outfile, (intptr_t)p->data, FileCurPos(outfile));
 
    /* Step 4: Execute statements from assign list (iterators) */
    /* If no iteration, list will be NULL. */
@@ -990,7 +990,7 @@ int codegen_foreach(foreach_stmt_type s, int numlocals)
 
    /* Backpatch continue statements in loop body */
    for (p = current_loop->for_continue_list; p != NULL; p = p->next)
-      BackpatchGotoUnconditional(outfile, (int)p->data, FileCurPos(outfile));
+      BackpatchGotoUnconditional(outfile, (intptr_t)p->data, FileCurPos(outfile));
 
    /**** Statement #4:    temp = Rest(temp) ****/
    /* Can reuse temp_expr from statement #3 above */

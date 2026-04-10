@@ -17,8 +17,12 @@
 
 #ifdef BLAK_PLATFORM_LINUX
 #include <unistd.h>
+#include <limits.h>
+#include <sys/stat.h>
 #define stricmp strcasecmp
 #define O_BINARY 0
+#define _MAX_PATH PATH_MAX
+#define _mkdir(d) mkdir((d), 0755)
 #endif
 
 #include <stdio.h>

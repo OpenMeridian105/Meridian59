@@ -982,10 +982,10 @@ void SendGameClientBufferList(session_node *s,buffer_node *blist,char seqno)
 	buffer_node *bn;
 	unsigned short crc16;
 	unsigned int len;
-	
+
 	if (blist == NULL)
 		return;
-	
+
 	len = 0;
 	bn = blist;
 	while (bn != NULL)
@@ -993,28 +993,19 @@ void SendGameClientBufferList(session_node *s,buffer_node *blist,char seqno)
 		len += bn->len_buf;
 		bn = bn->next;
 	}
-	
+
 	/* dprintf("SendClientBufferList %i bytes\n",len); */
-	
+
 	crc16 = GetCRC16BufferList(blist);
-	
-	
+
 	memcpy(blist->prebuf,&len,LENBYTES);
 	memcpy(blist->prebuf + LENBYTES,&crc16,CRCBYTES);
 	memcpy(blist->prebuf + LENBYTES + CRCBYTES,&len,LENBYTES);
 	blist->prebuf[LENBYTES*2 + CRCBYTES] = seqno;
-	
+
 	blist->buf = blist->prebuf;
 	blist->len_buf += HEADERBYTES;
-	/*
-	bn = NULL;
-	bn = AddToBufferList(bn,&len,LENBYTES);
-	bn = AddToBufferList(bn,&crc16,CRCBYTES);
-	bn = AddToBufferList(bn,&len,LENBYTES);
-	bn = AddToBufferList(bn,&seqno,1);
-	
-	  bn->next = blist;
-	*/ 
+
 	SendBufferList(s,blist);
 	
 }
@@ -1044,10 +1035,11 @@ void SendBufferList(session_node *s,buffer_node *blist)
 	if (s->send_list == NULL)
 	{
 		/* if nothing in queue, try to send right now */
-		
+
 		while (blist != NULL)
 		{
-			if (send(s->conn.socket,blist->buf,blist->len_buf,0) == SOCKET_ERROR)
+			int bytes = send(s->conn.socket,blist->buf,blist->len_buf,0);
+			if (bytes == SOCKET_ERROR)
 			{
 				if (GetLastError() != WSAEWOULDBLOCK)
 				{
@@ -1061,16 +1053,31 @@ void SendBufferList(session_node *s,buffer_node *blist)
 
 				/* dprintf("%i adding to buffer list\n",s->session_id); */
 				SessionAddBufferList(s,blist);
+#ifdef BLAK_PLATFORM_LINUX
+				EnableSendEvents(s->conn.socket);
+#endif
 				break;
 			}
 			else
 			{
-				transmitted_bytes += blist->len_buf;
-				
+				transmitted_bytes += bytes;
+
+				if (bytes < blist->len_buf)
+				{
+					/* Partial write - advance buffer, queue remainder */
+					blist->buf += bytes;
+					blist->len_buf -= bytes;
+					SessionAddBufferList(s,blist);
+#ifdef BLAK_PLATFORM_LINUX
+					EnableSendEvents(s->conn.socket);
+#endif
+					break;
+				}
+
 				bn = blist->next;
 				DeleteBuffer(blist);
 				blist = bn;
-			}	 
+			}
 		}
 	}
 	else

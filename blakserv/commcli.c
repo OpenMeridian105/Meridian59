@@ -153,7 +153,7 @@ void SecurePacketBufferList(int session_id, buffer_node *bl)
    session_node *s = GetSessionByID(session_id);
    char* pRedbook;
 
-   if (!session_id || !s || !s->account || !s->account->account_id ||
+   if (!s || !s->account || !s->account->account_id ||
        s->conn.type == CONN_CONSOLE)
    {
       //dprintf("SecurePacketBufferList cannot find session %i", session_id);
@@ -168,8 +168,6 @@ void SecurePacketBufferList(int session_id, buffer_node *bl)
 //      dprintf("SecurePacketBufferList can't use invalid buffer list");
       return;
    }
-
-//   dprintf("Securing msg %u with %u", (unsigned char)bl->buf[0], (unsigned char)(s->secure_token & 0xFF));
 
    bl->buf[0] ^= (unsigned char)(s->secure_token & 0xFF);
    pRedbook = GetSecurityRedbook();

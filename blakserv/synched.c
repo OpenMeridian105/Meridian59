@@ -477,6 +477,8 @@ void VerifyLogin(session_node *s)
    /* they're logged in now.  Check their version number, and if old tell 'em
       to update it */
    cli_vers = s->version_major * 100 + s->version_minor;
+   dprintf("VERSION CHECK: cli_vers=%d invalid=%d classic_min=%d\n",
+      cli_vers, ConfigInt(LOGIN_INVALID_VERSION), ConfigInt(LOGIN_CLASSIC_MIN_VERSION));
    if (cli_vers < ConfigInt(LOGIN_INVALID_VERSION))
    {
       SendSynchedMessage(s,ConfigStr(LOGIN_INVALID_VERSION_STR),LA_LOGOFF);
@@ -497,6 +499,7 @@ void VerifyLogin(session_node *s)
       else if (s->version_minor <= 40)
          SynchedSendClientPatchOldClassic(s);
       else
+         dprintf("SENDING PATCH: classic version too old\n");
          SynchedSendClientPatchClassic(s);
 #endif
       InterfaceUpdateSession(s);
@@ -525,12 +528,16 @@ void VerifyLogin(session_node *s)
    else
    {
       str = GetRsbMD5();
+      dprintf("RSB hash check: server='%s' client='%s'\n", str, s->rsb_hash);
       if (*str != 0
          && s->rsb_hash[0] != 0
          && strcmp(s->rsb_hash, str) != 0)
       {
          if (s->version_major == 50)
+         {
+            dprintf("SENDING PATCH: RSB hash mismatch\n");
             SynchedSendClientPatchClassic(s);
+         }
          else if (s->version_major == 90)
             SynchedSendClientPatchOgre(s);
          InterfaceUpdateSession(s);
@@ -538,7 +545,9 @@ void VerifyLogin(session_node *s)
          SetSessionTimer(s, 60 * ConfigInt(INACTIVE_TRANSFER));
       }
       else
+      {
          SynchedDoMenu(s);
+      }
    }
 }
 

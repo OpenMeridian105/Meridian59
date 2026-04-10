@@ -6,10 +6,23 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+#ifdef BLAK_PLATFORM_WINDOWS
 #include <windows.h>
+#endif
+
+#ifdef BLAK_PLATFORM_LINUX
+#include <dirent.h>
+#include <limits.h>
+#ifndef MAX_PATH
+#define MAX_PATH PATH_MAX
+#endif
+#endif
+
 #include "rscload.h"
 #include <vector>
 #include <string>
+#include <algorithm>
 
 typedef std::vector<std::string> StringVector;
 
@@ -80,9 +93,10 @@ bool FindMatchingFiles(char *path, std::vector<std::string> *files)
    } while (FindNextFile(hFindFile, &search_data));
    FindClose(hFindFile);
 
+   std::sort(files->begin(), files->end());
    return true;
 
-#elif BLAK_PLATFORM_LINUX
+#elif defined(BLAK_PLATFORM_LINUX)
    // Warning, not tested in rscmerge.c.
    struct dirent *entry;
    std::string spath = path;
@@ -109,6 +123,10 @@ bool FindMatchingFiles(char *path, std::vector<std::string> *files)
 
    closedir(dir);
 
+   std::sort(files->begin(), files->end(),
+      [](const std::string &a, const std::string &b) {
+         return strcasecmp(a.c_str(), b.c_str()) < 0;
+      });
    return true;
 
 #else
@@ -241,13 +259,32 @@ bool EachRscCallback(char *filename, int rsc, int lang_id, char *string)
 bool LoadRscFiles(int num_files, char **foldername)
 {
    char file_load_path[MAX_PATH + FILENAME_MAX];
+#ifdef BLAK_PLATFORM_LINUX
+   sprintf(file_load_path, "%s/*.rsc", *foldername);
+#else
    sprintf(file_load_path, "%s\\*.rsc", *foldername);
+#endif
    StringVector files;
    if (FindMatchingFiles(file_load_path, &files))
    {
       for (StringVector::iterator it = files.begin(); it != files.end(); ++it)
       {
+#ifdef BLAK_PLATFORM_LINUX
+         sprintf(file_load_path, "%s/%s", *foldername, it->c_str());
+#else
          sprintf(file_load_path, "%s\\%s", *foldername, it->c_str());
+#endif
+
+         // Skip empty .rsc files (classes with no resources)
+         FILE *fcheck = fopen(file_load_path, "rb");
+         if (fcheck)
+         {
+            fseek(fcheck, 0, SEEK_END);
+            long fsize = ftell(fcheck);
+            fclose(fcheck);
+            if (fsize == 0)
+               continue;
+         }
 
          if (!RscFileLoad(file_load_path, EachRscCallback))
          {

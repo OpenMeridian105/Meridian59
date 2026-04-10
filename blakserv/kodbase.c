@@ -52,7 +52,6 @@ void LoadKodbase(void)
    while (fgets(line, MAX_LINE, kodbase))
    {
       lineno++;
-
       type_char = strtok(line, " \t");
       if (type_char == NULL || strlen(type_char) != 1)
       {

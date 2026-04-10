@@ -78,6 +78,7 @@ void AdminSaveConfiguration(int session_id, admin_parm_type parms[], int num_bla
 void AdminSaveOneConfigNode(config_node *c, const char *config_name, const char *default_str);
 void AdminWho(int session_id, admin_parm_type parms[], int num_blak_parm, parm_node blak_parm[]);
 void AdminWhoEachSession(session_node *s);
+void AdminShutdown(int session_id, admin_parm_type parms[], int num_blak_parm, parm_node blak_parm[]);
 void AdminLock(int session_id, admin_parm_type parms[], int num_blak_parm, parm_node blak_parm[]);
 void AdminUnlock(int session_id, admin_parm_type parms[], int num_blak_parm, parm_node blak_parm[]);
 void AdminMail(int session_id, admin_parm_type parms[], int num_blak_parm, parm_node blak_parm[]);
@@ -529,6 +530,7 @@ admin_table_type admin_main_table[] =
 	{ AdminUnlock,        {N},   F, A|M, NULL, 0, "unlock",    "Unlock the game" },
 	{ NULL, {N}, F, A|M, admin_unsuspend_table, LEN_ADMIN_UNSUSPEND_TABLE,"unsuspend", "Unsuspend subcommand" },
 	{ AdminWho,           {N},   F, A|M, NULL, 0, "who",       "Show every account logged on" },
+	{ AdminShutdown,      {N},   F, A|M, NULL, 0, "shutdown",  "Save game and shut down the server" },
 };
 
 #define LEN_ADMIN_MAIN_TABLE (sizeof(admin_main_table)/sizeof(admin_table_type))
@@ -4651,9 +4653,10 @@ void AdminDeleteAccount(int session_id,admin_parm_type parms[],
 	
 	aprintf("Account %i will be deleted.\n",a->account_id);
 
-   // XXX Need a replacement for this on Linux
 #ifdef BLAK_PLATFORM_WINDOWS
 	PostThreadMessage(main_thread_id,WM_BLAK_MAIN_DELETE_ACCOUNT,0,a->account_id);
+#else
+	DeleteAccountAndAssociatedUsersByID(a->account_id);
 #endif
 }
 
@@ -5580,7 +5583,8 @@ void AdminRead(int session_id,admin_parm_type parms[],
 	
 	while (fgets(line,sizeof(line)-1,fptr))
 	{
-		ptr = strtok(line,"\n");
+		line[strcspn(line, "\r\n")] = '\0';
+		ptr = line;
 		if (ptr)
 		{
 			while (*ptr == ' ' || *ptr == '\t')
@@ -5601,9 +5605,22 @@ void AdminRead(int session_id,admin_parm_type parms[],
 }
 
 void AdminMark(int session_id,admin_parm_type parms[],
-               int num_blak_parm,parm_node blak_parm[])               
+               int num_blak_parm,parm_node blak_parm[])
 {
 	lprintf("-------------------------------------------------------------------------------------\n");
 	dprintf("-------------------------------------------------------------------------------------\n");
 	eprintf("-------------------------------------------------------------------------------------\n");
+}
+
+void AdminShutdown(int session_id, admin_parm_type parms[],
+   int num_blak_parm, parm_node blak_parm[])
+{
+   aprintf("Saving game and shutting down server...\n");
+   lprintf("AdminShutdown: saving game and shutting down.\n");
+
+   GarbageCollect();
+   SaveAll();
+
+   aprintf("Server shutting down now.\n");
+   SetQuit();
 }

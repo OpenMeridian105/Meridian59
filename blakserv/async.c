@@ -259,15 +259,24 @@ void AsyncSocketWrite(SOCKET sock)
       }
       else
       {
-         if (bytes != bn->len_buf)
-            dprintf("async write wrote %i/%i bytes\n",bytes,bn->len_buf);
-			
-         transmitted_bytes += bn->len_buf;
-			
+         transmitted_bytes += bytes;
+
+         if (bytes < bn->len_buf)
+         {
+            // Partial write - advance buffer pointer, keep buffer in send_list
+            bn->buf += bytes;
+            bn->len_buf -= bytes;
+            break;
+         }
+
          s->send_list = bn->next;
          DeleteBuffer(bn);
       }
    }
+#ifdef BLAK_PLATFORM_LINUX
+   if (s->send_list == NULL)
+      DisableSendEvents(s->conn.socket);
+#endif
    if (!MutexRelease(s->muxSend))
       eprintf("File %s line %i release of non-owned mutex\n",__FILE__,__LINE__);
 }
@@ -359,7 +368,11 @@ void AsyncSocketReadUDP(SOCKET sock)
    SOCKADDR_IN6 senderaddr;
    int          bytesReceivd = 0;
    int          flags = 0;
+#ifdef BLAK_PLATFORM_WINDOWS
    int          lplen = sizeof(senderaddr);
+#else
+   socklen_t    lplen = sizeof(senderaddr);
+#endif
 
    // Record time.
    last_udp_read_time = GetTime();
@@ -422,7 +435,11 @@ void AsyncSocketReadUDP(SOCKET sock)
    // 2) important: udp sender ip must match tcp session ip to prevent attacks!
    for (unsigned int i = 0; i < 8; i++)
    {
+#ifdef BLAK_PLATFORM_WINDOWS
       if (session->conn.addr.u.Word[i] != senderaddr.sin6_addr.u.Word[i])
+#else
+      if (session->conn.addr.s6_addr16[i] != senderaddr.sin6_addr.s6_addr16[i])
+#endif
       {
          if (debug_udp)
             eprintf("AsyncSocketReadUDP warning received session-Id from different IP\n");
@@ -504,3 +521,41 @@ void AsyncSocketReadUDP(SOCKET sock)
 
    SignalSession(session->session_id);
 }
+
+#ifdef BLAK_PLATFORM_LINUX
+/* AsyncSocketSelect: Dispatch socket events to the appropriate handler.
+ * Called from RunMainLoop in osd_epoll.c. Based on vanilla Meridian59. */
+void AsyncSocketSelect(SOCKET sock, int event, int error)
+{
+   session_node *s;
+
+   EnterSessionLock();
+
+   if (error != 0)
+   {
+      LeaveSessionLock();
+      s = GetSessionBySocket(sock);
+      if (s != NULL)
+         HangupSession(s);
+      return;
+   }
+
+   switch (event)
+   {
+   case FD_CLOSE:
+      AsyncSocketClose(sock);
+      break;
+   case FD_WRITE:
+      AsyncSocketWrite(sock);
+      break;
+   case FD_READ:
+      AsyncSocketRead(sock);
+      break;
+   default:
+      eprintf("AsyncSocketSelect got unknown event %i\n", event);
+      break;
+   }
+
+   LeaveSessionLock();
+}
+#endif

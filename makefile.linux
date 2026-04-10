@@ -1,15 +1,14 @@
 #
-# overall makefile
+# overall makefile for Linux
 #
 
 TOPDIR=.
 include common.mak.linux
 
 # make ignores targets if they match directory names
-all: Bserver Bkod Butil
-	
+all: Bserver Bresource Bkod Butil
 
-Bserver: 
+Bserver:
 	@echo Making $(COMMAND) in $(BLAKSERVDIR); \
 	cd $(BLAKSERVDIR); \
 	$(MAKE) -f makefile.linux $(COMMAND); \
@@ -24,7 +23,7 @@ Bcompiler:
 Bkod: Bcompiler Butil
 	@echo Making $(COMMAND) in $(KODDIR); \
 	cd $(KODDIR); \
-	$(MAKE) -sf makefile.linux $(COMMAND); \
+	$(MAKE) -f makefile.linux $(COMMAND); \
 	cd ..
 
 Butil:
@@ -33,8 +32,13 @@ Butil:
 	$(MAKE) -f makefile.linux $(COMMAND); \
 	cd ..
 
+# Copy room files to server run directory (equivalent of Windows Bresource)
+Bresource:
+	@echo Copying room files to server
+	@mkdir -p $(BLAKSERVRUNDIR)/rooms
+	-@$(CP) $(RESOURCEDIR)/rooms/*.roo $(BLAKSERVRUNDIR)/rooms/ 2>/dev/null
 
 clean:
 	env COMMAND='clean' $(MAKE) -sf makefile.linux
 	$(RM) $(TOPDIR)/postbuild.log 2>&1
-	$(RM) $(BLAKSERVDIR)/channel/*.txt 
+	$(RM) $(BLAKSERVDIR)/channel/*.txt

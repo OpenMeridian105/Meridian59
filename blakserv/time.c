@@ -64,9 +64,17 @@ const char * TimeStr(time_t time)
 		return "Invalid Time";
 	
 	if (tm_time->tm_mday < 10)
+#ifdef BLAK_PLATFORM_LINUX
+		time_format = "%b  %-d %Y %H:%M:%S";
+#else
 		time_format = "%b  %#d %Y %H:%M:%S";
+#endif
 	else
+#ifdef BLAK_PLATFORM_LINUX
+		time_format = "%b %-d %Y %H:%M:%S";
+#else
 		time_format = "%b %#d %Y %H:%M:%S";
+#endif
 	
 	if (strftime(s,sizeof(s),time_format,tm_time) == 0)
 		return "Time string too long";
@@ -86,9 +94,17 @@ const char * ShortTimeStr(time_t time)
 	tm_time = localtime(&time);
 	
 	if (tm_time->tm_mday < 10)
+#ifdef BLAK_PLATFORM_LINUX
+		time_format = "%b  %-d %H:%M";
+#else
 		time_format = "%b  %#d %H:%M";
+#endif
 	else
+#ifdef BLAK_PLATFORM_LINUX
+		time_format = "%b %-d %H:%M";
+#else
 		time_format = "%b %#d %H:%M";
+#endif
 	
 	if (strftime(s,sizeof(s),time_format,tm_time) == 0)
 		return "Time string too long";

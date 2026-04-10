@@ -43,5 +43,7 @@ void ForEachTimerMatchingObjID(void (*callback_func)(timer_node *t), int o_id);
 void SetNumTimers(int new_next_timer_num);
 Bool InMainLoop(void);
 int  GetNumActiveTimers(void);
+INT64 GetNextTimerTime(void);
+void TimerActivate(void);
 
 #endif

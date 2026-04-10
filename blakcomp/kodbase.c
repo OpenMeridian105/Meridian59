@@ -75,6 +75,7 @@ int load_kodbase(void)
    while (fgets(line, MAX_LINE+1, kodbase))
    {
       kodbase_line++;
+      line[strcspn(line, "\r\n")] = '\0';
 
       type_char = strtok(line," \t");
       if (type_char == NULL || strlen(type_char) != 1)
@@ -424,9 +425,9 @@ int build_superclasses(list_type classes)
    while (l != NULL)
    {
       class_type c = (class_type) l->data;
-      if ( (int) c->superclass != NO_SUPERCLASS)
+      if ( (intptr_t) c->superclass != NO_SUPERCLASS)
       {
-	 superclass_idnum = (int) c->superclass;
+	 superclass_idnum = (intptr_t) c->superclass;
 	 /* Search through classes looking for parent */
 	 temp = classes;
 	 while (temp != NULL)

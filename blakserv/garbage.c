@@ -108,7 +108,12 @@ void GarbageCollect()
       so we can ignore messages from before this GC */
 
    if (GetKodStats())
+   {
       GetKodStats()->interpreting_time_object_id = INVALID_ID;
+      GetKodStats()->interpreting_time_message_id = INVALID_ID;
+      GetKodStats()->interpreting_time_highest = 0;
+      GetKodStats()->interpreting_time_posts = 0;
+   }
 
    // Tables now get GC'd, so don't reset them.
    //ResetTables();

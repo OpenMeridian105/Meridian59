@@ -10,13 +10,36 @@
 */
 
 #include "blakcomp.h"
+
+#ifdef BLAK_PLATFORM_WINDOWS
 #include "Windows.h"
 #include "psapi.h"
-
-#if defined(WIN32) || defined(WIN64)
 // Copied from linux libc sys/stat.h:
 #define S_ISREG(m) (((m) & S_IFMT) == S_IFREG)
 #define S_ISDIR(m) (((m) & S_IFMT) == S_IFDIR)
+#endif
+
+#ifdef BLAK_PLATFORM_LINUX
+#include <sys/stat.h>
+#include <libgen.h>
+#define _fullpath(abs, rel, maxlen) realpath((rel), (abs))
+#define DIRSEP '/'
+#define DIRSEPSTR "/"
+#define CopyFile(src, dst, fail_if_exists) \
+   do { \
+      FILE *_in = fopen((src), "rb"); \
+      FILE *_out = fopen((dst), "wb"); \
+      if (_in && _out) { \
+         char _buf[4096]; size_t _n; \
+         while ((_n = fread(_buf, 1, sizeof(_buf), _in)) > 0) \
+            fwrite(_buf, 1, _n, _out); \
+      } \
+      if (_in) fclose(_in); \
+      if (_out) fclose(_out); \
+   } while(0)
+#else
+#define DIRSEP '\\'
+#define DIRSEPSTR "\\"
 #endif
 
 extern list_type directory_list;
@@ -74,7 +97,7 @@ void compile_directory_mode()
 
    // Remove trailing \ if we have one.
    int len = strlen(full_path) - 1;
-   if (len > 1 && full_path[len] == '\\')
+   if (len > 1 && full_path[len] == DIRSEP)
       full_path[len] = 0;
 
    // Remove directory (should now be null).
@@ -117,7 +140,7 @@ void compile_directory_mode()
          if (compile)
          {
             if (d->dir_name)
-               printf("Building %s\n", strrchr(d->dir_name, '\\') + 1);
+               printf("Building %s\n", strrchr(d->dir_name, DIRSEP) + 1);
 
             compile_file_list(d->dir_name, d->dir_file_list);
 
@@ -188,10 +211,12 @@ void compile_directory_mode()
    timeEnd = time(NULL);
    printf("Elapsed time: %lld seconds\n", timeEnd - timeStart);
 
+#ifdef BLAK_PLATFORM_WINDOWS
    PROCESS_MEMORY_COUNTERS pmc;
    GetProcessMemoryInfo(GetCurrentProcess(), &pmc, sizeof(pmc));
    printf("Peak mem: %i bytes\n", (int)pmc.PeakWorkingSetSize);
    printf("Current mem: %i bytes\n",(int) pmc.WorkingSetSize);
+#endif
 
    return;
 }
@@ -210,7 +235,7 @@ void fill_lists_from_makefile(char *full_path, int recompiled_parent)
    char *tmpptr;
    int done = False;
 
-   sprintf(makefile_path, "%s\\makefile", full_path);
+   sprintf(makefile_path, "%s" DIRSEPSTR "makefile", full_path);
    makefile = fopen(makefile_path, "r");
    if (makefile == NULL)
    {
@@ -235,6 +260,8 @@ void fill_lists_from_makefile(char *full_path, int recompiled_parent)
    int at_bofs = False;
    while (fgets(temp, 256, makefile) != NULL)
    {
+      temp[strcspn(temp, "\r\n")] = '\0';
+
       // Our line must be greater than 6 characters
       if (strlen(temp) <= 6 || temp[0] == '#')
          continue;
@@ -260,7 +287,7 @@ void fill_lists_from_makefile(char *full_path, int recompiled_parent)
                // Handle file.
                file_name[filelen] = 0;
 
-               sprintf(dir_name, "%s\\%s", full_path, file_name);
+               sprintf(dir_name, "%s" DIRSEPSTR "%s", full_path, file_name);
                int retval = recompile_check(dir_name, d, recompiled_parent);
                // Returns > 0 if we should check for a directory.
                if (retval)
@@ -276,12 +303,12 @@ void fill_lists_from_makefile(char *full_path, int recompiled_parent)
                // Skip bof.
                tmpptr += 3;
             }
-            else if (*tmpptr == '\\')
+            else if (*tmpptr == DIRSEP || *tmpptr == '\\')
             {
                // Next line.
                break;
             }
-            else if (*tmpptr == '\n')
+            else if (*tmpptr == '\n' || *tmpptr == '\0')
             {
                done = True;
                break;
@@ -323,7 +350,7 @@ int recompile_check(char *name, dir_data d, int recompiled_parent)
    // Kod must exist, others don't have to.
    if (stat(kodname, &time_kod) != 0)
    {
-      simple_error("Found makefile entry with missing kod file %s", strrchr(kodname,'\\') + 1);
+      simple_error("Found makefile entry with missing kod file %s", strrchr(kodname, DIRSEP) + 1);
       return False;
    }
 
@@ -363,9 +390,9 @@ void dircompile_copy_files(char *bof_source, char *rsc_source, char *bofname, ch
 {
    char combine[_MAX_PATH];
 
-   sprintf(combine, "%s\\%s", bof_output_dir, bofname);
+   sprintf(combine, "%s" DIRSEPSTR "%s", bof_output_dir, bofname);
    CopyFile(bof_source, combine, FALSE);
 
-   sprintf(combine, "%s\\%s", rsc_output_dir, rscname);
+   sprintf(combine, "%s" DIRSEPSTR "%s", rsc_output_dir, rscname);
    CopyFile(rsc_source, combine, FALSE);
 }

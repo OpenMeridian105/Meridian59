@@ -213,8 +213,9 @@ void AddBuiltInDLlist()
    while (fgets(line,MAX_PACKAGE_LINE,packagefile))
    {
       lineno++;
+      line[strcspn(line, "\r\n")] = '\0';
 
-      t1 = strtok(line," \t\n");
+      t1 = strtok(line," \t");
 
       if (t1 == NULL)	/* ignore blank lines */
 	 continue;

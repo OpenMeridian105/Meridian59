@@ -59,8 +59,9 @@ Bool LoadAccounts(char *filename)
    while (fgets(line, MAX_ACCOUNT_LINE, accofile))
    {
       lineno++;
+      line[strcspn(line, "\r\n")] = '\0';
 
-      type_str = strtok(line, ": \t\n");
+      type_str = strtok(line, ": \t");
 
       if (type_str == NULL)	/* ignore blank lines */
          continue;

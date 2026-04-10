@@ -137,6 +137,7 @@ void BuildBannedIPBlocks( char *filename )
   
   do {
     if(fgets(buffer,1023,fp) != NULL ) {
+      buffer[strcspn(buffer, "\r\n")] = '\0';
       /* lets be cautious */
       if (strlen(buffer)>0) {
         if (inet_pton(AF_INET6, buffer, &blocktoAdd) != -1) {

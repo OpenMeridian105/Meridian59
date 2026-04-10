@@ -20,6 +20,10 @@ void AsyncNameLookup(HANDLE hLookup,int error);
 void ResetUDP(void);
 int GetLastUDPReadTime(void);
 
+#ifdef BLAK_PLATFORM_LINUX
+int AsyncSocketAccept(SOCKET sock,int event,int error,int connection_type);
+void AsyncSocketSelect(SOCKET sock,int event,int error);
+#endif
 void AsyncSocketClose(SOCKET sock);
 void AsyncSocketWrite(SOCKET sock);
 void AsyncSocketRead(SOCKET sock);

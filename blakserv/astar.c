@@ -632,8 +632,14 @@ void AStarBuildEdgesCache(room_type* Room)
    const int cols = Room->colshighres;
 
    // iterate all squares
+#ifdef BLAK_PLATFORM_WINDOWS
    ::concurrency::parallel_for(size_t(0), (size_t)rows, [&](size_t r)
    {
+#else
+   #pragma omp parallel for schedule(dynamic)
+   for (size_t r = 0; r < (size_t)rows; r++)
+   {
+#endif
       for (int c = 0; c < cols; c++)
       {
          // calculate index of node in edgecache
@@ -743,7 +749,11 @@ void AStarBuildEdgesCache(room_type* Room)
          // save flags/edges
          Room->EdgesCache[idx] = (unsigned short)flags;
       }
+#ifdef BLAK_PLATFORM_WINDOWS
    });
+#else
+   }
+#endif
 }
 
 bool AStarGetStepFromCache(room_type* Room, astar_node* S, astar_node* E, V2* P, unsigned int* Flags, int ObjectID)

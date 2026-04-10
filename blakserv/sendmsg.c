@@ -372,7 +372,8 @@ int SendTopLevelBlakodMessage(int object_id,int message_id,int num_parms,parm_no
    if (message_depth != 0)
    {
       eprintf("SendTopLevelBlakodMessage called with message_depth %i "
-         "and message id %i\n", message_depth,message_id);
+         "and message id %i, resetting to 0\n", message_depth,message_id);
+      message_depth = 0;
    }
 
    start_time = GetMicroCountDouble();
@@ -431,7 +432,8 @@ int SendTopLevelBlakodMessage(int object_id,int message_id,int num_parms,parm_no
    if (message_depth != 0)
    {
       eprintf("SendTopLevelBlakodMessage returning with message_depth %i "
-         "and message id %i\n", message_depth, message_id);
+         "and message id %i, resetting to 0\n", message_depth, message_id);
+      message_depth = 0;
    }
 
    return ret_val;

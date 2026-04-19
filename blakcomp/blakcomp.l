@@ -703,7 +703,7 @@ int main(int argc, char **argv)
    for (i = 1; i < argc; i++)
    {
       arg = argv[i];
-      if (*arg == '-' || *arg == '/')
+      if (*arg == '-')
       {
          /* Switch on command-line options */
          switch(toupper(*(arg + 1)))

@@ -2,7 +2,7 @@
 #include "blakcomp.h"
 #include <stdio.h>
 %}
-%error-verbose
+%define parse.error verbose
 
 %union {
 	int  int_val;		/* A numerical value */

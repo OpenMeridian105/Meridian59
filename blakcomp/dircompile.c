@@ -23,8 +23,6 @@
 #include <sys/stat.h>
 #include <libgen.h>
 #define _fullpath(abs, rel, maxlen) realpath((rel), (abs))
-#define DIRSEP '/'
-#define DIRSEPSTR "/"
 #define CopyFile(src, dst, fail_if_exists) \
    do { \
       FILE *_in = fopen((src), "rb"); \
@@ -37,9 +35,6 @@
       if (_in) fclose(_in); \
       if (_out) fclose(_out); \
    } while(0)
-#else
-#define DIRSEP '\\'
-#define DIRSEPSTR "\\"
 #endif
 
 extern list_type directory_list;
@@ -97,7 +92,7 @@ void compile_directory_mode()
 
    // Remove trailing \ if we have one.
    int len = strlen(full_path) - 1;
-   if (len > 1 && full_path[len] == DIRSEP)
+   if (len > 1 && full_path[len] == DIR_SEPARATOR[0])
       full_path[len] = 0;
 
    // Remove directory (should now be null).
@@ -140,7 +135,7 @@ void compile_directory_mode()
          if (compile)
          {
             if (d->dir_name)
-               printf("Building %s\n", strrchr(d->dir_name, DIRSEP) + 1);
+               printf("Building %s\n", strrchr(d->dir_name, DIR_SEPARATOR[0]) + 1);
 
             compile_file_list(d->dir_name, d->dir_file_list);
 
@@ -235,7 +230,7 @@ void fill_lists_from_makefile(char *full_path, int recompiled_parent)
    char *tmpptr;
    int done = False;
 
-   sprintf(makefile_path, "%s" DIRSEPSTR "makefile", full_path);
+   sprintf(makefile_path, "%s%smakefile", full_path, DIR_SEPARATOR);
    makefile = fopen(makefile_path, "r");
    if (makefile == NULL)
    {
@@ -287,7 +282,7 @@ void fill_lists_from_makefile(char *full_path, int recompiled_parent)
                // Handle file.
                file_name[filelen] = 0;
 
-               sprintf(dir_name, "%s" DIRSEPSTR "%s", full_path, file_name);
+               sprintf(dir_name, "%s%s%s", full_path, DIR_SEPARATOR, file_name);
                int retval = recompile_check(dir_name, d, recompiled_parent);
                // Returns > 0 if we should check for a directory.
                if (retval)
@@ -303,7 +298,7 @@ void fill_lists_from_makefile(char *full_path, int recompiled_parent)
                // Skip bof.
                tmpptr += 3;
             }
-            else if (*tmpptr == DIRSEP || *tmpptr == '\\')
+            else if (*tmpptr == '/' || *tmpptr == '\\')
             {
                // Next line.
                break;
@@ -350,7 +345,7 @@ int recompile_check(char *name, dir_data d, int recompiled_parent)
    // Kod must exist, others don't have to.
    if (stat(kodname, &time_kod) != 0)
    {
-      simple_error("Found makefile entry with missing kod file %s", strrchr(kodname, DIRSEP) + 1);
+      simple_error("Found makefile entry with missing kod file %s", strrchr(kodname, DIR_SEPARATOR[0]) + 1);
       return False;
    }
 
@@ -390,9 +385,9 @@ void dircompile_copy_files(char *bof_source, char *rsc_source, char *bofname, ch
 {
    char combine[_MAX_PATH];
 
-   sprintf(combine, "%s" DIRSEPSTR "%s", bof_output_dir, bofname);
+   sprintf(combine, "%s%s%s", bof_output_dir, DIR_SEPARATOR, bofname);
    CopyFile(bof_source, combine, FALSE);
 
-   sprintf(combine, "%s" DIRSEPSTR "%s", rsc_output_dir, rscname);
+   sprintf(combine, "%s%s%s", rsc_output_dir, DIR_SEPARATOR, rscname);
    CopyFile(rsc_source, combine, FALSE);
 }

@@ -66,13 +66,15 @@ PALETTEFILE = $(TOPDIR)\blakston.pal
 # /WX                     Treat warnings as errors
 # /W3                     Warnings level
 # /wdXXXX                 Disable specific warnings
+# /TP                     Compile as C++ code
+# /std:c++20              Use C++20 standard
 CCOMMONFLAGS = /nologo /GR- /EHsc- /MP /fp:precise \
     /DBLAK_PLATFORM_WINDOWS /DWIN32 \
     /D_CRT_SECURE_NO_WARNINGS \
     /D_CRT_NONSTDC_NO_DEPRECATE \
     /D_WINSOCK_DEPRECATED_NO_WARNINGS \
     /DHAVE_CONFIG_H \
-    /WX /W3 /wd4996 /wd4390 
+    /WX /W3 /wd4996 /wd4390 /TP /std:c++20
 
 # Specific MS VC++ compiler specs, different for release and debug
 # /MT           Use static multithreaded VC++ runtime

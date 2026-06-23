@@ -606,13 +606,8 @@ void add_include_directory(char *dirname)
 */
 void check_output_directory(char *dirname)
 {
-#ifdef BLAK_PLATFORM_LINUX
-   sprintf(bof_output_dir, "%s/loadkod", dirname);
-   sprintf(rsc_output_dir, "%s/rsc", dirname);
-#else
-   sprintf(bof_output_dir, "%s\\loadkod", dirname);
-   sprintf(rsc_output_dir, "%s\\rsc", dirname);
-#endif
+   sprintf(bof_output_dir, "%s%sloadkod", dirname, DIR_SEPARATOR);
+   sprintf(rsc_output_dir, "%s%srsc", dirname, DIR_SEPARATOR);
 
    if (access(dirname, 4) != 0)
    {

@@ -121,36 +121,38 @@ void write_resources(char *fname)
    for (c = st.classes; c != NULL; c = c->next)
    {
       cl = (class_type) c->data;
-      if (cl->is_new)
-         for (l = cl->resources; l != NULL; l = l->next)
+      if (!cl->is_new)
+         continue;
+
+      for (l = cl->resources; l != NULL; l = l->next)
+      {
+         r = (resource_type) (l->data);
+
+         // Verify string modifiers in different language strings.
+         ResourceStringModVerify(r, fname);
+
+         // For each language string present,
+         // write out language data and string.
+         for (int j = 0; j < MAX_LANGUAGE_ID; j++)
          {
-            r = (resource_type) (l->data);
-
-            // Verify string modifiers in different language strings.
-            ResourceStringModVerify(r, fname);
-
-            // For each language string present,
-            // write out language data and string.
-            for (int j = 0; j < MAX_LANGUAGE_ID; j++)
+            if (r->resource[j])
             {
-               if (r->resource[j])
-               {
-                  // Write out id #
-                  memcpy(&(codegen_buffer[codegen_buffer_position]), &r->lhs->idnum, 4);
-                  codegen_buffer_position += 4;
+               // Write out id #
+               memcpy(&(codegen_buffer[codegen_buffer_position]), &r->lhs->idnum, 4);
+               codegen_buffer_position += 4;
 
-                  // Language ID
-                  memcpy(&(codegen_buffer[codegen_buffer_position]), &j, 4);
-                  codegen_buffer_position += 4;
+               // Language ID
+               memcpy(&(codegen_buffer[codegen_buffer_position]), &j, 4);
+               codegen_buffer_position += 4;
 
-                  // String
-                  str = GetStringFromResource(r, j);
-                  int len = strlen(str) + 1;
-                  memcpy(&(codegen_buffer[codegen_buffer_position]), str, len);
-                  codegen_buffer_position += len;
-               }
+               // String
+               str = GetStringFromResource(r, j);
+               int len = strlen(str) + 1;
+               memcpy(&(codegen_buffer[codegen_buffer_position]), str, len);
+               codegen_buffer_position += len;
             }
          }
+      }
    }
 
    // Write the file in one call.

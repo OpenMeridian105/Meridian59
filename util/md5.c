@@ -294,7 +294,7 @@ static void Decode (UINT4 *output, unsigned char *input, unsigned int len)
    
    for (i = 0, j = 0; j < len; i++, j += 4)
       output[i] = ((UINT4)input[j]) | (((UINT4)input[j+1]) << 8) |
-	 (((UINT4)input[j+2]) << 16) | (((UINT4)input[j+3]) << 24);
+         (((UINT4)input[j+2]) << 16) | (((UINT4)input[j+3]) << 24);
 }
 
 /* Digests a string and prints the result.  Digest must be at least 16 bytes long.
@@ -303,8 +303,8 @@ void MDString (char *string, unsigned char *digest)
 {
    int i;
    MD5_CTX context;
-   unsigned int len = strlen(string);
-   
+   unsigned int len = (unsigned int)strlen(string);
+
    MD5Init (&context);
    MD5Update (&context, (unsigned char *)string, len);
    MD5Final (digest, &context);
@@ -312,7 +312,7 @@ void MDString (char *string, unsigned char *digest)
    // Set 0 bytes to 1 to avoid NULL-termination problems
    for (i=0; i < ENCRYPT_LEN; i++)
       if (digest[i] == 0)
-	 digest[i] = 1;
+         digest[i] = 1;
 }
 
 /* Digests a string, converts to hex and places it in filehash. Filehash

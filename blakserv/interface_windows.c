@@ -98,12 +98,12 @@ int sessions_logged_on;
 /* local function prototypes */
 void __cdecl InterfaceThread(void *unused);
 LRESULT CALLBACK InterfaceKeyHook(int code,WPARAM wParam,LPARAM lParam);
-long WINAPI InterfaceWindowProc(HWND hwnd,UINT message,UINT wParam,LONG lParam);
+LRESULT CALLBACK InterfaceWindowProc(HWND hwnd,UINT message,WPARAM wParam,LPARAM lParam);
 void InterfaceSetTab(int sel);
 void InterfaceTabChange(void);
 void InterfaceSetup(void);
 void InterfaceCreateListControl(void);
-void InterfaceCreate(HWND hwnd,UINT wParam,LONG lParam);
+void InterfaceCreate(HWND hwnd,WPARAM wParam,LPARAM lParam);
 void InterfaceCreateTabControl(HWND hwnd);
 void InterfaceCommand(HWND hwnd,int id, HWND hwndCtl, UINT codeNotify);
 void InterfaceCountSessions(session_node *s);
@@ -113,13 +113,13 @@ void InterfaceSave(void);
 void InterfaceReloadSystem(void);
 void CenterWindow(HWND hwnd, HWND hwndParent);
 
-BOOL CALLBACK InterfaceDialogMotd(HWND hwnd,UINT message,UINT wParam,LONG lParam);
-BOOL CALLBACK InterfaceDialogAbout(HWND hwnd,UINT message,UINT wParam,LONG lParam);
-BOOL CALLBACK InterfaceDialogTabPage(HWND hwnd,UINT message,UINT wParam,LONG lParam);
-BOOL CALLBACK InterfaceDialogRegCallback(HWND hwnd, UINT message, UINT wParam, LONG lParam);
+INT_PTR CALLBACK InterfaceDialogMotd(HWND hwnd,UINT message,WPARAM wParam,LPARAM lParam);
+INT_PTR CALLBACK InterfaceDialogAbout(HWND hwnd,UINT message,WPARAM wParam,LPARAM lParam);
+INT_PTR CALLBACK InterfaceDialogTabPage(HWND hwnd,UINT message,WPARAM wParam,LPARAM lParam);
+INT_PTR CALLBACK InterfaceDialogRegCallback(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam);
 void InterfaceTabPageCommand(HWND hwnd,int id, HWND hwndCtl, UINT codeNotify);
-long CALLBACK InterfaceAdminInputProc(HWND hwnd, UINT message, UINT wParam, LONG lParam);
-long CALLBACK InterfaceAdminResponseProc(HWND hwnd, UINT message, UINT wParam, LONG lParam);
+LRESULT CALLBACK InterfaceAdminInputProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam);
+LRESULT CALLBACK InterfaceAdminResponseProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam);
 void InterfaceAddAdminBuffer(char *buf,int len_buf);
 void InterfaceAddList(int session_id);
 void InterfaceRemoveList(int session_id);
@@ -215,7 +215,7 @@ void __cdecl InterfaceThread(void *unused)
 	_endthread();
 }
 
-long WINAPI InterfaceWindowProc(HWND hwnd,UINT message,UINT wParam,LONG lParam)
+LRESULT CALLBACK InterfaceWindowProc(HWND hwnd,UINT message,WPARAM wParam,LPARAM lParam)
 {
 	char buf[40];
 	
@@ -619,7 +619,7 @@ void StartupComplete()
       MAKELPARAM(TRUE, 0));
 }
 
-void InterfaceCreate(HWND hwnd,UINT wParam,LONG lParam)
+void InterfaceCreate(HWND hwnd,WPARAM wParam,LPARAM lParam)
 {
 	SetWindowText(hwnd,BlakServNameString());
 }
@@ -1324,7 +1324,7 @@ void RegCallbackSetupComboBox(HWND hwnd, int combo_id)
    EnableWindow(combo_hwnd, TRUE);
 }
 
-BOOL CALLBACK InterfaceDialogRegCallback(HWND hwnd, UINT message, UINT wParam, LONG lParam)
+INT_PTR CALLBACK InterfaceDialogRegCallback(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
    switch (message)
    {
@@ -1476,7 +1476,7 @@ BOOL CALLBACK InterfaceDialogRegCallback(HWND hwnd, UINT message, UINT wParam, L
    return FALSE;
 }
 
-BOOL CALLBACK InterfaceDialogMotd(HWND hwnd,UINT message,UINT wParam,LONG lParam)
+INT_PTR CALLBACK InterfaceDialogMotd(HWND hwnd,UINT message,WPARAM wParam,LPARAM lParam)
 {
 	char s[2000];
 	
@@ -1514,7 +1514,7 @@ BOOL CALLBACK InterfaceDialogMotd(HWND hwnd,UINT message,UINT wParam,LONG lParam
 	return FALSE;
 }
 
-BOOL CALLBACK InterfaceDialogAbout(HWND hwnd,UINT message,UINT wParam,LONG lParam)
+INT_PTR CALLBACK InterfaceDialogAbout(HWND hwnd,UINT message,WPARAM wParam,LPARAM lParam)
 {
 	
 	switch (message)
@@ -1538,7 +1538,7 @@ BOOL CALLBACK InterfaceDialogAbout(HWND hwnd,UINT message,UINT wParam,LONG lPara
 	return FALSE;
 }
 
-BOOL CALLBACK InterfaceDialogTabPage(HWND hwnd,UINT message,UINT wParam,LONG lParam)
+INT_PTR CALLBACK InterfaceDialogTabPage(HWND hwnd,UINT message,WPARAM wParam,LPARAM lParam)
 {
 	switch (message)
 	{
@@ -1576,7 +1576,7 @@ void InterfaceTabPageCommand(HWND hwnd, int id, HWND hwndCtl, UINT codeNotify)
    }
 }
 
-long CALLBACK InterfaceAdminInputProc(HWND hwnd, UINT message, UINT wParam, LONG lParam)
+LRESULT CALLBACK InterfaceAdminInputProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
 	char buf[200];
 	
@@ -1609,7 +1609,7 @@ long CALLBACK InterfaceAdminInputProc(HWND hwnd, UINT message, UINT wParam, LONG
 	return CallWindowProc(lpfnDefAdminInputProc,hwnd,message,wParam,lParam);
 }
 
-long CALLBACK InterfaceAdminResponseProc(HWND hwnd, UINT message, UINT wParam, LONG lParam)
+LRESULT CALLBACK InterfaceAdminResponseProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
 	switch (message)
 	{

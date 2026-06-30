@@ -20,7 +20,7 @@ LINKFLAGS = $(LINKFLAGS) /SUBSYSTEM:WINDOWS",5.01" /STACK:0x180000 /map /DEBUG
 
 SOURCEDIR = .
 
-LIBS = gdi32.lib user32.lib wsock32.lib winmm.lib comctl32.lib libmysql.lib libcurl.lib ws2_32.lib jansson.lib
+LIBS = gdi32.lib user32.lib wsock32.lib winmm.lib comctl32.lib libmysql.lib ws2_32.lib jansson.lib
 
 OBJS =  \
     $(OUTDIR)\main.obj \
@@ -115,6 +115,5 @@ $(OUTDIR)\blakserv.exe: $(OBJS) $(OUTDIR)\blakserv.res
     $(CP) $(OUTDIR)\*.pdb $(BLAKSERVRUNDIR) >nul
     $(CP) $(OUTDIR)\*.map $(BLAKSERVRUNDIR) >nul
     $(CP) $(BLAKLIBDIR)\libmysql.dll $(BLAKSERVRUNDIR) >nul
-    $(CP) $(BLAKBINDIR)\libcurl.dll $(BLAKSERVRUNDIR) >nul
 
 !include $(TOPDIR)\rules.mak

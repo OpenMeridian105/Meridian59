@@ -1,6 +1,16 @@
 %{
 #include "blakcomp.h"
+#include <stddef.h>
+#include <stdint.h>
 #include <stdio.h>
+
+#ifndef YYPTRDIFF_T
+#define YYPTRDIFF_T ptrdiff_t
+#endif
+
+#ifndef YYPTRDIFF_MAXIMUM
+#define YYPTRDIFF_MAXIMUM PTRDIFF_MAX
+#endif
 %}
 %define parse.error verbose
 

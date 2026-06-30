@@ -91,7 +91,7 @@ void compile_directory_mode()
    failed_compile_files = NULL;
 
    // Remove trailing \ if we have one.
-   int len = strlen(full_path) - 1;
+   int len = (int)strlen(full_path) - 1;
    if (len > 1 && full_path[len] == DIR_SEPARATOR[0])
       full_path[len] = 0;
 
@@ -243,7 +243,7 @@ void fill_lists_from_makefile(char *full_path, int recompiled_parent)
 
    // Have to allocate based on size here, no strdup.
    // Length of parent dir string, plus 4 for .kod, plus 1 for \0
-   d->parent_file_name = (char *)SafeMalloc(strlen(full_path) + 4 + 1);
+   d->parent_file_name = (char *)SafeMalloc((int)strlen(full_path) + 4 + 1);
    strcpy(d->parent_file_name, full_path);
    strcat(d->parent_file_name, ".kod");
 

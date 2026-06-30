@@ -23,12 +23,12 @@ extern int print_unref_locals;
 
 typedef struct {
    int lineno;   // Kod line number
-   int offset;   // Offset in bof of beginning of statement
+   codegen_offset_t offset;   // Offset in bof of beginning of statement
 } DebugLine;
 
 static list_type debug_lines;   // list of DebugLine structures
 int outfile; /* File handle of output file */
-static list_type loop_stack;    /* Info for all current (possibly nested) loops */
+static std::vector<loop_struct> loop_stack;  /* Info for all current (possibly nested) loops */
 static loop_type current_loop;  /* Info for current loop */
 
 
@@ -42,7 +42,7 @@ char *codegen_buffer;
 
 // buffer_position is the current position of buffer we're writing
 // to, and the length that will be written to file if flushed.
-int codegen_buffer_position;
+codegen_offset_t codegen_buffer_position;
 
 // buffer_size is the size of the currently allocated memory for buffer.
 int codegen_buffer_size;
@@ -52,7 +52,7 @@ int codegen_buffer_size;
 int codegen_buffer_warning_size;
 
 // Keep track of end position while we are 'seeking' around the buffer.
-int codegen_buffer_end;
+codegen_offset_t codegen_buffer_end;
 
 void codegen_resize_buffer()
 {
@@ -88,7 +88,8 @@ void codegen_header(void)
 void codegen_classes(void)
 {
    list_type templist, c = NULL;
-   int numclasses, classpos, endpos, i;
+   int numclasses, i;
+   codegen_offset_t classpos, endpos;
 
    /* Make list of only classes which appeared in current source file */
    for (templist = st.classes; templist != NULL; templist = templist->next)
@@ -136,7 +137,8 @@ void codegen_classes(void)
  */
 void codegen_string_table(void)
 {
-   int i, curpos, total_len;
+   int i, total_len;
+   codegen_offset_t curpos;
    char *str;
    list_type l;
 
@@ -151,7 +153,7 @@ void codegen_string_table(void)
    {
       OutputInt(outfile, curpos + total_len + st.num_strings * 4);
       str = (char *) (l->data);
-      total_len += strlen(str) + 1;
+      total_len += (int)strlen(str) + 1;
       l = l->next;
    }
 
@@ -160,7 +162,7 @@ void codegen_string_table(void)
    for (i=0; i < st.num_strings; i++)
    {
       str = (char *) (l->data);
-      int len = strlen(str);
+      int len = (int)strlen(str);
       memcpy(&(codegen_buffer[codegen_buffer_position]), str, len);
       codegen_buffer_position += len;
       OutputByte(outfile, 0);    // null terminate
@@ -199,13 +201,13 @@ void codegen_filename(char *filename)
    {
       char *fname = strrchr(filename, DIR_SEPARATOR[0]);
       fname = fname ? fname + 1 : filename;
-      len = strlen(fname);
+      len = (int)strlen(fname);
       memcpy(&(codegen_buffer[codegen_buffer_position]), fname, len);
       codegen_buffer_position += len;
    }
    else
    {
-      len = strlen(filename);
+      len = (int)strlen(filename);
       memcpy(&(codegen_buffer[codegen_buffer_position]), filename, len);
       codegen_buffer_position += len;
    }
@@ -469,7 +471,7 @@ int codegen_return(expr_type expr, int maxlocal)
 int codegen_if(if_stmt_type s, int numlocals)
 {
    int our_maxlocal = numlocals, numtemps, sourceval;
-   long gotopos, thenpos;
+   codegen_offset_t gotopos, thenpos = 0;
    list_type p;
 
    // Outputs a goto opcode, but dest address and source are output here.
@@ -533,10 +535,9 @@ int codegen_switch(switch_stmt_type s, int numlocals)
 {
    opcode_data opcode;
    int our_maxlocal = numlocals, numtemps, sourceval;
-   long toppos, endpos, casepos[1024], defaultpos; // Keep track of file positions.
+   codegen_offset_t toppos, endpos = 0, casepos[1024], defaultpos = 0; // Keep track of file positions.
    list_type case_list, case_list2; // List of cases for the switch.
    list_type q; // The code statements in each case.
-   list_type p; // Used when backpacking continue statements.
    stmt_type case_stmt = NULL, case_stmt2 = NULL, default_stmt = NULL;
    int numCase = 0; // Keep track of number of cases.
    expr_type temp_expr; // Used for comparison of the switch condition with each case.
@@ -696,8 +697,8 @@ int codegen_switch(switch_stmt_type s, int numlocals)
    }
 
    /* Backpatch continue statements in loop body */
-   for (p = current_loop->for_continue_list; p != NULL; p = p->next)
-      BackpatchGotoUnconditional(outfile, (intptr_t)p->data, FileCurPos(outfile));
+   for (codegen_offset_t continue_pos : current_loop->for_continue_list)
+      BackpatchGotoUnconditional(outfile, continue_pos, FileCurPos(outfile));
 
    /* Go back and fill in destination address for unconditional goto */
    if (!default_stmt)
@@ -714,20 +715,10 @@ int codegen_switch(switch_stmt_type s, int numlocals)
  */
 void codegen_enter_loop(void)
 {
-   list_type temp;
    /* Loop info holds info needed to handle break and continue statements */
-   loop_type loop_info = (loop_type) SafeMalloc(sizeof(loop_struct));
-
-   /* Make new loop_info structure and add it to the loop "stack" */
-   loop_info->toppos = FileCurPos(outfile);
-   loop_info->break_list = NULL;
-   loop_info->for_continue_list = NULL;
-   loop_info->conditional_goto_list = NULL;
-   current_loop = loop_info;
-   
-   /* Add new loop to front of list */
-   temp = list_create( (void *) loop_info);
-   loop_stack = list_append(temp, loop_stack);   
+   loop_stack.push_back({});
+   current_loop = &loop_stack.back();
+   current_loop->toppos = FileCurPos(outfile);
 }
 /************************************************************************/
 /*
@@ -736,23 +727,19 @@ void codegen_enter_loop(void)
  */
 void codegen_exit_loop(void)
 {
-   list_type p;
-
    /* Backpatch break statements to jump to end of loop */
-   for (p = current_loop->break_list; p != NULL; p = p->next)
-      BackpatchGotoUnconditional(outfile, (intptr_t) p->data, FileCurPos(outfile));
-   current_loop->break_list = list_delete(current_loop->break_list);
+   for (codegen_offset_t break_pos : current_loop->break_list)
+      BackpatchGotoUnconditional(outfile, break_pos, FileCurPos(outfile));
 
    /* Backpatch conditional goto statements to jump to end of loop */
-   for (p = current_loop->conditional_goto_list; p != NULL; p = p->next)
-      BackpatchGotoConditional(outfile, (intptr_t)p->data, FileCurPos(outfile));
-   current_loop->conditional_goto_list = list_delete(current_loop->conditional_goto_list);
+   for (codegen_offset_t goto_pos : current_loop->conditional_goto_list)
+      BackpatchGotoConditional(outfile, goto_pos, FileCurPos(outfile));
 
    /* Remove current list from loop "stack" */
-   loop_stack = list_destroy_first(loop_stack);
-   
+   loop_stack.pop_back();
+
    /* Restore current_loop to correct state */
-   current_loop = (loop_type) list_first_item(loop_stack);
+   current_loop = loop_stack.empty() ? NULL : &loop_stack.back();
 }
 /************************************************************************/
 /*
@@ -763,7 +750,7 @@ void codegen_exit_loop(void)
 int codegen_while(while_stmt_type s, int numlocals)
 {
    int our_maxlocal = numlocals, numtemps, sourceval;
-   long toppos;
+   codegen_offset_t toppos;
    list_type p;
 
    toppos = FileCurPos(outfile);
@@ -773,8 +760,7 @@ int codegen_while(while_stmt_type s, int numlocals)
    our_maxlocal = codegen_conditional_goto(s->condition, numlocals, &sourceval);
    
    /* Conditional jump to end of loop */
-   current_loop->conditional_goto_list =
-      list_add_item(current_loop->conditional_goto_list, (void *)FileCurPos(outfile));
+   current_loop->conditional_goto_list.push_back(FileCurPos(outfile));
    OutputInt(outfile, 0);
    OutputInt(outfile, sourceval);
 
@@ -803,7 +789,7 @@ int codegen_while(while_stmt_type s, int numlocals)
 int codegen_dowhile(while_stmt_type s, int numlocals)
 {
    int our_maxlocal = numlocals, numtemps, sourceval;
-   long toppos;
+   codegen_offset_t toppos;
    list_type p;
 
    toppos = FileCurPos(outfile);
@@ -818,16 +804,15 @@ int codegen_dowhile(while_stmt_type s, int numlocals)
    }
    
    /* Backpatch continue statements in loop body */
-   for (p = current_loop->for_continue_list; p != NULL; p = p->next)
-      BackpatchGotoUnconditional(outfile, (intptr_t)p->data, FileCurPos(outfile));
+   for (codegen_offset_t continue_pos : current_loop->for_continue_list)
+      BackpatchGotoUnconditional(outfile, continue_pos, FileCurPos(outfile));
 
    numtemps = codegen_conditional_goto(s->condition, numlocals, &sourceval);
    if (numtemps > our_maxlocal)
       our_maxlocal = numtemps;
 
    /* Conditional jump to end of loop */
-   current_loop->conditional_goto_list =
-      list_add_item(current_loop->conditional_goto_list, (void *)FileCurPos(outfile));
+   current_loop->conditional_goto_list.push_back(FileCurPos(outfile));
    OutputInt(outfile, 0);
    OutputInt(outfile, sourceval);
 
@@ -852,7 +837,7 @@ int codegen_dowhile(while_stmt_type s, int numlocals)
 int codegen_for(for_stmt_type s, int numlocals)
 {
    int our_maxlocal = numlocals, numtemps = 0, sourceval;
-   long toppos;
+   codegen_offset_t toppos;
    list_type p;
    stmt_type assign_stmt;
 
@@ -876,8 +861,7 @@ int codegen_for(for_stmt_type s, int numlocals)
       our_maxlocal = numtemps;
 
    /* Conditional jump to end of loop */
-   current_loop->conditional_goto_list =
-      list_add_item(current_loop->conditional_goto_list, (void *)FileCurPos(outfile));
+   current_loop->conditional_goto_list.push_back(FileCurPos(outfile));
    OutputInt(outfile, 0);
    OutputInt(outfile, sourceval);
 
@@ -891,8 +875,8 @@ int codegen_for(for_stmt_type s, int numlocals)
    }
 
    /* Backpatch continue statements in loop body */
-   for (p = current_loop->for_continue_list; p != NULL; p = p->next)
-      BackpatchGotoUnconditional(outfile, (intptr_t)p->data, FileCurPos(outfile));
+   for (codegen_offset_t continue_pos : current_loop->for_continue_list)
+      BackpatchGotoUnconditional(outfile, continue_pos, FileCurPos(outfile));
 
    /* Step 4: Execute statements from assign list (iterators) */
    /* If no iteration, list will be NULL. */
@@ -936,7 +920,7 @@ int codegen_foreach(foreach_stmt_type s, int numlocals)
    expr_type op_expr;
    assign_stmt_struct assign_stmt;
    id_type temp_id;
-   long toppos;
+   codegen_offset_t toppos;
    list_type p;
 
    /* Make variable "temp" */
@@ -963,8 +947,7 @@ int codegen_foreach(foreach_stmt_type s, int numlocals)
    OutputGotoOpcode(outfile, GOTO_IF_NULL, LOCAL_VAR);
 
    /* Conditional jump to end of loop */
-   current_loop->conditional_goto_list =
-      list_add_item(current_loop->conditional_goto_list, (void *)FileCurPos(outfile));
+   current_loop->conditional_goto_list.push_back(FileCurPos(outfile));
    OutputInt(outfile, 0);
    OutputInt(outfile, temp_id->idnum);
 
@@ -985,8 +968,8 @@ int codegen_foreach(foreach_stmt_type s, int numlocals)
    }
 
    /* Backpatch continue statements in loop body */
-   for (p = current_loop->for_continue_list; p != NULL; p = p->next)
-      BackpatchGotoUnconditional(outfile, (intptr_t)p->data, FileCurPos(outfile));
+   for (codegen_offset_t continue_pos : current_loop->for_continue_list)
+      BackpatchGotoUnconditional(outfile, continue_pos, FileCurPos(outfile));
 
    /**** Statement #4:    temp = Rest(temp) ****/
    /* Can reuse temp_expr from statement #3 above */
@@ -1077,8 +1060,7 @@ int codegen_statement(stmt_type s, int numlocals)
       OutputGotoOpcode(outfile, GOTO_UNCONDITIONAL, 0);
       
       /* Add to list of gotos to be backpatched later, and leave space */
-      current_loop->break_list = 
-         list_add_item(current_loop->break_list, (void *) FileCurPos(outfile));
+      current_loop->break_list.push_back(FileCurPos(outfile));
       OutputInt(outfile, 0);
       break;
 
@@ -1091,8 +1073,7 @@ int codegen_statement(stmt_type s, int numlocals)
        * in a for loop, the offset written out below will be written over during
        * backpatching in codegen_foreach().
        */
-      current_loop->for_continue_list = 
-         list_add_item(current_loop->for_continue_list, (void *) FileCurPos(outfile));
+      current_loop->for_continue_list.push_back(FileCurPos(outfile));
 
       OutputGotoOffset(outfile, FileCurPos(outfile), current_loop->toppos);
       break;
@@ -1147,7 +1128,7 @@ void codegen_message(message_handler_type m)
 {
    int numlocals, maxtemp, maxlocals, numparams;
    list_type s, p = m->header->params;
-   long localpos;
+   codegen_offset_t localpos;
 
    // Complain about unreferenced local vars.
    // Ideally silently remove them, but renumbering ID nums is tricky.
@@ -1217,7 +1198,7 @@ void codegen_message(message_handler_type m)
 void codegen_class(class_type c)
 {
    list_type p, m, cv;
-   long temppos, endpos, messagepos, propertypos;
+   codegen_offset_t temppos, endpos, messagepos, propertypos;
    int nummessages, i;
    
    /* Write out superclass class id */
@@ -1338,7 +1319,7 @@ void codegen_exit()
 void codegen(char *kod_fname, char *bof_fname)
 {
    list_type c = NULL;
-   long endpos, stringpos, debugpos, namepos;
+   codegen_offset_t endpos, stringpos, debugpos, namepos;
 
    codegen_ok = True;
    debug_lines = NULL;

@@ -105,12 +105,12 @@ CDEBUGFLAGS   = $(CCOMMONFLAGS) /MT /ZI /DBLAKDEBUG
 # /OPT:ICF             Optimization
 
 # For Shared (DLL)
-LINKNORMALFLAGS = /nologo /machine:ix86 /LARGEADDRESSAWARE /release /LTCG /OPT:REF /OPT:ICF
-LINKDEBUGFLAGS  = /nologo /machine:ix86 /LARGEADDRESSAWARE /debug  
+LINKNORMALFLAGS = /nologo /LARGEADDRESSAWARE /release /LTCG /OPT:REF /OPT:ICF
+LINKDEBUGFLAGS  = /nologo /LARGEADDRESSAWARE /debug
 
 # For Static (LIB)
-LINKSTNORMALFLAGS = /nologo /machine:ix86 /LTCG
-LINKSTDEBUGFLAGS  = /nologo /machine:ix86
+LINKSTNORMALFLAGS = /nologo /LTCG
+LINKSTDEBUGFLAGS  = /nologo
 
 # -----------------------------------------------------------------
 # Pick compiler and linker flags based on DEBUG or RELEASE

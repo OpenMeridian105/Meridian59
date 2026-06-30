@@ -9,11 +9,13 @@
  * resource.c:  Write out resource file from symbol table information.
  */
 #include "blakcomp.h"
+#include "bkod.h"
+#include "codegen.h"
 #include <regex>
 
  // See codegen.c for explanation.
 extern char *codegen_buffer;
-extern int codegen_buffer_position;
+extern codegen_offset_t codegen_buffer_position;
 extern int codegen_buffer_size;
 extern int codegen_buffer_warning_size;
 extern int print_dup_eng_ger;     /* Whether we print duplicate Eng-Ger rscs */
@@ -147,7 +149,7 @@ void write_resources(char *fname)
 
                // String
                str = GetStringFromResource(r, j);
-               int len = strlen(str) + 1;
+               int len = (int)strlen(str) + 1;
                memcpy(&(codegen_buffer[codegen_buffer_position]), str, len);
                codegen_buffer_position += len;
             }

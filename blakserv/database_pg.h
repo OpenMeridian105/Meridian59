@@ -5,6 +5,10 @@
 #ifndef _DATABASE_PG_H
 #define _DATABASE_PG_H
 
+#ifndef BLAK_PLATFORM_WINDOWS
+#include <pthread.h>
+#endif
+
 #include <libpq-fe.h>
 
 #pragma region Structs/Enums
@@ -84,7 +88,11 @@ struct sql_queue_node
 
 struct sql_queue
 {
+#ifdef BLAK_PLATFORM_WINDOWS
+   HANDLE mutex;
+#else
    pthread_mutex_t mutex;
+#endif
    int count;
    sql_queue_node *first;
    sql_queue_node *last;

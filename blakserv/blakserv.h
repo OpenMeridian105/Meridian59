@@ -321,7 +321,7 @@ void StartAsyncSession(session_node *s);
 #include "maintenance.h"
 #include "block.h"
 
-#ifdef BLAK_PLATFORM_WINDOWS
+#if defined(BLAK_PLATFORM_WINDOWS) && !defined(BLAK_USE_POSTGRESQL)
 #include "database.h"
 #else
 #include "database_pg.h"

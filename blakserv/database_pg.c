@@ -1,8 +1,11 @@
-// Meridian 59 - PostgreSQL database implementation for Linux
+// Meridian 59 - PostgreSQL database implementation.
 // Replaces MySQL database.c with libpq-based PostgreSQL support.
 
 #include "blakserv.h"
+#ifndef BLAK_PLATFORM_WINDOWS
 #include <pthread.h>
+#include <unistd.h>
+#endif
 #include <libpq-fe.h>
 
 // Worker thread state
@@ -18,17 +21,124 @@ static char *db_pass = NULL;
 static char *db_name = NULL;
 
 // Queue
-static sql_queue queue = { PTHREAD_MUTEX_INITIALIZER, 0, NULL, NULL };
+static sql_queue queue = { 0, 0, NULL, NULL };
 static UINT64 record_count = 0;
 
 // Worker thread
+#ifdef BLAK_PLATFORM_WINDOWS
+static HANDLE db_thread = NULL;
+#else
 static pthread_t db_thread;
+#endif
 
 #define MAX_RECORD_QUEUE 15000
 #define MAX_SQL_PARAMS 45
 #define DB_WORKER_SLEEP_MS 10
 #define DB_RECONNECT_SLEEP_MS 5000
 #define MAX_ITEMS_PER_LOOP 10
+
+#ifdef BLAK_PLATFORM_WINDOWS
+static bool PgQueueInit(void)
+{
+   queue.mutex = CreateMutex(NULL, FALSE, NULL);
+   return queue.mutex != NULL;
+}
+
+static void PgQueueShutdown(void)
+{
+   if (queue.mutex != NULL)
+   {
+      CloseHandle(queue.mutex);
+      queue.mutex = NULL;
+   }
+}
+
+static void PgQueueLock(void)
+{
+   WaitForSingleObject(queue.mutex, INFINITE);
+}
+
+static void PgQueueUnlock(void)
+{
+   ReleaseMutex(queue.mutex);
+}
+
+static void PgSleepMs(unsigned int delay_ms)
+{
+   Sleep(delay_ms);
+}
+
+static char *PgStrdup(const char *value)
+{
+   return value != NULL ? _strdup(value) : NULL;
+}
+
+static bool PgThreadStart(void);
+static void PgThreadJoin(void);
+static unsigned __stdcall PgWorker(void *arg);
+#else
+static bool PgQueueInit(void)
+{
+   return pthread_mutex_init(&queue.mutex, NULL) == 0;
+}
+
+static void PgQueueShutdown(void)
+{
+   pthread_mutex_destroy(&queue.mutex);
+}
+
+static void PgQueueLock(void)
+{
+   pthread_mutex_lock(&queue.mutex);
+}
+
+static void PgQueueUnlock(void)
+{
+   pthread_mutex_unlock(&queue.mutex);
+}
+
+static void PgSleepMs(unsigned int delay_ms)
+{
+   usleep(delay_ms * 1000);
+}
+
+static char *PgStrdup(const char *value)
+{
+   return value != NULL ? strdup(value) : NULL;
+}
+
+static bool PgThreadStart(void);
+static void PgThreadJoin(void);
+static void *PgWorker(void *arg);
+#endif
+
+static bool PgThreadStart(void)
+{
+#ifdef BLAK_PLATFORM_WINDOWS
+   uintptr_t thread_handle = _beginthreadex(NULL, 0, PgWorker, NULL, 0, NULL);
+   if (thread_handle == 0)
+      return false;
+
+   db_thread = (HANDLE)thread_handle;
+   return true;
+#else
+   return pthread_create(&db_thread, NULL, PgWorker, NULL) == 0;
+#endif
+}
+
+static void PgThreadJoin(void)
+{
+#ifdef BLAK_PLATFORM_WINDOWS
+   if (db_thread != NULL)
+   {
+      WaitForSingleObject(db_thread, INFINITE);
+      CloseHandle(db_thread);
+      db_thread = NULL;
+   }
+#else
+   pthread_join(db_thread, NULL);
+#endif
+}
 
 // Statistics table - maps STAT_TYPE to table name and expected field count
 // timestamp_pos: 0 = no auto-timestamp, 1 = NOW() as first value, -1 = NOW() as last value
@@ -709,10 +819,10 @@ static void PgTruncateTable(int type)
 
 static bool PgDequeue(void)
 {
-   pthread_mutex_lock(&queue.mutex);
+   PgQueueLock();
    if (queue.count == 0)
    {
-      pthread_mutex_unlock(&queue.mutex);
+      PgQueueUnlock();
       return false;
    }
 
@@ -721,7 +831,7 @@ static bool PgDequeue(void)
    if (queue.first == NULL)
       queue.last = NULL;
    queue.count--;
-   pthread_mutex_unlock(&queue.mutex);
+   PgQueueUnlock();
 
    if (node->num_fields < 0)
       PgTruncateTable(node->type);
@@ -737,8 +847,22 @@ static bool PgDequeue(void)
    return true;
 }
 
+#ifdef BLAK_PLATFORM_WINDOWS
+static unsigned __stdcall PgWorker(void *arg)
+#else
 static void *PgWorker(void *arg)
+#endif
 {
+   if (!PgQueueInit())
+   {
+   db_state = DB_STOPPED;
+#ifdef BLAK_PLATFORM_WINDOWS
+   return 0;
+#else
+   return NULL;
+#endif
+   }
+
    db_state = DB_STARTING;
 
    // Connect
@@ -755,7 +879,7 @@ static void *PgWorker(void *arg)
          pg_conn = NULL;
       }
       // Retry after delay
-      usleep(DB_RECONNECT_SLEEP_MS * 1000);
+      PgSleepMs(DB_RECONNECT_SLEEP_MS);
    }
 
    // Main work loop
@@ -772,7 +896,7 @@ static void *PgWorker(void *arg)
                break;
          }
          if (processed == 0)
-            usleep(DB_WORKER_SLEEP_MS * 1000);
+            PgSleepMs(DB_WORKER_SLEEP_MS);
       }
       else
       {
@@ -781,7 +905,7 @@ static void *PgWorker(void *arg)
          {
             eprintf("PostgreSQL connection lost, reconnecting...\n");
             if (!PgConnect())
-               usleep(DB_RECONNECT_SLEEP_MS * 1000);
+               PgSleepMs(DB_RECONNECT_SLEEP_MS);
             else
                db_state = DB_READY;
          }
@@ -796,8 +920,13 @@ static void *PgWorker(void *arg)
       PQfinish(pg_conn);
       pg_conn = NULL;
    }
+   PgQueueShutdown();
    db_state = DB_STOPPED;
+#ifdef BLAK_PLATFORM_WINDOWS
+   return 0;
+#else
    return NULL;
+#endif
 }
 
 /******************************************************************************/
@@ -815,14 +944,24 @@ void MySQLInit(char *Host, int Port, char *User, char *Password, char *DB)
       return;
    }
 
-   db_host = strdup(Host);
+   db_host = PgStrdup(Host);
    db_port = Port;
-   db_user = strdup(User);
-   db_pass = strdup(Password);
-   db_name = strdup(DB);
+   db_user = PgStrdup(User);
+   db_pass = PgStrdup(Password);
+   db_name = PgStrdup(DB);
 
-   pthread_create(&db_thread, NULL, PgWorker, NULL);
-   usleep(100000); // 100ms for thread startup
+   if (!PgThreadStart())
+   {
+      free(db_host); db_host = NULL;
+      free(db_user); db_user = NULL;
+      free(db_pass); db_pass = NULL;
+      free(db_name); db_name = NULL;
+      db_state = DB_STOPPED;
+      eprintf("PostgreSQL init failed: could not start writer thread\n");
+      return;
+   }
+
+   PgSleepMs(100); // 100ms for thread startup
 }
 
 void MySQLEnd()
@@ -831,7 +970,7 @@ void MySQLEnd()
       return;
 
    db_state = DB_STOPPING;
-   pthread_join(db_thread, NULL);
+   PgThreadJoin();
 
    free(db_host); db_host = NULL;
    free(db_user); db_user = NULL;
@@ -863,10 +1002,10 @@ BOOL MySQLRecordGeneric(int type, int num_fields, sql_data_node data[])
    node->data = data;
    node->next = NULL;
 
-   pthread_mutex_lock(&queue.mutex);
+   PgQueueLock();
    if (queue.count >= MAX_RECORD_QUEUE)
    {
-      pthread_mutex_unlock(&queue.mutex);
+      PgQueueUnlock();
       FreeDataNodeMemory(num_fields, num_fields, data);
       FreeMemory(MALLOC_ID_SQL, node, sizeof(sql_queue_node));
       eprintf("PostgreSQL queue full, dropping record\n");
@@ -879,7 +1018,7 @@ BOOL MySQLRecordGeneric(int type, int num_fields, sql_data_node data[])
       queue.first = node;
    queue.last = node;
    queue.count++;
-   pthread_mutex_unlock(&queue.mutex);
+   PgQueueUnlock();
 
    return TRUE;
 }
@@ -893,14 +1032,14 @@ BOOL MySQLEmptyTable(int type)
    node->data = NULL;
    node->next = NULL;
 
-   pthread_mutex_lock(&queue.mutex);
+   PgQueueLock();
    if (queue.last)
       queue.last->next = node;
    else
       queue.first = node;
    queue.last = node;
    queue.count++;
-   pthread_mutex_unlock(&queue.mutex);
+   PgQueueUnlock();
 
    return TRUE;
 }

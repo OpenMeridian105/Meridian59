@@ -3,6 +3,7 @@
 #
 
 TOPDIR=..
+WARNINGS_AS_ERRORS = /WX-
 !include $(TOPDIR)\common.mak
 
 !ifdef RELEASE
@@ -17,10 +18,9 @@ LIB = $(BLAKLIBDIR)\x64;$(BLAKLIBDIR);$(LIB)
 # Additional compiler flags (see common.mak)
 # /TP           Compile as C++ code
 # /arch:SSE2           Use SSE2 instructions (VS2013+ default to SSE2)
-# /WX-                 Match the VS project's warning policy for migration work
 # /Zc:strictStrings-   Avoid legacy string-literal const errors in the nmake path
 # /wd5055              Ignore new enum/floating-point deprecation warnings
-CFLAGS = $(CFLAGS) /arch:SSE2 /TP /Zi /WX- /Zc:strictStrings- /wd5055 /DBLAK_USE_POSTGRESQL /I$(BLAKINCLUDEDIR)\postgres
+CFLAGS = $(CFLAGS) /arch:SSE2 /Zc:strictStrings- /wd5055 /DBLAK_USE_POSTGRESQL /I$(BLAKINCLUDEDIR)\postgres
 
 # ----------------------------------------------------------------------
 # Additional linker flags (see common.mak)

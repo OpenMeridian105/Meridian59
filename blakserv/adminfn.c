@@ -642,7 +642,7 @@ void SendSessionAdminText(int session_id,const char *fmt,...)
 	
 	admin_session_id = session_id;
 	
-	SendAdminBuffer(s,strlen(s));
+	SendAdminBuffer(s,(int)strlen(s));
 	
 	admin_session_id = prev_admin_session_id;
 }
@@ -866,7 +866,7 @@ void AdminTable(int len_command_table,admin_table_type command_table[],int sessi
 				}
 				
 				text = (char *) parm_str;
-				SetTempString( text, strlen( text ) );	// Copies to global temp_str
+				SetTempString(text, (int)strlen(text));	// Copies to global temp_str
 				
 				// we need to set type, name_id, and value
 				//	type is CONSTANT (set above)
@@ -1375,7 +1375,8 @@ void AdminShowStatus(int session_id,admin_parm_type parms[],
 void AdminShowMemory(int session_id,admin_parm_type parms[],
                      int num_blak_parm,parm_node blak_parm[])
 {
-	int i,total;
+	int i;
+	size_t total;
 	memory_statistics *mstat;
 	
 	aprintf("System Memory -----------------------------\n");
@@ -1387,10 +1388,10 @@ void AdminShowMemory(int session_id,admin_parm_type parms[],
 	aprintf("%s\n",TimeStr(GetTime()));
 	for (i=0;i<GetNumMemoryStats();i++)
 	{
-		aprintf("%-20s %8lu\n",GetMemoryStatName(i),mstat->allocated[i]);
+		aprintf("%-20s %8zu\n",GetMemoryStatName(i),mstat->allocated[i]);
 		total += mstat->allocated[i];
 	}
-	aprintf("%-20s %4lu MB\n","-- Total",total/1024/1024);
+	aprintf("%-20s %4zu MB\n","-- Total",total/1024/1024);
 	
 	aprintf("-------------------------------------------\n");
 }
@@ -4862,7 +4863,7 @@ void AdminSendObject(int session_id,admin_parm_type parms[],
 			int len;
 			if (rnod && rnod->resource_val[0] && *rnod->resource_val[0])
 			{
-            len = std::min(strlen(rnod->resource_val[0]), (size_t) 60);
+				len = (int)std::min(strlen(rnod->resource_val[0]), size_t(60));
 			  aprintf(":   == \"");
 			  AdminBufferSend(rnod->resource_val[0], len);
 			  if (len < (int)strlen(rnod->resource_val[0]))
@@ -4896,7 +4897,7 @@ void AdminSendUsers(int session_id,admin_parm_type parms[],
 	
 	if (!text)
 		return;
-	SetTempString(text,strlen(text));
+	SetTempString(text,(int)strlen(text));
 	str_val.v.tag = TAG_TEMP_STRING;
 	str_val.v.data = 0;		/* doesn't matter for TAG_TEMP_STRING */
 	

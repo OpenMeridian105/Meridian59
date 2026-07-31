@@ -87,7 +87,7 @@ void AddBlakodToPacket(val_type obj_size,val_type obj_data)
          AddIntToPacket(byte4);
          break;
       case NUMBER_OBJECT :
-         temp_val.int_val = obj_data.int_val;
+         temp_val.v.data = (int) obj_data.v.data;
          temp_val.v.tag = CLIENT_TAG_NUMBER;
          byte4 = temp_val.int_val;
          AddIntToPacket(byte4);
@@ -106,7 +106,7 @@ void AddBlakodToPacket(val_type obj_size,val_type obj_data)
                obj_data.v.data);
             return;
          }
-         AddStringToPacket(strlen(pStrConst),pStrConst);
+         AddStringToPacket((int)strlen(pStrConst),pStrConst);
          break;
       default :
          bprintf("AddBlakodToPacket can't send %i bytes\n",num_bytes);
@@ -138,14 +138,12 @@ void AddStringToPacketAsInt(const char *ptr)
    blist = AddToBufferList(blist, &number, 4);
 }
 
-void AddStringToPacket(int int_len,const char *ptr)
+void AddStringToPacket(size_t int_len,const char *ptr)
 {
-   unsigned short len;
-
-   len = int_len;
+   auto len = (unsigned short) int_len;
 
    blist = AddToBufferList(blist,&len,2);
-   blist = AddToBufferList(blist,(void *) ptr,int_len);
+   blist = AddToBufferList(blist,(void *) ptr,(int)int_len);
 }
 
 void SecurePacketBufferList(int session_id, buffer_node *bl)

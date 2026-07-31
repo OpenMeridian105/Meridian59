@@ -305,7 +305,7 @@ LRESULT CALLBACK InterfaceWindowProc(HWND hwnd,UINT message,WPARAM wParam,LPARAM
 			sprintf(buf,"%3i",sessions_logged_on);
 			SendDlgItemMessage(hwndMain,IDS_STATUS_WINDOW,SB_SETTEXT,1,(LPARAM)buf);
 			
-			InterfaceAddList(lParam);
+			InterfaceAddList((int)lParam);
 			break;
 			
 		case WM_BLAK_LOGOFF :
@@ -319,12 +319,12 @@ LRESULT CALLBACK InterfaceWindowProc(HWND hwnd,UINT message,WPARAM wParam,LPARAM
 			sprintf(buf,"%3i",sessions_logged_on);
 			SendDlgItemMessage(hwndMain,IDS_STATUS_WINDOW,SB_SETTEXT,1,(LPARAM)buf);
 			
-			InterfaceRemoveList(lParam);
+			InterfaceRemoveList((int)lParam);
 			
 			break;
 			
 		case WM_BLAK_UPDATE_SESSION :
-			InterfaceUpdateList(lParam);
+			InterfaceUpdateList((int)lParam);
 			break;
 			
 		case WM_BLAK_UPDATE_CHANNEL :
@@ -952,7 +952,7 @@ void InterfaceDrawText(HWND hwnd)
 	
 	if (TryEnterServerLock())
 	{
-		sprintf(s,"%i bytes",GetMemoryTotal());
+		sprintf(s,"%zu bytes",GetMemoryTotal());
 		SetDlgItemText(HWND_STATUS,IDC_MEMORY_VALUE,s);
 		
 		kstat = GetKodStats();

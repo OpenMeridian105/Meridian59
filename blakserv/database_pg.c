@@ -1056,7 +1056,7 @@ char *MySQLDuplicateString(char *str)
       bprintf("MySQLDuplicateString could not duplicate null string!");
       return NULL;
    }
-   int sLen = strlen(str);
+   int sLen = (int)strlen(str);
    char *ret_str = (char *)AllocateMemory(MALLOC_ID_SQL, sLen + 1);
    memcpy(ret_str, str, sLen);
    ret_str[sLen] = 0;
@@ -1087,7 +1087,7 @@ void FreeDataNodeMemory(int total_fields, int fields_entered, sql_data_node data
       if ((data[i].type == TAG_STRING || data[i].type == TAG_RESOURCE)
          && data[i].value.str)
       {
-         FreeMemory(MALLOC_ID_SQL, data[i].value.str, strlen(data[i].value.str) + 1);
+         FreeMemory(MALLOC_ID_SQL, data[i].value.str, (int)strlen(data[i].value.str) + 1);
       }
    }
    FreeMemory(MALLOC_ID_SQL, data, sizeof(sql_data_node) * total_fields);

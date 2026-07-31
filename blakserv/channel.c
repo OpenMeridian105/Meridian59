@@ -202,7 +202,7 @@ void aprintf(const char *fmt, ...)
    va_end(marker);
 
    WriteStrChannel(CHANNEL_A, s);
-   AdminBufferSend(s, strlen(s));
+   AdminBufferSend(s, (int)strlen(s));
 }
 
 void WriteStrChannel(int channel_id,char *s)

@@ -29,7 +29,7 @@ void AddResource(int id, int lang_id, char *str_value);
 void SetResourceName(int id,char *name);
 int AddDynamicResource(char *str_value);
 void ChangeDynamicResourceStr(resource_node *r,char *str_value);
-void ChangeDynamicResource(resource_node *r,char *data,int len_data);
+void ChangeDynamicResource(resource_node *r,char *data,size_t len_data);
 int GetNumDynamicRscFiles(void);
 int SetNumDynamicRscFiles(int num_files);
 resource_node * GetResourceByID(int id);

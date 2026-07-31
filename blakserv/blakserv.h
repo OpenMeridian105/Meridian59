@@ -157,12 +157,15 @@ enum
 #include <stdlib.h>
 #include <string.h>
 #include <stdarg.h>
+#include <limits.h>
 #include <malloc.h>
 #include <fcntl.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <time.h>
 #include <math.h>
+#include <cinttypes>
+#include <filesystem>
 #ifdef BLAK_PLATFORM_WINDOWS
 #include <ppl.h>
 #endif

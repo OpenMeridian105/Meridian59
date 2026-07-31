@@ -39,7 +39,7 @@ void FreeSIHash(sihash_type sihash)
 		while (node != NULL)
 		{
 			sihash_node *next = node->next;
-			FreeMemory(MALLOC_ID_KODBASE,node->key,strlen(node->key)+1);
+			FreeMemory(MALLOC_ID_KODBASE,node->key,(int)(strlen(node->key) + 1));
 			FreeMemory(MALLOC_ID_KODBASE,node,sizeof(sihash_node));
 			node = next;
 		}		
@@ -59,7 +59,7 @@ void SIHashInsert(sihash_type sihash,const char *key,int value)
 
 	sihash_node *new_node = (sihash_node *)AllocateMemory(MALLOC_ID_KODBASE,sizeof(sihash_node));
 	new_node->next = NULL;
-	new_node->key = (char *)AllocateMemory(MALLOC_ID_KODBASE,strlen(key)+1);
+	new_node->key = (char *)AllocateMemory(MALLOC_ID_KODBASE,(int)(strlen(key) + 1));
 	strcpy(new_node->key,key);
 	new_node->value = value;
 	if (node == NULL)

@@ -39,7 +39,7 @@ void FreeISHash(ishash_type ishash)
 		while (node != NULL)
 		{
 			ishash_node *next = node->next;
-			FreeMemory(MALLOC_ID_LOAD_GAME,node->value,strlen(node->value)+1);
+			FreeMemory(MALLOC_ID_LOAD_GAME,node->value,(int)(strlen(node->value) + 1));
 			FreeMemory(MALLOC_ID_LOAD_GAME,node,sizeof(ishash_node));
 			node = next;
 		}		
@@ -60,7 +60,7 @@ void ISHashInsert(ishash_type ishash,int key,const char *value)
 	ishash_node *new_node = (ishash_node *)AllocateMemory(MALLOC_ID_LOAD_GAME,sizeof(ishash_node));
 	new_node->next = NULL;
 	new_node->key = key;
-	new_node->value = (char *)AllocateMemory(MALLOC_ID_LOAD_GAME,strlen(value)+1);
+	new_node->value = (char *)AllocateMemory(MALLOC_ID_LOAD_GAME,(int)(strlen(value) + 1));
 	strcpy(new_node->value,value);
 	if (node == NULL)
 	{

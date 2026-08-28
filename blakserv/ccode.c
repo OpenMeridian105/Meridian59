@@ -198,9 +198,8 @@ int C_SaveGame(int object_id,local_var_type *local_vars,
 
 /*
  * C_LoadGame: Takes a blakod string as a parameter, which contains a save
- *    game time.  Posts a message to the blakserv main thread which triggers
- *    a load game, using the save game time value sent in the message. All
- *    users are disconnected when the game reload triggers.
+ *    game time. Defers loading the game until the current Blakod message has
+ *    returned. All users are disconnected when the game reload triggers.
  */
 int C_LoadGame(int object_id, local_var_type *local_vars,
                int num_normal_parms, parm_node normal_parm_array[],
@@ -233,7 +232,7 @@ int C_LoadGame(int object_id, local_var_type *local_vars,
 #ifdef BLAK_PLATFORM_WINDOWS
    MessagePost(main_thread_id, WM_BLAK_MAIN_LOAD_GAME, 0, save_time);
 #else
-   LoadFromKod(save_time);
+   RequestLoadFromKod(save_time);
 #endif
 
    return NIL;

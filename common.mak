@@ -66,13 +66,19 @@ PALETTEFILE = $(TOPDIR)\blakston.pal
 # /WX                     Treat warnings as errors
 # /W3                     Warnings level
 # /wdXXXX                 Disable specific warnings
+# /TP                     Compile as C++ code
+# /std:c++20              Use C++20 standard
+!ifndef WARNINGS_AS_ERRORS
+WARNINGS_AS_ERRORS = /WX
+!endif
+
 CCOMMONFLAGS = /nologo /GR- /EHsc- /MP /fp:precise \
     /DBLAK_PLATFORM_WINDOWS /DWIN32 \
     /D_CRT_SECURE_NO_WARNINGS \
     /D_CRT_NONSTDC_NO_DEPRECATE \
     /D_WINSOCK_DEPRECATED_NO_WARNINGS \
     /DHAVE_CONFIG_H \
-    /WX /W3 /wd4996 /wd4390 
+    $(WARNINGS_AS_ERRORS) /W3 /wd4996 /wd4390 /TP /std:c++20
 
 # Specific MS VC++ compiler specs, different for release and debug
 # /MT           Use static multithreaded VC++ runtime
@@ -84,12 +90,12 @@ CCOMMONFLAGS = /nologo /GR- /EHsc- /MP /fp:precise \
 # /Oy           Suppress frame pointer
 # /GL           Full optimization across modules (for /LTCG)
 # /GF           Eliminate duplicate strings
-# /ZI           Debug info generation (edit and continue)
+# /Zi           Debug info generation
 # /DBLAKDEBUG   Tell blakserv to run in debug mode
 # /DNODPRINTFS  Used to surpress debug output and few others in release client
 # /DNDEBUG      Visual Studio default macro for 'Release' builds
 CNORMALFLAGS  = $(CCOMMONFLAGS) /MT /Ox /Ob2 /Oi /Ot /Oy /GL /GF /DNODPRINTFS /DNDEBUG
-CDEBUGFLAGS   = $(CCOMMONFLAGS) /MT /ZI /DBLAKDEBUG
+CDEBUGFLAGS   = $(CCOMMONFLAGS) /MT /Zi /DBLAKDEBUG
 
 # -----------------------------------------------------------------
 # Linker settings for MS linker
@@ -103,12 +109,12 @@ CDEBUGFLAGS   = $(CCOMMONFLAGS) /MT /ZI /DBLAKDEBUG
 # /OPT:ICF             Optimization
 
 # For Shared (DLL)
-LINKNORMALFLAGS = /nologo /machine:ix86 /LARGEADDRESSAWARE /release /LTCG /OPT:REF /OPT:ICF
-LINKDEBUGFLAGS  = /nologo /machine:ix86 /LARGEADDRESSAWARE /debug  
+LINKNORMALFLAGS = /nologo /LARGEADDRESSAWARE /release /LTCG /OPT:REF /OPT:ICF
+LINKDEBUGFLAGS  = /nologo /LARGEADDRESSAWARE /debug
 
 # For Static (LIB)
-LINKSTNORMALFLAGS = /nologo /machine:ix86 /LTCG
-LINKSTDEBUGFLAGS  = /nologo /machine:ix86
+LINKSTNORMALFLAGS = /nologo /LTCG
+LINKSTDEBUGFLAGS  = /nologo
 
 # -----------------------------------------------------------------
 # Pick compiler and linker flags based on DEBUG or RELEASE

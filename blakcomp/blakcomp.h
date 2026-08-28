@@ -13,6 +13,7 @@
 #ifdef BLAK_PLATFORM_WINDOWS
 #include <io.h>
 #include <direct.h>
+static constexpr const char * DIR_SEPARATOR = "\\";
 #endif
 
 #ifdef BLAK_PLATFORM_LINUX
@@ -23,6 +24,7 @@
 #define O_BINARY 0
 #define _MAX_PATH PATH_MAX
 #define _mkdir(d) mkdir((d), 0755)
+static constexpr const char * DIR_SEPARATOR = "/";
 #endif
 
 #include <stdio.h>
@@ -430,7 +432,7 @@ void action_error(const char *fmt, ...);
 void simple_error(const char *fmt, ...);
 void simple_warning(const char *fmt, ...);
 void initialize_parser(void);
-void compile_file_list(char *path, list_type l); // also used in dircompile.c
+void compile_file_list(const char *path, list_type l); // also used in dircompile.c
 
 int id_hash(const void *info, int table_size);
 int id_compare(void *info1, void *info2);

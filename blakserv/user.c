@@ -64,11 +64,7 @@ user_node * CreateNewUser(int account_id,int class_id)
    p[0].value = system_id_const.int_val;
    p[0].name_id = SYSTEM_PARM;
 
-#ifdef BLAK_PLATFORM_WINDOWS
-   sprintf(buf,"User%i%i%I64i",account_id,GetTime()%100000,GetMilliCount()%1000);
-#else
    sprintf(buf,"User%i%i%llu",account_id,GetTime()%100000,GetMilliCount()%1000);
-#endif
    
    name_val.v.tag = TAG_RESOURCE;
    name_val.v.data = AddDynamicResource(buf);
@@ -310,7 +306,7 @@ user_node * GetUserByName(char *username)
    val_type temp_str_val,ret_val;
    parm_node p[1];
 
-   SetTempString(username,strlen(username));
+   SetTempString(username,(int)strlen(username));
 
    temp_str_val.v.tag = TAG_TEMP_STRING;
    temp_str_val.v.data = 0;

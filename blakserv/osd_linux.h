@@ -110,6 +110,7 @@ void RunMainLoop(void);
 void EnableSendEvents(SOCKET sock);
 void DisableSendEvents(SOCKET sock);
 void WakeupMainLoop(void);
+void RequestLoadFromKod(int save_time);
 
 void StartupComplete(void);
 

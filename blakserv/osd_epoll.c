@@ -18,6 +18,7 @@
 
 int fd_epoll;
 static int fd_wakeup = -1;  // eventfd for timer wakeup
+static int pending_load_time = -1;
 
 #define MAX_MAINTENANCE_MASKS 15
 static char *maintenance_masks[MAX_MAINTENANCE_MASKS];
@@ -42,6 +43,33 @@ static INT64 GetMainLoopWaitTime(void)
          ms = 500;
    }
    return ms;
+}
+
+void RequestLoadFromKod(int save_time)
+{
+   if (pending_load_time >= 0)
+   {
+      bprintf("Load game already pending, ignoring request for save time %i\n", save_time);
+      return;
+   }
+
+   pending_load_time = save_time;
+   WakeupMainLoop();
+}
+
+static void ProcessPendingLoadFromKod(void)
+{
+   int save_time;
+
+   if (pending_load_time < 0)
+      return;
+
+   save_time = pending_load_time;
+   pending_load_time = -1;
+
+   EnterServerLock();
+   LoadFromKod(save_time);
+   LeaveServerLock();
 }
 
 void RunMainLoop(void)
@@ -125,6 +153,8 @@ void RunMainLoop(void)
       PollSessions();
       TimerActivate();
       LeaveServerLock();
+
+      ProcessPendingLoadFromKod();
    }
 
    close(fd_epoll);

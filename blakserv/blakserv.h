@@ -157,12 +157,15 @@ enum
 #include <stdlib.h>
 #include <string.h>
 #include <stdarg.h>
+#include <limits.h>
 #include <malloc.h>
 #include <fcntl.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <time.h>
 #include <math.h>
+#include <cinttypes>
+#include <filesystem>
 #ifdef BLAK_PLATFORM_WINDOWS
 #include <ppl.h>
 #endif
@@ -321,7 +324,7 @@ void StartAsyncSession(session_node *s);
 #include "maintenance.h"
 #include "block.h"
 
-#ifdef BLAK_PLATFORM_WINDOWS
+#if defined(BLAK_PLATFORM_WINDOWS) && !defined(BLAK_USE_POSTGRESQL)
 #include "database.h"
 #else
 #include "database_pg.h"

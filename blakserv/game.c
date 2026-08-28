@@ -635,16 +635,16 @@ void GameTryGetUser(session_node *s)
    AddByteToPacket(2);
 
    ptr = LockConfigStr(ADVERTISE_FILE1);
-   AddStringToPacket(strlen(ptr),ptr);
+   AddStringToPacket((int)strlen(ptr),ptr);
    UnlockConfigStr();
    ptr = LockConfigStr(ADVERTISE_URL1);
-   AddStringToPacket(strlen(ptr),ptr);
+   AddStringToPacket((int)strlen(ptr),ptr);
    UnlockConfigStr();
    ptr = LockConfigStr(ADVERTISE_FILE2);
-   AddStringToPacket(strlen(ptr),ptr);
+   AddStringToPacket((int)strlen(ptr),ptr);
    UnlockConfigStr();
    ptr = LockConfigStr(ADVERTISE_URL2);
-   AddStringToPacket(strlen(ptr),ptr);
+   AddStringToPacket((int)strlen(ptr),ptr);
    UnlockConfigStr();
 
    SendPacket(s->session_id);   
@@ -673,7 +673,7 @@ void GameSendEachUserChoice(user_node *u)
             name_val.v.data);
          return;
       }
-      AddStringToPacket(strlen(r->resource_val[0]), r->resource_val[0]);
+      AddStringToPacket((int)strlen(r->resource_val[0]), r->resource_val[0]);
    }
 
    num_val.int_val = SendTopLevelBlakodMessage(u->object_id, IS_FIRST_TIME_MSG, 0, NULL);

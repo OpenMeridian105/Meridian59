@@ -78,7 +78,6 @@ void AdminSaveConfiguration(int session_id, admin_parm_type parms[], int num_bla
 void AdminSaveOneConfigNode(config_node *c, const char *config_name, const char *default_str);
 void AdminWho(int session_id, admin_parm_type parms[], int num_blak_parm, parm_node blak_parm[]);
 void AdminWhoEachSession(session_node *s);
-void AdminShutdown(int session_id, admin_parm_type parms[], int num_blak_parm, parm_node blak_parm[]);
 void AdminLock(int session_id, admin_parm_type parms[], int num_blak_parm, parm_node blak_parm[]);
 void AdminUnlock(int session_id, admin_parm_type parms[], int num_blak_parm, parm_node blak_parm[]);
 void AdminMail(int session_id, admin_parm_type parms[], int num_blak_parm, parm_node blak_parm[]);
@@ -530,7 +529,6 @@ admin_table_type admin_main_table[] =
 	{ AdminUnlock,        {N},   F, A|M, NULL, 0, "unlock",    "Unlock the game" },
 	{ NULL, {N}, F, A|M, admin_unsuspend_table, LEN_ADMIN_UNSUSPEND_TABLE,"unsuspend", "Unsuspend subcommand" },
 	{ AdminWho,           {N},   F, A|M, NULL, 0, "who",       "Show every account logged on" },
-	{ AdminShutdown,      {N},   F, A|M, NULL, 0, "shutdown",  "Save game and shut down the server" },
 };
 
 #define LEN_ADMIN_MAIN_TABLE (sizeof(admin_main_table)/sizeof(admin_table_type))
@@ -644,7 +642,7 @@ void SendSessionAdminText(int session_id,const char *fmt,...)
 	
 	admin_session_id = session_id;
 	
-	SendAdminBuffer(s,strlen(s));
+	SendAdminBuffer(s,(int)strlen(s));
 	
 	admin_session_id = prev_admin_session_id;
 }
@@ -868,7 +866,7 @@ void AdminTable(int len_command_table,admin_table_type command_table[],int sessi
 				}
 				
 				text = (char *) parm_str;
-				SetTempString( text, strlen( text ) );	// Copies to global temp_str
+				SetTempString(text, (int)strlen(text));	// Copies to global temp_str
 				
 				// we need to set type, name_id, and value
 				//	type is CONSTANT (set above)
@@ -1377,7 +1375,8 @@ void AdminShowStatus(int session_id,admin_parm_type parms[],
 void AdminShowMemory(int session_id,admin_parm_type parms[],
                      int num_blak_parm,parm_node blak_parm[])
 {
-	int i,total;
+	int i;
+	size_t total;
 	memory_statistics *mstat;
 	
 	aprintf("System Memory -----------------------------\n");
@@ -1389,10 +1388,10 @@ void AdminShowMemory(int session_id,admin_parm_type parms[],
 	aprintf("%s\n",TimeStr(GetTime()));
 	for (i=0;i<GetNumMemoryStats();i++)
 	{
-		aprintf("%-20s %8lu\n",GetMemoryStatName(i),mstat->allocated[i]);
+		aprintf("%-20s %8zu\n",GetMemoryStatName(i),mstat->allocated[i]);
 		total += mstat->allocated[i];
 	}
-	aprintf("%-20s %4lu MB\n","-- Total",total/1024/1024);
+	aprintf("%-20s %4zu MB\n","-- Total",total/1024/1024);
 	
 	aprintf("-------------------------------------------\n");
 }
@@ -4864,7 +4863,7 @@ void AdminSendObject(int session_id,admin_parm_type parms[],
 			int len;
 			if (rnod && rnod->resource_val[0] && *rnod->resource_val[0])
 			{
-            len = std::min(strlen(rnod->resource_val[0]), (size_t) 60);
+				len = (int)std::min(strlen(rnod->resource_val[0]), size_t(60));
 			  aprintf(":   == \"");
 			  AdminBufferSend(rnod->resource_val[0], len);
 			  if (len < (int)strlen(rnod->resource_val[0]))
@@ -4898,7 +4897,7 @@ void AdminSendUsers(int session_id,admin_parm_type parms[],
 	
 	if (!text)
 		return;
-	SetTempString(text,strlen(text));
+	SetTempString(text,(int)strlen(text));
 	str_val.v.tag = TAG_TEMP_STRING;
 	str_val.v.data = 0;		/* doesn't matter for TAG_TEMP_STRING */
 	
@@ -5610,17 +5609,4 @@ void AdminMark(int session_id,admin_parm_type parms[],
 	lprintf("-------------------------------------------------------------------------------------\n");
 	dprintf("-------------------------------------------------------------------------------------\n");
 	eprintf("-------------------------------------------------------------------------------------\n");
-}
-
-void AdminShutdown(int session_id, admin_parm_type parms[],
-   int num_blak_parm, parm_node blak_parm[])
-{
-   aprintf("Saving game and shutting down server...\n");
-   lprintf("AdminShutdown: saving game and shutting down.\n");
-
-   GarbageCollect();
-   SaveAll();
-
-   aprintf("Server shutting down now.\n");
-   SetQuit();
 }

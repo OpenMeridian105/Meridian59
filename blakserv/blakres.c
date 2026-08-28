@@ -174,7 +174,7 @@ void ChangeDynamicResourceStr(resource_node *r,char *str_value)
 	ChangeDynamicResource(r,str_value,strlen(str_value));
 }
 
-void ChangeDynamicResource(resource_node *r,char *data,int len_data)
+void ChangeDynamicResource(resource_node *r,char *data,size_t len_data)
 {
 	if (r == NULL)
 	{
@@ -198,7 +198,7 @@ void DynamicResourceChangeNotify(session_node *s)
 	{
 		AddByteToPacket(BP_CHANGE_RESOURCE);
 		AddIntToPacket(notify_r->resource_id);
-		AddStringToPacket(strlen(notify_r->resource_val[0]),notify_r->resource_val[0]);
+		AddStringToPacket((int)strlen(notify_r->resource_val[0]),notify_r->resource_val[0]);
 		SendPacket(s->session_id);
 	}
 }

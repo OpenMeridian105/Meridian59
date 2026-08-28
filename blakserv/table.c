@@ -313,7 +313,7 @@ void DeleteTableEntry(int table_id,val_type key_val)
 Bool EqualTableEntry(val_type s1_val,val_type s2_val)
 {
    char *s1,*s2;
-   int len1,len2;
+   size_t len1,len2;
    resource_node *r;
    string_node *snod;
 
@@ -402,7 +402,7 @@ Bool EqualTableEntry(val_type s1_val,val_type s2_val)
       return False;
    }
 
-   return FuzzyBufferEqual(s1,len1,s2,len2);
+   return FuzzyBufferEqual(s1,(int)len1,s2,(int)len2);
 }
 
 unsigned int GetTableHash(val_type val)
@@ -423,7 +423,7 @@ unsigned int GetTableHash(val_type val)
             return 0;
          }
          s = r->resource_val[0];
-         len = strlen(r->resource_val[0]);
+         len = (int)strlen(r->resource_val[0]);
          break;
 
       case TAG_STRING :
@@ -461,7 +461,7 @@ unsigned int GetTableHash(val_type val)
    return GetBufferHash(buf0,strlen(buf0));
 }
 
-unsigned int GetBufferHash(const char *buf,unsigned int len_buf)
+unsigned int GetBufferHash(const char *buf, size_t len_buf)
 {
    unsigned int g,h,i;
 

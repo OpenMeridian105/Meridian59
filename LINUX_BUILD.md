@@ -78,7 +78,7 @@ Via the admin script:
 ./blakadmin.sh garbage
 ./blakadmin.sh "send o 0 updatedatabase"
 ./blakadmin.sh create account admin username password email
-./blakadmin.sh shutdown
+./blakadmin.sh terminate save
 ```
 
 Interactive mode:

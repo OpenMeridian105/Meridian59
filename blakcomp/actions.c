@@ -41,9 +41,9 @@ list_type const_files;
 int parsing_included_constants;
 
 typedef struct {
-  char   *two_letter_code;
-  char   *language_name;
-  int    languageid;
+  const char *two_letter_code;
+  const char *language_name;
+  int languageid;
 } lang_table;
 
 // Table of all languages we could possibly use.
@@ -400,7 +400,7 @@ int is_unary_list_op(int op)
 /*
 * get_list_op_name: returns string name for list opcodes, for errors.
 */
-char * get_unarycall_op_name(int op)
+const char * get_unarycall_op_name(int op)
 {
    switch (op)
    {

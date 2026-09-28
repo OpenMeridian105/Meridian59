@@ -61,7 +61,7 @@ typedef struct class_struct
 /* Three functions from message.c that need class_node. */
 message_node *GetMessageByIDFast(class_node *c, int message_id, class_node **found_class);
 message_node *GetMessageByID(int class_id,int message_id,class_node **found_class);
-message_node *GetMessageByName(int class_id,char *message_name,class_node **found_class);
+message_node *GetMessageByName(int class_id, const char *message_name, class_node **found_class);
 
 
 /* the 629 is just a number to mult by to get reasonable hash results */

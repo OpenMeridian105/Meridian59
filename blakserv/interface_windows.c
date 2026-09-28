@@ -1129,7 +1129,7 @@ void CenterWindow(HWND hwnd, HWND hwndParent)
  *   Returns TRUE if successful, else FALSE. Displays an error box
  *   to the user if something goes wrong.
  */
-BOOL RegCallbackGetIntData(HWND hwnd, int *retval, int dlg_field, char *errormsg, int min, int max)
+BOOL RegCallbackGetIntData(HWND hwnd, int *retval, int dlg_field, const char *errormsg, int min, int max)
 {
    BOOL dResult;
    if (!errormsg)

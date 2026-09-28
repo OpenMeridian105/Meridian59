@@ -11,6 +11,8 @@
 
 #include "blakcomp.h"
 
+#include <cinttypes>
+
 #ifdef BLAK_PLATFORM_WINDOWS
 #include "Windows.h"
 #include "psapi.h"
@@ -204,7 +206,7 @@ void compile_directory_mode()
 
    // Print some stats.
    timeEnd = time(NULL);
-   printf("Elapsed time: %lld seconds\n", timeEnd - timeStart);
+   printf("Elapsed time: %" PRIdMAX " seconds\n", (intmax_t)(timeEnd - timeStart));
 
 #ifdef BLAK_PLATFORM_WINDOWS
    PROCESS_MEMORY_COUNTERS pmc;

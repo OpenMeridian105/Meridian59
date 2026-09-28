@@ -965,7 +965,7 @@ void InterfaceDrawText(HWND hwnd)
 		if (kstat->interpreting_time/1000.0 < 0.01) 
 			sprintf(s,"0/second");
 		else
-			sprintf(s,"%llu/second",(UINT64)(kstat->num_interpreted/(kstat->interpreting_time/1000.0)));
+			sprintf(s,"%" PRIu64 "/second",(UINT64)(kstat->num_interpreted/(kstat->interpreting_time/1000.0)));
 		SetDlgItemText(HWND_STATUS,IDC_SPEED_VALUE,s);
 
 		SetDlgItemText(hwndMain,IDC_GAME_LOCKED, IsGameLocked() ? "The game is locked." : "");

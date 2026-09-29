@@ -195,7 +195,7 @@ void OutputGotoOpcode(int outfile, int goto_type, int id_type)
  *    interpreter reads this offset, at least that many bytes will have
  *    been read past 'source'.
  */
-void OutputGotoOffset(int outfile, int source, int destination)
+void OutputGotoOffset(int outfile, codegen_offset_t source, codegen_offset_t destination)
 {
    OutputInt(outfile, destination - source - sizeof(bkod_type));
 }
@@ -320,7 +320,7 @@ void OutputBaseExpression(int outfile, expr_type expr)
  *   and write out the offset required to jump to "destination".  Then
  *   return to "destination" in the file.
  */
-void BackpatchGotoUnconditional(int outfile, int source, int destination)
+void BackpatchGotoUnconditional(int outfile, codegen_offset_t source, codegen_offset_t destination)
 {
    FileGoto(outfile, source);
    OutputGotoOffset(outfile, source, destination);
@@ -334,7 +334,7 @@ void BackpatchGotoUnconditional(int outfile, int source, int destination)
  *   account for the check data having been read in by the interpreter,
  *   offsetting source from the expected point.
  */
-void BackpatchGotoConditional(int outfile, int source, int destination)
+void BackpatchGotoConditional(int outfile, codegen_offset_t source, codegen_offset_t destination)
 {
    FileGoto(outfile, source);
    OutputGotoOffset(outfile, source, destination - sizeof(bkod_type));
@@ -455,7 +455,8 @@ int flatten_expr(expr_type e, id_type destvar, int maxlocal)
    opcode_data opcode;
    expr_type tempexpr;
    int sourceval1, sourceval2, destval, our_maxlocal = maxlocal, templocals;
-   int op, gotopos, exitpos;
+   int op;
+   codegen_offset_t gotopos, exitpos;
    int binary_dest_type;
 
    memset(&opcode, 0, sizeof(opcode));  /* Set opcode to all zeros */

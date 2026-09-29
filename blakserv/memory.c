@@ -17,6 +17,8 @@
 
 memory_statistics memory_stat;
 
+static void * const FREED_MEMORY_SENTINEL = (void *)(UINT_PTR)0xDEADC0DEu;
+
 const char *memory_stat_names[] = 
 {
 	"Timer", "String", "Kodbase", "Resource", 
@@ -56,9 +58,9 @@ memory_statistics * GetMemoryStats(void)
 	return &memory_stat;
 }
 
-int GetMemoryTotal(void)
+size_t GetMemoryTotal(void)
 {
-	int total = 0;
+	size_t total = 0;
 	
 	for (int i = 0; i < MALLOC_ID_NUM; ++i)
 		total += memory_stat.allocated[i];
@@ -76,7 +78,7 @@ const char * GetMemoryStatName(int malloc_id)
 	return memory_stat_names[malloc_id];
 }
 
-void * AllocateMemoryDebug(int malloc_id,int size,const char *filename,int linenumber)
+void * AllocateMemoryDebug(int malloc_id,size_t size,const char *filename,int linenumber)
 {
 	void *ptr;
 	
@@ -96,7 +98,7 @@ void * AllocateMemoryDebug(int malloc_id,int size,const char *filename,int linen
 	{
 	/* assume channels started up if allocation error, which might not be true,
 		but if so, then there are more serious problems! */
-		eprintf("AllocateMemory couldn't allocate %i bytes (id %i)\n",size,malloc_id);
+		eprintf("AllocateMemory couldn't allocate %zu bytes (id %i)\n",size,malloc_id);
 		FatalError("Memory allocation failure");
 	}
 	/*if (InMainLoop())
@@ -108,7 +110,7 @@ void * AllocateMemoryDebug(int malloc_id,int size,const char *filename,int linen
 
 // Same as AllocateMemoryDebug, except calls calloc() for use in arrays. Faster than calling
 // malloc and setting the array to NULL.
-void * AllocateMemoryCallocDebug(int malloc_id, int count, int size, const char *filename, int linenumber)
+void * AllocateMemoryCallocDebug(int malloc_id, int count, size_t size, const char *filename, int linenumber)
 {
    void *ptr;
 
@@ -129,19 +131,19 @@ void * AllocateMemoryCallocDebug(int malloc_id, int count, int size, const char 
    {
       /* assume channels started up if allocation error, which might not be true,
       but if so, then there are more serious problems! */
-      eprintf("AllocateMemoryCallocDebug couldn't allocate %i bytes (id %i)\n",
-         size, malloc_id);
+      eprintf("AllocateMemoryCallocDebug couldn't allocate %zu bytes (id %i)\n",
+         (size_t)(count * size), malloc_id);
       FatalError("Memory allocation failure");
    }
 
    return ptr;
 }
 
-void FreeMemoryX(int malloc_id,void **ptr,int size)
+void FreeMemoryX(int malloc_id,void **ptr,size_t size)
 {
 	/*if (InMainLoop())
 	{
-		dprintf("F0x%08x %i %i\n",ptr,malloc_id,size);
+		dprintf("F0x%08x %i %zu\n",ptr,malloc_id,size);
 	}*/
 
 	if (malloc_id < 0 || malloc_id >= MALLOC_ID_NUM)
@@ -152,7 +154,7 @@ void FreeMemoryX(int malloc_id,void **ptr,int size)
 	free( *ptr );
 	
 	/* we want to catch any references to this, after the free()  */
-	*ptr = (void*)0xDEADC0DE ;
+	*ptr = FREED_MEMORY_SENTINEL;
 	
 }
 
@@ -180,7 +182,7 @@ void * ResizeMemory(int malloc_id,void *ptr,int old_size,int new_size)
 	return new_mem;
 }
 
-void * AllocateMemorySIMD(int malloc_id, int size)
+void * AllocateMemorySIMD(int malloc_id, size_t size)
 {
 #if defined(SSE2) || defined(SSE4)
    void *ptr;
@@ -200,7 +202,7 @@ void * AllocateMemorySIMD(int malloc_id, int size)
    {
       /* assume channels started up if allocation error, which might not be true,
       but if so, then there are more serious problems! */
-      eprintf("AllocateMemorySIMD couldn't allocate %i bytes (id %i)\n", size, malloc_id);
+      eprintf("AllocateMemorySIMD couldn't allocate %zu bytes (id %i)\n", size, malloc_id);
       FatalError("Memory allocation failure");
    }
 
@@ -211,7 +213,7 @@ void * AllocateMemorySIMD(int malloc_id, int size)
 #endif
 }
 
-void FreeMemorySIMD(int malloc_id, void *ptr, int size)
+void FreeMemorySIMD(int malloc_id, void *ptr, size_t size)
 {
 #if defined(SSE2) || defined(SSE4)
    if (malloc_id < 0 || malloc_id >= MALLOC_ID_NUM)

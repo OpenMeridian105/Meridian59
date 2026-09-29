@@ -12,37 +12,52 @@
 #ifndef _CODEGEN_H
 #define _CODEGEN_H
 
- // See codegen.c for explanation.
-extern int codegen_buffer_end;
-extern int codegen_buffer_position;
+#include <cstdint>
+#include <vector>
 
-/* Macros to move around a file */
-#define FileCurPos(f) \
-   codegen_buffer_position
-#define FileGoto(f, pos) \
-   codegen_buffer_end = codegen_buffer_position; \
-   codegen_buffer_position = pos
-#define FileGotoEnd(f) \
-   codegen_buffer_position = codegen_buffer_end
+ // See codegen.c for explanation.
+typedef std::int32_t codegen_offset_t;
+
+extern codegen_offset_t codegen_buffer_end;
+extern codegen_offset_t codegen_buffer_position;
+
+/* Inline helpers to move around the buffered output stream. */
+inline codegen_offset_t FileCurPos(int /*outfile*/)
+{
+   return codegen_buffer_position;
+}
+
+inline void FileGoto(int /*outfile*/, codegen_offset_t pos)
+{
+   codegen_buffer_end = codegen_buffer_position;
+   codegen_buffer_position = pos;
+}
+
+inline void FileGotoEnd(int /*outfile*/)
+{
+   codegen_buffer_position = codegen_buffer_end;
+}
 
 typedef unsigned char BYTE;
 enum { SOURCE1 = 1, SOURCE2 = 2 };  /* See set_source_id */
 
+typedef std::vector<codegen_offset_t> codegen_offset_list;
+
 /* Structure for loop addresses */
 typedef struct {
    /* File offset of top of loop */
-   int toppos;
+   codegen_offset_t toppos;
    /* List of addresses that need to be filled in
     * with file offset of bottom of loop */
-   list_type break_list;
+   codegen_offset_list break_list;
    /* Addresses that need to be filled in for continue
    * statements in for loops (in while loops,
    * continue jumps backward, so not necessary).
    */
-   list_type for_continue_list;
+   codegen_offset_list for_continue_list;
    /* Addresses that need to be filled in but have
     * conditional gotos (whereas breaks are unconditional) */
-   list_type conditional_goto_list;
+   codegen_offset_list conditional_goto_list;
 } *loop_type, loop_struct;
 
 extern int codegen_ok;          /* Did codegen complete successfully? */
@@ -53,10 +68,10 @@ void OutputByte(int outfile, BYTE datum);
 void OutputInt(int outfile, int datum);
 void OutputConstant(int outfile, const_type c);
 void OutputGotoOpcode(int outfile, int goto_type, int id_type);
-void OutputGotoOffset(int outfile, int source, int destination);
+void OutputGotoOffset(int outfile, codegen_offset_t source, codegen_offset_t destination);
 void OutputBaseExpression(int outfile, expr_type expr);
-void BackpatchGotoUnconditional(int outfile, int source, int destination);
-void BackpatchGotoConditional(int outfile, int source, int destination);
+void BackpatchGotoUnconditional(int outfile, codegen_offset_t source, codegen_offset_t destination);
+void BackpatchGotoConditional(int outfile, codegen_offset_t source, codegen_offset_t destination);
 
 void codegen_error(const char *fmt, ...);
 void codegen_warning(int linenumber, const char *fmt, ...);

@@ -3,24 +3,37 @@
 #
 
 TOPDIR=..
+WARNINGS_AS_ERRORS = /WX-
 !include $(TOPDIR)\common.mak
+
+!ifdef RELEASE
+OUTDIR = x64\release
+!else
+OUTDIR = x64\debug
+!endif
+
+LIB = $(BLAKLIBDIR)\x64;$(BLAKLIBDIR);$(LIB)
 
 # ----------------------------------------------------------------------
 # Additional compiler flags (see common.mak)
 # /TP           Compile as C++ code
-# /arch:SSE2    Use SSE2 instructions (VS2013+ default to SSE2)
-CFLAGS = $(CFLAGS) /arch:SSE2 /TP /Zi
+# /arch:SSE2           Use SSE2 instructions (VS2013+ default to SSE2)
+# /Zc:strictStrings-   Avoid legacy string-literal const errors in the nmake path
+# /wd5055              Ignore new enum/floating-point deprecation warnings
+CFLAGS = $(CFLAGS) /arch:SSE2 /Zc:strictStrings- /wd5055 /DBLAK_USE_POSTGRESQL /I$(BLAKINCLUDEDIR)\postgres
 
 # ----------------------------------------------------------------------
 # Additional linker flags (see common.mak)
 # /SUBSYSTEM:WINDOWS",5.01" UI Windows XP (5.01)
 # /STACK  Stacksize in bytes
 # /map    Generate mapfile
-LINKFLAGS = $(LINKFLAGS) /SUBSYSTEM:WINDOWS",5.01" /STACK:0x180000 /map /DEBUG
+# /MACHINE:X64  Explicitly target the 64-bit linker output
+LINKFLAGS = $(LINKFLAGS) /MACHINE:X64 /SUBSYSTEM:WINDOWS",6.00" /STACK:0x180000 /map /DEBUG
 
 SOURCEDIR = .
 
-LIBS = gdi32.lib user32.lib wsock32.lib winmm.lib comctl32.lib libmysql.lib libcurl.lib ws2_32.lib jansson.lib
+LIBS = gdi32.lib user32.lib wsock32.lib winmm.lib comctl32.lib libpq.lib ws2_32.lib jansson.lib
+JANSSONLIB = $(BLAKLIBDIR)\x64\jansson.lib
 
 OBJS =  \
     $(OUTDIR)\main.obj \
@@ -94,10 +107,16 @@ OBJS =  \
     $(OUTDIR)\sprocket.obj \
     $(OUTDIR)\mutex_windows.obj \
     $(OUTDIR)\thdmsgqueue_windows.obj \
-    $(OUTDIR)\database.obj \
+    $(OUTDIR)\database_pg.obj \
     $(OUTDIR)\astar.obj \
 
-all : makedirs $(OUTDIR)\blakserv.exe
+all : makedirs $(JANSSONLIB) $(OUTDIR)\blakserv.exe
+
+$(JANSSONLIB):
+    echo Making x64 $(COMMAND) in $(JANSSONDIR)
+    cd $(JANSSONDIR)
+    $(MAKE) /$(MAKEFLAGS) $(COMMAND) ARCH=x64
+    cd ..
 
 $(OUTDIR)\rscload.obj : $(TOPDIR)\util\rscload.c
     $(CC) -Fo$(OUTDIR)/ $(CFLAGS) /Fd$(OUTDIR)\ /FpCpch -c $**
@@ -108,13 +127,12 @@ $(OUTDIR)\crc.obj : $(TOPDIR)\util\crc.c
 $(OUTDIR)\md5.obj : $(TOPDIR)\util\md5.c
     $(CC) -Fo$(OUTDIR)/ $(CFLAGS) /Fd$(OUTDIR)\ /Fpmd5pch -c $**
 
-$(OUTDIR)\blakserv.exe: $(OBJS) $(OUTDIR)\blakserv.res
+$(OUTDIR)\blakserv.exe: $(OBJS) $(OUTDIR)\blakserv.res $(JANSSONLIB)
     $(CC) $(CFLAGS) -Fo$(OUTDIR)/ /FpCpch /Fd$(OUTDIR)\ -c $(SOURCEDIR)\version.c
     $(LINK)	$** $(LIBS) -OUT:$@ $(LINKFLAGS)
     $(CP) $@ $(BLAKSERVRUNDIR)
     $(CP) $(OUTDIR)\*.pdb $(BLAKSERVRUNDIR) >nul
     $(CP) $(OUTDIR)\*.map $(BLAKSERVRUNDIR) >nul
-    $(CP) $(BLAKLIBDIR)\libmysql.dll $(BLAKSERVRUNDIR) >nul
-    $(CP) $(BLAKBINDIR)\libcurl.dll $(BLAKSERVRUNDIR) >nul
+    call "$(SOURCEDIR)\copy_postgres_runtime.bat" "$(BLAKBINDIR)" "$(BLAKSERVRUNDIR)" >nul
 
 !include $(TOPDIR)\rules.mak

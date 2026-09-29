@@ -155,7 +155,7 @@ void SaveRscCopyStringBuffer(const char *string_buffer)
       memcpy(&(buffer[buffer_position]), &len_s, 4);
       buffer_position += 4;
       memcpy(&(buffer[buffer_position]), string_buffer, len_s);
-      buffer_position += len_s;
+      buffer_position += (int)len_s;
    }
 
    // Flush buffer at 80%.

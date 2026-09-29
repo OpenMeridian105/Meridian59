@@ -126,7 +126,7 @@ Bool CreateAccount(char *name, char *password, char *email, int type, int *accou
    strcpy(a->password, buf);
 
    if (!email || !AccountValidateEmail(email))
-      email = "\0";
+      email = "";
 
    a->email = (char *)AllocateMemory(MALLOC_ID_ACCOUNT, strlen(email) + 1);
    strcpy(a->email, email);
@@ -168,7 +168,7 @@ int CreateAccountSecurePassword(char *name,char *password,char *email,int type)
    strcpy(a->password,buf);
 
    if (!email || !AccountValidateEmail(email))
-      email = "\0";
+      email = "";
 
    a->email = (char *)AllocateMemory(MALLOC_ID_ACCOUNT,strlen(email)+1);
    strcpy(a->email,email);
@@ -219,7 +219,7 @@ int RecreateAccountSecurePassword(int account_id, char *name, char *password, ch
    strcpy(a->password, buf);
 
    if (!email || !AccountValidateEmail(email))
-      email = "\0";
+      email = "";
 
    a->email = (char *)AllocateMemory(MALLOC_ID_ACCOUNT, strlen(email) + 1);
    strcpy(a->email, email);
@@ -251,7 +251,7 @@ void LoadAccount(int account_id, char *name, char *password, char *email, int ty
    strcpy(a->password, password);
 
    if (!email || !AccountValidateEmail(email))
-      email = "\0";
+      email = "";
 
    a->email = (char *)AllocateMemory(MALLOC_ID_ACCOUNT, strlen(email) + 1);
    strcpy(a->email, email);

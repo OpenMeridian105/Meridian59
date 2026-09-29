@@ -93,14 +93,14 @@ static char *buffer;
 
 // buffer_position is the current position of buffer we're writing to, and the
 // length that will be written to file if flushed.
-static int buffer_position;
+static size_t buffer_position;
 
 // buffer_size is the size of the currently allocated memory for buffer.
-static int buffer_size;
+static size_t buffer_size;
 
 // buffer_warning_size is used to check if we need to flush the buffer. Equal
 // to 90% buffer_size.
-static int buffer_warning_size;
+static size_t buffer_warning_size;
 
 Bool SaveGame(char *filename)
 {

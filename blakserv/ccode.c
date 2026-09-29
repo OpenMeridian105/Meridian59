@@ -113,7 +113,7 @@ const char* stristr(const char* pSource, const char* pSearch)
    if (!pSource || !pSearch || !*pSearch)
       return NULL;
 	
-   int nSearch = strlen(pSearch);
+   size_t nSearch = strlen(pSearch);
    // Don't search past the end of pSource
    const char *pEnd = pSource + strlen(pSource) - nSearch;
    while (pSource <= pEnd)
@@ -198,9 +198,8 @@ int C_SaveGame(int object_id,local_var_type *local_vars,
 
 /*
  * C_LoadGame: Takes a blakod string as a parameter, which contains a save
- *    game time.  Posts a message to the blakserv main thread which triggers
- *    a load game, using the save game time value sent in the message. All
- *    users are disconnected when the game reload triggers.
+ *    game time. Defers loading the game until the current Blakod message has
+ *    returned. All users are disconnected when the game reload triggers.
  */
 int C_LoadGame(int object_id, local_var_type *local_vars,
                int num_normal_parms, parm_node normal_parm_array[],
@@ -233,7 +232,7 @@ int C_LoadGame(int object_id, local_var_type *local_vars,
 #ifdef BLAK_PLATFORM_WINDOWS
    MessagePost(main_thread_id, WM_BLAK_MAIN_LOAD_GAME, 0, save_time);
 #else
-   LoadFromKod(save_time);
+   RequestLoadFromKod(save_time);
 #endif
 
    return NIL;
@@ -389,7 +388,7 @@ int C_GodLog(int object_id,local_var_type *local_vars,
 			
 		case TAG_STRING :
 			{
-				int lenBuffer;
+				size_t lenBuffer;
 				string_node *snod = GetStringByID(each_val.v.data);
 				
 				if (snod == NULL)
@@ -405,7 +404,7 @@ int C_GodLog(int object_id,local_var_type *local_vars,
 			
 		case TAG_TEMP_STRING :
 			{
-				int len_buf;
+				size_t len_buf;
 				string_node *snod;
 				
 				snod = GetTempString();
@@ -532,7 +531,7 @@ int C_Debug(int object_id,local_var_type *local_vars,
 			
 		case TAG_STRING :
 			{
-				int lenBuffer;
+				size_t lenBuffer;
 				string_node *snod = GetStringByID(each_val.v.data);
 				
 				if (snod == NULL)
@@ -548,7 +547,7 @@ int C_Debug(int object_id,local_var_type *local_vars,
 			
 		case TAG_TEMP_STRING :
 			{
-				int len_buf;
+				size_t len_buf;
 				string_node *snod;
 				
 				snod = GetTempString();
@@ -1200,7 +1199,7 @@ bool LookupString(val_type val, const char *function_name, const char **str, int
 
    if (*str == NULL)
       return false;
-   *len = strlen(*str);
+   *len = (int)strlen(*str);
    
    return true;
 }
@@ -1274,8 +1273,8 @@ int C_StringEqual(int object_id,local_var_type *local_vars,
          return ret_val.int_val;
       }
 
-      len1 = strlen(s1);
-      len2 = strlen(s2);
+      len1 = (int)strlen(s1);
+      len2 = (int)strlen(s2);
       ret_val.v.data = FuzzyBufferEqual(s1, len1, s2, len2);
 
       return ret_val.int_val;
@@ -1284,7 +1283,7 @@ int C_StringEqual(int object_id,local_var_type *local_vars,
    // First string is resource, second isn't.
    if (s1_resource)
    {
-      len2 = strlen(s2);
+      len2 = (int)strlen(s2);
       for (int i = 0; i < MAX_LANGUAGE_ID; i++)
       {
          s1 = r1->resource_val[i];
@@ -1298,7 +1297,7 @@ int C_StringEqual(int object_id,local_var_type *local_vars,
             continue;
          }
 
-         len1 = strlen(s1);
+         len1 = (int)strlen(s1);
          if (FuzzyBufferEqual(s1, len1, s2, len2))
          {
             ret_val.v.data = True;
@@ -1311,7 +1310,7 @@ int C_StringEqual(int object_id,local_var_type *local_vars,
    // Second string is resource, first isn't.
    if (s2_resource)
    {
-      len1 = strlen(s1);
+      len1 = (int)strlen(s1);
       for (int i = 0; i < MAX_LANGUAGE_ID; i++)
       {
          s2 = r2->resource_val[i];
@@ -1325,7 +1324,7 @@ int C_StringEqual(int object_id,local_var_type *local_vars,
             continue;
          }
 
-         len2 = strlen(s2);
+         len2 = (int)strlen(s2);
          if (FuzzyBufferEqual(s1, len1, s2, len2))
          {
             ret_val.v.data = True;
@@ -1336,8 +1335,8 @@ int C_StringEqual(int object_id,local_var_type *local_vars,
    }
 
    // Neither strings are resources.
-   len1 = strlen(s1);
-   len2 = strlen(s2);
+   len1 = (int)strlen(s1);
+   len2 = (int)strlen(s2);
    ret_val.v.data = FuzzyBufferEqual(s1, len1, s2, len2);
    return ret_val.int_val;
 }
@@ -1477,7 +1476,7 @@ int C_StringSubstitute(int object_id,local_var_type *local_vars,
          bprintf( "C_StringSub can't sub for invalid resource %i\n", s1_val.v.data );
          return NIL;
       }
-      len1 = strlen(s1);
+      len1 = (int)strlen(s1);
       break;
 
    case TAG_DEBUGSTR :
@@ -1496,7 +1495,7 @@ int C_StringSubstitute(int object_id,local_var_type *local_vars,
       s1 = GetClassDebugStr(c,s1_val.v.data);
       len1 = 0;
       if (s1)
-         len1 = strlen(s1);
+         len1 = (int)strlen(s1);
       break;
 
    case TAG_NIL :
@@ -1634,8 +1633,8 @@ int C_StringContain(int object_id,local_var_type *local_vars,
          return ret_val.int_val;
       }
 
-      len1 = strlen(s1);
-      len2 = strlen(s2);
+      len1 = (int)strlen(s1);
+      len2 = (int)strlen(s2);
       ret_val.v.data = FuzzyBufferContain(s1, len1, s2, len2);
 
       return ret_val.int_val;
@@ -1644,7 +1643,7 @@ int C_StringContain(int object_id,local_var_type *local_vars,
    // First string is resource, second isn't.
    if (s1_resource)
    {
-      len2 = strlen(s2);
+      len2 = (int)strlen(s2);
       ret_val.v.tag = TAG_INT;
       for (int i = 0; i < MAX_LANGUAGE_ID; i++)
       {
@@ -1659,7 +1658,7 @@ int C_StringContain(int object_id,local_var_type *local_vars,
             continue;
          }
 
-         len1 = strlen(s1);
+         len1 = (int)strlen(s1);
          if (FuzzyBufferContain(s1, len1, s2, len2))
          {
             ret_val.v.data = True;
@@ -1672,7 +1671,7 @@ int C_StringContain(int object_id,local_var_type *local_vars,
    // Second string is resource, first isn't.
    if (s2_resource)
    {
-      len1 = strlen(s1);
+      len1 = (int)strlen(s1);
       ret_val.v.tag = TAG_INT;
       for (int i = 0; i < MAX_LANGUAGE_ID; i++)
       {
@@ -1687,7 +1686,7 @@ int C_StringContain(int object_id,local_var_type *local_vars,
             continue;
          }
 
-         len2 = strlen(s2);
+         len2 = (int)strlen(s2);
          if (FuzzyBufferContain(s1, len1, s2, len2))
          {
             ret_val.v.data = True;
@@ -1698,8 +1697,8 @@ int C_StringContain(int object_id,local_var_type *local_vars,
    }
 
    // Neither strings are resources.
-   len1 = strlen(s1);
-   len2 = strlen(s2);
+   len1 = (int)strlen(s1);
+   len2 = (int)strlen(s2);
    ret_val.v.data = FuzzyBufferContain(s1, len1, s2, len2);
    return ret_val.int_val;
 }
@@ -1761,7 +1760,7 @@ int C_SetResource(int object_id,local_var_type *local_vars,
 					str_val.v.data);
 				return NIL;
 			}
-			new_len = strlen(r->resource_val[0]);
+         new_len = (int)strlen(r->resource_val[0]);
 			new_str = r->resource_val[0];
 			break;
 		}
@@ -1869,7 +1868,7 @@ int C_ParseString(int object_id,local_var_type *local_vars,
 		us because we null terminated the real string*/
 		
 		strcpy(snod->data,each_str);
-		snod->len_data = strlen(snod->data);
+      snod->len_data = (int)strlen(snod->data);
 		
 		SendBlakodMessage(object_id,callback_val.v.data,1,p);
 		
@@ -1945,7 +1944,7 @@ int C_SetString(int object_id,local_var_type *local_vars,
          return NIL;
       }
       //bprintf("SetString string%i<--resource%i\n",s1_val.v.data,s2_val.v.data);
-      SetString(snod, (char*)str, strlen(str));
+      SetString(snod, (char*)str, (int)strlen(str));
       break;
 
    case TAG_MESSAGE :
@@ -1955,7 +1954,7 @@ int C_SetString(int object_id,local_var_type *local_vars,
          bprintf("C_SetString can't set from invalid message %i\n",s2_val.v.data);
          return NIL;
       }
-      SetString(snod,GetNameByID(s2_val.v.data),strlen(GetNameByID(s2_val.v.data)));
+      SetString(snod,GetNameByID(s2_val.v.data),(int)strlen(GetNameByID(s2_val.v.data)));
       break;
 
    case TAG_CLASS :
@@ -1972,7 +1971,7 @@ int C_SetString(int object_id,local_var_type *local_vars,
          return NIL;
       }
 
-      SetString(snod, c->class_name, strlen(c->class_name));
+      SetString(snod, c->class_name, (int)strlen(c->class_name));
       break;
 
    case TAG_DEBUGSTR :
@@ -1982,13 +1981,13 @@ int C_SetString(int object_id,local_var_type *local_vars,
          bprintf("C_SetString can't set from invalid debug string %i\n",s2_val.v.data);
          return NIL;
       }
-      SetString(snod,(char*)str,strlen(str));
+      SetString(snod,(char*)str,(int)strlen(str));
       break;
 
    case TAG_INT:
       char buf[21];
       snprintf(buf, 21, "%i", s2_val.v.data);
-      SetString(snod, buf, strlen(buf));
+      SetString(snod, buf, (int)strlen(buf));
       break;
 
    default :
@@ -2063,7 +2062,7 @@ int C_AppendTempString(int object_id,local_var_type *local_vars,
          bprintf("C_AppendTempString can't set from invalid resource %i\n", s_val.v.data);
          return NIL;
       }
-      AppendTempString(pStrConst, strlen(pStrConst));
+      AppendTempString(pStrConst, (int)strlen(pStrConst));
    }
       break;
 	case TAG_DEBUGSTR :
@@ -2082,7 +2081,7 @@ int C_AppendTempString(int object_id,local_var_type *local_vars,
 			strLen = 0;
 			if (pStrConst != NULL)
 			{
-				strLen = strlen(pStrConst);
+            strLen = (int)strlen(pStrConst);
 				AppendTempString(pStrConst,strLen);
 			}
 			else

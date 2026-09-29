@@ -431,7 +431,7 @@ void ServiceTimers(void)
                case WM_BLAK_MAIN_READ :
                EnterServerLock();
 
-               PollSession(msg.lParam);
+               PollSession((int)msg.lParam);
                TimerActivate();
 
                LeaveServerLock();
@@ -444,19 +444,19 @@ void ServiceTimers(void)
 
                case WM_BLAK_MAIN_DELETE_ACCOUNT :
                EnterServerLock();
-               DeleteAccountAndAssociatedUsersByID(msg.lParam);
+               DeleteAccountAndAssociatedUsersByID((int)msg.lParam);
                LeaveServerLock();
                break;
 
                case WM_BLAK_MAIN_VERIFIED_LOGIN :
                EnterServerLock();
-               VerifiedLoginSession(msg.lParam);
+               VerifiedLoginSession((int)msg.lParam);
                LeaveServerLock();
                break;
 
                case WM_BLAK_MAIN_LOAD_GAME :
                EnterServerLock();
-               LoadFromKod(msg.lParam);
+               LoadFromKod((int)msg.lParam);
                LeaveServerLock();
                break;
 

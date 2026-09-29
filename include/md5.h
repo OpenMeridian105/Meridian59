@@ -40,7 +40,7 @@ typedef unsigned short int UINT2;
 #include <stdint.h>
 typedef uint32_t UINT4;
 
-void MDString (char *string, unsigned char *digest);
+void MDString(const char *string, unsigned char *digest);
 void MDFileHash(char *string, char *filehash, unsigned int bytes);
 void MDStringBytes(char *string, unsigned char *digest, unsigned int bytes);
 

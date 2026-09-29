@@ -27,7 +27,7 @@ void AddByteToPacket(unsigned char byte1);
 void AddShortToPacket(short byte2);
 void AddIntToPacket(int byte4);
 void AddStringToPacketAsInt(const char *ptr);
-void AddStringToPacket(int int_len,const char *ptr);
+void AddStringToPacket(size_t int_len,const char *ptr);
 void SecurePacketBufferList(int session_id,buffer_node *blist);
 void SendPacket(int session_id);
 void SendCopyPacket(int session_id);

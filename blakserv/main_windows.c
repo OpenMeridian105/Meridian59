@@ -48,7 +48,11 @@ void MainServer()
 
 	if (ConfigBool(MYSQL_ENABLED))
 	{
+	#ifdef BLAK_USE_POSTGRESQL
+		lprintf("Starting PostgreSQL writer");
+	#else
 		lprintf("Starting MySQL writer");
+	#endif
 		MySQLInit(ConfigStr(MYSQL_HOST), ConfigInt(MYSQL_CPORT), ConfigStr(MYSQL_USERNAME),
 			ConfigStr(MYSQL_PASSWORD), ConfigStr(MYSQL_DB));
 	}

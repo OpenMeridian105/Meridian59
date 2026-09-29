@@ -223,7 +223,7 @@ message_node *GetMessageByID(int class_id, int message_id, class_node **found_cl
    return NULL;
 }
 
-message_node *GetMessageByName(int class_id,char *message_name,class_node **found_class)
+message_node *GetMessageByName(int class_id,const char *message_name,class_node **found_class)
 {
    int message_id;
 

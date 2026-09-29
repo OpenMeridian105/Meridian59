@@ -55,7 +55,7 @@ void set_extension(char *newfile, const char *filename, const char *extension)
 
    strcpy(newfile, filename);
 
-   ptr = strrchr(newfile, '\\');  /* Find last component of path */
+   ptr = strrchr(newfile, DIR_SEPARATOR[0]);  /* Find last component of path */
    if (ptr == NULL)
       ptr = newfile;
 

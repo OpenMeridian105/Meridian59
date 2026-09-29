@@ -43,7 +43,7 @@ void InsertTable(int table_id,val_type key_val,val_type data_val);
 int GetTableEntry(int table_id,val_type key_val);
 void DeleteTableEntry(int table_id,val_type key_val);
 
-unsigned int GetBufferHash(const char *buf,unsigned int len_buf);
+unsigned int GetBufferHash(const char *buf, size_t len_buf);
 void ForEachTable(void (*callback_func)(table_node *t, int table_id));
 void MoveTable(int dest_id,int source_id);
 void SetNumTables(int new_num_tables);

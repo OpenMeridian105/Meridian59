@@ -62,6 +62,7 @@ typedef unsigned char BYTE;
 typedef unsigned short WORD;
 #define MAKEWORD(low, high) ((WORD)((((WORD)(high)) << 8) | ((BYTE)(low))))
 typedef uint32_t DWORD;
+typedef uintptr_t UINT_PTR;
 typedef long long INT64;
 typedef void* PVOID;
 typedef void* LPVOID;
@@ -110,6 +111,7 @@ void RunMainLoop(void);
 void EnableSendEvents(SOCKET sock);
 void DisableSendEvents(SOCKET sock);
 void WakeupMainLoop(void);
+void RequestLoadFromKod(int save_time);
 
 void StartupComplete(void);
 

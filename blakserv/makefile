@@ -33,6 +33,7 @@ LINKFLAGS = $(LINKFLAGS) /MACHINE:X64 /SUBSYSTEM:WINDOWS",6.00" /STACK:0x180000 
 SOURCEDIR = .
 
 LIBS = gdi32.lib user32.lib wsock32.lib winmm.lib comctl32.lib libpq.lib ws2_32.lib jansson.lib
+JANSSONLIB = $(BLAKLIBDIR)\x64\jansson.lib
 
 OBJS =  \
     $(OUTDIR)\main.obj \
@@ -109,7 +110,13 @@ OBJS =  \
     $(OUTDIR)\database_pg.obj \
     $(OUTDIR)\astar.obj \
 
-all : makedirs $(OUTDIR)\blakserv.exe
+all : makedirs $(JANSSONLIB) $(OUTDIR)\blakserv.exe
+
+$(JANSSONLIB):
+    echo Making x64 $(COMMAND) in $(JANSSONDIR)
+    cd $(JANSSONDIR)
+    $(MAKE) /$(MAKEFLAGS) $(COMMAND) ARCH=x64
+    cd ..
 
 $(OUTDIR)\rscload.obj : $(TOPDIR)\util\rscload.c
     $(CC) -Fo$(OUTDIR)/ $(CFLAGS) /Fd$(OUTDIR)\ /FpCpch -c $**
@@ -120,7 +127,7 @@ $(OUTDIR)\crc.obj : $(TOPDIR)\util\crc.c
 $(OUTDIR)\md5.obj : $(TOPDIR)\util\md5.c
     $(CC) -Fo$(OUTDIR)/ $(CFLAGS) /Fd$(OUTDIR)\ /Fpmd5pch -c $**
 
-$(OUTDIR)\blakserv.exe: $(OBJS) $(OUTDIR)\blakserv.res
+$(OUTDIR)\blakserv.exe: $(OBJS) $(OUTDIR)\blakserv.res $(JANSSONLIB)
     $(CC) $(CFLAGS) -Fo$(OUTDIR)/ /FpCpch /Fd$(OUTDIR)\ -c $(SOURCEDIR)\version.c
     $(LINK)	$** $(LIBS) -OUT:$@ $(LINKFLAGS)
     $(CP) $@ $(BLAKSERVRUNDIR)

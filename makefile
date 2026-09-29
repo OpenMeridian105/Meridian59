@@ -10,7 +10,7 @@ TOPDIR=.
 # make ignores targets if they match directory names
 all: Bzlib Blibpng Bjansson Bserver Bclient Bmodules Bkod Bdeco Bbbgun Bkeybind Bresource
 
-Bserver: Bresource Bjansson
+Bserver: Bresource BjanssonX64
 	echo Making $(COMMAND) in $(BLAKSERVDIR)
 	cd $(BLAKSERVDIR)
 	$(MAKE) /$(MAKEFLAGS) $(COMMAND)
@@ -103,6 +103,12 @@ Bjansson:
 	echo Making $(COMMAND) in $(JANSSONDIR)
 	cd $(JANSSONDIR)
 	$(MAKE) /$(MAKEFLAGS) $(COMMAND)
+	cd ..
+
+BjanssonX64:
+	echo Making x64 $(COMMAND) in $(JANSSONDIR)
+	cd $(JANSSONDIR)
+	$(MAKE) /$(MAKEFLAGS) $(COMMAND) ARCH=x64
 	cd ..
 
 clean:

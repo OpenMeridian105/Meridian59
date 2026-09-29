@@ -3,6 +3,22 @@
 TOPDIR=..
 !include $(TOPDIR)\common.mak
 
+!ifndef ARCH
+!if "$(VSCMD_ARG_TGT_ARCH)" == "x64"
+ARCH = x64
+!else
+ARCH = x86
+!endif
+!endif
+
+!if "$(ARCH)" == "x64"
+OUTDIR = x64\$(OUTDIR)
+JANSSONLIBDIR = $(BLAKLIBDIR)\x64
+CFLAGS = $(CFLAGS) /wd4267 /wd4334
+!else
+JANSSONLIBDIR = $(BLAKLIBDIR)
+!endif
+
 # ----------------------------------------------------------------------
 # Additional compiler flags (see common.mak)
 # /TC           Compile as C code
@@ -28,9 +44,12 @@ OBJS = \
     $(OUTDIR)\utf.obj \
     $(OUTDIR)\value.obj
 
-all: makedirs $(BLAKLIBDIR)\jansson.lib
+all: makedirs makelibdirs $(JANSSONLIBDIR)\jansson.lib
 
-$(BLAKLIBDIR)\jansson.lib: $(OBJS)
+makelibdirs:
+	-@mkdir $(JANSSONLIBDIR) >nul 2>&1
+
+$(JANSSONLIBDIR)\jansson.lib: $(OBJS)
     $(LINKST) $(LINKSTFLAGS) $** $(LIBS) -out:$@
 		
 !include $(TOPDIR)\rules.mak

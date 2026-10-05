@@ -3,18 +3,8 @@
 TOPDIR=..
 !include $(TOPDIR)\common.mak
 
-# ----------------------------------------------------------------------
-# Additional compiler flags (see common.mak)
-# /TP           Compile as C++ code
-# /arch:SSE2    Use SSE2 instructions (VS2013+ default to SSE2)
-CFLAGS = $(CFLAGS) /arch:SSE2 /TP
-
-# ----------------------------------------------------------------------
-# Additional linker flags (see common.mak)
-# /SUBSYSTEM:WINDOWS",5.01" UI Windows XP (5.01)
-LINKFLAGS = $(LINKFLAGS) /SUBSYSTEM:WINDOWS",5.01"
-
 SOURCEDIR = $(BBGUNDIR)
+
 LIBS = user32.lib gdi32.lib comdlg32.lib
 
 all: makedirs $(OUTDIR)\bbgun.exe

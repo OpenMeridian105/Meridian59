@@ -21,7 +21,7 @@ static char *db_pass = NULL;
 static char *db_name = NULL;
 
 // Queue
-static sql_queue queue = { 0, 0, NULL, NULL };
+static sql_queue queue;
 static UINT64 record_count = 0;
 
 // Worker thread
@@ -201,17 +201,20 @@ static sql_statistic_type Statistics_Table[] = {
 static const char *schema_sql =
 "CREATE TABLE IF NOT EXISTS money_total ("
 "  money_total_time TIMESTAMP NOT NULL DEFAULT NOW(),"
-"  money_total_amount VARCHAR(18) NOT NULL);"
+"  money_total_amount VARCHAR(18) NOT NULL,"
+"  PRIMARY KEY (money_total_time, money_total_amount));"
 
 "CREATE TABLE IF NOT EXISTS money_created ("
 "  money_created_time TIMESTAMP NOT NULL DEFAULT NOW(),"
-"  money_created_amount INT NOT NULL);"
+"  money_created_amount INT NOT NULL,"
+"  PRIMARY KEY (money_created_time, money_created_amount));"
 
 "CREATE TABLE IF NOT EXISTS player_logins ("
 "  plogin_account_name VARCHAR(45) NOT NULL,"
 "  plogin_character_name VARCHAR(45) NOT NULL,"
 "  plogin_IP VARCHAR(45) NOT NULL,"
-"  plogin_time TIMESTAMP NOT NULL DEFAULT NOW());"
+"  plogin_time TIMESTAMP NOT NULL DEFAULT NOW(),"
+"  PRIMARY KEY (plogin_account_name, plogin_time));"
 
 "CREATE TABLE IF NOT EXISTS player_damaged ("
 "  idpdamaged SERIAL PRIMARY KEY,"
@@ -230,7 +233,8 @@ static const char *schema_sql =
 "  pdeath_room VARCHAR(63) NOT NULL,"
 "  pdeath_attack VARCHAR(45) NOT NULL,"
 "  pdeath_ispvp INT NOT NULL,"
-"  pdeath_time TIMESTAMP NOT NULL DEFAULT NOW());"
+"  pdeath_time TIMESTAMP NOT NULL DEFAULT NOW(),"
+"  PRIMARY KEY (pdeath_victim, pdeath_time));"
 
 "CREATE TABLE IF NOT EXISTS player ("
 "  player_account_id INT NOT NULL,"
@@ -612,27 +616,32 @@ static const char *schema_sql =
 "  logpen_hp INT NOT NULL,"
 "  logpen_spellpct INT NOT NULL,"
 "  logpen_skillpct INT NOT NULL,"
-"  logpen_numitems INT NOT NULL);"
+"  logpen_numitems INT NOT NULL,"
+"  PRIMARY KEY (player_name, logpen_time));"
 
 "CREATE TABLE IF NOT EXISTS player_logpen_items ("
 "  logpen_item_id SERIAL PRIMARY KEY,"
 "  player_name VARCHAR(63) NOT NULL,"
 "  logpen_time TIMESTAMP NOT NULL DEFAULT NOW(),"
-"  item_name VARCHAR(63) NOT NULL);"
+"  item_name VARCHAR(63) NOT NULL,"
+"  item_number INT NOT NULL);"
 
 "CREATE TABLE IF NOT EXISTS player_completed_quests ("
 "  quest_id INT NOT NULL,"
 "  player_name VARCHAR(63) NOT NULL,"
 "  completion_time TIMESTAMP NOT NULL DEFAULT NOW(),"
 "  num_seconds_taken INT NOT NULL,"
-"  xp_rewarded INT NOT NULL);"
+"  xp_rewarded INT NOT NULL,"
+"  tp_rewarded INT NOT NULL,"
+"  PRIMARY KEY (quest_id, player_name, completion_time));"
 
 "CREATE TABLE IF NOT EXISTS player_quest_reward_items ("
 "  quest_rewarditem_id SERIAL PRIMARY KEY,"
 "  quest_id INT NOT NULL,"
 "  player_name VARCHAR(63) NOT NULL,"
 "  completion_time TIMESTAMP NOT NULL DEFAULT NOW(),"
-"  item_name VARCHAR(63) NOT NULL);"
+"  item_name VARCHAR(63) NOT NULL,"
+"  item_number INT NOT NULL);"
 
 "CREATE TABLE IF NOT EXISTS wiki_quest_giver ("
 "  quest_id INT NOT NULL,"
@@ -757,31 +766,111 @@ static void PgWriteNode(sql_queue_node *node)
       nParams++;
    }
 
-   // Build INSERT query with $1, $2, ... placeholders
-   // Handle auto-columns: SERIAL (DEFAULT) and TIMESTAMP (NOW())
-   int ts_pos = Statistics_Table[type].timestamp_pos;
-   bool has_serial = Statistics_Table[type].has_serial;
    char sql[4096];
-   char placeholders[1024];
-   placeholders[0] = 0;
+   bool customSql = true;
 
-   if (has_serial)
-      strcat(placeholders, "DEFAULT,");
-
-   if (ts_pos == 1)
-      strcat(placeholders, "NOW(),");
-
-   for (int i = 0; i < nParams; i++)
+   // These records omit generated/default columns or mirror UPDATE/UPSERT
+   // procedures in database.c, so they cannot use a positional table insert.
+   switch (type)
    {
-      char ph[8];
-      snprintf(ph, sizeof(ph), "%s$%d", i > 0 ? "," : "", i + 1);
-      strcat(placeholders, ph);
+   case STAT_PLAYER:
+      snprintf(sql, sizeof(sql),
+         "INSERT INTO player (player_account_id, player_name, player_home, player_bind, player_guild, "
+         "player_max_health, player_max_mana, player_might, player_int, player_myst, player_stam, player_agil, player_aim) "
+         "VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) "
+         "ON CONFLICT (player_name) DO UPDATE SET "
+         "player_account_id = EXCLUDED.player_account_id, player_home = EXCLUDED.player_home, "
+         "player_bind = EXCLUDED.player_bind, player_guild = EXCLUDED.player_guild, "
+         "player_max_health = EXCLUDED.player_max_health, player_max_mana = EXCLUDED.player_max_mana, "
+         "player_might = EXCLUDED.player_might, player_int = EXCLUDED.player_int, "
+         "player_myst = EXCLUDED.player_myst, player_stam = EXCLUDED.player_stam, "
+         "player_agil = EXCLUDED.player_agil, player_aim = EXCLUDED.player_aim");
+      break;
+
+   case STAT_PLAYERSUICIDE:
+      snprintf(sql, sizeof(sql),
+         "UPDATE player SET player_suicide = 1, player_suicide_time = NOW() "
+         "WHERE player_account_id = $1 AND player_name = $2");
+      break;
+
+   case STAT_GUILD:
+      snprintf(sql, sizeof(sql),
+         "INSERT INTO guild (guild_name, guild_leader, guild_hall, guild_rent_paid) "
+         "VALUES ($1, $2, $3, $4) "
+         "ON CONFLICT (guild_name) DO UPDATE SET "
+         "guild_leader = EXCLUDED.guild_leader, guild_hall = EXCLUDED.guild_hall, "
+         "guild_rent_paid = EXCLUDED.guild_rent_paid");
+      break;
+
+   case STAT_GUILDDISBAND:
+      snprintf(sql, sizeof(sql),
+         "UPDATE guild SET guild_hall = '', guild_disbanded = 1, guild_disbanded_time = NOW() "
+         "WHERE guild_name = $1");
+      break;
+
+   case STAT_LOGPEN:
+      snprintf(sql, sizeof(sql),
+         "INSERT INTO player_logpen (player_name, room_id, logpen_xp, logpen_hp, "
+         "logpen_spellpct, logpen_skillpct, logpen_numitems) "
+         "VALUES ($1, $2, $3, $4, $5, $6, $7)");
+      break;
+
+   case STAT_LOGPEN_ITEM:
+      snprintf(sql, sizeof(sql),
+         "INSERT INTO player_logpen_items (player_name, item_name, item_number) "
+         "VALUES ($1, $2, $3)");
+      break;
+
+   case STAT_ACCOUNT_CHARS:
+      snprintf(sql, sizeof(sql),
+         "INSERT INTO server_account_chars (acct_id, char_name) VALUES ($1, $2)");
+      break;
+
+   case STAT_COMPL_QUESTS:
+      snprintf(sql, sizeof(sql),
+         "INSERT INTO player_completed_quests "
+         "(quest_id, player_name, num_seconds_taken, xp_rewarded, tp_rewarded) "
+         "VALUES ($1, $2, $3, $4, $5)");
+      break;
+
+   case STAT_COMPL_QUEST_ITEMS:
+      snprintf(sql, sizeof(sql),
+         "INSERT INTO player_quest_reward_items (quest_id, player_name, item_name, item_number) "
+         "VALUES ($1, $2, $3, $4)");
+      break;
+
+   default:
+      customSql = false;
+      break;
    }
 
-   if (ts_pos == -1)
-      strcat(placeholders, ",NOW()");
+   if (!customSql)
+   {
+      // Generic tables whose parameter order matches their physical columns.
+      // Auto-columns are supported only at the beginning or end of the row.
+      int ts_pos = Statistics_Table[type].timestamp_pos;
+      bool has_serial = Statistics_Table[type].has_serial;
+      char placeholders[1024];
+      placeholders[0] = 0;
 
-   snprintf(sql, sizeof(sql), "INSERT INTO %s VALUES (%s) ON CONFLICT DO NOTHING", table, placeholders);
+      if (has_serial)
+         strcat(placeholders, "DEFAULT,");
+
+      if (ts_pos == 1)
+         strcat(placeholders, "NOW(),");
+
+      for (int i = 0; i < nParams; i++)
+      {
+         char ph[8];
+         snprintf(ph, sizeof(ph), "%s$%d", i > 0 ? "," : "", i + 1);
+         strcat(placeholders, ph);
+      }
+
+      if (ts_pos == -1)
+         strcat(placeholders, ",NOW()");
+
+      snprintf(sql, sizeof(sql), "INSERT INTO %s VALUES (%s) ON CONFLICT DO NOTHING", table, placeholders);
+   }
 
    PGresult *res = PQexecParams(pg_conn, sql, nParams, NULL,
       paramValues, NULL, NULL, 0);

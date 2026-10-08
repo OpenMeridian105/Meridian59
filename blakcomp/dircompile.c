@@ -22,22 +22,68 @@
 #endif
 
 #ifdef BLAK_PLATFORM_LINUX
+#include <errno.h>
 #include <sys/stat.h>
 #include <libgen.h>
 #define _fullpath(abs, rel, maxlen) realpath((rel), (abs))
-#define CopyFile(src, dst, fail_if_exists) \
-   do { \
-      FILE *_in = fopen((src), "rb"); \
-      FILE *_out = fopen((dst), "wb"); \
-      if (_in && _out) { \
-         char _buf[4096]; size_t _n; \
-         while ((_n = fread(_buf, 1, sizeof(_buf), _in)) > 0) \
-            fwrite(_buf, 1, _n, _out); \
-      } \
-      if (_in) fclose(_in); \
-      if (_out) fclose(_out); \
-   } while(0)
 #endif
+
+static void copy_compiled_file(const char *source_path, const char *destination_path)
+{
+#ifdef BLAK_PLATFORM_WINDOWS
+   CopyFile(source_path, destination_path, FALSE);
+#else
+   struct stat source_info;
+   if (stat(source_path, &source_info) != 0)
+   {
+      if (errno == ENOENT || errno == ENOTDIR)
+         unlink(destination_path);
+      return;
+   }
+
+   if (!S_ISREG(source_info.st_mode) || source_info.st_size <= 0)
+   {
+      unlink(destination_path);
+      return;
+   }
+
+   FILE *input = fopen(source_path, "rb");
+   if (input == NULL)
+   {
+      if (errno == ENOENT || errno == ENOTDIR)
+         unlink(destination_path);
+      return;
+   }
+
+   if (fstat(fileno(input), &source_info) != 0)
+   {
+      fclose(input);
+      return;
+   }
+
+   if (!S_ISREG(source_info.st_mode) || source_info.st_size <= 0)
+   {
+      fclose(input);
+      unlink(destination_path);
+      return;
+   }
+
+   FILE *output = fopen(destination_path, "wb");
+   if (output == NULL)
+   {
+      fclose(input);
+      return;
+   }
+
+   char buffer[4096];
+   size_t bytes_read;
+   while ((bytes_read = fread(buffer, 1, sizeof(buffer), input)) > 0)
+      fwrite(buffer, 1, bytes_read, output);
+
+   fclose(input);
+   fclose(output);
+#endif
+}
 
 extern list_type directory_list;
 extern list_type file_list;
@@ -388,8 +434,8 @@ void dircompile_copy_files(char *bof_source, char *rsc_source, char *bofname, ch
    char combine[_MAX_PATH];
 
    sprintf(combine, "%s%s%s", bof_output_dir, DIR_SEPARATOR, bofname);
-   CopyFile(bof_source, combine, FALSE);
+   copy_compiled_file(bof_source, combine);
 
    sprintf(combine, "%s%s%s", rsc_output_dir, DIR_SEPARATOR, rscname);
-   CopyFile(rsc_source, combine, FALSE);
+   copy_compiled_file(rsc_source, combine);
 }

@@ -379,7 +379,7 @@ Bool CheckMaintenanceMask(SOCKADDR_IN6 *addr, int len_addr)
       BOOL skip = 0;
       for (int k = 0; k < (int)sizeof(mask.s6_addr); k++)
       {
-         if (mask.s6_addr[k] != 0 && mask.s6_addr[k] != addr->sin6_addr.s6_addr[k])
+         if (mask.s6_addr[k] != addr->sin6_addr.s6_addr[k])
          {
             skip = 1;
             break;

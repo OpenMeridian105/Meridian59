@@ -337,13 +337,11 @@ Bool CheckMaintenanceMask(SOCKADDR_IN6 *addr,int len_addr)
             continue;
         }
 
-        /* for each byte of the mask, if it's non-zero, the client must match it */
-
         skip = 0;
 
         for (int k = 0; k < sizeof(mask.s6_addr); k++)
         {
-            if (mask.s6_addr[k] != 0 && mask.s6_addr[k] != addr->sin6_addr.s6_addr[k])
+            if (mask.s6_addr[k] != addr->sin6_addr.s6_addr[k])
             {
                 // mismatch
                 skip = 1;

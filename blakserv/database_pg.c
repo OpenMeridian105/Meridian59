@@ -21,7 +21,7 @@ static char *db_pass = NULL;
 static char *db_name = NULL;
 
 // Queue
-static sql_queue queue = { 0, 0, NULL, NULL };
+static sql_queue queue;
 static UINT64 record_count = 0;
 
 // Worker thread

@@ -220,6 +220,10 @@ messages:
          //Debug("Calling PP #1");
          Send(self,@PunishPlayer,#who=poRunner);
       }
+      if ptCheckAllPositionsTimer <> $
+      {
+         DeleteTimer(ptCheckAllPositionsTimer);
+      }
       ptCheckAllPositionsTimer = CreateTimer(self,@CheckAllPositionsTimer,(2 * 1000));
       return;
    }
@@ -247,8 +251,14 @@ messages:
       return TRUE;
    }
 
-   CheckAllPositionsTimer()
+   CheckAllPositionsTimer(timer=$)
    {
+      // Only the current timer is renewed, any other one ends here.
+      if timer <> ptCheckAllPositionsTimer
+      {
+         return;
+      }
+
       ptCheckAllPositionsTimer = $;
       ptCheckAllPositionsTimer = CreateTimer(self,@CheckAllPositionsTimer,(2 * 1000));
       Send(self,@CheckAllPositions);

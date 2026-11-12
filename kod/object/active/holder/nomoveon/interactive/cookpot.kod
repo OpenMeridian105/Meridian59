@@ -42,7 +42,7 @@ messages:
    CookFood(who = $, lIngredients = $)
    {
       local lRecipe, iIngredient, lTemp, lIngredientsUsed, lRecipeIngred,
-            iAmount, lOfferItems, iOfferAmount, obj, i, j, k;
+            iAmount, lOfferItems, iOfferAmount, obj, i, j, k, e;
 
       foreach lRecipe in Send(Send(SYS,@GetLore),@GetCookingRecipes)
       {
@@ -53,7 +53,6 @@ messages:
          lRecipeIngred = Nth(lRecipe,2);
          foreach i in lRecipeIngred
          {
-            iOfferAmount = 0;
             obj = GetListElemByClass(lIngredients, First(i));
             if NOT (obj = $ OR Send(obj,@GetNumber) < Nth(i,2))
             {
@@ -70,33 +69,33 @@ messages:
                      lIngredientsUsed = Cons(j,lIngredientsUsed);
                   }
 
-                  // Check how many to create
-                  foreach j in lTemp
+                  // How many can be made: every ingredient gives
+                  // count / amount.
+                  iOfferAmount = $;
+                  foreach e in lRecipeIngred
                   {
-                     iAmount = Send(j,@GetNumber) / Nth(i,2);
-
-                     if (iAmount < iOfferAmount) OR (iOfferAmount = 0)
+                     obj = GetListElemByClass(lIngredients, First(e));
+                     iAmount = Send(obj,@GetNumber) / Nth(e,2);
+                     if (iOfferAmount = $) OR (iAmount < iOfferAmount)
                      {
                         iOfferAmount = iAmount;
                      }
                   }
 
                   lOfferItems = Cons(Create(First(Nth(lRecipe,3)),
-                                 #number=iOfferAmount),lOfferItems);
+                                 #number=iOfferAmount*Nth(Nth(lRecipe,3),2)),
+                                 lOfferItems);
 
-                  // give back any leftovers
-                  iAmount = 0;
-                  foreach j in lTemp
+                  // Give back what is left of the ingredients
+                  foreach e in lRecipeIngred
                   {
-                     iAmount = Send(j,@GetNumber) / Nth(i,2);
-                     k = iAmount - (iOfferAmount * Nth(i,2));
-                     if ((iAmount > iOfferAmount) AND (k > 0)
-                        AND GetListElemByClass(lOfferItems, GetClass(j)) = $)
+                     obj = GetListElemByClass(lIngredients, First(e));
+                     k = Send(obj,@GetNumber) - (iOfferAmount * Nth(e,2));
+                     if k > 0
                      {
-                        lOfferItems = Cons(Create(GetClass(j),#number=(k)),
-                                          lOfferItems);
+                        lOfferItems = Cons(Create(GetClass(obj),#number=k),
+                                           lOfferItems);
                      }
-
                   }
                }
             }

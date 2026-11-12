@@ -402,7 +402,16 @@ void AsyncSocketReadUDP(SOCKET sock)
       return;
    }
 
-   // 2) todo?: check blacklisted ip by comparing senderaddr
+   // 2) larger than a buffer node can hold, discard it
+   if (bytesReceivd > (int)sizeof(((buffer_node*)0)->prebuf))
+   {
+      if (ConfigBool(DEBUG_UDP))
+         dprintf("AsyncSocketReadUDP discarding udp with size %i above buffer size \n",
+            bytesReceivd);
+      return;
+   }
+
+   // 3) todo?: check blacklisted ip by comparing senderaddr
 
    ///////////////////////////////////////////////////////////////////////
    // parse header and type

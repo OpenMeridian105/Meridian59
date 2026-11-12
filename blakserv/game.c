@@ -227,7 +227,11 @@ void GameProcessSessionBufferUDP(session_node *s)
 
       // directly forward to KOD if epoch is valid
       // note: there is no C-side parsing of some BP_ like in TCP
-      if (epoch == GetEpoch())
+      if (len > LEN_MAX_CLIENT_MSG)
+      {
+         eprintf("GameProcessSessionBufferUDP got message too long %i\n", len);
+      }
+      else if (epoch == GetEpoch())
       {
          if (len > 0 && (unsigned char)ptr[0] == BP_UDP_PING)
          {

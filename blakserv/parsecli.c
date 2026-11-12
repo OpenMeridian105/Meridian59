@@ -318,6 +318,12 @@ void ParseClientSendBlakod(int session_id,int msg_len,unsigned char *msg_data,in
 					msg_byte_offset += 2;
 					
 					len_list = temp.v.data;
+					if (len_list < 0)
+					{
+						eprintf("ParseClientSendBlakod got negative list length %i, command %i parm %i\n",
+							len_list,i,j);
+						return;
+					}
 					list_val.int_val = NIL;
 					
 					found_number_stuff = True;

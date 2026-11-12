@@ -378,6 +378,23 @@ void ClearSessionTimer(session_node *s)
 }
 
 /* called from interface thread, but with server lock */
+/* Connections from one address that have not logged in yet: more than this
+   are refused, so one address can't take all session slots. */
+#define MAX_WAITING_PER_ADDR 5
+
+Bool TooManyWaitingFromAddr(struct in6_addr *addr)
+{
+   int count = 0;
+
+   for (int i = 0; i < num_sessions; i++)
+      if (sessions[i].connected && sessions[i].account == NULL
+          && (sessions[i].state == STATE_SYNCHED || sessions[i].state == STATE_RESYNC)
+          && memcmp(&sessions[i].conn.addr, addr, sizeof(struct in6_addr)) == 0)
+         count++;
+
+   return count >= MAX_WAITING_PER_ADDR;
+}
+
 session_node * CreateSession(connection_node conn)
 {
 	session_node *session;

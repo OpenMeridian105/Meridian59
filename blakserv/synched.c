@@ -72,7 +72,10 @@ void SynchedProcessSessionBuffer(session_node *s)
 {
    client_msg msg;
    
-   SetSessionTimer(s,60*ConfigInt(INACTIVE_SYNCHED));
+   /* before the login the timer of SynchedInit keeps running: a connection
+      sending a byte now and then must not stay forever */
+   if (s->account != NULL)
+      SetSessionTimer(s,60*ConfigInt(INACTIVE_SYNCHED));
 
    /* need to copy only as many bytes as we can hold */
    while (s->receive_list != NULL)

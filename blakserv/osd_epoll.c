@@ -329,6 +329,12 @@ int AsyncSocketAccept(SOCKET sock, int event, int error, int connection_type)
    conn.type = CONN_SOCKET;
    conn.socket = new_sock;
 
+   if (connection_type == SOCKET_PORT && TooManyWaitingFromAddr(&conn.addr))
+   {
+      closesocket(new_sock);
+      return 0;
+   }
+
    // Set TCP_NODELAY and non-blocking on accepted socket
    // Linux accept() does not inherit socket options from listen socket
    {

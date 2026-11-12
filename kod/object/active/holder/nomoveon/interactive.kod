@@ -114,14 +114,15 @@ messages:
          }
       }
 
-      // take stuff the user put there
+      // The ingredients the user put there are used up.  Results and
+      // unused ingredients went to the user's side above.
       oHolder = Send(SYS,@GetSystemHolder1);
       foreach lTake_items in [ Send(oHolder,@GetHolderActive),
                            Send(oHolder,@GetHolderPassive) ]
       {
          foreach i in lTake_items
          {
-            Send(self,@NewHold,#what=i);
+            Send(i,@Delete);
          }
       }
 
@@ -129,6 +130,12 @@ messages:
       Send(self,@OfferCanceled,#who=who);
 
       return TRUE;
+   }
+
+   ReqTaker()
+   "Nobody takes things out of interactive objects."
+   {
+      return FALSE;
    }
 
    CancelOfferTimer(timer=$)

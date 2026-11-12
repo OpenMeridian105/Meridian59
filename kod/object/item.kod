@@ -76,6 +76,9 @@ resources:
    item_durability_warning = "~B%s%s is about to break!"
    item_durability_warning_sound = durabilitywarning.ogg
 
+   item_apply_self_only = "You can only use %s%s on yourself."
+   item_apply_own_only = "You can only use %s%s on your own things."
+
 classvars:
 
    vrItem_broken = item_broken_battle
@@ -1118,6 +1121,36 @@ messages:
    "Called when we're used by someone, and they logon."
    {
       return;
+   }
+
+   ReqApplyOnSelf(what = $,apply_on = $)
+   "For items that may only be applied to the one using them."
+   {
+      if apply_on <> what
+      {
+         Send(what,@MsgSendUser,#message_rsc=item_apply_self_only,
+               #parm1=Send(self,@GetDef),#parm2=Send(self,@GetName));
+
+         return FALSE;
+      }
+
+      return TRUE;
+   }
+
+   ReqApplyOnOwnItem(what = $,apply_on = $)
+   "For items that may only be applied to items of the one using them."
+   {
+      if apply_on = $
+         OR NOT IsClass(apply_on,&Item)
+         OR Send(apply_on,@GetOwner) <> what
+      {
+         Send(what,@MsgSendUser,#message_rsc=item_apply_own_only,
+               #parm1=Send(self,@GetDef),#parm2=Send(self,@GetName));
+
+         return FALSE;
+      }
+
+      return TRUE;
    }
 
    ReqUse()

@@ -70,6 +70,12 @@ constants:
    // How much vigor does it cost us to defend late?
    ACTIVE_DEFENSE_PENALTY = 5
 
+   // Our part in the current offer, see piOfferRole.
+   OFFER_ROLE_NONE = 0
+   OFFER_ROLE_OFFERER = 1
+   OFFER_ROLE_RECEIVER = 2
+   OFFER_ROLE_COUNTERED = 3
+
 resources:
 
    include user.lkod
@@ -540,6 +546,7 @@ properties:
 
    poOffer_who = $
    plOffer_items = $
+   piOfferRole = OFFER_ROLE_NONE
 
    piSave_room = $
    piSave_row = 0
@@ -8200,6 +8207,7 @@ messages:
       }
 
       poOffer_who = what;
+      piOfferRole = OFFER_ROLE_OFFERER;
       plOffer_items = $;
 
       lNumbers = number_list;
@@ -8292,6 +8300,7 @@ messages:
       }
 
       poOffer_who = what;
+      piOfferRole = OFFER_ROLE_OFFERER;
       plOffer_items = $;
 
       lNumbers = number_list;
@@ -8449,6 +8458,7 @@ messages:
       }
 
       poOffer_who = what;
+      piOfferRole = OFFER_ROLE_RECEIVER;
 
       Send(self,@SysMsgSendUser,#message_rsc=user_got_offer,
            #parm1=Send(poOffer_who,@GetDef),#parm2=Send(poOffer_who,@GetName));
@@ -8488,6 +8498,7 @@ messages:
       local i;
 
       poOffer_who = $;
+      piOfferRole = OFFER_ROLE_NONE;
       piFlags2 &= ~PFLAG2_OFFER_OTHER_ACPT;
       foreach i in plOffer_items
       {
@@ -8548,6 +8559,12 @@ messages:
          return;
       }
 
+      // Only the receiver of an offer answers it, and only once.
+      if piOfferRole <> OFFER_ROLE_RECEIVER
+      {
+         return;
+      }
+
       // Check quantities; must be positive
       foreach i in number_list
       {
@@ -8559,6 +8576,7 @@ messages:
          }
       }
 
+      piOfferRole = OFFER_ROLE_COUNTERED;
       plOffer_items = $;
       lNumbers = number_list;
 
@@ -8633,7 +8651,9 @@ messages:
    {
       local i;
 
+      // Only the one who made the offer gets an answer.
       if poOffer_who = $
+         OR piOfferRole <> OFFER_ROLE_OFFERER
       {
          return FALSE;
       }
@@ -8854,6 +8874,7 @@ messages:
       }
 
       poOffer_who = $;
+      piOfferRole = OFFER_ROLE_NONE;
       plOffer_items = $;
 
       return;
@@ -8911,6 +8932,7 @@ messages:
       }
 
       poOffer_who = $;
+      piOfferRole = OFFER_ROLE_NONE;
       plOffer_items = $;
 
       // Send a "cancelled" to make dialog go away

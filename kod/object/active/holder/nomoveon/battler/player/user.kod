@@ -3230,7 +3230,25 @@ messages:
          return;
       }
 
+      if NOT IsClass(oHall,&GuildHall)
+      {
+         Debug("Guild hall rent by",Send(self,@GetTrueName),self,
+               "for non guild hall",oHall);
+
+         return FALSE;
+      }
+
+      // A negative value means this guild hall can't be rented now.
       iCost = Send(oHall,@GetPurchaseValue,#who=self);
+      if iCost = $
+         OR iCost < 0
+      {
+         Debug("Guild hall rent by",Send(self,@GetTrueName),self,
+               "for guild hall",oHall,"not available");
+
+         return FALSE;
+      }
+
       oMoney = Send(self,@GetMoneyObject);
 
       if oMoney = $ OR Send(oMoney,@GetNumber) < iCost

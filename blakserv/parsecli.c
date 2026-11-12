@@ -240,6 +240,11 @@ void ParseClientSendBlakod(int session_id,int msg_len,unsigned char *msg_data,in
 					eprintf("ParseCientSendBlakod got invalid string length %u\n",len_str);
 					return;
 				}
+				if (memchr(msg_data+msg_byte_offset+2,0,len_str) != NULL)
+				{
+					eprintf("ParseClientSendBlakod got string with NUL byte, command %i parm %i\n",i,j);
+					return;
+				}
 				/*
 				dprintf("string is ok--compare is %u 2 %u (total %u) with %u\n",
 						  msg_byte_offset,len_str,msg_byte_offset+2+len_str,msg_len);
@@ -267,6 +272,11 @@ void ParseClientSendBlakod(int session_id,int msg_len,unsigned char *msg_data,in
 				if (msg_byte_offset + 2 + len_str > msg_len)
 				{
 					eprintf("ParseCientSendBlakod got invalid temp string length %u\n",len_str);
+					return;
+				}
+				if (memchr(msg_data+msg_byte_offset+2,0,len_str) != NULL)
+				{
+					eprintf("ParseClientSendBlakod got temp string with NUL byte, command %i parm %i\n",i,j);
 					return;
 				}
 				/*
@@ -308,6 +318,12 @@ void ParseClientSendBlakod(int session_id,int msg_len,unsigned char *msg_data,in
 					msg_byte_offset += 2;
 					
 					len_list = temp.v.data;
+					if (len_list < 0)
+					{
+						eprintf("ParseClientSendBlakod got negative list length %i, command %i parm %i\n",
+							len_list,i,j);
+						return;
+					}
 					list_val.int_val = NIL;
 					
 					found_number_stuff = True;

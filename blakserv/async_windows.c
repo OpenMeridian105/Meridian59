@@ -135,6 +135,13 @@ void AsyncSocketAccept(SOCKET sock,int event,int error,int connection_type)
 	
 	EnterServerLock();
 	
+	if (connection_type == SOCKET_PORT && TooManyWaitingFromAddr(&conn.addr))
+	{
+		LeaveServerLock();
+		closesocket(new_sock);
+		return;
+	}
+	
 	s = CreateSession(conn);
 	if (s != NULL)
 	{

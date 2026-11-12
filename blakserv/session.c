@@ -378,6 +378,23 @@ void ClearSessionTimer(session_node *s)
 }
 
 /* called from interface thread, but with server lock */
+/* Connections from one address that have not logged in yet: more than this
+   are refused, so one address can't take all session slots. */
+#define MAX_WAITING_PER_ADDR 5
+
+Bool TooManyWaitingFromAddr(struct in6_addr *addr)
+{
+   int count = 0;
+
+   for (int i = 0; i < num_sessions; i++)
+      if (sessions[i].connected && sessions[i].account == NULL
+          && (sessions[i].state == STATE_SYNCHED || sessions[i].state == STATE_RESYNC)
+          && memcmp(&sessions[i].conn.addr, addr, sizeof(struct in6_addr)) == 0)
+         count++;
+
+   return count >= MAX_WAITING_PER_ADDR;
+}
+
 session_node * CreateSession(connection_node conn)
 {
 	session_node *session;
@@ -1128,8 +1145,11 @@ void SessionAddBufferList(session_node *s,buffer_node *blist)
 	
 	/* simple approach: set bn->next to blist.  However, this can use up
 	a ton of buffers, when the amount of data to be sent is small.  So
-	do a couple discreet checks, and perhaps memcpy's. */
-	while (blist != NULL && blist->len_buf < ((int)sizeof(bn->prebuf) - bn->len_buf - HEADERBYTES))
+	do a couple discreet checks, and perhaps memcpy's.  The free space is
+	measured from the current end of data, since bn->buf may have been
+	advanced after a partial send. */
+	while (blist != NULL && blist->len_buf <
+		(int)((bn->prebuf + sizeof(bn->prebuf)) - (bn->buf + bn->len_buf)))
 	{
 		/* dprintf("squeezing %i in %i\n",blist->len_buf,bn->size_buf-bn->len_buf); */
 		memcpy(bn->buf+bn->len_buf,blist->buf,blist->len_buf);

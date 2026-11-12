@@ -122,6 +122,12 @@ messages:
 
    ReqNewApply(what = $, apply_on = $)
    {
+      // Only on the one using it.
+      if NOT Send(self,@ReqApplyOnSelf,#what=what,#apply_on=apply_on)
+      {
+         return FALSE;
+      }
+
       if (IsClass(what,&User))
       {
          // Prevent use if you're red.  This is because player killers

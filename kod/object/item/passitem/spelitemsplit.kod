@@ -55,9 +55,19 @@ messages:
 
    ReqNewApply(what=$,apply_on=$)
    {
+      local oTargetOwner;
+
+      // Only our own items, or items lying in our room.
       if IsClass(apply_on,vcSplitClass)
       {
-         return TRUE;
+         oTargetOwner = Send(apply_on,@GetOwner);
+         if oTargetOwner = what
+            OR (oTargetOwner <> $
+                AND oTargetOwner = Send(what,@GetOwner)
+                AND IsClass(oTargetOwner,&Room))
+         {
+            return TRUE;
+         }
       }
 
       Send(what,@MsgSendUser,#message_rsc=splitter_cant_use_on,

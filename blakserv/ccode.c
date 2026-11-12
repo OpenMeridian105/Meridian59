@@ -315,6 +315,32 @@ int C_ClearPacket(int object_id,local_var_type *local_vars,
 	return NIL;
 }
 
+/* Append to a log line held in a fixed size buffer.  Once the buffer is
+   full, further text is dropped, so long lines are truncated. */
+static void LogLineAppend(char *buf,size_t size,const char *data,size_t len)
+{
+	size_t used = strlen(buf);
+	
+	if (used + 1 >= size)
+		return;
+	if (len > size - 1 - used)
+		len = size - 1 - used;
+	memcpy(buf + used,data,len);
+	buf[used + len] = 0;
+}
+
+static void LogLinePrintf(char *buf,size_t size,const char *fmt,...)
+{
+	size_t used = strlen(buf);
+	va_list marker;
+	
+	if (used + 1 >= size)
+		return;
+	va_start(marker,fmt);
+	vsnprintf(buf + used,size - used,fmt,marker);
+	va_end(marker);
+}
+
 int C_GodLog(int object_id,local_var_type *local_vars,
 			int num_normal_parms,parm_node normal_parm_array[],
 			int num_name_parms,parm_node name_parm_array[])
@@ -338,7 +364,7 @@ int C_GodLog(int object_id,local_var_type *local_vars,
 		return NIL;
 	}
 	
-	sprintf(buf,"[%s] ",BlakodDebugInfo());
+	snprintf(buf,sizeof(buf),"[%s] ",BlakodDebugInfo());
 	
 	for (i=0;i<num_normal_parms;i++)
 	{
@@ -348,7 +374,7 @@ int C_GodLog(int object_id,local_var_type *local_vars,
 		switch (each_val.v.tag)
 		{
 		case TAG_DEBUGSTR :
-			sprintf(buf+strlen(buf),"%s",GetClassDebugStr(c,each_val.v.data));
+			LogLinePrintf(buf,sizeof(buf),"%s",GetClassDebugStr(c,each_val.v.data));
 			break;
 			
 		case TAG_RESOURCE :
@@ -357,17 +383,17 @@ int C_GodLog(int object_id,local_var_type *local_vars,
 				r = GetResourceByID(each_val.v.data);
 				if (r == NULL)
 				{
-					sprintf(buf+strlen(buf),"<unknown RESOURCE %i>",each_val.v.data);
+					LogLinePrintf(buf,sizeof(buf),"<unknown RESOURCE %i>",each_val.v.data);
 				}
 				else
 				{
-					sprintf(buf+strlen(buf),"%s",r->resource_val[0]);
+					LogLinePrintf(buf,sizeof(buf),"%s",r->resource_val[0]);
 				}
 			}
 			break;
 			
 		case TAG_INT :
-			sprintf(buf+strlen(buf),"%d",(int)each_val.v.data);
+			LogLinePrintf(buf,sizeof(buf),"%d",(int)each_val.v.data);
 			break;
 			
 		case TAG_CLASS :
@@ -376,19 +402,17 @@ int C_GodLog(int object_id,local_var_type *local_vars,
 				c = GetClassByID(each_val.v.data);
 				if (c == NULL)
 				{
-					sprintf(buf+strlen(buf),"<unknown CLASS %i>",each_val.v.data);
+					LogLinePrintf(buf,sizeof(buf),"<unknown CLASS %i>",each_val.v.data);
 				}
 				else
 				{
-					strcat(buf,"&");
-					strcat(buf,c->class_name);
+					LogLinePrintf(buf,sizeof(buf),"&%s",c->class_name);
 				}
 			}
 			break;
 			
 		case TAG_STRING :
 			{
-				size_t lenBuffer;
 				string_node *snod = GetStringByID(each_val.v.data);
 				
 				if (snod == NULL)
@@ -396,21 +420,16 @@ int C_GodLog(int object_id,local_var_type *local_vars,
 					bprintf("C_GodLog can't find string %i\n",each_val.v.data);
 					return NIL;
 				}
-				lenBuffer = strlen(buf);
-				memcpy(buf + lenBuffer,snod->data,snod->len_data);
-				*(buf + lenBuffer + snod->len_data) = 0;
+				LogLineAppend(buf,sizeof(buf),snod->data,snod->len_data);
 			}
 			break;
 			
 		case TAG_TEMP_STRING :
 			{
-				size_t len_buf;
 				string_node *snod;
 				
 				snod = GetTempString();
-				len_buf = strlen(buf);
-				memcpy(buf + len_buf,snod->data,snod->len_data);
-				*(buf + len_buf + snod->len_data) = 0;
+				LogLineAppend(buf,sizeof(buf),snod->data,snod->len_data);
 			}
 			break;
 			
@@ -425,13 +444,13 @@ int C_GodLog(int object_id,local_var_type *local_vars,
 				o = GetObjectByID(each_val.v.data);
 				if (o == NULL)
 				{
-					sprintf(buf+strlen(buf),"<OBJECT %i invalid>",each_val.v.data);
+					LogLinePrintf(buf,sizeof(buf),"<OBJECT %i invalid>",each_val.v.data);
 					break;
 				}
 				c = GetClassByID(o->class_id);
 				if (c == NULL)
 				{
-					sprintf(buf+strlen(buf),"<OBJECT %i unknown class>",each_val.v.data);
+					LogLinePrintf(buf,sizeof(buf),"<OBJECT %i unknown class>",each_val.v.data);
 					break;
 				}
 				
@@ -441,16 +460,16 @@ int C_GodLog(int object_id,local_var_type *local_vars,
 					u = GetUserByObjectID(o->object_id);
 					if (u == NULL)
 					{
-						sprintf(buf+strlen(buf),"<OBJECT %i broken user>",each_val.v.data);
+						LogLinePrintf(buf,sizeof(buf),"<OBJECT %i broken user>",each_val.v.data);
 						break;
 					}
-					sprintf(buf+strlen(buf),"OBJECT %i",each_val.v.data);
+					LogLinePrintf(buf,sizeof(buf),"OBJECT %i",each_val.v.data);
 					break;
 				}
 			}
 			//FALLTHRU
 		default :
-			sprintf(buf+strlen(buf),"%s %s",GetTagName(each_val),GetDataName(each_val));
+			LogLinePrintf(buf,sizeof(buf),"%s %s",GetTagName(each_val),GetDataName(each_val));
 			break;
       }
    }
@@ -481,7 +500,7 @@ int C_Debug(int object_id,local_var_type *local_vars,
 		return NIL;
 	}
 	
-	sprintf(buf,"[%s] ",BlakodDebugInfo());
+	snprintf(buf,sizeof(buf),"[%s] ",BlakodDebugInfo());
 	
 	for (i=0;i<num_normal_parms;i++)
 	{
@@ -491,7 +510,7 @@ int C_Debug(int object_id,local_var_type *local_vars,
 		switch (each_val.v.tag)
 		{
 		case TAG_DEBUGSTR :
-			sprintf(buf+strlen(buf),"%s",GetClassDebugStr(c,each_val.v.data));
+			LogLinePrintf(buf,sizeof(buf),"%s",GetClassDebugStr(c,each_val.v.data));
 			break;
 			
 		case TAG_RESOURCE :
@@ -500,17 +519,17 @@ int C_Debug(int object_id,local_var_type *local_vars,
 				r = GetResourceByID(each_val.v.data);
 				if (r == NULL)
 				{
-					sprintf(buf+strlen(buf),"<unknown RESOURCE %i>",each_val.v.data);
+					LogLinePrintf(buf,sizeof(buf),"<unknown RESOURCE %i>",each_val.v.data);
 				}
 				else
 				{
-					sprintf(buf+strlen(buf),"%s",r->resource_val[0]);
+					LogLinePrintf(buf,sizeof(buf),"%s",r->resource_val[0]);
 				}
 			}
 			break;
 			
 		case TAG_INT :
-			sprintf(buf+strlen(buf),"%d",(int)each_val.v.data);
+			LogLinePrintf(buf,sizeof(buf),"%d",(int)each_val.v.data);
 			break;
 			
 		case TAG_CLASS :
@@ -519,19 +538,17 @@ int C_Debug(int object_id,local_var_type *local_vars,
 				c = GetClassByID(each_val.v.data);
 				if (c == NULL)
 				{
-					sprintf(buf+strlen(buf),"<unknown CLASS %i>",each_val.v.data);
+					LogLinePrintf(buf,sizeof(buf),"<unknown CLASS %i>",each_val.v.data);
 				}
 				else
 				{
-					strcat(buf,"&");
-					strcat(buf,c->class_name);
+					LogLinePrintf(buf,sizeof(buf),"&%s",c->class_name);
 				}
 			}
 			break;
 			
 		case TAG_STRING :
 			{
-				size_t lenBuffer;
 				string_node *snod = GetStringByID(each_val.v.data);
 				
 				if (snod == NULL)
@@ -539,21 +556,16 @@ int C_Debug(int object_id,local_var_type *local_vars,
 					bprintf("C_Debug can't find string %i\n",each_val.v.data);
 					return NIL;
 				}
-				lenBuffer = strlen(buf);
-				memcpy(buf + lenBuffer,snod->data,snod->len_data);
-				*(buf + lenBuffer + snod->len_data) = 0;
+				LogLineAppend(buf,sizeof(buf),snod->data,snod->len_data);
 			}
 			break;
 			
 		case TAG_TEMP_STRING :
 			{
-				size_t len_buf;
 				string_node *snod;
 				
 				snod = GetTempString();
-				len_buf = strlen(buf);
-				memcpy(buf + len_buf,snod->data,snod->len_data);
-				*(buf + len_buf + snod->len_data) = 0;
+				LogLineAppend(buf,sizeof(buf),snod->data,snod->len_data);
 			}
 			break;
 			
@@ -568,13 +580,13 @@ int C_Debug(int object_id,local_var_type *local_vars,
 				o = GetObjectByID(each_val.v.data);
 				if (o == NULL)
 				{
-					sprintf(buf+strlen(buf),"<OBJECT %i invalid>",each_val.v.data);
+					LogLinePrintf(buf,sizeof(buf),"<OBJECT %i invalid>",each_val.v.data);
 					break;
 				}
 				c = GetClassByID(o->class_id);
 				if (c == NULL)
 				{
-					sprintf(buf+strlen(buf),"<OBJECT %i unknown class>",each_val.v.data);
+					LogLinePrintf(buf,sizeof(buf),"<OBJECT %i unknown class>",each_val.v.data);
 					break;
 				}
 				
@@ -584,21 +596,21 @@ int C_Debug(int object_id,local_var_type *local_vars,
 					u = GetUserByObjectID(o->object_id);
 					if (u == NULL)
 					{
-						sprintf(buf+strlen(buf),"<OBJECT %i broken user>",each_val.v.data);
+						LogLinePrintf(buf,sizeof(buf),"<OBJECT %i broken user>",each_val.v.data);
 						break;
 					}
-					sprintf(buf+strlen(buf),"ACCOUNT %i OBJECT %i",u->account_id,each_val.v.data);
+					LogLinePrintf(buf,sizeof(buf),"ACCOUNT %i OBJECT %i",u->account_id,each_val.v.data);
 					break;
 				}
 			}
 			//FALLTHRU
 		default :
-			sprintf(buf+strlen(buf),"%s %s",GetTagName(each_val),GetDataName(each_val));
+			LogLinePrintf(buf,sizeof(buf),"%s %s",GetTagName(each_val),GetDataName(each_val));
 			break;
       }
       
       if (i != num_normal_parms-1)
-		  sprintf(buf+strlen(buf),",");
+		  LogLinePrintf(buf,sizeof(buf),",");
    }
    dprintf("%s\n",buf);
    return NIL;

@@ -70,7 +70,16 @@ messages:
 
       lOfferItems = $;
       Send(what,@CounterOffer,#item_list=lOfferItems);
-      plUser_Offers = Cons([ what, lOfferItems, CreateTimer(self,@CancelOfferTimer,
+      Send(self,@AddUserOffer,#who=what,#lOfferItems=lOfferItems);
+
+      return;
+   }
+
+   AddUserOffer(who = $, lOfferItems = $)
+   "Remember what we give back to who.  Only one open offer per user."
+   {
+      Send(self,@OfferCanceled,#who=who);
+      plUser_Offers = Cons([ who, lOfferItems, CreateTimer(self,@CancelOfferTimer,
                                              viCancel_offer_time) ], plUser_Offers);
 
       return;
@@ -105,14 +114,15 @@ messages:
          }
       }
 
-      // take stuff the user put there
+      // The ingredients the user put there are used up.  Results and
+      // unused ingredients went to the user's side above.
       oHolder = Send(SYS,@GetSystemHolder1);
       foreach lTake_items in [ Send(oHolder,@GetHolderActive),
                            Send(oHolder,@GetHolderPassive) ]
       {
          foreach i in lTake_items
          {
-            Send(self,@NewHold,#what=i);
+            Send(i,@Delete);
          }
       }
 
@@ -120,6 +130,12 @@ messages:
       Send(self,@OfferCanceled,#who=who);
 
       return TRUE;
+   }
+
+   ReqTaker()
+   "Nobody takes things out of interactive objects."
+   {
+      return FALSE;
    }
 
    CancelOfferTimer(timer=$)

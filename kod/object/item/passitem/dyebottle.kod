@@ -83,6 +83,12 @@ messages:
 
    ReqNewApply(what = $,apply_on = $)
    {
+      // Only on items of the one using it.
+      if NOT Send(self,@ReqApplyOnOwnItem,#what=what,#apply_on=apply_on)
+      {
+         return FALSE;
+      }
+
       if NOT Send(apply_on,@CanDyeItem)
       {
          Send(what,@MsgSendUser,#message_rsc=DyeBottle_unable_rsc,

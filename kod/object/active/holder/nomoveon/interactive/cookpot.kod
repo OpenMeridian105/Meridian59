@@ -64,10 +64,14 @@ messages:
                // Has all the ingredients, create food
                if (iIngredient = Length(lRecipeIngred))
                {
-                  lIngredientsUsed = lTemp;
+                  // Added to the ingredients of earlier complete recipes
+                  foreach j in lTemp
+                  {
+                     lIngredientsUsed = Cons(j,lIngredientsUsed);
+                  }
 
                   // Check how many to create
-                  foreach j in lIngredientsUsed
+                  foreach j in lTemp
                   {
                      iAmount = Send(j,@GetNumber) / Nth(i,2);
 
@@ -82,7 +86,7 @@ messages:
 
                   // give back any leftovers
                   iAmount = 0;
-                  foreach j in lIngredientsUsed
+                  foreach j in lTemp
                   {
                      iAmount = Send(j,@GetNumber) / Nth(i,2);
                      k = iAmount - (iOfferAmount * Nth(i,2));

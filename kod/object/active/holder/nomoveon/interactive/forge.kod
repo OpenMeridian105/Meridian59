@@ -87,10 +87,14 @@ messages:
                // Has all the ingredients, create food
                if (iNum = Length(lItems))
                {
-                  lItemsUsed = lTemp;
+                  // Added to the ingredients of earlier complete recipes
+                  foreach j in lTemp
+                  {
+                     lItemsUsed = Cons(j,lItemsUsed);
+                  }
 
                   // Check how many to create
-                  foreach j in lItemsUsed
+                  foreach j in lTemp
                   {
                      if Send(j,@IsStackable)
                      {
@@ -110,7 +114,7 @@ messages:
 
                   // give back any leftovers
                   iAmount = 0;
-                  foreach j in lItemsUsed
+                  foreach j in lTemp
                   {
                      if Send(j,@IsStackable)
                      {

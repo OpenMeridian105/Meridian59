@@ -290,6 +290,7 @@ void SynchedProtocolParse(session_node *s,client_msg *msg)
 
    case AP_REGISTER :
       eprintf("SynchedProtocolParse AP_REGISTER no longer supported\n");
+      HangupSession(s);
       break;
 
    case AP_RESYNC :

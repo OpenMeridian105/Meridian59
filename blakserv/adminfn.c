@@ -1172,7 +1172,17 @@ void AdminWhoEachSession(session_node *s)
 	else
 		aprintf("    ");
 	
-	if (s->blak_client)
+	if (s->blak_client && s->version_major == GODOT_VERSION_MAJOR)
+	{
+		// Godot: its own version from the login, "G" + MAJOR MINOR PATCH (G100 = 1.0.0, Gdev = developer build)
+		if (s->bandwidth >= GODOT_VERSION_DEV)
+			aprintf("Gdev");
+		else if (s->bandwidth >= 9000 && s->bandwidth <= 9999)
+			aprintf("G%03i", s->bandwidth - 9000);
+		else
+			aprintf("G?  ");
+	}
+	else if (s->blak_client)
 		aprintf("%4i",s->version_major*100+s->version_minor);
 	else
 		aprintf(" %-3s","No");

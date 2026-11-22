@@ -24,6 +24,7 @@ void SynchedAcceptLogin(session_node *s,char *name,char *password);
 void SynchedSendGetClient(session_node *s);
 void SynchedSendClientPatchClassic(session_node *s);
 void SynchedSendClientPatchOgre(session_node *s);
+void SynchedSendClientPatchGodot(session_node *s);
 void SynchedSendClientPatchOldClassic(session_node *s);
 void LogUserData(session_node *s);
 void SynchedSendMenuChoice(session_node *s);
@@ -31,6 +32,18 @@ void SynchedDoMenu(session_node *s);
 void SynchedGotoGame(session_node *s,int last_download_time);
 void SynchedSendDLFileInfo(char *str,int time,int type,int size);
 void SynchedAddDelFile(char *str);
+
+static char godot_too_old_str[] =
+   "Your Godot client is too old for this server. Please download the current version.";
+
+/* GodotPatchHost set? (dynamic config: only readable locked, ConfigStr returns NULL for it) */
+static Bool GodotPatchConfigured(void)
+{
+   char *str = LockConfigStr(UPDATE_GODOT_PATCH_ROOT);
+   Bool set = str != NULL && *str != 0;
+   UnlockConfigStr();
+   return set;
+}
 
 void SynchedInit(session_node *s)
 {
@@ -221,7 +234,8 @@ void SynchedProtocolParse(session_node *s,client_msg *msg)
 
       // Don't break if this fails, still allow user to connect.
       if (s->version_major == 50 && s->version_minor > 42
-         || s->version_major == 90 && s->version_minor > 6)
+         || s->version_major == 90 && s->version_minor > 6
+         || s->version_major == GODOT_VERSION_MAJOR)
       {
          len = *(short *)(msg->data + index);
          if (index + 2 + len > msg->len)
@@ -523,12 +537,33 @@ void VerifyLogin(session_node *s)
       /* set timeout real long, since they're downloading */
       SetSessionTimer(s, 60 * ConfigInt(INACTIVE_TRANSFER));
    }
+   else if (s->version_major == GODOT_VERSION_MAJOR
+           && s->bandwidth < ConfigInt(LOGIN_GODOT_MIN_VERSION))
+   {
+      if (GodotPatchConfigured())
+      {
+         // Godot client too old: its own complete list (program + game data)
+         SynchedSendClientPatchGodot(s);
+         InterfaceUpdateSession(s);
+
+         /* set timeout real long, since they're downloading */
+         SetSessionTimer(s, 60 * ConfigInt(INACTIVE_TRANSFER));
+      }
+      else
+      {
+         // too old and no Godot update entries: the minimum version still applies, no login
+         SendSynchedMessage(s, godot_too_old_str, LA_LOGOFF);
+         HangupSession(s);
+      }
+   }
    else
    {
       str = GetRsbMD5();
+      // a Godot client without Godot entries (empty GodotPatchHost) plays on with its resources
       if (*str != 0
          && s->rsb_hash[0] != 0
-         && strcmp(s->rsb_hash, str) != 0)
+         && strcmp(s->rsb_hash, str) != 0
+         && !(s->version_major == GODOT_VERSION_MAJOR && !GodotPatchConfigured()))
       {
          if (s->version_major == 50)
          {
@@ -536,6 +571,8 @@ void VerifyLogin(session_node *s)
          }
          else if (s->version_major == 90)
             SynchedSendClientPatchOgre(s);
+         else if (s->version_major == GODOT_VERSION_MAJOR)
+            SynchedSendClientPatchGodot(s);   // Godot: its own list, never the Ogre one
          InterfaceUpdateSession(s);
          /* set timeout real long, since they're downloading */
          SetSessionTimer(s, 60 * ConfigInt(INACTIVE_TRANSFER));
@@ -640,6 +677,42 @@ void SynchedSendClientPatchOgre(session_node *s)
    str = LockConfigStr(UPDATE_OGRE_CLUB_EXE);
    AddStringToPacket(strlen(str), str);
    UnlockConfigStr();
+
+   str = LockConfigStr(UPDATE_DOWNLOAD_REASON);
+   AddStringToPacket(strlen(str), str);
+   UnlockConfigStr();
+
+   SendPacket(s->session_id);
+}
+
+// Send the AP_CLIENT_PATCH protocol with the list of the Godot client (program + game data): same layout as
+// for Ogre, the folders by platform (os_type: Windows clients send 2 = NT). No updater: Godot patches itself.
+void SynchedSendClientPatchGodot(session_node *s)
+{
+   char *str;
+
+   if (!s)
+      return;
+
+   AddByteToPacket(AP_CLIENT_PATCH);
+
+   str = LockConfigStr(UPDATE_GODOT_PATCH_ROOT);
+   AddStringToPacket(strlen(str), str);
+   UnlockConfigStr();
+
+   str = LockConfigStr(s->os_type == GODOT_OS_WINDOWS ? UPDATE_GODOT_PATCH_PATH_WINDOWS : UPDATE_GODOT_PATCH_PATH_LINUX);
+   AddStringToPacket(strlen(str), str);
+   UnlockConfigStr();
+
+   str = LockConfigStr(s->os_type == GODOT_OS_WINDOWS ? UPDATE_GODOT_PATCH_CACHE_PATH_WINDOWS : UPDATE_GODOT_PATCH_CACHE_PATH_LINUX);
+   AddStringToPacket(strlen(str), str);
+   UnlockConfigStr();
+
+   str = LockConfigStr(UPDATE_GODOT_PATCH_TXT);
+   AddStringToPacket(strlen(str), str);
+   UnlockConfigStr();
+
+   AddStringToPacket(0, "");   // updater file: none
 
    str = LockConfigStr(UPDATE_DOWNLOAD_REASON);
    AddStringToPacket(strlen(str), str);
@@ -776,7 +849,14 @@ void LogUserData(session_node *s)
    sprintf(buf+strlen(buf),"%s",LockConfigStr(ADVERTISE_FILE2));
    UnlockConfigStr();*/
 
-   sprintf(buf + strlen(buf), " client version %i", s->version_major * 100 + s->version_minor);
+   if (s->version_major == GODOT_VERSION_MAJOR)
+   {
+      char godot_version[16];
+      GodotVersionText(s->bandwidth, godot_version, sizeof(godot_version));
+      sprintf(buf + strlen(buf), " client version godot %s (%i)", godot_version, s->bandwidth);
+   }
+   else
+      sprintf(buf + strlen(buf), " client version %i", s->version_major * 100 + s->version_minor);
    strcat(buf,"\n");
 
    lprintf("%s",buf);
@@ -911,4 +991,13 @@ void SynchedSendDLFileInfo(char *str,int time,int type,int size)
 void SynchedAddDelFile(char *str)
 {
    AddStringToPacket(strlen(str),str);
+}
+
+/* Godot version number of the login as text: 9100 -> "1.0.0", a developer build (99999) -> "dev" */
+void GodotVersionText(int number, char *text, int size)
+{
+   if (number >= GODOT_VERSION_DEV || number < 9000)
+      snprintf(text, size, "%s", number >= GODOT_VERSION_DEV ? "dev" : "?");
+   else
+      snprintf(text, size, "%i.%i.%i", (number - 9000) / 100, (number / 10) % 10, number % 10);
 }

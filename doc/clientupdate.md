@@ -22,7 +22,7 @@ The details sent are:
 
 ### Blakserv config values
 These strings should be placed in blakserv.cfg before starting up the server.
-Currently Classic and Ogre clients are supported by this protocol.
+Currently Classic, Ogre and Godot clients are supported by this protocol.
 
 Example config, placed under the [Update] section:
 
@@ -40,6 +40,41 @@ OgrePatchCachePath      /NET105/
 OgrePatchTxt            patchinfo.txt
 OgreClubExe             Meridian59.Patcher.exe
 ```
+
+The minimum versions go under the [Login] section (0 = no check):
+
+```
+[Login]
+MinClassicVersion       5070
+MinOgreVersion          9032
+MinGodotVersion         9100
+```
+
+### Godot client
+The Godot client sends version major 91. Its own version number is too big for
+the minor byte, so it comes in the 4-byte bandwidth field of AP_LOGIN:
+9000 + MAJOR*100 + MINOR*10 + PATCH (0.9.0 = 9090, 1.0.0 = 9100, a developer
+build 99999). The server compares it with MinGodotVersion and shows it in the
+log ("client version godot 1.0.0") and in `who` (G100).
+
+Godot has no update program: it patches itself from one complete list per
+platform (program and game data), chosen by the os_type of the login
+(2 = Windows, anything else = Linux). The server sends that list when the client
+is older than MinGodotVersion or its rsc0000.rsb differs from the server's, so
+after every server patch the Godot lists need the new game data as well.
+
+```
+[Update]
+GodotPatchHost              www.patch.com
+GodotPatchPathLinux         /godot105/linux
+GodotPatchCachePathLinux    /godot105/linux/
+GodotPatchPathWindows       /godot105/windows
+GodotPatchCachePathWindows  /godot105/windows/
+GodotPatchTxt               patchinfo.txt
+```
+
+Without GodotPatchHost the server sends no updates to Godot clients: they play
+on with their own files, but a client older than MinGodotVersion is refused.
 
 ### Update program
 The client will first download the update executable, then run it. The updater

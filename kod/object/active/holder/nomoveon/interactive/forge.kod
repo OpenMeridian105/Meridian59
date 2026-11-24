@@ -43,12 +43,15 @@ messages:
    ForgeItem(who = $, item_list = $)
    {
       local lForgeable, iNum, lTemp, lItemsUsed, lItems, iCount,
-            iAmount, lOfferItems, iOfferAmount, obj, i, j, k;
+            iAmount, lOfferItems, iOfferAmount, obj, i, j, k, e, oResult;
 
       foreach lForgeable in Send(Send(SYS,@GetLore),@GetForgeable)
       {
          iNum = 0;
          iCount = 0;
+         // Ingredients of this recipe only; a recipe that is not complete
+         // uses nothing.
+         lTemp = $;
          lItems = Nth(lForgeable,2);
          foreach i in lItems
          {
@@ -62,7 +65,6 @@ messages:
 
             if NOT Send(obj,@IsStackable)
             {
-               lItemsUsed = Cons(obj,lTemp);
                foreach j in item_list
                {
                   if IsClass(j,GetClass(obj))
@@ -85,46 +87,58 @@ messages:
                // Has all the ingredients, create food
                if (iNum = Length(lItems))
                {
-                  lItemsUsed = lTemp;
-
-                  // Check how many to create
-                  foreach j in lItemsUsed
+                  // Added to the ingredients of earlier complete recipes
+                  foreach j in lTemp
                   {
-                     if Send(j,@IsStackable)
+                     lItemsUsed = Cons(j,lItemsUsed);
+                  }
+
+                  // How many can be made: every stack ingredient gives
+                  // count / amount, a single piece (armor, weapon) one.
+                  iOfferAmount = $;
+                  foreach e in lItems
+                  {
+                     obj = GetListElemByClass(item_list, First(e));
+                     iAmount = 1;
+                     if Send(obj,@IsStackable)
                      {
-                        iCount = Send(j,@GetNumber);
+                        iAmount = Send(obj,@GetNumber) / Nth(e,2);
                      }
 
-                     iAmount = iCount / Nth(i,2);
-
-                     if (iAmount < iOfferAmount) OR (iOfferAmount = 0)
+                     if (iOfferAmount = $) OR (iAmount < iOfferAmount)
                      {
                         iOfferAmount = iAmount;
                      }
                   }
 
-                  lOfferItems = Cons(Create(First(Nth(lForgeable,3)),
-                                 #number=iOfferAmount),lOfferItems);
-
-                  // give back any leftovers
-                  iAmount = 0;
-                  foreach j in lItemsUsed
+                  // The results; single pieces are made one by one
+                  oResult = Create(First(Nth(lForgeable,3)),
+                                   #number=iOfferAmount*Nth(Nth(lForgeable,3),2));
+                  lOfferItems = Cons(oResult,lOfferItems);
+                  if NOT Send(oResult,@IsStackable)
                   {
-                     if Send(j,@IsStackable)
+                     k = 1;
+                     while k < iOfferAmount
                      {
-                        iCount = Send(j,@GetNumber);
+                        lOfferItems = Cons(Create(First(Nth(lForgeable,3))),
+                                           lOfferItems);
+                        k = k + 1;
                      }
+                  }
 
-                     iAmount = iCount / Nth(i,2);
-                     
-                     k = iAmount - (iOfferAmount * Nth(i,2));
-                     if ((iAmount > iOfferAmount) AND (k > 0)
-                        AND GetListElemByClass(lOfferItems, GetClass(j)) = $)
+                  // Give back what is left of the stack ingredients
+                  foreach e in lItems
+                  {
+                     obj = GetListElemByClass(item_list, First(e));
+                     if Send(obj,@IsStackable)
                      {
-                        lOfferItems = Cons(Create(GetClass(j),#number=(k)),
-                                          lOfferItems);
+                        k = Send(obj,@GetNumber) - (iOfferAmount * Nth(e,2));
+                        if k > 0
+                        {
+                           lOfferItems = Cons(Create(GetClass(obj),#number=k),
+                                              lOfferItems);
+                        }
                      }
-
                   }
                }
             }
@@ -151,8 +165,7 @@ messages:
       }
 
       Send(who,@CounterOffer,#item_list=lOfferItems);
-      plUser_Offers = Cons([ who, lOfferItems, CreateTimer(self,@CancelOfferTimer,
-                                             viCancel_offer_time) ], plUser_Offers);
+      Send(self,@AddUserOffer,#who=who,#lOfferItems=lOfferItems);
       return;
    }
 

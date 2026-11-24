@@ -314,6 +314,7 @@ resources:
    player_no_target_self_spell = "You cannot cast this spell on yourself."
 
    player_cant_apply = "You can't use %s%s on other things."
+   player_cant_apply_on = "You can't use %s%s on that."
 
    player_wave_hit = hit.ogg
 
@@ -4728,11 +4729,30 @@ messages:
    {
       local i,iUse_type;
 
+      if Send(self,@IsInCannotInteractMode)
+      {
+         Send(self,@MsgSendUser,#message_rsc=phased_out_cant_use);
+
+         return FALSE;
+      }
+
+      if (piFlags & PFLAG_MORPHED)
+      {
+         Send(self,@MsgSendUser,#message_rsc=player_cant_use);
+
+         return FALSE;
+      }
+
       if NOT Send(self,@IsHolding,#what=what)
       {
          Send(self,@MsgSendUser,#message_rsc=player_not_holding,
                #parm1=Send(what,@GetName));
 
+         return FALSE;
+      }
+
+      if NOT Send(self,@IsValidApplyTarget,#what=what,#apply_on=apply_on)
+      {
          return FALSE;
       }
 
@@ -4769,6 +4789,41 @@ messages:
       Send(self,@ResetPlayerFlagList);
 
       return TRUE;
+   }
+
+   IsValidApplyTarget(what = $,apply_on = $)
+   "Items are applied to ourselves, to something we carry, or to something "
+   "in our room.  Other players there must be able to interact."
+   {
+      local oTargetOwner;
+
+      if apply_on = self
+      {
+         return TRUE;
+      }
+
+      if apply_on <> $
+         AND IsClass(apply_on,&Object)
+      {
+         oTargetOwner = Send(apply_on,@GetOwner);
+         if oTargetOwner = self
+         {
+            return TRUE;
+         }
+
+         if poOwner <> $
+            AND oTargetOwner = poOwner
+            AND NOT (IsClass(apply_on,&Battler)
+                     AND Send(apply_on,@IsInCannotInteractMode))
+         {
+            return TRUE;
+         }
+      }
+
+      Send(self,@MsgSendUser,#message_rsc=player_cant_apply_on,
+            #parm1=Send(what,@GetDef),#parm2=Send(what,@GetName));
+
+      return FALSE;
    }
 
    CanAdvance()

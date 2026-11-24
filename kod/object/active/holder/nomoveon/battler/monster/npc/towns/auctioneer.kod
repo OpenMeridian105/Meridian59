@@ -248,6 +248,22 @@ messages:
       propagate;
    }
 
+   Offer(what = $, item_list = $)
+   "The item goes up for auction; nothing is paid for it now."
+   {
+      if NOT (viAttributes & MOB_BUYER)
+      {
+         propagate;
+      }
+
+      poCustomer = what;
+      plOffer_items = $;
+      Send(what,@CounterOffer,#item_list=$);
+      ptCancelOffer = CreateTimer(self,@CancelOfferTimer,viCancel_offer_time);
+
+      return;
+   }
+
    AcceptOffer(who=$)
    "Override to handle auction items"
    {

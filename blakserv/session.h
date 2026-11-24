@@ -171,6 +171,7 @@ void LeaveSessionLock(void);
 void SendBytes(session_node *s,char *buf,int len_buf);
 void InitSessionState(session_node *s,int state);
 session_node * CreateSession(connection_node conn);
+Bool TooManyWaitingFromAddr(struct in6_addr *addr);
 session_node *GetSessionByAccount(account_node *a);
 session_node * GetSessionBySocket(SOCKET sock);
 void ForEachSessionWithString(void(*callback_func)(session_node *a, char *str), char *str);

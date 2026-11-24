@@ -140,6 +140,14 @@ messages:
    {
       local oTakerOwner;
 
+      // A locked chest gives nothing out until it is opened.
+      if pbLocked
+         AND IsClass(taker,&User)
+         AND NOT IsClass(taker,&Admin)
+      {
+         return FALSE;
+      }
+
       oTakerOwner = Send(taker,@GetOwner);
 
       if (NOT Send(oTakerOwner,@LineOfSight,#obj1=taker,#obj2=self))

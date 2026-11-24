@@ -14,6 +14,9 @@ constants:
 
    include blakston.khd
 
+   // How far away (in rows/cols) another player can be.
+   HEALER_RANGE = 3
+
 resources:
 
    include healer.lkod
@@ -36,9 +39,26 @@ messages:
 
    ReqNewApply(what = $,apply_on = $)
    {
+      local iDistSq;
+
+      // On ourselves, or on another player close by who can interact.
       if IsClass(apply_on,&User)
       {
-         return TRUE;
+         if apply_on = what
+         {
+            return TRUE;
+         }
+
+         if Send(apply_on,@GetOwner) = Send(what,@GetOwner)
+            AND NOT Send(apply_on,@IsInCannotInteractMode)
+         {
+            iDistSq = Send(what,@SquaredDistanceTo,#what=apply_on);
+            if iDistSq <> $
+               AND iDistSq <= (HEALER_RANGE * HEALER_RANGE)
+            {
+               return TRUE;
+            }
+         }
       }
 
       Send(what,@MsgSendUser,#message_rsc=healer_cant_use_on, 

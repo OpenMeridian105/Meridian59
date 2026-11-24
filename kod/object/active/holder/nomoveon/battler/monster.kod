@@ -6241,7 +6241,7 @@ messages:
    Offer(what = $,item_list = $)
    "Offer the player money in exchange for their goods - MOB_BUYER"
    {
-      local i, iValue_offered, iAdd, x, y;
+      local i, iValue_offered, iAdd, x, iValue, iFactor, iResale, iNumber;
 
       // The Faction Pricing bonus was selling items to NPCs at higher prices
       // than the new price.  This has been taken out.
@@ -6249,10 +6249,34 @@ messages:
       if (viAttributes & MOB_BUYER
          OR viAttributes & MOB_RECEIVE)
       {
+         // Percentage of the value we pay.  Divide before multiplying so
+         // large values stay in range.
+         iFactor = Bound(100 - 10*viMerchant_markup,0,100);
+
          iValue_offered = 0;
          foreach i in item_list
          {
-            x = Send(i,@GetValue) * (100 - 10*viMerchant_markup) / 100;
+            iValue = Send(i,@GetValue);
+            x = (iValue / 100) * iFactor + (iValue % 100) * iFactor / 100;
+
+            // If we sell the item again, never pay more than we would
+            // ask from this customer for it.
+            if vbSellFromInventory
+               AND IsClass(i,&Item)
+            {
+               iResale = Send(self,@GetPrice,#what=i,#who=what);
+               iNumber = 1;
+               if Send(i,@IsStackable)
+               {
+                  iNumber = Bound(Send(i,@GetNumber),1,$);
+               }
+
+               if x / iNumber >= iResale
+               {
+                  x = iResale * iNumber;
+               }
+            }
+
             iAdd = Bound(x,1,$);
 
             iValue_offered += iAdd;

@@ -140,6 +140,14 @@ messages:
    {
       local oTakerOwner;
 
+      // A locked chest gives nothing out until it is opened
+      // (immortal allowed for testing)
+      if pbLocked
+         AND NOT Send(taker,@PlayerIsImmortal)
+      {
+         return FALSE;
+      }
+
       oTakerOwner = Send(taker,@GetOwner);
 
       if (NOT Send(oTakerOwner,@LineOfSight,#obj1=taker,#obj2=self))
